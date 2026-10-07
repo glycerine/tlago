@@ -1,5 +1,21 @@
 # TLC Architecture Notes for the Go Port
 
+## Builtin OpDef initialization
+
+The initial context stores actual `sanySemOpDefNode` objects for builtins and
+Generator's null operator node. The former separate builtin symbol class is
+removed. Builtin construction allocates syntax and phony formals first, marks
+the operator defined, and initializes level data only when both property arrays
+exist. Missing metadata remains nil; zero-argument `mk()` arrays remain empty
+and non-nil. Variadic operators keep null formal arrays and store the first
+maximum/weight entry, while Leibniz flags follow the complete weight array.
+Leibniz uses positive weights; initialized builtins record level iteration 99.
+Builtin classification compares current initial-context node identities, and
+parameter classification recognizes declaration/formal node classes. The whole
+original initialization test checks all 72 property rows before/after reInit.
+Ordinary OpDef bodies, registration and recursion fields remain pending; do not
+credit that constructor from builtin or null-node success.
+
 ## Shared numeral construction
 
 SANY expression generation constructs the existing TLC `NumeralNode` for integer

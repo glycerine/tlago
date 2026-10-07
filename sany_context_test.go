@@ -122,7 +122,7 @@ func TestSanyBuiltInContextBehaviors(t *testing.T) {
 			{name: "$Witness", arity: -1, level: constantLevel},
 			{name: "$WF", arity: 2, level: temporalLevel},
 		} {
-			symbol, ok := ctx.getSymbol(tc.name).(*sanySemBuiltInSymbol)
+			symbol, ok := ctx.getSymbol(tc.name).(*sanySemOpDefNode)
 			if !ok {
 				t.Fatalf("builtin %s = %#v, want semantic built-in", tc.name, ctx.getSymbol(tc.name))
 			}

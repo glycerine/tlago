@@ -16,9 +16,16 @@ type sanySemanticGraphNode interface {
 
 type sanySemOpDefNode struct {
 	sanySemSymbolBase
-	formalNodes []*sanyFormalParamNode
-	body        sanySemanticGraphNode
-	module      *sanySemModuleNode
+	formalNodes  []*sanyFormalParamNode
+	body         sanySemanticGraphNode
+	module       *sanySemModuleNode
+	defined      bool
+	level        tlaLevel
+	levelChecked int32
+	argMaxLevels []tlaLevel
+	argWeights   []int
+	leibniz      []bool
+	isLeibniz    bool
 }
 
 type sanySemOpApplNode struct {

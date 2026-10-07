@@ -190,7 +190,7 @@ func (c *sanyContext) orderedSymbols() []sanySemSymbol {
 func sanyContextImportKind(symbol sanySemSymbol) DeclarationKind {
 	// Context compares concrete symbol classes, including kind-zero OpDefNodes.
 	switch node := symbol.(type) {
-	case *sanySemOpDefNode, *sanySemBuiltInSymbol:
+	case *sanySemOpDefNode:
 		return OperatorDecl
 	case *sanySemOpDeclNode:
 		if node.semKind() == sanyVariableDeclKind {
@@ -490,4 +490,24 @@ func (st *sanySymbolTable) registerModule(mod *sanySemModuleNode) (bool, Diagnos
 	message := "Multiply-defined module '%s': this definition or declaration conflicts \nwith the one at %s."
 	diagnostic := sanyRegistrationDiagnostic(mod.semPosition(), "E4223", message, mod.semName(), sanyDiagnosticLocation{Position: current.semPosition()})
 	return false, Diagnostics{diagnostic}
+}
+
+// Context.isBuiltIn recognizes the actual current initial-context identities,
+// rather than inferring builtin status from a node kind or spelling.
+func sanyContextIsBuiltIn(node any) bool {
+	for _, symbol := range sanyGlobalInitialContext(false).orderedSymbols() {
+		if symbol == node {
+			return true
+		}
+	}
+	return false
+}
+
+func sanySymbolIsParam(symbol sanySemSymbol) bool {
+	switch symbol.(type) {
+	case *sanySemOpDeclNode, *sanyFormalParamNode:
+		return true
+	default:
+		return false
+	}
 }

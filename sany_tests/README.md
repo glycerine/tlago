@@ -71,3 +71,14 @@ actual level-check results and constant levels, dependency module tables,
 concrete LetInNode/OpApplNode types, and imported operator source identity.
 Implement the production graph and incremental generator behavior before
 crediting these methods; parsing the same snippets is insufficient.
+
+`semantic.TestBuiltInOperatorInitialization.testInitAndReInit` is **port complete**
+in root `sany_builtin_initialization_java_test.go`. Its complete helper checks
+all 72 source property rows before and after actual global Context reinitialization:
+symbol presence, OpDefNode class, name/kind, builtin identity, standard/parameter/
+local flags, null body, arity, null variadic parameters or exact formal count,
+level, both metadata arrays, and exhaustive context membership/count. Nil and
+empty arrays remain distinct. The property table matches Java mechanically.
+Builtins now use the common OpDef node rather than a separate symbol class;
+ordinary operator graph construction remains pending. This whole SANY class
+adds no TLC inventory credit.

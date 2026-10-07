@@ -1868,7 +1868,7 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 type localSymbol struct {
 	instanceOrigin   *Module
 	instanceSyntax   *SanySyntaxNode
-	builtinNode      *sanySemBuiltInSymbol
+	builtinNode      *sanySemOpDefNode
 	formalNode       *sanyFormalParamNode
 	declarationNode  *sanySemOpDeclNode
 	proofStepKind    string

@@ -15,15 +15,6 @@ type sanyBuiltinOperator struct {
 	argWeights   []int
 }
 
-type sanySemBuiltInSymbol struct {
-	sanySemSymbolBase
-	formalNodes  []*sanyFormalParamNode
-	level        tlaLevel
-	argMaxLevels []tlaLevel
-	argWeights   []int
-	leibniz      []bool
-}
-
 func newSanyInitialContext() *sanyContext {
 	ctx := newSanyContext()
 	for _, info := range sanyBuiltinOperators {
@@ -32,33 +23,18 @@ func newSanyInitialContext() *sanyContext {
 	return ctx
 }
 
-func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemBuiltInSymbol {
-	leibniz := make([]bool, 0)
-	if info.arity > 0 {
-		leibniz = make([]bool, info.arity)
-		for i := range leibniz {
-			weight := 1
-			if i < len(info.argWeights) {
-				weight = info.argWeights[i]
-			}
-			leibniz[i] = weight == 1
-		}
-	}
-	node := &sanySemBuiltInSymbol{
+func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemOpDefNode {
+	node := &sanySemOpDefNode{
 		sanySemSymbolBase: sanySemSymbolBase{
-			sanySemanticNode:   newSanySemanticNode(sanyBuiltInKind),
-			name:               info.name,
-			arity:              info.arity,
+			sanySemanticNode: newSanySemanticNode(sanyBuiltInKind),
+			name:             info.name, arity: info.arity,
 			originalModuleName: "--TLA+ BUILTINS--",
 			pos:                Position{File: "--TLA+ BUILTINS--"},
 		},
-		level:        info.level,
-		argMaxLevels: append([]tlaLevel(nil), info.argMaxLevels...),
-		argWeights:   append([]int(nil), info.argWeights...),
-		leibniz:      leibniz,
+		defined: true,
 	}
-	// OpDefNode(BuiltInOperator) first constructs its own syntax, then
-	// creates phony zero-arity formals without a SymbolTable or module.
+	// OpDefNode(BuiltInOperator) creates syntax and phony formals before
+	// initializing levels. Operators without both metadata arrays remain unchecked.
 	position := Position{File: "--TLA+ BUILTINS--"}
 	node.TreeNode = &SanySyntaxNode{Image: info.name, FileName: position.File, Range: SanyRange{Begin: position, End: position}, ProofLevel: -1, Level: -1}
 	node.Location = tlc.NewSourceLocation(position.File, 0, 0, 0, 0)
@@ -67,6 +43,27 @@ func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemBuiltInSymbol {
 		for i := range node.formalNodes {
 			node.formalNodes[i] = newSanyFormalParamNode("Formal_"+strconv.Itoa(i), 0, position, nil, nil)
 		}
+	}
+	if info.argMaxLevels != nil && info.argWeights != nil {
+		if info.arity == -1 {
+			node.argMaxLevels = make([]tlaLevel, 0)
+			node.argWeights = make([]int, 0)
+			if len(info.argMaxLevels) > 0 {
+				node.argMaxLevels = []tlaLevel{info.argMaxLevels[0]}
+				node.argWeights = []int{info.argWeights[0]}
+			}
+		} else {
+			node.argMaxLevels = info.argMaxLevels
+			node.argWeights = info.argWeights
+		}
+		node.isLeibniz = true
+		node.leibniz = make([]bool, len(info.argWeights))
+		for i, weight := range info.argWeights {
+			node.leibniz[i] = weight > 0
+			node.isLeibniz = node.isLeibniz && node.leibniz[i]
+		}
+		node.level = info.level
+		node.levelChecked = 99
 	}
 	return node
 }
@@ -109,18 +106,18 @@ func sanyBuiltinLeibniz(info sanyBuiltinOperator) []bool {
 }
 
 func sanyMaxLevels(vals ...tlaLevel) []tlaLevel {
-	return append([]tlaLevel(nil), vals...)
+	return append([]tlaLevel{}, vals...)
 }
 
 func sanyWeights(vals ...int) []int {
-	return append([]int(nil), vals...)
+	return append([]int{}, vals...)
 }
 
 var sanyBuiltinOperators = []sanyBuiltinOperator{
-	{name: "STRING", arity: 0, level: constantLevel},
-	{name: "FALSE", arity: 0, level: constantLevel},
-	{name: "TRUE", arity: 0, level: constantLevel},
-	{name: "BOOLEAN", arity: 0, level: constantLevel},
+	{name: "STRING", arity: 0, level: constantLevel, argMaxLevels: sanyMaxLevels(), argWeights: sanyWeights()},
+	{name: "FALSE", arity: 0, level: constantLevel, argMaxLevels: sanyMaxLevels(), argWeights: sanyWeights()},
+	{name: "TRUE", arity: 0, level: constantLevel, argMaxLevels: sanyMaxLevels(), argWeights: sanyWeights()},
+	{name: "BOOLEAN", arity: 0, level: constantLevel, argMaxLevels: sanyMaxLevels(), argWeights: sanyWeights()},
 	{name: "=", arity: 2, level: constantLevel, argMaxLevels: sanyMaxLevels(actionLevel, actionLevel), argWeights: sanyWeights(1, 1)},
 	{name: "/=", arity: 2, level: constantLevel, argMaxLevels: sanyMaxLevels(actionLevel, actionLevel), argWeights: sanyWeights(1, 1)},
 	{name: ".", arity: 2, level: constantLevel},
@@ -182,7 +179,7 @@ var sanyBuiltinOperators = []sanyBuiltinOperator{
 	{name: "$UnboundedForall", arity: 1, level: constantLevel, argMaxLevels: sanyMaxLevels(temporalLevel), argWeights: sanyWeights(1)},
 	{name: "$WF", arity: 2, level: temporalLevel, argMaxLevels: sanyMaxLevels(variableLevel, actionLevel), argWeights: sanyWeights(0, 0)},
 	{name: "$Nop", arity: 1, level: constantLevel, argMaxLevels: sanyMaxLevels(temporalLevel), argWeights: sanyWeights(1)},
-	{name: "$Qed", arity: 0, level: constantLevel},
+	{name: "$Qed", arity: 0, level: constantLevel, argMaxLevels: sanyMaxLevels(), argWeights: sanyWeights()},
 	{name: "$Pfcase", arity: 1, level: constantLevel, argMaxLevels: sanyMaxLevels(temporalLevel), argWeights: sanyWeights(1)},
 	{name: "$Have", arity: 1, level: constantLevel, argMaxLevels: sanyMaxLevels(temporalLevel), argWeights: sanyWeights(1)},
 	{name: "$Take", arity: 1, level: constantLevel, argMaxLevels: sanyMaxLevels(temporalLevel), argWeights: sanyWeights(1)},
@@ -210,13 +207,13 @@ func sanyGlobalInitialContext(reinitialize bool) *sanyContext {
 	return sanyInitialContextState.context
 }
 
-func (g *sanyExpressionGeneration) initialBuiltin(name string) *sanySemBuiltInSymbol {
+func (g *sanyExpressionGeneration) initialBuiltin(name string) *sanySemOpDefNode {
 	var context *sanyContext
 	if g.spec != nil && g.spec.initialContext != nil {
 		context = g.spec.initialContext
 	} else {
 		context = sanyGlobalInitialContext(false)
 	}
-	symbol, _ := context.getSymbol(ResolveSanyOperatorSynonym(name)).(*sanySemBuiltInSymbol)
+	symbol, _ := context.getSymbol(ResolveSanyOperatorSynonym(name)).(*sanySemOpDefNode)
 	return symbol
 }

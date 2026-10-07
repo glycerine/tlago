@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-07 Common builtin OpDefs and whole original initialization test:
+Previous completed commit: cc643dc. Inspect ordinary Generator.processOperator:
+source creates body/formals before constructing and registering an ordinary
+OpDef, with a separate recursive completion path. These graphs remain pending.
+Its builtin prerequisite exposes a concrete mismatch: Go uses a separate
+builtin symbol class while Java uses OpDefNode for builtins and nullODN.
+Remove the separate class and use the common actual OpDef type everywhere,
+including Context classification and retained builtin references. No alias or
+stand-in graph. Port source constructor fields and conditions: defined true,
+level iteration 99 only with both metadata arrays, null versus empty arrays,
+null variadic formals, first-entry variadic maxima/weights, and positive-weight
+Leibniz flags sized from the weight array. Five zero-arity property rows now
+retain their original mk() arrays instead of nil. Nonvariadic metadata retains
+the source property arrays, matching Java sharing.
+
+Replace the eight-symbol/six-snippet scaffold with the complete original
+TestBuiltInOperatorInitialization.testInitAndReInit and full helper in root.
+Preserve all assertions for all 72 properties, exhaustive global-context
+membership/count and actual reInit. Compare arrays with reflect.DeepEqual to
+retain source null/empty distinctions. Port Context.isBuiltIn identity lookup
+and SymbolNode.isParam concrete-class classification. Mechanically compare all
+72 name/arity/level/maximum/weight source rows: exact, including null/empty.
+The first compile found one missed type reference and wrong local enumeration
+method name; correct these without changing assertions. No invented tests.
+
+Original complete Go method and native builtin-context checks pass in 0.017
+seconds (82235, terminal 0). Compile unchanged original Java class and run
+JUnit: one whole method passes in 0.018 seconds, terminal 0. Full Go SANY
+passes in 1.958 seconds (14309, terminal 0). Focused parser/context/semantic
+bridge and original TLC model gate passes in 46.191 seconds (67693, terminal
+0), receipt /mnt/oldrog/tmp/tlago-builtin-opdef-root.log. Every package compiles,
+terminal 0. All handles retired. Whole SANY class credit only; TLC counts and
+full-workspace verification unchanged. Update README, handoff, inventory scope
+and architecture. Ordinary OpDef construction and the three incomplete
+incremental semantic methods remain pending. No long race run, broad sweep
+or new distributed service work.
+
 2026-10-07 Numeral level iteration and original basic expression assertions:
 Previous completed commit: afb7fcc. Compare NumeralNode.levelCheck and the
 LevelNode no-iteration overload. NumeralNode records the supplied iteration

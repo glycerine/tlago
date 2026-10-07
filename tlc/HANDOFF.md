@@ -952,6 +952,12 @@ iteration tracking matches source. The other three incremental methods remain
 uncredited: native-AST checks omit canonical node and syntax identity, actual
 levels, dependency tables and imported operator source identity. Implement those
 production graphs before translating the omitted assertions. See `sany_tests/README.md` for the method requirements.
+Builtins now use the common OpDef node. Their constructor preserves source
+null/empty metadata arrays, variadic Leibniz flags, defined state and checked
+level state. All 72 property rows match source. The complete original builtin
+initialization/reinitialization class passes in Java and Go; no TLC count changes.
+Ordinary OpDef construction still needs actual generated bodies, formal metadata,
+source symbol registration timing and recursion fields before crediting its test.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.
