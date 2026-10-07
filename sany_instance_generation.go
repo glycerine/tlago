@@ -4,7 +4,10 @@
 
 package tlago
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/glycerine/tlago/tlc"
+)
 
 // SubstInNode keeps defaults in declaration enumeration order. WITH replaces
 // an existing slot or appends a newly explicit substitution to that array.
@@ -19,6 +22,10 @@ type sanyGeneratedSubstitution struct {
 // processSubst constructs defaults first, generates each explicit RHS before
 // duplicate detection, then checks remaining defaults and completeness.
 func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Instance, module *Module, context map[string]Position) Diagnostics {
+	previousLabelsEnabled := g.labelsEnabled
+	g.labelsEnabled = true
+	defer func() { g.labelsEnabled = previousLabelsEnabled }()
+	instance.substitutionNode, instance.formalNodes = nil, nil
 	target := g.spec.Modules[instance.Module]
 	if target == nil {
 		return nil
@@ -49,25 +56,22 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Insta
 		declarations[entry.name] = entry.declaration
 	}
 	var diags Diagnostics
-	previousFormals := g.formals
-	g.formals = map[string]localSymbol{}
-	for name, symbol := range previousFormals {
-		g.formals[name] = symbol
-	}
-	defer func() { g.formals = previousFormals }()
 	context = copySanyExpressionContext(context)
+	if len(instance.Params) > 0 {
+		defer g.pushFormalContext(len(instance.Params))()
+	}
+	instance.formalNodes = make([]*sanyFormalParamNode, 0, len(instance.Params))
 	for _, name := range instance.Params {
 		position := instance.ParamPositions[name]
 		node := g.newFormalParameter(name, instance.ParamArities[name], position, instance.Syntax)
-		if previous, exists := g.lookupSymbol(name, context); exists {
-			diagnostic := errorAt(position, "E4201", "Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", name, sanySymbolLocation(previous.pos))
-			diagnostic.SANYMessage = diagnostic.Message
-			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-			diags = append(diags, diagnostic)
-		} else {
-			g.formals[name] = localSymbol{formalNode: node, kind: "FORMAL", arity: instance.ParamArities[name], pos: position}
-			context[name] = position
-		}
+		instance.formalNodes = append(instance.formalNodes, node)
+		diags = append(diags, g.bindFormalParameter(node, context, nil)...)
+	}
+	base, _ := newSanySemSubstitutionNode(sanySubstInKind, instance.Syntax, make([]*sanySemSubst, 0), nil, module.semanticNode, target.semanticNode, false)
+	template := &sanySemSubstInNode{base}
+	complete := target.semanticNode != nil
+	for _, name := range names {
+		complete = complete && declarations[name] != nil
 	}
 	present := map[string]bool{}
 	explicit := map[string]bool{}
@@ -78,7 +82,26 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Insta
 			defaultExpr := &IdentExpr{Name: name, Pos: instance.SourcePosition(), formalNode: symbol.formalNode, declarationNode: symbol.declarationNode}
 			defaultExpr.generationArity = &arity
 			instance.generatedSubstitutions = append(instance.generatedSubstitutions, sanyGeneratedSubstitution{name: name, target: targets[name], declaration: declarations[name], expr: defaultExpr, implicit: true})
-			if targets[name].Arity == 0 && symbol.arity > 0 && symbol.formalNode == nil {
+			actualSymbol := g.formalSymbolTable().resolveSymbol(name)
+			if actualSymbol != nil && declarations[name] != nil {
+				var node sanySemanticGraphNode
+				if targets[name].Kind == VariableDecl || targets[name].Arity == 0 {
+					application, generated, err := newSanySemOpApplNode(actualSymbol, make([]sanySemanticGraphNode, 0), instance.Syntax)
+					if err != nil {
+						panic(err)
+					}
+					node = application
+					diags = append(diags, generated...)
+				} else {
+					node = newSanySemOpArgNode(actualSymbol, instance.Syntax, module.semanticNode)
+				}
+				defaultExpr.semanticGraph = node
+				template.substs = append(template.substs, newSanySemSubst(declarations[name], node, nil, true))
+			} else {
+				complete = false
+			}
+
+			if actualSymbol == nil && targets[name].Arity == 0 && symbol.arity > 0 && symbol.formalNode == nil {
 				position := instance.SourcePosition()
 				if symbol.kind == ConstantDecl || symbol.kind == VariableDecl {
 					diags = append(diags, sanyRegistrationDiagnostic(position, "E4004", "Operator used with the wrong number of arguments."))
@@ -141,12 +164,30 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Insta
 				diags = append(diags, diagnostic)
 			}
 		}
+		actual := sanyGeneratedExpressionNode(substitution.Expr)
+		if actual == nil && sanyExpressionGenerationFailure(substitution.Expr) != sanyGenerationNullExpression {
+			complete = false
+		}
+		canonicalMutation := declarations[substitution.Name] != nil && target.semanticNode != nil
+		if canonicalMutation {
+			var syntax *SanySyntaxNode
+			if source := sanyGenerationSource(substitution.Expr); source != nil {
+				syntax = source.Syntax
+			}
+			// Source mutation shares replaced Subst objects and isolates appended
+			// arrays. It also owns duplicate reporting when its graph is available.
+			diags = append(diags, template.addExplicitSubstitute(target.semanticNode.context, tlc.UniqueStringOf(substitution.Name), syntax, actual)...)
+		} else {
+			complete = false
+		}
 		if explicit[substitution.Name] {
-			position := substitution.Expr.Position()
-			diagnostic := sanyDiagnosticParameters(errorAt(position, "E4241", "Multiple substitutions for symbol '%s' in substitution.", substitution.Name), substitution.Name)
-			diagnostic.SANYMessage = diagnostic.Message
-			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-			diags = append(diags, diagnostic)
+			if !canonicalMutation {
+				position := substitution.Expr.Position()
+				diagnostic := sanyDiagnosticParameters(errorAt(position, "E4241", "Multiple substitutions for symbol '%s' in substitution.", substitution.Name), substitution.Name)
+				diagnostic.SANYMessage = diagnostic.Message
+				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+				diags = append(diags, diagnostic)
+			}
 		} else {
 			explicit[substitution.Name] = true
 			present[substitution.Name] = true
@@ -187,6 +228,9 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Insta
 			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 			diags = append(diags, diagnostic)
 		}
+	}
+	if complete {
+		instance.substitutionNode = template
 	}
 	return diags
 }

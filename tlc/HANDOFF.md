@@ -1099,8 +1099,12 @@ observations. Supplied arrays retain identity, null arrays become empty, and
 null entries preserve source failures. SubstIn/APSubstIn copy/default constructors,
 array ownership, explicit mutation and completeness checks now match 518 rows
 across 180 source scenarios. Preserve their distinct source diagnostic codes.
-Actual INSTANCE generation, inherited wrapper levels/visitors and module/proof/LET
-instance vectors remain incomplete; bounded
+Production INSTANCE substitution templates now retain actual defaults, explicit
+RHS nodes and shared Subst mutations, including canonical label rejection outside
+a definition. All 51 rows across 17 direct processSubst scenarios match Java.
+Named-instance formal syntax and actual INSTANCE import generation, inherited
+wrapper levels/visitors and module/proof/LET instance vectors remain incomplete;
+bounded
 generation evidence does not
 complete inherited level checking, visitors or evaluator graph sharing.
 

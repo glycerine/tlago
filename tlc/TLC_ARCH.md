@@ -1,5 +1,33 @@
 # TLC Architecture Notes for the Go Port
 
+## Production INSTANCE substitution templates
+
+The production INSTANCE generator now retains an actual SubstIn template and
+formal array on the source Instance. Prepare parameter contexts before the
+template; allocate the template before default expressions. For each resolved
+default retain the actual application or operator argument and declaration, with
+implicitness and null expression syntax. The native default-expression view
+shares that same generated node rather than regenerating its identity.
+
+Generate explicit RHS nodes before duplicate checking and mutate/append actual
+Subst objects using the source wrapper operations. Canonical constructors and
+mutation own their diagnostics; legacy reporting is retained only when earlier
+imports have no actual graph. Missing declaration/expression identities keep the
+template incomplete rather than installing fabricated substitutions. Contexts
+and label-generation settings restore their callers' state after completion.
+INSTANCE RHS labels now invoke canonical guards even outside a definition,
+retaining error 4333 and the shared nullLabelNode without generating its body.
+
+Direct comparison with Java Generator.processSubst matches all 51 rows across
+17 scenarios: actual template/module references, allocation deltas, ordered slots,
+implicit/explicit flags, expression/operator kinds and references, full diagnostic
+codes/messages, duplicate/missing/illegal substitutions, discarded defaults,
+arity checks, lambdas, functions and label rejection. This verifies template
+integration, not all INSTANCE import generation. Named-instance formal syntax,
+imported definition/source/module ownership, instantiated flags, module/proof/LET
+vectors, inherited levels/visitors and evaluator sharing still require completion.
+No new permanent tests or original-method completion credit is added.
+
 ## SubstIn and APSubstIn wrapper construction
 
 The two wrappers now retain actual Subst arrays, body and instantiating/

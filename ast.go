@@ -42,6 +42,8 @@ type Module struct {
 }
 
 type Instance struct {
+	substitutionNode       *sanySemSubstInNode
+	formalNodes            []*sanyFormalParamNode
 	generatedSubstitutions []sanyGeneratedSubstitution
 	Syntax                 *SanySyntaxNode
 	Name                   string

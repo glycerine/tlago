@@ -1,5 +1,48 @@
 # TLC Port Progress
 
+2026-10-07 Production INSTANCE substitution template integration:
+Previous completed commit: 8029384. Retain actual SubstIn templates and formal
+arrays on source Instances. Allocate the template before default applications or
+operator arguments and retain actual resolved symbols/declarations/module
+identities. Native default views share their canonical expression nodes. Explicit
+RHS generation precedes actual Subst replacement/appending and duplicate checks.
+Canonical constructors and mutations own their diagnostics; native fallback
+reporting remains only for earlier imports without actual graph identities.
+Missing identities keep the template incomplete rather than fabricating nodes.
+Parameter contexts and label-generation settings restore caller state.
+
+The first source comparison exposed INSTANCE RHS labels bypassing canonical
+guards when labelsEnabled was false. Enable canonical label generation for
+substitutions, preserving the no-definition 4333 diagnostic and actual shared
+nullLabelNode without generating its body. Fix production rather than dropping
+the label case. All 51 complete Java/Go rows match across 17 direct Java
+Generator.processSubst scenarios, including allocation deltas, actual module/
+template references, ordered slots, kinds, defaults/replacements, duplicate/
+missing/illegal targets, arity errors, lambdas, functions and label rejection.
+Scratch observers/logs remain outside the repository under
+/mnt/oldrog/tmp/tlago-instance-template-*. No permanent tests invented or original
+method completion credit added. Imported definition/source/module ownership,
+named-instance formal syntax, instantiated flags and module/proof/LET instance
+vectors remain pending, as do inherited levels, visitors and evaluator sharing.
+
+Initial compile-all 14066 returned 0 and is retired. Scratch Java compilation
+initially used syntax constants from the wrong package; correct the observer to
+tla2sany.st.SyntaxTreeConstants. Go observer 91195 failed because manually created
+symbol metadata omitted actual host definition pointers; restore the same actual
+pointers as production. Observer 50166 then exposes the production label gap.
+28684 returns 0 after that fix and all initial 29 rows match. Expanded 17-case
+comparison returns 0. Final canonical mutation reporting preserves all 51 rows
+(29863 retired). Source code/messages and all cases remain unchanged.
+
+Existing affected root/parser/proof/TLC-model gate passes 47.166s (99227 retired).
+Complete sany_tests passes 1.994s (27278 retired); compile-all passes (14889
+retired). After the final diagnostic-ownership cleanup, the existing semantic/
+resolver and original Test213/Test214 diagnostics selection passes 10.218s
+(15614 retired), with the 51-row source comparison unchanged. git diff --check
+passes. Normal execution only; no race, broad long-workload repetition or current
+full-workspace pass claim. Next integrate actual imported definitions and instance
+vectors. New distributed work remains postponed until core parity is complete.
+
 2026-10-07 SubstIn/APSubstIn construction and mutation:
 Previous completed commit: 06873a9. Port all four source copy-constructor paths
 and both default constructors. Retain actual arrays, Subst/body/module identities,
