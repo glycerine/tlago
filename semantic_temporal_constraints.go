@@ -66,7 +66,7 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 		ctx.variables[name] = binding
 	}
 	a := newSanyLeibnizAnalyzer(spec)
-	add := func(evaluate func() sanyLeibnizUse, temporal bool) {
+	add := func(evaluate func() sanyLeibnizUse, temporal bool, result *sanyLeibnizUse) {
 		a.signatures = map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature{}
 		a.nextID = len(names)
 		var use sanyLeibnizUse
@@ -84,22 +84,23 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 				use.constrainID(id, actionLevel)
 			}
 		}
-		constraints.merge(use)
+		result.merge(use)
 	}
-	var expression func(Expr, *sanyLeibnizContext)
-	var definition func(*Definition, *sanyLeibnizContext)
-	definition = func(def *Definition, context *sanyLeibnizContext) {
+	var expression func(Expr, *sanyLeibnizContext, *sanyLeibnizUse)
+	var instanceConstraints func(Instance, *sanyLeibnizContext, *sanyLeibnizUse)
+	var definition func(*Definition, *sanyLeibnizContext, *sanyLeibnizUse)
+	definition = func(def *Definition, context *sanyLeibnizContext, result *sanyLeibnizUse) {
 		nested := sanyLeibnizNestedContext(context)
 		for _, name := range def.Params {
 			nested.formals[name] = sanyLeibnizBinding{}
 		}
 		if def.AssumeProveBody != nil {
-			add(func() sanyLeibnizUse { return a.assumeProveDependencies(def.AssumeProveBody, nested) }, true)
+			add(func() sanyLeibnizUse { return a.assumeProveDependencies(def.AssumeProveBody, nested) }, true, result)
 		}
-		expression(def.Expr, nested)
+		expression(def.Expr, nested, result)
 	}
-	expression = func(expr Expr, context *sanyLeibnizContext) {
-		add(func() sanyLeibnizUse { return a.expression(expr, context) }, false)
+	expression = func(expr Expr, context *sanyLeibnizContext, result *sanyLeibnizUse) {
+		add(func() sanyLeibnizUse { return a.expression(expr, context) }, false, result)
 		if let, ok := expr.(*LetExpr); ok {
 			nested := sanyLeibnizNestedContext(context)
 			nested.locals = make(map[string]sanyLeibnizLocal, len(context.locals)+len(let.Definitions))
@@ -111,18 +112,27 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 				nested.locals[def.Name] = sanyLeibnizLocal{ref: sanySelectorDefinition{module: context.module, def: def, params: sanyDefinitionParams(def)}, context: nested}
 			}
 			for i := range let.Definitions {
-				definition(&let.Definitions[i], nested)
+				definition(&let.Definitions[i], nested, result)
 			}
-			expression(let.Body, nested)
+			expression(let.Body, nested, result)
+			for _, instance := range let.Instances {
+				var instanceUse sanyLeibnizUse
+				instanceConstraints(instance, nested, &instanceUse)
+				// LetInNode imports only InstanceNode's ArgLevelParams;
+				// its scalar/argument constraints come from body/opDefs.
+				for _, key := range instanceUse.argParamOrder {
+					result.addArgumentParameter(key)
+				}
+			}
 			return
 		}
 		for _, child := range sanySubexpressionChildren(expr) {
-			expression(child, context)
+			expression(child, context, result)
 		}
 	}
 	visiting := map[*Module]bool{}
-	var collect func(*Module, *sanyLeibnizContext, bool)
-	collect = func(current *Module, context *sanyLeibnizContext, imported bool) {
+	var collect func(*Module, *sanyLeibnizContext, bool, *sanyLeibnizUse)
+	collect = func(current *Module, context *sanyLeibnizContext, imported bool, result *sanyLeibnizUse) {
 		if current == nil || visiting[current] || isEmbeddedStandardModule(current) {
 			return
 		}
@@ -145,22 +155,22 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 					use := a.expression(&IdentExpr{Name: name}, context)
 					use.constrain(use.levelParams, constantLevel)
 					return use
-				}, false)
+				}, false, result)
 			}
 		}
 		for _, extended := range current.Extends {
 			nested := sanyLeibnizNestedContext(context)
 			nested.module = spec.Modules[extended]
-			collect(nested.module, nested, true)
+			collect(nested.module, nested, true, result)
 		}
 		for _, assumption := range current.Assumptions {
 			if assumption.AssumeProveBody != nil {
-				add(func() sanyLeibnizUse { return a.assumeProveDependencies(assumption.AssumeProveBody, context) }, true)
+				add(func() sanyLeibnizUse { return a.assumeProveDependencies(assumption.AssumeProveBody, context) }, true, result)
 			} else {
 				// AssumeNode writes its own constraints, but getLevelConstraints
 				// returns the expression constraints. Only constraints inside
 				// the expression propagate to ModuleNode.
-				expression(assumption.Expr, context)
+				expression(assumption.Expr, context, result)
 			}
 		}
 		for i := range current.Definitions {
@@ -170,40 +180,43 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 			if imported && current.Definitions[i].Local {
 				continue
 			}
-			definition(&current.Definitions[i], context)
+			definition(&current.Definitions[i], context, result)
 		}
 		for _, theorem := range current.Theorems {
 			if theorem.AssumeProveBody != nil {
-				add(func() sanyLeibnizUse { return a.assumeProveDependencies(theorem.AssumeProveBody, context) }, true)
+				add(func() sanyLeibnizUse { return a.assumeProveDependencies(theorem.AssumeProveBody, context) }, true, result)
 			} else {
-				expression(theorem.Expr, context)
+				expression(theorem.Expr, context, result)
 			}
 		}
 		for _, proof := range current.Proofs {
 			for _, step := range proof.Steps {
 				if step.AssumeProveBody != nil {
-					add(func() sanyLeibnizUse { return a.assumeProveDependencies(step.AssumeProveBody, context) }, true)
+					add(func() sanyLeibnizUse { return a.assumeProveDependencies(step.AssumeProveBody, context) }, true, result)
 				}
 			}
 		}
 		for _, instance := range current.Instances {
-			target := spec.Modules[instance.Module]
-			owner := sanyLeibnizNestedContext(context)
-			for _, param := range instance.Params {
-				owner.formals[param] = sanyLeibnizBinding{}
-			}
-			variables := map[string]sanyLeibnizBinding{}
-			for _, subst := range instance.generatedSubstitutions {
-				// InstanceNode merges every substitution expression's own
-				// constraints, even when the target declaration is unused.
-				// Keep the actual resolved default/WITH array and its order.
-				expression(subst.expr, owner)
-				variables[subst.name] = sanyLeibnizBinding{expr: subst.expr, context: owner}
-			}
-			collect(target, &sanyLeibnizContext{module: target, variables: variables, formals: map[string]sanyLeibnizBinding{}}, false)
+			instanceConstraints(instance, context, result)
 		}
 	}
-	collect(module, ctx, false)
+	instanceConstraints = func(instance Instance, context *sanyLeibnizContext, result *sanyLeibnizUse) {
+		target := spec.Modules[instance.Module]
+		owner := sanyLeibnizNestedContext(context)
+		for _, param := range instance.Params {
+			owner.formals[param] = sanyLeibnizBinding{}
+		}
+		variables := map[string]sanyLeibnizBinding{}
+		for _, subst := range instance.generatedSubstitutions {
+			// InstanceNode merges every substitution expression's own
+			// constraints, even when the target declaration is unused.
+			// Keep the actual resolved default/WITH array and its order.
+			expression(subst.expr, owner, result)
+			variables[subst.name] = sanyLeibnizBinding{expr: subst.expr, context: owner}
+		}
+		collect(target, &sanyLeibnizContext{module: target, variables: variables, formals: map[string]sanyLeibnizBinding{}}, false, result)
+	}
+	collect(module, ctx, false, &constraints)
 	return names, constraints
 }
 

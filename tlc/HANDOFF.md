@@ -918,9 +918,19 @@ also merges every retained substitution expression's own constraints, even when
 the target declaration is unused. Use the actual resolved default/WITH array
 instead of reconstructing defaults by name. All 27 additional parseable RHS
 cases and prior bounded comparisons match Java. Current focused root/model checks
-pass in 27.372 seconds, complete SANY passes in 2.013 seconds, and compilation
+pass in 26.917 seconds, complete SANY passes in 1.883 seconds, and compilation
 passes. Original corpus fixtures and assertions are unchanged; no inventory
 credit or new full-workspace pass is added.
+
+LET now imports only its retained instances' co-parameter relationships, matching
+LetInNode's field-specific propagation. Scalar/argument constraints come from
+the body and actual generated OpDefs. A nine-case source audit now matches seven
+cases; `exported_argument` and `exported_prime` still fail because those imported
+LET operator definitions and their SubstIn constraints are not retained correctly.
+Next implement those nodes/constraints and rerun the unchanged cases under
+`/mnt/oldrog/tmp/tlago-let-instance-constraint-audit`. Do not merge the entire
+target module into LET; LOCAL and unused-RHS negative controls already match.
+The partial audit is recorded in `PORT_PROGRESS.md`, with no completion credit.
 Full canonical LevelNode fields and iteration, imported graph identity, full
 formal-operator metadata, the remaining Java frontend helper API and evaluator
 sharing remain pending. The green comparisons do not prove complete LevelNode

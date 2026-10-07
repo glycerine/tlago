@@ -58,7 +58,15 @@ resolved substitution array: defaults follow Context enumeration; WITH replaces
 a matching slot or appends an explicit substitution. Retain target declaration
 identity and default expression bindings instead of rebuilding from a completed
 module. LetInNode checks definitions, its body, then instances, including unused
-instances. Check substitution expressions before constraints, preserving diagnostic
+instances. LetInNode imports only InstanceNode's ArgLevelParams into its own
+level data, in addition to body/OpDef constraints and relationships. It does not
+copy whole instance scalar or argument constraint sets. Collection now has
+explicit result sets and a shared resolved-instance path; LET imports only the
+resulting ordered co-parameter relationships. Actual generated OpDefs from LET
+INSTANCE exports still require retention and SubstIn constraint propagation:
+seven of nine new source cases match, while exported scalar and argument bounds
+remain missing. Do not compensate by merging an entire target module's fields.
+Check substitution expressions before constraints, preserving diagnostic
 order and the instancer's lexical LET context. User-defined substituted operators
 use the symbolic argument maximum calculation rather than builtin-only maxima.
 

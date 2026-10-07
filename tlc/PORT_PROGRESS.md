@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 Selective LET INSTANCE relationship propagation:
+Previous completed commit: 1a9ced4. Read LetInNode.levelCheck before changing
+collection. Correct the initial assumption that LET merges whole INSTANCE
+constraint sets: Java checks all instances, but imports only their ArgLevelParams.
+Scalar and argument constraints come from the LET body and its retained OpDefs,
+including imported operator definitions. Do not flatten target module constraints
+into LET as a substitute for those missing nodes.
+
+Nine parseable scratch comparisons expose four failures (7125, terminal 1):
+unused substitution RHS co-parameters, an exported relationship, an exported
+operator argument minimum and an exported prime's scalar maximum. Refactor
+collection to pass explicit result sets through expressions, definitions and
+modules. Share the existing resolved-instance collector between modules and LET.
+LET collects each instance into a separate result and imports only its ordered,
+deduplicated co-parameter relationships, matching the source field distinction.
+
+The two relationship failures now match. Final nine-case audit 90890 returns 1:
+seven cases match, including negative controls for LOCAL definitions and unused
+scalar/argument RHS constraints; exported_argument and exported_prime remain
+unresolved. Exact logs:
+/mnt/oldrog/tmp/tlago-let-instance-constraint-{initial,partial}.log.
+Those remaining cases require retaining actual generated LET operator definitions
+from INSTANCE and their SubstInNode constraints, including source nonconstant
+module scalar-bound translation. Next finish that implementation and rerun the
+same unchanged scratch cases. Do not mark the feature complete from seven cases
+or weaken the two expected source diagnostics. Scratch audits earn no test credit.
+
+Existing focused root checks plus seven unchanged original model methods pass
+normally in 26.917 seconds (16204); complete SANY passes in 1.883 seconds
+(81372); all-package compilation passes. The preceding 27 RHS, 30 module-scope,
+26 co-parameter, 24 argument and 24 level comparisons still match exact Java
+logs (16414, terminal 0), under /mnt/oldrog/tmp/tlago-let-relation-final-*.log.
+All handles terminal and retired. No permanent tests or fixtures changed.
+No new full-workspace pass or complete LET/INSTANCE graph parity claimed.
+New distributed service remains postponed.
+
 2026-10-07 Resolved substitution RHS constraint aggregation:
 Previous completed commit: 27e73a1. InstanceNode merges each substitution
 expression's LevelConstraints, ArgLevelConstraints and ArgLevelParams after
