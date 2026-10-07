@@ -72,20 +72,29 @@ func (s *sanySemSymbolBase) semPosition() Position         { return s.pos }
 
 type sanySemModuleNode struct {
 	sanySemSymbolBase
-	context *sanyContext
+	context      *sanyContext
+	nestingLevel int
+	definitions  []sanySemanticGraphNode
 }
 
-func newSanySemModuleNode(name string, ctx *sanyContext, pos Position) *sanySemModuleNode {
-	return &sanySemModuleNode{
+func newSanySemModuleNode(name string, ctx *sanyContext, pos Position, syntax ...*SanySyntaxNode) *sanySemModuleNode {
+	node := &sanySemModuleNode{
 		sanySemSymbolBase: sanySemSymbolBase{
 			sanySemanticNode:   newSanySemanticNode(sanyModuleKind),
 			name:               name,
-			arity:              0,
+			arity:              -2,
 			originalModuleName: name,
 			pos:                pos,
 		},
-		context: ctx,
+		context:     ctx,
+		definitions: make([]sanySemanticGraphNode, 0),
 	}
+	if len(syntax) != 0 && syntax[0] != nil {
+		node.TreeNode = syntax[0]
+		bridge := tlcBridge{convertingModule: name}
+		node.Location = bridge.sourceLocationForPosition(sanyNodePosition(syntax[0]))
+	}
+	return node
 }
 
 func newSanySemSymbol(name string, kind sanySemKind, arity int, module string, pos Position) *sanySemSymbolBase {

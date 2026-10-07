@@ -12,7 +12,8 @@ import (
 // Its LevelNode data and graph visitors are ported separately.
 type sanyFormalParamNode struct {
 	sanySemSymbolBase
-	module *Module
+	module         *Module
+	semanticModule *sanySemModuleNode
 }
 
 func newSanyFormalParamNode(name string, arity int, position Position, syntax *SanySyntaxNode, module *Module) *sanyFormalParamNode {
@@ -27,6 +28,9 @@ func newSanyFormalParamNode(name string, arity int, position Position, syntax *S
 			originalModuleName: moduleName, pos: position,
 		},
 		module: module,
+	}
+	if module != nil {
+		node.semanticModule = module.semanticNode
 	}
 	if syntax == nil {
 		node.TreeNode = nil

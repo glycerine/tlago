@@ -279,6 +279,19 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return generateModuleWithEnclosing(nested, spec, mod, child)
 		}
 	}
+	context := newSanyContext()
+	if enclosing == nil {
+		if spec.initialContext == nil {
+			spec.initialContext = sanyGlobalInitialContext(false)
+		}
+		context = spec.initialContext.duplicate()
+	}
+	mod.semanticNode = newSanySemModuleNode(mod.Name, context, mod.Pos, mod.Syntax)
+	mod.semanticNode.nestingLevel = 0
+	if enclosing != nil && enclosing.semanticNode != nil {
+		mod.semanticNode.nestingLevel = enclosing.semanticNode.nestingLevel + 1
+		enclosing.semanticNode.definitions = append(enclosing.semanticNode.definitions, mod.semanticNode)
+	}
 	expressionGeneration := &sanyExpressionGeneration{nodes: mod.generatorNodes, spec: spec, currentModule: mod, module: checks.recursiveGeneration, bindings: map[string]*sanyRecursiveBinding{}}
 	checkExpr := func(expr Expr, context map[string]Position, locals map[string]bool) Diagnostics {
 		return expressionGeneration.checkExpr(expr, context, locals)

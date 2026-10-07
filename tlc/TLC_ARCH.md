@@ -1,5 +1,30 @@
 # TLC Architecture Notes for the Go Port
 
+## Retained ModuleNode and Generator ASSUME marker
+
+Generate each ModuleNode before its body. The native semantic node retains source
+arity -2, whole-module syntax/location, context and zero-based nesting. External
+modules start with a duplicate of the retained builtin context; internal modules
+start with their own empty context and resolve enclosing names through the symbol
+stack. Append an internal module to its parent's semantic definition list before
+generating the child body. Formal nodes retain the actual constructed module node
+alongside their existing native module adapter. Fourteen actual Java module
+observations match for these constructor and ownership properties.
+
+Generator also initializes a class-wide OpDeclNode named $$InAssume before its
+four per-instance sentinels. Retain that node once, with kind/arity/level zero,
+levelChecked one, no module and null syntax/location. Twenty-eight sentinel/marker
+observations match, including sharing across Generator instances and construction
+before nullODN. Source uses the marker for ordinary ASSUME scope; native marker
+scope installation/resolution remains pending.
+
+All five expanded aggregate label cases now match complete Java diagnostics. The
+70-formal range and first hash are exactly 305..374 and 1607 in both runtimes.
+This proves the inspected construction prefix, not general allocation order:
+ordinary OpDeclNode/OpDefNode/OpApplNode construction, all context entries and the
+complete ordered module-definition graph remain incomplete. Canonical failure
+results, LevelNode data, visitors and evaluator sharing still require porting.
+
 ## Generator-owned sentinel nodes
 
 Each external-module Generator constructs nullODN, nullOAN, nullOpArg and
@@ -15,8 +40,8 @@ Native modules retain their Generator-owned set. External analyses receive fresh
 sets; nested module generation and expression generation use the enclosing set.
 Twenty-three actual Java constructor observations match, including syntax,
 locations, shapes, links and consecutive relative UID construction. Existing
-parser/SANY checks and four unchanged original TLC models pass. The 70-formal
-allocation probe now starts at Go UID 303 versus Java 305.
+parser/SANY checks and four unchanged original TLC models pass. The module/static-marker construction described above now also matches the
+inspected first-formal allocation prefix.
 
 This is constructor and ownership scaffolding, not complete ordinary semantic node
 classes or canonical failure graphs. The existing generationFailure adapter still
@@ -94,11 +119,10 @@ balanceDeletion, conversion back to lists and moving the tree root to the front.
 confirmed before removal across collision/high-bit patterns. Nine earlier complete
 label diagnostic cases match. Native/unresolved metadata retains its old adapter.
 
-This does not establish absolute graph allocation order. After frontend context
-integration, one of five expanded aggregate cases differs: formal_70. Its actual
-first formal UID is Java 305, Go 303 (hashes 1607 and 1605). Complete module
-and remaining graph constructors rather than manufacturing UID
-offsets. Complete unified LS/generator integration and stop allocation beneath
+This does not establish general graph allocation order. After retained module
+and static-marker construction, all five expanded aggregate cases match. The
+70-formal first UID/hash are 305/1607 in both runtimes. Complete remaining graph
+constructors rather than manufacturing UID offsets for other allocation gaps. Complete unified LS/generator integration and stop allocation beneath
 forbidden label bodies. No full LabelNode graph parity claim.
 
 ## TAKE/PICK formal construction and proof scope

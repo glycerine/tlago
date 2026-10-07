@@ -15,6 +15,7 @@ type Spec struct {
 }
 
 type Module struct {
+	semanticNode   *sanySemModuleNode
 	generatorNodes *sanyGeneratorNodes
 	Syntax         *SanySyntaxNode
 	Name           string

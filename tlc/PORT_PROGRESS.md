@@ -1,5 +1,60 @@
 # TLC Port Progress
 
+2026-10-07 Module construction and class-wide ASSUME declaration:
+Previous completed commit: 574eae8. Native generation retains a concrete
+ModuleNode before the module body, with source arity -2, whole-module
+syntax/location, context and nesting. External contexts duplicate the retained
+builtin table; internal contexts start empty. Append internal module nodes to the
+parent's semantic definition list before their bodies. Formal nodes retain the
+constructed semantic owner alongside the native module adapter. Complete ordinary
+declaration/operator entries and ordered definition graphs remain pending.
+
+Fourteen actual Java module observations match: metadata, syntax/ranges,
+zero-based nesting, builtin presence in owned context, formal module ownership,
+child definition link and distinct contexts. Initial Go compile failed on a
+non-addressable bridge receiver; correct it. Source observation also confirms
+root nesting 0 and internal 1; correct the initial root-1 assumption before final
+comparison. Final comparison 24059 terminal 0. Logs/helpers:
+/mnt/oldrog/tmp/tlago-module-node-{java,go}.log, SourceModuleNodeManual.java and
+tlago-module-node-manual_test.go/overlay. Scratch probes remain outside the repo.
+
+Pre-marker phase checks 16418/76490/96676 pass, but expanded comparison 17380
+terminal 1 retains formal_70 ordering failure. Actual Go first-formal UID is 304,
+Java 305. Trace Java's real phases by reading, never mutating, SemanticNode's UID
+counter. Initialization and parsing leave next UID 299; Generator's first nullODN
+is 300, then 301/302/303; ModuleNode 304, first formal 305. Source and compiled
+Generator static initializer reveal the missing retained OpDeclNode $$InAssume,
+constructed once before instance sentinels. Port this real class-wide declaration
+with kind/arity/level zero, levelChecked one, no module and null syntax/location.
+Marker installation/resolution in native ASSUME scopes remains pending. Receipt:
+/mnt/oldrog/tmp/tlago-module-node-source-allocation.log. Handle 83408 terminal 0
+records the pre-marker Go 304..373/hash1606 range, not final parity.
+
+Twenty-eight source sentinel/marker observations match metadata, null syntax and
+location, shared identity and marker-before-sentinel order (83409 terminal 0).
+Logs: /mnt/oldrog/tmp/tlago-module-node-sentinels-{java,go}.log. Source uses actual
+Generator fields; no counter offsets. Final UID observation matches exactly:
+70 formals, UID 305..374, first hash 1607 (84944 terminal 0), log
+/mnt/oldrog/tmp/tlago-module-node-uid-go-final.log. This validates that construction
+prefix, not all semantic graph allocation order.
+
+Final focused parser/context/semantic and original ParseError/legacy/scoped checks
+pass 4.698 seconds (25419); whole SANY package passes 1.525 seconds (73235);
+all packages compile (73679). Four unchanged whole original models pass
+2.328 seconds (51392): UndeclaredRecursion, ConstantContextTLCCache,
+ConstantRank1TLCEval and ACoverage. Logs:
+/mnt/oldrog/tmp/tlago-module-node-{root,sany,compile}-final.log and
+ tlago-module-node-models.log. Freshly rebuild the scratch diagnostic frontend.
+Fifteen label-flow, sixteen required, nine broader and all five expanded aggregate
+cases match complete Java diagnostics (49006 terminal 0). Logs:
+/mnt/oldrog/tmp/tlago-module-node-{flow,required,nine,extra}-final.log.
+
+All handles terminal and retired; git diff --check passes. No invented permanent
+tests, inventory credit, changed assertions/settings/bounds, race workloads or
+current full-workspace claim. Next: ordinary declaration/operator graphs, actual
+sentinel failure results, full marker/label scope integration, LevelNode/visitors
+and evaluator sharing. Distributed service work remains postponed.
+
 2026-10-06 Retained Generator sentinel nodes:
 Previous completed commit: c1d543d. Source Generator constructs four real semantic
 nodes in order: nullODN, nullOAN, nullOpArg, nullLabelNode. Port their constructors

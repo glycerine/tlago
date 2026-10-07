@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-workspace verification baseline: `44aaf11`.
+Updated: October 7, 2026. Full-workspace verification baseline: `44aaf11`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -786,12 +786,21 @@ sets; nested modules and expression generation share their owner's set. Twenty-t
 actual constructor observations match Java. This is constructor metadata, not
 complete ordinary OpDefNode/OpApplNode/OpArgNode/LabelNode or failure-path graphs.
 
-Next semantic work: port ModuleNode and remaining graph construction, wire failure
-results to retained sentinels, and complete allocation order before unifying guards. The expanded aggregate
-audit now has one difference (`formal_70`) out of five cases. Its first formal UID
-is Java 305, Go 303; both hash formulas include kind and UID. Preserve these actual identities and HashSet iteration rather than
-inventing offsets or sorting names. Full LabelNode/LS graph integration remains
-pending. Receipts are in PORT_PROGRESS.md; larger ordering parity is still failing.
+Module generation now retains a concrete ModuleNode before its body, with source
+arity -2, whole-module syntax/location, zero-based nesting and separate contexts.
+Nested nodes enter the parent's definition list; formals retain the constructed
+module owner. Fourteen module observations match Java. Generator class initialization
+also retains its process-wide `$$InAssume` declaration before instance sentinels.
+Twenty-eight sentinel/marker observations match. Ordinary declaration/operator
+context entries and complete module definition graphs remain pending.
+
+The five expanded aggregate-label cases now match completely. The 70-formal UID
+range and first hash match Java exactly (305..374, 1607), without offsets. This
+verifies that construction prefix, not complete allocation order across all graphs.
+Next semantic work: port ordinary declaration/operator graph construction, wire
+failure results to retained sentinels, and unify label generation guards. Complete
+LS/LabelNode graphs, marker scope integration, level data and evaluator sharing
+remain pending. Receipts are in PORT_PROGRESS.md.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain
