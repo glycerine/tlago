@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-07 Ordinary OpDef constructor and shared graph-link identity:
+Previous completed commit: 35f0a74. Continue ordinary processOperator review.
+Graph links required private root-package methods and could not retain actual
+TLC literal nodes. Use their already-shared Kind/GetUID identity methods; retain
+actual nodes rather than adapters or duplicates. Port the ordinary source
+OpDefNode constructor into sany_opdef.go: null params become a non-null empty
+array, supplied arrays/body/module/syntax/source/table retain identity, arity is
+parameter count, local/defined values are preserved, per-argument maxima start
+at MaxLevel, weights at zero and Leibniz flags true. Register after initialization
+when a SymbolTable is supplied. Add source recursion defaults (-1 for LET and
+recursive section; false flags) to ordinary, builtin and null constructors.
+Generator integration remains pending until actual expression bodies exist;
+this constructor is not yet called by ordinary definition generation. Common
+LevelNode inherited data/guards and other constructors remain incomplete. Do
+not mark basicOpDefTest complete from constructor-only evidence.
+
+Scratch Java/Go observations cover 32 constructor combinations: null, empty,
+one and two formal arrays; all local/defined/registration flag combinations.
+Compare concrete body identity, array sharing, syntax/module/table/source,
+kind/arity, checked level, metadata arrays, recursion defaults, registration
+and successful diagnostics. All observations match exactly. Files and receipt:
+/mnt/oldrog/tmp/tlago-opdef-constructor-probe.java,
+/mnt/oldrog/tmp/tlago-opdef-constructor-manual_test.go,
+/mnt/oldrog/tmp/tlago-opdef-constructor-overlay.json and
+/mnt/oldrog/tmp/tlago-opdef-constructor-comparison.log. Initial scratch builds
+used incorrect numeral constructor signatures; correct them to actual Java
+three-argument and Go two-result calls. Corrected observers compile/run terminal
+0; Go 18544 retired. These are bounded scratch observations, not permanent
+invented tests, corpus sweeps or original-method credit.
+
+Full SANY passes normally in 1.568 seconds (26901, terminal 0). Focused original
+parser/context/bridge and TLC model gate passes in 44.528 seconds (11357,
+terminal 0). Every package compiles, terminal 0. All handles retired. Original
+assertions/fixtures and inventory counts unchanged. No new full-workspace pass
+or race workload. Continue canonical body construction, then wire ordinary
+processOperator in source allocation/registration order and translate its full
+original test before crediting the method. New distributed work stays postponed.
+
 2026-10-07 Register retained formal nodes in temporary semantic contexts:
 Previous completed commit: d69ceac. Resume faithful Java parity on master;
 new rpc25519/Tube architecture remains postponed. Generator.processOperator

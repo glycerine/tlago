@@ -25,6 +25,7 @@ func newSanyInitialContext() *sanyContext {
 
 func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemOpDefNode {
 	node := &sanySemOpDefNode{
+		letInLevel: -1, recursiveSection: -1,
 		sanySemSymbolBase: sanySemSymbolBase{
 			sanySemanticNode: newSanySemanticNode(sanyBuiltInKind),
 			name:             info.name, arity: info.arity,

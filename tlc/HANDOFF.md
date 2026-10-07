@@ -956,8 +956,12 @@ Builtins now use the common OpDef node. Their constructor preserves source
 null/empty metadata arrays, variadic Leibniz flags, defined state and checked
 level state. All 72 property rows match source. The complete original builtin
 initialization/reinitialization class passes in Java and Go; no TLC count changes.
-Ordinary OpDef construction still needs actual generated bodies, formal metadata,
-source symbol registration timing and recursion fields before crediting its test.
+The ordinary OpDef constructor now preserves source parameter/body/syntax
+identity, initializes argument metadata and recursion defaults, and registers
+after field initialization. Graph links can retain actual shared TLC literals.
+All 32 bounded constructor observations match Java. Ordinary generation still
+needs complete actual bodies, constructor wiring, registration timing and
+recursive completion before crediting its original test.
 Generated decimals now retain source image parts, signed-long mantissa/exponent
 and overflow unscaled value/scale. TLC and XML reuse their representation.
 The exporter preserves source's overflow scale sign and uses generated numeral

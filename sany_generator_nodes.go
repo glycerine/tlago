@@ -7,25 +7,30 @@ import (
 	"sync"
 )
 
-// Semantic graph links retain node identity independently of the native AST.
-// Remaining ordinary constructors and LevelNode data are ported separately.
+// Semantic graph links retain actual SANY and TLC nodes through their shared
+// semantic identity methods; literal bodies need no adapter or duplicate node.
 type sanySemanticGraphNode interface {
-	getKind() sanySemKind
-	getUID() int32
+	Kind() tlc.SemanticKind
+	GetUID() int32
 }
 
 type sanySemOpDefNode struct {
 	sanySemSymbolBase
-	formalNodes  []*sanyFormalParamNode
-	body         sanySemanticGraphNode
-	module       *sanySemModuleNode
-	defined      bool
-	level        tlaLevel
-	levelChecked int32
-	argMaxLevels []tlaLevel
-	argWeights   []int
-	leibniz      []bool
-	isLeibniz    bool
+	formalNodes        []*sanyFormalParamNode
+	body               sanySemanticGraphNode
+	module             *sanySemModuleNode
+	defined            bool
+	level              tlaLevel
+	levelChecked       int32
+	argMaxLevels       []tlaLevel
+	argWeights         []int
+	leibniz            []bool
+	isLeibniz          bool
+	table              *sanySymbolTable
+	letInLevel         int
+	inRecursive        bool
+	inRecursiveSection bool
+	recursiveSection   int
 }
 
 type sanySemOpApplNode struct {
@@ -129,7 +134,7 @@ func sanyNullSyntaxNode(kind sanySemKind) sanySemanticNode {
 
 // OpDefNode(UniqueString) is also used directly by the original context test.
 func newSanySemNullOpDefNode(name string) *sanySemOpDefNode {
-	return &sanySemOpDefNode{sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: sanyNullSyntaxNode(0), name: name, arity: -2, pos: Position{File: "--TLA+ BUILTINS--"}}}
+	return &sanySemOpDefNode{letInLevel: -1, recursiveSection: -1, sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: sanyNullSyntaxNode(0), name: name, arity: -2, pos: Position{File: "--TLA+ BUILTINS--"}}}
 }
 
 // Generator constructs these four nodes in order. nullODN has kind zero,

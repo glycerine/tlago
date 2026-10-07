@@ -1,5 +1,19 @@
 # TLC Architecture Notes for the Go Port
 
+## Ordinary OpDef construction and actual graph links
+
+Graph edges use the shared Kind/GetUID semantic identity methods so they can
+retain actual TLC literal nodes alongside root SANY nodes, without wrappers or
+second allocations. The ordinary OpDef constructor preserves the supplied
+parameter array, body, module, table, syntax and source. Null parameters become
+a non-null empty array; argument maxima start at MaxLevel, weights at zero and
+Leibniz flags true. Registration occurs after field initialization. Recursion
+fields begin with source defaults, including -1 LET/section values for all
+OpDef constructor variants. Generator's ordinary-body path is not wired to this
+constructor yet: generate all actual body graphs first, then construct/register
+after popping formal scope. Recursive definitions complete an earlier node.
+Constructor evidence does not establish ordinary graph or LevelNode parity.
+
 ## Temporary formal SymbolTable contexts
 
 Expression generation pushes a real semantic context alongside its native
@@ -62,8 +76,8 @@ Leibniz uses positive weights; initialized builtins record level iteration 99.
 Builtin classification compares current initial-context node identities, and
 parameter classification recognizes declaration/formal node classes. The whole
 original initialization test checks all 72 property rows before/after reInit.
-Ordinary OpDef bodies, registration and recursion fields remain pending; do not
-credit that constructor from builtin or null-node success.
+Ordinary OpDef body graphs, Generator registration timing and recursive completion
+remain pending; builtin or null-node success does not establish their parity.
 
 ## Shared numeral construction
 
