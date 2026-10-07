@@ -780,11 +780,10 @@ retains the actual context node. Eleven lifecycle observations match Java; four
 unchanged original TLC models pass. General selector/evaluator builtin graph
 sharing remains incomplete.
 
-Next semantic work: integrate source initial-context construction/reset lifecycle,
-complete semantic graph constructors and allocation order, then unify label guards. The expanded aggregate audit has
-three differences (`formal_20`, `formal_70`, `nested_20`) out of five cases. The
-70-formal case assigns first UID 305 in Java and 1 in Go; both hash formulas include
-kind and UID. Preserve these actual identities and HashSet iteration rather than
+Next semantic work: port Generator sentinel and module graph construction,
+complete semantic allocation order, then unify label guards. The expanded aggregate
+audit now has one difference (`formal_70`) out of five cases. Its first formal UID
+is Java 305, Go 299; both hash formulas include kind and UID. Preserve these actual identities and HashSet iteration rather than
 inventing offsets or sorting names. Full LabelNode/LS graph integration remains
 pending. Receipts are in PORT_PROGRESS.md; larger ordering parity is still failing.
 
