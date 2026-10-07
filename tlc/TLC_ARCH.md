@@ -1,5 +1,23 @@
 # TLC Architecture Notes for the Go Port
 
+## Function and set expression formal construction
+
+processFcnConst, processSetOfAll and processSubsetOf generate all domains in the
+enclosing scope before allocating any formal nodes. generateLambda uses the same
+fresh parameter context without domains. The native expression generator now
+retains these formals and actual body references, preserving prior bindings when
+new declarations conflict. Shared native domains are generated once per source
+bound group; flat multi-name metadata does not regenerate their domain for each
+name. Nested domains resolve enclosing formals, and sibling scopes have distinct
+identities. Domain errors precede formal declaration errors, matching Java.
+
+Filtered sets have a predicate operand in the source graph. Their native derived
+Element is not separately generated. Thirty-three node observations cover function
+constructors, tuple bounds, set-of-all, filtered scalar/tuple sets and LAMBDA;
+eighteen complete diagnostics cover scope, conflicts and error order. This does
+not port named-function definitions' recursion-symbol path, full OpApplNode bound
+groups, LevelNode data, evaluator sharing or absolute allocation order.
+
 ## CHOOSE formal construction
 
 processChoose generates its domain in the enclosing scope before allocating
@@ -17,7 +35,7 @@ and thirteen complete diagnostics match Java; the earlier nineteen quantifier
 observations also pass after binding helper reuse.
 
 This does not establish full OpApplNode shape, LevelNode data, evaluator sharing,
-label parameter arrays or absolute allocation order. Remaining function/set and
+label parameter arrays or absolute allocation order. Remaining named-function definition and
 proof formal constructors must use actual node identities too.
 
 ## Quantified formal construction and scope
@@ -56,7 +74,7 @@ It uses the shared SemanticNode UID allocator and per-node indexed slots.
 Its equality checks concrete class, kind and UID, matching SemanticNode.equals.
 Sixteen source observations establish these constructor/reference properties and
 relative UID/hash behavior. Absolute source allocation order is not established.
-Function and proof-binder construction, LevelNode data, visitors,
+Named-function definition and proof-binder construction, LevelNode data, visitors,
 actual label formal arrays and evaluator sharing still require porting. The native
 Module ownership link is not a claim of a complete Java ModuleNode graph.
 

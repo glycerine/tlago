@@ -489,6 +489,7 @@ type BoundVar struct {
 
 type FunctionExpr struct {
 	SanyExprSource
+	formalNodes []*sanyFormalParamNode
 	Bounds      []BoundVar
 	Body        Expr
 	IsLambda    bool
@@ -577,10 +578,11 @@ func (*FunctionSetExpr) exprNode()            {}
 
 type SetComprehensionExpr struct {
 	SanyExprSource
-	Element   Expr
-	Bounds    []BoundVar
-	Predicate Expr
-	Pos       Position
+	formalNodes []*sanyFormalParamNode
+	Element     Expr
+	Bounds      []BoundVar
+	Predicate   Expr
+	Pos         Position
 }
 
 func (e *SetComprehensionExpr) Position() Position { return e.Pos }

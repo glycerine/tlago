@@ -705,7 +705,7 @@ FormalParamNodes before binding-conflict checks. Definition bodies retain the
 ordered parameter nodes; identifier occurrences retain the resolved formal.
 Nodes share the SemanticNode UID allocator and own indexed tool slots, syntax,
 source location and native module ownership. Sixteen source observations match.
-This foundation does not cover function formals, proof binders,
+This foundation does not cover named-function definition formals, proof binders,
 LevelNode data, visitors, evaluator graph sharing or full source allocation order.
 
 Bounded, unbounded and temporal quantifiers now retain newly constructed formal
@@ -724,7 +724,15 @@ uses the CHOOSE token's syntax/location. Twenty-five node observations and
 thirteen complete diagnostic cases match Java, including empty tuple behavior.
 Existing focused checks and the earlier quantifier observations pass.
 
-Next semantic work: port function/set-comprehension and remaining proof formal
+Function-constructor, LAMBDA, set-of-all and filtered-set expressions now retain
+formal nodes after generating all domains in the enclosing scope. Body references
+resolve actual bindings; filtered sets generate their predicate rather than the
+derived native element. Thirty-three node observations and eighteen complete
+diagnostic cases match Java, including domain-before-conflict error order.
+Existing focused checks pass. Full bound grouping, level data, source allocation
+order and evaluator sharing are still pending.
+
+Next semantic work: port named-function definition and remaining proof formal
 constructors, then integrate actual identity into Generator's label-parameter
 checks. The earlier nine-case comparison now has four
 matches and five differences: `arg_constant`, `label_select`, `params`,

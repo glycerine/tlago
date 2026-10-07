@@ -474,3 +474,27 @@ func (g *sanyExpressionGeneration) checkChoose(expr *ChooseExpr, context map[str
 	}
 	return append(diags, g.checkExpr(expr.Body, context, bodyLocals)...)
 }
+
+// processFcnConst/processSetOfAll/processSubsetOf generate domains before
+// allocating formals, then generate the body in the resulting symbol context.
+// generateLambda uses the same scope and constructor order without domains.
+func (g *sanyExpressionGeneration) checkBoundExpression(bounds []BoundVar, syntax *SanySyntaxNode, context map[string]Position, locals map[string]bool, body Expr) ([]*sanyFormalParamNode, Diagnostics) {
+	var diags Diagnostics
+	seenDomains := map[Expr]bool{}
+	for _, bound := range bounds {
+		if bound.Set != nil && !seenDomains[bound.Set] {
+			diags = append(diags, g.checkExpr(bound.Set, context, locals)...)
+			seenDomains[bound.Set] = true
+		}
+	}
+	defer g.pushFormalContext(len(bounds))()
+	bodyLocals := copyBoolMap(locals)
+	nodes := make([]*sanyFormalParamNode, 0, len(bounds))
+	for _, bound := range bounds {
+		node := g.newFormalParameter(bound.Name, 0, bound.Pos, syntax)
+		nodes = append(nodes, node)
+		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
+		bodyLocals[bound.Name] = true
+	}
+	return nodes, append(diags, g.checkExpr(body, context, bodyLocals)...)
+}

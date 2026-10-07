@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-06 Function/set expression formal identity and domain order:
+Previous completed commit: 58354b9. Source processFcnConst, processSetOfAll and
+processSubsetOf generate domains before constructing formals and then generate
+the body in their parameter context. generateLambda constructs its zero-arity
+formals before its body, without domains. Replace interleaved native bound-name/
+domain checks with that order and retain actual formal nodes/body references.
+Multi-name native bounds share their single original domain expression; generate
+it once. Reuse binding-preserving formal scope, retaining previous symbols on
+conflict and restoring the outer context. Filtered sets generate their predicate
+operand only; the native Element is derived syntax, absent from Java's operands.
+
+Thirty-three exact observations match actual source FastTool: function constructors,
+tuple function bounds, set-of-all, tuple/scalar filtered sets and LAMBDA parameter
+counts, body references, kind/arity/localness/module ownership, retained syntax,
+consecutive allocation order, nested domain/body references and sibling identity.
+Eighteen complete source SANY diagnostic cases match valid expressions, repeated
+names, enclosing-formal/builtin conflicts, unavailable simultaneous-domain names,
+outer-domain references, lambda declaration conflicts and domain errors preceding
+formal conflicts for function/set-of-all expressions. Helpers/overlay/vectors
+remain outside the repository; no permanent tests invented. Receipts:
+/mnt/oldrog/tmp/tlago-bound-expression-{java,go,diag}.log. Node probe 79690 and
+diagnostic audit 29488 terminal 0, retired. These are constructor/reference
+observations, not absolute source UID allocation or full semantic graph credit.
+
+Existing focused parser/semantic checks and original ParseError/legacy/scoped
+identifier methods pass 5.359 seconds (3148). Whole SANY tests pass 1.849 seconds
+(83248); all packages compile (84233). All handles terminal 0 and retired. Receipts:
+/mnt/oldrog/tmp/tlago-bound-expression-{root,sany,compile}.log. Normal execution;
+original assertions/settings/fixtures unchanged. No race, forbidden corpus sweeps,
+inventory or full-workspace completion credit. Named-function definitions still
+use their separate recursion-symbol/domain/body path and require actual retained
+formal construction next. Proof binders, full bound groups, LevelNode data,
+evaluator sharing, LS label arrays and absolute source allocation order remain
+pending; do not claim the broader five label differences fixed by this foundation.
+New RPC service remains postponed and the full faithful-port goal remains active.
+
 2026-10-06 CHOOSE formal identity, scope and source syntax locations:
 Previous completed commit: 2d259ec. Source processChoose generates its domain
 before formal allocation, then generates the predicate under its context. Go
