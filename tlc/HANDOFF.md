@@ -721,8 +721,16 @@ source calls 50, 68 and 72 with budget 2. Another 4,440 external observations
 match results, remaining budgets and current/farthest positions across all 74
 entry points in default parser contexts. Related original frontend/model checks
 pass in 9.878 seconds; complete SANY passes in 1.979 seconds and compilation passes.
-Remaining call-site integration, grammar expectations, general rescan integration
-and proof generation remain reconciliation work. These bounded observations do
+Module Body now runs source calls 1–5 in Java's decision order. Definition heads
+run calls 8–11 with Integer.MAX_VALUE, and Identifier-LHS definitions choose the
+body with call 7 only after consuming DEF and running belchDEF. Native early
+module-instance preview and manual definition-head error-span retention are
+removed. The actual generated scanners now supply those saved rescan calls.
+Another 266 external production rows agree on syntax kinds/images/coordinates
+and complete malformed-input messages across 23 cases. Existing original frontend
+and model checks pass in 9.602 seconds, complete SANY in 1.780 seconds, and
+compilation passes. Remaining call-site integration, grammar expectations, general
+rescan integration and proof generation remain reconciliation work. These bounded observations do
 not establish every semantic-predicate context or full parser parity.
 
 Semantic symbols now embed TLC's `SemanticNodeBase` and use its shared

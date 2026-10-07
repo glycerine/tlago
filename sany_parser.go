@@ -288,37 +288,30 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 	defer p.endProduction()
 	p.expecting = "LOCAL, INSTANCE, PROOF, ASSUMPTION, THEOREM, RECURSIVE, declaration, or definition"
 	var heirs []*SanySyntaxNode
-	for p.startsBodyItemAt(0) {
+	for p.scanLookahead(1, 1) {
 		switch {
-		case p.check(SanyTokenBm0) || p.check(SanyTokenBm1) || p.check(SanyTokenBm2):
-			heirs = append(heirs, p.Module())
-			p.belchDEF()
 		case p.check(SanyTokenSeparator):
 			heirs = append(heirs, NewSanyTokenNode(p.advance()))
 		case p.check(SanyTokenVariable):
 			heirs = append(heirs, p.VariableDeclaration())
 		case p.check(SanyTokenConstant):
 			heirs = append(heirs, p.ParamDeclaration())
+		case p.scanLookahead(2, 2):
+			heirs = append(heirs, p.OperatorOrFunctionDefinition())
 		case p.check(SanyTokenRecursive):
 			heirs = append(heirs, p.Recursive())
-		case p.check(SanyTokenInstance) || (p.check(SanyTokenLocal) && p.peekNext().Kind == SanyTokenInstance):
-			// Body's two-token Instance lookahead has not run field-name
-			// reclassification. With LOCAL, its budget ends at INSTANCE.
-			if p.check(SanyTokenInstance) && p.peekNext().Kind != SanyTokenIdentifier {
-				p.rememberFailedLookahead(2)
-				p.throwParseException([][]SanyTokenKind{{SanyTokenInstance, SanyTokenIdentifier}}, "expected INSTANCE module")
-			}
+		case p.scanLookahead(3, 2):
 			heirs = append(heirs, p.Instance())
-		case (p.check(SanyTokenAssume) || p.check(SanyTokenAssumption)) && (p.tokenAt(1).Kind == SanyTokenDefbreak || p.startsExpressionFirstAt(1)):
+		case p.scanLookahead(4, 2):
 			heirs = append(heirs, p.Assumption())
-		case (p.check(SanyTokenTheorem) || p.check(SanyTokenProposition)) && (p.startsAssumeProveAt(1) || p.startsExpressionFirstAt(1)):
+		case p.scanLookahead(5, 2):
 			heirs = append(heirs, p.Theorem())
-		case p.check(SanyTokenUse) || p.check(SanyTokenHide):
+		case p.check(SanyTokenBm0) || p.check(SanyTokenBm1) || p.check(SanyTokenBm2):
+			heirs = append(heirs, p.Module())
+			p.belchDEF()
+		case p.check(SanyTokenHide) || (p.check(SanyTokenUse) && p.tokenAt(1).Kind != SanyTokenOnly):
 			heirs = append(heirs, p.UseOrHideOrBy())
-		case p.startsOperatorOrFunctionDefinition():
-			heirs = append(heirs, p.OperatorOrFunctionDefinition())
 		default:
-			p.rememberFailedLookahead(2)
 			p.throwParseException([][]SanyTokenKind{{SanyTokenDefbreak}}, "expected module body unit")
 		}
 	}
@@ -1296,22 +1289,24 @@ func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
 		function = p.LetFunctionDefinition
 	}
 	switch {
-	case p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenLsb:
+	case p.scanLookahead(8, 2147483647):
 		return function()
-	case p.check(SanyTokenIdentifier) && p.isPostfixOperator(p.peekNext()):
+	case p.scanLookahead(9, 2147483647):
 		return operator(p.PostfixLHS())
-	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()):
+	case p.scanLookahead(10, 2147483647):
 		return operator(p.InfixLHS())
-	case p.startsModuleDefinitionHeadAt(0):
-		return p.ModuleDefinition()
-	case p.check(SanyTokenIdentifier) && (p.peekNext().Kind == SanyTokenLbr || p.peekNext().Kind == SanyTokenDef):
-		return operator(p.IdentLHS())
-	default:
-		// Failed definition-head alternatives scan a second token only
-		// after their common Identifier. Preserve that error-input span.
-		if p.check(SanyTokenIdentifier) {
-			p.rememberFailedLookahead(2)
+	case p.scanLookahead(11, 2147483647):
+		body := func() *SanySyntaxNode { return p.ExpressionUntilDefinitionBoundary(nil) }
+		if proof {
+			body = p.ExpressionUntilProofBoundary
 		}
+		if let {
+			body = func() *SanySyntaxNode {
+				return p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool { return tok.Kind == SanyTokenLetin })
+			}
+		}
+		return p.identifierDefinition(body)
+	default:
 		if !p.startsDefinitionPrefix() {
 			p.throwParseException([][]SanyTokenKind{{SanyTokenOp76}}, "expected definition identifier or prefix operator")
 		}
@@ -1319,19 +1314,24 @@ func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
 	}
 }
 
-func (p *SanyParser) startsModuleDefinitionHeadAt(offset int) bool {
-	if p.tokenAt(offset).Kind != SanyTokenIdentifier {
-		return false
+// Source Identifier-LHS branch chooses Expression or INSTANCE after consuming
+// DEF and running belchDEF, rather than previewing the instance body up front.
+func (p *SanyParser) identifierDefinition(body func() *SanySyntaxNode) *SanySyntaxNode {
+	heirs := []*SanySyntaxNode{p.IdentLHS()}
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in definition"))
+	p.belchDEF()
+	p.expecting = "Expression or Instance"
+	kind := "N_OperatorDefinition"
+	if p.scanLookahead(7, 1) {
+		heirs = append(heirs, body())
+	} else if p.check(SanyTokenInstance) {
+		kind = "N_ModuleDefinition"
+		heirs = append(heirs, p.Instantiation())
+	} else {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenInstance}}, "expected expression or instance in definition")
 	}
-	next := p.tokenAt(offset + 1)
-	if next.Kind == SanyTokenDef {
-		return p.tokenAt(offset+2).Kind == SanyTokenInstance
-	}
-	if next.Kind != SanyTokenLbr {
-		return false
-	}
-	end := p.findMatchingBracketOffset(offset + 1)
-	return end >= 0 && p.tokenAt(end+1).Kind == SanyTokenDef && p.tokenAt(end+2).Kind == SanyTokenInstance
+	return NewSanySplitNode(SanySyntaxNodeKindByName[kind], nil, heirs)
 }
 
 func (p *SanyParser) ModuleDefinition() *SanySyntaxNode {

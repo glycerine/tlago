@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-07 Source module-body and definition-head lookahead integration:
+Previous completed commit: 3138328. Continue from the complete generated scanner
+surface by translating actual production call sites. Body now uses call 1 with
+budget 1 and branches 2–5 with budget 2 in Java's original order. Preserve direct
+keyword switches and USE ONLY exclusion. Remove its manual INSTANCE-first-token
+and generic failed-preview retention shortcuts in favor of actual saved calls.
+
+Definition head decisions now invoke source calls 8/9/10/11 with
+Integer.MAX_VALUE. Identifier-LHS parses its actual head, consumes DEF and runs
+belchDEF before call 7 with budget 1 selects Expression or Instantiation. Remove
+the native early module-instance preview and its unused helper. Preserve LET,
+proof and ordinary callers' enclosing expression boundaries. Remove redundant
+manually estimated two-token failure span for these heads; saved source scans
+now drive the represented rescan behavior. General expected-token sets and all
+remaining lookahead callers are not claimed complete.
+
+External production Java/Go observers agree on all 266 rows across 23 valid and
+malformed modules. Compare parse result; every observed syntax node's concrete
+kind, image and four coordinates; and complete parse message/residual stack text
+with outer log whitespace excluded. Include function/operator/fixity/local
+heads, named INSTANCE, nested module followed by named theorem, LET, incomplete
+heads, absent bodies, invalid INSTANCE targets, USE ONLY and trailing LOCAL.
+First Java probe compilation uses TreeNode as SyntaxTreeNode incorrectly; fix
+observer casts/getHeirs, then successful source run returns 0. Initial Go probe
+45943 and final post-removal repeat 86975 pass. Exact 266 rows still agree after
+removing the redundant manual failure-span shortcut. Probe sources/overlays/logs
+remain external under /mnt/oldrog/tmp/tlago-body-definition-* and
+/mnt/oldrog/tmp/BodyDefinitionProbe.java. No invented permanent tests or inventory
+credit, no source fixtures or original assertions changed.
+
+Initial complete SANY 32912 passes 1.410s; initial existing-original gate 61677
+passes 8.512s. Final existing ParseErrorTests, BelchDef/incremental/selector/corpus,
+GetScopedIdentifiers, Test201–209 and EWD998ChanDebugger gate 63296 passes 9.602s.
+Complete SANY 80980 passes 1.780s; all-package compile 38080 passes. All handles
+retired, diff check green. No race or optional corpus sweep. Update HANDOFF and
+architecture while preserving earlier snapshot qualifications. Remaining scanner
+call sites, diagnostic bookkeeping, canonical/evaluator graph sharing, traces
+and earlier full-workspace failures keep the overall goal incomplete and active.
+
 2026-10-07 All source JavaCC scanners and argument call-site integration:
 Previous completed commit: 8f70362. Continue runtime LET audit: actual canonical
 Context adaptation still needs broader graph conversion, not another context

@@ -9934,3 +9934,27 @@ operator-stack or malformed-graph states. Existing original ParseErrorTests,
 selector/incremental methods and model checks pass. Remaining production call
 sites and general diagnostic rescan integration are still pending; generated
 scanner coverage alone does not establish the whole JavaCC parser contract.
+
+## Module body and definition decision order
+
+Body uses actual source lookahead 1 with budget 1, then source decisions 2–5
+with budget 2 in Java's order: definitions before RECURSIVE, INSTANCE, ASSUMPTION,
+THEOREM, nested modules and USE/HIDE. Retain the USE ONLY semantic exclusion.
+These calls save scanner state even when the branch fails or the production
+ultimately succeeds; direct token eligibility checks omit that rescan history.
+
+Definition heads use actual calls 8–11 with Integer.MAX_VALUE, distinguishing
+function, postfix, infix and Identifier-LHS definitions. The Identifier branch
+parses its LHS, consumes DEF, runs belchDEF and sets Expression-or-Instance
+expectation before call 7 with budget 1. It selects Expression or Instantiation
+at that point. Do not preview an INSTANCE body before parsing its LHS or retain
+a separate manually estimated failed-lookahead span for these heads. LET and
+proof callers preserve their actual enclosing expression boundaries through the
+shared definition production.
+
+External observations agree on 266 complete rows across 23 valid/malformed
+modules, including concrete syntax kinds, images, four coordinates and complete
+parse messages/residual stack text (outer log whitespace excluded). These cover
+observed decisions, not every grammar/error-token expectation or all predicates.
+Remaining call sites, full JavaCC bookkeeping and evaluator graph sharing are
+still completion requirements.
