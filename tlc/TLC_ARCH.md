@@ -140,6 +140,25 @@ still separate reconciliation work. All 176 complete bounded parser observations
 and 43 selected expression trees (including retained trees after nonthrowing !.@
 errors) match Java. Existing original model assertions and fixtures are unchanged.
 
+IfThenElse, Case, CaseArm and OtherArm retain source frames IF THEN ELSE,
+CASE Expression, Case Arm and Case Other Arm, respectively, with mandatory token
+exceptions. Case consumes ordinary arms while the next aligned CASESEP is not
+followed by OTHER, then optionally consumes its final OtherArm. The actual junction
+context governs separator indentation. LetIn retains Java's misleading Case Other
+Arm frame, but its LET/IN tokens are mandatory. LetDefinitions requires one or more
+LOCAL/DEFBREAK/RECURSIVE units and stops at the actual source token boundary instead
+of skipping malformed tokens until IN.
+
+Source OperatorStack.reducePostfix constructs N_FcnAppl with the function in zero
+and the bracket node's heirs in one. The port no longer nests a fabricated N_FcnAppl
+wrapper, and semantic translation no longer unwraps a lone application argument.
+That old compensation would discard a real nested argument under the corrected
+source tree shape. All 208 bounded complete parser observations and 56 selected
+expression trees match Java. Four lower-level FastTool/Go-tool probes match actual
+application opcode/metadata and values for chained, nested, multiple and tuple-valued
+applications. No Java TLC reporting entry point is used. Full constructor/parser/
+semantic-graph parity and whole-module canonical AST assertions remain unproven.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the

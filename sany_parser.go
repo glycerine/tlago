@@ -1995,9 +1995,9 @@ func (p *SanyParser) LetIn(stop func(*SanyToken) bool) *SanySyntaxNode {
 	// Preserve Java LetIn's original production name.
 	p.beginProduction("Case Other Arm")
 	defer p.endProduction()
-	let := p.consume(SanyTokenLet, "expected LET")
+	let := p.consumeParseToken(SanyTokenLet, "expected LET")
 	defs := p.LetDefinitions()
-	in := p.consume(SanyTokenLetin, "expected IN in LET expression")
+	in := p.consumeParseToken(SanyTokenLetin, "expected IN in LET expression")
 	body := p.ExpressionUntil(stop)
 	return NewSanyNode(SanySyntaxNodeKindByName["N_LetIn"], let, defs, in, body)
 }
@@ -2006,17 +2006,19 @@ func (p *SanyParser) LetDefinitions() *SanySyntaxNode {
 	p.beginProduction("Let Definitions")
 	defer p.endProduction()
 	var heirs []*SanySyntaxNode
-	for !p.check(SanyTokenLetin) && !p.check(SanyTokenEOF) {
-		if p.check(SanyTokenRecursive) {
-			heirs = append(heirs, p.Recursive())
-			continue
-		}
-		if p.startsOperatorOrFunctionDefinition() {
+	for {
+		switch p.peek().Kind {
+		case SanyTokenLocal, SanyTokenDefbreak:
 			heirs = append(heirs, p.LetOperatorOrFunctionDefinition())
-			continue
+		case SanyTokenRecursive:
+			heirs = append(heirs, p.Recursive())
+		default:
+			p.throwParseException([][]SanyTokenKind{{SanyTokenLocal}, {SanyTokenDefbreak}, {SanyTokenRecursive}}, "expected LET definition")
 		}
-		p.add(p.peek().Begin, "E1300", "expected LET definition")
-		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		kind := p.peek().Kind
+		if kind != SanyTokenLocal && kind != SanyTokenDefbreak && kind != SanyTokenRecursive {
+			break
+		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_LetDefinitions"], heirs...)
 }
@@ -2044,31 +2046,29 @@ func (p *SanyParser) LetFunctionDefinition() *SanySyntaxNode {
 }
 
 func (p *SanyParser) Case(stop func(*SanyToken) bool) *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenCase, "expected CASE"))
-	heirs = append(heirs, p.CaseArm(stop))
-	for p.check(SanyTokenCasesep) && p.caseSeparatorIsAboveCurrentJunction() {
-		p.advance()
-		sep := NewSanyTokenNode(p.previous())
-		if p.check(SanyTokenOther) {
-			heirs = append(heirs, sep, p.OtherArm(stop))
-			return NewSanyNode(SanySyntaxNodeKindByName["N_Case"], heirs...)
-		}
-		heirs = append(heirs, sep, p.CaseArm(stop))
+	p.beginProduction("CASE Expression")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenCase, "expected CASE"), p.CaseArm(stop)}
+	for p.caseSeparatorIsAboveCurrentJunction() && p.tokenAt(1).Kind != SanyTokenOther {
+		heirs = append(heirs, p.consumeParseToken(SanyTokenCasesep, "expected []"), p.CaseArm(stop))
+	}
+	if p.caseSeparatorIsAboveCurrentJunction() {
+		heirs = append(heirs, p.consumeParseToken(SanyTokenCasesep, "expected []"), p.OtherArm(stop))
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Case"], heirs...)
 }
 
 func (p *SanyParser) caseSeparatorIsAboveCurrentJunction() bool {
-	column, ok := p.currentJunctionColumn()
-	return !ok || p.peek().Begin.Column > column
+	return p.check(SanyTokenCasesep) && p.junctionListContext.isAboveCurrent(p.peek().Begin.Column)
 }
 
 func (p *SanyParser) CaseArm(stop func(*SanyToken) bool) *SanySyntaxNode {
+	p.beginProduction("Case Arm")
+	defer p.endProduction()
 	test := p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenEOF
 	})
-	arrow := p.consume(SanyTokenArrow, "expected -> in CASE arm")
+	arrow := p.consumeParseToken(SanyTokenArrow, "expected -> in CASE arm")
 	value := p.ExpressionUntil(func(tok *SanyToken) bool {
 		if tok.Kind == SanyTokenCasesep || tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
 			return true
@@ -2079,8 +2079,10 @@ func (p *SanyParser) CaseArm(stop func(*SanyToken) bool) *SanySyntaxNode {
 }
 
 func (p *SanyParser) OtherArm(stop func(*SanyToken) bool) *SanySyntaxNode {
-	other := p.consume(SanyTokenOther, "expected OTHER")
-	arrow := p.consume(SanyTokenArrow, "expected -> in OTHER arm")
+	p.beginProduction("Case Other Arm")
+	defer p.endProduction()
+	other := p.consumeParseToken(SanyTokenOther, "expected OTHER")
+	arrow := p.consumeParseToken(SanyTokenArrow, "expected -> in OTHER arm")
 	value := p.ExpressionUntil(func(tok *SanyToken) bool {
 		if tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
 			return true
@@ -2142,16 +2144,18 @@ func (p *SanyParser) Lambda(stop func(*SanyToken) bool) *SanySyntaxNode {
 }
 
 func (p *SanyParser) IfThenElse(stop func(*SanyToken) bool) *SanySyntaxNode {
+	p.beginProduction("IF THEN ELSE")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenIf, "expected IF"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenIf, "expected IF"))
 	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenThen || tok.Kind == SanyTokenEOF
 	}))
-	heirs = append(heirs, p.consume(SanyTokenThen, "expected THEN"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenThen, "expected THEN"))
 	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenElse || tok.Kind == SanyTokenEOF
 	}))
-	heirs = append(heirs, p.consume(SanyTokenElse, "expected ELSE"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenElse, "expected ELSE"))
 	heirs = append(heirs, p.ExpressionUntil(stop))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IfThenElse"], heirs...)
 }

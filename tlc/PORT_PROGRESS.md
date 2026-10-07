@@ -1,5 +1,48 @@
 # TLC Port Progress
 
+2026-10-06 Conditional/CASE/LET grammar and function application reduction:
+Previous turn completed 659c778. Port IfThenElse/Case/CaseArm/OtherArm's actual
+frames and mandatory token failures. Case follows the source ordinary-arm loop
+and optional final OtherArm, using junction context for separator indentation.
+LetIn retains the actual Case Other Arm frame but uses mandatory LET/IN tokens.
+LetDefinitions requires one or more LOCAL/DEFBREAK/RECURSIVE units, then stops at
+the source boundary instead of skipping invalid input until IN. No persistent
+tests, original assertions or fixtures changed.
+
+All 208 initial complete parser observations match (71172 terminal 0): 32 new
+nested/malformed conditional/CASE/LET observations and all previous 176. Selected
+syntax trees expose a genuine production shortcut in let_function (43279 terminal
+1): OperatorStack.reducePostfix fabricates an extra application wrapper rather
+than using source function-zero/bracket-heirs-one construction. Port that exact
+shape, and remove the translator's lone-N_FcnAppl unwrapping compensation; under
+the corrected tree it would discard a real nested function argument. Do not narrow
+the observation or weaken its comparison. All 56 final selected expression trees
+match kinds/images/ranges (73926 terminal 0), log
+/mnt/oldrog/tmp/tlago-conditional-tree-final-audit.log.
+
+Direct lower-level Java FastTool and Go production tool comparisons match actual
+application opcode/metadata and values in all four cases: nested F[G[1]], chained
+F[1][2], multiple F[1,2] and a tuple-valued nested argument (50293 terminal 0).
+No Java TLC.main/TLC.process/reporting path. Log
+/mnt/oldrog/tmp/tlago-function-runtime-final-audit.log; raw outputs under
+/mnt/oldrog/tmp/tlago-function-runtime-audit. These observations earn no inventory
+credit and do not establish complete application/selector/constructor parity.
+
+After the reducer/translator correction, rebuild and repeat complete parser
+observations: all 208 match (38438 terminal 0), log
+/mnt/oldrog/tmp/tlago-sany-conditional-parser-final-audit.log. Final normal gates:
+complete existing sany_tests 1.908 seconds and all-package compilation without
+running tests (32563 terminal 0); existing parser/semantic/token/operator classes,
+original ParseErrorTests, five original TLC models and native reference/scaffold
+checks 16.999 seconds (37999 terminal 0). Logs
+/mnt/oldrog/tmp/tlago-sany-conditional-final-{sany,root,compile}.log. Earlier gates
+predate the application correction and are superseded. No new source-specific
+unit class exists for these grammar methods; existing original corpus/model tests
+remain unchanged, including the accepted LOCAL-in-LET known-failure inversion.
+Full workspace green remains unproven. MSB 5144 remains confirmed live with the
+same isolated binary; last logged progress 1,386,019,479/2,147,483,648. Preserve
+its original full bounds and handle; do not restart or combine it with race.
+
 2026-10-06 Record field and EXCEPT component source grammar:
 Previous turn completed eaba301. Port FieldVal/FieldSet's actual frames and
 mandatory MAPTO/COLON tokens. ExceptSpec uses its actual frame, mandatory BANG,

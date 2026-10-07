@@ -1870,9 +1870,6 @@ func sanyFunctionApplication(node *SanySyntaxNode) (Expr, Diagnostics) {
 	app := &FunctionAppExpr{Function: fn, Pos: sanyNodePosition(node)}
 	diags := fnDiags
 	argNodes := exprs[1:]
-	if len(argNodes) == 1 && argNodes[0].Kind.JavaName() == "N_FcnAppl" {
-		argNodes = expressionChildren(argNodes[0])
-	}
 	for _, argNode := range argNodes {
 		arg, argDiags := sanyExpr(argNode)
 		diags = append(diags, argDiags...)

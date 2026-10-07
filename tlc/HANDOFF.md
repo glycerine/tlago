@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 17.067 seconds, session `3466` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.525 seconds, session `20815` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 16.999 seconds, session `37999` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.908 seconds, session `32563` retired |
 | Existing focused TLC context/tool and tuple tests | Pass | 0.027 seconds, session `17606` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
@@ -192,7 +192,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 1,348,091,503 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 1,386,019,479 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -560,11 +560,21 @@ Shared `Identifier` consumption now throws immediately instead of returning nil.
 Brace forms retain their source frame and mandatory delimiters; general brace and
 square-bracket lookahead/construction remain reconciliation work.
 
-Current bounded observations match Java: 176 complete parser TRACE/results, 41
+IF/CASE/arm parsing retains Java's original frames and mandatory token failures.
+CASE consumes ordinary arms before its optional final OTHER arm, with separators
+strictly right of the active junction alignment. LET requires one or more actual
+LOCAL/DEFBREAK/RECURSIVE definition tokens, then mandatory IN; malformed tokens
+are not skipped to reach IN. Function application reduction places the function
+in zero and the bracket node's heirs in one, matching source `reducePostfix`.
+The translator no longer compensates for a fabricated application wrapper, so a
+real nested function application remains an argument.
+
+Current bounded observations match Java: 208 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
-runtime probes, plus 43 selected primitive/junction/field/EXCEPT expression trees including ranges.
+runtime probes, plus 56 selected expression trees including ranges and four function-application
+runtime probes.
 Keep each scope distinct. Whole-module trees, general
 source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.

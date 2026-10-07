@@ -443,11 +443,14 @@ func (s *SanyOperatorStack) reducePostfix() {
 	op := top[n-1].Operator
 	opNode := top[n-1].Node
 	expr := top[n-2].Node
-	kind := SanySyntaxNodeKindByName["N_PostfixExpr"]
+	var reduced *SanySyntaxNode
 	if op != nil && op.Symbol == "[" {
-		kind = SanySyntaxNodeKindByName["N_FcnAppl"]
+		// Source reducePostfix puts the function in zero and the bracket
+		// node's heirs in one; it does not retain an application wrapper.
+		reduced = NewSanySplitNode(SanySyntaxNodeKindByName["N_FcnAppl"], []*SanySyntaxNode{expr}, opNode.GetHeirs())
+	} else {
+		reduced = NewSanyNode(SanySyntaxNodeKindByName["N_PostfixExpr"], expr, opNode)
 	}
-	reduced := NewSanyNode(kind, expr, opNode)
 	top = append(top[:n-1], top[n:]...)
 	top[n-2] = sanyOperatorStackElement{Node: reduced}
 	s.stackOfStacks[topIndex] = top
