@@ -329,11 +329,12 @@ func (*IfExpr) exprNode()            {}
 
 type LetExpr struct {
 	SanyExprSource
-	Recursives  []Declaration
-	Definitions []Definition
-	Instances   []Instance
-	Body        Expr
-	Pos         Position
+	instanceDefinitions []sanySelectorDefinition
+	Recursives          []Declaration
+	Definitions         []Definition
+	Instances           []Instance
+	Body                Expr
+	Pos                 Position
 }
 
 func (e *LetExpr) Position() Position { return e.Pos }

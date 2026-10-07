@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-07 Retained LET exports and symbolic Subst constraint translation:
+Previous completed commit: 41b2c14. Continue the two recorded LET failures.
+Generation now retains the accepted INSTANCE-exported definition references on
+LetExpr, in the existing registration order; module-instance placeholder symbols
+are excluded. Collect their constraints alongside ordinary LET definitions.
+Evaluate each imported definition with symbolic target declaration identities,
+then translate its LC/ALC/ALP fields according to Subst.getSubLCSet/getSubALCSet/
+getSubALPSet. Nonconstant modules use source declaration kinds to replace scalar
+maxima with ConstantLevel/VariableLevel before mapping their parameter sets.
+Retain actual generated substitutions rather than rebuilding defaults.
+
+All nine original scratch cases match (84715, terminal 0), including the two
+previously failing exported bounds. Expand to 22 parseable cases covering named/
+unnamed and parameterized LET instances, compound actuals, lexical operator
+aliases, referenced LOCAL definitions, EXTENDS, nested wrappers and multiple
+exports. Initial 40284 returns 1 only for local_operator_alias: inline target-body
+collection invents an Op/C relationship when a source substituted OpDef should
+consume that relationship. Share the symbolic Subst translation with retained
+InstanceNode collection instead of evaluating its target bodies WITH inline.
+Keep RHS-expression constraints separate, as InstanceNode does. Module summaries
+retain their existing active-module cycle guard across nested summary calls.
+
+Corrected expanded comparison matches all 22 cases (82387, terminal 0). The
+preceding 27 RHS, 30 module-scope, 26 co-parameter, 24 argument and 24 level cases
+also match, logged under /mnt/oldrog/tmp/tlago-symbolic-subst-*.log. Earlier
+nine-case log: /mnt/oldrog/tmp/tlago-let-instance-constraint-imports.log.
+No changed assertions or fixtures, new permanent tests or inventory credit.
+
+Final focused root checks plus seven unchanged original model methods pass
+normally in 27.346 seconds (51153); complete SANY passes in 1.843 seconds
+(36701); all-package compilation passes. All 27 prior phase and 29 AP phase
+comparisons remain exact (18164, terminal 0), logs:
+/mnt/oldrog/tmp/tlago-let-import-final-{frontend-phase,ap-phase}.log.
+Earlier SANY check 74904 passes in 2.039 seconds before the alias correction.
+All handles terminal and retired. The two previously recorded LET collection
+failures are resolved; complete canonical OpDef/SubstIn/LetIn nodes, ordinary
+expression/signature LET constraint metadata, iteration and evaluator sharing
+remain pending. Next audit the analyzer's LET signature summary, which currently
+returns body dependencies without all source opDef constraint fields. Do not
+mistake these reference summaries for complete semantic graph construction.
+No new full-workspace pass claimed. New distributed service remains postponed.
+
 2026-10-07 Selective LET INSTANCE relationship propagation:
 Previous completed commit: 1a9ced4. Read LetInNode.levelCheck before changing
 collection. Correct the initial assumption that LET merges whole INSTANCE

@@ -40,10 +40,16 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 }
 
 func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLeibnizUse) {
+	return moduleSubstitutionConstraintsInProgress(module, spec, map[*Module]bool{})
+}
+
+func moduleSubstitutionConstraintsInProgress(module *Module, spec *Spec, active map[*Module]bool) ([]string, sanyLeibnizUse) {
 	var constraints sanyLeibnizUse
-	if module == nil || spec == nil || isEmbeddedStandardModule(module) {
+	if module == nil || spec == nil || active[module] || isEmbeddedStandardModule(module) {
 		return nil, constraints
 	}
+	active[module] = true
+	defer delete(active, module)
 	var names []string
 	targets := moduleSubstitutionTargets(module, spec)
 	for name := range targets {
@@ -115,6 +121,9 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 				definition(&let.Definitions[i], nested, result)
 			}
 			expression(let.Body, nested, result)
+			for _, imported := range let.instanceDefinitions {
+				add(func() sanyLeibnizUse { return a.substitutedDefinitionConstraints(imported, nested) }, false, result)
+			}
 			for _, instance := range let.Instances {
 				var instanceUse sanyLeibnizUse
 				instanceConstraints(instance, nested, &instanceUse)
@@ -206,15 +215,16 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 		for _, param := range instance.Params {
 			owner.formals[param] = sanyLeibnizBinding{}
 		}
-		variables := map[string]sanyLeibnizBinding{}
 		for _, subst := range instance.generatedSubstitutions {
 			// InstanceNode merges every substitution expression's own
 			// constraints, even when the target declaration is unused.
 			// Keep the actual resolved default/WITH array and its order.
 			expression(subst.expr, owner, result)
-			variables[subst.name] = sanyLeibnizBinding{expr: subst.expr, context: owner}
 		}
-		collect(target, &sanyLeibnizContext{module: target, variables: variables, formals: map[string]sanyLeibnizBinding{}}, false, result)
+		sourceNames, sourceUse := moduleSubstitutionConstraintsInProgress(target, spec, active)
+		add(func() sanyLeibnizUse {
+			return a.substitutedConstraints(sourceUse, sourceNames, moduleSubstitutionTargets(target, spec), instance, context)
+		}, false, result)
 	}
 	collect(module, ctx, false, &constraints)
 	return names, constraints
@@ -241,4 +251,142 @@ func (a *sanyLeibnizAnalyzer) assumeProveDependencies(body *AssumeProve, context
 	}
 	use.merge(a.expression(body.Prove, nested))
 	return use
+}
+
+// substitutedDefinitionConstraints follows Subst.getSubLCSet/getSubALCSet/
+// getSubALPSet for a retained imported OpDef. Evaluate the source body with
+// declaration identities before translating them; evaluating WITH inline loses
+// the original declaration kind needed by nonconstant-module level matching.
+func (a *sanyLeibnizAnalyzer) substitutedDefinitionConstraints(ref sanySelectorDefinition, caller *sanyLeibnizContext) sanyLeibnizUse {
+	if len(ref.wrappers) == 0 {
+		return a.definition(ref, nil, caller, nil)
+	}
+	wrapper := ref.wrappers[0]
+	target := a.resolver.spec.Modules[wrapper.inst.Module]
+	targets := moduleSubstitutionTargets(target, a.resolver.spec)
+	names := make([]string, 0, len(targets))
+	for name := range targets {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	symbolic := &sanyLeibnizContext{module: target, variables: map[string]sanyLeibnizBinding{}, formals: map[string]sanyLeibnizBinding{}}
+	for id, name := range names {
+		binding := sanyLeibnizBinding{use: sanyLeibnizUse{all: map[int]bool{id: true}, levelParams: map[int]bool{id: true}}}
+		if targets[name].Kind == VariableDecl {
+			binding.use.level = variableLevel
+		}
+		if targets[name].Arity > 0 {
+			operatorID := id
+			binding.operatorID = &operatorID
+		}
+		symbolic.variables[name] = binding
+	}
+	body := ref
+	body.wrappers = ref.wrappers[1:]
+	body.params = ref.params[len(wrapper.inst.Params):]
+	source := newSanyLeibnizAnalyzer(a.resolver.spec)
+	source.signatures = map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature{}
+	source.nextID = len(names)
+	var use sanyLeibnizUse
+	for {
+		source.changed = false
+		source.evaluated = map[sanyLeibnizDefinitionKey]bool{}
+		source.expressions = map[sanyLeibnizExpressionKey]sanyLeibnizUse{}
+		use = source.substitutedDefinitionConstraints(body, symbolic)
+		if !source.changed {
+			break
+		}
+	}
+	return a.substitutedConstraints(use, names, targets, wrapper.inst, caller)
+}
+
+// Subst's constraint transformations preserve symbolic declaration identity
+// until each source constraint is translated through the actual substitution.
+func (a *sanyLeibnizAnalyzer) substitutedConstraints(use sanyLeibnizUse, names []string, targets map[string]substitutionTarget, instance Instance, caller *sanyLeibnizContext) sanyLeibnizUse {
+	ids := map[string]int{}
+	for id, name := range names {
+		ids[name] = id
+	}
+	owner := sanyLeibnizNestedContext(caller)
+	for _, name := range instance.Params {
+		owner.formals[name] = sanyLeibnizBinding{}
+	}
+	actuals := map[int]sanyLeibnizUse{}
+	operators := map[int]*int{}
+	expressions := map[int]Expr{}
+	for _, sub := range instance.generatedSubstitutions {
+		id, exists := ids[sub.name]
+		if !exists {
+			continue
+		}
+		actuals[id] = a.expression(sub.expr, owner)
+		operators[id] = a.substitutionParameterOperator(sub.expr, owner)
+		expressions[id] = sub.expr
+	}
+	params := func(id int) map[int]bool {
+		if actual, exists := actuals[id]; exists {
+			return actual.levelParams
+		}
+		return nil
+	}
+	var result sanyLeibnizUse
+	nonconstant := moduleRequiresSubstitutionLevelMatch(a.resolver.spec.Modules[instance.Module], a.resolver.spec)
+	for id, maximum := range use.constraints {
+		if id >= len(names) {
+			continue // OpDef formals are not parameters of this instantiation.
+		}
+		if nonconstant {
+			switch targets[names[id]].Kind {
+			case ConstantDecl:
+				maximum = constantLevel
+			case VariableDecl:
+				maximum = variableLevel
+			}
+		}
+		result.constrain(params(id), maximum)
+	}
+	for key, minimum := range use.argConstraints {
+		if operator := operators[key.operator]; operator != nil {
+			result.requireArgument(sanyArgumentPosition{*operator, key.position}, minimum)
+		}
+	}
+	for _, key := range use.argParamOrder {
+		if operator := operators[key.operator]; operator != nil {
+			if actual, exists := actuals[key.parameter]; exists {
+				result.requireArgument(sanyArgumentPosition{*operator, key.position}, actual.level)
+			}
+			for parameter := range params(key.parameter) {
+				result.addArgumentParameter(sanyArgumentParameter{*operator, key.position, parameter})
+			}
+		} else if expr := expressions[key.operator]; expr != nil && key.operator < len(names) {
+			// Subst.getSubLCSet translates a substituted OpDef's maximum
+			// into scalar constraints on its co-parameter's substitution.
+			maximums := a.applicationMaximums(expr, nil, targets[names[key.operator]].Arity, owner)
+			if key.position < len(maximums) {
+				result.constrain(params(key.parameter), maximums[key.position])
+			}
+		}
+	}
+	return result
+}
+
+func (a *sanyLeibnizAnalyzer) substitutionParameterOperator(expr Expr, context *sanyLeibnizContext) *int {
+	ident, ok := expr.(*IdentExpr)
+	if !ok || sanyExprSelection(expr) != nil {
+		return nil
+	}
+	binding, bound := context.formals[ident.Name]
+	if !bound {
+		binding, bound = context.variables[ident.Name]
+	}
+	if !bound {
+		return nil
+	}
+	if binding.operatorID != nil {
+		return binding.operatorID
+	}
+	if binding.expr != nil {
+		return a.substitutionParameterOperator(binding.expr, binding.context)
+	}
+	return nil
 }

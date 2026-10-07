@@ -62,10 +62,20 @@ instances. LetInNode imports only InstanceNode's ArgLevelParams into its own
 level data, in addition to body/OpDef constraints and relationships. It does not
 copy whole instance scalar or argument constraint sets. Collection now has
 explicit result sets and a shared resolved-instance path; LET imports only the
-resulting ordered co-parameter relationships. Actual generated OpDefs from LET
-INSTANCE exports still require retention and SubstIn constraint propagation:
-seven of nine new source cases match, while exported scalar and argument bounds
-remain missing. Do not compensate by merging an entire target module's fields.
+resulting ordered co-parameter relationships. Generation now retains accepted
+LET INSTANCE exported definition references in registration order. Collect their
+constraints alongside the ordinary definitions. Evaluate imported bodies with
+symbolic declaration identities before translating LC/ALC/ALP through the actual
+resolved substitutions. Subst.getSubLCSet applies nonconstant-module declaration
+maxima before parameter-set translation; getSubALCSet keeps substituted parameter
+operators and getSubALPSet translates their relationships. A substituted OpDef
+consumes a relationship via its calculated argument maximum rather than exposing
+an inlined body relationship. Retained InstanceNode collection shares these
+transformations and separately merges each RHS's own constraints. All 22 expanded
+LET cases match, including the two previously missing bounds and an alias case.
+Do not compensate by merging an entire target module's fields. Full canonical
+OpDef/SubstIn/LetIn graph construction remains pending, as does ordinary expression/
+signature LET constraint metadata beyond these module-collection summaries.
 Check substitution expressions before constraints, preserving diagnostic
 order and the instancer's lexical LET context. User-defined substituted operators
 use the symbolic argument maximum calculation rather than builtin-only maxima.

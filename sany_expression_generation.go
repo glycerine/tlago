@@ -80,6 +80,8 @@ func sanyUndefinedRecursiveDiagnostic(binding *sanyRecursiveBinding) Diagnostic 
 
 func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Position, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
+	expr.instanceDefinitions = nil
+	instanceResolver := &sanySelectorResolver{spec: g.spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
 	defer func() {
 		if failure := recover(); failure != nil {
 			if g.spec != nil {
@@ -135,8 +137,13 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 			diags = append(diags, g.generateInstanceSubstitutions(instance, g.currentModule, positions)...)
 			registered, names := g.registerInstanceSymbols(*instance, positions)
 			diags = append(diags, registered...)
+			definitions := map[string]sanySelectorDefinition{}
+			instanceResolver.addInstance(definitions, g.currentModule, *instance)
 			for _, name := range names {
 				if g.symbols[name].kind != InstanceDecl {
+					if definition, exists := definitions[name]; exists {
+						expr.instanceDefinitions = append(expr.instanceDefinitions, definition)
+					}
 					letLocals[name] = true
 				}
 			}
