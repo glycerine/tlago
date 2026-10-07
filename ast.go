@@ -192,6 +192,8 @@ type ProofSummary struct {
 }
 
 type ProofStep struct {
+	binderNode      *sanySemOpApplNode
+	pickContext     *sanyContext
 	formalNodes     []*sanyFormalParamNode
 	Syntax          *SanySyntaxNode
 	Definitions     []Definition

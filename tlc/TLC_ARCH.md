@@ -32,8 +32,8 @@ boxed AP and contexts crossing collision/resize thresholds. Java's observer
 reinitializes Context to match the Go frontend API; retaining the shared static
 ASSUME marker otherwise exposes different observer setup. All 37 direct context
 observations also agree. No original-test or full-workspace credit is added.
-TAKE/PICK graph/binding lifetime, InstanceNode identities, general selectors,
-inherited level checks and visitors remain pending.
+InstanceNode identities, general selectors, inherited level checks and visitors
+remain pending. TAKE/PICK graphs and binding lifetimes are covered below.
 
 ## Structured-proof generation and contexts
 
@@ -64,8 +64,7 @@ previous node. A parameter-free named label selection similarly wraps the actual
 LabelNode, preserving its identity and scope. Parameterized labels, general
 operand selectors and INSTANCE selections still need their real binding graphs.
 
-TAKE/PICK bodies and binding lifetimes, InstanceNode/module-definition instances,
-inherited level checks and visitors
+InstanceNode/module-definition instances, inherited level checks and visitors
 remain unfinished. Native diagnostic coverage does not complete these graphs.
 The 21-module, 993-row source comparison covers graph kinds, syntax, locations,
 UID order, nested owners, context and reference pointers, plus full diagnostics;
@@ -1095,9 +1094,23 @@ Twenty-three observations against actual Java FastTool proof nodes and seventeen
 complete SANY diagnostic cases match. Existing focused parser/semantic checks,
 the whole SANY package and package compilation pass.
 
-These retained native arrays do not establish complete TheoremNode/OpApplNode
-proof graphs, LevelNode data, label formal arrays, evaluator sharing or absolute
-source allocation order. NEW declarations remain a separate OpDeclNode concern.
+Actual TAKE/PICK generation now uses bounded/unbounded OpApplNode constructors.
+Generate all domains before any formals; retain one group per syntactic bound,
+including adjacent tuple groups. TAKE uses the current proof context directly.
+PICK pushes its temporary context before domain generation, captures it before
+the predicate, and supplies the complete formal array to label generation. Pop
+that context before constructing the PICK application. After the step proof and
+theorem owner, insert its actual symbols into the enclosing context using Java
+Hashtable enumeration; preserve rejected bindings and registration diagnostics.
+Each proof frame restores its inherited formal map when its context closes.
+
+All 2,424 rows across 35 whole modules agree with Java: complete graph structure,
+syntax/locations, relative allocation order, formal/reference identities, label
+parameters, tuple groups, diagnostics and context order. Nested proofs, duplicate
+names, simultaneous domains and contexts crossing resize thresholds are covered.
+The earlier 2,281 AP rows remain unchanged. These observations do not complete
+LevelNode inheritance, visitors, evaluator sharing or allocation order across
+all graph features; no original-method completion credit is added.
 
 ## Named-function formal preparation and body context
 

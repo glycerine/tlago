@@ -193,6 +193,10 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 	graphs := newSanyProofGraphGeneration(g, proof.Syntax)
 	for stepIndex, step := range proof.Steps {
 		graphs.beforeStep(step.Syntax)
+		if graphs != nil {
+			diags = append(diags, graphs.diagnostics...)
+			graphs.diagnostics = nil
+		}
 		for depth := range previousInfixRHS {
 			if depth > step.Depth {
 				delete(previousInfixRHS, depth)
@@ -440,6 +444,10 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 		}
 	}
 	graphs.finish()
+	if graphs != nil {
+		diags = append(diags, graphs.diagnostics...)
+		graphs.diagnostics = nil
+	}
 	return diags
 }
 
@@ -543,27 +551,78 @@ func (g *sanyExpressionGeneration) proofSignatures() (map[string]int, map[string
 // TAKE binds in the current proof context. PICK temporarily binds for its
 // predicate, then installs only accepted nodes after its own proof finishes.
 func (g *sanyExpressionGeneration) generateProofBinder(step *ProofStep, context map[string]Position) (map[string]localSymbol, Diagnostics) {
-	var diags Diagnostics
+	step.binderNode, step.pickContext, step.formalNodes = nil, nil, nil
+	var diagnostics Diagnostics
+	var closeContext func()
+	if step.Kind == "PICK" {
+		closeContext = g.pushFormalContext(len(step.Bounds))
+	}
 	var previousDomain Expr
 	for _, bound := range step.Bounds {
 		if bound.Set != nil && bound.Set != previousDomain {
-			diags = append(diags, g.proofExpression(bound.Set, context, nil)...)
+			diagnostics = append(diagnostics, g.proofExpression(bound.Set, context, nil)...)
 			previousDomain = bound.Set
 		}
 	}
-	defer g.pushFormalContext(len(step.Bounds))()
 	introduced := map[string]localSymbol{}
-	step.formalNodes = nil
+	step.formalNodes = make([]*sanyFormalParamNode, 0, len(step.Bounds))
 	for _, bound := range step.Bounds {
 		node := g.newFormalParameter(bound.Name, 0, bound.Pos, step.Syntax)
 		step.formalNodes = append(step.formalNodes, node)
 		generated := g.bindFormalParameter(node, context, nil)
-		diags = append(diags, generated...)
+		diagnostics = append(diagnostics, generated...)
 		if len(generated) == 0 {
 			introduced[bound.Name] = g.formals[bound.Name]
 			context[bound.Name] = bound.Pos
 		}
 	}
-	diags = append(diags, g.proofExpression(step.Expr, context, nil)...)
-	return introduced, diags
+	operands := make([]sanySemanticGraphNode, 0)
+	complete := true
+	if step.Kind == "PICK" {
+		step.pickContext = g.formalSymbolTable().topContext()
+		popLabelFormals := g.pushLabelFormals(step.formalNodes)
+		diagnostics = append(diagnostics, g.proofExpression(step.Expr, context, nil)...)
+		popLabelFormals()
+		body := sanyGeneratedExpressionNode(step.Expr)
+		complete = body != nil || sanyExpressionGenerationFailure(step.Expr) == sanyGenerationNullExpression
+		operands = append(operands, body)
+		closeContext()
+	}
+	var syntax *SanySyntaxNode
+	if step.Syntax != nil {
+		heirs := step.Syntax.GetHeirs()
+		if len(heirs) > 1 {
+			syntax = heirs[1]
+		}
+	}
+	operator := "$Take"
+	if step.Kind == "PICK" {
+		operator = "$Pick"
+	}
+	if len(step.Bounds) > 0 && step.Bounds[0].Set != nil {
+		groups := make([][]*sanyFormalParamNode, 0)
+		tuples := make([]bool, 0)
+		ranges := make([]sanySemanticGraphNode, 0)
+		for i := 0; i < len(step.Bounds); {
+			domain := step.Bounds[i].Set
+			end := i + 1
+			for end < len(step.Bounds) && step.Bounds[end].Set == domain {
+				end++
+			}
+			bound := sanyGeneratedExpressionNode(domain)
+			if bound == nil && sanyExpressionGenerationFailure(domain) != sanyGenerationNullExpression {
+				complete = false
+			}
+			groups = append(groups, step.formalNodes[i:end])
+			tuples = append(tuples, step.Bounds[i].TupleBound)
+			ranges = append(ranges, bound)
+			i = end
+		}
+		if complete {
+			step.binderNode = newSanySemBoundedOpApplNode(operator, nil, operands, groups, tuples, ranges, syntax)
+		}
+	} else if complete {
+		step.binderNode = newSanySemUnboundedOpApplNode(operator, operands, step.formalNodes, syntax)
+	}
+	return introduced, diagnostics
 }

@@ -28,6 +28,7 @@ type sanyProofGraphFrame struct {
 	steps            []sanySemanticGraphNode
 	complete         bool
 	sufficesContexts []*sanyContext
+	previousFormals  map[string]localSymbol
 }
 type sanyProofGraphStep struct {
 	syntax, bodySyntax          *SanySyntaxNode
@@ -40,14 +41,16 @@ type sanyProofGraphStep struct {
 	assumeProve                 *sanySemAssumeProveNode
 	assumeContext               *sanyContext
 	assumeContextPushed         bool
+	pickContext                 *sanyContext
 }
 type sanyProofGraphGeneration struct {
-	g       *sanyExpressionGeneration
-	events  []sanyProofGraphEvent
-	index   int
-	frames  []*sanyProofGraphFrame
-	steps   map[*SanySyntaxNode]*sanyProofGraphStep
-	current *sanyProofGraphStep
+	g           *sanyExpressionGeneration
+	events      []sanyProofGraphEvent
+	index       int
+	frames      []*sanyProofGraphFrame
+	steps       map[*SanySyntaxNode]*sanyProofGraphStep
+	current     *sanyProofGraphStep
+	diagnostics Diagnostics
 }
 
 func newSanyProofGraphGeneration(g *sanyExpressionGeneration, syntax *SanySyntaxNode) *sanyProofGraphGeneration {
@@ -127,7 +130,12 @@ func (generation *sanyProofGraphGeneration) advance(event sanyProofGraphEvent) {
 	case sanyProofEnter:
 		context := newSanyContext()
 		g.formalSymbolTable().pushContext(context)
-		generation.frames = append(generation.frames, &sanyProofGraphFrame{syntax: event.syntax, context: context, steps: make([]sanySemanticGraphNode, 0), complete: true})
+		previousFormals := g.formals
+		g.formals = make(map[string]localSymbol, len(previousFormals))
+		for name, symbol := range previousFormals {
+			g.formals[name] = symbol
+		}
+		generation.frames = append(generation.frames, &sanyProofGraphFrame{syntax: event.syntax, context: context, steps: make([]sanySemanticGraphNode, 0), complete: true, previousFormals: previousFormals})
 	case sanyProofStepBegin:
 		heirs := event.syntax.GetHeirs()
 		step := &sanyProofGraphStep{syntax: event.syntax, bodySyntax: heirs[1], complete: true, previousUnsupported: g.labelGoalUnsupported}
@@ -182,6 +190,17 @@ func (generation *sanyProofGraphGeneration) advance(event sanyProofGraphEvent) {
 			step.finishLabels()
 			step.finishLabels = nil
 		}
+		if step.pickContext != nil {
+			for _, symbol := range step.pickContext.contentSymbols() {
+				accepted, diagnostics := g.formalSymbolTable().registerSymbol(symbol)
+				generation.diagnostics = append(generation.diagnostics, diagnostics...)
+				if accepted {
+					if node, ok := symbol.(*sanyFormalParamNode); ok {
+						g.formals[node.semName()] = localSymbol{formalNode: node, kind: "FORMAL", arity: node.semArity(), pos: node.semPosition()}
+					}
+				}
+			}
+		}
 		frame := generation.frames[len(generation.frames)-1]
 		if step.node == nil || !step.complete {
 			frame.complete = false
@@ -197,6 +216,7 @@ func (generation *sanyProofGraphGeneration) advance(event sanyProofGraphEvent) {
 			g.formalSymbolTable().popContext()
 		}
 		g.formalSymbolTable().popContext()
+		g.formals = frame.previousFormals
 		generation.frames = generation.frames[:len(generation.frames)-1]
 		if frame.complete {
 			node := newSanySemNonLeafProofNode(frame.syntax, frame.steps, make([]sanySemanticGraphNode, 0), frame.context)
@@ -248,10 +268,7 @@ func (generation *sanyProofGraphGeneration) statement(step *ProofStep, useHide *
 	default:
 		graph.theorem = true
 		graph.suffices = step.Suffices
-		if step.Kind == "PICK" || step.Kind == "TAKE" {
-			graph.complete = false
-			break
-		}
+
 		operands := make([]sanySemanticGraphNode, 0)
 		op := ""
 		switch step.Kind {
@@ -294,6 +311,13 @@ func (generation *sanyProofGraphGeneration) statement(step *ProofStep, useHide *
 					graph.complete = false
 				}
 				operands = append(operands, body)
+			}
+		case "PICK", "TAKE":
+			graph.pickContext = step.pickContext
+			if step.binderNode == nil {
+				graph.complete = false
+			} else {
+				graph.body = step.binderNode
 			}
 		case "QED":
 			op = "$Qed"

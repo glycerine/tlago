@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 TAKE/PICK applications and captured proof bindings:
+Previous completed commit: ad80a2a. Port actual bounded/unbounded $Take/$Pick
+applications, retaining source syntax, formal groups, tuple flags and domain
+nodes. Generate all distinct domains before constructing formals. TAKE binds in
+the actual current proof context; PICK pushes a temporary context before domains,
+captures it before the predicate and supplies all formals to label generation.
+Pop it before allocating the application. After the proof and theorem owner,
+install its actual symbols in the enclosing context using Context.content order.
+Preserve rejected bindings and registration diagnostics. Proof frames restore
+inherited formal maps after their contexts close, preventing nested TAKE/PICK
+names from leaking into enclosing proofs or later module definitions.
+
+All 2,424 complete Java/Go rows agree across 35 whole modules. Cover bounded and
+unbounded binders, multiple names, adjacent tuple groups, simultaneous domain
+scope, accepted/rejected duplicate names, builtin/operator collisions, PICK's
+own-proof exclusion and later visibility, nested proof scope restoration,
+AP/SUFFICES inherited declarations, predicate labels and Hashtable resizing.
+Retain full graph syntax/locations, relative UIDs, context order, actual symbol
+references, owner backlinks and diagnostic codes/ranges/messages. Scratch files
+and logs remain outside the repository at /mnt/oldrog/tmp/tlago-proof-binder-*.
+Initial scratch Java compilation lacked an unused expression-helper dependency;
+remove only that unused scratch entry point, retaining every module observation.
+The final 35-module source/Go comparison returns 0; Go handle 43058 returned 0
+for the initial 25-module set and is retired. No permanent tests invented and no
+original Java test-method completion credit added.
+
+Existing affected root/parser/proof/TLC-model gate passes 46.145s (62893 retired).
+Complete sany_tests passes 1.932s (15980 retired). Retained AP comparison passes
+all 2,281 unchanged rows (12059 retired). Initial compile-all 8216 and final
+compile-all returned 0 and are retired. Logs: root.json, sany.log, prior-ap.log,
+compile.log and compile-final.log under the scratch prefix above. git diff --check
+passes. Normal execution only; no race or broad long-workload repetition. No
+current complete workspace pass is claimed. INSTANCE identities, general
+selectors, inherited levels and visitors remain pending. New distributed work
+stays postponed until core parity is complete.
+
 2026-10-07 AP proof-step goals and SUFFICES context lifetimes:
 Previous completed commit: f618462. Port the actual proof AP goal and captured
 outer declaration context. Generate body/labels with the provisional step goal,

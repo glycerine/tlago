@@ -746,8 +746,9 @@ declarations. Domains generate before parameters. TAKE installs accepted binding
 immediately; PICK uses them in its predicate, hides them from its own proof, and
 installs them after that proof. Conflicts preserve the original binding and its
 location. Twenty-three source node observations and seventeen complete diagnostic
-cases match Java; existing focused checks pass. Complete proof-node graphs, level
-data and absolute allocation order remain pending.
+cases match Java; existing focused checks pass. Actual TAKE/PICK proof-node
+graphs and scoped allocation order are now compared below. Inherited level data
+and allocation order across all graph features remain pending.
 
 Label expression generation now retains resolved formal arrays after generating
 its body. Existing formals are shared; each non-formal argument occurrence gets
@@ -1088,8 +1089,12 @@ visible after their proof and are merged into the enclosing context at proof end
 Source AP/definition/owner flags and nested scopes retain their actual identities.
 Context merging uses Java Hashtable enumeration rather than insertion history.
 All 2,281 rows across 29 AP proof modules and 37 direct table observations match
-Java. TAKE/PICK and INSTANCE proof graphs remain incomplete; constructor and
-bounded generation evidence does not complete the entire feature.
+Java. TAKE/PICK now construct actual bounded/unbounded applications, retain
+source formal groups and label parameters, and install PICK bindings after its
+proof using the captured context. All 2,424 rows across 35 whole TAKE/PICK
+modules match Java, including nested scope restoration and rejected bindings.
+INSTANCE proof graphs remain incomplete; bounded generation evidence does not
+complete inherited level checking, visitors or evaluator graph sharing.
 
 All 1,083 comparison rows across 47 bounded theorem modules match Java, including
 syntax kinds, UID order, exact goal/reference pointers, label tables, declaration
@@ -1100,14 +1105,14 @@ sany_tests and compile-all are the affected gates; receipts belong in
 PORT_PROGRESS.md. These observations add no original-method or full-workspace
 completion credit.
 
-TAKE/PICK proof bodies and bindings, EXTENDS assertion inheritance, complete
+EXTENDS assertion inheritance, complete
 module vectors, general qualified selectors, INSTANCE/fact/imported identities,
 recursive inherited level checks, visitors, shared Errors/exception integration
 and evaluator graph sharing remain pending. Other Context iteration callers and
 live/concurrent Hashtable enumeration still require source audits.
 Missing canonical children or earlier native-only import identities keep owners
-incomplete. Next semantic work is TAKE/PICK bodies and binding lifetimes, followed
-by remaining selector/instance identities, level checking and evaluator sharing.
+incomplete. Next semantic work is remaining selector/instance identities,
+level checking and evaluator sharing.
 Complete allocation order across all graphs remains unproven.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
