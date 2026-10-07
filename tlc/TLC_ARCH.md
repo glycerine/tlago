@@ -9570,3 +9570,38 @@ Runtime failure observations compare NPE/ClassCastException classes, not enhance
 JVM messages. These are manual observations, not original-method test credit.
 SubstInNode, APSubstInNode and InstanceNode level algorithms and shared evaluator
 integration remain separate implementation work.
+
+
+## Canonical module level checking and constant classification
+
+`sany_module_level.go` translates ModuleNode.levelCheck and isConstant. A fresh
+module iteration first processes each contiguous recursive section. Initialize
+recursive definitions to iteration 1, action argument bounds and unit weights;
+reset nonrecursive definitions to iteration 0. Check each at iteration 1, report
+E4290 for primed recursive arguments and collect recursive levels/parameters.
+Propagate the maximum level and both parameter unions to every definition in
+the section, then perform the source second pass at iteration 2. Preserve all
+counter writes and failures before the module correctness reset.
+
+Check inner modules, operators, theorem/assumption definitions and top-level
+statements in source order at iteration 1. Preserve captured local arrays and
+live theorem-definition field traversal. Add constant declarations to retained
+parameter sets; for a nonconstant module, add constant-level bounds. Merge
+operator and top-level constraint maps and dependencies, filtering dependencies
+bound by operator formals. Source omits module-level non-Leibniz propagation.
+
+isConstant returns false immediately for variable declarations. Otherwise it
+invokes the real module check at iteration 1, inspects actual operator body
+levels and walks the current theorem vector. Module getLevel always raises the
+source WrongInvocationException. Its formatter uses guarded inherited getters
+and Java collection representations, never the forbidden getLevel call.
+
+All 332 external Java/Go observations agree. Actual source Module/OpDef/Theorem
+objects use controlled ExprNode metadata and explicit arrays, covering empty,
+constant/variable, false-result, nested-module, recursive multi-section and
+theorem cases over signed/repeated iterations. Observations retain child-call
+counts, recursive tables, complete collections, diagnostics, formatting and
+twelve partial failures. NPE observations compare exception class rather than
+JVM enhanced messages. No original test method is credited. Ordinary application,
+instance and substitution-wrapper descendants still prevent whole-module
+checking and the two original incremental LET methods from being complete.

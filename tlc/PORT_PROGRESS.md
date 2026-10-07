@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-07 Canonical ModuleNode level check and isConstant:
+Previous completed commit: 0f48ee2. Translate complete recursive-section
+initialization, both checking passes, source diagnostics and union propagation.
+Check inner modules, operators, theorem/assumption definitions and top-level
+statements in order; retain constant declarations and filtered constraint merges.
+Preserve live theorem-definition fields and theorem vectors. Port real constant
+classification, forbidden getLevel and source-specific collection formatting.
+
+External observers /mnt/oldrog/tmp/tlago-module-level-* use actual source module,
+operator and theorem classes with controlled ExprNode metadata and explicit
+arrays. Initial observer 71848 passes; 240 full rows agree. Expanded observer
+49362 passes; 332 rows agree including formatter and twelve partial failures.
+Final observer 28485 repeats those 332 exact rows after live-field traversal
+review. NPE compares exception class, not JVM enhanced messages. Scratch setup
+corrections only: constructor argument order, actual tla2sany.utilities.Vector
+rather than java.util.Vector, and SanyRange type. Initial observer 35013 and
+failed setup commands are terminal. No permanent invented tests or original
+method completion credit. No direct Java test methods for these APIs found in
+the source tla2sany test tree; original incremental LET callers remain reconcile.
+
+Initial all-package compile 34914, affected semantic gate 19298 and full SANY
+66196 pass. Final affected original semantic/parser/resolver/scoped/incremental/
+builtin gate 94357 passes normally in 9.502s with 180 passing test events; full
+SANY 68845 passes in 2.006s and all-package compile 32924 passes. All handles
+retired. No race, shortened workloads or new full-workspace pass claim. Update
+handoff and architecture. Substitution-wrapper, instance, application and shared
+evaluator integration remain pending; TLC inventory counts remain unchanged.
+
 2026-10-07 Canonical Subst static level helpers:
 Previous completed commit: d8afc97. Translate paramSet/allParamSet and all three
 LC/ALC/ALP transformations. Preserve reference/first-match lookup, returned set

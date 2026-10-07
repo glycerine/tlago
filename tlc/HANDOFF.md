@@ -1258,7 +1258,13 @@ singletons and source tightening order. Typed-null lookup matches Java null. All
 130 direct Java rows agree; runtime failures compare exception class rather than
 JVM-specific enhanced messages. SubstIn, APSubstIn and Instance level-checking
 callers remain pending. No original-method completion credit is added.
-Application, instance, remaining proof/module checks and evaluator collection sharing
+ModuleNode now performs the source recursive-section initialization and two
+checking passes, ordered module/definition/top-level checks and retained
+constraint merges. Its isConstant method checks actual operator bodies and
+theorem levels; getLevel preserves the source prohibition. The module formatter
+uses Java collection forms. All 332 direct Java rows agree, including diagnostics,
+cache behavior and partial failures. No original-method credit is added.
+Application, substitution-wrapper, instance and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.
 
