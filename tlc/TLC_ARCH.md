@@ -9331,3 +9331,29 @@ that missing setup, retaining all assertions. Sixty direct Java observations
 verify literal checks, mutation and mixed aggregation; all retained common,
 operator and module observations remain equal. The complete original
 `basicOpDefTest` now runs the actual incremental operator generator and checker.
+
+
+## Canonical LetInNode level checking
+
+`sany_letin.go` now translates the complete source `LetInNode.levelCheck` method.
+It records the iteration before traversal, resets correctness for each fresh
+iteration, skips ModuleInstanceKind definitions, and checks definitions, body,
+then instances even after false results. The resulting level comes only from
+the body. Body level/all-parameter sets are copied; constraints and argument
+dependencies merge into retained collections in source order. Definition
+argument dependencies bound by either local formal reference are excluded.
+The theorem branch uses an empty formal array. Only argument dependencies are
+imported from instances, and non-Leibniz parameters are intentionally untouched.
+Null failures retain earlier writes. The body accessor returns its actual node.
+
+`NewJavaSemanticSetCopy` supplies HashSet(Collection)'s actual OpenJDK 21 backing
+map behavior: reserve max(size, 12) mappings, compute ceil(mappings / 0.75), then
+round up to the map's power-of-two capacity before adding the source entries.
+This differs from HashMap(Map) and retains distinct empty-copy allocation state.
+The source for this constructor behavior is the installed JDK 21 bytecode.
+
+All 68 external Java/Go observations match, including complete metadata text and
+collection order, false/repeated/decreasing checks, skipped definitions, null
+failure state, and copy capacities across nine sizes. These observations add no
+original-test credit. Application, instance, theorem and module descendant
+checks remain dependencies before the original incremental LET tests can close.

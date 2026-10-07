@@ -1210,6 +1210,12 @@ allocate no semantic identity; direct TLC checks and setters observe the same
 cells. All 60 direct literal observations and the retained 575, 792 and 24,529
 comparison rows agree with Java. The full original incremental basicOpDefTest is
 now port complete. The LET and transitive-import methods remain reconcile.
+LetInNode now performs the complete source check: ordered component traversal,
+body parameter-set copies, retained constraint/dependency merges and filtering
+of dependencies bound by local formals. It preserves the source omission of
+non-Leibniz propagation. All 68 direct Java observations agree, including full
+metadata formatting, partial failures and HashSet copy capacity/order. These
+observations do not close the two original incremental LET tests.
 Application, instance, proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.

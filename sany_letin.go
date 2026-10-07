@@ -97,3 +97,101 @@ func sanyDefinitionFormalSyntax(definition *Definition, index int) *SanySyntaxNo
 	}
 	return nil
 }
+
+func (n *sanySemLetInNode) getBody() sanySemanticGraphNode {
+	if n == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	return n.body
+}
+
+// LetInNode.levelCheck retains the source traversal, copy and merge order.
+func (n *sanySemLetInNode) levelCheck(iter int32, errors *Diagnostics) bool {
+	if n == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	if *n.levelChecked >= iter {
+		return n.levelCorrect
+	}
+	*n.levelChecked = iter
+	n.levelCorrect = true
+	definition := func(i int) sanySemSymbol {
+		value := sanyLevelSymbolReference(n.opDefs[i])
+		if value == nil {
+			panic(tlc.NewNullPointerException())
+		}
+		return value
+	}
+	checkDefinition := func(i int) sanyCanonicalLevelNode {
+		value, ok := definition(i).(sanySemanticGraphNode)
+		if !ok {
+			panic(tlc.NewClassCastException("definition is not a level node"))
+		}
+		return sanyRequireCanonicalLevelNode(value)
+	}
+	body := func() sanyCanonicalLevelNode { return sanyRequireCanonicalLevelNode(n.body) }
+	if n.opDefs == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	for i := 0; i < len(n.opDefs); i++ {
+		if definition(i).semKind() != sanyModuleInstanceKind && !checkDefinition(i).levelCheck(iter, errors) {
+			n.levelCorrect = false
+		}
+	}
+	if !body().levelCheck(iter, errors) {
+		n.levelCorrect = false
+	}
+	if n.instances == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	for i := 0; i < len(n.instances); i++ {
+		if !sanyRequireCanonicalLevelNode(n.instances[i]).levelCheck(iter, errors) {
+			n.levelCorrect = false
+		}
+	}
+	*n.level = body().getLevel()
+	n.levelParams = newSanyLevelSymbolSetFrom(body().getLevelParams())
+	n.allParams = newSanyLevelSymbolSetFrom(body().getAllParams())
+	n.levelConstraints.putAll(sanyLevelConstraintMap(body().getLevelConstraints()))
+	for i := 0; i < len(n.opDefs); i++ {
+		if definition(i).semKind() != sanyModuleInstanceKind {
+			n.levelConstraints.putAll(sanyLevelConstraintMap(checkDefinition(i).getLevelConstraints()))
+		}
+	}
+	n.argLevelConstraints.putAll(sanyArgLevelConstraintMap(body().getArgLevelConstraints()))
+	for i := 0; i < len(n.opDefs); i++ {
+		if definition(i).semKind() != sanyModuleInstanceKind {
+			n.argLevelConstraints.putAll(sanyArgLevelConstraintMap(checkDefinition(i).getArgLevelConstraints()))
+		}
+	}
+	n.argLevelParams.addAll(body().getArgLevelParams())
+	for i := 0; i < len(n.opDefs); i++ {
+		if definition(i).semKind() != sanyModuleInstanceKind {
+			params := []sanySemSymbol{}
+			if definition(i).semKind() != sanyThmOrAssumpDefKind {
+				op, ok := definition(i).(*sanySemOpDefNode)
+				if !ok {
+					panic(tlc.NewClassCastException("definition is not an OpDefNode"))
+				}
+				formals := op.getParams()
+				if formals == nil {
+					params = nil
+				} else {
+					params = make([]sanySemSymbol, len(formals))
+					for j, p := range formals {
+						params[j] = p
+					}
+				}
+			}
+			for alp := range checkDefinition(i).getArgLevelParams().all() {
+				if !alp.occur(params) {
+					n.argLevelParams.add(alp)
+				}
+			}
+		}
+	}
+	for i := 0; i < len(n.instances); i++ {
+		n.argLevelParams.addAll(sanyRequireCanonicalLevelNode(n.instances[i]).getArgLevelParams())
+	}
+	return n.levelCorrect
+}

@@ -378,3 +378,10 @@ func (n *sanySemOpDeclNode) levelCheck(iter int32, errors *Diagnostics) bool {
 	// method returns true without changing levelChecked, even for a new iter.
 	return true
 }
+
+func newSanyLevelSymbolSetFrom(source *sanyLevelSet[sanySemSymbol]) *sanyLevelSet[sanySemSymbol] {
+	if source == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	return &sanyLevelSet[sanySemSymbol]{tlc.NewJavaSemanticSetCopy(source.entries, sanyLevelConstraintHash, sanyLevelConstraintEqual, sanyLevelConstraintTieBreak)}
+}

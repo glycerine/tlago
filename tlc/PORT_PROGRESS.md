@@ -1,5 +1,29 @@
 # TLC Port Progress
 
+2026-10-07 Canonical LetInNode level algorithm:
+Previous completed commit: 5a6495e. Translate the full source LetInNode.levelCheck
+and body accessor. Preserve component traversal after false results, early
+iteration recording, correctness reset, body-only level, copied body parameter
+sets, retained constraint/dependency merges, formal-reference filtering and
+module-instance skipping. Preserve source non-Leibniz omission. Actual descendant
+checking remains incomplete; do not close the two original incremental LET tests.
+
+Implement HashSet(Collection) backing-map copying rather than substitute the
+HashMap(Map) constructor. Inspect installed OpenJDK 21 HashSet and HashMap
+bytecode: max(size, 12) mappings, ceiling capacity, power-of-two threshold,
+then addAll. Retain OpenJDK notices. External observer uses actual OpDef/Formal
+nodes, controlled ExprNode bodies and real source LET checks. All scratch remains
+outside the repository. First observer 87660 passes and all 68 rows match.
+Extend those same snapshots to complete metadata text with fixed symbol UIDs;
+observer 95747 passes and all 68 full rows match. Include 14 failure cases,
+five modes over nine iteration phases, copied-set identity and nine copy sizes
+with capacity, threshold and exact bucket iteration. No production UID changes.
+Retained operator observer passes and all 792 complete source rows remain equal.
+Compile 14164 passes. Broad affected original gate 99093 passes normally in
+47.405s with 283 passing test events. Full SANY 36910 passes in 2.212s.
+All handles retired. No new permanent test, test weakening, original-method
+completion credit, race run or new full-workspace verification claim.
+
 2026-10-07 Shared literal level metadata and full original basicOpDefTest:
 Previous completed commit: df73896. Canonical semantic bases now point to their
 actual TLC base and canonical collections. Alias the base level and signed

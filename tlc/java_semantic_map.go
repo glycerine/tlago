@@ -1,3 +1,6 @@
+// Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
+// Derived from OpenJDK 21 java.util.HashMap and HashSet; GPL v2 with Classpath exception.
+// See licenses/openjdk-LICENSE and licenses/openjdk-ADDITIONAL_LICENSE_INFO.
 package tlc
 
 // JavaSemanticMap exposes the shared HashMap backing implementation to SANY.
@@ -31,6 +34,25 @@ func NewJavaSemanticMapCopy[K comparable, V any](source *JavaSemanticMap[K, V], 
 		for key, value := range source.All() {
 			result.Put(key, value)
 		}
+	}
+	return result
+}
+
+// NewJavaSemanticSetCopy supplies HashSet(Collection)'s backing HashMap.
+// OpenJDK 21 reserves max(collection.size(), 12) mappings even for an empty set.
+func NewJavaSemanticSetCopy[K comparable](source *JavaSemanticMap[K, struct{}], hash func(K) int32, equal func(K, K) bool, tieBreak func(K, K) int) *JavaSemanticMap[K, struct{}] {
+	if source == nil {
+		panic(NewNullPointerException())
+	}
+	result := NewJavaSemanticMap[K, struct{}](hash, equal, tieBreak)
+	target := (int64(max(source.Len(), 12))*4 + 2) / 3
+	capacity := int64(1)
+	for capacity < target && capacity < 1<<30 {
+		capacity <<= 1
+	}
+	result.entries.threshold = int(capacity)
+	for key, value := range source.All() {
+		result.Put(key, value)
 	}
 	return result
 }
