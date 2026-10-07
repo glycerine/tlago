@@ -81,10 +81,27 @@ position and required level as Java's 4246 diagnostic does.
 
 The builtin-only argument syntax scan is removed. All 24 additional paired cases
 match Java, including indirect definitions, higher-order forwarding and theorem
-expressions. The remaining co-parameter diagnostic path still scans direct syntax;
-replace it with propagated ArgLevelParam relationships and Java collection order.
-Full formal-operator metadata, imported graph identities and canonical evaluator
-sharing remain separate pending work.
+expressions. The co-parameter diagnostic path now uses propagated ArgLevelParam relationships;
+its direct-expression scanner is removed. Preserve relationship insertion when
+combining summaries and translating scalar formal dependencies. The final module
+set uses ArgLevelParam.hashCode: operator declaration hash + zero-based position
++ parameter declaration hash. The shared Java HashMap retains buckets, resizing,
+collision trees and same-class object-identity tie-breaks. Runtime identities differ
+across Java and Go, so collision-tree order is not a portable byte-for-byte promise.
+Repeated relationships retain one membership. Check both substituted components'
+level correctness, then compare the substituted parameter's level with the
+substituted operator's maximum. Error 4247 keeps Java's zero-based position,
+target operator name, whole INSTANCE range and original message punctuation.
+
+ModuleNode initializes constant declaration constraints to ConstantLevel when
+isConstant is false before merging expression bounds by minimum. Leaving an
+expression's weaker ActionLevel bound as a separate module bound fabricates
+another diagnostic and loses the source's constraint-set semantics. All 26
+co-parameter cases and 48 preceding level/argument cases match complete source
+diagnostics. A separate 12-relationship collision-tree probe matches membership,
+counts, codes, ranges and messages; identity-dependent iteration orders differ.
+Full formal-operator metadata, imported graph identities, original frontend phase
+APIs and canonical evaluator sharing remain separate pending work.
 
 ## TLC bridge declaration metadata
 

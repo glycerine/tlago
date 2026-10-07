@@ -177,6 +177,15 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 		}
 	}
 	collect(module, ctx)
+	// ModuleNode starts a nonconstant module's constant declarations at
+	// ConstantLevel before unioning expression constraints (union takes min).
+	if moduleRequiresSubstitutionLevelMatch(module, spec) {
+		for id, name := range names {
+			if targets[name].Kind == ConstantDecl {
+				constraints.constrainID(id, constantLevel)
+			}
+		}
+	}
 	return names, constraints
 }
 

@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-07 Propagated INSTANCE co-parameter constraints:
+Previous completed commit: 2caf893. Initial 16-case comparison 47104 returns 1:
+eight compound/indirect/higher-order/LET cases falsely succeed. Replace the
+remaining direct syntax scan with propagated ArgLevelParam relationships and
+remove both old scanner functions. Retain relationship insertion through summary
+merges and formal-to-actual dependency translation. Use the shared Java HashMap
+through JavaSemanticSet; ArgLevelParam hash sums both source declaration hashes
+and the zero-based argument position. Collision-tree tie-breaks use stable native
+object identity, matching the existing Go Java collection ports. Component
+validity gates, target operator name, zero-based position, whole INSTANCE range
+and source 4247 message punctuation are preserved.
+
+Corrected initial comparison 63512 returns 0. Expanded 26-case comparison 79921
+returns 1: ENABLED's zero argument weight removes the co-parameter relationship,
+but a fabricated weaker module bound produces an extra 4245 diagnostic. Port
+ModuleNode's nonconstant-module initialization of constant constraints to zero
+before unioning expression bounds by minimum. Corrected comparison 23617 returns
+0; all 26 complete diagnostics match. Log
+/mnt/oldrog/tmp/tlago-coparam-corrected.log. The previous 24 argument and 24 level
+cases also match complete codes, counts, ranges, messages and order (96506).
+Logs /mnt/oldrog/tmp/tlago-coparam-final-{arg,level}.log.
+
+Separate dense 12-relationship collision-tree probe completes normally in both
+Java and Go. Both return exactly the twelve original 4247 positions with identical
+codes, ranges and messages. Java order is [1,2,0,3,4,5,6,7,8,10,9,11]; native Go
+order is [3,0,1,2,4,5,6,7,8,9,10,11]. Source same-class tree ties depend on object
+identity; do not claim byte-for-byte collision ordering across runtimes. Probe
+and logs /mnt/oldrog/tmp/tlago-coparam-dense{.py,/java.log,/go.log}. No invented
+permanent tests or fixtures, and no original-method inventory credit.
+
+Final focused root plus seven unchanged original model methods pass normally in
+28.498 seconds (79620); complete SANY passes 1.581 seconds (31432); all-package
+compilation passes (33521). Root log /mnt/oldrog/tmp/tlago-coparam-final-root.log.
+Earlier root 7655 passes 30.514 seconds and SANY 2005 passes 1.893 seconds before
+the final module-bound correction. All handles are terminal and retired. No new
+full-workspace pass is established. Next finish canonical INSTANCE/LET/operator
+graphs, full formal-operator metadata, original frontend phase APIs and evaluator
+sharing. New distributed service remains postponed.
+
 2026-10-07 Propagated INSTANCE argument level requirements:
 Previous completed commit: 862970d. Initial 16-case comparison 84780 returns 1:
 four user-defined/indirect substitution diagnostics are missing; a formal collision

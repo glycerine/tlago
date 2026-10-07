@@ -870,11 +870,24 @@ complete SANY and compilation pass normally. The existing TestInstanceNode check
 now retains the original exact error count, code and [1, 3] parameters. Its separate
 semantic-generation and level-check phase assertions still need the original
 frontend phase APIs, so no whole-method credit is claimed.
-Next replace the remaining direct co-parameter scan with propagated argLevelParams,
-including Java collection order, then finish retained InstanceNode/LetInNode and
-ordinary canonical operator graphs. General imported graph identity, formal-operator
-metadata and evaluator sharing remain pending. The green comparisons do not prove
-complete LevelNode parity.
+The direct co-parameter scan is now removed. INSTANCE checks propagated
+ArgLevelParam relationships, including compound and indirect arguments,
+higher-order forwarding and LET definitions. Retain set membership and the
+source hash sum of declaration identities and argument position; use the shared
+Java HashMap algorithm for iteration and collision trees. Native object identity
+supplies the source same-class tie-break, so collision-tree order is runtime
+identity dependent. All 74 ordinary comparisons match complete Java diagnostics;
+a separate 12-relationship collision probe matches diagnostic membership, codes,
+ranges and messages, without claiming identical native identity order.
+Nonconstant modules initialize their constant constraints to zero before unioning
+expression constraints by minimum, matching ModuleNode and suppressing the
+previous fabricated second bound. Focused root checks, original related models,
+complete SANY and compilation pass normally. No full-workspace pass or inventory
+credit is added.
+Next finish retained InstanceNode/LetInNode and ordinary canonical operator graphs.
+General imported graph identity, full formal-operator metadata, original frontend
+phase APIs and evaluator sharing remain pending. The green comparisons do not
+prove complete LevelNode parity.
 Full registration against operator/theorem graphs, qualified declaration selectors,
 other imported graph identities, ordered module definitions and complete canonical
 node sharing with the evaluator remain pending.

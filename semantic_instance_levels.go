@@ -2,7 +2,10 @@
 // Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/glycerine/tlago/tlc"
+)
 
 // InstanceNode checks the resolved substitution array, including defaults. Its
 // expressions retain their instancer's lexical context; a completed-module scan
@@ -32,11 +35,11 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance I
 		message := fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", instance.Module, name, maximum)
 		return sanyDiagnosticParameters(sanyRegistrationDiagnostic(instance.SourcePosition(), "E4245", "%s", message), instance.Module, name, maximum)
 	}
-	substitutions := map[string]Expr{}
+	substitutions := map[string]sanyGeneratedSubstitution{}
 	matchLevels := moduleRequiresSubstitutionLevelMatch(target, spec)
 	for _, substitution := range instance.generatedSubstitutions {
 		name, expr := substitution.name, substitution.expr
-		substitutions[name] = expr
+		substitutions[name] = substitution
 		if matchLevels && valid[name] {
 			maximum := constantLevel
 			if substitution.target.Kind == VariableDecl {
@@ -80,6 +83,36 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance I
 		}
 		diags = append(diags, checkPrimedConstants(expr, declKinds, parameterNames)...)
 	}
-	diags = append(diags, checker.checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutions, instance.SourcePosition(), declKinds)...)
+	// ArgLevelParam.hashCode adds both declaration hashes and the zero-based
+	// argument position. HashSet deduplicates relationships before InstanceNode
+	// iterates them; repeated applications do not report repeated constraints.
+	hashes := map[int]int32{}
+	for _, substitution := range instance.generatedSubstitutions {
+		if substitution.declaration != nil {
+			hashes[ids[substitution.name]] = substitution.declaration.hashCode()
+		}
+	}
+	relationships := tlc.NewJavaSemanticSet[sanyArgumentParameter](func(key sanyArgumentParameter) int32 {
+		return hashes[key.operator] + int32(key.position) + hashes[key.parameter]
+	})
+	for _, key := range moduleUse.argParamOrder {
+		if key.operator < len(names) && key.parameter < len(names) {
+			relationships.Add(key)
+		}
+	}
+	for key := range relationships.All() {
+		operatorName, parameterName := names[key.operator], names[key.parameter]
+		operator, hasOperator := substitutions[operatorName]
+		parameter, hasParameter := substitutions[parameterName]
+		if !hasOperator || !hasParameter || !valid[operatorName] || !valid[parameterName] || operator.target.Arity <= key.position {
+			continue
+		}
+		maxima := c.dependencies.applicationMaximums(operator.expr, nil, operator.target.Arity, context)
+		maximum := maxima[key.position]
+		if checker.level(parameter.expr, parameterNames) > maximum {
+			message := fmt.Sprintf("Level error when instantiating module '%s':\nThe level of the argument %d of the operator %s' \nmust be at most %d.", instance.Module, key.position, operatorName, maximum)
+			diags = append(diags, sanyDiagnosticParameters(sanyRegistrationDiagnostic(instance.SourcePosition(), "E4247", "%s", message), instance.Module, key.position, operatorName, int(maximum)))
+		}
+	}
 	return diags
 }

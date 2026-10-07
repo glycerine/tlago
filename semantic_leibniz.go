@@ -18,6 +18,7 @@ type sanyLeibnizUse struct {
 	constraints    map[int]tlaLevel
 	argConstraints map[sanyArgumentPosition]tlaLevel
 	argParams      map[sanyArgumentParameter]bool
+	argParamOrder  []sanyArgumentParameter
 }
 
 // ParamAndPosition and ArgLevelParam use symbolic declaration/formal identity.
@@ -36,13 +37,16 @@ func (u *sanyLeibnizUse) addArgumentParameter(key sanyArgumentParameter) {
 	if u.argParams == nil {
 		u.argParams = map[sanyArgumentParameter]bool{}
 	}
+	if !u.argParams[key] {
+		u.argParamOrder = append(u.argParamOrder, key)
+	}
 	u.argParams[key] = true
 }
 func (u *sanyLeibnizUse) merge(v sanyLeibnizUse) {
 	for key, level := range v.argConstraints {
 		u.requireArgument(key, level)
 	}
-	for key := range v.argParams {
+	for _, key := range v.argParamOrder {
 		u.addArgumentParameter(key)
 	}
 	u.level = maxTlaLevel(u.level, v.level)
@@ -505,7 +509,7 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 			a.changed = true
 		}
 	}
-	for key := range use.argParams {
+	for _, key := range use.argParamOrder {
 		if !signature.free.argParams[key] {
 			signature.free.addArgumentParameter(key)
 			a.changed = true
@@ -702,7 +706,7 @@ func (a *sanyLeibnizAnalyzer) signatureUse(signature *sanyLeibnizSignature, argu
 	use.levelParams = nil
 	use.level = constantLevel
 	free := signature.free
-	free.argConstraints, free.argParams = nil, nil
+	free.argConstraints, free.argParams, free.argParamOrder = nil, nil, nil
 	use.merge(free)
 	own := map[int]int{}
 	for i, id := range signature.ids {
@@ -722,7 +726,7 @@ func (a *sanyLeibnizAnalyzer) signatureUse(signature *sanyLeibnizSignature, argu
 			use.requireArgument(sanyArgumentPosition{operator, key.position}, level)
 		}
 	}
-	for key := range signature.free.argParams {
+	for _, key := range signature.free.argParamOrder {
 		operator, exists := resolveOperator(key.operator)
 		if !exists {
 			continue
