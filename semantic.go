@@ -3415,7 +3415,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool, g
 	return generation.checkExpr(expr, defined, locals)
 }
 
-func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) (result Diagnostics) {
+func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[string]Position, locals map[string]bool, selectorOrigins ...*SanySelector) (result Diagnostics) {
 	var diags Diagnostics
 	allowLabeledAP := generation.allowLabeledAP
 	generation.allowLabeledAP = false
@@ -3667,7 +3667,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				_, exact := defined[e.Name]
 				if _, isInstance := defined[instanceNameSentinel(base)]; isInstance && !exact {
 					setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
-					diags = append(diags, sanyUndefinedIdentifierDiagnostic(e))
+					diags = append(diags, sanyUndefinedIdentifierDiagnostic(e, selectorOrigins...))
 					return diags
 				}
 			}
@@ -3683,7 +3683,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				return diags
 			}
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
-			diags = append(diags, sanyUndefinedIdentifierDiagnostic(e))
+			diags = append(diags, sanyUndefinedIdentifierDiagnostic(e, selectorOrigins...))
 		} else if _, ok := defined[instanceNameSentinel(e.Name)]; ok {
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 			if want := generation.moduleArities[e.Name]; want != 0 {
@@ -3806,7 +3806,10 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 		}
 		generation.symbolReferenceOnly = true
-		diags = append(diags, generation.checkExpr(e.Callee, defined, locals)...)
+		// Native calls separate a callee image from the source selector. Java
+		// resolves using that selector directly; retain it for name and location
+		// accumulation instead of diagnosing the flattened navigation image.
+		diags = append(diags, generation.checkExpr(e.Callee, defined, locals, e.Selector)...)
 		generation.symbolReferenceOnly = false
 		if sanyExpressionGenerationFailure(e.Callee) != sanyGenerationSucceeded {
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
@@ -5394,10 +5397,14 @@ func sanyCallArityDiagnostic(call *CallExpr, name string, want int) Diagnostic {
 
 // Generator.selectorToNode extends curNameLoc across the unresolved compound
 // name, excluding supplied arguments, before reporting SYMBOL_UNDEFINED.
-func sanyUndefinedIdentifierDiagnostic(identifier *IdentExpr) Diagnostic {
+func sanyUndefinedIdentifierDiagnostic(identifier *IdentExpr, origins ...*SanySelector) Diagnostic {
 	diagnostic := errorAt(identifier.Pos, "E4200", "undefined identifier %s", identifier.Name)
 	name := identifier.Name
-	if selector := identifier.Selector; selector != nil {
+	selector := identifier.Selector
+	if selector == nil && len(origins) > 0 {
+		selector = origins[0]
+	}
+	if selector != nil {
 		var names []string
 		for _, step := range selector.Steps {
 			if step.Syntax == nil || step.Kind != SanySelectorName {
@@ -5417,6 +5424,7 @@ func sanyUndefinedIdentifierDiagnostic(identifier *IdentExpr) Diagnostic {
 		diagnostic.SANYRange = identifier.Syntax.Range
 	}
 	diagnostic.SANYMessage = fmt.Sprintf("Unknown operator: `%s'.", name)
+	diagnostic.SANYParameters = []any{tlc.UniqueStringOf(name)}
 	return diagnostic
 }
 

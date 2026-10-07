@@ -28,6 +28,16 @@ in this directory remain supplementary and add no duplicate method credit.
 This completes the original method, not general canonical allocation/AST equality
 or evaluator sharing, and does not change the main TLC inventory totals.
 
+All three `semantic.TestSubexpressionSelectors` methods are **port complete** in
+root `sany_subexpression_selectors_java_test.go`. Preserve the original module
+bodies, syntax/dependency phase, semantic-generation-only helper, abort catch,
+failure assertion, empty internal-error list, and first error's exact code,
+message and complete location. The earlier native API checks remain supplementary.
+Original Java JUnit and Go pass. The all-navigation case exposed lost selector
+syntax at a flattened call callee; generation now retains its actual source
+selector for unresolved-name/location accumulation. This completes these three
+methods, not the full selectorToNode engine or canonical malformed graph paths.
+
 `semantic.SemanticErrorCorpusTests.test` now retains all four original assertion
 families: failure severity, structured argument counts, no suspected-unreachable
 checks, and the expected error code. Its helper preserves the original interrupted

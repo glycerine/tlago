@@ -94,6 +94,22 @@ Latest focused gate passes 233 test events in 5.218 seconds, with the original
 assumption retained. Complete SANY passes in 1.707 seconds and all-package
 compilation passes. All handles are retired; no new full-workspace pass exists.
 
+All three original TestSubexpressionSelectors methods are now port complete in
+root `sany_subexpression_selectors_java_test.go`. Their helper parses and generates
+without level checking and retains errors on abort. Require Java's exact first
+error code, message and location, plus rejection without internal errors. The
+all-navigation method exposed lost selector syntax at a flattened call callee;
+generation now retains the actual selector for unresolved-name and range
+accumulation, including the source UniqueString diagnostic parameter. Original
+Java and Go pass; 16 external full-detail observations agree. The earlier native
+API checks remain supplementary. Full selector generation/diagnostics are still
+pending; these methods do not prove every invalid path.
+
+Latest selector gate passes 363 test events: root in 5.675 seconds and selected
+SANY originals in 0.128 seconds. Complete SANY passes in 1.804 seconds; all-package
+compilation passes. All handles are retired. The full-workspace receipt above
+remains an earlier failing snapshot, not a current pass.
+
 Both `CheckSanySpecLevels` and the `CheckSpec`/TLC driver now invoke the actual
 generated `ModuleNode.levelCheck`. The driver preserves Java's external-module
 order, shared diagnostic log and raw-success gate. Integration exposed the

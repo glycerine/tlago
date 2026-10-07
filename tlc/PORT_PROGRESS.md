@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-07 Complete original selector diagnostics and retained call syntax:
+Previous completed commit: 908062a. Inspect original TestSubexpressionSelectors:
+the older Go facade checks omit its exact first code/message/location assertions
+and invoke level checking absent from the original helper. Translate all three
+whole methods in the root package, retaining exact module bodies, syntax/dependency
+processing, generation-only phase, AbortException catch and error-list assertions.
+Retain older facade checks as explicitly named supplementary native API checks.
+
+Initial original selection 67407 fails the all-navigation method: Go reports
+Unknown operator: `op!<<!>>!3!:!@'. rather than Java's Unknown operator: `op'.
+The native CallExpr's callee image lost the actual selector. Preserve that source
+selector during callee lookup, retaining actual name-only accumulation, token
+range and ignored argument generation on unresolved lookup. Add Java's actual
+UniqueString diagnostic parameter. Do not weaken any original assertion or infer
+names by splitting navigation strings. Derive test location source from its
+actual diagnostic file rather than hardcoding the module name.
+
+Fixed original methods 68244 pass. Unchanged Java JUnit class passes all three
+methods in 0.065s. External Java/Go generation-only observers agree on all 16
+full-detail rows covering unresolved plain/compound names, attached arguments,
+all navigation forms, names after navigation and a symbolic operator. Compare
+exact code, message, range and UniqueString type/value. Probe compilation first
+uses a nonexistent getCode accessor; it receives no verification credit. Correct
+it to getStandardValue before successful observations. Go observer 75245 returns
+0 and is retired. Sources, cases, overlays and logs remain external under
+/mnt/oldrog/tmp/tlago-selector-name-*; no invented permanent tests or method credit
+for these manual observations.
+
+Final original/bridge/error-corpus selection 92939 passes 363 test events: root
+5.675s and selected SANY originals 0.128s. Complete SANY 97244 passes in 1.804s;
+all-package compile passes. All handles are retired. Receipts use
+/mnt/oldrog/tmp/tlago-original-subexpression-selectors-*. All three original SANY
+methods gain completion credit; main TLC inventory remains unchanged. No race,
+new fixture, weakened test or optional corpus sweep. General selector state-machine
+translation and malformed canonical graph/DEF paths remain pending, as do
+shared evaluator collections and trace reconciliation. Full-workspace baseline
+remains the qualified earlier receipt; the three invalid native XML fixtures
+remain unresolved. Keep the overall faithful TLC parity goal active.
+
 2026-10-07 Canonical graph traversal and complete original semantic corpus:
 Previous completed commit: 31c1444. Port the canonical walkGraph methods over
 actual SANY nodes, including Context/Subst callbacks, source proof edges,

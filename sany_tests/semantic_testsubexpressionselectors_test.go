@@ -7,19 +7,19 @@ import (
 	"github.com/glycerine/tlago"
 )
 
-// Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/TestSubexpressionSelectors.java.
-// Each test starts skipped until its Java assertions are ported and made green.
-func TestTestSubexpressionSelectors_testUnresolvedCompoundOperatorName(t *testing.T) {
+// Supplementary native API checks. The complete original diagnostic assertions
+// and generation-only helper live in root sany_subexpression_selectors_java_test.go.
+func TestSubexpressionSelectorNativeAPI_testUnresolvedCompoundOperatorName(t *testing.T) {
 	diags := processSANYSubexpressionSelectorBody(t, "use == module!op")
 	requireSANYSubexpressionSelectorUserError(t, diags, "module!op")
 }
 
-func TestTestSubexpressionSelectors_testConsecutiveTreeNavigationSelectors(t *testing.T) {
+func TestSubexpressionSelectorNativeAPI_testConsecutiveTreeNavigationSelectors(t *testing.T) {
 	diags := processSANYSubexpressionSelectorBody(t, "tree_nav == op!<<!>>")
 	requireSANYSubexpressionSelectorUserError(t, diags, "op")
 }
 
-func TestTestSubexpressionSelectors_testAllTreeNavigationSelectors(t *testing.T) {
+func TestSubexpressionSelectorNativeAPI_testAllTreeNavigationSelectors(t *testing.T) {
 	diags := processSANYSubexpressionSelectorBody(t, "tree_nav == op(a, b)!<<!>>!3!(x, y)!:!@")
 	requireSANYSubexpressionSelectorUserError(t, diags, "op")
 }

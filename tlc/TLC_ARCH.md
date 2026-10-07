@@ -9848,3 +9848,22 @@ and one source assumption are preserved. The driver also now publishes the last
 external module as the ExternalModuleTable root after level checking, matching
 Java even when prior diagnostic errors exist. Native callers without loader order
 publish their declared root when it is generated.
+
+## Unresolved call selectors retain source name syntax
+
+Native CallExpr separates its flattened callee image from its actual source
+selector. Java selectorToNode instead resolves against that selector directly.
+Pass the source selector into callee lookup so SYMBOL_UNDEFINED accumulates
+only name components, extends the range only at those names, and ignores argument
+expressions when lookup fails. Navigation components do not become operator-name
+text. Preserve the source UniqueString parameter alongside the exact formatted
+message and location. Plain identifier diagnostics keep their own source selector.
+
+The complete original TestSubexpressionSelectors class now checks the original
+syntax/dependency and generation-only phases, retained errors on AbortException,
+failure without internal diagnostics, and exact first code/message/location.
+All three original methods pass in Java and Go. Sixteen external observations
+also match complete diagnostic names, ranges and parameter types/values for
+compound names, attached arguments, name components after navigation and symbolic
+operators. These observations do not establish the entire selector state machine,
+higher-order malformed selection behavior or source allocation order.
