@@ -1,5 +1,26 @@
 # TLC Architecture Notes for the Go Port
 
+## Original-definition comparison and cached parameter freedom
+
+`SymbolNode.sameOriginallyDefinedInModule` now follows the source concrete-class
+rule: only two actual OpDefNodes or two actual ThmOrAssumpDefNodes can match.
+Their immediate `getSource` pointers must match. Read the originating module of
+that shared source, treating a null module as parameter-free, then query the
+module's cached constant/variable declaration arrays in source short-circuit
+order. Do not scan live context history or recursively follow source chains.
+Declarations and modules do not match through this method, even when the supplied
+pointers are identical; callers retain their earlier identity shortcuts.
+Null symbols preserve Java NullPointerException failures, including Go typed nulls.
+
+All 8,318 observed rows match across 47 whole-module scenarios and 17 comparison
+pairs per scenario. Cover live-context mutation after declaration caches freeze,
+fresh modules sharing that context, same/different source pointers, one-hop
+source chains, different definition names/kinds, theorem versus operator classes,
+declarations, modules and nulls. Existing Context and SymbolTable callers use the
+same helper. No permanent tests or original-method credit added. Complete EXTENDS
+diagnostic ownership, missing-extendee aborts, inherited levels, visitors and
+evaluator sharing remain pending.
+
 ## EXTENDS vectors and cached extension sets
 
 Production EXTENDS resolves actual ModuleNodes through the SymbolTable, merges
@@ -24,7 +45,7 @@ repeated EXTENDS, diamond inheritance, private definitions, inherited named fact
 and instances, nested contexts, direct/recursive set members, returned-set aliasing,
 array-copy ownership and cache lifetime. No persistent tests or original-method
 completion credit are added. Complete EXTENDS context diagnostic ownership,
-missing-extendee aborts, original-module comparison rules, inherited levels,
+missing-extendee aborts, inherited levels,
 visitors and evaluator graph sharing remain pending; this is bounded evidence.
 
 ## Module collection snapshots and inner-module registration

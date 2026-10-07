@@ -1,5 +1,10 @@
 package tlago
 
+import (
+	"github.com/glycerine/tlago/tlc"
+	"reflect"
+)
+
 type sanySemKind int
 
 const (
@@ -281,58 +286,38 @@ func sanyOriginalSource(symbol sanySemSymbol) sanySemSymbol {
 }
 
 func sanySameOriginalModule(a, b sanySemSymbol) bool {
-	if definition, ok := a.(*sanySemThmOrAssumpDefNode); ok {
-		other, sameClass := b.(*sanySemThmOrAssumpDefNode)
-		if !sameClass || definition.getSource() != other.getSource() {
-			return false
+	// Java dereferences both symbols for its concrete-class comparison.
+	for _, symbol := range []sanySemSymbol{a, b} {
+		if symbol == nil || (reflect.ValueOf(symbol).Kind() == reflect.Pointer && reflect.ValueOf(symbol).IsNil()) {
+			panic(tlc.NewNullPointerException())
 		}
-		original := definition.getSource().module
-		if original != nil && original.context != nil {
-			for _, entry := range original.context.order {
-				if entry.sym.semKind() == sanyConstantDeclKind || entry.sym.semKind() == sanyVariableDeclKind {
-					return false
-				}
-			}
-		}
-		return true
 	}
-
-	// Source OpDefNodes must have the same concrete class and original source.
-	// Parameter freedom comes from that source's module declarations, not its name.
-	if definition, ok := a.(*sanySemOpDefNode); ok {
+	var module *sanySemModuleNode
+	switch definition := a.(type) {
+	case *sanySemOpDefNode:
 		other, sameClass := b.(*sanySemOpDefNode)
 		if !sameClass {
 			return false
 		}
-		source, otherSource := sanyOriginalSource(definition), sanyOriginalSource(other)
-		if source != otherSource {
+		source := sanyOriginalSource(definition).(*sanySemOpDefNode)
+		if source != sanyOriginalSource(other) {
 			return false
 		}
-		original, ok := source.(*sanySemOpDefNode)
-		if !ok {
+		module = source.module
+	case *sanySemThmOrAssumpDefNode:
+		other, sameClass := b.(*sanySemThmOrAssumpDefNode)
+		if !sameClass {
 			return false
 		}
-		if original.module == nil {
-			return true
+		source := definition.getSource()
+		if source != other.getSource() {
+			return false
 		}
-		for _, entry := range original.module.context.order {
-			kind := entry.sym.semKind()
-			if kind == sanyConstantDeclKind || kind == sanyVariableDeclKind {
-				return false
-			}
-		}
-		return true
-	}
-	if a == nil || b == nil || semanticImportClass(sanyContextImportKind(a)) != semanticImportClass(sanyContextImportKind(b)) {
+		module = source.module
+	default:
 		return false
 	}
-	kind := a.semKind()
-	if kind != sanyUserDefinedOpKind && kind != sanyBuiltInKind && kind != sanyModuleInstanceKind && kind != sanyThmOrAssumpDefKind {
-		return false
-	}
-	as := sanyOriginalSource(a)
-	bs := sanyOriginalSource(b)
-	return as == bs && !as.semBase().parameterized
+	return module == nil || module.isParameterFree()
 }
 
 type sanyExternalModuleTable struct {

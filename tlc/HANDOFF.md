@@ -1132,8 +1132,14 @@ and remains local. Actual extendee arrays and separate direct/recursive mutable
 set caches preserve copy ownership and cache lifetime. Imported expression
 metadata shares actual definitions. All 7,519 observed rows across 47 whole modules
 and associated cache/null observations match Java. EXTENDS context diagnostics,
-missing-extendee aborts, original-module comparison rules and inherited level,
-visitor and evaluator work remain incomplete. Bounded generation
+missing-extendee aborts and inherited level, visitor and evaluator work remain
+incomplete. Original-definition comparison now requires the actual operator or
+assertion class, matching immediate source pointers and cached declaration arrays
+from the source module. A live context scan no longer changes previously frozen
+parameter-freedom decisions. All 8,318 observed rows across 47 whole modules and
+17 comparison pairs per module match Java, including source chains, mixed classes
+and nulls. This evidence adds no original-method or full-workspace completion
+credit. Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 

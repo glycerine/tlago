@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-07 Original-definition comparison and parameter caches:
+Previous completed commit: 3af6618. Port SymbolNode.sameOriginallyDefinedInModule
+using the actual operator/theorem concrete classes, immediate source pointer
+identity and the source module's cached declaration arrays. A null original module
+is parameter-free. Preserve constant-before-variable short-circuiting and typed
+null failures. Remove live history scans and the generic kind-based definition
+fallback; declarations/modules return false through this method even when the
+same pointer is supplied. Context/SymbolTable retain their earlier identity
+shortcuts before invoking it. Source chains are one-hop, not recursively followed.
+
+Expanded manual source observation adds 17 pairs per each of the retained 47
+whole modules: original/clone/same-name-independent pointers, one-hop chains,
+fresh parameterized modules sharing an already frozen context, null originating
+modules, theorem/operator cross-classes, declarations/modules and null symbols.
+All 8,318 rows match Java, including the prior vectors/UID/cache observations.
+The initial Go observer reused d (Diagnostics) for a declaration; correct the
+scratch variable without changing any inputs or expected source output. Final
+observer 54648 returned 0 and is retired; initial 25290 failed compilation and
+is retired with no success credit. Observers/receipts remain outside the repo:
+/mnt/oldrog/tmp/tlago-original-module-*. No permanent tests, weakened assertions
+or original-method completion credit added. Existing original TestContext and
+semantic-error corpus methods are retained unchanged.
+
+Existing affected root/parser/context/proof/TLC-model gate passes 48.421s
+(93775 retired), complete SANY passes 2.029s (81039 retired), and compile-all
+passes (55452 retired). All handles retired; git diff --check passes. Normal
+execution only, with no broad race or full-workspace pass claim. EXTENDS context
+diagnostic ownership, missing-extendee aborts, inherited levels, visitors and
+evaluator sharing remain pending. Distributed service work stays deferred.
+
 2026-10-07 Actual EXTENDS vectors and cached extension sets:
 Previous completed commit: c78ca72. Resolve extendees through actual SymbolTable
 bindings and copy assumption/theorem/top-level vectors in direct source order.
