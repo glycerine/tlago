@@ -13,7 +13,7 @@ type SanyParser struct {
 	diags                Diagnostics
 	moduleName           string
 	proofLevelStack      []int
-	junctionColumns      []int
+	junctionListContext  sanyJunctionListContext
 	dependencyList       []string
 	internalModules      []string
 	messageStack         []sanyParseFrame
@@ -1599,8 +1599,7 @@ func (p *SanyParser) startsExpressionPrefix() bool {
 }
 
 func (p *SanyParser) aboveCurrentJunction() bool {
-	column, active := p.currentJunctionColumn()
-	return !active || column < p.peek().Begin.Column
+	return p.junctionListContext.isAboveCurrent(p.peek().Begin.Column)
 }
 
 // ExtendableExpr ports the source operand, postfix-extension loop, and optional
@@ -1715,102 +1714,75 @@ func (p *SanyParser) OpOrExpr(stop func(*SanyToken) bool) *SanySyntaxNode {
 	return p.ExpressionUntil(stop)
 }
 
-func (p *SanyParser) startsJunctionList(stop func(*SanyToken) bool) bool {
-	if !IsSanyJunctionBullet(p.peek().Kind) {
-		return false
-	}
-	next := p.tokenAt(1)
-	if next == nil {
-		return false
-	}
-	switch next.Kind {
-	case SanyTokenEOF, SanyTokenRbr, SanyTokenRbc, SanyTokenRsb, SanyTokenComma:
-		return false
-	default:
-		if stop(next) && !(IsSanyJunctionBullet(next.Kind) && next.Kind != p.peek().Kind) {
-			return false
-		}
-		return true
-	}
-}
-
 func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
-	kind := p.peek().Kind
 	firstBullet := p.peek()
-	minColumn := firstBullet.Begin.Column
-	p.pushJunctionColumn(minColumn)
-	defer p.popJunctionColumn()
+	p.junctionListContext.startNewJunctionList(firstBullet.Begin.Column, firstBullet.Kind)
 	p.beginProduction("AND-OR Junction")
 	defer p.endProduction()
-	itemStop := func(tok *SanyToken) bool {
-		if tok.Kind == kind && tok.Begin.Line > firstBullet.Begin.Line && tok.Begin.Column == minColumn {
-			return true
-		}
-		if IsSanyJunctionBullet(tok.Kind) && tok.Begin.Line > firstBullet.Begin.Line && tok.Begin.Column < minColumn {
-			return true
-		}
-		if stop(tok) {
-			return true
-		}
-		return tok.Begin.Line > firstBullet.Begin.Line && tok.Begin.Column <= minColumn && !IsSanyJunctionBullet(tok.Kind)
+	listKind, itemKind := "N_ConjList", "N_ConjItem"
+	if firstBullet.Kind == SanyTokenOR {
+		listKind, itemKind = "N_DisjList", "N_DisjItem"
 	}
-	_, left := p.junctionItemExpression(itemStop)
-	p.checkJunctionItemIndent(left, firstBullet)
-	listKind := "N_ConjList"
-	itemKind := "N_ConjItem"
-	if kind == SanyTokenOR {
-		listKind = "N_DisjList"
-		itemKind = "N_DisjItem"
+	items := []*SanySyntaxNode{p.junctionItem(stop, itemKind)}
+	for p.junctionListContext.isNewBullet(p.peek().Begin.Column, p.peek().Kind) {
+		items = append(items, p.junctionItem(stop, itemKind))
 	}
-	items := []*SanySyntaxNode{NewSanyNode(SanySyntaxNodeKindByName[itemKind], NewSanyTokenNode(firstBullet), left)}
-	for p.check(kind) && p.peek().Begin.Line > firstBullet.Begin.Line && p.peek().Begin.Column == minColumn {
-		bullet, right := p.junctionItemExpression(itemStop)
-		p.checkJunctionItemIndent(right, firstBullet)
-		items = append(items, NewSanyNode(SanySyntaxNodeKindByName[itemKind], NewSanyTokenNode(bullet), right))
-	}
+	// Java does not terminate the context when a production throws.
+	p.junctionListContext.terminateCurrentJunctionList()
 	list := NewSanyNode(SanySyntaxNodeKindByName[listKind], items...)
 	list.JunctionList = true
-	list.Range.Begin = firstBullet.Begin
 	return list
 }
 
-// JuncItem enters its frame before consuming the bullet and leaves it before
-// constructing the node and checking indentation.
-func (p *SanyParser) junctionItemExpression(stop func(*SanyToken) bool) (*SanyToken, *SanySyntaxNode) {
+func (p *SanyParser) junctionItem(stop func(*SanyToken) bool, itemKind string) *SanySyntaxNode {
 	p.beginProduction("Junction Item")
-	defer p.endProduction()
+	active := true
+	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
+		if active {
+			p.endProduction()
+		}
+	}()
 	if !p.check(SanyTokenAND) && !p.check(SanyTokenOR) {
 		p.throwParseException([][]SanyTokenKind{{SanyTokenOR}, {SanyTokenAND}}, "expected junction bullet")
 	}
-	bullet := p.advance()
-	return bullet, p.ExpressionUntil(stop)
-}
-
-func (p *SanyParser) pushJunctionColumn(column int) {
-	p.junctionColumns = append(p.junctionColumns, column)
-}
-
-func (p *SanyParser) popJunctionColumn() {
-	if len(p.junctionColumns) == 0 {
-		return
-	}
-	p.junctionColumns = p.junctionColumns[:len(p.junctionColumns)-1]
+	bullet := NewSanyTokenNode(p.advance())
+	expression := p.ExpressionUntil(stop)
+	// JuncItem calls epa before constructing the item and checking descendants.
+	p.endProduction()
+	active = false
+	item := NewSanyNode(SanySyntaxNodeKindByName[itemKind], bullet, expression)
+	p.checkJunctionIndentation(expression, item)
+	return item
 }
 
 func (p *SanyParser) currentJunctionColumn() (int, bool) {
-	if len(p.junctionColumns) == 0 {
-		return 0, false
-	}
-	return p.junctionColumns[len(p.junctionColumns)-1], true
+	current, exists := p.junctionListContext.current()
+	return current.column, exists
 }
 
-func (p *SanyParser) checkJunctionItemIndent(node *SanySyntaxNode, bullet *SanyToken) {
-	if node == nil || bullet == nil {
-		return
+// checkIndentation visits descendants, but stops at nested junction lists.
+func (p *SanyParser) checkJunctionIndentation(node, item *SanySyntaxNode) {
+	for _, child := range node.GetHeirs() {
+		kind := child.Kind.JavaName()
+		if kind == "N_ConjList" || kind == "N_DisjList" {
+			continue
+		}
+		if !p.junctionListContext.isAboveCurrent(child.Range.Begin.Column) {
+			message := "Item at " + p.junctionLocation(child.Range) +
+				" is not properly indented inside conjunction or " +
+				" disjunction list item at " + p.junctionLocation(item.Range)
+			p.throwReportedParseException(message, child.Range.Begin, "E1300", message)
+		}
+		p.checkJunctionIndentation(child, item)
 	}
-	if node.Range.End.Line > bullet.Begin.Line && node.Range.End.Column <= bullet.Begin.Column {
-		p.add(node.Range.End, "E1300", "item is not properly indented inside conjunction or disjunction list item")
-	}
+}
+
+func (p *SanyParser) junctionLocation(location SanyRange) string {
+	return "line " + strconv.Itoa(location.Begin.Line) + ", col " + strconv.Itoa(location.Begin.Column) +
+		" to line " + strconv.Itoa(location.End.Line) + ", col " + strconv.Itoa(location.End.Column) + " of module " + p.moduleName
 }
 
 func (p *SanyParser) startsOperatorReference(stop func(*SanyToken) bool) bool {

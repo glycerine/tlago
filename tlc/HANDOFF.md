@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 17.153 seconds, session `72142` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.843 seconds, session `1552` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 16.820 seconds, session `2312` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.488 seconds, session `8895` retired |
 | Existing focused TLC context/tool and tuple tests | Pass | 0.027 seconds, session `17606` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
@@ -192,7 +192,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 1,288,523,777 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 1,321,136,868 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -545,14 +545,17 @@ only the surrounding marks. The existing native parser expectation now follows
 that source image. Original Java assertions remain unchanged. Generic expression
 operators are typed token leaves, and syntax location aggregation retains Java's
 integer extrema for empty nodes. Junction list/item frames follow actual grammar
-entry and exit. Broader junction lookahead and recursive indentation checks still
-need reconciliation.
+entry and exit. The source junction context retains list type and column, matches
+new bullets without an added line predicate, and is terminated only on normal
+completion. Indentation checks traverse descendants, stop at nested junction lists,
+and throw Java's exact exception after leaving the item frame. General JavaCC
+lookahead and surrounding expression grammar remain reconciliation work.
 
-Current bounded observations match Java: 126 complete parser TRACE/results, 41
+Current bounded observations match Java: 150 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
-runtime probes, plus 17 selected primitive expression trees including ranges.
+runtime probes, plus 31 selected primitive/junction expression trees including ranges.
 Keep each scope distinct. Whole-module trees, general
 source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.

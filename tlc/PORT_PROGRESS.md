@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-06 Junction context and recursive indentation source port:
+Previous turn completed fa92a9e. Replace Go's column-only junction stack and end-
+column diagnostic heuristic with source JunctionListContext and checkIndentation.
+The context stores type and alignment, recognizes new bullets by type/column,
+retains source invalid-start/empty-termination exceptions, and pops only on normal
+completion. Remove the unused speculative startsJunctionList heuristic. Source
+jj_2_52, jj_2_53 and jj_2_56 reduce to actual OR/AND token alternatives; do not add
+line or body-shape predicates to their decisions.
+
+JuncItem generates its expression, calls epa, constructs the item and recursively
+checks expression descendants. Stop at nested conjunction/disjunction lists; throw
+the original message exception on the first child's beginning column that is not
+strictly to the right of the current junction alignment. Preserve actual child/
+item ranges, module name and residual frames. A source exception leaves context
+state intact. No invented persistent tests or changed fixtures/assertions.
+
+Add 24 scratch parser observations for ordinary/Unicode/nested/mixed junctions,
+missing/outdented items, valid and invalid closing-delimiter indentation and lists
+inside tuples. The first script edit fails on a raw string ending in backslash;
+its later invocation only reruns the old matrix and earns no new-case credit.
+Correct quoting with explicit bullet construction and fail-fast sequencing. Initial
+150-case comparison (40811 terminal 0) reports four mismatches, all the source's
+doubled space before disjunction in the exception. Fix production's exact message;
+do not normalize or weaken the comparison. All 150 final complete TRACE/results
+match (80920 terminal 0), log
+/mnt/oldrog/tmp/tlago-sany-junction-parser-final-audit.log.
+
+All 31 selected primitive/junction expression trees match kinds, images and ranges
+(88790 terminal 0), log /mnt/oldrog/tmp/tlago-junction-tree-final-audit.log. This adds
+14 valid junction trees to the previous 17 primitive observations. No whole-module
+canonical AST or complete parser fidelity claim. The upstream test tree contains
+no JunctionListContext-specific test class; existing original parser corpus checks
+remain unchanged. Scratch observations do not earn inventory credit.
+
+Normal verification: existing sany_tests 1.488 seconds (8895 terminal 0); existing
+parser/semantic/token/operator classes, original ParseErrorTests, five original TLC
+models and native reference/scaffold checks 16.820 seconds (2312 terminal 0).
+After the exception-text correction, repeat affected parser/error checks in 0.016
+seconds and all-package compilation without running tests (62500 terminal 0).
+Logs /mnt/oldrog/tmp/tlago-sany-junction-{sany,root,final-errors,final-compile}.log.
+The long model gates are not repeated for a message-spacing-only correction; final
+source comparisons exercise that actual error path. Full workspace green remains
+unproven. MSB 5144 is confirmed live with the same isolated binary, most recent
+logged progress 1,321,136,868/2,147,483,648. Preserve its original bounds and handle.
+
 2026-10-06 Primitive syntax leaves, delimiter failures and location aggregation:
 Previous turn completed e7f9af6. Continue source production reconciliation for
 String, Number, ParenExpr and TupleOrAction. String gains the actual String frame

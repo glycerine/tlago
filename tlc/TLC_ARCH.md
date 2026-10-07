@@ -112,11 +112,17 @@ uses Expression's actual one-token FIRST set and junction indentation predicate,
 then requires RAB or ARAB and ReducedExpression for an action subscript. Reflection
 of source jj_2_49(1) accepts 195 token kinds in the default indentation context.
 Junctions/JuncItem's actual production frames are retained before bullet consumption
-and after expression generation. Their remaining lookahead and recursive indentation
-behavior are separate reconciliation work. Generic expression operator nodes use
+and after expression generation. JunctionListContext stores list type and alignment;
+new bullets match type and column without an additional line predicate. Invalid
+start and empty termination preserve IllegalArgumentException/NoSuchElementException.
+Junctions terminates its context only on normal completion. checkIndentation visits
+descendants, skips nested conjunction/disjunction list subtrees, and throws on the
+first descendant not strictly right of the current alignment. JuncItem calls epa
+before this check, preserving the source residual stack and exact message (including
+its doubled space before disjunction). General JavaCC lookahead remains separate. Generic expression operator nodes use
 typed token leaves. SyntaxTreeNode.updateLocation's aggregation recomputes from
-both child arrays and preserves Java int extrema for an empty node. All 126 bounded
-complete parser-output observations and 17 selected primitive expression trees
+both child arrays and preserves Java int extrema for an empty node. All 150 bounded
+complete parser-output observations and 31 selected primitive/junction expression trees
 (kinds, images and ranges) match Java. These checks do not establish whole-module
 canonical AST or complete SyntaxTreeNode parity.
 
