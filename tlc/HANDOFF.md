@@ -1154,7 +1154,11 @@ merge rows and the retained module rows match Java. Module generation now retain
 those canonical merge diagnostics in direct extendee order; native scans only
 supply expression metadata. All 24,529 rows across 68 modules match Java,
 including 25 explicit diagnostic location/parameter rows and the complete earlier
-observations. Missing-extendee and missing-context abort handling remains pending.
+observations. Missing contexts on resolved extendees now log the source internal
+error and continue vector copies and body generation. Each repeated EXTENDS
+occurrence retains its own token position and UniqueString parameter. All 118
+comparison rows across 20 root/nested scenarios match Java. Missing-module
+resolution still requires the separate thrown-abort port and boundary audit.
 Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.

@@ -508,9 +508,15 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 	}
 	extendees := make([]*sanySemModuleNode, 0, len(mod.Extends))
-	for _, dep := range mod.Extends {
+	for depIndex, dep := range mod.Extends {
 		if extendee := mod.symbolTable.resolveModule(dep); extendee != nil {
-			_, mergeDiagnostics := mod.semanticNode.context.mergeExtendContext(extendee.context)
+			var mergeDiagnostics Diagnostics
+			if extendee.context != nil {
+				_, mergeDiagnostics = mod.semanticNode.context.mergeExtendContext(extendee.context)
+			} else {
+				position := sanyExtendeePosition(mod, depIndex)
+				mergeDiagnostics = Diagnostics{sanyRegistrationDiagnostic(position, "E4003", "Couldn't find context for module `%s'.", tlc.UniqueStringOf(dep))}
+			}
 			for i := range mergeDiagnostics {
 				if mergeDiagnostics[i].Code == "E4224" {
 					// Keep the native API's explanatory prefix; ErrorDetails use
@@ -2133,6 +2139,23 @@ func sanyExtendConflictForClasses(name string, incomingKind DeclarationKind, inc
 	diagnostic.SANYMessage = diagnostic.Message
 	diagnostic.SANYParameters = parameters
 	return diagnostic
+}
+
+func sanyExtendeePosition(module *Module, index int) Position {
+	if module.Syntax != nil {
+		heirs := module.Syntax.GetHeirs()
+		if len(heirs) > 1 && heirs[1] != nil {
+			for _, syntax := range heirs[1].GetHeirs() {
+				if syntax != nil && syntax.Kind.JavaName() == "IDENTIFIER" {
+					if index == 0 {
+						return sanyNodePosition(syntax)
+					}
+					index--
+				}
+			}
+		}
+	}
+	return module.Pos // Native implicit EXTENDS has no source token.
 }
 
 // Retain native expression metadata without duplicating Context's diagnostics.

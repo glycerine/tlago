@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-07 Recoverable missing EXTENDS context:
+Previous completed commit: c3201c9. Audit establishes an important distinction:
+Generator.processExtendsList throws when no ModuleNode resolves, but only logs
+INTERNAL_ERROR when the resolved module has no context. Port that recoverable
+path: exact E4003 message, source EXTENDS token and actual UniqueString parameter;
+continue vector copies, extendee-array construction and body generation.
+
+Manual Java/Go observation injects resolved external modules with absent/present
+contexts and populated vectors into 20 root/nested scenarios, with forward,
+reverse and repeated EXTENDS orders. Initial scratch 89383 failed: Java observer
+cast the private SANY Vector to java.util.Vector, and Go had an unused import.
+Correct the observers without changing scenarios. Observer 35224 returned 0,
+but comparison exposed four missing diagnostics because the new position helper
+selected the first occurrence of every repeated name. Fix the production helper
+to select by occurrence index; 31239 returned 0 and all 104 rows match. Expanded
+51583 returned 0; all 118 rows match, including actual UniqueString parameter
+types. Body UIDs, inherited vector counts, exact locations/messages/parameters
+and repeated error retention match. Scratch artifacts/receipts remain outside
+the repo under /mnt/oldrog/tmp/tlago-extends-context-*. No permanent new tests,
+weakened assertions or original-method completion credit added.
+
+Existing affected root/parser/context/proof/TLC-model gate passes 48.041s
+(84262 retired), full SANY passes 1.867s (88120 retired), and compile-all passes
+(75954 retired). All handles retired; git diff --check passes. Normal execution
+only, with no broad race or full-workspace pass claim. Missing-module resolution
+still requires its distinct thrown abort and exception-boundary audit; inherited
+levels, general selectors, visitors and evaluator sharing remain incomplete.
+New distributed service work remains deferred.
+
 2026-10-07 Canonical EXTENDS diagnostics in module generation:
 Previous completed commit: 594ec07. Retain the actual Context merge diagnostics
 in each direct extendee's source order before inherited vectors are copied.

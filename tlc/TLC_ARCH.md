@@ -1,5 +1,27 @@
 # TLC Architecture Notes for the Go Port
 
+## Missing EXTENDS context logs an error and continues
+
+`Generator.processExtendsList` distinguishes an absent ModuleNode from an absent
+context on a resolved module. For an absent context, log INTERNAL_ERROR 4003 with
+`Couldn't find context for module `%s'.` and the actual UniqueString parameter.
+Continue copying assumption, theorem and top-level vectors, then finish the
+extendee array and generate the body. Java returns an AbortException object from
+Errors.addMessage here but does not throw it. Go now preserves that control flow
+rather than invoking Context.mergeExtendContext with a null argument.
+
+Select the diagnostic position by the EXTENDS occurrence index. Repeated module
+names retain distinct token locations and therefore distinct ErrorDetails.
+Searching by name alone wrongly assigns every occurrence the first location and
+causes error deduplication to drop later diagnostics. Native implicit EXTENDS has
+no source token and retains the module position fallback.
+
+All 118 observed Java/Go rows match across 20 root/nested-module scenarios with
+missing or present contexts, forward/reverse/repeated EXTENDS, copied vectors,
+body node UIDs, locations, messages, parameters and actual UniqueString parameter
+types. No permanent tests or original-method completion credit added. Missing
+module resolution still needs its separate thrown-abort port and boundary audit.
+
 ## Module generation retains canonical EXTENDS diagnostics
 
 Each direct EXTENDS context merge contributes its canonical ErrorDetails to the
@@ -16,9 +38,9 @@ the earlier 47 and adding all constant/variable/operator/assertion conflict pair
 multiple conflicts in forward/reverse/repeated EXTENDS order, local definitions
 and shared original definitions. The 25 explicit diagnostic detail rows compare
 incoming locations and complete structured parameters. Existing assertions remain
-unchanged; no permanent tests or original-method credit added. Missing-extendee
-and missing-context aborts remain separate pending caller work, as do inherited
-level checks and evaluator graph sharing.
+unchanged; no permanent tests or original-method credit added. Missing-extendee aborts remain pending caller work, as do inherited level checks
+and evaluator graph sharing. Missing contexts log an error and continue, as
+described below.
 
 ## EXTENDS Context merge uses actual node classes and names
 
@@ -105,8 +127,8 @@ pairs per scenario. Cover live-context mutation after declaration caches freeze,
 fresh modules sharing that context, same/different source pointers, one-hop
 source chains, different definition names/kinds, theorem versus operator classes,
 declarations, modules and nulls. Existing Context and SymbolTable callers use the
-same helper. No permanent tests or original-method credit added. Missing-extendee aborts, inherited levels, visitors and evaluator sharing remain
-pending.
+same helper. No permanent tests or original-method credit added. Missing-extendee
+aborts, inherited levels, visitors and evaluator sharing remain pending.
 
 ## EXTENDS vectors and cached extension sets
 
