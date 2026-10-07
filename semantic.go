@@ -882,7 +882,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				if source := sanyGenerationSource(expr); source != nil {
 					source.semanticGraph = nil
 				}
-				diags = append(diags, checkAssumeProveBindings(assumption.AssumeProveBody, expressionContexts.at(assumption.Syntax, defined), nil, expressionGeneration)...)
+				diags = append(diags, expressionGeneration.checkAssumeProveBody(assumption.AssumeProveBody, expressionContexts.at(assumption.Syntax, defined), nil, assumption.Name != "")...)
 			} else {
 				diags = append(diags, checkExpr(expr, expressionContexts.at(assumption.Syntax, defined), nil)...)
 			}
@@ -927,7 +927,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				if source := sanyGenerationSource(expr); source != nil {
 					source.semanticGraph = nil
 				}
-				diags = append(diags, checkAssumeProveBindings(theorem.AssumeProveBody, expressionContexts.at(theorem.Syntax, defined), nil, expressionGeneration)...)
+				diags = append(diags, expressionGeneration.checkAssumeProveBody(theorem.AssumeProveBody, expressionContexts.at(theorem.Syntax, defined), nil, theorem.Name != "")...)
 			} else {
 				diags = append(diags, checkExpr(expr, expressionContexts.at(theorem.Syntax, defined), nil)...)
 			}
@@ -977,7 +977,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		defArities := definitionBodyArities(arities, def)
 		bodyContext := expressionContexts.at(def.Syntax, defined)
 		if def.AssumeProve && def.AssumeProveBody != nil {
-			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, bodyContext, locals, expressionGeneration)...)
+			diags = append(diags, expressionGeneration.checkAssumeProveBody(def.AssumeProveBody, bodyContext, locals, true)...)
 		} else if def.FunctionDef {
 			diags = append(diags, expressionGeneration.prepareNamedFunctionDefinition(definition)...)
 			def.semanticNode = definition.semanticNode
@@ -1115,6 +1115,12 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		for _, proof := range unit.proofs {
 			generateProof(proof)
 		}
+		if unit.theorem != nil && unit.theorem.AssumeProveBody != nil && unit.theorem.AssumeProveBody.semanticNode != nil {
+			unit.theorem.AssumeProveBody.semanticNode.inProof = false
+		}
+		if unit.definition != nil && unit.definition.TheoremLike && unit.definition.AssumeProveBody != nil && unit.definition.AssumeProveBody.semanticNode != nil {
+			unit.definition.AssumeProveBody.semanticNode.inProof = false
+		}
 	}
 	// checkForUndefinedRecursiveOps visits the declaration vector, not a map.
 	if checks.recursiveGeneration.count > 0 {
@@ -1146,12 +1152,72 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 		return nil
 	}
 	var diags Diagnostics
+	if len(generators) == 0 || generators[0] == nil {
+		apLocals := copyBoolMap(locals)
+		for _, item := range body.Assumptions {
+			switch {
+			case item.NewSymbol != nil:
+				symbol := item.NewSymbol
+				diags = append(diags, checkBindingName("NEW symbol", symbol.Name, symbol.Pos, defined, apLocals)...)
+				if symbol.Domain != nil {
+					diags = append(diags, checkExpr(symbol.Domain, defined, apLocals)...)
+				}
+				apLocals[symbol.Name] = true
+			case item.Nested != nil:
+				diags = append(diags, checkAssumeProveBindings(item.Nested, defined, apLocals)...)
+			case item.Expr != nil:
+				diags = append(diags, checkExpr(item.Expr, defined, apLocals)...)
+			}
+		}
+		if body.Prove != nil {
+			diags = append(diags, checkExpr(body.Prove, defined, apLocals)...)
+		}
+		return diags
+	}
 	var generation *sanyExpressionGeneration
+	body.semanticNode = nil
+	node := newSanySemAssumeProveNode(body.Syntax, nil)
+	node.assumes = make([]sanySemanticGraphNode, len(body.Assumptions))
+	node.inScopeOfDecl = make([]bool, len(body.Assumptions)+1)
+	if body.Syntax != nil {
+		heirs := body.Syntax.GetHeirs()
+		if len(heirs)%2 != 0 {
+			panic(tlc.NewWrongInvocationException("AssumeProve has odd number of children"))
+		}
+		if len(heirs) > 0 {
+			node.isBoxAssumeProve = heirs[0].Image == "[]ASSUME"
+			if len(heirs) > 1 {
+				prove := heirs[len(heirs)-2].Image
+				message := ""
+				if node.isBoxAssumeProve && prove != "[]PROVE" {
+					message = "[]ASSUME matched by PROVE instead of []PROVE"
+				}
+				if !node.isBoxAssumeProve && prove != "PROVE" {
+					message = "ASSUME matched by []PROVE instead of PROVE"
+				}
+				if message != "" {
+					diagnostic := errorAt(sanyNodePosition(heirs[0]), "E4005", "%s", message)
+					diagnostic.SANYMessage = message
+					diagnostic.SANYRange = heirs[0].Range
+					diags = append(diags, diagnostic)
+				}
+			}
+		}
+	}
+	complete := true
 	if len(generators) != 0 && generators[0] != nil {
 		generation = generators[0]
 		previousLabelsEnabled := generation.labelsEnabled
 		previousAPForbidden := generation.labelAPForbidden
 		generation.labelAPDepth++
+		previousGoalUnsupported := generation.labelGoalUnsupported
+		if generation.labelAPDepth == 1 && generation.apGoalUnavailable {
+			generation.labelGoalUnsupported = true
+		}
+		defer func() { generation.labelGoalUnsupported = previousGoalUnsupported }()
+		if generation.labelAPDepth == 1 {
+			generation.currentGoalClause = 0
+		}
 		defer func() {
 			generation.labelAPDepth--
 			generation.labelAPForbidden = previousAPForbidden
@@ -1165,6 +1231,21 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 		}
 		defer func() { generation.symbols = previous }()
 		defer generation.pushFormalContext(0)()
+		if generation.nodes != nil {
+			table := generation.formalSymbolTable()
+			if node.isBoxAssumeProve {
+				if table.resolveSymbol("$$InAssume") != nil && body.Syntax != nil {
+					token := body.Syntax.GetHeirs()[0]
+					message := "[]ASSUME used within the scope of an ordinary ASSUME's assumptions"
+					diagnostic := errorAt(sanyNodePosition(token), "E4005", "%s", message)
+					diagnostic.SANYMessage = message
+					diagnostic.SANYRange = token.Range
+					diags = append(diags, diagnostic)
+				}
+			} else if table.resolveSymbol("$$InAssume") == nil {
+				diags = append(diags, table.addSymbol(generation.nodes.inAssumeDummy)...)
+			}
+		}
 	}
 	generate := func(expr Expr, locals map[string]bool) Diagnostics {
 		if len(generators) != 0 && generators[0] != nil {
@@ -1173,7 +1254,8 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 		return checkExpr(expr, defined, locals)
 	}
 	apLocals := copyBoolMap(locals)
-	for _, item := range body.Assumptions {
+	for i, item := range body.Assumptions {
+		node.inScopeOfDecl[i+1] = node.inScopeOfDecl[i]
 		switch {
 		case item.NewSymbol != nil:
 			sym := item.NewSymbol
@@ -1185,18 +1267,35 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 					diags = append(diags, generate(sym.Domain, apLocals)...)
 				}
 			}
+			if sym.semanticNode != nil {
+				node.assumes[i] = sym.semanticNode
+			}
+			node.inScopeOfDecl[i+1] = true
 			apLocals[sym.Name] = true
 			if generation != nil && generation.labelAPDepth > 1 {
 				generation.labelAPForbidden = true
 			}
 		case item.Nested != nil:
 			diags = append(diags, checkAssumeProveBindings(item.Nested, defined, apLocals, generators...)...)
+			if item.Nested.semanticNode != nil {
+				node.assumes[i] = item.Nested.semanticNode
+			}
 		case item.Expr != nil:
 			diags = append(diags, generate(item.Expr, apLocals)...)
+			node.assumes[i] = sanyGeneratedExpressionNode(item.Expr)
+		}
+		complete = complete && (node.assumes[i] != nil || (item.Expr != nil && sanyExpressionGenerationFailure(item.Expr) == sanyGenerationNullExpression))
+		if generation != nil && generation.labelAPDepth == 1 {
+			generation.currentGoalClause++
 		}
 	}
 	if body.Prove != nil {
 		diags = append(diags, generate(body.Prove, apLocals)...)
+		node.prove = sanyGeneratedExpressionNode(body.Prove)
+		complete = complete && (node.prove != nil || sanyExpressionGenerationFailure(body.Prove) == sanyGenerationNullExpression)
+	}
+	if generation != nil && complete && !(generation.labelAPDepth == 1 && generation.apGoalUnavailable) {
+		body.semanticNode = node
 	}
 	return diags
 }

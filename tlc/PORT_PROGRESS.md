@@ -1,5 +1,54 @@
 # TLC Port Progress
 
+2026-10-07 Unnamed AP graph construction, scope flags and marker errors:
+Previous completed commit: d4bf7af. Retain AP syntax and allocate its node before
+assumptions/prove. Preserve actual mutable assumption arrays and prove pointers,
+boxed and Suffices defaults, constructor inProof state and direct declaration
+scope flags. Carry each prior scope entry forward; only direct NEW sets the next
+entry true. Restore nested declaration contexts. Ordinary AP registers the actual
+class-wide $$InAssume marker in its temporary table; boxed AP tests that binding.
+The current clause resets at outer AP entry and increments after each outer
+assumption only. Subsequent ordinary labels retain the current clause.
+
+Source comparison exposed missing generation errors for three boxed cases:
+[]ASSUME/PROVE mismatch, ASSUME/[]PROVE mismatch and boxed AP inside ordinary
+assumptions. Implement source E4005 at the first token's range before body
+construction. The comparison also exposed the outer theorem's inProof transition:
+constructor true is retained during generation/proof, then false after its proof;
+inner AP nodes retain true. Do not mark named outer AP graph-complete without its
+actual goal node. Labels requiring that unported goal retain the native path;
+missing child graphs also keep the owner incomplete. Native-only checking does
+not allocate replacement semantic nodes.
+
+All 227 complete rows match Java across 20 whole-module unnamed AP cases: 225
+prefixed observations (110 graph nodes, 26 AP metadata/scope arrays, 26 child-array
+identity checks, 20 subsequent-label clause/goal checks, 20 cases, 13 null domains
+and ten diagnostics). Cases cover plain/boxed/nested AP, all relevant NEW scope
+boundaries, declared higher-arity use, repeated/conflicting declarations, failed
+domains/expressions and boxed delimiter/marker failures. Verify clause lifetime
+through a following ordinary L::1 definition; its full module/TheoremNode UID
+ownership is not claimed. getChildren retains assumptions-then-prove identity;
+getAssumes aliases its original array. All observers remain outside the repository.
+
+Complete frontend codes, ranges and messages match for all 20 AP cases. Existing
+AP phases 29 and substitutions 30 agree (23988); quantifier 11, named-function 15,
+proof 17 and CHOOSE 13 diagnostics also agree (9974). Existing focused root/SANY/
+TLC gate passes in 44.031s (60967), full sany_tests in 1.627s and compile-all
+succeeds (42177). Initial graph comparison/fix receipt 46898 and final graph/
+post-AP clause comparison 8235 are terminal zero. All listed handles are retired.
+Receipts are under /mnt/oldrog/tmp/tlago-ap-graph-*, including original/final graph
+logs, root JSON, compile log, full diagnostics and phase/formal logs. No race
+workload, permanent test, fixture change or weakened assertion was introduced.
+
+Remaining: named theorem/assumption/proof-step goal constructors and ownership,
+full proof marker/context and clause lifetime, labeled AP and Suffices integration,
+inherited AP/NEW/label/AtNode level data/checking, visitors, imported/qualified/
+INSTANCE/fact identities, shared error/exception ownership and evaluator reuse.
+The already mapped original semantic/error corpus methods retain their existing
+coverage; native level/reference helpers still require canonical replacement.
+basicOpDefTest remains reconcile. No original-method, TLC inventory or full-
+workspace completion credit is added.
+
 2026-10-07 NEW declaration/wrapper construction and selected bindings:
 Previous completed commit: 37b4e77. Retain actual NEW wrapper and declaration
 syntax in the native AST. Port generateNewSymb order: generate the optional

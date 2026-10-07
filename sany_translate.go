@@ -2334,7 +2334,7 @@ func assumeProveExpr(body *AssumeProve, pos Position) Expr {
 }
 
 func sanyAssumeProveBody(node *SanySyntaxNode) (*AssumeProve, Diagnostics) {
-	body := &AssumeProve{Pos: sanyNodePosition(node)}
+	body := &AssumeProve{Pos: sanyNodePosition(node), Syntax: node}
 	var diags Diagnostics
 	inProve := false
 	for _, child := range node.GetHeirs() {

@@ -120,8 +120,8 @@ func (g *sanyExpressionGeneration) generateLabel(label *LabelExpr, context map[s
 		body = sanyGeneratedExpressionNode(label.Body)
 	}
 	// Canonical AP/goal nodes are handled separately; this path constructs
-	// ordinary expression labels with the source's initial goal/clause values.
-	node := newSanySemLabelNode(label.Syntax, label.Name, label.formalNodes, nil, 0, body, false)
+	// ordinary expression labels with the source's current clause, with goal ownership still pending.
+	node := newSanySemLabelNode(label.Syntax, label.Name, label.formalNodes, nil, g.currentGoalClause, body, false)
 	node.setLabels(bodyLabels)
 	if body != nil || sanyExpressionGenerationFailure(label.Body) == sanyGenerationNullExpression {
 		label.semanticGraph = node

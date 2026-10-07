@@ -23,6 +23,8 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
+	apGoalUnavailable    bool
+	currentGoalClause    int
 	excepts              []*sanySemOpApplNode
 	exceptSpecs          []*sanySemOpApplNode
 	labelsEnabled        bool

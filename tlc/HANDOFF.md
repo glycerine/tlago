@@ -1036,10 +1036,19 @@ now reject during generation and preserve actual nullOAN in enclosing graphs.
 The 25 bounded generateNewSymb cases match all 234 output rows and their complete
 frontend diagnostics. Existing root/TLC, SANY and compile checks pass; the 56
 formal and 59 AP phase/substitution comparisons still match. Surrounding canonical
-AP allocation and NEW level/visitor/evaluator integration remain pending.
+named AP ownership and NEW level/visitor/evaluator integration remain pending.
 
-Canonical AP/goal/marker ownership, goal-clause lifetime after AP, LabelNode
-level checking and visitors, AtNode level data and full inherited checks remain
+Unnamed AP bodies now retain their actual node, assumption/prove pointers,
+declaration-scope array, boxed flag and source proof-state transition. Ordinary
+AP registers the actual shared marker; delimiter mismatches and boxed AP inside
+ordinary assumptions now report source E4005 during generation. Clause tracking
+matches ordinary labels following these AP bodies. All 20 cases match their 227
+complete graph/metadata rows and frontend diagnostics. Existing focused root/TLC,
+full sany_tests, compile-all and AP/formal comparisons pass. Receipts belong in
+PORT_PROGRESS.md.
+
+Named theorem/assumption and proof-step goal ownership, full proof marker/context
+and clause lifetime, labeled AP, Suffices integration, LabelNode level checking and visitors, AtNode level data and full inherited checks remain
 unfinished. Qualified selectors, INSTANCE/fact and imported identities, recursive
 level iteration, shared Errors/exception integration and evaluator graph sharing
 also remain pending. Proof/AP contexts keep the existing native fallback until
@@ -1048,7 +1057,7 @@ graph parity nor a new full-workspace pass.
 
 The earlier 70-formal construction prefix and hash matched Java without offsets;
 complete allocation order across all graphs remains pending. Next semantic work:
-complete canonical AP/NEW/goal and marker scope integration, remaining label
+complete named AP/goal and proof marker scope integration, remaining label
 operations and qualified selector identities, then level checking and evaluator
 sharing. Receipts are in PORT_PROGRESS.md.
 

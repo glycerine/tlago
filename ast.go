@@ -213,9 +213,11 @@ type ProofStep struct {
 }
 
 type AssumeProve struct {
-	Assumptions []AssumeProveItem
-	Prove       Expr
-	Pos         Position
+	semanticNode *sanySemAssumeProveNode
+	Syntax       *SanySyntaxNode
+	Assumptions  []AssumeProveItem
+	Prove        Expr
+	Pos          Position
 }
 
 type AssumeProveItem struct {

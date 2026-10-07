@@ -1,5 +1,31 @@
 # TLC Architecture Notes for the Go Port
 
+## Unnamed ASSUME/PROVE bodies and scope metadata
+
+Allocate AssumeProveNode before assumptions and PROVE. Retain source syntax,
+mutable assumption arrays and the actual prove child. inScopeOfDecl has one more
+entry than assumptions: carry the previous entry forward, setting the next entry
+true only for a direct NEW clause. Nested NEW declarations do not change their
+parent's direct declaration scope. Nested AP nodes retain null goals and their
+constructor inProof=true; the outer theorem's AP changes to false after its proof.
+getAssumes aliases its array; getChildren constructs an assumptions-then-prove
+array and preserves each child pointer.
+
+Match boxed ASSUME/PROVE delimiters during generation. Ordinary AP registers the
+Generator class-wide actual $$InAssume declaration in its temporary SymbolTable
+context; boxed AP checks that binding and reports source E4005 when inside ordinary
+assumptions. Restore nested declaration contexts after generation. The current
+clause resets at outer AP entry and advances after each outer assumption only;
+ordinary labels following these AP bodies retain that clause rather than zero.
+
+Named theorem/assumption and proof-step goal nodes are still unported. Their
+outer AP is not marked graph-complete, and labels requiring those actual goals
+retain the native path. Missing children also leave the owner incomplete. Full
+proof marker/context lifetime, clause lifetime through proof APs, labeled AP,
+Suffices integration, inherited level data/checking, visitors and evaluator graph
+reuse remain pending. The bounded graph comparisons cover unnamed AP bodies and
+post-AP label clause metadata, not complete theorem/module graph ownership.
+
 ## NEW declaration construction and binding identity
 
 NEW retains its wrapper syntax and its declaration's own syntax. Generate the
@@ -23,8 +49,8 @@ allocation order. Operator operands and call-name resolution keep separate paths
 
 The bounded comparisons invoke Java's actual generateNewSymb in a prepared
 module context. They establish this method's construction order and references,
-not full surrounding AP/goal/marker allocation or NEW level checking. Canonical
-AP owners, clause lifetime, NEW inherited level data/visitors, imported identity
+not complete named AP/goal/proof-marker allocation or NEW level checking. Named
+owners, proof clause lifetime, NEW inherited level data/visitors, imported identity
 integration and evaluator sharing still require implementation.
 
 ## EXCEPT construction and AtNode reference ownership
