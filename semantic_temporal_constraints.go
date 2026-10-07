@@ -29,23 +29,41 @@ func (a *sanyLeibnizAnalyzer) levelInContext(expr Expr, context *sanyLeibnizCont
 // to ActionLevel. AssumeNode exposes its expression constraints through its
 // getter, rather than the separate constraints written on AssumeNode itself.
 func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tlaLevel {
+	names, use := moduleSubstitutionConstraints(module, spec)
 	constraints := map[string]tlaLevel{}
-	if module == nil || spec == nil || isEmbeddedStandardModule(module) {
-		return constraints
-	}
-	var names []string
-	for name, target := range moduleSubstitutionTargets(module, spec) {
-		if target.Kind == ConstantDecl {
-			names = append(names, name)
+	for id, maximum := range use.constraints {
+		if id < len(names) {
+			constraints[names[id]] = maximum
 		}
 	}
+	return constraints
+}
+
+func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLeibnizUse) {
+	var constraints sanyLeibnizUse
+	if module == nil || spec == nil || isEmbeddedStandardModule(module) {
+		return nil, constraints
+	}
+	var names []string
+	targets := moduleSubstitutionTargets(module, spec)
+	for name := range targets {
+		names = append(names, name)
+	}
 	if len(names) == 0 {
-		return constraints
+		return nil, constraints
 	}
 	sort.Strings(names)
 	ctx := &sanyLeibnizContext{module: module, variables: map[string]sanyLeibnizBinding{}, formals: map[string]sanyLeibnizBinding{}}
 	for id, name := range names {
-		ctx.variables[name] = sanyLeibnizBinding{use: sanyLeibnizUse{all: map[int]bool{id: true}, levelParams: map[int]bool{id: true}}}
+		binding := sanyLeibnizBinding{use: sanyLeibnizUse{all: map[int]bool{id: true}, levelParams: map[int]bool{id: true}}}
+		if targets[name].Kind == VariableDecl {
+			binding.use.level = variableLevel
+		}
+		if targets[name].Arity > 0 {
+			symbolID := id
+			binding.operatorID = &symbolID
+		}
+		ctx.variables[name] = binding
 	}
 	a := newSanyLeibnizAnalyzer(spec)
 	add := func(evaluate func() sanyLeibnizUse, temporal bool) {
@@ -66,14 +84,7 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 				use.constrainID(id, actionLevel)
 			}
 		}
-		for id, maximum := range use.constraints {
-			if id < len(names) {
-				name := names[id]
-				if previous, exists := constraints[name]; !exists || maximum < previous {
-					constraints[name] = maximum
-				}
-			}
-		}
+		constraints.merge(use)
 	}
 	var expression func(Expr, *sanyLeibnizContext)
 	var definition func(*Definition, *sanyLeibnizContext)
@@ -138,6 +149,8 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 		for _, theorem := range current.Theorems {
 			if theorem.AssumeProveBody != nil {
 				add(func() sanyLeibnizUse { return a.assumeProveDependencies(theorem.AssumeProveBody, context) }, true)
+			} else {
+				expression(theorem.Expr, context)
 			}
 		}
 		for _, proof := range current.Proofs {
@@ -164,7 +177,7 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 		}
 	}
 	collect(module, ctx)
-	return constraints
+	return names, constraints
 }
 
 func (a *sanyLeibnizAnalyzer) assumeProveDependencies(body *AssumeProve, context *sanyLeibnizContext) sanyLeibnizUse {

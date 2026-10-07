@@ -861,11 +861,20 @@ LET level comparisons match Java; existing focused root checks, Test206–220,
 seven original models, complete SANY and compilation pass normally. The existing
 native level-message assertion now checks Java's exact messages and ranges,
 with its fixture unchanged. No full-workspace pass or inventory credit is added.
-Next finish general module argLevelConstraints/argLevelParams propagation and
-retained InstanceNode/LetInNode graphs. Direct-expression constraint scans remain
-incomplete for indirect applications and shadowing; do not treat the green
-comparison batch as complete LevelNode parity. Then complete ordinary canonical
-operator graphs.
+Module argument constraints now propagate through the symbolic definition
+analysis, including user-defined substitutions, indirect arguments, higher-order
+forwarding and theorem expressions. The builtin-only argument scan is removed.
+All 24 additional paired module/LET comparisons and the previous 24 level cases
+match complete Java diagnostics; focused root checks, original related models,
+complete SANY and compilation pass normally. The existing TestInstanceNode check
+now retains the original exact error count, code and [1, 3] parameters. Its separate
+semantic-generation and level-check phase assertions still need the original
+frontend phase APIs, so no whole-method credit is claimed.
+Next replace the remaining direct co-parameter scan with propagated argLevelParams,
+including Java collection order, then finish retained InstanceNode/LetInNode and
+ordinary canonical operator graphs. General imported graph identity, formal-operator
+metadata and evaluator sharing remain pending. The green comparisons do not prove
+complete LevelNode parity.
 Full registration against operator/theorem graphs, qualified declaration selectors,
 other imported graph identities, ordered module definitions and complete canonical
 node sharing with the evaluator remain pending.

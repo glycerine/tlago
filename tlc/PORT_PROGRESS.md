@@ -1,5 +1,40 @@
 # TLC Port Progress
 
+2026-10-07 Propagated INSTANCE argument level requirements:
+Previous completed commit: 862970d. Initial 16-case comparison 84780 returns 1:
+four user-defined/indirect substitution diagnostics are missing; a formal collision
+has the wrong source range/message. Replace the builtin-only syntax checker with
+ParamAndPosition requirements carried in symbolic expression and definition
+summaries. Combine argument requirements by maximum, ordinary constraints by
+minimum; retain operator identities and translate scalar formal dependencies to
+their actual levels/parameters at definition application. Include ordinary theorem
+expressions in module constraints. Remove the now-unused builtin-only walkers.
+Formal collisions retain the actual parameter range and Java registration message.
+
+Corrected expanded 22-case comparison 2443 returns 0. Final 24-case comparison
+includes theorem expressions and returns 0 (7722); the previous 24 module/LET level
+cases also match. Logs /mnt/oldrog/tmp/tlago-arg-level-final-{comparison,previous}.log.
+All compared codes, counts, ranges, messages and order match; scratch helpers and
+vectors remain outside the repository and earn no inventory credit.
+
+Initial complete SANY 38557 returns 1 in 1.574 seconds: the approximate existing
+TestInstanceNode assertion expected the substituted target name F. The source
+4246 diagnostic reports actual operator =. Translate the original exact single
+error, code-filtered count and [1, 3] parameter assertions instead of that approximate
+string check. Preserve its complete original module source. Separate successful
+semantic-generation and failed-level-check phase assertions remain pending original
+frontend APIs; no whole-method or TLC inventory credit is claimed.
+
+Final focused root plus seven unchanged original model methods pass normally in
+29.052 seconds (30866); complete SANY passes 1.572 seconds (92461); all-package
+compilation passes (75530). Root log /mnt/oldrog/tmp/tlago-arg-level-final-root.log.
+Earlier focused root 54039 passes 8.903 seconds; corrected SANY 31448 passes 2.020
+seconds before the final theorem addition. All handles are terminal and retired.
+No new full-workspace pass is established. Next replace the remaining direct
+co-parameter scan with propagated argLevelParams and faithful collection order,
+then finish canonical INSTANCE/LET/operator graphs and evaluator sharing.
+New distributed service remains postponed.
+
 2026-10-07 Retained INSTANCE substitutions and LET instance level checks:
 Previous completed commit: 1be121e. Initial eight-case Java/Go comparison 32984
 returns 1: seven cases falsely succeed in Go. Retain generated defaults and WITH

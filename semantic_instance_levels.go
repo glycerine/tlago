@@ -51,13 +51,33 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance I
 			diags = append(diags, sanyDiagnosticParameters(sanyRegistrationDiagnostic(instance.SourcePosition(), "E4244", "%s", message), instance.Module, name))
 		}
 	}
-	constraints := moduleTemporalConstantConstraints(target, spec)
+	names, moduleUse := moduleSubstitutionConstraints(target, spec)
+	ids := map[string]int{}
+	constraints := map[string]tlaLevel{}
+	for id, name := range names {
+		ids[name] = id
+		if maximum, exists := moduleUse.constraints[id]; exists {
+			constraints[name] = maximum
+		}
+	}
 	for _, substitution := range instance.generatedSubstitutions {
 		name, expr := substitution.name, substitution.expr
 		if maximum, constrained := constraints[name]; valid[name] && constrained && checker.level(expr, parameterNames) > maximum {
 			diags = append(diags, levelDiagnostic(name, maximum))
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, instance.SourcePosition(), declKinds)...)
+		if substitution.target.Arity > 0 && valid[name] {
+			maxima := c.dependencies.applicationMaximums(expr, nil, substitution.target.Arity, context)
+			operatorName := name
+			if ident, ok := expr.(*IdentExpr); ok {
+				operatorName = ident.Name
+			}
+			for i, maximum := range maxima {
+				if minimum, exists := moduleUse.argConstraints[sanyArgumentPosition{ids[name], i}]; exists && maximum < minimum {
+					message := fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the argument %d of the operator %s \nmust be at least %d.", instance.Module, i+1, operatorName, minimum)
+					diags = append(diags, sanyDiagnosticParameters(sanyRegistrationDiagnostic(instance.SourcePosition(), "E4246", "%s", message), instance.Module, i+1, operatorName, int(minimum)))
+				}
+			}
+		}
 		diags = append(diags, checkPrimedConstants(expr, declKinds, parameterNames)...)
 	}
 	diags = append(diags, checker.checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutions, instance.SourcePosition(), declKinds)...)

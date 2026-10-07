@@ -11,14 +11,40 @@ import (
 // Keep those dependencies separate from the occurrence of a prime anywhere in
 // the expression: priming a free state variable does not prime an argument.
 type sanyLeibnizUse struct {
-	all         map[int]bool
-	non         map[int]bool
-	levelParams map[int]bool
-	level       tlaLevel
-	constraints map[int]tlaLevel
+	all            map[int]bool
+	non            map[int]bool
+	levelParams    map[int]bool
+	level          tlaLevel
+	constraints    map[int]tlaLevel
+	argConstraints map[sanyArgumentPosition]tlaLevel
+	argParams      map[sanyArgumentParameter]bool
 }
 
+// ParamAndPosition and ArgLevelParam use symbolic declaration/formal identity.
+type sanyArgumentPosition struct{ operator, position int }
+type sanyArgumentParameter struct{ operator, position, parameter int }
+
+func (u *sanyLeibnizUse) requireArgument(key sanyArgumentPosition, level tlaLevel) {
+	if u.argConstraints == nil {
+		u.argConstraints = map[sanyArgumentPosition]tlaLevel{}
+	}
+	if previous, exists := u.argConstraints[key]; !exists || level > previous {
+		u.argConstraints[key] = level
+	}
+}
+func (u *sanyLeibnizUse) addArgumentParameter(key sanyArgumentParameter) {
+	if u.argParams == nil {
+		u.argParams = map[sanyArgumentParameter]bool{}
+	}
+	u.argParams[key] = true
+}
 func (u *sanyLeibnizUse) merge(v sanyLeibnizUse) {
+	for key, level := range v.argConstraints {
+		u.requireArgument(key, level)
+	}
+	for key := range v.argParams {
+		u.addArgumentParameter(key)
+	}
 	u.level = maxTlaLevel(u.level, v.level)
 	if u.all == nil {
 		u.all = map[int]bool{}
@@ -84,9 +110,10 @@ func (u *sanyLeibnizUse) restrict() {
 }
 
 type sanyLeibnizBinding struct {
-	expr    Expr
-	context *sanyLeibnizContext
-	use     sanyLeibnizUse
+	operatorID *int
+	expr       Expr
+	context    *sanyLeibnizContext
+	use        sanyLeibnizUse
 }
 type sanyLeibnizLocal struct {
 	recursive bool
@@ -205,6 +232,15 @@ func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBindin
 			} else {
 				use.merge(binding.use)
 				use.mergeLevelParams(a.argumentUses(arguments))
+				if binding.operatorID != nil {
+					for i, argument := range arguments {
+						operand := a.binding(argument)
+						use.requireArgument(sanyArgumentPosition{*binding.operatorID, i}, operand.level)
+						for parameter := range operand.levelParams {
+							use.addArgumentParameter(sanyArgumentParameter{*binding.operatorID, i, parameter})
+						}
+					}
+				}
 			}
 			return use
 		}
@@ -215,6 +251,15 @@ func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBindin
 			} else {
 				use.merge(binding.use)
 				use.mergeLevelParams(a.argumentUses(arguments))
+				if binding.operatorID != nil {
+					for i, argument := range arguments {
+						operand := a.binding(argument)
+						use.requireArgument(sanyArgumentPosition{*binding.operatorID, i}, operand.level)
+						for parameter := range operand.levelParams {
+							use.addArgumentParameter(sanyArgumentParameter{*binding.operatorID, i, parameter})
+						}
+					}
+				}
 			}
 			return use
 		}
@@ -454,6 +499,18 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 			}
 		}
 	}
+	for key, level := range use.argConstraints {
+		if previous, exists := signature.free.argConstraints[key]; !exists || level > previous {
+			signature.free.requireArgument(key, level)
+			a.changed = true
+		}
+	}
+	for key := range use.argParams {
+		if !signature.free.argParams[key] {
+			signature.free.addArgumentParameter(key)
+			a.changed = true
+		}
+	}
 	return a.signatureUse(signature, actuals)
 }
 func copySanyLeibnizBindings(source map[string]sanyLeibnizBinding) map[string]sanyLeibnizBinding {
@@ -644,7 +701,44 @@ func (a *sanyLeibnizAnalyzer) signatureUse(signature *sanyLeibnizSignature, argu
 	use := a.argumentUses(arguments)
 	use.levelParams = nil
 	use.level = constantLevel
-	use.merge(signature.free)
+	free := signature.free
+	free.argConstraints, free.argParams = nil, nil
+	use.merge(free)
+	own := map[int]int{}
+	for i, id := range signature.ids {
+		own[id] = i
+	}
+	resolveOperator := func(id int) (int, bool) {
+		if i, bound := own[id]; bound {
+			if i < len(arguments) && arguments[i].operatorID != nil {
+				return *arguments[i].operatorID, true
+			}
+			return 0, false
+		}
+		return id, true
+	}
+	for key, level := range signature.free.argConstraints {
+		if operator, exists := resolveOperator(key.operator); exists {
+			use.requireArgument(sanyArgumentPosition{operator, key.position}, level)
+		}
+	}
+	for key := range signature.free.argParams {
+		operator, exists := resolveOperator(key.operator)
+		if !exists {
+			continue
+		}
+		if i, bound := own[key.parameter]; bound {
+			if i < len(arguments) {
+				actual := a.binding(arguments[i])
+				use.requireArgument(sanyArgumentPosition{operator, key.position}, actual.level)
+				for parameter := range actual.levelParams {
+					use.addArgumentParameter(sanyArgumentParameter{operator, key.position, parameter})
+				}
+			}
+		} else {
+			use.addArgumentParameter(sanyArgumentParameter{operator, key.position, key.parameter})
+		}
+	}
 	for i, argument := range arguments {
 		if i < len(signature.maxLevels) {
 			use.constrain(a.binding(argument).levelParams, signature.maxLevels[i])
@@ -666,7 +760,13 @@ func (a *sanyLeibnizAnalyzer) signatureUse(signature *sanyLeibnizSignature, argu
 // Follow formal aliases to the actual operator. The finite source operator/body
 // identities keep recursive operator-argument summaries distinct from scalars.
 func (a *sanyLeibnizAnalyzer) operatorIdentity(binding sanyLeibnizBinding) string {
+	if binding.operatorID != nil {
+		return fmt.Sprintf("symbol:%d", *binding.operatorID)
+	}
 	for binding.expr != nil {
+		if binding.operatorID != nil {
+			return fmt.Sprintf("symbol:%d", *binding.operatorID)
+		}
 		if id, ok := binding.expr.(*IdentExpr); ok && binding.context != nil {
 			if next, ok := binding.context.formals[id.Name]; ok {
 				binding = next
@@ -679,6 +779,9 @@ func (a *sanyLeibnizAnalyzer) operatorIdentity(binding sanyLeibnizBinding) strin
 			return binding.context.module.Name + "!" + id.Name
 		}
 		return fmt.Sprintf("%p", binding.expr)
+	}
+	if binding.operatorID != nil {
+		return fmt.Sprintf("symbol:%d", *binding.operatorID)
 	}
 	return "formal"
 }

@@ -68,9 +68,23 @@ ActionLevel bound, while ASSUME C = {} exports equality's argument maximum.
 ASSUME/PROVE retains its additional temporal bounds. Module constraint collection
 combines actual expression bounds and these temporal bounds by minimum.
 All 24 module/LET comparisons match complete source diagnostics. Complete
-InstanceNode/LetInNode graphs and general module argLevelConstraints/argLevelParams
-propagation remain pending; direct-expression scans still cannot replace the
-source constraint graph for indirect applications and lexical shadowing.
+InstanceNode/LetInNode graphs remain pending. Argument level requirements now
+travel with symbolic expression/definition summaries: ParamAndPosition requirements
+combine by maximum, while ordinary level constraints combine by minimum. Declared
+operators contribute each operand's intrinsic level and ArgLevelParam relationships.
+Definition application replaces a formal scalar dependency with the actual
+argument's level/dependencies, retaining separate operator identities for
+higher-order specialization. INSTANCE compares each required minimum with the
+actual operator's calculated maximum, using resolved substitution-array order and
+ascending argument positions. It reports the substituted operator name, one-based
+position and required level as Java's 4246 diagnostic does.
+
+The builtin-only argument syntax scan is removed. All 24 additional paired cases
+match Java, including indirect definitions, higher-order forwarding and theorem
+expressions. The remaining co-parameter diagnostic path still scans direct syntax;
+replace it with propagated ArgLevelParam relationships and Java collection order.
+Full formal-operator metadata, imported graph identities and canonical evaluator
+sharing remain separate pending work.
 
 ## TLC bridge declaration metadata
 
