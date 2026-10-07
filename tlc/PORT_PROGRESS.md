@@ -1,5 +1,38 @@
 # TLC Port Progress
 
+2026-10-07 Retain generated numeral nodes and complete original radix test:
+Previous completed commit: 68b70b6. Source Generator.generateExpression creates
+NumeralNode at N_Number; Go previously retained only a literal image and created
+the evaluator node later. Construct the existing numeral node during semantic
+generation, retain its syntax/location, and reuse it in the TLC bridge. Preserve
+the existing constructor's original image, 32-bit bound and radix-stripped
+big-integer fallback; add the source val/useVal/bigVal accessors. Synthetic
+expressions retain the existing bridge constructor path. Other canonical graphs
+and LevelNode fields remain pending.
+
+Replace the AST-string surrogate for the whole original bigRadixNumeralTest
+with a root-package translation inspecting actual generated nodes. Preserve the
+SPEC lexical state, incremental expression parsing, generator/null-node and
+empty-module setup, all three exact source radix inputs, semantic-log success,
+concrete node type, false useVal and exact bigVal assertions. Copy the source
+MIT notice to both translated files. No invented tests or weakened assertions.
+The initial harness used a nil ExpressionUntil boundary and panicked (38901,
+terminal 1); supply its required EOF boundary. Original method then passes
+(79580, terminal 0). Final original setup and existing short numeral-dependent
+TLC Specs/ASTToLive checks pass (99114, terminal 0; root 0.018 seconds, TLC
+0.011 seconds).
+
+Compile unchanged IncrementalSyntaxParseTests/IncrementalSemanticParseTests
+into scratch. Original Java JUnit passes all five semantic methods in 0.095
+seconds, terminal 0; credit only the one complete Go method. Full Go SANY passes
+in 2.067 seconds (89704, terminal 0). Focused parser/context/semantic bridge and
+original TLC model checks pass in 47.271 seconds (28543, terminal 0), receipt
+/mnt/oldrog/tmp/tlago-numeral-generation-root.log. All packages compile (45809,
+terminal 0). All handles retired. No long race runs, new fixtures, broad corpus
+sweeps, TLC method-count changes or new full-workspace pass. Update the SANY
+notes, handoff, inventory scope and architecture; remaining four incremental
+methods stay reconcile. New distributed service remains postponed.
+
 2026-10-07 Reconcile original nested-module SANY test status:
 Previous completed commit: 5240c37. Compare both source methods and fixtures.
 The active top-level method already retains parse-success and semantic-success

@@ -45,10 +45,19 @@ assertions and byte-identical fixture. `testLetInstanceOfNestedModule` retains
 the original Java `@Ignore` status and exact reason; it is not active-method
 completion credit. Unchanged Java JUnit and the full Go SANY package agree.
 
-`semantic.IncrementalSemanticParseTests` remains **reconcile**. Its current
-native-AST checks omit original canonical semantic-node assertions: ordinary
-OpDef recursion/arity/body metadata, syntax-node identity, actual level-check
-results and constant levels, NumeralNode overflow representation, dependency
-module tables, concrete LetInNode/OpApplNode types, and imported operator source
-identity. Implement the production graph and incremental generator behavior
-before crediting these methods; parsing the same snippets is insufficient.
+`semantic.IncrementalSemanticParseTests.bigRadixNumeralTest` is **port complete**
+in root `sany_incremental_semantic_java_test.go`, where it can inspect the actual
+semantic-generation result. It preserves all three original radix inputs,
+semantic-log success, concrete NumeralNode type, `useVal() == false`, and the
+expected big-integer value. Generation retains the numeral's syntax and shares
+the node with the TLC bridge instead of postponing construction until evaluation.
+The unchanged original Java class passes all five methods; this credits only
+the one complete Go method, not the remaining four.
+
+The other four methods in `semantic.IncrementalSemanticParseTests` remain
+**reconcile**. Their native-AST checks omit original canonical semantic-node
+assertions: ordinary OpDef recursion/arity/body metadata, syntax-node identity,
+actual level-check results and constant levels, dependency module tables,
+concrete LetInNode/OpApplNode types, and imported operator source identity.
+Implement the production graph and incremental generator behavior before
+crediting these methods; parsing the same snippets is insufficient.

@@ -3290,6 +3290,17 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 		}
 	case *LiteralExpr:
+		// Generator.generateExpression constructs NumeralNode at N_Number,
+		// before the evaluator bridge processes constants.
+		if e.Kind == "number" && !strings.Contains(e.Value, ".") {
+			node, err := tlc.NewNumeralNodeFromString(e.Value)
+			if err != nil {
+				panic(err)
+			}
+			bridge := tlcBridge{}
+			bridge.withExprLocation(e, node)
+			e.numeralNode = node
+		}
 	case *UnaryExpr:
 		if unresolved := checkSanyOperatorSymbolDefined(e.Op, e.Pos, e.Syntax, defined, locals); len(unresolved) != 0 {
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullExpression)

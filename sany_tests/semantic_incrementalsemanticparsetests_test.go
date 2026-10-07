@@ -1,15 +1,36 @@
+/*******************************************************************************
+ * Copyright (c) 2025 Linux Foundation. All rights reserved.
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+ * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ ******************************************************************************/
 package sany_tests
 
 import (
-	"math/big"
-	"strings"
 	"testing"
 
 	"github.com/glycerine/tlago"
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/IncrementalSemanticParseTests.java.
-// Each test starts skipped until its Java assertions are ported and made green.
+// Remaining methods require reconciliation with the original canonical graph assertions.
+// The complete bigRadixNumeralTest lives in root sany_incremental_semantic_java_test.go.
 func TestIncrementalSemanticParseTests_basicOpDefTest(t *testing.T) {
 	spec := checkedSANYModuleBody(t, "op == 0")
 	def := requireSANYDefinition(t, spec.Root, "op")
@@ -31,35 +52,6 @@ func TestIncrementalSemanticParseTests_basicExpressionTest(t *testing.T) {
 	}
 	if lit, ok := spec.Root.Assumptions[0].Expr.(*tlago.LiteralExpr); !ok || lit.Kind != "number" || lit.Value != "0" {
 		t.Fatalf("assumption expr = %#v, want numeric literal 0", spec.Root.Assumptions[0].Expr)
-	}
-}
-
-func TestIncrementalSemanticParseTests_bigRadixNumeralTest(t *testing.T) {
-	for _, tc := range []struct {
-		literal string
-		radix   int
-	}{
-		{literal: `\b` + strings.Repeat("1", 32), radix: 2},
-		{literal: `\o` + strings.Repeat("7", 12), radix: 8},
-		{literal: `\h` + strings.Repeat("f", 9), radix: 16},
-	} {
-		spec := checkedSANYModuleBody(t, "op == "+tc.literal)
-		def := requireSANYDefinition(t, spec.Root, "op")
-		lit, ok := def.Expr.(*tlago.LiteralExpr)
-		if !ok || lit.Kind != "number" {
-			t.Fatalf("%s body = %#v, want numeric literal", tc.literal, def.Expr)
-		}
-		expected, ok := new(big.Int).SetString(tc.literal[2:], tc.radix)
-		if !ok {
-			t.Fatalf("failed to parse expected integer %q", tc.literal)
-		}
-		actual, ok := new(big.Int).SetString(lit.Value[2:], tc.radix)
-		if !ok {
-			t.Fatalf("failed to parse actual integer %q", lit.Value)
-		}
-		if actual.Cmp(expected) != 0 {
-			t.Fatalf("%s parsed as %s, want %s", tc.literal, actual, expected)
-		}
 	}
 }
 

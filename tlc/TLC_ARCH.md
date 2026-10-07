@@ -1,5 +1,17 @@
 # TLC Architecture Notes for the Go Port
 
+## Shared numeral construction
+
+SANY expression generation constructs the existing TLC `NumeralNode` for integer
+literals and retains it on the source expression. The node holds the original
+syntax/image, source location, signed 32-bit representation or big-integer
+fallback. The TLC bridge reuses that same node; synthetic expressions that have
+not undergone SANY generation still use its existing constructor path. TLC's
+later constant processing retains responsibility for rejecting out-of-range
+values. The original incremental radix test now inspects generated nodes rather
+than independently reparsing a native-AST string. This establishes numeral
+construction and sharing, not full LevelNode or other semantic graph parity.
+
 ## Expression namespaces and INSTANCE substitutions
 
 A source module name is not an expression namespace. EXTENDS imports its names

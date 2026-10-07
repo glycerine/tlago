@@ -275,9 +275,10 @@ func (*IdentExpr) exprNode()            {}
 
 type LiteralExpr struct {
 	SanyExprSource
-	Kind  string
-	Value string
-	Pos   Position
+	numeralNode *tlc.NumeralNode
+	Kind        string
+	Value       string
+	Pos         Position
 }
 
 func (e *LiteralExpr) Position() Position { return e.Pos }

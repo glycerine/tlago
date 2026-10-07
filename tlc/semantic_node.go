@@ -546,6 +546,10 @@ type NumeralNode struct {
 
 func (n *NumeralNode) String() string { return n.Image }
 
+func (n *NumeralNode) UseVal() bool     { return n.BigValue == nil }
+func (n *NumeralNode) Val() int32       { return n.Value.Val }
+func (n *NumeralNode) BigVal() *big.Int { return n.BigValue }
+
 func NewNumeralNode(value int32) *NumeralNode {
 	intValue := NewIntValue(value)
 	base := NewSemanticNodeBase(SemanticNumeralKind, strconv.FormatInt(int64(value), 10))

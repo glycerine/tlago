@@ -1772,6 +1772,9 @@ func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 		// application node so evaluation and coverage retain its source location.
 		return tlc.NewOpApplNode(b.exprSymbol(strings.ToUpper(e.Value)))
 	case "number":
+		if e.numeralNode != nil {
+			return e.numeralNode
+		}
 		if strings.Contains(e.Value, ".") {
 			return tlc.NewDecimalNode(nil, e.Value)
 		}
