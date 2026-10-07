@@ -3599,22 +3599,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	case *LetExpr:
 		diags = append(diags, generation.checkLet(e, defined, locals)...)
 	case *QuantifierExpr:
-		if e.Syntax != nil && e.Syntax.Kind.JavaName() == "N_BoundQuant" {
-			diags = append(diags, generation.checkBoundQuantifier(e, defined, locals)...)
-			break
-		}
-		diags = append(diags, generation.checkExpr(e.Set, defined, locals)...)
-		position := e.VarPos
-		if position.Line == 0 {
-			position = e.Pos
-		}
-		diags = append(diags, checkBoundName(e.Var, position, defined, locals)...)
-		quantLocals := map[string]bool{}
-		for name, ok := range locals {
-			quantLocals[name] = ok
-		}
-		quantLocals[e.Var] = true
-		diags = append(diags, generation.checkExpr(e.Body, defined, quantLocals)...)
+		diags = append(diags, generation.checkQuantifier(e, defined, locals)...)
 	case *CaseExpr:
 		for _, arm := range e.Arms {
 			diags = append(diags, generation.checkExpr(arm.Test, defined, locals)...)

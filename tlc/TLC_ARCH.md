@@ -1,5 +1,25 @@
 # TLC Architecture Notes for the Go Port
 
+## Quantified formal construction and scope
+
+Bounded quantifiers generate all domains in the enclosing symbol scope before
+allocating any FormalParamNode. Bounded, unbounded and temporal quantifiers create
+all formals in declaration order under a fresh symbol context. Newly allocated
+nodes remain in the quantifier's array even when binding conflicts occur; body
+references resolve to the previous binding after such a conflict. Scope restoration
+preserves enclosing formals and keeps sibling quantifier identities distinct.
+Builtin redefinitions and duplicate bindings use the source messages and locations,
+including conflicts with earlier formals on the same source line.
+
+Go retains one formal on each native quantifier wrapper and a flattened source
+parameter array on the root wrapper. Nineteen source node/reference observations
+and eleven complete diagnostic cases match. This is not complete OpApplNode bound
+grouping, LevelNode data, evaluator-node sharing or absolute source UID allocation
+order. Proof/native locals without retained nodes still use their existing binding
+representation; no artificial formal identity is assigned to those bindings.
+Label checks still need actual resolved formal arrays and source LS stacks, and
+generation below rejected labels must eventually stop in the unified generator.
+
 ## Retained definition formal identity
 
 Native expression generation now creates a concrete sanyFormalParamNode for each
@@ -16,7 +36,7 @@ It uses the shared SemanticNode UID allocator and per-node indexed slots.
 Its equality checks concrete class, kind and UID, matching SemanticNode.equals.
 Sixteen source observations establish these constructor/reference properties and
 relative UID/hash behavior. Absolute source allocation order is not established.
-Quantified/CHOOSE/function and proof-binder construction, LevelNode data, visitors,
+CHOOSE/function and proof-binder construction, LevelNode data, visitors,
 actual label formal arrays and evaluator sharing still require porting. The native
 Module ownership link is not a claim of a complete Java ModuleNode graph.
 

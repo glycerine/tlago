@@ -421,9 +421,10 @@ func (g *sanyExpressionGeneration) generateApplicationOperands(call *CallExpr, i
 }
 
 // Source processQuantBoundArgs generates every domain before introducing any
-// quantified formal. Flattened native quantifiers from one source node retain
-// its identity so an explicitly nested quantifier remains a separate scope.
-func (g *sanyExpressionGeneration) checkBoundQuantifier(root *QuantifierExpr, context map[string]Position, locals map[string]bool) Diagnostics {
+// quantified formal. Unbounded quantifiers use the same parameter scope without
+// domains. Flattened wrappers from one source node retain its identity so an
+// explicitly nested quantifier remains a separate scope.
+func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context map[string]Position, locals map[string]bool) Diagnostics {
 	parameters, body := sanyQuantifierGroup(root)
 	var diags Diagnostics
 	seenDomains := map[Expr]bool{}
@@ -433,17 +434,37 @@ func (g *sanyExpressionGeneration) checkBoundQuantifier(root *QuantifierExpr, co
 			seenDomains[parameter.Set] = true
 		}
 	}
+	previous := g.formals
+	g.formals = make(map[string]localSymbol, len(previous)+len(parameters))
+	for name, symbol := range previous {
+		g.formals[name] = symbol
+	}
+	defer func() { g.formals = previous }()
 	bodyLocals := copyBoolMap(locals)
-	positions := copySanyExpressionContext(context)
+	root.quantifierFormals = nil
 	for _, parameter := range parameters {
-		if symbol, exists := g.lookupSymbol(parameter.Var, context); exists {
-			positions[parameter.Var] = symbol.pos
-		}
 		position := parameter.VarPos
 		if position.Line == 0 {
 			position = parameter.Pos
 		}
-		diags = append(diags, checkBoundName(parameter.Var, position, positions, bodyLocals)...)
+		node := g.newFormalParameter(parameter.Var, 0, position, parameter.Syntax)
+		parameter.formalNode = node
+		root.quantifierFormals = append(root.quantifierFormals, node)
+		if _, builtin := builtinOperatorArity(parameter.Var); builtin || builtinIdentifiers[parameter.Var] {
+			diagnostic := sanyDiagnosticParameters(errorAt(position, "E4202", "cannot redefine built-in symbol %s", parameter.Var), parameter.Var)
+			diagnostic.SANYMessage = fmt.Sprintf("Symbol %s is a built-in operator, and cannot be redefined.", parameter.Var)
+			diags = append(diags, diagnostic)
+		} else if symbol, exists := g.lookupSymbol(parameter.Var, context); exists {
+			diagnostic := sanyDiagnosticParameters(errorAt(position, "E4201", "bound symbol %s conflicts with existing symbol declared at %s", parameter.Var, symbol.pos), parameter.Var, sanySymbolLocation(symbol.pos))
+			diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", parameter.Var, sanySymbolLocation(symbol.pos))
+			diags = append(diags, diagnostic)
+		} else if bodyLocals[parameter.Var] {
+			// Native callers and proof binders without retained nodes still
+			// preserve their existing binding; do not invent an identity.
+			diags = append(diags, checkBoundName(parameter.Var, position, context, bodyLocals)...)
+		} else {
+			g.formals[parameter.Var] = localSymbol{formalNode: node, kind: "FORMAL", arity: 0, pos: position}
+		}
 		bodyLocals[parameter.Var] = true
 	}
 	return append(diags, g.checkExpr(body, context, bodyLocals)...)

@@ -1,5 +1,51 @@
 # TLC Port Progress
 
+2026-10-06 Quantified formal identity and preserved symbol bindings:
+Previous completed commit: f5abdeb. Source processBoundQuant calls
+processQuantBoundArgs to generate all domains before allocating any formals,
+then generates the body under their context. processUnboundQuant allocates all
+formals in one context before its body, including temporal quantifiers. Native
+flattened quantifiers now follow that source grouping/scope instead of recursively
+introducing local-name booleans one wrapper at a time. Retain newly allocated
+nodes on each wrapper and the ordered flattened array on the source root.
+Body and nested-domain identifiers retain their actually resolved formal nodes.
+
+Source SymbolTable.addSymbol rejects formal-name reuse while retaining the old
+binding, even on the same source line. Allocate each formal before checking its
+binding, retain rejected nodes in the quantifier array, preserve the existing
+symbol, and emit exact source duplicate/builtin messages and locations. The old
+checkBoundName path could skip same-line conflicts and lacked prior-local
+locations. Quantifier scope copies/restores retained formals so sibling binders
+remain distinct. Proof/native locals lacking retained nodes keep their prior
+representation rather than receiving an invented identity. Full OpApplNode bound
+groups, LevelNode data, evaluator graph sharing, LS stacks and absolute UID
+allocation order remain pending. Generation below rejected labels must still
+stop in the unified generator, beyond the corrected label-diagnostic traversal.
+
+Nineteen exact actual Java FastTool node observations match bounded, unbounded,
+temporal and tuple-bound parameter counts, references, metadata and consecutive
+constructor order; nested-domain references resolve to the enclosing formal,
+nested body references resolve both scopes and sibling equal-named formals are
+distinct. Eleven complete actual source SANY diagnostics match valid quantifiers,
+duplicate bounded/unbounded names, nested/formal/constant/same-line conflicts,
+builtin redefinition, unavailable simultaneous-domain variable and outer-domain
+references. Receipts: /mnt/oldrog/tmp/tlago-quant-formal-{java,go,diag}.log;
+manual helpers/overlay and vector directories outside repository. Scratch Go node
+probe 80994 terminal 0; diagnostic audit 44045 terminal 0. No permanent tests
+invented, original assertions/settings/fixtures untouched.
+
+Focused existing parser/semantic checks and original ParseError/legacy/scoped
+identifier methods pass 5.230 seconds (39740). Whole SANY tests pass 1.884 seconds
+(19228); all packages compile (28525), all terminal 0. The rebuilt scratch
+frontend still matches all fifteen earlier label-flow observations (23597 terminal
+0). The broader nine-case label audit still exits 1 with four matches and five
+differences: arg_constant, label_select, params, qualified_callee and repeated
+(27645 terminal 1). Do not count that audit as green. All handles retired.
+Receipts: /mnt/oldrog/tmp/tlago-quant-formal-{root,sany,compile,label-flow,label-nine}.log.
+No race or forbidden corpus sweeps; no inventory or full-workspace completion
+credit. Continue remaining formal constructors and identity-based labels. New
+RPC service remains postponed and the full faithful-port goal remains active.
+
 2026-10-06 Retained ordinary-definition formal node identity:
 Previous completed commit: c160601. Native expression generation stored only
 name/arity/position for formals. Add concrete sanyFormalParamNode extending the

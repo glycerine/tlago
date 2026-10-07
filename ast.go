@@ -332,17 +332,19 @@ func (*LetExpr) exprNode()            {}
 
 type QuantifierExpr struct {
 	SanyExprSource
-	Kind             string
-	Var              string
-	VarPos           Position
-	Set              Expr
-	Body             Expr
-	OperatorArity    int
-	HasOperatorArity bool
-	TupleBound       bool
-	LevelKnown       bool
-	Level            int
-	Pos              Position
+	formalNode        *sanyFormalParamNode
+	quantifierFormals []*sanyFormalParamNode
+	Kind              string
+	Var               string
+	VarPos            Position
+	Set               Expr
+	Body              Expr
+	OperatorArity     int
+	HasOperatorArity  bool
+	TupleBound        bool
+	LevelKnown        bool
+	Level             int
+	Pos               Position
 }
 
 func (e *QuantifierExpr) Position() Position { return e.Pos }

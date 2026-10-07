@@ -705,8 +705,17 @@ FormalParamNodes before binding-conflict checks. Definition bodies retain the
 ordered parameter nodes; identifier occurrences retain the resolved formal.
 Nodes share the SemanticNode UID allocator and own indexed tool slots, syntax,
 source location and native module ownership. Sixteen source observations match.
-This foundation does not cover quantified/CHOOSE/function formals, proof binders,
+This foundation does not cover CHOOSE/function formals, proof binders,
 LevelNode data, visitors, evaluator graph sharing or full source allocation order.
+
+Bounded, unbounded and temporal quantifiers now retain newly constructed formal
+nodes in source order. Domains generate in the enclosing scope before parameter
+allocation; conflicting declarations retain the earlier binding. Body and nested
+domain references retain their resolved nodes. Nineteen source node observations
+and eleven complete diagnostic cases match; existing focused checks pass.
+Quantifier arrays here are flattened native metadata, not complete OpApplNode
+bound-group construction or level-check data. Full source allocation order,
+including generation below rejected labels, remains pending.
 
 Next semantic work: port the remaining formal constructors and integrate actual
 identity into Generator's label-parameter checks. The earlier nine-case comparison now has four
