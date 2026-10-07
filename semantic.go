@@ -1778,6 +1778,8 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 }
 
 type localSymbol struct {
+	instanceOrigin   *Module
+	instanceSyntax   *SanySyntaxNode
 	builtinNode      *sanySemBuiltInSymbol
 	formalNode       *sanyFormalParamNode
 	declarationNode  *sanySemOpDeclNode
@@ -1867,6 +1869,7 @@ func isIdentifierName(name string) bool {
 }
 
 type semanticExportedSymbol struct {
+	originSyntax      *SanySyntaxNode
 	theoremLike       bool
 	source            Position
 	origin            *Module
@@ -2022,14 +2025,15 @@ func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []
 			continue
 		}
 		symbol := semanticExportedSymbol{
-			theoremLike: def.TheoremLike,
-			name:        def.Name,
-			source:      def.SourcePosition(),
-			origin:      mod,
-			kind:        OperatorDecl,
-			pos:         def.Pos,
-			arity:       len(def.Params),
-			hasArity:    true,
+			originSyntax: def.Syntax,
+			theoremLike:  def.TheoremLike,
+			name:         def.Name,
+			source:       def.SourcePosition(),
+			origin:       mod,
+			kind:         OperatorDecl,
+			pos:          def.Pos,
+			arity:        len(def.Params),
+			hasArity:     true,
 		}
 		if specs, ok := definitionOperatorParamSpecsForModule(mod.Name, def); ok {
 			symbol.operatorParams = specs
@@ -2042,14 +2046,15 @@ func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []
 			continue
 		}
 		byName[assumption.Name] = semanticExportedSymbol{
-			theoremLike: true,
-			name:        assumption.Name,
-			source:      assumption.SourcePosition(),
-			origin:      mod,
-			kind:        OperatorDecl,
-			pos:         assumption.SourcePosition(),
-			arity:       0,
-			hasArity:    true,
+			originSyntax: assumption.Syntax,
+			theoremLike:  true,
+			name:         assumption.Name,
+			source:       assumption.SourcePosition(),
+			origin:       mod,
+			kind:         OperatorDecl,
+			pos:          assumption.SourcePosition(),
+			arity:        0,
+			hasArity:     true,
 		}
 	}
 

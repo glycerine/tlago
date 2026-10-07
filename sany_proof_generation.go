@@ -254,31 +254,15 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			} else if unit.instance != nil {
 				instance := *unit.instance
 				diags = append(diags, g.generateInstanceSubstitutions(instance, module, current)...)
-				for _, symbol := range g.proofInstanceSymbols(instance) {
-					if previous, exists := g.lookupSymbol(symbol.name, current); exists {
-						conflict := symbol
-						if previous.pos != symbol.sourcePosition() && !symbol.theoremLike {
-							conflict.source = instance.SourcePosition()
-						}
-						diags = append(diags, instanceSymbolConflict(conflict, previous)...)
-						continue
-					}
-					binding := localSymbol{kind: symbol.importKind(), arity: symbol.arity, pos: symbol.sourcePosition(), operatorParams: symbol.operatorParams}
-					g.symbols[symbol.name] = binding
-					symbolScopes[step.Depth][symbol.name] = binding
-					current[symbol.name] = symbol.sourcePosition()
-					scopes[step.Depth][symbol.name] = symbol.sourcePosition()
+				registered, names := g.registerInstanceSymbols(instance, current)
+				diags = append(diags, registered...)
+				for _, name := range names {
+					symbolScopes[step.Depth][name] = g.symbols[name]
+					scopes[step.Depth][name] = current[name]
 				}
 				if instance.Name != "" {
-					if _, exists := g.lookupSymbol(instance.Name, current); !exists {
-						binding := localSymbol{kind: InstanceDecl, arity: len(instance.Params), pos: instance.SourcePosition()}
-						g.symbols[instance.Name] = binding
-						symbolScopes[step.Depth][instance.Name] = binding
-					}
-					current[instance.Name] = instance.SourcePosition()
-					scopes[step.Depth][instance.Name] = instance.SourcePosition()
-					current[instanceNameSentinel(instance.Name)] = instance.SourcePosition()
-					scopes[step.Depth][instanceNameSentinel(instance.Name)] = instance.SourcePosition()
+					sentinel := instanceNameSentinel(instance.Name)
+					scopes[step.Depth][sentinel] = current[sentinel]
 				}
 			}
 		}

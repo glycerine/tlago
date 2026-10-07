@@ -496,14 +496,11 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 				}
 			}
 			if label == nil {
-				if expected < 0 {
-					detail := &sanySelectorLocationError{code: "E4004", message: fmt.Sprintf("Cannot find label `%s'.", step.Name)}
-					if step.Syntax != nil {
-						detail.location = step.Syntax.Range
-					}
-					return nil, true, detail
+				detail := &sanySelectorLocationError{code: "E4004", message: fmt.Sprintf("Cannot find label `%s'.", step.Name), parameters: []any{step.Name}}
+				if step.Syntax != nil {
+					detail.location = step.Syntax.Range
 				}
-				return nil, true, fmt.Errorf("cannot find label %s", step.Name)
+				return nil, true, detail
 			}
 			var params []BoundVar
 			for _, name := range label.Params {

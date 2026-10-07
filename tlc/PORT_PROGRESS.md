@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-07 LET INSTANCE substitution generation and scoped exports:
+Previous completed commit: f99f3bd. Inspect Java processLetIn/processModuleDefinition
+and actual Go generation. Initial 20-case comparison 19944 terminal 1 exposes
+17 differences: skipped defaults, missing/illegal/duplicate substitutions, invalid
+operator RHS values, wrong signatures and fabricated I! export namespaces.
+Replace the separate RHS traversal with generateInstanceSubstitutions. Register
+actual source exports and instance-name bindings in the LET context, retaining
+signatures and source definition order. Share export registration with proof
+DEFINE/INSTANCE scopes and preserve the earlier accepted binding on conflicts.
+Initial corrected 20-case comparison 85283 terminal 0 matches every diagnostic.
+No permanent tests or replacement fixtures are introduced.
+
+Expand to 28 cases covering shared parameter-free sources, different instance
+arities, LOCAL exports, instance-name collisions and nested scope escape. Initial
+42746 terminal 1 exposes two differences. Named exports have an instantiation
+location even without substitutions; preserve original source syntax/module
+separately for shared-origin registration. Source SymbolTable checks kind/arity
+before allowing a shared parameter-free origin. Different instance arities must
+report both export and instance-name errors. A collided instance name followed
+by an unavailable label must report Generator's 4004 code, exact label-token
+range/message and label-name parameter. Port those paths rather than weakening
+the comparison. Corrected expanded 96912 terminal 0 matches all 28 cases.
+
+Final complete comparison gate 65727 terminal 0: all 28 LET, 20 paired module/
+proof RHS, 30 previous namespace/substitution, nine declaration and 45 label
+cases match Java codes, counts, ranges, messages and order. Logs
+/mnt/oldrog/tmp/tlago-let-instance-final.log and
+/mnt/oldrog/tmp/tlago-let-instance-final-{rhs,qualified,registration,label-flow,
+label-required,label-semantic,label-extra}.log. Scratch Java/Go helpers and
+vectors remain outside the repository. No invented permanent tests or new
+original-method inventory credit. Existing Java tests covering these paths
+were already translated and are run unchanged.
+
+Final focused root checks pass 6.865 seconds (47941), complete SANY passes
+1.573 seconds (23364), seven unchanged original model methods including
+EWD998ChanDebugger pass 12.977 seconds (16698), and all-package compilation
+passes (71971). All handles terminal and retired. Logs
+/mnt/oldrog/tmp/tlago-let-instance-final-{root,sany,models,compile}.log.
+Earlier existing root/SANY/model gates also passed (66017/35459/17083), before
+expanded collision corrections; do not confuse them with the final gate.
+No new full-workspace pass is established. Next inspect LET instance level
+checking and retained InstanceNode/LetInNode graphs. Full canonical ordinary
+operator graphs, evaluator sharing and full TLC parity remain pending.
+New distributed service remains postponed.
+
 2026-10-07 Shared module/proof INSTANCE RHS generation:
 Previous completed commit: 9bc868e. Actual Java comparisons expose six module-only
 shortcuts across 20 paired module/proof vectors (77287 terminal 1). A scalar RHS

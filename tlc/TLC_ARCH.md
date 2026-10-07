@@ -37,8 +37,24 @@ generating child expressions. Nested ASSUME/PROVE label rejection retains the
 whole label syntax range. Unsupported ASSUME/PROVE selector paths retain code
 4005 instead of the former placeholder 4340; labeled access also retains its
 source label-name parameter. Complete original Test210/Test212
-diagnostics match Java in addition to 50 namespace/RHS cases. LET-level INSTANCE
-units still require integration with this generation sequence.
+diagnostics match Java in addition to 50 namespace/RHS cases.
+
+LET INSTANCE units now share substitution generation and export registration
+with proof scopes. They register only actual exported names and signatures;
+an instance prefix does not authorize every possible qualified name. Keep the
+first accepted binding and restore the outer symbol and recursive contexts when
+leaving LET. A named export's location is its instantiation syntax; its retained
+original source syntax and module identify the shared definition independently.
+Check kind and arity before suppressing duplicate registration for a shared
+parameter-free origin. Different arities still report both export and instance
+name conflicts. Missing labels retain Generator's 4004 code, exact selector
+range, message and label-name parameter.
+
+All 28 LET cases match complete Java diagnostics, including RHS failures,
+missing/default substitutions, higher-order instance parameters, duplicate
+exports, local-only definitions and nested scope boundaries. This establishes
+generation and registration behavior, not complete retained InstanceNode/LetInNode
+graphs or LET instance level checking. Those remain separate pending work.
 
 ## TLC bridge declaration metadata
 

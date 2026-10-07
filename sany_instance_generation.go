@@ -160,9 +160,54 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance Instan
 	return diags
 }
 
+// processModuleDefinition registers imported definitions before its own
+// ModuleInstanceKind symbol. Rejected registrations keep the earlier binding.
+func (g *sanyExpressionGeneration) registerInstanceSymbols(instance Instance, context map[string]Position) (Diagnostics, []string) {
+	var diags Diagnostics
+	var added []string
+	for _, symbol := range g.instanceSymbols(instance) {
+		// Named instantiation constructs a new qualified definition at the
+		// module definition syntax, while retaining its original source.
+		if instance.Name != "" {
+			symbol.source = instance.SourcePosition()
+		}
+		if previous, exists := g.lookupSymbol(symbol.name, context); exists {
+			// SymbolTable compares kind and arity before allowing the same
+			// original definition from a parameter-free source module.
+			if previous.kind == symbol.importKind() && previous.arity == symbol.arity &&
+				previous.instanceOrigin == symbol.origin && symbol.originSyntax != nil &&
+				previous.instanceSyntax == symbol.originSyntax &&
+				semanticModuleParameterFree(symbol.origin, g.spec, map[*Module]bool{}) {
+				continue
+			}
+			conflict := symbol
+			if previous.pos != symbol.sourcePosition() && !symbol.theoremLike {
+				conflict.source = instance.SourcePosition()
+			}
+			diags = append(diags, instanceSymbolConflict(conflict, previous)...)
+			continue
+		}
+		g.symbols[symbol.name] = localSymbol{instanceOrigin: symbol.origin, instanceSyntax: symbol.originSyntax, kind: symbol.importKind(), arity: symbol.arity, pos: symbol.sourcePosition(), operatorParams: symbol.operatorParams}
+		context[symbol.name] = symbol.sourcePosition()
+		added = append(added, symbol.name)
+	}
+	if instance.Name != "" {
+		if previous, exists := g.lookupSymbol(instance.Name, context); exists {
+			symbol := semanticExportedSymbol{name: instance.Name, kind: InstanceDecl, arity: len(instance.Params), source: instance.SourcePosition()}
+			diags = append(diags, instanceSymbolConflict(symbol, previous)...)
+		} else {
+			g.symbols[instance.Name] = localSymbol{kind: InstanceDecl, arity: len(instance.Params), pos: instance.SourcePosition()}
+			context[instance.Name] = instance.SourcePosition()
+			added = append(added, instance.Name)
+		}
+		context[instanceNameSentinel(instance.Name)] = context[instance.Name]
+	}
+	return diags, added
+}
+
 // generateInstance and processModuleDefinition import OpDefNodes first, then
 // ThmOrAssumpDefNodes, with Hashtable.elements() order within each class.
-func (g *sanyExpressionGeneration) proofInstanceSymbols(instance Instance) []semanticExportedSymbol {
+func (g *sanyExpressionGeneration) instanceSymbols(instance Instance) []semanticExportedSymbol {
 	byName := map[string]semanticExportedSymbol{}
 	for _, symbol := range semanticInstanceSymbols(instance, g.spec) {
 		byName[symbol.name] = symbol

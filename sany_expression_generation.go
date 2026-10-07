@@ -131,16 +131,14 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 		case unit.definition != nil:
 			diags = append(diags, g.generateLocalDefinition(*unit.definition, positions, letLocals)...)
 		case unit.instance != nil:
-			instance := unit.instance
-			bodyLocals := copyBoolMap(letLocals)
-			for _, name := range instance.Params {
-				bodyLocals[name] = true
-			}
-			for _, substitution := range instance.SubstitutionList {
-				diags = append(diags, g.checkExpr(substitution.Expr, positions, bodyLocals)...)
-			}
-			if instance.Name != "" {
-				letLocals[instance.Name+"!"] = true
+			instance := *unit.instance
+			diags = append(diags, g.generateInstanceSubstitutions(instance, g.currentModule, positions)...)
+			registered, names := g.registerInstanceSymbols(instance, positions)
+			diags = append(diags, registered...)
+			for _, name := range names {
+				if g.symbols[name].kind != InstanceDecl {
+					letLocals[name] = true
+				}
 			}
 		}
 	}

@@ -844,8 +844,18 @@ Test212 also match complete output and pass unchanged assertions: nested labels
 retain whole syntax ranges, ASSUME/PROVE selectors use code 4005, and unapplied
 parameterized INSTANCE prefixes remain legal in operator-argument contexts.
 Final focused root checks include all original Test206–220 methods; complete
-SANY and compilation pass. Next inspect LET-level INSTANCE generation, which
-still has its own incomplete RHS traversal, before ordinary canonical graphs.
+SANY and compilation pass. LET INSTANCE units now use that same substitution
+generator and register actual exports in their temporary context. The blanket
+I! namespace shortcut is removed: unknown exports error, signatures are retained,
+and exports leave scope with the LET. Proof and LET export registration share
+one path, preserving kind/arity conflicts and the first accepted binding. Named
+exports retain their instantiation location separately from original source
+syntax identity; shared parameter-free origins do not erase arity conflicts.
+All 28 LET comparisons match complete Java diagnostics. Existing focused root,
+complete SANY, seven original model methods and compilation pass. No tests or
+fixtures were changed, and no new inventory credit or full-workspace pass is
+claimed. Next inspect LET instance level checking and retained InstanceNode/
+LetInNode graphs, before completing ordinary canonical operator graphs.
 Full registration against operator/theorem graphs, qualified declaration selectors,
 other imported graph identities, ordered module definitions and complete canonical
 node sharing with the evaluator remain pending.
