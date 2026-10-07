@@ -19,6 +19,11 @@ type JavaRandom struct {
 	aril             int64
 	haveNextGaussian bool
 	nextGaussian     float64
+
+	// RandomEnumerableValues' private subclasses retain behavior and state on
+	// the Random instance, so a saved/restored RNG preserves both.
+	enumerableKind  randomEnumerableKind
+	enumerableState *TLCStateMut
 }
 
 var javaRandomPrimes = generateJavaRandomPrimes()
@@ -211,9 +216,17 @@ var randomEnumerableValues = struct {
 	threads: make(map[uint64]*randomEnumerableThreadState),
 }
 
+type randomEnumerableKind uint8
+
+const (
+	randomEnumerablePlain randomEnumerableKind = iota
+	randomEnumerableDefault
+	randomEnumerableState
+)
+
 type randomEnumerableThreadState struct {
 	rng      *JavaRandom
-	rngState *TLCStateMut
+	assigned bool
 }
 
 func RandomEnumerableSeed() int64 {
@@ -237,23 +250,20 @@ func ResetRandomEnumerableValues() *JavaRandom {
 	defer randomEnumerableValues.Unlock()
 	state := randomEnumerableThreadStateForLocked(currentGoroutineID())
 	state.rng = nil
-	state.rngState = nil
+	state.assigned = false
 	// IdThread's current predecessor lives in currentStateScope, independently
 	// of this RNG entry. Removing the RNG must not discard that state scope.
 	return old
 }
 
 func SetRandomEnumerableGenerator(rng *JavaRandom) *JavaRandom {
+	// Java set first calls get, including its instance initialization hook.
+	old := RandomEnumerableGenerator()
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
-	if rng == nil {
-		rng = NewJavaRandom(randomEnumerableValues.seed)
-	}
-	gid := currentGoroutineID()
-	state := randomEnumerableThreadStateForLocked(gid)
-	old := state.rng
+	state := randomEnumerableThreadStateForLocked(currentGoroutineID())
 	state.rng = rng
-	state.rngState = nil
+	state.assigned = true // ThreadLocal.set(null) differs from remove().
 	return old
 }
 
@@ -264,20 +274,33 @@ func PushRandomEnumerableState(state *TLCStateMut) func() {
 }
 
 func RandomEnumerableGenerator() *JavaRandom {
-	modelChecking := MainChecker() != nil && CurrentSimulator() == nil
+	// Java chooses the subclass in ThreadLocal.initialValue, never at later get.
+	modelChecking := MainChecker() != nil
 	currentState, _ := CurrentState()
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
 	threadState := randomEnumerableThreadStateForLocked(currentGoroutineID())
-	if threadState.rng == nil {
+	if !threadState.assigned {
 		threadState.rng = NewJavaRandom(randomEnumerableValues.seed)
+		threadState.rng.enumerableKind = randomEnumerableDefault
+		if modelChecking {
+			threadState.rng.enumerableKind = randomEnumerableState
+		}
+		threadState.assigned = true
 	}
-	if modelChecking && currentState != nil && threadState.rngState != currentState {
+	rng := threadState.rng
+	if rng == nil {
+		panic(NewNullPointerException())
+	}
+	if rng.enumerableKind == randomEnumerablePlain {
+		panic(NewClassCastException("Random does not implement EnumerableValueRandom"))
+	}
+	if rng.enumerableKind == randomEnumerableState && currentState != nil && rng.enumerableState != currentState {
 		seed := int64(currentState.FingerPrint()) ^ randomEnumerableValues.seed
-		threadState.rng.SetSeed(seed)
-		threadState.rngState = currentState
+		rng.SetSeed(seed)
+		rng.enumerableState = currentState
 	}
-	return threadState.rng
+	return rng
 }
 
 func randomEnumerableThreadStateForLocked(gid uint64) *randomEnumerableThreadState {
@@ -286,7 +309,7 @@ func randomEnumerableThreadStateForLocked(gid uint64) *randomEnumerableThreadSta
 	}
 	state := randomEnumerableValues.threads[gid]
 	if state == nil {
-		state = &randomEnumerableThreadState{rng: NewJavaRandom(randomEnumerableValues.seed)}
+		state = &randomEnumerableThreadState{}
 		randomEnumerableValues.threads[gid] = state
 	}
 	return state

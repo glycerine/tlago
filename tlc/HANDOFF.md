@@ -673,10 +673,14 @@ peer RNG streams and the independent predecessor-state scope. RNG and checker
 paths now share IdThread's one current-state slot; source error-state reset clears
 it before trace recovery. The unchanged RandomElement model retains all eleven
 trace states. Thirteen exact source observations, six original models and a short
-race check pass. RNG implementation choice,
-restoration and thread-lifetime cleanup still need reconciliation. Unindexed APIs, formal-parameter graph construction, concrete class
-equality, complete allocation order and wider cache/worker semantics remain
-pending. Detailed receipts are in PORT_PROGRESS.md; no whole-superclass or
+race check pass. RNG behavior and initialized predecessor now reside on the
+saved JavaRandom instance. The factory captures default/BFS behavior once;
+restoring a generator preserves its stream and predecessor marker. Setter get
+hooks, explicit null and plain-Random exceptions follow source. Seventeen new
+instance observations and the thirteen thread observations match; nine unchanged
+original models pass. Thread-lifetime cleanup, unindexed APIs, formal-parameter
+graph construction, concrete class equality, complete allocation order and wider
+cache/worker semantics remain pending. Detailed receipts are in PORT_PROGRESS.md; no whole-superclass or
 full-workspace parity claim.
 
 Next semantic work: port Generator's label-parameter checks and formal-parameter

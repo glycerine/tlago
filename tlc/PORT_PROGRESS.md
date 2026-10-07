@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-06 Source random-enumerable instance mode and restoration:
+Previous completed commit: 9f743e4. Java chooses DefaultRandom/TLCStateRandom
+in ThreadLocal.initialValue and stores the initialized predecessor on the RNG
+instance. Go selected behavior on every get and stored/reset predecessor state
+on the thread entry, so checker changes and snapshot restoration changed streams.
+Move enumerable kind and predecessor to JavaRandom; capture the factory mode
+once. Retrieval uses that instance's hook and preserves restored state. Separate
+thread assignment from null: remove permits factory creation; set(null) causes
+source NullPointerException on get. Ordinary NewJavaRandom objects correspond
+to plain java.util.Random and raise source ClassCastException through the getter.
+Setter calls get first, returning the initialized old object before replacing it.
+
+All seventeen exact observations match source fingerprints, bounded-int draws,
+default mode retained across checker publication, BFS mode retained after checker
+removal, saved/restored identity and stream position, source setter initialization,
+and null/plain-Random exception types. The temporary Java probe creates a real
+ModelChecker class marker with allocateInstance only for the actual getClass
+predicate; it runs no checker methods or reporting flow. Source FastTool supplies
+actual variable state fingerprints; private RNG constructor reflection supplies
+a DefaultRandom replacement. Exception text is not part of this comparison.
+Receipts: /mnt/oldrog/tmp/tlago-random-instance-{java,go}.log. No permanent tests
+invented and no original settings, bounds, fixtures or assertions changed.
+
+Nine unchanged whole original models pass 29.564 seconds, session 88626 terminal
+0: RandomElement, RandomElementXandY, RandomSubsetA, RandomSubsetB,
+ConstantRank1TLCEval, ConstantContextTLCCache, RandomElementSimulation and both
+simulation-worker constraint models. Existing native stream continuity and
+whole original Randomization/EnumerableValue/SubsetValue checks pass 3.920
+seconds, session 83365 terminal 0. The retained thirteen thread-local observations
+still match; only that short two-goroutine probe runs -race, passing 1.028 seconds,
+session 22231 terminal 0. All packages compile, session 43252 terminal 0.
+Receipts: /mnt/oldrog/tmp/tlago-random-instance-{models,tlc,thread-race,compile}.log.
+All handles retired. No test inventory increase or full-workspace pass claim.
+Thread-lifetime cleanup, broader WorkerValue demux and general concrete source
+class hierarchy remain pending.
+
 2026-10-06 Caller-only RNG reset and one IdThread predecessor scope:
 Previous completed commit: be85070. WorkerValue's mutation categories match
 the source IValue default and six immutable overrides. Its seed-reset dependency

@@ -1,5 +1,33 @@
 # TLC Architecture Notes for the Go Port
 
+## Random-enumerable instance initialization and restoration
+
+Java's DefaultRandom and TLCStateRandom retain their behavior on each Random
+object. The Go JavaRandom now carries an enumerable-kind marker and its initialized
+predecessor. The factory captures the BFS/default choice only when a thread-local
+instance is absent. Existing default instances remain default when the checker
+changes; existing BFS instances keep predecessor reseeding after that change.
+The initialization hook consults the shared IdThread current state and reseeds
+only for a different non-null predecessor. Saved/restored instances therefore
+retain both their stream position and the predecessor marker.
+
+Thread-local assignment has a separate flag: remove permits fresh factory
+initialization, while set(null) makes the next get throw NullPointerException.
+A plain java.util.Random lacks the source EnumerableValueRandom interface;
+the corresponding ordinary NewJavaRandom instance raises ClassCastException
+when retrieved through RandomEnumerableGenerator. Setter first calls get and
+returns that initialized old instance, then installs the replacement without
+clearing its predecessor. It does not fabricate an RNG for a null argument.
+
+Seventeen temporary actual-source observations match exact fingerprints and
+integer draws, captured mode, instance identity, saved/restored stream continuity,
+setter initialization and exception types. Source allocates an actual ModelChecker
+class marker without running its constructor solely for the factory's getClass
+predicate; no model-checking or JVM behavior is claimed from that marker.
+Thirteen earlier thread-local observations still match under the short race
+probe. Nine unchanged original model methods pass at their original bounds.
+Exception-message text and thread-lifetime cleanup remain separate work.
+
 ## Random-enumerable seed and reset locality
 
 RandomEnumerableValues.setSeed updates the shared seed, then calls reset on
@@ -8,8 +36,8 @@ other goroutines retain their RNG objects and continue their streams. Reset
 first obtains/initializes the prior generator, as source get does, and returns
 that object before removing it. Preserve the current predecessor scope: Java's
 IdThread state is a separate thread-local variable, so deleting the RNG cannot
-delete that state. Keep the RNG entry and clear only its RNG and initialization
-state. Eliminate the duplicate predecessor field in the RNG registry; random
+delete that state. Clear the thread's RNG assignment while retaining the saved
+instance's own initialization state. Eliminate the duplicate predecessor field in the RNG registry; random
 enumeration reads the same CurrentState slot used by checker error handling.
 PushRandomEnumerableState delegates to the common scope instead of maintaining
 a second copy. AbstractChecker's existing error reset now clears the state
@@ -20,9 +48,9 @@ continued draws, seed changes, returned object identity and state-scope
 preservation and explicit shared-state clearing. The isolated two-goroutine
 scratch probe passes -race in 1.028 seconds. Six unchanged original models pass,
 including RandomElement's full eleven-state trace. Existing original random-value
-tests remain unchanged. Further source reconciliation is
-still required for RNG implementation choice at first initialization, restored
-RNG state and thread-lifetime cleanup; this is not complete ThreadLocal parity.
+tests remain unchanged. RNG implementation choice and restored-instance state
+are now ported below; thread-lifetime cleanup remains pending. This is not
+complete ThreadLocal parity.
 WorkerValue's mutation category list matches the source IValue default and six
 immutable overrides; its broader demux behavior remains pending.
 
