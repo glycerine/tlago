@@ -1001,24 +1001,37 @@ formal arrays, including completed recursive operators in LET scopes.
 
 If a body graph remains unported, preserve the declaration's correct completion
 and syntax state without fabricating its body. Its enclosing LET remains
-incomplete. Latest bounded verification matches all 656 output rows (613 prefixed
-observations) across 24 recursive module/LET cases and their full diagnostics.
-Four additional labeled-body diagnostic cases agree. Existing SANY and focused
-TLC integrations pass, as do all 56 formal and 59 AP phase/substitution cases.
-Detailed receipts and earlier graph comparisons belong in PORT_PROGRESS.md.
+incomplete. Recursive graph and diagnostic receipts belong in PORT_PROGRESS.md.
 
-Canonical label/LS/marker, NEW/AP, INSTANCE/fact and qualified selector graphs,
-missing imported identities, full inherited LevelNode fields and recursive level
-iteration, shared Errors/exception integration and evaluator graph sharing remain
-unfinished. basicOpDefTest stays reconcile. These bounded comparisons add no
-original-method count, complete graph parity or full-workspace pass credit.
+Ordinary expression labels now retain actual LabelNodes, body/formal identities
+and nested label tables. Definition and label bodies push separate LS frames;
+quantifiers, CHOOSE, comprehensions, functions and LAMBDA push actual bound formal
+groups. Ordinary operator parameters do not enter that sequence. Generate a
+label body before resolving parameters and constructing its node. Duplicate
+registration retains the earlier node. Reuse the owning Generator's nullLabelNode
+at implemented guards, without generating the rejected body.
 
-The five expanded aggregate-label cases now match completely. The 70-formal UID
-range and first hash match Java exactly (305..374, 1607), without offsets. This
-verifies that construction prefix, not complete allocation order across all graphs.
-Next semantic work: complete LS/LabelNode graphs and marker scope integration,
-remaining qualified selector identities, canonical level data and evaluator
-sharing. These remain pending. Receipts are in PORT_PROGRESS.md.
+The 21 bounded ordinary-label graph cases match all 265 output rows; all 22
+label diagnostic cases match codes, ranges and messages. The EXCEPT guard case
+has no complete enclosing Go EXCEPT graph, so receives diagnostic credit only.
+Existing focused root/TLC tests, full sany_tests and compile-all pass. The 56
+formal and 59 AP phase/substitution comparisons still agree. Detailed receipts
+belong in PORT_PROGRESS.md. No permanent tests or original-method credits were
+added in this slice; basicOpDefTest remains reconcile.
+
+Canonical AP/NEW/goal/marker ownership, goal-clause lifetime after AP, LabelNode
+Hashtable enumeration/getters, full inherited level data and visitors remain
+unfinished. Qualified selectors, INSTANCE/fact and imported identities, recursive
+level iteration, shared Errors/exception integration and evaluator graph sharing
+also remain pending. Proof/AP contexts keep the existing native fallback until
+these actual graphs exist. These bounded comparisons establish neither complete
+graph parity nor a new full-workspace pass.
+
+The earlier 70-formal construction prefix and hash matched Java without offsets;
+complete allocation order across all graphs remains pending. Next semantic work:
+complete canonical AP/NEW/goal and marker scope integration, remaining label
+operations and qualified selector identities, then level checking and evaluator
+sharing. Receipts are in PORT_PROGRESS.md.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

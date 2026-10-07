@@ -16,6 +16,7 @@ type sanySemanticGraphNode interface {
 
 type sanySemOpDefNode struct {
 	sanySemSymbolBase
+	labels             map[string]*sanySemLabelNode
 	formalNodes        []*sanyFormalParamNode
 	body               sanySemanticGraphNode
 	module             *sanySemModuleNode
@@ -53,10 +54,15 @@ type sanySemOpArgNode struct {
 
 type sanySemLabelNode struct {
 	sanySemanticNode
-	name        string
-	arity       int
-	formalNodes []*sanyFormalParamNode
-	body        sanySemanticGraphNode
+	labels          map[string]*sanySemLabelNode
+	goal            sanySemanticGraphNode
+	goalClause      int
+	isAssumeProve   bool
+	subExpressionOf sanySemSymbol
+	name            string
+	arity           int
+	formalNodes     []*sanyFormalParamNode
+	body            sanySemanticGraphNode
 }
 
 // Generator's class-wide ordinary ASSUME marker is an OpDeclNode, not

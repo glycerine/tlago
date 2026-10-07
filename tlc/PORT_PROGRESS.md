@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-07 Ordinary expression LabelNode and LS graph generation:
+Previous completed commit: fa2f27b. Port ordinary generateLabel construction and
+LS frame/formal-group ownership. Generate body first, resolve actual parameters
+or source dummy formals afterward, construct the actual LabelNode, attach its
+nested table, check parent formal identities and register the label. Preserve
+source nonnil empty parameters, syntax/body/formal identities, initial nil goal
+and zero clause. Duplicate registration keeps the earlier node. Retain the actual
+table on ordinary/recursive OpDefs and named functions. Functions push flattened
+bounds; LAMBDA shares its enclosing frame. Ordinary operator parameters do not
+enter the LS formal sequence. Nested label bodies start a fresh formal sequence.
+
+Return the owning Generator's nullLabelNode at implemented nested NEW and EXCEPT
+guards without generating the rejected body. Skip repeated native checks only
+for labels actually handled by this generator path. AP/proof contexts retain
+the native path until canonical goal/NEW/marker nodes are implemented. Missing
+canonical bodies remain incomplete; no replacement graph is fabricated.
+
+Compare 21 whole-module cases: all 265 complete output rows match Java, including
+261 prefixed observations (149 graph nodes, 26 label table references, 23 module
+context entries, 21 cases, 19 symbol references, 12 diagnostics, ten bound groups
+and one LET context). Cases cover ordinary/nested labels, quantifier missing/
+repeated/illegal/extra formals, duplicates across tuple and IF bodies, constants,
+named and anonymous functions, LET, RECURSIVE, CHOOSE, comprehensions, LAMBDA and
+undefined bodies. Label table entries are sorted by name for comparison; Java
+Hashtable enumeration order is not established. A 22nd EXCEPT guard case matches
+diagnostics but lacks the enclosing canonical EXCEPT graph. Its full graph diff
+is retained in the scratch logs, not counted as graph parity. All 22 frontend
+cases agree on complete diagnostic codes, ranges and messages.
+
+Verification: existing focused root/SANY/TLC gate passes in 46.571s (52226), full
+sany_tests in 2.037s (88280); compile-all is terminal zero. Final graph probe
+98314 and diagnostics 41826 are terminal zero within their stated scopes. All
+56 existing formal diagnostic cases match (93679: quantifier 11, named-function
+15, proof 17, CHOOSE 13), as do AP phases 29 (37250) and substitutions 30 (29765).
+Receipts are under /mnt/oldrog/tmp/tlago-label-*, including complete Java/Go graph
+logs, root JSON, compile log and per-case diagnostics. No race workload, permanent
+test, fixture change or assertion weakening was introduced.
+
+Remaining: canonical AP/NEW/goal/marker graphs and goal-clause lifetime, LabelNode
+Hashtable enumeration/getters, inherited LevelNode fields/checking and visitors,
+EXCEPT, INSTANCE/fact, qualified/imported identities, shared error/exception
+ownership and evaluator sharing. basicOpDefTest stays reconcile. No inventory,
+original-method completion or full-workspace pass credit is added.
+
 2026-10-07 Explicit recursive declaration and completion graphs:
 Previous completed commit: d9c5daa. Port processRecursive/startOpDefNode allocation:
 unregistered OpDecl, unnamed/null-syntax dummy formals, registered undefined

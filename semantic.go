@@ -1149,6 +1149,15 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 	var generation *sanyExpressionGeneration
 	if len(generators) != 0 && generators[0] != nil {
 		generation = generators[0]
+		previousLabelsEnabled := generation.labelsEnabled
+		previousAPForbidden := generation.labelAPForbidden
+		generation.labelAPDepth++
+		defer func() {
+			generation.labelAPDepth--
+			generation.labelAPForbidden = previousAPForbidden
+		}()
+		generation.labelsEnabled = false
+		defer func() { generation.labelsEnabled = previousLabelsEnabled }()
 		previous := generation.symbols
 		generation.symbols = make(map[string]localSymbol, len(previous))
 		for name, symbol := range previous {
@@ -1181,6 +1190,9 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 				generation.symbols[sym.Name] = localSymbol{kind: kind, arity: sym.Arity, pos: sym.Pos}
 			}
 			apLocals[sym.Name] = true
+			if generation != nil && generation.labelAPDepth > 1 {
+				generation.labelAPForbidden = true
+			}
 		case item.Nested != nil:
 			diags = append(diags, checkAssumeProveBindings(item.Nested, defined, apLocals, generators...)...)
 		case item.Expr != nil:
@@ -1581,6 +1593,9 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 			diags = append(diags, checkLabels(spec.Value, exceptCtx)...)
 		}
 	case *LabelExpr:
+		if e.labelGenerated {
+			return nil
+		}
 		// Generator.generateLabel returns nullLabelNode at the first failed
 		// guard, without generating the body or checking its parameters.
 		if !ctx.allowed {
@@ -1717,7 +1732,7 @@ func checkDuplicateSiblingLabels(exprs []Expr) Diagnostics {
 	seen := map[string]Position{}
 	for _, expr := range exprs {
 		label, ok := expr.(*LabelExpr)
-		if !ok || label.Name == "" {
+		if !ok || label.Name == "" || label.labelGenerated {
 			continue
 		}
 		if _, exists := seen[label.Name]; exists {
@@ -3684,11 +3699,18 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 			exceptLocals := copyBoolMap(locals)
 			exceptLocals["@"] = true
+			generation.labelExceptDepth++
 			diags = append(diags, generation.checkExpr(spec.Value, defined, exceptLocals)...)
+			generation.labelExceptDepth--
 		}
 	case *LabelExpr:
-		diags = append(diags, generation.checkExpr(e.Body, defined, locals)...)
-		generation.resolveLabelFormals(e, defined)
+		e.labelGenerated = false
+		if generation.labelsEnabled && !generation.labelGoalUnsupported {
+			diags = append(diags, generation.generateLabel(e, defined, locals)...)
+		} else {
+			diags = append(diags, generation.checkExpr(e.Body, defined, locals)...)
+			generation.resolveLabelFormals(e, defined)
+		}
 	case *ActionExpr:
 		diags = append(diags, generation.checkExpr(e.Action, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Subscript, defined, locals)...)

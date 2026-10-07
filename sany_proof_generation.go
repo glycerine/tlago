@@ -126,6 +126,9 @@ func sanyProofNewSymbols(context map[string]Position, body *AssumeProve) {
 
 func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *Module, context map[string]Position) Diagnostics {
 	var diags Diagnostics
+	previousGoalUnsupported := g.labelGoalUnsupported
+	g.labelGoalUnsupported = true
+	defer func() { g.labelGoalUnsupported = previousGoalUnsupported }()
 	defer func() {
 		if failure := recover(); failure != nil {
 			g.spec.SemanticDiags = appendSanyDiagnostics(append(Diagnostics(nil), diags...), g.spec.SemanticDiags...)

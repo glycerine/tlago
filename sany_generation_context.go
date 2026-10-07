@@ -239,6 +239,14 @@ func checkDefinitionFunctionBody(definition Definition, context map[string]Posit
 		g.functions = append(g.functions, sanyFunctionGeneration{definition.Name, function.functionApplication})
 		defer func() { g.functions = g.functions[:len(g.functions)-1] }()
 	}
+	finishLabels := g.pushLabelScope()
+	defer func() {
+		labels := finishLabels()
+		if definition.semanticNode != nil {
+			definition.semanticNode.labels = labels
+		}
+	}()
+	defer g.pushLabelFormals(function.formalNodes)()
 	bodyLocals := copyBoolMap(locals)
 	for _, bound := range function.Bounds {
 		bodyLocals[bound.Name] = true

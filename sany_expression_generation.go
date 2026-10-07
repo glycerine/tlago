@@ -23,6 +23,12 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
+	labelsEnabled        bool
+	labelScopes          []*sanyLabelScope
+	labelExceptDepth     int
+	labelAPDepth         int
+	labelAPForbidden     bool
+	labelGoalUnsupported bool
 	functions            []sanyFunctionGeneration
 	nodes                *sanyGeneratorNodes
 	formalTable          *sanySymbolTable
@@ -353,6 +359,13 @@ func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, co
 		}
 		binding.node.formalNodes = parameters
 	}
+	finishLabels := g.pushLabelScope()
+	defer func() {
+		labels := finishLabels()
+		if source := sanyGenerationSource(definition.Expr); source != nil {
+			source.definitionLabels = labels
+		}
+	}()
 	return append(diags, g.checkExpr(definition.Expr, context, locals)...)
 }
 
@@ -608,7 +621,9 @@ func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context
 		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
 		bodyLocals[parameter.Var] = true
 	}
+	popLabelFormals := g.pushLabelFormals(root.quantifierFormals)
 	diags = append(diags, g.checkExpr(body, context, bodyLocals)...)
+	popLabelFormals()
 	restore()
 	restore = nil
 	operand := sanyGeneratedExpressionNode(body)
@@ -660,7 +675,9 @@ func (g *sanyExpressionGeneration) checkChoose(expr *ChooseExpr, context map[str
 		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
 		bodyLocals[bound.Name] = true
 	}
+	popLabelFormals := g.pushLabelFormals(expr.formalNodes)
 	diags = append(diags, g.checkExpr(expr.Body, context, bodyLocals)...)
+	popLabelFormals()
 	operand := sanyGeneratedExpressionNode(expr.Body)
 	if operand != nil {
 		if expr.Set == nil {
@@ -697,6 +714,7 @@ func (g *sanyExpressionGeneration) checkBoundExpression(bounds []BoundVar, synta
 		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
 		bodyLocals[bound.Name] = true
 	}
+	defer g.pushLabelFormals(nodes)()
 	return nodes, append(diags, g.checkExpr(body, context, bodyLocals)...)
 }
 
@@ -767,6 +785,9 @@ func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Defin
 			// graph is still unported. Preserve source completion/syntax on
 			// the actual declaration without fabricating a body node.
 			g.endRecursiveDefinition(binding.node, nil, definition.Syntax)
+			if source != nil {
+				binding.node.labels = source.definitionLabels
+			}
 			definition.semanticNode = binding.node
 		}
 		return nil
@@ -777,11 +798,13 @@ func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Defin
 	}
 	if binding := g.bindings[definition.Name]; binding != nil && binding.node != nil && !binding.node.defined && binding.node.letInLevel == g.level {
 		g.endRecursiveDefinition(binding.node, source.semanticGraph, definition.Syntax)
+		binding.node.labels = source.definitionLabels
 		definition.semanticNode = binding.node
 		return nil
 	}
 	node, diagnostics := newSanySemOpDefNode(definition.Name, sanyUserDefinedOpKind, source.definitionFormals, definition.Local, source.semanticGraph, module, g.formalSymbolTable(), definition.Syntax, true, nil)
 	g.setDefinitionRecursionFields(node)
+	node.labels = source.definitionLabels
 	definition.semanticNode = node
 	return diagnostics
 }

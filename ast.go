@@ -238,6 +238,7 @@ type NewSymbol struct {
 // Parenthesized expressions retain their inner expression node.
 type SanyExprSource struct {
 	semanticGraph              sanySemanticGraphNode
+	definitionLabels           map[string]*sanySemLabelNode
 	definitionFormals          []*sanyFormalParamNode
 	operatorArgumentsGenerated bool
 	Syntax                     *SanySyntaxNode
@@ -558,6 +559,7 @@ func (e *ExceptExpr) Position() Position { return e.Pos }
 func (*ExceptExpr) exprNode()            {}
 
 type LabelExpr struct {
+	labelGenerated         bool
 	formalNodes            []*sanyFormalParamNode
 	illegalParameterSyntax []*SanySyntaxNode
 	SanyExprSource

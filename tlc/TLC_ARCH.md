@@ -1,5 +1,34 @@
 # TLC Architecture Notes for the Go Port
 
+## Ordinary expression labels and LS scopes
+
+Generator label scopes retain a nullable label table and a sequence of actual
+formal arrays. Each ordinary definition, named function and label body pushes a
+fresh frame. Quantifiers, CHOOSE, anonymous functions, comprehensions and LAMBDA
+push their actual bound formals on the current frame. LAMBDA shares its enclosing
+label table; ordinary definition parameters are resolvable symbols but do not
+enter the LS formal sequence. A nested label starts a fresh sequence even while
+outer formal symbols remain visible in the SymbolTable.
+
+Generate the body and pop its table before resolving label parameters. Reuse
+actual FormalParams; an illegal parameter gets the source diagnostic and a dummy
+FormalParam with its argument syntax. Allocate LabelNode afterward, retaining
+nonnil empty parameters, actual syntax/body identity and the popped table. Compare
+actual formal identities against the parent frame, then register the label;
+duplicates report source E4336 and preserve the earlier entry. Completed ordinary
+and recursive OpDefs retain their body's same label table. Function conflicts
+retain source behavior, including attaching the generated table to a reused OpDef.
+
+Implemented nested-NEW and EXCEPT guards return the owning Generator's actual
+nullLabelNode before generating the body. A missing canonical body remains an
+explicit graph gap; no substitute completes its enclosing definition. The bounded
+ordinary-label comparisons cover initial nil goal/zero clause fields. AP/proof
+contexts continue using the native path: their actual goal nodes, clause lifetime,
+NEW/marker ownership and labeled AP bodies require further implementation.
+Hashtable enumeration order, complete LabelNode getters/level checking/visitors,
+canonical EXCEPT graphs and evaluator sharing remain pending. Sorted table-entry
+comparisons establish associations and retained identities, not enumeration order.
+
 ## Explicit recursive declarations and completion
 
 RECURSIVE generation increments the shared unresolved counters and advances the
@@ -32,7 +61,7 @@ The real matcher replaces repeated native checks once a call graph exists.
 A completed native body whose canonical graph is unported still updates the
 actual declaration's defined/syntax state. Its body remains visibly incomplete;
 no substitute body node completes the surrounding LET. This prevents incorrect
-undefined and duplicate-definition diagnostics while label graphs are pending.
+undefined and duplicate-definition diagnostics while child graphs are pending.
 Full module recursive level checking, inherited LevelNode data, graph visitors,
 imported/qualified identities and evaluator sharing remain unfinished.
 
@@ -62,7 +91,7 @@ including when nested inside domain expressions.
 
 Unimplemented bodies leave the provisional specification incomplete and do
 not mark its enclosing LET graph complete. Missing imported/qualified identities,
-labels, full LevelNode checking and evaluator graph sharing remain pending.
+AP labels, full LevelNode checking and evaluator graph sharing remain pending.
 Explicit recursive completion follows the declaration path described above.
 
 ## Higher-order operands, LAMBDA and ASSUME/PROVE scope
