@@ -95,7 +95,7 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 	}
 	if sym.Definition != nil {
 		if value := SemanticToolObject(sym.Definition); value != nil {
-			return muxToolObject(value, state)
+			return muxToolObject(value)
 		}
 		// SymbolNodeValueLookupProvider looks through INSTANCE substitution
 		// wrappers for the original definition body's native/config override.
@@ -114,12 +114,12 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 		}
 	}
 	if sym.Data != nil {
-		return muxToolObject(sym.Data, state)
+		return muxToolObject(sym.Data)
 	}
 	if sym.Kind == SymbolBuiltIn {
 		if t != nil {
 			if value := t.Definitions[sym]; value != nil {
-				return muxToolObject(value, state)
+				return muxToolObject(value)
 			}
 		}
 		// SANY's builtin symbol is itself an OpDefNode. Retain that node
@@ -133,7 +133,7 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 	if sym.Kind == SymbolFormalParam {
 		if t != nil {
 			if value := t.Definitions[sym]; value != nil {
-				return muxToolObject(value, state)
+				return muxToolObject(value)
 			}
 		}
 		if state != nil {
@@ -148,14 +148,14 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 	if sym.Name != nil {
 		if t != nil {
 			if val := t.Definitions[sym]; val != nil {
-				return muxToolObject(val, state)
+				return muxToolObject(val)
 			}
 			if sym.IsUserDefinedOp() {
 				if sym.Definition != nil {
 					return sym.Definition
 				}
 				if val := t.DefnsByName[sym.Name]; val != nil {
-					return muxToolObject(val, state)
+					return muxToolObject(val)
 				}
 				return nil
 			}
@@ -167,7 +167,7 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 		}
 		if t != nil {
 			if val := t.DefnsByName[sym.Name]; val != nil {
-				return muxToolObject(val, state)
+				return muxToolObject(val)
 			}
 		}
 		if primed && state != nil {
@@ -177,15 +177,14 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 	return nil
 }
 
-func muxToolObject(value any, state *TLCStateMut) any {
+func muxToolObject(value any) any {
 	switch v := value.(type) {
 	case nil:
 		return nil
 	case *WorkerValue:
-		workerID, ok := CurrentWorkerID()
-		if !ok {
-			workerID = workerIDFromState(state)
-		}
+		// WorkerValue.mux selects zero outside an IdThread, regardless of
+		// the worker metadata stored on the state being evaluated.
+		workerID, _ := CurrentWorkerID()
 		return v.ValueForWorker(workerID)
 	default:
 		return v

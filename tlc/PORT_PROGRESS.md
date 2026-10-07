@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-06 Source ordinary-lookup WorkerValue selection:
+Previous completed commit: 35871db. Source WorkerValue.mux selects the current
+IdThread ID or zero on an ordinary thread. Go ordinary lookup incorrectly used
+the state's worker ID outside a worker scope. Remove that fallback and the
+helper's state argument from all seven call sites. Context bindings and definition
+body overrides still return their objects without muxing, as the source provider
+does. Do not alter other state-worker metadata consumers.
+
+Eleven exact observations match actual Java FastTool stateful lookup and
+WorkerValue.mux: outside-worker states with IDs 0, 1 and 32767 all select 11;
+worker IDs 0/1 select 11/22; IDs 2/-1 throw ArrayIndexOutOfBoundsException;
+context/body WorkerValues remain unmuxed; plain and null inputs pass through.
+Source FastTool reads a minimal scratch model; reflected source WorkerValue
+constructor supplies two distinct constant copies. Go uses its existing legacy
+OpDefNode tool-object storage, so this comparison does not establish indexed
+SymbolNode storage or complete lookup-provider parity. Scratch probes are outside
+the repository; no permanent tests invented. Initial Java probe compilation
+failed on an ambiguous Context import; corrected qualification before execution.
+Receipts: /mnt/oldrog/tmp/tlago-worker-lookup-{java,go}.log.
+
+Existing focused evaluator/spec/context/coverage/cache/randomized-value checks
+pass 4.378 seconds, session 46130 terminal 0. Eleven unchanged whole original
+models pass 31.397 seconds, session 79898 terminal 0: RandomElement,
+RandomElementXandY, RandomSubsetA/B, ConstantRank1TLCEval,
+ConstantContextTLCCache, RandomElementSimulation, both simulation-worker
+constraint models, ACoverage and TLCGetAll. All packages compile, session 70891
+terminal 0. Receipts: /mnt/oldrog/tmp/tlago-worker-lookup-{tlc,models,compile}.log.
+All handles retired. Normal execution only; original assertions, settings and
+bounds unchanged. No inventory or full-workspace pass credit. Continue faithful
+semantic-node/formal-parameter and label-generation work; new RPC service remains
+postponed.
+
 2026-10-06 Source WorkerValue demux decisions and preprocessing control:
 Previous completed commit: d2cf975. Java WorkerValue.demux calls OpDefEvaluator's
 state-expression overload; actual Tool implementation delegates with Empty s1

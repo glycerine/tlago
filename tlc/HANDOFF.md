@@ -688,8 +688,10 @@ deep normalization, seed replay and array ownership. Constant preprocessing uses
 EvalControl.Clear through the source Tool overload, rather than the former
 EvalConst shortcut. Nil evaluator/results throw source exception types. Fifteen
 exact demux observations and eleven unchanged original models pass. Ordinary
-lookup's outside-worker mux fallback still needs source reconciliation: Java
-selects worker zero, while Go can use the state's worker ID.
+lookup now selects worker zero outside an IdThread scope, independent of state
+worker metadata. Eleven direct-source lookup observations match; context/body
+results remain unmuxed. Indexed SymbolNode storage and the full source lookup
+provider graph are still pending.
 
 Next semantic work: port Generator's label-parameter checks and formal-parameter
 identity handling. A nine-case detailed label-generation comparison has three

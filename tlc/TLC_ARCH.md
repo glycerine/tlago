@@ -21,9 +21,12 @@ proxy verifies Empty context/state and the exact cost model; the Clear control
 comes from inspecting Tool's actual overload. Null exception-message text is
 not established by the probe. Eleven unchanged original models pass.
 
-Ordinary lookup's fallback to the state's worker ID outside a worker remains
-incorrect: source WorkerValue.mux chooses index zero for non-IdThread callers.
-Keep that pending rather than treating current lookup behavior as source parity.
+Ordinary lookup now selects the current worker ID, or zero outside an IdThread
+scope, matching WorkerValue.mux. State worker metadata does not select a constant
+copy. Eleven observations match actual Java FastTool lookup and WorkerValue.mux,
+including invalid indices and the unmuxed context/body paths. The Go comparison
+uses its legacy definition cache; indexed SymbolNode storage and the complete
+lookup-provider graph remain pending.
 
 ## Random-enumerable instance initialization and restoration
 
@@ -5212,9 +5215,8 @@ across multiple workers, reevaluate it once per worker with the same
 random-enumerable seed before muxing the active worker's copy and converting it
 through the legacy `toSetEnum`/`toFcnRcd` path.
 Ordinary symbol lookup muxes a cached `WorkerValue` by the current worker ID.
-The Go fallback to the state's worker ID outside that scope remains a port gap;
-Java selects zero outside an `IdThread`. Port that selection so copied-state
-metadata cannot override the source choice of per-worker constant value.
+Outside that scope it selects zero, matching Java's non-`IdThread` path.
+Copied-state worker metadata does not override the per-worker constant choice.
 `TLC!TLCGet`, `TLCExt!CounterExample`, `TLCExt!Trace`, `_TLCTrace!_TLCState`,
 `_JsonTrace!_TLCState`, and `_Possible!_Counts` all carry non-constant
 minimum levels in Java to prevent invalid constant folding. `TLCExt!PickSuccessor`
