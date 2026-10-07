@@ -918,7 +918,7 @@ also merges every retained substitution expression's own constraints, even when
 the target declaration is unused. Use the actual resolved default/WITH array
 instead of reconstructing defaults by name. All 27 additional parseable RHS
 cases and prior bounded comparisons match Java. Current focused root/model checks
-pass in 27.346 seconds, complete SANY passes in 1.843 seconds, and compilation
+pass in 39.140 seconds, complete SANY passes in 1.818 seconds, and compilation
 passes. Original corpus fixtures and assertions are unchanged; no inventory
 credit or new full-workspace pass is added.
 
@@ -930,10 +930,15 @@ The two previously failing imported bounds are resolved. All 22 expanded cases
 match, including operator aliases, nested wrappers and LOCAL negative controls.
 Retained instances share that symbolic translation instead of inlining target
 bodies through WITH. Do not merge the entire target module into LET.
-Next audit ordinary expression/signature LET constraint summaries: the analyzer
-still returns body dependencies without all source opDef constraint fields.
-Complete canonical node fields, graphs and shared evaluator construction remain
-pending; these bounded comparisons establish neither full parity nor test credit.
+Ordinary expression/signature LET summaries now preserve body-only dependencies
+and merge all retained definition constraint fields. Captured formal generation
+and shadowing diagnostics match source. Symbolic operator-level conditions also
+retain Java's higher-order Leibniz propagation; local caches distinguish captured
+formal identities and actual operators between specializations. All 22 additional
+signature comparisons match, and earlier bounded comparisons remain exact.
+Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
+shared evaluator construction. These summaries and bounded comparisons establish
+neither complete graph parity nor additional original-method test credit.
 Full canonical LevelNode fields and iteration, imported graph identity, full
 formal-operator metadata, the remaining Java frontend helper API and evaluator
 sharing remain pending. The green comparisons do not prove complete LevelNode

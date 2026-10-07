@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-07 Ordinary LET signatures and higher-order level conditions:
+Previous completed commit: f274a03. Read LetInNode field propagation and audit
+ordinary formal maxima, beyond module collection. Initial 11 parseable cases
+35034 return 1 with nine mismatches: unused LET definitions lose formal maxima,
+captured INSTANCE formals are resolved but then reported unknown, and a nested
+parameter conflict uses a Go-only message. Preserve the unchanged source cases.
+
+LET expression summaries now clone body dependencies, preserve body-only level/
+levelParams/allParams and no nonLeibnizParams, and merge constraint fields from
+all ordinary and retained imported definitions. Import only instance co-parameter
+relationships. A local definition's own formal constraints do not leak as outer
+formal bounds. Resolved formal nodes now satisfy identifier generation; formal
+collision diagnostics retain the actual enclosing declaration's position. All
+11 original scratch cases match (31594, terminal 0); existing SANY passes in
+2.021 seconds (32347).
+
+Expand to 22 cases covering higher-order operators, nested/parameterized imports,
+local capture, unused local formals and repeated specializations in both orders.
+Initial 62926 returns 1 on higher_prime/higher_nested: Java reports the additional
+4244 non-Leibniz diagnostic. OpApplNode uses OpDefNode.opLevelCond independently
+of the body's nonLeibnizParams. Retain symbolic formal-operator conditions before
+actual specialization; propagate an actual OpDef's per-argument Leibniz result
+to the affected operand's allParams. Keep LET's own nonLeibnizParams empty.
+Local signature cache keys now retain sorted captured formal identities and
+operator actual identities rather than reusing another enclosing specialization.
+Use an independent argument-maximum analyzer inside Subst translation so it
+cannot clear the caller's active signature state.
+
+All 22 complete source diagnostic logs now match (36442, terminal 0), log:
+/mnt/oldrog/tmp/tlago-let-signature-metadata.log. Scratch vectors remain outside
+the repository. No permanent tests, original assertions, fixtures or inventory
+credit changed. Final focused root checks plus seven unchanged original model
+methods pass normally in 39.140 seconds (69685); complete SANY passes in 1.818
+seconds (3812); all-package compilation passes. The preceding 22 LET-import,
+27 RHS, 30 module-scope, 26 co-parameter, 24 argument, 24 level, 27 phase,
+29 AP phase and 12 prime comparisons remain exact (56208, terminal 0). Logs:
+/mnt/oldrog/tmp/tlago-let-summary-final-*.log. All handles terminal and retired.
+No new full-workspace pass or complete canonical OpDef/OpArg/LetIn/LevelNode
+fields and iteration is established. Continue ordinary graph construction and
+source metadata parity; evaluator sharing remains pending. New distributed
+service remains postponed.
+
 2026-10-07 Retained LET exports and symbolic Subst constraint translation:
 Previous completed commit: 41b2c14. Continue the two recorded LET failures.
 Generation now retains the accepted INSTANCE-exported definition references on

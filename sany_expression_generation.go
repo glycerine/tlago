@@ -167,7 +167,11 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 func (g *sanyExpressionGeneration) generateLocalDefinition(definition Definition, positions map[string]Position, letLocals map[string]bool) Diagnostics {
 	var diags Diagnostics
 	diags = append(diags, checkDefinitionParams(definition)...)
-	diags = append(diags, checkDefinitionParamCollisions(definition, positions, letLocals)...)
+	collisionContext := copySanyExpressionContext(positions)
+	for name, symbol := range g.formals {
+		collisionContext[name] = symbol.pos
+	}
+	diags = append(diags, checkDefinitionParamCollisions(definition, collisionContext, letLocals)...)
 	bodyLocals := copyBoolMap(letLocals)
 	for _, name := range definition.Params {
 		bodyLocals[name] = true

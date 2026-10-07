@@ -74,8 +74,24 @@ an inlined body relationship. Retained InstanceNode collection shares these
 transformations and separately merges each RHS's own constraints. All 22 expanded
 LET cases match, including the two previously missing bounds and an alias case.
 Do not compensate by merging an entire target module's fields. Full canonical
-OpDef/SubstIn/LetIn graph construction remains pending, as does ordinary expression/
-signature LET constraint metadata beyond these module-collection summaries.
+OpDef/SubstIn/LetIn graph construction remains pending. Ordinary expression/
+signature LET summaries now merge constraint fields from ordinary and retained
+imported definitions and only co-parameter fields from instances. Clone the body
+summary before adding those sets; level/levelParams/allParams remain body-only,
+while nonLeibnizParams remains empty. Unused local definitions can constrain an
+enclosing formal even when they do not affect the LET body's level or weight.
+Own local formals do not become enclosing argument maxima.
+
+OpDefNode.opLevelCond comes from symbolic formal-operator relationships before
+actual specialization. OpApplNode uses each actual operator's per-argument Leibniz
+result to add the affected operand's allParams to its nonLeibnizParams. Preserve
+this rule independently of a containing LET's own empty nonLeibnizParams. Local
+signature keys include sorted captured formal identities and actual operator
+identities; do not share another enclosing specialization's summary. Nested Subst
+argument-maximum queries use an independent analyzer rather than clearing the
+caller's active signature state. Twenty-two additional LET signature comparisons
+match complete Java diagnostics, including higher-order non-Leibniz results.
+Complete canonical fields and iteration remain pending.
 Check substitution expressions before constraints, preserving diagnostic
 order and the instancer's lexical LET context. User-defined substituted operators
 use the symbolic argument maximum calculation rather than builtin-only maxima.

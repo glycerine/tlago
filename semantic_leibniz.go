@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -42,6 +43,20 @@ func (u *sanyLeibnizUse) addArgumentParameter(key sanyArgumentParameter) {
 	}
 	u.argParams[key] = true
 }
+
+// LetInNode inherits constraints from opDefs without their level/allParams.
+func (u *sanyLeibnizUse) mergeConstraints(v sanyLeibnizUse) {
+	for id, maximum := range v.constraints {
+		u.constrainID(id, maximum)
+	}
+	for key, minimum := range v.argConstraints {
+		u.requireArgument(key, minimum)
+	}
+	for _, key := range v.argParamOrder {
+		u.addArgumentParameter(key)
+	}
+}
+
 func (u *sanyLeibnizUse) merge(v sanyLeibnizUse) {
 	for key, level := range v.argConstraints {
 		u.requireArgument(key, level)
@@ -132,18 +147,24 @@ type sanyLeibnizContext struct {
 	formals   map[string]sanyLeibnizBinding
 	locals    map[string]sanyLeibnizLocal
 }
+type sanyOperatorLevelCondition struct {
+	operator, operand, position, arity int
+}
+
 type sanyLeibnizSignature struct {
-	ids       []int
-	non       []bool
-	weights   []bool
-	maxLevels []tlaLevel
-	free      sanyLeibnizUse
+	conditions []sanyOperatorLevelCondition
+	ids        []int
+	non        []bool
+	weights    []bool
+	maxLevels  []tlaLevel
+	free       sanyLeibnizUse
 }
 type sanyLeibnizDefinitionKey struct {
 	definition *Definition
 	body       Expr
 	instances  string
 	operators  string
+	captures   string
 }
 type sanyLeibnizAnalyzer struct {
 	resolver    *sanySelectorResolver
@@ -352,6 +373,26 @@ func sanyDefinitionIsRecursive(ref sanySelectorDefinition, lexical *sanyLeibnizC
 // as in its levelCheck iterations, before mapping formals to those actuals.
 func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Expr, params []BoundVar, actuals []sanyLeibnizBinding, caller, lexical *sanyLeibnizContext) sanyLeibnizUse {
 	key := sanyLeibnizDefinitionKey{definition: ref.def, body: body}
+	if lexical != nil {
+		// A local definition's virtual formal identities and captured operator
+		// actuals belong to its enclosing specialization, not another call.
+		var captured strings.Builder
+		names := make([]string, 0, len(lexical.formals))
+		for name := range lexical.formals {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			binding := lexical.formals[name]
+			ids := make([]int, 0, len(binding.use.all))
+			for id := range binding.use.all {
+				ids = append(ids, id)
+			}
+			sort.Ints(ids)
+			fmt.Fprintf(&captured, "%s:%v:%d:%s;", name, ids, binding.use.level, a.operatorIdentity(binding))
+		}
+		key.captures = captured.String()
+	}
 	var instances, operators []string
 	for _, wrapper := range ref.wrappers {
 		instances = append(instances, wrapper.owner.Name+"!"+wrapper.inst.SourcePosition().String()+"!"+wrapper.inst.Name)
@@ -396,6 +437,9 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 			arguments[i] = actuals[i]
 		}
 		arguments[i].use = sanyLeibnizUse{all: map[int]bool{signature.ids[i]: true}, levelParams: map[int]bool{signature.ids[i]: true}}
+		if param.OperatorArity > 0 && i >= len(actuals) {
+			arguments[i].operatorID = &signature.ids[i]
+		}
 	}
 	ctx := &sanyLeibnizContext{module: ref.module, variables: caller.variables, formals: map[string]sanyLeibnizBinding{}}
 	if lexical != nil {
@@ -513,6 +557,35 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 		if !signature.free.argParams[key] {
 			signature.free.addArgumentParameter(key)
 			a.changed = true
+		}
+	}
+	if key.operators != "" {
+		// OpDefNode computes opLevelCond from symbolic operator formals;
+		// specializing the body with an OpDef must not erase those conditions.
+		a.definitionBody(ref, body, params, nil, caller, lexical)
+		genericKey := key
+		genericKey.operators = ""
+		if generic := a.signatures[genericKey]; generic != nil {
+			indices := map[int]int{}
+			for i, id := range generic.ids {
+				indices[id] = i
+			}
+			for _, relation := range generic.free.argParamOrder {
+				operator, hasOperator := indices[relation.operator]
+				operand, hasOperand := indices[relation.parameter]
+				if !hasOperator || !hasOperand {
+					continue
+				}
+				condition := sanyOperatorLevelCondition{operator, operand, relation.position, params[operator].OperatorArity}
+				found := false
+				for _, existing := range signature.conditions {
+					found = found || existing == condition
+				}
+				if !found {
+					signature.conditions = append(signature.conditions, condition)
+					a.changed = true
+				}
+			}
 		}
 	}
 	return a.signatureUse(signature, actuals)
@@ -687,10 +760,24 @@ func (a *sanyLeibnizAnalyzer) expressionUncached(expr Expr, ctx *sanyLeibnizCont
 			def := &e.Definitions[i]
 			nested.locals[def.Name] = sanyLeibnizLocal{recursive: letRecursiveNames(e)[def.Name], ref: sanySelectorDefinition{module: ctx.module, def: def, params: sanyDefinitionParams(def)}, context: nested}
 		}
-		use := a.expression(e.Body, nested)
-		// LetInNode.levelCheck copies allParams from the body, but does not
-		// copy nonLeibnizParams. Preserve the source's propagation rule.
+		var use sanyLeibnizUse
+		use.merge(a.expression(e.Body, nested))
+		// LetInNode keeps level/levelParams/allParams from its body and
+		// no nonLeibnizParams, but constraints from every opDef.
 		use.non = nil
+		for i := range e.Definitions {
+			local := nested.locals[e.Definitions[i].Name]
+			use.mergeConstraints(a.definition(local.ref, nil, nested, local.context))
+		}
+		for _, imported := range e.instanceDefinitions {
+			use.mergeConstraints(a.substitutedDefinitionConstraints(imported, nested))
+		}
+		for _, instance := range e.Instances {
+			instanceUse := a.instanceConstraintUse(instance, nested)
+			for _, key := range instanceUse.argParamOrder {
+				use.addArgumentParameter(key)
+			}
+		}
 		return use
 	default:
 		var use sanyLeibnizUse
@@ -758,6 +845,20 @@ func (a *sanyLeibnizAnalyzer) signatureUse(signature *sanyLeibnizSignature, argu
 			use.merge(argUse)
 		}
 	}
+	for _, condition := range signature.conditions {
+		if condition.operator >= len(arguments) || condition.operand >= len(arguments) {
+			continue
+		}
+		if a.argumentNonLeibnizAt(arguments[condition.operator], condition.arity, condition.position) {
+			operand := a.binding(arguments[condition.operand])
+			if use.non == nil {
+				use.non = map[int]bool{}
+			}
+			for id := range operand.all {
+				use.non[id] = true
+			}
+		}
+	}
 	return use
 }
 
@@ -788,4 +889,28 @@ func (a *sanyLeibnizAnalyzer) operatorIdentity(binding sanyLeibnizBinding) strin
 		return fmt.Sprintf("symbol:%d", *binding.operatorID)
 	}
 	return "formal"
+}
+
+// OpApplNode uses the actual OpDef's per-argument Leibniz metadata for each
+// opLevelCond. Keep this analysis separate from the caller's active summaries.
+func (a *sanyLeibnizAnalyzer) argumentNonLeibnizAt(argument sanyLeibnizBinding, arity, position int) bool {
+	if argument.operatorID != nil || argument.expr == nil || position >= arity {
+		return false
+	}
+	id := a.nextID
+	a.nextID++
+	arguments := make([]sanyLeibnizBinding, arity)
+	arguments[position].use = sanyLeibnizUse{all: map[int]bool{id: true}, levelParams: map[int]bool{id: true}}
+	checker := newSanyLeibnizAnalyzer(a.resolver.spec)
+	checker.signatures = map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature{}
+	checker.nextID = id + 1
+	for {
+		checker.changed = false
+		checker.evaluated = map[sanyLeibnizDefinitionKey]bool{}
+		checker.expressions = map[sanyLeibnizExpressionKey]sanyLeibnizUse{}
+		use := checker.apply(argument.expr, arguments, argument.context)
+		if !checker.changed {
+			return use.non[id]
+		}
+	}
 }

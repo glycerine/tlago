@@ -3244,7 +3244,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				e.generationArity = &arity
 			}
 		}
-		if e.Name == "" || localIdentifierInScope(locals, e.Name) || builtinIdentifiers[e.Name] {
+		if e.Name == "" || e.formalNode != nil || localIdentifierInScope(locals, e.Name) || builtinIdentifiers[e.Name] {
 			return nil
 		}
 		if _, ok := builtinOperatorArity(e.Name); ok {

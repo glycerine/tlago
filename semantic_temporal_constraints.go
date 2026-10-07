@@ -361,7 +361,8 @@ func (a *sanyLeibnizAnalyzer) substitutedConstraints(use sanyLeibnizUse, names [
 		} else if expr := expressions[key.operator]; expr != nil && key.operator < len(names) {
 			// Subst.getSubLCSet translates a substituted OpDef's maximum
 			// into scalar constraints on its co-parameter's substitution.
-			maximums := a.applicationMaximums(expr, nil, targets[names[key.operator]].Arity, owner)
+			maximumChecker := newSanyLeibnizAnalyzer(a.resolver.spec)
+			maximums := maximumChecker.applicationMaximums(expr, nil, targets[names[key.operator]].Arity, owner)
 			if key.position < len(maximums) {
 				result.constrain(params(key.parameter), maximums[key.position])
 			}
@@ -389,4 +390,18 @@ func (a *sanyLeibnizAnalyzer) substitutionParameterOperator(expr Expr, context *
 		return a.substitutionParameterOperator(binding.expr, binding.context)
 	}
 	return nil
+}
+
+func (a *sanyLeibnizAnalyzer) instanceConstraintUse(instance Instance, context *sanyLeibnizContext) sanyLeibnizUse {
+	target := a.resolver.spec.Modules[instance.Module]
+	names, source := moduleSubstitutionConstraints(target, a.resolver.spec)
+	result := a.substitutedConstraints(source, names, moduleSubstitutionTargets(target, a.resolver.spec), instance, context)
+	owner := sanyLeibnizNestedContext(context)
+	for _, name := range instance.Params {
+		owner.formals[name] = sanyLeibnizBinding{}
+	}
+	for _, sub := range instance.generatedSubstitutions {
+		result.mergeConstraints(a.expression(sub.expr, owner))
+	}
+	return result
 }
