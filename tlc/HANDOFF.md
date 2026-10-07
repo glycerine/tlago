@@ -835,6 +835,17 @@ fixtures now declare the actual named INSTANCE their qualified calls require;
 the missing-substitution assertion checks Java's exact code, message and range.
 Existing focused root/SANY checks, six unchanged original models and all-package
 compilation pass. This establishes no new full-workspace pass or inventory credit.
+Module and proof INSTANCE processing now share the same RHS generator. Scalar
+substitutions generate expressions; operator substitutions generate operator
+arguments and retain the source nullOpArg failure diagnostics. The former
+module-only generator has been removed; deferred level checking remains separate.
+All 50 namespace/RHS cases match complete Java diagnostics. Original Test210 and
+Test212 also match complete output and pass unchanged assertions: nested labels
+retain whole syntax ranges, ASSUME/PROVE selectors use code 4005, and unapplied
+parameterized INSTANCE prefixes remain legal in operator-argument contexts.
+Final focused root checks include all original Test206–220 methods; complete
+SANY and compilation pass. Next inspect LET-level INSTANCE generation, which
+still has its own incomplete RHS traversal, before ordinary canonical graphs.
 Full registration against operator/theorem graphs, qualified declaration selectors,
 other imported graph identities, ordered module definitions and complete canonical
 node sharing with the evaluator remain pending.

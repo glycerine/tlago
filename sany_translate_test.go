@@ -1670,7 +1670,7 @@ INSTANCE Helper WITH C <- 1, F <- 1
 		spec, diags := LoadSanySpec(root, LoadOptions{})
 		requireNoErrors(t, diags)
 		sem := CheckSpec(spec)
-		requireHasErrorContaining(t, sem, "substitution")
+		requireHasErrorContaining(t, sem, "substituted for symbol 'F'")
 		requireHasErrorContaining(t, sem, "arity")
 	})
 
@@ -1722,8 +1722,8 @@ INSTANCE Illegal WITH c <- 0
 		if location.Begin.Line != 5 || location.Begin.Column != 1 || location.End.Line != 5 || location.End.Column != 16 {
 			t.Fatalf("missing substitution range=%v, want 5:1 to 5:16", location)
 		}
-		requireHasErrorContaining(t, sem, "duplicate INSTANCE substitution")
-		requireHasErrorContaining(t, sem, "not a CONSTANT or VARIABLE")
+		requireHasErrorContaining(t, sem, "Multiple substitutions for symbol 'c'")
+		requireHasErrorContaining(t, sem, "not a legal target of a substitution")
 	})
 
 	t.Run("allows INSTANCE substitutions for inherited constants", func(t *testing.T) {

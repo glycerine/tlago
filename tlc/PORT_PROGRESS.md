@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-07 Shared module/proof INSTANCE RHS generation:
+Previous completed commit: 9bc868e. Actual Java comparisons expose six module-only
+shortcuts across 20 paired module/proof vectors (77287 terminal 1). A scalar RHS
+operator is an expression with a call-arity error, not an operator substitution
+with an extra 4243. Operator RHS expressions/literals reject syntax before walking
+children; unknown operator names report their lookup error before nullOpArg's
+arity error. The proof path already matches all 20 cases. Share that production
+generator with module instances, use accepted target declaration metadata, and
+preserve scalar-default OpDeclNode/OpDefNode/FormalParamNode match distinctions.
+All 20 RHS cases and all previous 30 namespace/substitution cases match (87985
+terminal 0). Remove the former module-only generator, leaving deferred level
+checking in checkInstanceSubstitutionLevels.
+
+Expanded existing root checks (48726 terminal 1, 7.593 seconds) expose one native
+message expectation and unchanged original Test210/Test212 failures. Java checks
+the exact unchanged models: Test210 requires whole nested-label ranges; Test212
+accepts unapplied parameterized INSTANCE prefixes as part of operator arguments.
+Carry the expression/operator-argument mode through qualified prefix validation;
+child expressions clear that mode. First correction 14742 terminal 1 still misses
+direct qualified exports; corrected original/bridge gate 54793 terminal 0 passes
+1.791 seconds. Preserve all original Test210/Test212 assertions and fixtures.
+Complete diagnostic comparison 23344 terminal 1 exposes Test210's remaining
+placeholder 4340 codes. Generator source uses UNSUPPORTED_LANGUAGE_FEATURE (4005)
+for all four sanySelectorErrorAt paths; port that code and retain the labeled
+access diagnostic's source label-name parameter. Final 15668 terminal 0:
+complete Test210/Test212 codes, counts, order, messages and ranges match, alongside
+all 50 namespace/RHS, nine declaration and 45 label cases. Exact unchanged native
+arity fixture separately matches both source diagnostics (4004 at 2:35 and 4243
+at null location). Native wording assertions now check source messages; the same
+three original failures and exact missing-substitution assertion remain required.
+
+Final existing focused root checks pass 8.350 seconds (92001), complete SANY
+passes 1.506 seconds (34832), and all-package compilation passes (69500). The
+root selection includes every existing original Test206–220 method unchanged.
+The final source label-name parameter addition passes unchanged Test210 again
+in 0.350 seconds (43442 terminal 0); log tlago-instance-selector-parameters.log.
+Six unchanged original TLC models also pass 1.890 seconds (41348); the later
+change affects only failed ASSUME/PROVE selector diagnostics. All handles terminal
+and retired. Logs /mnt/oldrog/tmp/tlago-instance-final-verified-{root,sany,compile}.log,
+tlago-instance-final-models.log, tlago-instance-final-{rhs,qualified,registration,
+label-flow,label-required,label-semantic,label-extra}.log, and
+tlago-instance-original-{210,212}-{java,go}.log. All scratch helpers/vectors remain
+outside the repository. No invented permanent tests, new inventory credit or
+full-workspace pass. LET-level INSTANCE's separate incomplete generation path
+is next; canonical ordinary graphs/evaluator sharing and full TLC parity remain
+pending. New distributed service remains postponed.
+
 2026-10-07 Expression namespaces and INSTANCE substitution processing:
 Previous completed commit: 85e7d77. Java rejects module-name-qualified constants,
 variables, operators and theorems without a named INSTANCE. Remove fabricated

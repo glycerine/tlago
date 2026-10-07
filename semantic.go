@@ -738,9 +738,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	levelChecker.dependencies.declKinds[mod] = declKinds
 	generateInstance := func(inst Instance) {
 		diags = append(diags, checks.generator.instance(inst)...)
-		diags = append(diags, checkInstanceSubstitutions(mod, inst, spec, expressionContexts.at(inst.Syntax, defined), declKinds, arities, operatorParamSpecs, false)...)
+		diags = append(diags, expressionGeneration.generateInstanceSubstitutions(inst, mod, expressionContexts.at(inst.Syntax, defined))...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{inst.SourcePosition(), func() Diagnostics {
-			return checkInstanceSubstitutions(mod, inst, spec, expressionContexts.at(inst.Syntax, defined), declKinds, arities, operatorParamSpecs, true)
+			return checkInstanceSubstitutionLevels(mod, inst, spec, expressionContexts.at(inst.Syntax, defined), declKinds, arities)
 		}})
 	}
 	generateProofRef := func(ref ProofRef) bool {
@@ -1391,6 +1391,9 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		if ctx.noLabels {
 			diagnostic := errorAt(e.Pos, "E4334", "label %s is not allowed in a nested ASSUME/PROVE block with NEW", e.Name)
 			diagnostic.SANYMessage = "Label not allowed within scope of declaration in nested ASSUME/PROVE."
+			if e.Syntax != nil {
+				diagnostic.SANYRange = e.Syntax.Range
+			}
 			return Diagnostics{diagnostic}
 		}
 		if ctx.inExcept {
@@ -2572,7 +2575,7 @@ func checkAssumeProveDefinitionUse(expr Expr, assumeProveDefs map[string]bool, l
 	return diags
 }
 
-func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined map[string]Position, declKinds map[string]DeclarationKind, arities map[string]int, operatorParams map[string][]operatorParamSpec, levelChecking bool) Diagnostics {
+func checkInstanceSubstitutionLevels(mod *Module, inst Instance, spec *Spec, defined map[string]Position, declKinds map[string]DeclarationKind, arities map[string]int) Diagnostics {
 	var diags Diagnostics
 	if spec == nil {
 		return nil
@@ -2588,12 +2591,8 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			targets[entry.name] = substitutionTarget{Kind: entry.kind, Arity: entry.declaration.semArity(), Pos: entry.declaration.semPosition()}
 		}
 	}
-	var temporalConstraints map[string]tlaLevel
-	matchLevels := false
-	if levelChecking {
-		temporalConstraints = moduleTemporalConstantConstraints(target, spec)
-		matchLevels = moduleRequiresSubstitutionLevelMatch(target, spec)
-	}
+	temporalConstraints := moduleTemporalConstantConstraints(target, spec)
+	matchLevels := moduleRequiresSubstitutionLevelMatch(target, spec)
 	// constructSubst resolves defaults in the current SymbolTable. Later
 	// declarations and definitions cannot provide a default retroactively.
 	implicit := make(map[string]int, len(defined))
@@ -2607,38 +2606,10 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 	arities = copyIntMap(arities)
 	declKinds = copyDeclKindMap(declKinds)
 	for _, param := range inst.Params {
-		if !levelChecking && locals[param] {
-			diags = append(diags, errorAt(inst.ParamPositions[param], "E4201", "duplicate formal parameter %s", param))
-		}
 		locals[param] = true
 		arities[param] = inst.ParamArities[param]
 		delete(declKinds, param)
 		implicit[param] = inst.ParamArities[param]
-	}
-	// SubstInNode.constructSubst constructs scalar defaults before WITH is
-	// processed. OpApplNode checks the resolved symbol with zero arguments,
-	// even when an explicit substitution will later replace that default.
-	if !levelChecking {
-		for _, entry := range targetEntries {
-			if entry.kind != ConstantDecl && entry.kind != VariableDecl {
-				continue
-			}
-			if entry.kind == ConstantDecl && targets[entry.name].Arity != 0 {
-				continue
-			}
-			got, exists := implicit[entry.name]
-			if !exists || got == 0 || locals[entry.name] {
-				continue
-			}
-			position := inst.SourcePosition()
-			var diagnostic Diagnostic
-			if kind := declKinds[entry.name]; kind == ConstantDecl || kind == VariableDecl {
-				diagnostic = sanyRegistrationDiagnostic(position, "E4004", "Operator used with the wrong number of arguments.")
-			} else {
-				diagnostic = sanyRegistrationDiagnostic(position, "E4004", "Wrong number of arguments (%d) given to operator '%s', \nwhich requires %d arguments.", 0, entry.name, got)
-			}
-			diags = append(diags, diagnostic)
-		}
 	}
 	substitutions := instanceSubstitutions(inst)
 	substitutionExprs := map[string]Expr{}
@@ -2655,39 +2626,13 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		if name == "" || expr == nil {
 			continue
 		}
-		previous, duplicate := seen[name]
-		if !duplicate {
-			seen[name] = subst.Pos
-		}
+		seen[name] = subst.Pos
 		substTarget, ok := targets[name]
 		if !ok {
-			if !levelChecking {
-				diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4242", "INSTANCE substitution target %s is not a CONSTANT or VARIABLE of module %s", name, inst.Module), name)
-				diagnostic.SANYRange = SanyRange{Begin: subst.Pos, End: subst.Pos.SourceEnd()}
-				diagnostic.SANYMessage = fmt.Sprintf("Identifier '%s' is not a legal target of a substitution. \nA legal target must be a declared CONSTANT or VARIABLE in the module being instantiated. \n(Also, check for warnings about multiple declarations of this same identifier.)", name)
-				diags = append(diags, diagnostic)
-			}
 			continue
 		}
 		want := substTarget.Arity
 		got := substitutionExprArity(expr, arities)
-		if !levelChecking && got != want {
-			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4243", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want), name, want)
-			position := expr.Position()
-			if _, identifier := expr.(*IdentExpr); identifier && want > 0 {
-				// selectorToNode rejects a GeneralId of the wrong arity;
-				// generateOpArg then returns nullOpArg, whose location is null.
-				arityDiagnostic := sanyDiagnosticParameters(errorAt(position, "E4271", "operator argument arity mismatch: got %d, want %d", got, want), want, got)
-				arityDiagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-				arityDiagnostic.SANYMessage = fmt.Sprintf("Expected arity %d but found operator of arity %d.", want, got)
-				diags = append(diags, arityDiagnostic)
-				position = Position{}
-				diagnostic.Pos = position
-			}
-			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-			diagnostic.SANYMessage = fmt.Sprintf("An operator must be substituted for symbol '%s', and it must have arity %d.", name, want)
-			diags = append(diags, diagnostic)
-		}
 
 		if matchLevels {
 			level := leibniz.substitutionLevel(expr, mod, locals)
@@ -2702,7 +2647,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 				}
 			}
 		}
-		if levelChecking && want > 0 && leibniz.operatorNonLeibniz(expr, mod, got, locals) {
+		if want > 0 && leibniz.operatorNonLeibniz(expr, mod, got, locals) {
 			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module), inst.Module, name)
 			position := inst.SourcePosition()
 			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
@@ -2716,51 +2661,17 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", inst.Module, name, maximum)
 			diags = append(diags, diagnostic)
 		}
-		if levelChecking {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, inst.SourcePosition(), declKinds)...)
-		}
-		if !levelChecking {
-			diags = append(diags, checkExpr(expr, defined, locals)...)
-		}
-		if !levelChecking && !substitutionExprIsOperatorArgument(expr, want, arities) {
-			diags = append(diags, checkCallArity(expr, arities, operatorParams, locals)...)
-		}
-		if levelChecking {
-			diags = append(diags, checkPrimedConstants(expr, declKinds, locals)...)
-		}
-		if duplicate && !levelChecking {
-			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4241", "duplicate INSTANCE substitution for %s; first substitution at %s", name, previous), name)
-			position := expr.Position()
-			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-			diagnostic.SANYMessage = fmt.Sprintf("Multiple substitutions for symbol '%s' in substitution.", name)
-			diags = append(diags, diagnostic)
-		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, inst.SourcePosition(), declKinds)...)
+		diags = append(diags, checkPrimedConstants(expr, declKinds, locals)...)
+
 	}
-	if levelChecking {
-		diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.SourcePosition(), declKinds)...)
-	}
-	// Generator checks remaining operator defaults before matchAll reports
-	// missing declarations. Scalar defaults are ExprNodes with arity zero.
-	if !levelChecking {
-		for _, entry := range targetEntries {
-			if entry.kind != ConstantDecl || targets[entry.name].Arity == 0 {
-				continue
-			}
-			if _, explicit := seen[entry.name]; explicit {
-				continue
-			}
-			want := targets[entry.name].Arity
-			if got, exists := implicit[entry.name]; exists && got != want {
-				diags = append(diags, sanyRegistrationDiagnostic(inst.SourcePosition(), "E4243", "An operator must be substituted for symbol '%s', and it must have arity %d.", entry.name, want))
-			}
-		}
-	}
+	diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.SourcePosition(), declKinds)...)
 	for _, entry := range targetEntries {
 		if entry.kind != ConstantDecl && entry.kind != VariableDecl {
 			continue
 		}
 		name := entry.name
-		target, exists := targets[name]
+		_, exists := targets[name]
 		if !exists {
 			continue
 		}
@@ -2769,12 +2680,6 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		}
 		_, ok := implicit[name]
 		if !ok {
-			if !levelChecking {
-				position := inst.SourcePosition()
-				message := "Substitution missing for symbol %s declared at %s \nand instantiated in module %s."
-				diagnostic := sanyRegistrationDiagnostic(position, "E4240", message, name, sanyDiagnosticLocation{Position: target.Pos}, mod.Name)
-				diags = append(diags, diagnostic)
-			}
 			continue
 		}
 		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(&IdentExpr{Name: name}, mod, locals) > maximum {
@@ -3543,8 +3448,13 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool, g
 func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) (result Diagnostics) {
 	var diags Diagnostics
 	fact := generation.fact
+	operatorArgument := generation.operatorArgument
 	generation.fact = false
-	defer func() { generation.fact = fact }()
+	generation.operatorArgument = false
+	defer func() {
+		generation.fact = fact
+		generation.operatorArgument = operatorArgument
+	}()
 	setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
 	if source := sanyExprSource(expr); source != nil {
 		source.operatorArgumentsGenerated = false
@@ -3580,6 +3490,11 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				name += "!"
 			}
 			name += step.Name
+			// An unapplied INSTANCE prefix contributes its formal parameters
+			// to a selected operator argument, rather than requiring arguments.
+			if operatorArgument && step.Arguments == nil {
+				continue
+			}
 			if symbol, exists := generation.lookupSymbol(name, defined); exists && symbol.kind == InstanceDecl && symbol.arity >= 0 {
 				count := 0
 				if step.Arguments != nil {

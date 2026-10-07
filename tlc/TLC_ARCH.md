@@ -23,6 +23,23 @@ subsequent substitution check reports 4243 at its null location. Preserve both
 errors, exact messages and ranges. These paths match 30 complete Java comparisons;
 complete canonical failure nodes and shared evaluator graphs remain pending.
 
+Module and proof INSTANCE units call the same generateInstanceSubstitutions
+implementation. It uses accepted target declaration metadata, current scoped
+bindings, expression generation for scalar RHS values and generateOperatorOperand
+for operator RHS values. Invalid expression RHS syntax is rejected before its
+children are generated; unknown operator names retain their original error before
+the nullOpArg arity error. Deferred substitution level checks run separately.
+
+Operator-argument generation carries its mode into qualified prefix validation.
+An unapplied parameterized INSTANCE prefix contributes parameters to the operator
+argument; it is not a scalar call with missing arguments. Clear the mode before
+generating child expressions. Nested ASSUME/PROVE label rejection retains the
+whole label syntax range. Unsupported ASSUME/PROVE selector paths retain code
+4005 instead of the former placeholder 4340; labeled access also retains its
+source label-name parameter. Complete original Test210/Test212
+diagnostics match Java in addition to 50 namespace/RHS cases. LET-level INSTANCE
+units still require integration with this generation sequence.
+
 ## TLC bridge declaration metadata
 
 For generated source modules, use the retained owned declaration object when

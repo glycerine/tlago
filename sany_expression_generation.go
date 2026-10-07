@@ -25,6 +25,7 @@ type sanyExpressionGeneration struct {
 	nodes                *sanyGeneratorNodes
 	formals              map[string]localSymbol
 	fact                 bool
+	operatorArgument     bool
 	level                int
 	spec                 *Spec
 	currentModule        *Module
@@ -350,7 +351,10 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 	if call, ok := argument.(*CallExpr); ok && (call.Selector == nil || len(call.Selector.Steps) <= 1) {
 		operator = call.Callee
 	}
+	previousOperatorArgument := g.operatorArgument
+	g.operatorArgument = true
 	diags := g.checkExpr(operator, context, locals)
+	g.operatorArgument = previousOperatorArgument
 	if sanyExpressionGenerationFailure(operator) != sanyGenerationSucceeded {
 		return diags
 	}

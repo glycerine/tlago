@@ -492,7 +492,7 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 				var declarationScope bool
 				label, declarationScope = sanyAssumeProveLabel(currentAP, step.Name)
 				if label != nil && declarationScope && ref.suffices == r.inProof[apGoal] {
-					return nil, true, sanySelectorErrorAt(step, fmt.Sprintf("Accessing subexpression labeled `%s' of ASSUME/PROVE clause within the scope of a declaration\n from outside that declaration's scope.", step.Name))
+					return nil, true, sanySelectorErrorAt(step, fmt.Sprintf("Accessing subexpression labeled `%s' of ASSUME/PROVE clause within the scope of a declaration\n from outside that declaration's scope.", step.Name), step.Name)
 				}
 			}
 			if label == nil {
@@ -714,8 +714,8 @@ type sanySelectorLocationError struct {
 }
 
 func (e *sanySelectorLocationError) Error() string { return e.message }
-func sanySelectorErrorAt(step SanySelectorStep, message string) error {
-	detail := &sanySelectorLocationError{message: message}
+func sanySelectorErrorAt(step SanySelectorStep, message string, parameters ...any) error {
+	detail := &sanySelectorLocationError{code: "E4005", message: message, parameters: parameters}
 	if step.Syntax != nil {
 		detail.location = step.Syntax.Range
 	}

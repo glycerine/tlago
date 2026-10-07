@@ -8,7 +8,7 @@ import "fmt"
 
 // processSubst constructs defaults first, generates each explicit RHS before
 // duplicate detection, then checks remaining defaults and completeness.
-func (g *sanyExpressionGeneration) generateProofInstanceSubstitutions(instance Instance, module *Module, context map[string]Position) Diagnostics {
+func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance Instance, module *Module, context map[string]Position) Diagnostics {
 	target := g.spec.Modules[instance.Module]
 	if target == nil {
 		return nil
@@ -23,7 +23,12 @@ func (g *sanyExpressionGeneration) generateProofInstanceSubstitutions(instance I
 		if entry.moduleKey || (entry.kind != ConstantDecl && entry.kind != VariableDecl) {
 			continue
 		}
-		if declaration, exists := moduleOwnSubstitutionTargets(entry.module)[entry.name]; exists {
+		declaration, exists := moduleOwnSubstitutionTargets(entry.module)[entry.name]
+		if entry.declaration != nil {
+			declaration = substitutionTarget{Kind: entry.kind, Arity: entry.declaration.semArity(), Pos: entry.declaration.semPosition()}
+			exists = true
+		}
+		if exists {
 			targets[entry.name] = declaration
 			names = append(names, entry.name)
 		}
@@ -54,12 +59,13 @@ func (g *sanyExpressionGeneration) generateProofInstanceSubstitutions(instance I
 	for _, name := range names {
 		if symbol, exists := g.lookupSymbol(name, context); exists {
 			present[name] = true
-			if targets[name].Arity == 0 {
-				identifier := &IdentExpr{Name: name, Pos: instance.SourcePosition()}
-				arity := symbol.arity
-				identifier.generationArity = &arity
-				arities, parameters := g.proofSignatures()
-				diags = append(diags, checkCallArity(identifier, arities, parameters, nil)...)
+			if targets[name].Arity == 0 && symbol.arity > 0 && symbol.formalNode == nil {
+				position := instance.SourcePosition()
+				if symbol.kind == ConstantDecl || symbol.kind == VariableDecl {
+					diags = append(diags, sanyRegistrationDiagnostic(position, "E4004", "Operator used with the wrong number of arguments."))
+				} else {
+					diags = append(diags, sanyRegistrationDiagnostic(position, "E4004", "Wrong number of arguments (%d) given to operator '%s', \nwhich requires %d arguments.", 0, name, symbol.arity))
+				}
 			}
 		}
 	}
