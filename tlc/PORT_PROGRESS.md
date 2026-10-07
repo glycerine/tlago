@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-07 Canonical SubstInNode/APSubstInNode level checks:
+Previous completed commit: a144867. Translate complete source child checks,
+correctness caching/reset, maximum-level selection and retained parameter merges.
+Preserve the distinct source algorithms: SubstIn copies both all/non-Leibniz
+sets and sequentially rewrites them; APSubstIn retains all parameters and does
+not propagate non-Leibniz information. Invoke actual module isConstant and
+replace LC/ALC/ALP collections in source phase order. Read current body and
+substitution fields at each access; retain preceding writes on failure.
+
+External observers /mnt/oldrog/tmp/tlago-substin-level-* instantiate actual source
+wrappers through their private constructors, with actual OpArg/OpDef objects and
+controlled ExprNode metadata. Initial observer 16026 passes: 384 complete rows
+agree. Expand to successful chained/duplicate substitutions and malformed body/
+owner metadata. Final observer 30666 passes: 768 complete rows agree for both
+classes, constant/nonconstant modules, 24 modes and eight iteration phases.
+Compare full inherited metadata, child calls, module iteration and collection
+identity. NPE/CCE observations compare class rather than enhanced JVM messages.
+No source scenario or original assertion weakened; no permanent invented tests.
+No direct Java wrapper level-check methods found in source tests; no original
+method credit. The original incremental LET callers remain reconcile.
+
+Affected original semantic/parser/resolver/scoped/incremental/builtin gate 67002
+passes normally in 9.582s (180 passing test events). Full SANY 27230 passes in
+1.947s; all-package compile 49044 passes. All handles retired. No race, shortened
+workloads or new full-workspace receipt. Update handoff and architecture; TLC
+inventory counts remain unchanged. Instance, ordinary application and evaluator
+collection sharing remain implementation dependencies.
+
 2026-10-07 Canonical ModuleNode level check and isConstant:
 Previous completed commit: 0f48ee2. Translate complete recursive-section
 initialization, both checking passes, source diagnostics and union propagation.

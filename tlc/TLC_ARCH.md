@@ -9568,8 +9568,8 @@ null/duplicate substitutions, shared set identity, same-UID distinct symbols,
 nullable values, null collection keys and a dependency mutated after insertion.
 Runtime failure observations compare NPE/ClassCastException classes, not enhanced
 JVM messages. These are manual observations, not original-method test credit.
-SubstInNode, APSubstInNode and InstanceNode level algorithms and shared evaluator
-integration remain separate implementation work.
+SubstInNode/APSubstInNode checks are translated below. InstanceNode level checking
+and shared evaluator integration remain separate implementation work.
 
 
 ## Canonical module level checking and constant classification
@@ -9603,5 +9603,40 @@ theorem cases over signed/repeated iterations. Observations retain child-call
 counts, recursive tables, complete collections, diagnostics, formatting and
 twelve partial failures. NPE observations compare exception class rather than
 JVM enhanced messages. No original test method is credited. Ordinary application,
-instance and substitution-wrapper descendants still prevent whole-module
+instance descendants still prevent whole-module
 checking and the two original incremental LET methods from being complete.
+
+
+## Canonical substitution-wrapper level checks
+
+`sany_substin_level.go` translates the complete SubstInNode and APSubstInNode
+algorithms. Both retain source cached correctness and reset correctness on a
+fresh iteration. Check the current body first, then each current substitution
+replacement. Read the current body again for its level and parameter set;
+substitutions whose declarations occur in that set contribute to the maximum
+level. Expand level parameters into the retained destination set.
+
+SubstIn makes real HashSet copy-constructor copies of body all/non-Leibniz
+parameters, then processes substitutions sequentially against those current
+copies. Remove a present declaration, add replacement all parameters and merge
+replacement non-Leibniz parameters. If the declaration is now in the non-Leibniz
+set, remove it and add replacement all parameters. Preserve this ordering:
+later substitutions see symbols introduced by earlier ones. APSubstIn instead
+expands the body's all parameters into its retained set and leaves its own
+non-Leibniz set untouched. Do not merge these distinct algorithms.
+
+Both ask the actual instantiated module isConstant method, then replace LC,
+ALC and ALP collections in source order using the ported Subst helpers. Fresh
+body/replacement reads, null-array failures, copied-set assignments and earlier
+writes remain visible when later phases fail. Constructors, semantic identities
+and the shared Subst entries remain unchanged.
+
+All 768 external Java/Go rows agree across both classes, constant/nonconstant
+modules, 24 modes and eight signed/repeated iteration phases. Observations use
+actual source wrappers through their private constructors, actual OpArg/OpDef
+nodes and controlled ExprNode metadata. They compare complete inherited level
+data, child calls, module iteration and collection identity, including successful
+chained/duplicate substitutions, false child results and malformed metadata.
+Runtime NPE/CCE observations compare class, not enhanced JVM messages. These
+are manual evidence, not original-method credit. Instance and ordinary application
+checking remain dependencies of the original incremental LET methods.

@@ -1256,15 +1256,22 @@ Subst now translates the five static parameter/constraint/dependency helpers,
 including first-match reference lookup, shared replacement sets, fresh unmatched
 singletons and source tightening order. Typed-null lookup matches Java null. All
 130 direct Java rows agree; runtime failures compare exception class rather than
-JVM-specific enhanced messages. SubstIn, APSubstIn and Instance level-checking
-callers remain pending. No original-method completion credit is added.
+JVM-specific enhanced messages. Instance level-checking remains pending; the
+SubstIn/APSubstIn callers are translated below. No original-method credit is added.
 ModuleNode now performs the source recursive-section initialization and two
 checking passes, ordered module/definition/top-level checks and retained
 constraint merges. Its isConstant method checks actual operator bodies and
 theorem levels; getLevel preserves the source prohibition. The module formatter
 uses Java collection forms. All 332 direct Java rows agree, including diagnostics,
 cache behavior and partial failures. No original-method credit is added.
-Application, substitution-wrapper, instance and evaluator collection sharing
+SubstInNode and APSubstInNode now perform their complete source level checks:
+ordered child checking, retained level parameters and fresh constraint/dependency
+translations. SubstIn copies and sequentially rewrites both all/non-Leibniz sets;
+APSubstIn retains all parameters and leaves its non-Leibniz set untouched. All
+768 direct Java rows agree across signed iterations, failed children, duplicate
+and chained substitutions, identity checks and malformed metadata. These manual
+observations add no original-method completion credit.
+Application, instance and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.
 
