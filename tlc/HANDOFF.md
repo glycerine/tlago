@@ -705,8 +705,8 @@ FormalParamNodes before binding-conflict checks. Definition bodies retain the
 ordered parameter nodes; identifier occurrences retain the resolved formal.
 Nodes share the SemanticNode UID allocator and own indexed tool slots, syntax,
 source location and native module ownership. Sixteen source observations match.
-This foundation does not cover proof binders,
-LevelNode data, visitors, evaluator graph sharing or full source allocation order.
+LevelNode data, visitors, evaluator graph sharing and full source allocation order
+remain pending. TAKE/PICK constructor progress is described below.
 
 Bounded, unbounded and temporal quantifiers now retain newly constructed formal
 nodes in source order. Domains generate in the enclosing scope before parameter
@@ -741,8 +741,17 @@ including function-name/bound conflicts and builtin-name resolution. The tempora
 creation record does not model the final nonrecursive OpApplNode's pruned array.
 Full graph construction, allocation order and evaluator sharing remain pending.
 
-Next semantic work: port remaining proof formal constructors, then integrate
-actual identity into Generator's label-parameter checks. The earlier nine-case comparison now has four
+TAKE and PICK now retain their constructed formal nodes, including rejected
+declarations. Domains generate before parameters. TAKE installs accepted bindings
+immediately; PICK uses them in its predicate, hides them from its own proof, and
+installs them after that proof. Conflicts preserve the original binding and its
+location. Twenty-three source node observations and seventeen complete diagnostic
+cases match Java; existing focused checks pass. Complete proof-node graphs, level
+data and absolute allocation order remain pending.
+
+Next semantic work: integrate actual identity into Generator's label-parameter
+checks and its LS stack, auditing remaining declaration constructors as needed.
+The earlier nine-case comparison now has four
 matches and five differences: `arg_constant`, `label_select`, `params`,
 `qualified_callee` and `repeated`. Extra parameters need one aggregate diagnostic;
 non-formal arguments need the source leaf-location diagnostic and distinct dummy

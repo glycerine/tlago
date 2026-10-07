@@ -1,5 +1,25 @@
 # TLC Architecture Notes for the Go Port
 
+## TAKE/PICK formal construction and proof scope
+
+The proof generator retains an ordered formal-node array on each TAKE/PICK step.
+Generate distinct bound domains in the enclosing context before constructing any
+formals. Allocate every source parameter, even when binding is rejected. Accepted
+bindings retain their actual nodes; rejected declarations preserve the earlier
+binding and its diagnostic location.
+
+TAKE introduces accepted bindings immediately for its proof and later steps.
+PICK temporarily introduces them for its predicate, hides them from its own
+proof, then installs the same accepted nodes when that proof finishes. The pending
+scope carries resolved symbols rather than reconstructing names and positions.
+Twenty-three observations against actual Java FastTool proof nodes and seventeen
+complete SANY diagnostic cases match. Existing focused parser/semantic checks,
+the whole SANY package and package compilation pass.
+
+These retained native arrays do not establish complete TheoremNode/OpApplNode
+proof graphs, LevelNode data, label formal arrays, evaluator sharing or absolute
+source allocation order. NEW declarations remain a separate OpDeclNode concern.
+
 ## Named-function formal preparation and body context
 
 processFunction generates domains and constructs bound formals under a fresh
@@ -61,7 +81,8 @@ and thirteen complete diagnostics match Java; the earlier nineteen quantifier
 observations also pass after binding helper reuse.
 
 This does not establish full OpApplNode shape, LevelNode data, evaluator sharing,
-label parameter arrays or absolute allocation order. Remaining proof formal constructors must use actual node identities too.
+label parameter arrays or absolute allocation order. Remaining proof/declaration
+graph construction must preserve actual node identities too.
 
 ## Quantified formal construction and scope
 
@@ -99,8 +120,8 @@ It uses the shared SemanticNode UID allocator and per-node indexed slots.
 Its equality checks concrete class, kind and UID, matching SemanticNode.equals.
 Sixteen source observations establish these constructor/reference properties and
 relative UID/hash behavior. Absolute source allocation order is not established.
-Proof-binder construction, LevelNode data, visitors,
-actual label formal arrays and evaluator sharing still require porting. The native
+LevelNode data, visitors, actual label formal arrays and evaluator sharing still
+require porting. TAKE/PICK construction is covered separately above. The native
 Module ownership link is not a claim of a complete Java ModuleNode graph.
 
 ## Label generation guards and body order

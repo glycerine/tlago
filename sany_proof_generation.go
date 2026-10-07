@@ -156,9 +156,9 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 
 	scopes := map[int]map[string]Position{}
 	pendingSuffices := map[int]*AssumeProve{}
-	pendingPicks := map[int][]BoundVar{}
+	pendingPicks := map[int]map[string]localSymbol{}
 	previousInfixRHS := map[int]Expr{}
-	for _, step := range proof.Steps {
+	for stepIndex, step := range proof.Steps {
 		for depth := range previousInfixRHS {
 			if depth > step.Depth {
 				delete(previousInfixRHS, depth)
@@ -172,8 +172,12 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 				if scopes[depth] == nil {
 					scopes[depth] = map[string]Position{}
 				}
-				for _, bound := range bounds {
-					scopes[depth][bound.Name] = bound.Pos
+				if symbolScopes[depth] == nil {
+					symbolScopes[depth] = map[string]localSymbol{}
+				}
+				for name, symbol := range bounds {
+					scopes[depth][name] = symbol.pos
+					symbolScopes[depth][name] = symbol
 				}
 				delete(pendingPicks, depth)
 			}
@@ -278,28 +282,14 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 				}
 			}
 		}
+		var introducedFormals map[string]localSymbol
 		statementContext := copySanyExpressionContext(current)
 		if step.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveBindings(step.AssumeProveBody, statementContext, nil, g)...)
 		} else if step.Kind == "PICK" || step.Kind == "TAKE" {
-			var previousDomain Expr
-			for _, bound := range step.Bounds {
-				if bound.Set != nil && bound.Set != previousDomain {
-					diags = append(diags, g.proofExpression(bound.Set, current, nil)...)
-					previousDomain = bound.Set
-				}
-			}
-			for _, bound := range step.Bounds {
-				if previous, exists := statementContext[bound.Name]; exists {
-					diagnostic := errorAt(bound.Pos, "E4201", "bound symbol %s conflicts with existing symbol", bound.Name)
-					diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", bound.Name, sanySymbolLocation(previous))
-					diagnostic.SANYRange = SanyRange{Begin: bound.Pos, End: bound.Pos.SourceEnd()}
-					diags = append(diags, diagnostic)
-				} else {
-					statementContext[bound.Name] = bound.Pos
-				}
-			}
-			diags = append(diags, g.proofExpression(step.Expr, statementContext, nil)...)
+			var generated Diagnostics
+			introducedFormals, generated = g.generateProofBinder(&proof.Steps[stepIndex], statementContext)
+			diags = append(diags, generated...)
 		} else {
 			infix, isInfix := step.Expr.(*BinaryExpr)
 			isInfix = isInfix && infix.Syntax != nil && infix.Syntax.Kind.JavaName() == "N_InfixExpr"
@@ -366,9 +356,11 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			scopes[step.Depth][step.QualifiedName] = step.Pos
 		}
 		if step.Kind == "TAKE" {
-			for _, bound := range step.Bounds {
-				current[bound.Name] = bound.Pos
-				scopes[step.Depth][bound.Name] = bound.Pos
+			for name, symbol := range introducedFormals {
+				current[name] = symbol.pos
+				scopes[step.Depth][name] = symbol.pos
+				g.symbols[name] = symbol
+				symbolScopes[step.Depth][name] = symbol
 			}
 		}
 		ownProof := copySanyExpressionContext(current)
@@ -384,7 +376,7 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 		diags = append(diags, g.leafProofReferences(step.LeafRefs, step.Syntax, module, ownProof)...)
 		g.symbols = ownSymbols
 		if step.Kind == "PICK" {
-			pendingPicks[step.Depth] = step.Bounds
+			pendingPicks[step.Depth] = introducedFormals
 		}
 
 		if step.AssumeProveBody != nil {
@@ -487,4 +479,32 @@ func (g *sanyExpressionGeneration) proofSignatures() (map[string]int, map[string
 		parameters[name] = nil
 	}
 	return arities, parameters
+}
+
+// TAKE binds in the current proof context. PICK temporarily binds for its
+// predicate, then installs only accepted nodes after its own proof finishes.
+func (g *sanyExpressionGeneration) generateProofBinder(step *ProofStep, context map[string]Position) (map[string]localSymbol, Diagnostics) {
+	var diags Diagnostics
+	var previousDomain Expr
+	for _, bound := range step.Bounds {
+		if bound.Set != nil && bound.Set != previousDomain {
+			diags = append(diags, g.proofExpression(bound.Set, context, nil)...)
+			previousDomain = bound.Set
+		}
+	}
+	defer g.pushFormalContext(len(step.Bounds))()
+	introduced := map[string]localSymbol{}
+	step.formalNodes = nil
+	for _, bound := range step.Bounds {
+		node := g.newFormalParameter(bound.Name, 0, bound.Pos, step.Syntax)
+		step.formalNodes = append(step.formalNodes, node)
+		generated := g.bindFormalParameter(node, context, nil)
+		diags = append(diags, generated...)
+		if len(generated) == 0 {
+			introduced[bound.Name] = g.formals[bound.Name]
+			context[bound.Name] = bound.Pos
+		}
+	}
+	diags = append(diags, g.proofExpression(step.Expr, context, nil)...)
+	return introduced, diags
 }

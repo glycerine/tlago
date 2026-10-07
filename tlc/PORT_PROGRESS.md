@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-06 TAKE/PICK formal construction and accepted proof bindings:
+Previous completed commit: 21bafab. Faithfully follow Generator's domain-before-
+parameter construction and distinct TAKE/PICK scope rules. ProofStep retains
+constructed formal nodes; generateProofBinder uses the shared constructor and
+binding helpers. Retain rejected nodes in the array without replacing earlier
+bindings. TAKE installs accepted resolved symbols immediately. PICK uses them in
+its predicate, excludes them from its own proof, and installs those same symbols
+after proof completion. Pending PICK scopes now carry localSymbol identities.
+
+Twenty-three observations match actual Java FastTool proof nodes: bounded and
+unbounded TAKE/PICK metadata, kind/arity/localness/module ownership, syntax,
+relative consecutive UID differences, predicate/later-step references and distinct
+equal-named formals in separate theorem scopes. Go overlay 64689 terminal 0;
+source probe terminal 0. Receipts: /mnt/oldrog/tmp/tlago-proof-formal-{java,go}.log.
+Seventeen complete SANY diagnostic cases match counts, codes, locations, text and
+order (3657 terminal 0). Includes domain-before-conflict errors, duplicate and
+builtin names, simultaneous-domain scope, PICK's own leaf/nested proof visibility,
+unbounded forms and repeated conflicts preserving original declaration locations.
+Receipt: /mnt/oldrog/tmp/tlago-proof-formal-diag.log. Scratch probes, overlays and
+vectors remain outside the repository; no permanent tests invented.
+
+Existing focused parser/semantic checks and original ParseError/legacy/scoped
+identifier methods pass 5.423 seconds (41620). Whole SANY package passes
+1.898 seconds (51282); all packages compile (98036). Receipts:
+/mnt/oldrog/tmp/tlago-proof-formal-{root,sany,compile}.log. All handles terminal 0
+and retired; git diff --check passes. No race workloads, original assertion or
+bound changes, inventory credit, whole proof-graph credit or current full-workspace
+claim. Actual label formal arrays/LS stack, LevelNode data, evaluator sharing,
+remaining declaration graphs and absolute source allocation order remain pending.
+The new rpc25519/Tube service remains postponed while Java parity is completed.
+
 2026-10-06 Named-function formal preparation and restored body context:
 Previous completed commit: 05353c8. Source processFunction generates all domains,
 constructs bound formals, resolves the function name, always allocates a temporary

@@ -182,6 +182,7 @@ type ProofSummary struct {
 }
 
 type ProofStep struct {
+	formalNodes     []*sanyFormalParamNode
 	Syntax          *SanySyntaxNode
 	Definitions     []Definition
 	Instances       []Instance
