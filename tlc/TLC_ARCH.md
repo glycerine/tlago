@@ -1,5 +1,27 @@
 # TLC Architecture Notes for the Go Port
 
+## Assertion owners and leaf-proof constructors
+
+Concrete AssumeNode and TheoremNode constructors retain actual module, statement,
+definition and proof pointers. Named definitions point back to their owner. AXIOM
+is detected from the assumption syntax's first heir. The theorem constructor
+checks statement identity against its definition after setting the backlink,
+preserving source assertion failure order. Child arrays contain only the statement
+for assumptions, and statement followed by an optional proof for theorems. Each
+call creates a new array; absent statements remain null entries. Theorem name
+access distinguishes an unnamed theorem from an empty definition name.
+
+LeafProofNode construction aliases facts and definition arrays and retains omitted
+and ONLY flags. Its child getter returns null for null/empty facts and a fresh copy
+of nonempty facts. Module assertion additions append the same owner to the typed
+assertion vector and ordered top-level vector. Each getter caches its first array;
+mutating that array persists and later vector appends do not invalidate it.
+
+Generation does not yet populate these owners or collections. Proof generation,
+EXTENDS collection inheritance, other top-level owners, inherited level checking
+and visitors remain unfinished. Direct constructor observations are separate from
+whole generated-module and original Java test-suite coverage.
+
 ## Theorem/assumption definition constructors
 
 ThmOrAssumpDefNode has a provisional constructor for goals created before their

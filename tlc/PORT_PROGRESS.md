@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-07 Assertion owners, leaf-proof construction and module collections:
+Previous completed commit: 43386fa. Port AssumeNode and TheoremNode constructors,
+body/definition/proof/name/flag accessors and child arrays. Preserve AXIOM detection
+from the first syntax heir and the actual definition backlink. The theorem-body
+assertion raises the shared AssertionError after setting that backlink. Port
+LeafProofNode constructor fields and array aliases; getChildren returns nil for
+null/empty facts and a fresh copy otherwise. Add ModuleNode addAssumption,
+addTheorem and addTopLevel plus cached assumption/theorem/top-level getters.
+The cached arrays retain caller mutations and do not refresh after later appends,
+matching source behavior. These collections are distinct from definitions.
+
+All 64 upstream/Go observer rows agree: 12 assumption and 24 theorem cases across
+ASSUME/ASSUMPTION/AXIOM, null/numeral bodies, named/unnamed definitions and absent/
+actual leaf proofs; 16 leaf constructor rows, eight fact-array mutation rows,
+module vector/cache rows, theorem assertion and null assumption syntax. Java runs
+with assertions enabled. Temporary observers remain outside the repository.
+Initial observer compilation used the wrong Java constants package; correct it
+to tla2sany.st before comparison. Initial Go compilation used the wrong exception
+constructor signature; correct it to the existing typed (index, length) API.
+These failed setup checks receive no success credit.
+
+Final constructor comparison passes (36708). Existing focused root/SANY/TLC tests
+pass in 46.168s (44698), full sany_tests in 1.511s (71073), and initial compile-all
+passes (40381). No race workload or new permanent test was added. No original
+Java test method completion credit is claimed. Final compile-all also passes
+(2555); all verification handles are retired.
+
+Generator wiring, complete proof generation, named AP goal ownership, inherited
+level checks, visitors, EXTENDS collection inheritance and the remainder of module
+construction remain pending. Constructors and collection operations are ready
+for integration; they do not establish full generated-module parity.
+
 2026-10-07 Theorem/assumption definition constructors and matching:
 Previous completed commit: ffa4aa4. Add concrete provisional and full
 ThmOrAssumpDefNode constructors and construct completion. Preserve source

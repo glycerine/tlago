@@ -76,6 +76,12 @@ type sanySemModuleNode struct {
 	nestingLevel             int
 	definitions              []sanySemanticGraphNode
 	records                  []*sanySemOpApplNode
+	assumptionVec            []*sanySemAssumeNode
+	theoremVec               []*sanySemTheoremNode
+	topLevelVec              []sanySemanticGraphNode
+	assumptions              []*sanySemAssumeNode
+	theorems                 []*sanySemTheoremNode
+	topLevel                 []sanySemanticGraphNode
 	recursiveDecls           []*sanySemOpDefNode
 	recursiveOpDefNodes      []*sanySemOpDefNode
 	opDefsInRecursiveSection []*sanySemOpDefNode

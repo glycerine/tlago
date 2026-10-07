@@ -1051,8 +1051,14 @@ The concrete theorem/assumption definition class now has provisional and full
 constructors, source/instantiation identity, completion, parameter-array aliasing,
 label accessors and source matching. Registration precedes parameter installation,
 so it sees initial arity zero. All 155 constructor/origin output rows match Java.
-Generator wiring to these actual goals and theorem/assumption backlinks remains
-pending; these constructor comparisons add no original-method completion credit.
+Generator wiring to these actual goals remains pending; these constructor
+comparisons add no original-method completion credit. Concrete AssumeNode and
+TheoremNode owner constructors now preserve definition backlinks, AXIOM and
+Suffices metadata, theorem-body assertions and child arrays. LeafProofNode
+construction retains actual arrays and flags. Module assertion/top-level collection
+operations preserve Java's cached mutable getter arrays. All 64 owner/leaf/cache
+observations match upstream. Generation, proof ownership and EXTENDS collection
+inheritance remain pending; no generated-module completion is claimed.
 
 Named theorem/assumption and proof-step goal ownership, full proof marker/context
 and clause lifetime, labeled AP, Suffices integration, LabelNode level checking
