@@ -118,6 +118,8 @@ func newSanySemOpApplNode(operator sanySemSymbol, operands []sanySemanticGraphNo
 		symbol.match(node)
 	case *sanySemOpDeclNode:
 		_, diagnostics, err = symbol.match(node)
+	case *sanySemThmOrAssumpDefNode:
+		symbol.match(node)
 	case *sanySemOpDefNode:
 		_, diagnostics, err = symbol.match(node)
 	default:

@@ -1,5 +1,30 @@
 # TLC Port Progress
 
+2026-10-07 Theorem/assumption definition constructors and matching:
+Previous completed commit: ffa4aa4. Add concrete provisional and full
+ThmOrAssumpDefNode constructors and construct completion. Preserve source
+registration before parameter installation, initial arity zero, repeated nil
+parameter completion, parameter-array aliasing, syntax/location, immediate source
+and instantiation pointers, body-only children, local/Suffices flags and shared
+label tables. Dispatch OpAppl matching to the concrete definition; Java checks
+application operator arity and the caller ignores the returned boolean.
+Same-origin comparison requires the same immediate source and a source module
+without constant or variable declarations.
+
+All 155 Java/Go constructor and origin rows agree: 139 prefixed observations and
+16 diagnostic continuation lines. Sixteen constructor cases cover null, numeral,
+AP and operator-argument bodies crossed with nil, empty, one and two formal
+parameters; three origin cases cover free, constant and variable modules. Keep
+these bounded observers outside the repository; they add no original Java test
+method completion credit. Existing focused root/SANY/TLC tests pass in 47.410s
+(95151). Final full sany_tests pass in 2.084s and compile-all passes (84283).
+All verification handles are retired. No race workload was run.
+
+Named theorem/assumption generator wiring, actual goals, module ownership and
+vectors, backlinks, proofs, inherited level checking and visitors remain pending.
+This completed constructor slice does not establish full named AP parity or
+complete TLC parity. Distributed architecture work remains postponed.
+
 2026-10-07 Unnamed AP graph construction, scope flags and marker errors:
 Previous completed commit: d4bf7af. Retain AP syntax and allocate its node before
 assumptions/prove. Preserve actual mutable assumption arrays and prove pointers,

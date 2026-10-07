@@ -1,5 +1,30 @@
 # TLC Architecture Notes for the Go Port
 
+## Theorem/assumption definition constructors
+
+ThmOrAssumpDefNode has a provisional constructor for goals created before their
+body, a full constructor and construct completion. Defaults retain theorem=true,
+arity zero, a nonnil empty formal array, nil body/module/source/instantiation/
+proof/backlink/labels, and false local/Suffices flags. Completion updates theorem,
+body and original module, registers the same node, then installs supplied formals.
+A nil array preserves existing formals/arity on repeated completion. Full
+construction sets source and instantiatedFrom before registration; parameter
+installation still follows it. Duplicate detection therefore observes initial
+arity zero, even when the later supplied array has parameters.
+
+Source/instantiation/module/body pointers and arrays retain identity. getSource
+returns the supplied immediate source or the node itself. Same-origin checks
+require the same concrete class and immediate source; that source's module must
+have no constant/variable declarations. Label tables retain the same operations
+and aliasing as other label owners. Matching tests the application's actual
+operator arity, ignoring the receiver's arity and operands, as Java does.
+
+The constructor class and matching dispatch are ready for generator integration.
+Actual processTheorem/processAssumption ownership, goal installation, registration
+and module vectors, theorem/assumption backlinks, proof fields and complete
+inherited level data/visitors still require implementation. Bounded constructor
+comparisons do not establish complete named AP or theorem graph parity.
+
 ## Unnamed ASSUME/PROVE bodies and scope metadata
 
 Allocate AssumeProveNode before assumptions and PROVE. Retain source syntax,

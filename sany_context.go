@@ -260,6 +260,22 @@ func sanyOriginalSource(symbol sanySemSymbol) sanySemSymbol {
 }
 
 func sanySameOriginalModule(a, b sanySemSymbol) bool {
+	if definition, ok := a.(*sanySemThmOrAssumpDefNode); ok {
+		other, sameClass := b.(*sanySemThmOrAssumpDefNode)
+		if !sameClass || definition.getSource() != other.getSource() {
+			return false
+		}
+		original := definition.getSource().module
+		if original != nil && original.context != nil {
+			for _, entry := range original.context.order {
+				if entry.sym.semKind() == sanyConstantDeclKind || entry.sym.semKind() == sanyVariableDeclKind {
+					return false
+				}
+			}
+		}
+		return true
+	}
+
 	// Source OpDefNodes must have the same concrete class and original source.
 	// Parameter freedom comes from that source's module declarations, not its name.
 	if definition, ok := a.(*sanySemOpDefNode); ok {

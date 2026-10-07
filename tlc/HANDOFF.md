@@ -1047,9 +1047,17 @@ complete graph/metadata rows and frontend diagnostics. Existing focused root/TLC
 full sany_tests, compile-all and AP/formal comparisons pass. Receipts belong in
 PORT_PROGRESS.md.
 
+The concrete theorem/assumption definition class now has provisional and full
+constructors, source/instantiation identity, completion, parameter-array aliasing,
+label accessors and source matching. Registration precedes parameter installation,
+so it sees initial arity zero. All 155 constructor/origin output rows match Java.
+Generator wiring to these actual goals and theorem/assumption backlinks remains
+pending; these constructor comparisons add no original-method completion credit.
+
 Named theorem/assumption and proof-step goal ownership, full proof marker/context
-and clause lifetime, labeled AP, Suffices integration, LabelNode level checking and visitors, AtNode level data and full inherited checks remain
-unfinished. Qualified selectors, INSTANCE/fact and imported identities, recursive
+and clause lifetime, labeled AP, Suffices integration, LabelNode level checking
+and visitors, AtNode level data and full inherited checks remain unfinished.
+Qualified selectors, INSTANCE/fact and imported identities, recursive
 level iteration, shared Errors/exception integration and evaluator graph sharing
 also remain pending. Proof/AP contexts keep the existing native fallback until
 these actual graphs exist. These bounded comparisons establish neither complete
