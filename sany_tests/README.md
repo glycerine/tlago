@@ -38,3 +38,17 @@ the source matrix. The method retains syntax/dependency loading, both semantic
 log success assertions, level-log/result agreement, and the expected level
 result. Unchanged Java and the full Go SANY package pass. This method does not
 establish full frontend-helper API or canonical semantic-graph parity.
+
+`semantic.NestedModuleInstanceTest.testTopLevelInstanceOfNestedModule` is
+**port complete** with the original parse-success and semantic-success
+assertions and byte-identical fixture. `testLetInstanceOfNestedModule` retains
+the original Java `@Ignore` status and exact reason; it is not active-method
+completion credit. Unchanged Java JUnit and the full Go SANY package agree.
+
+`semantic.IncrementalSemanticParseTests` remains **reconcile**. Its current
+native-AST checks omit original canonical semantic-node assertions: ordinary
+OpDef recursion/arity/body metadata, syntax-node identity, actual level-check
+results and constant levels, NumeralNode overflow representation, dependency
+module tables, concrete LetInNode/OpApplNode types, and imported operator source
+identity. Implement the production graph and incremental generator behavior
+before crediting these methods; parsing the same snippets is insufficient.

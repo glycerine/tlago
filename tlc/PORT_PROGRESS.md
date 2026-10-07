@@ -1,5 +1,26 @@
 # TLC Port Progress
 
+2026-10-07 Reconcile original nested-module SANY test status:
+Previous completed commit: 5240c37. Compare both source methods and fixtures.
+The active top-level method already retains parse-success and semantic-success
+assertions. Restore the LET-instance method's original Java @Ignore status and
+exact reason, rather than silently promoting it to an active passing test. Copy
+the original MIT notice and remove the stale skipped-scaffold comment. Both
+fixtures match the source byte for byte. No production change or invented skip.
+
+Compile the unchanged original class with its original SANYTest, CommonTestCase,
+TestMPRecorder and IsolatedTestCaseRunner helpers into scratch. JUnit passes its
+one active test and ignores the source-disabled sibling in 0.062 seconds,
+terminal 0. Full Go SANY passes in 2.089 seconds (42753, terminal 0); JSONL
+confirms the active sibling passes and the ignored sibling skips. Receipt:
+/mnt/oldrog/tmp/tlago-nestedmodule-original-go.jsonl. All handles retired.
+Credit the whole active SANY method only; TLC totals and full-workspace
+verification are unchanged. IncrementalSemanticParseTests remains reconcile:
+its native-AST checks omit actual canonical graph types, syntax identity, levels,
+numeral overflow representation, dependency tables and imported source identity.
+Document these implementation prerequisites before porting the missing assertions.
+The new distributed service remains postponed.
+
 2026-10-07 Complete original TestLevelChecking phase assertions:
 Previous completed commit: 51d0c1f. Review the original-test surface after the
 production level fixes. The existing TestLevelChecking translation preserves its
