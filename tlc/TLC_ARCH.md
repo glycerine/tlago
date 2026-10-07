@@ -1,5 +1,18 @@
 # TLC Architecture Notes for the Go Port
 
+## Temporary formal SymbolTable contexts
+
+Expression generation pushes a real semantic context alongside its native
+formal map. Accepted retained FormalParamNodes register in that context;
+rejected declarations preserve the earlier binding. Nested scope exit restores
+both representations. Ordinary definition bodies use this same scope boundary,
+matching Generator.processOperator's temporary formal context. Full module
+generation uses the module's SymbolTable; standalone generation starts with the
+global builtin context. Existing native conflict checks remain necessary while
+ordinary operator and theorem registration is incomplete. This establishes
+accepted formal registration and scope restoration, not complete constructor
+registration timing or canonical ordinary OpDef/body graphs.
+
 ## Shared string construction
 
 The syntax parser decodes TLA string escapes while retaining its outer quotes.

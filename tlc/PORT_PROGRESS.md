@@ -1,5 +1,38 @@
 # TLC Port Progress
 
+2026-10-07 Register retained formal nodes in temporary semantic contexts:
+Previous completed commit: d69ceac. Resume faithful Java parity on master;
+new rpc25519/Tube architecture remains postponed. Generator.processOperator
+pushes a fresh SymbolTable context before allocating formals and generating its
+body, then pops it before registering the ordinary OpDef. The native Go formal
+map already preserves visibility but the retained SymbolTable lacked accepted
+formal nodes. Push/pop the real temporary context alongside that map, register
+accepted nodes, and use the same scope helper for ordinary definition bodies.
+Use the module's existing table; standalone expression generation starts from
+the global builtin context. Keep existing native conflict checks while ordinary
+operator/theorem registration remains incomplete. Rejected nodes remain in their
+parameter arrays and cannot replace earlier bindings. This does not complete
+source constructor registration timing, ordinary OpDef bodies or canonical graphs.
+
+Full existing SANY passes in 2.057 seconds (69619, terminal 0). Rebuild the
+scratch diagnostic helper against current code, then replay 11 quantifier,
+15 named-function, 17 TAKE/PICK and 13 CHOOSE observations: all 56 exact against
+pinned Java, including error ordering and scope visibility (14344, terminal 0).
+Existing scratch logs remain under the corresponding tlago-*-formal-diag
+directories in /mnt/oldrog/tmp. A scratch-only overlay verifies actual accepted
+SymbolTable identity, rejected duplicate retention, nested context restoration
+and final non-leakage (25632, terminal 0; 0.017 seconds). Its files are
+/mnt/oldrog/tmp/tlago-formal-symboltable-scope-manual_test.go and the matching
+overlay JSON. No permanent invented tests or original-method credit.
+
+Focused parser/context/bridge and original TLC model gate passes normally in
+44.761 seconds (61881, terminal 0). Every package compiles with the no-test
+selection, terminal 0. Diff whitespace checks pass. All handles retired. No
+original assertions or fixtures changed, no inventory counts changed and no new
+full-workspace pass claimed. Continue actual ordinary OpDef/body construction,
+registration timing and recursion metadata; do not credit its original test
+until its omitted graph assertions can execute faithfully. No race workloads.
+
 2026-10-07 Retain source string nodes and remove XML second decoding:
 Previous completed commit: a7d7a48. Continue ordinary expression-body review.
 Integer/decimal nodes are retained; string values still produce an evaluator

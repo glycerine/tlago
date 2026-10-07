@@ -971,6 +971,12 @@ already-decoded value a second time, preserving quotes and literal backslashes
 that are data. Eleven generation/TLC-node cases and ten XML values match Java;
 focused models, full SANY and the original string-deserialization model pass.
 No original-method count or full-workspace completion credit is added.
+Accepted formal nodes now register in a temporary semantic SymbolTable context
+alongside the native formal map, including ordinary definition bodies. Nested
+scope exit restores both representations and rejected duplicates preserve the
+earlier binding. All 56 existing bounded formal diagnostic comparisons match
+Java; full SANY and the focused original-model gate pass. Ordinary OpDef/body
+construction and complete constructor registration timing remain pending.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

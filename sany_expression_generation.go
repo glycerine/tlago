@@ -23,6 +23,7 @@ type sanyRecursiveBinding struct {
 
 type sanyExpressionGeneration struct {
 	nodes                *sanyGeneratorNodes
+	formalTable          *sanySymbolTable
 	formals              map[string]localSymbol
 	fact                 bool
 	operatorArgument     bool
@@ -259,12 +260,8 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition Definition
 }
 
 func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
-	previous := g.formals
-	g.formals = map[string]localSymbol{}
-	for name, symbol := range previous {
-		g.formals[name] = symbol
-	}
-	defer func() { g.formals = previous }()
+	defer g.pushFormalContext(len(definition.Params))()
+	var diags Diagnostics
 	var parameters []*sanyFormalParamNode
 	for _, parameter := range sanyDefinitionParams(&definition) {
 		// The source allocates the node before SymbolTable.addSymbol decides
@@ -277,12 +274,16 @@ func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, co
 		if _, builtin := builtinOperatorArity(parameter.Name); builtin {
 			continue
 		}
-		g.formals[parameter.Name] = localSymbol{formalNode: node, kind: "FORMAL", arity: parameter.OperatorArity, pos: parameter.Pos}
+		accepted, registrationDiags := g.formalSymbolTable().registerSymbol(node)
+		diags = append(diags, registrationDiags...)
+		if accepted {
+			g.formals[parameter.Name] = localSymbol{formalNode: node, kind: "FORMAL", arity: parameter.OperatorArity, pos: parameter.Pos}
+		}
 	}
 	if source, ok := definition.Expr.(interface{ generationSource() *SanyExprSource }); ok {
 		source.generationSource().definitionFormals = parameters
 	}
-	return g.checkExpr(definition.Expr, context, locals)
+	return append(diags, g.checkExpr(definition.Expr, context, locals)...)
 }
 
 func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]Position) (localSymbol, bool) {

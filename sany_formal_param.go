@@ -58,13 +58,30 @@ func (g *sanyExpressionGeneration) newFormalParameter(name string, arity int, po
 	return newSanyFormalParamNode(name, arity, position, sanySyntaxAtPosition(syntax, position), g.currentModule)
 }
 
+// Full module generation owns its existing SymbolTable. Standalone expression
+// generation starts with the same global builtin context as Java Generator.
+func (g *sanyExpressionGeneration) formalSymbolTable() *sanySymbolTable {
+	if g.currentModule != nil && g.currentModule.symbolTable != nil {
+		return g.currentModule.symbolTable
+	}
+	if g.formalTable == nil {
+		g.formalTable = newSanySymbolTable(sanyGlobalInitialContext(false).duplicate(), nil)
+	}
+	return g.formalTable
+}
+
 func (g *sanyExpressionGeneration) pushFormalContext(capacity int) func() {
+	table := g.formalSymbolTable()
+	table.pushContext(newSanyContext())
 	previous := g.formals
 	g.formals = make(map[string]localSymbol, len(previous)+capacity)
 	for name, symbol := range previous {
 		g.formals[name] = symbol
 	}
-	return func() { g.formals = previous }
+	return func() {
+		g.formals = previous
+		table.popContext()
+	}
 }
 
 // SymbolTable.addSymbol keeps the earlier binding after a rejected formal
@@ -85,8 +102,11 @@ func (g *sanyExpressionGeneration) bindFormalParameter(node *sanyFormalParamNode
 		// Proof/native locals without nodes retain their representation.
 		return checkBoundName(name, position, context, locals)
 	}
-	g.formals[name] = localSymbol{formalNode: node, kind: "FORMAL", arity: node.semArity(), pos: position}
-	return nil
+	accepted, diags := g.formalSymbolTable().registerSymbol(node)
+	if accepted {
+		g.formals[name] = localSymbol{formalNode: node, kind: "FORMAL", arity: node.semArity(), pos: position}
+	}
+	return diags
 }
 
 // generateLabel resolves its parameter array after generating the body. A
