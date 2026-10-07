@@ -14,6 +14,7 @@ type sanySemAssumeNode struct {
 
 type sanySemTheoremNode struct {
 	sanySemanticNode
+	theoremLevelChecked      int32 // Java TheoremNode shadows LevelNode.levelChecked.
 	module                   *sanySemModuleNode
 	theoremExprOrAssumeProve sanySemanticGraphNode
 	def                      *sanySemThmOrAssumpDefNode

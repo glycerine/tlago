@@ -1242,7 +1242,11 @@ iteration counter remains distinct from the inherited cell: the next-iteration
 overload reads the inherited counter. Diagnostics do not force the returned
 result false, and temporal-constant constraints update the assumption's own
 collections. All 160 detailed Java observations and 575 retained common rows
-agree. TheoremNode also shadows iteration; preserve that in its remaining port.
+agree. TheoremNode now preserves its own shadow counter and inherited subnode
+aggregation, including PICK and recursive temporal-proof checks. All 223 direct
+Java observations agree. Application checking is still a dependency: temporal
+application cases use explicitly prechecked source nodes in the observer,
+not an original-test completion receipt.
 Application, instance, remaining proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.

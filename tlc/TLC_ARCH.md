@@ -9485,5 +9485,34 @@ phases, including the no-iteration overload, both counters, named definitions,
 false results, null bodies/logs/own sets, constant-kind filtering, exact Errors
 text, getter identity and overridden formatting. All 575 retained common rows
 still agree. These observations add no original-method credit. TheoremNode has
-its own analogous shadow counter and still requires its complete source check;
-other canonical graph/evaluator dependencies remain incomplete.
+its own analogous shadow counter, now retained by its source check below; other
+canonical graph/evaluator dependencies remain incomplete.
+
+
+## Canonical theorem-node and temporal-proof level checking
+
+`sany_theorem_node_level.go` translates the complete TheoremNode check and its
+private recursive LevelCheckTemporal helper. TheoremNode retains a shadow
+iteration counter: fresh checking records it, then common aggregation records
+the separate inherited counter. A cached theorem check returns true. Subnodes
+contain the named definition when present, otherwise the assertion, followed
+by its optional proof. Preserve partial writes and the common next-iteration
+overload's use of the inherited counter.
+
+PICK diagnostics inspect the assertion's raw inherited level, not a delegated
+getter. For an exact temporal level, each nonconstant bound reports E4354 without
+forcing the returned result false. The temporal-proof helper processes only
+NonLeafProofNode, ignores other steps, reports E4352 for nonconstant TAKE,
+WITNESS or HAVE, and reports E4353 for a nonconstant CASE before recursing into
+its proof. QED recurses without a level restriction. Preserve source else-if
+ordering, null failures, actual syntax ownership and fixed-message/location
+deduplication. Do not reinstate Java's commented-out prohibition on temporal
+facts in a non-temporal proof.
+
+All 223 external Java/Go rows agree exactly. Normal checking uses actual source
+Theorem/ThmOrAssumpDef/LeafProof/NonLeafProof nodes and controlled ExprNode bodies.
+Temporal application cases use real source OpApplNode objects with explicitly
+prechecked metadata, and invoke the actual source temporal helper; PICK cases
+also exercise the source inherited-counter cache. These verify theorem logic,
+not ordinary OpApplNode.levelCheck, which remains unported. No source test is
+replaced with prechecked metadata and no original-method credit is added.

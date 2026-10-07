@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-07 Canonical TheoremNode and temporal-proof level checking:
+Previous completed commit: ace8def. Translate complete source TheoremNode check
+and recursive LevelCheckTemporal helper. Retain shadow and inherited iteration
+counters, cached true results, named-definition/assertion selection and optional
+proof aggregation. Preserve raw assertion-level reads, exact temporal PICK bound
+checks and fixed E4352/E4353/E4354 diagnostics without forcing a false result.
+Retain TAKE/WITNESS/HAVE, CASE and QED branch order and nested proof recursion.
+Do not restore the source's commented-out temporal-fact prohibition. Actual
+syntax ownership and source Location duplicate equality are used for messages.
+
+External observers stay under /mnt/oldrog/tmp/tlago-theorem-node-level-*. Initial
+observer 72903 passes: all 189 complete output rows agree. Normal cases use actual
+source theorem/definition/leaf/nonleaf nodes and controlled ExprNode metadata.
+Temporal applications are real source OpApplNodes with explicitly prechecked
+metadata; call actual private source helper through reflection. This does not
+verify fresh application checking or replace any original test setup. Extend
+PICK checks across raw levels, bound levels, nil Errors and null/absent bounds,
+using the source inherited-counter cache. Final observer 84891 passes; all 223
+complete source rows match after stripping only Go runner envelope. No production
+cache bypass or literal-only shortcut is introduced.
+
+Broad affected original/model gate 5282 passes normally in 47.874s with 283
+passing test events. Full SANY 13197 passes in 2.098s; all-package compile 61311
+passes. All handles retired (initial tool cell 534 also terminal). No invented
+permanent test, weakened assertion, race or shortened workload. No original-method
+credit. Fresh application and other descendant checks remain dependencies before
+closing the original incremental LET methods. This is not a new full-workspace
+verification receipt. Update handoff and architecture with those limits.
+
 2026-10-07 Canonical AssumeNode check, shadow counter and formatter:
 Previous completed commit: 501fe7f. Translate complete source expression/optional
 named-definition checking, delegated metadata getters and overridden level-data
