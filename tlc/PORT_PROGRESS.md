@@ -1,5 +1,57 @@
 # TLC Port Progress
 
+2026-10-07 Canonical graph traversal and complete original semantic corpus:
+Previous completed commit: 31c1444. Port the canonical walkGraph methods over
+actual SANY nodes, including Context/Subst callbacks, source proof edges,
+AtNode's unregistered callbacks, UID suppression and Context's postVisit per
+entry. Port isDefinedWith and delayed substituteFor without traversing evaluator
+proxies. Indexed source loops retain current array-field reads after callbacks;
+Context enumeration snapshots buckets and advances entries before callbacks.
+
+External manual production observers agree on all 6,238 normal traversal rows:
+Test206 3,634, Test207 1,004, Test209 1,600. All 4,440 reachability rows and 1,836
+substitution observations agree, using six fresh-graph definition pairs. Four
+callback mutations agree on 243 rows (10, 9, 110, 114), including actual
+NullPointerException classification and the retained callback prefix. All final
+three-model rows agree after indexed-loop and root-publication corrections;
+81901 returns 0 and is retired. Observers/logs/overlays remain external under
+/mnt/oldrog/tmp/tlago-canonical-walk-*. No invented permanent tests or original
+method credit for these observations.
+
+Translate the original SemanticCorpusTests.test and helpers against the canonical
+graph rather than the older AST name/level approximations. Initial external
+full draft 72064 fails with a null ExternalModuleTable root in AssumeProveTest.
+Production driver never assigned this field. Java assigns the last external
+module after its level check and before reporting. Port that publication point;
+native unordered callers publish their declared root on generation. Preserve
+the original test assertions rather than reading around the missing root.
+
+Corrected external full draft 93380 passes in 0.188s. Unchanged Java JUnit class
+passes all 28 parameter rows in 0.263s with its original NegativeOpTest assumption.
+All 28 corpus TLA fixture paths and bytes match the pinned Java tree. Install the
+complete root translation with source copyright, source context reinitialization,
+parse/semantic success, no semantic warnings, postVisit reference search, actual
+source/comment IDs and checked levels. Semantics itself is included. Installed
+class 85982 passes in 0.232s. Rename only the older AST facade entry point to
+identify it as supplementary; retain all of its assertions and helpers.
+This whole SANY method gains completion credit; main TLC inventory is unchanged.
+
+Final current original/bridge gate 75755 passes in 5.218s with 233 test pass
+events and one source assumption. Complete SANY 18702 passes in 1.707s; all-package
+compile passes. Earlier incremental-only 93618 passes in 0.055s. All focused
+handles are retired. Logs: tlago-canonical-walk-final-originals.json, -final-sany.log
+and -final-compile.log; original class logs tlago-canonical-corpus-*. No race,
+weakened tests or optional XML/Apalache sweep.
+
+Full normal workspace 12025 returns status 1 and is retired. On snapshot 4cd17ea,
+TLC passes in 775.694s and SANY passes in 1.525s. Root fails in 1,561.759s on only
+the three native XML fixtures already documented: two missing Naturals and one
+empty BY. It predates selector/traversal corrections; no current full-workspace
+pass is claimed. Fixture edits previously rejected by automatic approval review
+remain unapplied. Full canonical allocation, invalid-selector diagnostics,
+shared evaluator collections and unresolved trace reconciliation remain work.
+Keep the overall faithful TLC parity goal active.
+
 2026-10-07 Canonical selector construction and checked TLC definition levels:
 Previous completed commit: 8bc1776. Finish the pending bridge change by reading
 actual checked OpDef/ThmOrAssumpDef levels, resolving synthetic named theorem and

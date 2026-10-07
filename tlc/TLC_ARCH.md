@@ -9814,3 +9814,37 @@ These observations do not compare every syntax position, allocation UID or mutab
 collection, and earn no original-method credit. This construction path does not
 complete Java's invalid-selector diagnostics, DEF handling or general graph
 allocation order. Those remain explicit implementation work.
+
+## Canonical semantic graph traversal
+
+`sany_graph.go` translates the actual SANY classes' walkGraph edges and visitor
+callbacks. Use semantic UIDs for the visited table. Context and Subst callbacks
+carry their actual objects without allocating semantic identities. AtNode neither
+registers itself nor follows EXCEPT references; repeated occurrences receive
+repeated callbacks. Module traversal follows Context and topLevelVec; LET follows
+its Context rather than the incomplete definition array. Preserve proof edges,
+numbered OpDef stepNode edges, and the source omission of declaration/parameter
+edges from NewSymbNode, InstanceNode and ThmOrAssumpDefNode where applicable.
+
+Context snapshots the Hashtable buckets and advances each enumerator entry before
+callbacks. Keep the source inner-module warning and skip behavior, and its unusual
+postVisit inside the enumeration loop. Indexed node-array loops read the current
+field after callbacks, retaining replacement, shortening and null-failure behavior.
+Null arrays guarded by Java remain optional; unguarded source reads still fail.
+
+isDefinedWith compares actual references and retains Java's reachable-SubstInNode
+restriction. substituteFor collects applications before changing operators and
+excludes applications in the replacement graph according to that restriction.
+It changes only the operator field, preserving selector ownership and cached data.
+
+Manual production Java/Go observers agree on 6,238 traversal rows for original
+Test206, Test207 and Test209; 4,440 reachability results; 1,836 substitution rows
+across six fresh-graph definition pairs; and 243 callback-mutation rows across
+shortened, reordered, extended and null operand arrays. These are external manual
+observations, not additional original-method credit or complete malformed-node
+coverage. The original SemanticCorpusTests method now supplies persistent source
+assertions over actual canonical identities and levels. Its full 28-row matrix
+and one source assumption are preserved. The driver also now publishes the last
+external module as the ExternalModuleTable root after level checking, matching
+Java even when prior diagnostic errors exist. Native callers without loader order
+publish their declared root when it is generated.

@@ -11,9 +11,9 @@ import (
 	"github.com/glycerine/tlago"
 )
 
-// Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/SemanticCorpusTests.java.
-// Each test starts skipped until its Java assertions are ported and made green.
-func TestSemanticCorpusTests_test(t *testing.T) {
+// Supplementary native AST facade checks. The faithful original class lives in
+// root sany_semantic_corpus_java_test.go and inspects canonical graph identities.
+func TestSemanticCorpusASTFacadeBehaviors(t *testing.T) {
 	corpusDir := sanyTestVectorPath("tla2sany", "semantic", "corpus")
 	files := sanyTLAFilesUnder(t, corpusDir, func(path string) bool {
 		name := filepath.Base(path)

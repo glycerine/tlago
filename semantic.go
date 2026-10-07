@@ -115,7 +115,7 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 		}
 		return checks, generated
 	}
-	for _, name := range spec.SemanticOrder {
+	for index, name := range spec.SemanticOrder {
 		mod := spec.Modules[name]
 		if mod == nil || checked[mod] {
 			continue
@@ -136,6 +136,11 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 		// Source tests raw Errors.isSuccess, before warning elevation.
 		if checkLevels && mod.semanticNode != nil && !diags.HasErrors() {
 			sanyLevelCheckNext(mod.semanticNode, &diags)
+		}
+		// SANY publishes the last analyzed external module as the root after
+		// its level check, independently of the accumulated error result.
+		if index == len(spec.SemanticOrder)-1 {
+			spec.semanticModules.root = mod.semanticNode
 		}
 		if report != nil {
 			report(diags)
@@ -158,6 +163,9 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 		}
 		if checkLevels && mod.semanticNode != nil && !diags.HasErrors() {
 			sanyLevelCheckNext(mod.semanticNode, &diags)
+		}
+		if mod == spec.Root {
+			spec.semanticModules.root = mod.semanticNode
 		}
 	}
 	if report != nil && (len(remaining) > 0 || len(spec.SemanticOrder) == 0) {

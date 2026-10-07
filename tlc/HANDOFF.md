@@ -69,16 +69,30 @@ are retired. Existing source tests and fixtures are unchanged, and test-port
 inventory counts do not increase. Full-workspace session `12025` below tests an
 earlier implementation snapshot and cannot verify these latest changes.
 
-Full normal workspace verification of `4cd17ea` is running in session `12025`.
-Command: `go test ./... -json -count=1 -timeout=60m`, with the standard offline
-cache/temp environment. Log:
-`/mnt/oldrog/tmp/tlago-canonical-driver-workspace.json`.
-Poll this exact session before starting another full run. The first observation
-shows advancing root and TLC tests; SANY passed in 1.525 seconds. Root has reported
-three native XML fixture failures, so this cannot earn full-workspace pass
-credit. In addition to the two missing-Naturals cases below, the explicit PROOF
-location fixture uses an empty BY. Java reports the same two empty-BY errors.
-No fixture change was applied. No optional XML/Apalache sweep was enabled.
+Full normal workspace verification of `4cd17ea` has finished. Session `12025`
+returned status 1 and is retired. TLC passed in 775.694 seconds and SANY passed
+in 1.525 seconds. Root failed in 1,561.759 seconds on three native XML fixtures:
+the two missing-Naturals cases documented below, and an explicit PROOF location
+fixture with an empty BY. Java reports the same two empty-BY errors. No fixture
+change was applied and no optional XML/Apalache sweep was enabled. Log:
+`/mnt/oldrog/tmp/tlago-canonical-driver-workspace.json`. This earlier snapshot
+does not verify the subsequent selector and traversal changes.
+
+Canonical graph traversal now follows Java's actual node edges, UID registration,
+context enumeration and pre/post callbacks. Source reachability and delayed
+operator substitution are translated over these nodes. The original semantic
+corpus class is port complete in root `sany_semantic_corpus_java_test.go`: all 28
+parameter rows are retained, including Semantics itself and the original
+NegativeOpTest assumption. Assertions use actual operator references, source-node
+comments and checked levels. The older AST facade checks remain supplementary.
+This original translation exposed missing ExternalModuleTable root publication;
+the driver now publishes the final external module after its level check, as Java
+does. The original Java class and Go translation pass. No full graph-allocation,
+invalid-selector or evaluator-sharing completion is claimed.
+
+Latest focused gate passes 233 test events in 5.218 seconds, with the original
+assumption retained. Complete SANY passes in 1.707 seconds and all-package
+compilation passes. All handles are retired; no new full-workspace pass exists.
 
 Both `CheckSanySpecLevels` and the `CheckSpec`/TLC driver now invoke the actual
 generated `ModuleNode.levelCheck`. The driver preserves Java's external-module

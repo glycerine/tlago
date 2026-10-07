@@ -16,6 +16,18 @@ Keep translated assertions faithful to the Java source, and add any copied
 fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
 locations.
 
+`semantic.SemanticCorpusTests.test` is **port complete** in root
+`sany_semantic_corpus_java_test.go`. All 28 original parameter rows are retained,
+including Semantics itself and the original NegativeOpTest assumption. Parse and
+semantic success, no semantic warnings, actual operator-reference resolution,
+source comments and checked levels match the original assertions. Reference
+search uses the actual canonical walkGraph with postVisit callbacks, not AST
+name matching or estimated levels. Original Java JUnit and Go pass; all 28
+fixtures match the pinned Java source byte for byte. The older AST facade checks
+in this directory remain supplementary and add no duplicate method credit.
+This completes the original method, not general canonical allocation/AST equality
+or evaluator sharing, and does not change the main TLC inventory totals.
+
 `semantic.SemanticErrorCorpusTests.test` now retains all four original assertion
 families: failure severity, structured argument counts, no suspected-unreachable
 checks, and the expected error code. Its helper preserves the original interrupted
