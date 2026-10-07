@@ -1046,6 +1046,18 @@ module cases agree. Full SANY, focused existing TLC integrations, compilation
 and all 56 formal diagnostic comparisons pass. Imported/recursive/function/fact
 graphs, canonical level checking, labels and evaluator sharing remain unfinished.
 No additional original-method or full-workspace completion credit is claimed.
+Higher-order calls now use actual operand graphs and concrete matching.
+LAMBDA retains its unregistered OpDef, actual formals/body and module-owned
+OpArg; failed operands preserve the owning Generator's source sentinels and
+allocation order. All 475 output rows across 20 Java/Go cases agree, including
+435 graph/diagnostic observations. ASSUME/PROVE now preserves NEW operator
+arity in its lexical scope and avoids generating false scalar formals from the
+legacy quantifier-shaped view. All 29 phase cases, 30 substitution cases and
+56 formal diagnostic cases agree. Existing SANY and focused TLC integrations
+pass. Canonical NEW/AP and qualified selector graphs, the older fixity GenID
+wrong-arity path, recursive/function/INSTANCE/fact graphs and full LevelNode
+checking remain pending. basicOpDefTest stays reconcile; no original-method
+or full-workspace completion credit is added.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

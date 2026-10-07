@@ -503,6 +503,7 @@ type BoundVar struct {
 }
 
 type FunctionExpr struct {
+	lambdaNode *sanySemOpDefNode
 	SanyExprSource
 	definitionFormalContext map[string]localSymbol
 	// Preparation retains the temporary self formal; Java removes it from

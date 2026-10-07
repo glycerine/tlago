@@ -857,7 +857,16 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			diags = append(diags, checkLabels(expr, labelCheckContext{allowed: assumption.Name != ""})...)
 		}
 		if !assumeProveExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkExpr(expr, expressionContexts.at(assumption.Syntax, defined), nil)...)
+			if assumption.AssumeProve && assumption.AssumeProveBody != nil {
+				// The native quantifier-shaped view is for legacy consumers;
+				// it must not generate false FormalParam/quantifier graphs for NEW.
+				if source := sanyGenerationSource(expr); source != nil {
+					source.semanticGraph = nil
+				}
+				diags = append(diags, checkAssumeProveBindings(assumption.AssumeProveBody, expressionContexts.at(assumption.Syntax, defined), nil, expressionGeneration)...)
+			} else {
+				diags = append(diags, checkExpr(expr, expressionContexts.at(assumption.Syntax, defined), nil)...)
+			}
 		}
 		diags = append(diags, checkCallArity(expr, arities, operatorParamSpecs, nil)...)
 		diags = append(diags, checkOperatorArgumentKinds(expr, operatorParamSpecs, arities, nil)...)
@@ -893,7 +902,16 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
 		}
 		if !assumeProveExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkExpr(expr, expressionContexts.at(theorem.Syntax, defined), nil)...)
+			if theorem.AssumeProve && theorem.AssumeProveBody != nil {
+				// The native quantifier-shaped view is for legacy consumers;
+				// it must not generate false FormalParam/quantifier graphs for NEW.
+				if source := sanyGenerationSource(expr); source != nil {
+					source.semanticGraph = nil
+				}
+				diags = append(diags, checkAssumeProveBindings(theorem.AssumeProveBody, expressionContexts.at(theorem.Syntax, defined), nil, expressionGeneration)...)
+			} else {
+				diags = append(diags, checkExpr(expr, expressionContexts.at(theorem.Syntax, defined), nil)...)
+			}
 		}
 		diags = append(diags, checkCallArity(expr, arities, operatorParamSpecs, nil)...)
 		diags = append(diags, checkOperatorArgumentKinds(expr, operatorParamSpecs, arities, nil)...)
@@ -940,7 +958,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		defArities := definitionBodyArities(arities, def)
 		bodyContext := expressionContexts.at(def.Syntax, defined)
 		if def.AssumeProve && def.AssumeProveBody != nil {
-			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, bodyContext, locals)...)
+			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, bodyContext, locals, expressionGeneration)...)
 		} else if def.FunctionDef {
 			previous, conflict := constructorConflicts[positionKey(def.SourcePosition())]
 			if conflict && previous.kind != OperatorDecl && previous.kind != InstanceDecl {
@@ -1094,6 +1112,17 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 		return nil
 	}
 	var diags Diagnostics
+	var generation *sanyExpressionGeneration
+	if len(generators) != 0 && generators[0] != nil {
+		generation = generators[0]
+		previous := generation.symbols
+		generation.symbols = make(map[string]localSymbol, len(previous))
+		for name, symbol := range previous {
+			generation.symbols[name] = symbol
+		}
+		defer func() { generation.symbols = previous }()
+		defer generation.pushFormalContext(0)()
+	}
 	generate := func(expr Expr, locals map[string]bool) Diagnostics {
 		if len(generators) != 0 && generators[0] != nil {
 			return generators[0].proofExpression(expr, defined, locals)
@@ -1105,9 +1134,17 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 		switch {
 		case item.NewSymbol != nil:
 			sym := item.NewSymbol
-			diags = append(diags, checkBindingName("NEW symbol", sym.Name, sym.Pos, defined, apLocals)...)
+			bindingDiags := checkBindingName("NEW symbol", sym.Name, sym.Pos, defined, apLocals)
+			diags = append(diags, bindingDiags...)
 			if sym.Domain != nil {
 				diags = append(diags, generate(sym.Domain, apLocals)...)
+			}
+			if generation != nil && !bindingDiags.HasErrors() {
+				kind := ConstantDecl
+				if sym.Kind == 25 {
+					kind = VariableDecl
+				}
+				generation.symbols[sym.Name] = localSymbol{kind: kind, arity: sym.Arity, pos: sym.Pos}
 			}
 			apLocals[sym.Name] = true
 		case item.Nested != nil:
@@ -3216,8 +3253,13 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		}
 		// The selected body is checked in its declaration's lexical scope.
 		// Only the actual arguments originate in this use site's scope.
-		for _, arg := range selected.args {
-			diags = append(diags, generation.checkExpr(arg, defined, locals)...)
+		owner := &IdentExpr{Name: selected.name, Pos: expr.Position()}
+		for i, arg := range selected.args {
+			expected := 0
+			if i < len(selected.params) {
+				expected = selected.params[i].OperatorArity
+			}
+			diags = append(diags, generation.generateOperatorOperand(owner, i, expected, arg, defined, locals)...)
 		}
 		return diags
 	}
@@ -3452,12 +3494,23 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 					higherOrder = higherOrder || spec.Arity > 0
 				}
 				if higherOrder {
-					return append(diags, generation.generateApplicationOperands(e, identifier, specs, defined, locals)...)
+					return append(diags, generation.generateApplicationOperands(e, identifier, operator, specs, defined, locals)...)
 				}
 			}
 		}
-		for _, arg := range e.Args {
-			diags = append(diags, generation.checkExpr(arg, defined, locals)...)
+		_, signatures := generation.proofSignatures()
+		var specs []operatorParamSpec
+		if identifier, ok := e.Callee.(*IdentExpr); ok {
+			specs = signatures[identifier.Name]
+		}
+		for i, arg := range e.Args {
+			generated := generation.checkExpr(arg, defined, locals)
+			for j := range generated {
+				if generated[j].Code == "E4275" && i < len(specs) {
+					generated[j].Message = fmt.Sprintf("expression parameter %s cannot accept a LAMBDA operator argument", specs[i].Name)
+				}
+			}
+			diags = append(diags, generated...)
 		}
 		diags = append(diags, retainSanyMatchedApplication(e, operator, e.Args)...)
 	case *IfExpr:
@@ -3530,6 +3583,16 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		}
 		diags = append(diags, generation.checkRecordForm(e, "$SetOfRcds", fields, defined, locals)...)
 	case *FunctionExpr:
+		if e.IsLambda {
+			e.lambdaNode, e.formalNodes = nil, nil
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullExpression)
+			diagnostic := errorAt(e.Pos, "E4275", "LAMBDA expression used where an expression is required.")
+			diagnostic.SANYMessage = diagnostic.Message
+			if e.Syntax != nil {
+				diagnostic.SANYRange = e.Syntax.Range
+			}
+			return Diagnostics{diagnostic}
+		}
 		var generated Diagnostics
 		e.formalNodes, generated = generation.checkBoundExpression(e.Bounds, e.Syntax, defined, locals, e.Body)
 		diags = append(diags, generated...)
@@ -4035,7 +4098,7 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 						if operatorArgumentRequiresOperatorParam(arg, operatorParams, locals) {
 							diags = append(diags, errorAt(e.Pos, "E4271", "Argument number %d to operator '%s' should be a %d-parameter operator.", i+1, ident.Name, spec.Arity))
 						}
-					} else if fn, ok := arg.(*FunctionExpr); ok && fn.IsLambda {
+					} else if fn, ok := arg.(*FunctionExpr); ok && fn.IsLambda && sanyExpressionGenerationFailure(arg) != sanyGenerationNullExpression {
 						diags = append(diags, errorAt(arg.Position(), "E4275", "expression parameter %s cannot accept a LAMBDA operator argument", spec.Name))
 					}
 				}

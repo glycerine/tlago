@@ -356,8 +356,15 @@ func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]
 // generateExprOrOpArg selects the expression or operator-argument path from
 // the receiving formal parameter's arity, before incomplete-name validation.
 func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, index, expected int, argument Expr, context map[string]Position, locals map[string]bool) Diagnostics {
+	setSanyExpressionGenerationFailure(argument, sanyGenerationSucceeded)
+	if source := sanyGenerationSource(argument); source != nil {
+		source.semanticGraph = nil
+	}
 	if expected <= 0 {
 		diags := g.checkExpr(argument, context, locals)
+		if sanyExpressionGenerationFailure(argument) == sanyGenerationNullOperator {
+			g.retainNullOperatorOperand(argument, false)
+		}
 		arities, parameters := g.proofSignatures()
 		diags = append(diags, checkCallArity(argument, arities, parameters, locals)...)
 		return append(diags, checkOperatorArgumentKinds(argument, parameters, arities, locals)...)
@@ -373,8 +380,12 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 			diagnostic := sanyDiagnosticParameters(errorAt(position, "E4270", "operator parameter requires an operator argument of arity %d", expected), index+1, owner.Name)
 			diagnostic.SANYRange = rangeOfArgument
 			diagnostic.SANYMessage = fmt.Sprintf("An expression appears as argument number %d (counting from 1) to operator '%s', in a position an operator is required.", index+1, owner.Name)
+			g.retainNullOperatorOperand(argument, false)
 			return Diagnostics{diagnostic}
 		}
+	}
+	if function, ok := argument.(*FunctionExpr); ok && function.IsLambda {
+		return g.generateLambdaOperand(owner, index, expected, function, context, locals)
 	}
 	if source := sanyExprSource(argument); source != nil && source.Selector != nil {
 		for i, step := range source.Selector.Steps {
@@ -390,6 +401,7 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 				diagnostic.SANYMessage = message
 				diagnostic.SANYRange = step.Syntax.Range
 				setSanyExpressionGenerationFailure(argument, sanyGenerationNullOperator)
+				g.retainNullOperatorOperand(argument, false)
 				return Diagnostics{diagnostic}
 			}
 		}
@@ -400,12 +412,38 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 	if call, ok := argument.(*CallExpr); ok && (call.Selector == nil || len(call.Selector.Steps) <= 1) {
 		operator = call.Callee
 	}
+	// GeneralId selectors reject an incorrect expected arity before allocating
+	// OpArg. The older fixity GenID path has different error/sentinel behavior.
+	if source := sanyGenerationSource(argument); source != nil && source.Syntax != nil && source.Syntax.Kind.JavaName() == "N_GeneralId" && (source.Selector == nil || len(source.Selector.Steps) <= 1) {
+		got, known := operatorArgumentArity(operator, g.moduleArities, locals)
+		if identifier, ok := operator.(*IdentExpr); ok && !known {
+			if symbol, exists := g.lookupSymbol(identifier.Name, context); exists && symbol.arity >= 0 {
+				got, known = symbol.arity, true
+			}
+		}
+		if literal, ok := operator.(*LiteralExpr); ok && literal.Kind == "bool" {
+			got, known = 0, true
+		}
+		if known && got != expected {
+			g.retainNullOperatorOperand(argument, false)
+			diagnostic := sanyDiagnosticParameters(errorAt(position, "E4271", "operator argument arity mismatch: got %d, want %d", got, expected), expected, got)
+			diagnostic.SANYRange = source.Syntax.Range
+			diagnostic.SANYMessage = fmt.Sprintf("Expected arity %d but found operator of arity %d.", expected, got)
+			return Diagnostics{diagnostic}
+		}
+	}
 	previousOperatorArgument := g.operatorArgument
 	g.operatorArgument = true
 	diags := g.checkExpr(operator, context, locals)
 	g.operatorArgument = previousOperatorArgument
 	if sanyExpressionGenerationFailure(operator) != sanyGenerationSucceeded {
+		g.retainNullOperatorOperand(argument, false)
 		return diags
+	}
+	if operator != argument {
+		if source := sanyGenerationSource(argument); source != nil {
+			source.semanticGraph = sanyGeneratedExpressionNode(operator)
+		}
 	}
 	got, ok := operatorArgumentArity(operator, g.moduleArities, locals)
 	if identifier, isIdentifier := operator.(*IdentExpr); !ok && isIdentifier {
@@ -422,17 +460,19 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 	diagnostic := sanyDiagnosticParameters(errorAt(position, "E4271", "operator argument arity mismatch: got %d, want %d", got, expected), expected, got)
 	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 	diagnostic.SANYMessage = fmt.Sprintf("Expected arity %d but found operator of arity %d.", expected, got)
-	if function, isFunction := argument.(*FunctionExpr); isFunction && function.IsLambda {
-		diagnostic = sanyDiagnosticParameters(errorAt(owner.Pos, "E4274", "operator argument arity mismatch: got %d, want %d", got, expected), got, index+1, owner.Name, expected)
-		diagnostic.SANYRange = SanyRange{Begin: owner.Pos, End: owner.Pos.SourceEnd()}
-		diagnostic.SANYMessage = fmt.Sprintf("Lambda expression with arity %d used as argument %d of operator `%s', \nbut an operator of arity %d is required.", got, index+1, owner.Name, expected)
+
+	if source := sanyGenerationSource(argument); source != nil {
+		source.semanticGraph = nil
+		if source.Syntax != nil && source.Syntax.Kind.JavaName() == "N_GeneralId" {
+			g.retainNullOperatorOperand(argument, false)
+		}
 	}
 	return append(diags, diagnostic)
 }
 
 // generateExprOrOpArg produces all operands before OpDefNode.match validates
 // the resulting operator arguments. A failed operand is the source nullOAN.
-func (g *sanyExpressionGeneration) generateApplicationOperands(call *CallExpr, identifier *IdentExpr, specs []operatorParamSpec, context map[string]Position, locals map[string]bool) Diagnostics {
+func (g *sanyExpressionGeneration) generateApplicationOperands(call *CallExpr, identifier *IdentExpr, operator sanySemSymbol, specs []operatorParamSpec, context map[string]Position, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
 	owner := *identifier
 	owner.Syntax = call.Syntax
@@ -443,6 +483,9 @@ func (g *sanyExpressionGeneration) generateApplicationOperands(call *CallExpr, i
 		for j := range generated {
 			if generated[j].Code == "E4270" {
 				generated[j].Message = fmt.Sprintf("operator parameter %s requires an operator argument of arity %d", specs[i].Name, specs[i].Arity)
+			}
+			if generated[j].Code == "E4275" {
+				generated[j].Message = fmt.Sprintf("expression parameter %s cannot accept a LAMBDA operator argument", specs[i].Name)
 			}
 		}
 		diags = append(diags, generated...)
@@ -460,6 +503,17 @@ func (g *sanyExpressionGeneration) generateApplicationOperands(call *CallExpr, i
 			if !known || got != specs[i].Arity || sanyExpressionGenerationFailure(operator) != sanyGenerationSucceeded || operatorArgumentRequiresOperatorParam(operator, parameters, locals) {
 				invalid = append(invalid, i)
 			}
+		}
+	}
+	if operator != nil {
+		complete := true
+		for _, argument := range call.Args {
+			complete = complete && (sanyGeneratedExpressionNode(argument) != nil || sanyExpressionGenerationFailure(argument) == sanyGenerationNullExpression)
+		}
+		if complete {
+			diags = append(diags, retainSanyMatchedApplication(call, operator, call.Args)...)
+			call.operatorArgumentsGenerated = true
+			return diags
 		}
 	}
 	for _, i := range invalid {
@@ -660,7 +714,7 @@ func (g *sanyExpressionGeneration) checkRecordForm(expr Expr, operator string, f
 // after the parameter scope has been popped, and registers in the current table.
 func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Definition) Diagnostics {
 	source := sanyGenerationSource(definition.Expr)
-	if source == nil || source.semanticGraph == nil {
+	if source == nil || (source.semanticGraph == nil && sanyExpressionGenerationFailure(definition.Expr) != sanyGenerationNullExpression) {
 		return nil
 	}
 	var module *sanySemModuleNode
@@ -671,4 +725,46 @@ func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Defin
 	node.letInLevel = g.level
 	definition.semanticNode = node
 	return diagnostics
+}
+
+// Failed operands use this Generator's source sentinel, not a fresh node.
+func (g *sanyExpressionGeneration) retainNullOperatorOperand(expr Expr, operatorArgument bool) {
+	if source := sanyGenerationSource(expr); source != nil && g.nodes != nil {
+		if operatorArgument {
+			source.semanticGraph = g.nodes.nullOpArg
+		} else {
+			source.semanticGraph = g.nodes.nullOAN
+		}
+	}
+}
+
+func (g *sanyExpressionGeneration) generateLambdaOperand(owner *IdentExpr, index, expected int, function *FunctionExpr, context map[string]Position, locals map[string]bool) Diagnostics {
+	function.lambdaNode = nil
+	parameters, diagnostics := g.checkBoundExpression(function.Bounds, function.Syntax, context, locals, function.Body)
+	function.formalNodes = parameters
+	if sanyExpressionGenerationFailure(function.Body) == sanyGenerationNullOperator {
+		g.retainNullOperatorOperand(function.Body, false)
+	}
+	body := sanyGeneratedExpressionNode(function.Body)
+	if body == nil && sanyExpressionGenerationFailure(function.Body) != sanyGenerationNullExpression {
+		return diagnostics
+	}
+	var module *sanySemModuleNode
+	if g.currentModule != nil {
+		module = g.currentModule.semanticNode
+	}
+	// generateLambda pops its formal context before constructing an unregistered
+	// OpDef. It does not set ordinary definition recursion/LET fields.
+	node, generated := newSanySemOpDefNode("LAMBDA", sanyUserDefinedOpKind, parameters, false, body, module, nil, function.Syntax, true, nil)
+	function.lambdaNode = node
+	diagnostics = append(diagnostics, generated...)
+	if node.semArity() == expected {
+		function.semanticGraph = newSanySemOpArgNode(node, function.Syntax, module)
+		return diagnostics
+	}
+	g.retainNullOperatorOperand(function, true)
+	diagnostic := sanyDiagnosticParameters(errorAt(owner.Pos, "E4274", "operator argument arity mismatch: got %d, want %d", node.semArity(), expected), node.semArity(), index+1, owner.Name, expected)
+	diagnostic.SANYRange = SanyRange{Begin: owner.Pos, End: owner.Pos.SourceEnd()}
+	diagnostic.SANYMessage = fmt.Sprintf("Lambda expression with arity %d used as argument %d of operator `%s', \nbut an operator of arity %d is required.", node.semArity(), index+1, owner.Name, expected)
+	return append(diagnostics, diagnostic)
 }

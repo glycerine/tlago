@@ -51,7 +51,7 @@ func retainSanyBuiltInApplication(expr Expr, name string, children []Expr) {
 	operands := make([]sanySemanticGraphNode, len(children))
 	for i, child := range children {
 		operands[i] = sanyGeneratedExpressionNode(child)
-		if operands[i] == nil {
+		if operands[i] == nil && sanyExpressionGenerationFailure(child) != sanyGenerationNullExpression {
 			return
 		}
 	}
@@ -248,7 +248,7 @@ func retainSanyMatchedApplication(expr Expr, operator sanySemSymbol, children []
 	operands := make([]sanySemanticGraphNode, len(children))
 	for i, child := range children {
 		operands[i] = sanyGeneratedExpressionNode(child)
-		if operands[i] == nil {
+		if operands[i] == nil && sanyExpressionGenerationFailure(child) != sanyGenerationNullExpression {
 			return nil
 		}
 	}

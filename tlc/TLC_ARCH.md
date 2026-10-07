@@ -1,5 +1,34 @@
 # TLC Architecture Notes for the Go Port
 
+## Higher-order operands, LAMBDA and ASSUME/PROVE scope
+
+Higher-order calls now pass actual generated operands to the concrete OpAppl
+constructor and symbol matcher when their graphs are available. A failed
+operator operand retains its owning Generator's nullOAN; an arity-mismatched
+lambda retains that Generator's nullOpArg. GeneralId expected-arity rejection
+precedes OpArg allocation. Missing unported graphs remain incomplete rather
+than acquiring a replacement node. The older fixity GenID wrong-arity path
+still needs its distinct source error and sentinel behavior.
+
+LAMBDA generation creates actual formal nodes and its body in a temporary
+context, restores that context, then constructs an unregistered user-defined
+OpDef named LAMBDA. It preserves the constructor's recursion and LET defaults.
+Only a matching arity allocates the OpArg, with the actual module and syntax.
+A lambda in an expression slot returns the source null-expression result and
+its diagnostic without generating its body. Constructors distinguish that
+actual null result from a child graph whose implementation is still missing.
+
+Selected calls use each receiving formal's operator arity to generate operands.
+Their final qualified/compound selector graphs remain pending. ASSUME/PROVE
+uses the current expression generator and a restored lexical scope for NEW
+symbol metadata, including operator arity. Domains are generated before the
+new symbol becomes visible. Named and unnamed bodies dispatch through the
+actual ASSUME/PROVE structure; the legacy quantifier-shaped view must not
+allocate false scalar FormalParams or quantifier applications for NEW.
+Canonical NEW/AssumeProve nodes remain pending, as do recursive/function/
+INSTANCE/fact graphs, inherited LevelNode fields and iteration, visitors and
+shared evaluator construction. The original basicOpDefTest remains reconcile.
+
 ## Ordinary definitions and LET ownership
 
 For ordinary nonrecursive local/top-level definitions with generated bodies, OpDef
@@ -61,9 +90,9 @@ Unqualified ordinary calls now resolve an available concrete symbol before
 operands and reject incorrect supplied arity at the argument-list location.
 A callee name does not allocate its own application. Actual generated operands
 feed the general matched constructor at the call's syntax node. Symbols and
-children lacking canonical graphs remain incomplete. Higher-order calls and
-compound selectors still require their complete graph integration; ordinary
-OpDef construction and registration are pending.
+children lacking canonical graphs remain incomplete. Compound selectors and operands lacking canonical symbols still require
+complete graph integration. Ordinary OpDefs with generated bodies now use the
+shared constructor and actual registration described above.
 
 Prefix/infix/postfix generation resolves the raw GenID and source synonym
 before generating operands. Prefix '-' becomes '-.' as in GenID.finalAppend.

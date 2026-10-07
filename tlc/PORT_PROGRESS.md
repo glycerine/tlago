@@ -1,5 +1,53 @@
 # TLC Port Progress
 
+2026-10-07 Higher-order operands, LAMBDA and ASSUME/PROVE scope:
+Previous completed commit: 39ce0dd. Higher-order calls now feed actual operands
+to the real OpAppl constructor and symbol matcher. Retain the owning Generator's
+nullOAN for failed operator operands and nullOpArg for mismatched lambda arity.
+GeneralId arity rejection precedes allocation. Generate lambda formals and body,
+restore scope, then construct an unregistered LAMBDA OpDef with source defaults;
+allocate its module-owned OpArg only when arity matches. A lambda in an expression
+slot returns the actual null-expression result without generating its body.
+Do not replace a missing unported graph with a sentinel.
+
+The first integration gate exposed valid imported SequencesExtTheorems lambda
+calls treated as scalar operands, and an existing native diagnostic wording
+contract. Preserve native Message compatibility while retaining exact Java
+SANYMessage; generate selected operands by receiving formal arity. Share the
+current generator with named ASSUME/PROVE bodies and restore NEW lexical symbol
+metadata after checking, preserving operator arity and domain-before-binding
+order. The AP phase comparison then exposed three NEW operator cases still
+using the unnamed theorem's legacy quantifier surrogate, which had fabricated
+scalar formals. Dispatch named and unnamed AP through their actual body instead.
+Fix production behavior; no assertions or matrices were weakened.
+
+Actual Java Generator.generate versus Go GenerateSanySpec agrees across 20
+whole-module higher-order cases: 475 complete output rows, including 435 prefixed
+observations (258 graph nodes, 81 references, two LET context entries, 51 module
+context entries, 19 diagnostics, four null results and 20 case results).
+Compare actual graph identity, syntax, relative allocation, lambda constructor
+fields, module ownership, context restoration and error sentinels. An exploratory
+standalone lambda definition was rejected by Java's grammar and removed from
+both scratch semantic lists before comparison. These are bounded scratch probes,
+not new permanent tests or original Java method completion credit.
+
+Final verification after the AP dispatch fix: existing focused root gate passes
+in 46.111s (3744), full sany_tests passes in 1.879s and compile-all succeeds
+(85641); graph overlay passes (98883). The rebuilt diagnostic observer matches
+all 56 quantifier/named-function/proof/CHOOSE cases (25012/41406/62479/74193),
+all 30 AP substitution cases (93062), and all 29 AP generation/level/repeat cases
+(84800). All handles are terminal zero. No long workload was combined with race.
+Scratch receipts are under /mnt/oldrog/tmp/tlago-higher-order-*, with final root
+JSON, graph Java/Go logs, AP phase-fixed log and diagnostic verified logs.
+Earlier failing gates and AP phase discrepancies remain in their separate logs.
+
+Canonical NEW/AP nodes and final qualified selector graphs remain incomplete.
+The older fixity GenID wrong-arity path awaits source-specific failure behavior.
+Recursive/function/INSTANCE/fact graphs, full inherited LevelNode data and
+checking, visitors and evaluator sharing remain pending. basicOpDefTest stays
+reconcile. No full-workspace pass, inventory increase or complete graph parity
+is claimed.
+
 2026-10-07 Top-level ordinary OpDef graph integration:
 Previous completed commit: 9936f1b (production slice 453bd8f). Top-level ordinary
 nonrecursive operator definitions with generated bodies now construct the same
