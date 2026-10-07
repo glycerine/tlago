@@ -48,7 +48,7 @@ parser/SANY/TLC gate passes in 45.694 seconds (20979 terminal 0), log
 formal diagnostic observations still agree after rebuilding the observer:
 quantifier 11, named function 15, proof 17 and CHOOSE 13 (37064, 42377,
 13415, 16850 terminal 0); logs tlago-let-definition-*-diag.log. Final graph/getter overlay and package compilation pass together (90824
-terminal 0; overlay 0.018 seconds). No race,
+terminal 0; overlay 0.019 seconds). No race,
 full-workspace completion, corpus sweep or TLC test-inventory count change.
 
 2026-10-07 CASE, records and record-selection graphs:
