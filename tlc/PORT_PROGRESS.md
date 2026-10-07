@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-07 Canonical USE/HIDE and proof subnode checks:
+Previous completed commit: a7ce843. Translate complete source checks for
+UseOrHideNode, LeafProofNode, DefStepNode and NonLeafProofNode. Check facts only
+for USE/HIDE and leaf proofs; check actual definitions for definition steps.
+Non-leaf proofs copy steps then instances before common aggregation. Preserve
+cache guards and distinct nil-array failure timing. Introduce indexed child
+access in the common helper so graph adaptation happens only when reached;
+later child failures retain earlier calls and metadata writes. Canonical-array
+callers retain the same aggregation behavior.
+
+External source observer /mnt/oldrog/tmp/tlago-proof-level-* uses actual source
+proof/definition/formal nodes and controlled ExprNode metadata. Initial observer
+9951 passes: all 280 full rows agree across five variants, seven array modes and
+eight signed/repeated iteration phases. Retained common observer 93556 passes:
+all 575 source rows still agree. Source audit catches definition-step closure
+reading the current parent array field instead of the array passed at entry.
+Capture the original array. Extend external observations with field replacement
+and in-place element replacement during checking; corrected observer 2612 passes
+and all 282 full rows agree. No scenarios or assertions are weakened.
+
+Broad affected original/model gate 20617 passes normally in 46.122s; full SANY
+48605 passes in 1.926s and compile 85245 passes. After captured-array correction,
+focused original semantic/level/incremental checks 65128 pass root 1.282s / SANY
+0.138s; final all-package compile 76974 passes. All handles retired. No invented
+permanent test, race run, shortened workload or original-method credit. This
+slice does not close the two incremental LET methods or remaining descendant
+checks, and does not establish a new full-workspace verification baseline.
+
 2026-10-07 Canonical theorem/assumption definition level checking:
 Previous completed commit: 4b2b905. Translate complete ThmOrAssumpDefNode.levelCheck
 and guarded maximum/weight/higher-order and Leibniz accessors. Preserve fresh

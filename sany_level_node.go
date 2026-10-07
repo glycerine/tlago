@@ -79,6 +79,14 @@ func (n *sanySemanticNode) levelCheck(iter int32, errors *Diagnostics) bool {
 	panic(tlc.NewWrongInvocationException("Level checking of " + sanySemanticKindNames[kind] + " node not implemented."))
 }
 func (n *sanySemanticNode) levelCheckSubnodes(iter int32, sub []sanyCanonicalLevelNode, errors *Diagnostics) bool {
+	return n.levelCheckSubnodesAccess(iter, sub == nil, len(sub), func(i int) sanyCanonicalLevelNode { return sub[i] }, errors)
+}
+
+// Resolve graph children only when reached, preserving prior writes on failure.
+func (n *sanySemanticNode) levelCheckGraphSubnodes(iter int32, sub []sanySemanticGraphNode, errors *Diagnostics) bool {
+	return n.levelCheckSubnodesAccess(iter, sub == nil, len(sub), func(i int) sanyCanonicalLevelNode { return sanyRequireCanonicalLevelNode(sub[i]) }, errors)
+}
+func (n *sanySemanticNode) levelCheckSubnodesAccess(iter int32, nilArray bool, count int, childAt func(int) sanyCanonicalLevelNode, errors *Diagnostics) bool {
 	if n == nil {
 		panic(tlc.NewNullPointerException())
 	}
@@ -86,10 +94,11 @@ func (n *sanySemanticNode) levelCheckSubnodes(iter int32, sub []sanyCanonicalLev
 		return n.levelCorrect
 	}
 	*n.levelChecked = iter
-	if sub == nil {
+	if nilArray {
 		panic(tlc.NewNullPointerException())
 	}
-	for _, child := range sub {
+	for i := 0; i < count; i++ {
+		child := childAt(i)
 		if child == nil || reflect.ValueOf(child).IsNil() {
 			panic(tlc.NewNullPointerException())
 		}

@@ -9406,3 +9406,29 @@ theorems/assumptions, false results, repeated/decreasing/overflow iterations,
 complete metadata and getter matrices, twelve failure cases, Leibniz aliasing
 and a theorem definition in a LET. These scratch observations add no original
 method credit and do not establish checks for every generated descendant class.
+
+
+## Canonical proof-node subnode checking
+
+`sany_proof_level.go` translates the complete source checks for UseOrHideNode,
+LeafProofNode, DefStepNode and NonLeafProofNode. USE/HIDE and leaf proofs check
+only facts; DEF references, ONLY and omitted flags do not change the check.
+Definition steps check their actual definition array. Non-leaf proofs allocate
+an array of steps followed by instances before invoking common aggregation.
+Their nil-array failure occurs before recording the iteration; the other three
+classes defer array validation to the common helper after recording iteration.
+All source cache guards remain intact.
+
+Common aggregation now accepts indexed child access so actual graph children
+are resolved as traversal reaches them. Do not eagerly adapt a whole array:
+a later unsupported or null child must not suppress earlier checks and writes.
+Canonical-array callers use the same unchanged aggregation. A definition step
+captures the array object passed at entry, so replacing the parent field does
+not replace its current traversal, while mutation of a captured element does.
+
+All 282 external Java/Go rows match exactly, including all five USE/HIDE/proof
+variants, seven array/failure modes, eight signed/repeated iterations, complete
+metadata, child-call counts, literal facts, and both array mutation behaviors.
+All 575 retained common LevelNode observations also match. These observations
+add no original-method credit and do not complete all descendant, theorem,
+ASSUME-PROVE, instance or module checks.

@@ -1225,7 +1225,13 @@ Theorem/assumption definitions now use their complete source metadata algorithm
 and guarded accessors. Preserve source fresh-table resets, non-monotonic levels,
 unchanged weights and the Leibniz allocation inside the formal loop. All 458
 direct observations agree, including theorem definitions in LET checks.
-Application, instance, proof/module checks and evaluator collection sharing
+USE/HIDE, leaf proofs, definition steps and non-leaf proofs now invoke the
+source ordered subnode aggregation. Resolve each actual graph child only when
+visited, preserving prior writes on later failure. Non-leaf proofs copy steps
+followed by instances before checking; definition steps retain the array passed
+at entry while observing in-place element changes. All 282 direct Java rows
+and the retained 575 common rows agree. No original-method credit is added.
+Application, instance, remaining proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.
 
