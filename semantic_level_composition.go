@@ -195,3 +195,49 @@ func (c *sanyLevelCompositionChecker) checkRecursiveParameters(def Definition, l
 	}
 	return diags
 }
+
+// AssumeProveNode checks assumptions before PROVE. Its returned levelCorrect
+// combines assumption results only; the prove check still reports its errors.
+func (c *sanyLevelCompositionChecker) checkAssumeProveResult(body *AssumeProve, locals map[string]bool) (bool, Diagnostics) {
+	if body == nil {
+		return true, nil
+	}
+	checker := &sanyLevelCompositionChecker{dependencies: c.dependencies, context: c.contextWithLocals(locals)}
+	correct := true
+	var diags Diagnostics
+	for _, item := range body.Assumptions {
+		itemCorrect := true
+		var current Diagnostics
+		switch {
+		case item.NewSymbol != nil:
+			symbol := item.NewSymbol
+			if symbol.Domain != nil {
+				itemCorrect, current = checker.checkResult(symbol.Domain, nil)
+				level := checker.level(symbol.Domain, nil)
+				if symbol.Level > level {
+					level = symbol.Level
+				}
+				if level == temporalLevel {
+					itemCorrect = false
+					position := symbol.Source
+					diagnostic := errorAt(position, "E4356", "ASSUME/PROVE NEW constant %s cannot have temporal-level bound", symbol.Name)
+					diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+					diagnostic.SANYMessage = "Level error:\nTemporal formula used as set."
+					current = append(current, diagnostic)
+				}
+			}
+			// The NEW node's level includes its domain, while uses of the
+			// declared symbol retain the OpDeclNode's own declared level.
+			checker.context.formals[symbol.Name] = sanyLeibnizBinding{use: sanyLeibnizUse{level: symbol.Level}}
+		case item.Nested != nil:
+			itemCorrect, current = checker.checkAssumeProveResult(item.Nested, nil)
+		default:
+			itemCorrect, current = checker.checkResult(item.Expr, nil)
+		}
+		correct = correct && itemCorrect
+		diags = append(diags, current...)
+	}
+	_, proveDiags := checker.checkResult(body.Prove, nil)
+	diags = append(diags, proveDiags...)
+	return correct, diags
+}

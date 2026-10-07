@@ -904,6 +904,15 @@ Java. Current focused root/model checks pass in 27.901 seconds, complete SANY
 passes in 1.816 seconds, and all-package compilation passes normally. Native
 expectations use the unchanged source fixtures and exact Java diagnostics;
 scratch comparisons add no original-method inventory credit.
+ASSUME-PROVE now checks each assumption and PROVE expression in lexical
+scope. NEW domains check before their declarations enter scope; uses retain
+the declaration's own level. Preserve Java's unusual return rule: PROVE errors
+are reported but do not alone make the AP node return false. Temporal bounds
+report exact 4356 messages and whole NEW ranges, including indirect definitions.
+All 29 parseable AP phase comparisons and 31 legacy cases (including two source
+parser rejections) match. Current focused root/model checks pass in 26.208
+seconds, complete SANY passes in 2.024 seconds, and compilation passes normally.
+Original corpus fixtures and assertions are unchanged; no inventory credit added.
 Full canonical LevelNode fields and iteration, imported graph identity, full
 formal-operator metadata, the remaining Java frontend helper API and evaluator
 sharing remain pending. The green comparisons do not prove complete LevelNode

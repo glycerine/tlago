@@ -867,8 +867,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			var diags Diagnostics
 			correct := true
 			if assumption.AssumeProve && assumption.AssumeProveBody != nil {
-				current := checkAssumeProveNewSymbolLevels(assumption.AssumeProveBody, declKinds)
-				correct = correct && !current.HasErrors()
+				expressionCorrect, current := levelChecker.checkAssumeProveResult(assumption.AssumeProveBody, nil)
+				correct = correct && expressionCorrect
 				diags = append(diags, current...)
 			}
 			if !assumption.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
@@ -903,8 +903,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			var diags Diagnostics
 			correct := true
 			if theorem.AssumeProve && theorem.AssumeProveBody != nil {
-				current := checkAssumeProveNewSymbolLevels(theorem.AssumeProveBody, declKinds)
-				correct = correct && !current.HasErrors()
+				expressionCorrect, current := levelChecker.checkAssumeProveResult(theorem.AssumeProveBody, nil)
+				correct = correct && expressionCorrect
 				diags = append(diags, current...)
 			}
 			if !theorem.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
@@ -964,8 +964,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			var diags Diagnostics
 			correct := true
 			if def.AssumeProve && def.AssumeProveBody != nil {
-				current := checkAssumeProveNewSymbolLevels(def.AssumeProveBody, declKinds)
-				correct = correct && !current.HasErrors()
+				expressionCorrect, current := levelChecker.checkAssumeProveResult(def.AssumeProveBody, locals)
+				correct = correct && expressionCorrect
 				diags = append(diags, current...)
 			}
 			if !def.AssumeProve {
@@ -1735,24 +1735,6 @@ func checkAssumeProveLabelsWithContext(body *AssumeProve, topLevel bool, ctx lab
 		}
 	}
 	check(body.Prove)
-	return diags
-}
-
-func checkAssumeProveNewSymbolLevels(body *AssumeProve, declKinds map[string]DeclarationKind) Diagnostics {
-	if body == nil {
-		return nil
-	}
-	var diags Diagnostics
-	for _, item := range body.Assumptions {
-		switch {
-		case item.NewSymbol != nil && item.NewSymbol.Domain != nil:
-			if exprLevel(item.NewSymbol.Domain, declKinds, nil) == temporalLevel {
-				diags = append(diags, errorAt(item.NewSymbol.Pos, "E4356", "ASSUME/PROVE NEW constant %s cannot have temporal-level bound", item.NewSymbol.Name))
-			}
-		case item.Nested != nil:
-			diags = append(diags, checkAssumeProveNewSymbolLevels(item.Nested, declKinds)...)
-		}
-	}
 	return diags
 }
 
@@ -4413,6 +4395,9 @@ func copyDeclKindMap(in map[string]DeclarationKind) map[string]DeclarationKind {
 
 func checkAssumptionConstantLevel(assumption NamedExpr, checker *sanyLevelCompositionChecker) Diagnostics {
 	level := checker.level(assumption.Expr, nil)
+	if assumption.AssumeProveBody != nil {
+		level = checker.dependencies.assumeProveDependencies(assumption.AssumeProveBody, checker.context).level
+	}
 	if level == constantLevel {
 		return nil
 	}

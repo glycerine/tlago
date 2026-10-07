@@ -140,6 +140,16 @@ already retained in the builtin metadata. Constants, literals and booleans may
 therefore be primed. Do not add a separate constant-prime ban or duplicate
 syntax-based double-prime check. Ordinary maxima produce Java's exact 4205
 error. Twelve bounded prime comparisons match complete legacy diagnostics.
+ASSUME-PROVE checks its assumptions before PROVE. NEW domains check before
+the declared symbol enters the lexical context; nested blocks copy that context.
+NewSymbNode's aggregate level is the maximum of declaration and domain levels,
+while references to its OpDeclNode retain the declared level. Temporal domain
+errors use the whole NEW syntax range and source 4356 message. Indirect domain
+levels come from the shared dependency analyzer rather than a declaration-kind
+syntax scan. Combine assumption validity for the AP return value; call PROVE's
+check and preserve its diagnostics without combining its boolean, as Java does.
+Twenty-nine parseable AP phase cases match exact diagnostics, phase results and
+repeated checks; two additional grammar rejections match the legacy frontend.
 Complete ASSUME-PROVE child graphs and LevelNode metadata remain pending.
 
 All 27 phase comparisons match generation errors, level errors, codes, ranges,

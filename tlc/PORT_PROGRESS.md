@@ -1,5 +1,45 @@
 # TLC Port Progress
 
+2026-10-07 ASSUME-PROVE operand and NEW binding levels:
+Previous completed commit: 14f031e. Inspect AssumeProveNode.levelCheck and
+NewSymbNode.levelCheck. The old checkAssumeProveNewSymbolLevels only scanned
+temporal bounds and skipped assumption/prove operands. Initial 20-case scratch
+comparison 59069 returns 1 with 13 diagnostic mismatches; five initial inputs
+are rejected by the source grammar and receive no level-check coverage credit.
+
+Replace the shortcut with lexical ASSUME-PROVE checking. Check assumptions in
+order, NEW domains before adding their declarations, nested blocks in copied
+scopes and PROVE last. NEW declaration uses retain their declared level while
+the NEW node's level also includes its domain. Use the normal expression checker
+for domain/assumption/prove diagnostics. Preserve the source return rule: combine
+assumption validity, but report PROVE errors without combining its return value.
+Temporal domains now report exact 4356 message and whole NEW range, including
+indirect definitions. The existing assumption level helper uses the retained
+ASSUME-PROVE level summary when supplied an AP body. Remove the old AST scanner.
+No permanent tests, fixture edits or original-method inventory credit added.
+
+Corrected initial 20-case legacy comparison 95546 returns 0. Expand/correct the
+scratch inputs to 31 cases: 29 parseable modules and two source-rejected inputs.
+First phase run 87551 returns 1 on four parser-exception/reporting differences;
+two ENABLED inputs require parentheses around the primed operand, not just the
+whole expression. Correct those scratch inputs. ASSUME ASSUME and NEW ACTION
+with a domain remain source-rejected; exclude them from phase coverage while
+retaining both in the legacy rejected-input comparison. Final 29 parseable
+phase comparisons 24604 return 0, matching generation logs, level logs, exact
+diagnostics, booleans and repeated checks. Log:
+/mnt/oldrog/tmp/tlago-ap-phase-corrected.log. Full helper exception-reporting
+parity remains pending; these parser rejections do not establish it.
+
+Final 31-case legacy comparison matches Java. The preceding 27 phase, 26
+co-parameter, 24 argument, 24 level and 12 prime comparisons still match
+(77096, terminal 0). Logs /mnt/oldrog/tmp/tlago-ap-final-*.log. Focused root
+checks plus unchanged original proof/model methods pass normally in 26.208
+seconds (67034); complete SANY, including the original E4356 corpus vector,
+passes in 2.024 seconds (14521); all-package compilation passes (76132).
+All handles terminal and retired. No new full-workspace pass, complete AP
+LevelNode fields/iteration, proof-node graph or evaluator sharing is claimed.
+New distributed service remains postponed.
+
 2026-10-07 Prime operator level checking:
 Previous completed commit: 937be6f. Twelve bounded Java comparisons expose
 nine differences from the extra Go-only checkPrimedConstants traversal. Java
