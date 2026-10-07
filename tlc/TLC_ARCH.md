@@ -1,5 +1,25 @@
 # TLC Architecture Notes for the Go Port
 
+## Retained definition formal identity
+
+Native expression generation now creates a concrete sanyFormalParamNode for each
+ordinary definition parameter and proof-INSTANCE parameter, before deciding
+whether SymbolTable can accept the binding. Conflicts retain the previous binding.
+Definition bodies retain the full ordered parameter array, including conflicting
+new nodes, and identifier expressions retain the formal resolved in their actual
+context. Repeated references share a node; same-named formals from different
+definitions have distinct identities.
+
+The node extends the existing SANY semantic symbol base with kind FormalParamKind,
+localness true, native module ownership and retained declaration syntax/location.
+It uses the shared SemanticNode UID allocator and per-node indexed slots.
+Its equality checks concrete class, kind and UID, matching SemanticNode.equals.
+Sixteen source observations establish these constructor/reference properties and
+relative UID/hash behavior. Absolute source allocation order is not established.
+Quantified/CHOOSE/function and proof-binder construction, LevelNode data, visitors,
+actual label formal arrays and evaluator sharing still require porting. The native
+Module ownership link is not a claim of a complete Java ModuleNode graph.
+
 ## Label generation guards and body order
 
 Generator.generateLabel first rejects labels outside definitions/proof steps,

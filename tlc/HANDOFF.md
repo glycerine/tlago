@@ -700,8 +700,16 @@ the required bound-parameter stack. Repetition and missing-parameter ErrorDetail
 use source messages. Fifteen detailed source comparisons match; existing focused
 parser/semantic checks pass. This does not establish complete label-node parity.
 
-Next semantic work: port Generator's remaining label-parameter checks and
-formal-parameter identity handling. The earlier nine-case comparison now has four
+Definition and proof-INSTANCE parameter generation now allocates concrete
+FormalParamNodes before binding-conflict checks. Definition bodies retain the
+ordered parameter nodes; identifier occurrences retain the resolved formal.
+Nodes share the SemanticNode UID allocator and own indexed tool slots, syntax,
+source location and native module ownership. Sixteen source observations match.
+This foundation does not cover quantified/CHOOSE/function formals, proof binders,
+LevelNode data, visitors, evaluator graph sharing or full source allocation order.
+
+Next semantic work: port the remaining formal constructors and integrate actual
+identity into Generator's label-parameter checks. The earlier nine-case comparison now has four
 matches and five differences: `arg_constant`, `label_select`, `params`,
 `qualified_callee` and `repeated`. Extra parameters need one aggregate diagnostic;
 non-formal arguments need the source leaf-location diagnostic and distinct dummy

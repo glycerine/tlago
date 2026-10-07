@@ -38,13 +38,14 @@ func (g *sanyExpressionGeneration) generateProofInstanceSubstitutions(instance I
 	context = copySanyExpressionContext(context)
 	for _, name := range instance.Params {
 		position := instance.ParamPositions[name]
+		node := g.newFormalParameter(name, instance.ParamArities[name], position, instance.Syntax)
 		if previous, exists := g.lookupSymbol(name, context); exists {
 			diagnostic := errorAt(position, "E4201", "Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", name, sanySymbolLocation(previous.pos))
 			diagnostic.SANYMessage = diagnostic.Message
 			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 			diags = append(diags, diagnostic)
 		} else {
-			g.formals[name] = localSymbol{kind: "FORMAL", arity: instance.ParamArities[name], pos: position}
+			g.formals[name] = localSymbol{formalNode: node, kind: "FORMAL", arity: instance.ParamArities[name], pos: position}
 			context[name] = position
 		}
 	}

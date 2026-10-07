@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-06 Retained ordinary-definition formal node identity:
+Previous completed commit: c160601. Native expression generation stored only
+name/arity/position for formals. Add concrete sanyFormalParamNode extending the
+existing SANY semantic symbol base. Constructor uses FormalParamKind, localness
+true, shared SemanticNode UID allocation and owned indexed slots; retain parser
+syntax, source location and native module ownership. SemanticNode-style equality
+checks concrete class, kind and UID, not spelling/location. Null syntax uses the
+existing null semantic syntax/location; null-syntax details are not newly audited.
+
+Ordinary definition and proof-INSTANCE parameter paths allocate nodes before
+binding-conflict decisions, matching source constructor/addSymbol order. Preserve
+the existing binding on conflicts. Ordinary definition bodies retain all newly
+constructed parameters in source order, including nodes whose bindings conflict.
+Identifier expressions retain the actually resolved formal. This is graph
+construction progress, not a claim that the Java class or graph is complete:
+quantified/CHOOSE/function and proof-binder constructors, LevelNode data, visitors,
+actual label formal arrays, source ModuleNode graph, evaluator graph sharing and
+complete source allocation order are pending. Do not use guessed absolute UIDs
+or sorted names to approximate label HashSet iteration.
+
+Sixteen exact observations match actual Java FastTool and FormalParamNode:
+name/arity/localness, module ownership and declaration syntax, repeated body
+references sharing a parameter, distinct equal-named formals across definitions,
+operator-parameter arity/reference, consecutive fresh constructor UIDs, source
+hash formula, self/null/class equality and equal UID/hash after controlled UID
+replacement. These establish relative allocation behavior, not absolute source
+UID counts. Source module ownership is compared to Java's actual ModuleNode;
+Go's native Module link is an adapter, not full ModuleNode parity. Receipts:
+/mnt/oldrog/tmp/tlago-formal-node-{java,go}.log; source helper
+SourceFormalNodeManual.java and temporary root overlay outside repository.
+Initial Java compilation used the wrong SyntaxTreeConstants package; corrected
+before execution. Initial Go probe exposed use of a selector-only source accessor
+on a tuple definition body. Correct production retention to the common
+SanyExprSource interface; initial session 7813 terminal 1, corrected 48035 terminal
+0. No permanent tests invented or existing assertions weakened.
+
+Final focused parser/semantic checks and existing original ParseError/legacy/
+scoped-identifier methods pass 4.958 seconds (60425). Whole SANY package passes
+1.835 seconds (50335); all packages compile (78855). Initial compile 61909 also
+terminal 0 before the body-retention correction. Rebuild the scratch frontend
+before repeating all fifteen label-flow comparisons; all match (21829 terminal 0).
+All handles retired. Receipts:
+/mnt/oldrog/tmp/tlago-formal-node-{root,sany,compile-final,label-flow}.log.
+Normal execution only; no race or forbidden corpus sweeps. No inventory or
+full-workspace completion credit. Continue remaining formal constructors and
+identity-based label checks; new RPC work remains postponed.
+
 2026-10-06 Source label generation guards, scope and body ordering:
 Previous completed commit: b004d96. Generator.generateLabel checks definition/
 proof-step scope, nested ASSUME/PROVE NEW scope and EXCEPT scope in that order,

@@ -228,6 +228,7 @@ type NewSymbol struct {
 // SanyExprSource retains the parser node selected by semantic generation.
 // Parenthesized expressions retain their inner expression node.
 type SanyExprSource struct {
+	definitionFormals          []*sanyFormalParamNode
 	operatorArgumentsGenerated bool
 	Syntax                     *SanySyntaxNode
 	// Selector keeps the generator's per-step argument syntax. A flattened
@@ -254,6 +255,7 @@ type Expr interface {
 
 type IdentExpr struct {
 	SanyExprSource
+	formalNode    *sanyFormalParamNode
 	proofAtTarget Expr // Generated $Nop operand reuses the previous infix RHS.
 	Name          string
 	Pos           Position

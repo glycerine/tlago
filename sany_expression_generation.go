@@ -26,6 +26,7 @@ type sanyExpressionGeneration struct {
 	fact                 bool
 	level                int
 	spec                 *Spec
+	currentModule        *Module
 	module               *sanyModuleRecursiveGeneration
 	declarations         []*sanyRecursiveBinding
 	bindings             map[string]*sanyRecursiveBinding
@@ -250,14 +251,22 @@ func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, co
 		g.formals[name] = symbol
 	}
 	defer func() { g.formals = previous }()
+	var parameters []*sanyFormalParamNode
 	for _, parameter := range sanyDefinitionParams(&definition) {
+		// The source allocates the node before SymbolTable.addSymbol decides
+		// whether the declaration can replace an existing binding.
+		node := g.newFormalParameter(parameter.Name, parameter.OperatorArity, parameter.Pos, definition.Syntax)
+		parameters = append(parameters, node)
 		if _, exists := g.lookupSymbol(parameter.Name, context); exists {
 			continue
 		}
 		if _, builtin := builtinOperatorArity(parameter.Name); builtin {
 			continue
 		}
-		g.formals[parameter.Name] = localSymbol{kind: "FORMAL", arity: parameter.OperatorArity, pos: parameter.Pos}
+		g.formals[parameter.Name] = localSymbol{formalNode: node, kind: "FORMAL", arity: parameter.OperatorArity, pos: parameter.Pos}
+	}
+	if source, ok := definition.Expr.(interface{ generationSource() *SanyExprSource }); ok {
+		source.generationSource().definitionFormals = parameters
 	}
 	return g.checkExpr(definition.Expr, context, locals)
 }

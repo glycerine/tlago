@@ -263,7 +263,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return generateModuleWithEnclosing(nested, spec, mod, child)
 		}
 	}
-	expressionGeneration := &sanyExpressionGeneration{spec: spec, module: checks.recursiveGeneration, bindings: map[string]*sanyRecursiveBinding{}}
+	expressionGeneration := &sanyExpressionGeneration{spec: spec, currentModule: mod, module: checks.recursiveGeneration, bindings: map[string]*sanyRecursiveBinding{}}
 	checkExpr := func(expr Expr, context map[string]Position, locals map[string]bool) Diagnostics {
 		return expressionGeneration.checkExpr(expr, context, locals)
 	}
@@ -1671,6 +1671,7 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 }
 
 type localSymbol struct {
+	formalNode       *sanyFormalParamNode
 	proofStepKind    string
 	proofAssumeProve bool
 	operatorParams   []operatorParamSpec
@@ -3475,6 +3476,10 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				diagnostic.SANYRange = SanyRange{Begin: e.Pos, End: e.Pos.SourceEnd()}
 				return Diagnostics{diagnostic}
 			}
+		}
+		e.formalNode = nil
+		if symbol, exists := generation.lookupSymbol(e.Name, defined); exists {
+			e.formalNode = symbol.formalNode
 		}
 		e.generationArity = nil
 		if generation.symbols != nil {
