@@ -2,15 +2,6 @@
 // Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
-// A thrown match error retains its logged details. Ordinary rejected matches
-// return false with diagnostics; OpAppl construction still returns their node.
-type sanySemanticAbort struct {
-	diagnostic  Diagnostic
-	diagnostics Diagnostics
-}
-
-func (e *sanySemanticAbort) Error() string { return sanyJavaErrorDetails(e.diagnostic) }
-
 func sanyMatchDiagnostic(application *sanySemOpApplNode, code, format string, parameters ...any) Diagnostic {
 	var position Position
 	var syntax *SanySyntaxNode
@@ -64,7 +55,7 @@ func (n *sanySemOpDefNode) match(application *sanySemOpApplNode) (bool, Diagnost
 	}
 	abort := func(format string, parameters ...any) (bool, Diagnostics, error) {
 		add("E4003", format, parameters...)
-		return false, diagnostics, &sanySemanticAbort{diagnostic: diagnostics[len(diagnostics)-1], diagnostics: diagnostics}
+		return false, diagnostics, newSanySemanticAbort(diagnostics[len(diagnostics)-1], diagnostics, nil)
 	}
 	if n.semKind() == sanyModuleInstanceKind {
 		add("E4004", "Module instance identifier where operator should be.")
@@ -118,7 +109,7 @@ func (n *sanySemOpDefNode) match(application *sanySemOpApplNode) (bool, Diagnost
 	default:
 		diagnostic := sanyMatchDiagnostic(nil, "E4003", "Internal error: operator neither BuiltIn nor UserDefined \nin call to OpDefNode.match()")
 		diagnostics = appendSanyDiagnostics(diagnostics, diagnostic)
-		return false, diagnostics, &sanySemanticAbort{diagnostic: diagnostic, diagnostics: diagnostics}
+		return false, diagnostics, newSanySemanticAbort(diagnostic, diagnostics, nil)
 	}
 	return correct, diagnostics, nil
 }

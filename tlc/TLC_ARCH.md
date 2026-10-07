@@ -1,5 +1,38 @@
 # TLC Architecture Notes for the Go Port
 
+## Missing EXTENDS module aborts generation and uses checked boundaries
+
+When no ModuleNode resolves, Generator records INTERNAL_ERROR 4003 at that
+EXTENDS occurrence, with `Could not find module %s` and the actual UniqueString
+parameter, then throws AbortException. Do not finish the extendee array or the
+body, or resume an enclosing body's later units. Prior inherited vectors remain
+copied, while the extendee array keeps its constructor value on the failed module.
+The exception retains the triggering details and the shared semantic diagnostic
+log; unwinding preserves earlier parent and external-module diagnostics.
+
+The semantic driver catches this internal family, prints the fatal header,
+captured port stack and retained Errors, then chains SemanticException. Its
+message comes from AbortException.toString, while the abort's ordinary Exception
+message and cause are null. Wrapper accessors preserve the same detail pointer,
+source-log pointer and cause. The legacy SANY entry point catches this checked
+family and returns ERROR (-1). Unexpected runtime failures still become
+FrontEndException and propagate. Ordinary semantic diagnostics retain their
+existing legacy return behavior. The exceptions use the generic Exception base
+with real Go frames; no JVM frames are fabricated. Throwable printing honors
+these source toString overrides.
+
+All 150 direct comparison rows match across 18 root/one-level/two-level abort
+scenarios, including earlier recoverable errors, repeated/mixed EXTENDS, partial
+vectors, stopped symbol scopes, nullable messages, log/detail values and wrapper
+identities. Three semantic-driver scenarios match all 12 output rows with native
+stack-frame lines excluded from cross-language text comparison; both stacks are
+observed as present. Three legacy boundary observations match checked failure,
+runtime cause propagation and normal success. The retained 24,529 whole-module
+rows also match. Earlier redefinition diagnostics exposed by retained logs now
+keep their source name parameter. No permanent tests or original-method credit
+added. General Errors ownership, inherited level checks, selectors, visitors and
+evaluator sharing still require their broader audits.
+
 ## Missing EXTENDS context logs an error and continues
 
 `Generator.processExtendsList` distinguishes an absent ModuleNode from an absent
@@ -19,8 +52,7 @@ no source token and retains the module position fallback.
 All 118 observed Java/Go rows match across 20 root/nested-module scenarios with
 missing or present contexts, forward/reverse/repeated EXTENDS, copied vectors,
 body node UIDs, locations, messages, parameters and actual UniqueString parameter
-types. No permanent tests or original-method completion credit added. Missing
-module resolution still needs its separate thrown-abort port and boundary audit.
+types. No permanent tests or original-method completion credit added. Missing module resolution now follows the thrown-abort boundary described below.
 
 ## Module generation retains canonical EXTENDS diagnostics
 
@@ -38,8 +70,7 @@ the earlier 47 and adding all constant/variable/operator/assertion conflict pair
 multiple conflicts in forward/reverse/repeated EXTENDS order, local definitions
 and shared original definitions. The 25 explicit diagnostic detail rows compare
 incoming locations and complete structured parameters. Existing assertions remain
-unchanged; no permanent tests or original-method credit added. Missing-extendee aborts remain pending caller work, as do inherited level checks
-and evaluator graph sharing. Missing contexts log an error and continue, as
+unchanged; no permanent tests or original-method credit added. Inherited level checks and evaluator graph sharing remain pending. Missing contexts log an error and continue, as
 described below.
 
 ## EXTENDS Context merge uses actual node classes and names
@@ -84,8 +115,7 @@ All 1,578 manual Java/Go rows match across empty contexts, 39 insertions,
 collisions/rehashes, replacements, module nodes and keys, a key differing from
 the symbol name, repeat copies and copy-only mutations. The retained 16,872
 whole-module rows still match. No permanent tests or original-method credit added.
-The remaining general Context/graph audits and missing-extendee abort handling
-remain incomplete.
+The remaining general Context/graph audits remain incomplete.
 
 ## Definition paths and counted UniqueString joins
 
@@ -127,8 +157,8 @@ pairs per scenario. Cover live-context mutation after declaration caches freeze,
 fresh modules sharing that context, same/different source pointers, one-hop
 source chains, different definition names/kinds, theorem versus operator classes,
 declarations, modules and nulls. Existing Context and SymbolTable callers use the
-same helper. No permanent tests or original-method credit added. Missing-extendee
-aborts, inherited levels, visitors and evaluator sharing remain pending.
+same helper. No permanent tests or original-method credit added. Inherited levels,
+visitors and evaluator sharing remain pending.
 
 ## EXTENDS vectors and cached extension sets
 
@@ -153,8 +183,8 @@ and null observations. The comparison includes actual vectors, shared node UIDs,
 repeated EXTENDS, diamond inheritance, private definitions, inherited named facts
 and instances, nested contexts, direct/recursive set members, returned-set aliasing,
 array-copy ownership and cache lifetime. No persistent tests or original-method
-completion credit are added. Missing-extendee aborts and inherited levels,
-visitors and evaluator graph sharing remain pending; this is bounded evidence.
+completion credit are added. Inherited levels, visitors and evaluator graph
+sharing remain pending; this is bounded evidence.
 
 ## Module collection snapshots and inner-module registration
 

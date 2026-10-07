@@ -1,5 +1,55 @@
 # TLC Port Progress
 
+2026-10-07 Missing EXTENDS module throws with retained Errors and checked boundaries:
+Previous completed implementation commit: a4607a8; formatting commit: 956ff9d.
+Port the absent ModuleNode path: log E4003 at the exact EXTENDS occurrence with
+Could not find module %s and an actual UniqueString parameter, then throw the
+internal abort immediately. Retain copied vectors but do not finalize extendees,
+generate the failed body or resume enclosing units. Use existing unwind receipts
+to preserve prior diagnostics; the abort retains the shared Spec semantic log.
+Port detail/log accessors and the checked SemanticException wrapper. Use the
+generic Exception base with nullable message/cause and captured Go frames, not
+RuntimeException classification or fabricated JVM frames. Expose native stack
+printing and source toString overrides to parser integration. The semantic driver
+logs fatal/stack/retained Errors, chains the checked exception, and legacy SANY
+returns ERROR for that family while unexpected runtime failures still propagate.
+
+Direct observer 85790 returned 0, but comparison exposed six earlier E4201
+redefinition messages missing their name parameter in the native registration
+path. Fix the production diagnostic rather than change the scenarios. A prep
+edit initially asserted against an outdated helper spelling; the actual recursive
+helper already retained its parameter, so that helper remains unchanged. Initial
+61134 returned 0 with unchanged code/no parity credit. Corrected 52106 returned
+0, with all 150 rows matching Java across 18 root/one-level/two-level abort cases.
+Observe detail-value equality against the retained log (Java ErrorDetails.equals
+versus Go full Diagnostic value equality), rather than treating rendered text as
+identity evidence. Wrapper detail/cause/log pointer identities are directly
+observed. Initial compile 78821 passed; all these handles retired.
+
+Semantic-driver observer 58300 returned 0; Java preparation initially failed
+because its default resolver did not search the fixture directory. Correct the
+resolver path; all 12 driver rows match across three parsed specs whose semantic
+order deliberately omits a dependency. Compare exact fatal headers, error logs,
+wrapper messages and retained log identity. Exclude only native stack-frame lines
+from cross-language text comparison, observing both stacks as present. Boundary
+observer 17037 returned 0; three actual legacy-entry observations match checked
+failure (-1), unexpected RuntimeException cause propagation and normal success.
+Retained whole-module observer 53205 returned 0; all 24,529 rows still match.
+
+After moving exceptions into sany_semantic_exception.go and using the generic
+Exception base, final direct 46901, driver 56916 and boundary 32642 all return 0;
+all comparison rows still match. Final compile 94319 passes. Existing affected
+root/parser/context/proof/TLC-model gate passes 47.084s (25759 retired), full SANY
+passes 1.776s (26362 retired), initial compile 80275 passes, and existing Java
+MP/LongVec/GrowingLongVec tests pass 0.011s (58425 retired). All handles retired;
+git diff --check passes. Normal execution only, no broad race or full-workspace
+pass claim. Scratch sources/receipts/temporary vectors stay outside the repo
+under /mnt/oldrog/tmp/tlago-extends-abort-*. No permanent new tests, weakened
+original assertions or original-method completion credit added.
+
+General shared Errors ownership, inherited levels, qualified selectors, visitors
+and evaluator graph sharing remain incomplete. New distributed work stays deferred.
+
 2026-10-07 Recoverable missing EXTENDS context:
 Previous completed commit: c3201c9. Audit establishes an important distinction:
 Generator.processExtendsList throws when no ModuleNode resolves, but only logs

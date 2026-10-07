@@ -16,7 +16,7 @@ const (
 )
 
 // runSanyFrontEnd preserves the SANY.parse exception boundaries. parseFailed
-// includes a caught ParseException-equivalent even when parseErrors is empty.
+// includes caught parse or semantic checked failures, even when parseErrors is empty.
 // Legacy SANY returns OK for ordinary semantic errors; callers inspect them.
 func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, sanyDiagnosticPhase) Diagnostics) (spec *Spec, parseDiags, semanticDiags Diagnostics, parseFailed bool) {
 	println := opts.ParsingProgress
@@ -25,6 +25,14 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, san
 	}
 	defer func() {
 		if failure := recover(); failure != nil {
+			if exception, ok := failure.(*sanySemanticException); ok {
+				parseFailed = true // Legacy SANY.parse returns ERROR for this checked failure.
+				semanticDiags = append(Diagnostics(nil), (*exception.GetSourceErrorLog())...)
+				if spec != nil {
+					spec.Diags = append(append(Diagnostics(nil), parseDiags...), semanticDiags...)
+				}
+				return
+			}
 			exception, ok := failure.(error)
 			if !ok || tlc.IsJavaError(exception) {
 				panic(failure)
@@ -42,7 +50,7 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, san
 		return
 	}
 	var controlled Diagnostics
-	semanticDiags = checkSpecWithModuleReport(spec, opts.ParsingProgress, func(accumulated Diagnostics) {
+	semanticDiags = runSanyFrontEndSemantics(file, spec, opts.ParsingProgress, func(accumulated Diagnostics) {
 		controlled = accumulated
 		if report != nil {
 			controlled = report(accumulated, sanySemanticPhase)
@@ -58,6 +66,28 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, san
 	}
 	spec.Diags = append(append(Diagnostics(nil), parseDiags...), controlled...)
 	return
+}
+
+// frontEndSemanticAnalysis catches only AbortException; other failures propagate.
+func runSanyFrontEndSemantics(file string, spec *Spec, println func(string), report func(Diagnostics)) (diagnostics Diagnostics) {
+	if println == nil {
+		println = func(string) {}
+	}
+	defer func() {
+		if failure := recover(); failure != nil {
+			abort, ok := failure.(*sanySemanticAbort)
+			if !ok {
+				panic(failure)
+			}
+			println(fmt.Sprintf("Fatal errors in semantic processing of TLA spec %s\nnull\nStack trace for exception:\n", file))
+			println(strings.TrimSuffix(tlc.JavaThrowableStackTrace(abort), "\n"))
+			if log := *abort.GetSourceErrorLog(); len(log) != 0 {
+				println("Semantic errors detected before the unexpected exception:\n\n" + sanyErrorsString(log))
+			}
+			panic(newSanySemanticException(abort))
+		}
+	}()
+	return checkSpecWithModuleReport(spec, println, report)
 }
 
 // runSanyFrontEndParse is the actual parsing phase and its checked failure

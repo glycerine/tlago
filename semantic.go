@@ -509,28 +509,32 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	}
 	extendees := make([]*sanySemModuleNode, 0, len(mod.Extends))
 	for depIndex, dep := range mod.Extends {
-		if extendee := mod.symbolTable.resolveModule(dep); extendee != nil {
-			var mergeDiagnostics Diagnostics
-			if extendee.context != nil {
-				_, mergeDiagnostics = mod.semanticNode.context.mergeExtendContext(extendee.context)
-			} else {
-				position := sanyExtendeePosition(mod, depIndex)
-				mergeDiagnostics = Diagnostics{sanyRegistrationDiagnostic(position, "E4003", "Couldn't find context for module `%s'.", tlc.UniqueStringOf(dep))}
-			}
-			for i := range mergeDiagnostics {
-				if mergeDiagnostics[i].Code == "E4224" {
-					// Keep the native API's explanatory prefix; ErrorDetails use
-					// the exact canonical message and parameters from Context.
-					name := mergeDiagnostics[i].SANYParameters[1].(string)
-					mergeDiagnostics[i].Message = "conflicting imported symbol " + name + ": " + mergeDiagnostics[i].SANYMessage
-				}
-			}
-			diags = appendSanyDiagnostics(diags, mergeDiagnostics...)
-			extendees = append(extendees, extendee)
-			mod.semanticNode.copyAssumes(extendee)
-			mod.semanticNode.copyTheorems(extendee)
-			mod.semanticNode.copyTopLevel(extendee)
+		extendee := mod.symbolTable.resolveModule(dep)
+		if extendee == nil {
+			diagnostic := sanyRegistrationDiagnostic(sanyExtendeePosition(mod, depIndex), "E4003", "Could not find module %s", tlc.UniqueStringOf(dep))
+			diags = appendSanyDiagnostics(diags, diagnostic)
+			panic(newSanySemanticAbort(diagnostic, nil, &spec.SemanticDiags))
 		}
+		var mergeDiagnostics Diagnostics
+		if extendee.context != nil {
+			_, mergeDiagnostics = mod.semanticNode.context.mergeExtendContext(extendee.context)
+		} else {
+			position := sanyExtendeePosition(mod, depIndex)
+			mergeDiagnostics = Diagnostics{sanyRegistrationDiagnostic(position, "E4003", "Couldn't find context for module `%s'.", tlc.UniqueStringOf(dep))}
+		}
+		for i := range mergeDiagnostics {
+			if mergeDiagnostics[i].Code == "E4224" {
+				// Keep the native API's explanatory prefix; ErrorDetails use
+				// the exact canonical message and parameters from Context.
+				name := mergeDiagnostics[i].SANYParameters[1].(string)
+				mergeDiagnostics[i].Message = "conflicting imported symbol " + name + ": " + mergeDiagnostics[i].SANYMessage
+			}
+		}
+		diags = appendSanyDiagnostics(diags, mergeDiagnostics...)
+		extendees = append(extendees, extendee)
+		mod.semanticNode.copyAssumes(extendee)
+		mod.semanticNode.copyTheorems(extendee)
+		mod.semanticNode.copyTopLevel(extendee)
 		if depMod := spec.Modules[dep]; depMod != nil {
 			for _, inherited := range transitiveExtendedModules(spec, depMod, map[string]bool{depMod.Name: true}) {
 				importInheritedModule(inherited)
@@ -810,6 +814,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				diagnostic := errorAt(def.Pos, "E4201", "duplicate declaration or definition %s; first declared at %s", def.Name, previous.pos)
 				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 				diagnostic.SANYMessage = fmt.Sprintf("Operator %s already defined or declared.", def.Name)
+				diagnostic.SANYParameters = []any{def.Name}
 				if def.FunctionDef {
 					diagnostic.SANYMessage = fmt.Sprintf("Function name `%s' already defined or declared.", def.Name)
 				}

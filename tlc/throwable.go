@@ -219,6 +219,9 @@ func javaThrowableClassName(err error) string {
 }
 
 func javaThrowableString(err error) string {
+	if override, ok := err.(interface{ JavaThrowableString() string }); ok {
+		return override.JavaThrowableString()
+	}
 	return javaBasicThrowableString(err)
 }
 
@@ -382,3 +385,6 @@ func copyMessageParameters(params []string) []string {
 
 // JavaThrowableString exposes Throwable.toString to the parser integration.
 func JavaThrowableString(err error) string { return javaThrowableString(err) }
+
+// JavaThrowableStackTrace exposes the captured port frames at parser boundaries.
+func JavaThrowableStackTrace(err error) string { return javaThrowableStackTrace(err) }

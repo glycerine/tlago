@@ -20,6 +20,14 @@ func newJavaExceptionBase(message *string, cause error) javaExceptionBase {
 	return javaExceptionBase{throwableTrace: captureThrowableTrace(), Message: copyJavaMessage(message), Cause: cause}
 }
 
+// JavaExceptionBase carries Exception's nullable message, cause and captured
+// port frames for parser exception classes defined outside package tlc.
+type JavaExceptionBase = javaExceptionBase
+
+func NewJavaExceptionBase(message *string, cause error) JavaExceptionBase {
+	return newJavaExceptionBase(message, cause)
+}
+
 func copyJavaMessage(message *string) *string {
 	if message == nil {
 		return nil

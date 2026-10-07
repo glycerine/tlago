@@ -1131,8 +1131,8 @@ enter top-level vectors, while the separate instance vector follows Java's code
 and remains local. Actual extendee arrays and separate direct/recursive mutable
 set caches preserve copy ownership and cache lifetime. Imported expression
 metadata shares actual definitions. All 7,519 observed rows across 47 whole modules
-and associated cache/null observations match Java. Missing-extendee aborts
-and inherited level, visitor and evaluator work remain
+and associated cache/null observations match Java. Inherited level, visitor
+and evaluator work remain
 incomplete. Original-definition comparison now requires the actual operator or
 assertion class, matching immediate source pointers and cached declaration arrays
 from the source module. A live context scan no longer changes previously frozen
@@ -1158,8 +1158,14 @@ observations. Missing contexts on resolved extendees now log the source internal
 error and continue vector copies and body generation. Each repeated EXTENDS
 occurrence retains its own token position and UniqueString parameter. All 118
 comparison rows across 20 root/nested scenarios match Java. Missing-module
-resolution still requires the separate thrown-abort port and boundary audit.
-Bounded generation
+resolution now records the source internal error and throws, stopping nested and
+enclosing generation while retaining earlier diagnostics and copied vectors.
+The semantic driver chains a checked SemanticException and the legacy entry point
+returns ERROR; unexpected runtime failures retain their propagating boundary.
+All 150 direct abort rows, 12 driver rows and 3 legacy-boundary observations match
+Java. Stack frames remain native to each implementation. The retained 24,529
+whole-module rows also match. General shared Errors ownership remains part of
+the broader semantic audit. Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 
@@ -1172,8 +1178,7 @@ sany_tests and compile-all are the affected gates; receipts belong in
 PORT_PROGRESS.md. These observations add no original-method or full-workspace
 completion credit.
 
-EXTENDS abort reconciliation, remaining
-module vectors, general qualified selectors, INSTANCE/fact/imported identities,
+Remaining module vectors, general qualified selectors, INSTANCE/fact/imported identities,
 recursive inherited level checks, visitors, shared Errors/exception integration
 and evaluator graph sharing remain pending. Other Context iteration callers and
 live/concurrent Hashtable enumeration still require source audits.
