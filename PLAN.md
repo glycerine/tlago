@@ -494,8 +494,8 @@ checker usable through the production SANY parser path:
 - The SANY theorem parser now recognizes terminal proof forms such as
   `PROOF OMITTED`, `PROOF OBVIOUS`, and simple `BY` references, producing
   `N_TerminalProof` nodes after theorem expressions.
-- The SANY proof parser now recognizes simple zero-step `PROOF QED` blocks,
-  producing `N_Proof`, `N_ProofStep`, and `N_QEDStep` nodes.
+- The SANY proof parser now recognizes zero-step `PROOF <1> QED` blocks
+  (Java requires a step-number token), producing `N_Proof`, `N_ProofStep`, and `N_QEDStep` nodes.
 - The SANY proof parser now recognizes numbered assertion proof steps,
   including `SUFFICES` assertions and bare-level `QED` steps.
 - The SANY proof parser now recognizes named proof command steps for `HAVE`,

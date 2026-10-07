@@ -1033,9 +1033,8 @@ func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
 		if child.Token != nil && isSanyProofStepStartKind(child.Token.Kind) {
 			step.Name = sanyProofStepName(child.Image)
 			step.QualifiedName = sanyXMLProofStepNameImage(child.Image)
-			step.Implicit = child.Token.Kind == SanyTokenProofimplicitsteplexeme ||
-				strings.HasPrefix(child.Image, "<+>") ||
-				strings.HasPrefix(child.Image, "<*>")
+			step.Implicit = child.Original != "" && child.Original != child.Image &&
+				(strings.HasPrefix(child.Original, "<+>") || strings.HasPrefix(child.Original, "<*>"))
 			step.Pos = sanyNodePosition(child)
 			break
 		}

@@ -232,7 +232,7 @@ PROOF BY RefersTo(Known, "Known") DEF Known
 
 	t.Run("parses simple QED proof blocks", func(t *testing.T) {
 		root, diags := ParseSanySyntax("Proofs.tla", `---- MODULE Proofs ----
-THEOREM T == TRUE PROOF QED
+THEOREM T == TRUE PROOF <1> QED
 ====`)
 		requireNoErrors(t, diags)
 		theorem := findSanyChild(t, root.GetHeirs()[2], "N_Theorem")

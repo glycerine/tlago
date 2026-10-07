@@ -551,10 +551,16 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 
 func (p *SanyParser) Proof() *SanySyntaxNode {
 	p.pushProofLevel()
-	defer p.popProofLevel()
+	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
+		p.popProofLevel()
+	}()
 	p.beginProduction("Proof")
 	defer p.endProduction()
 	var heirs []*SanySyntaxNode
+	nonterminal := p.check(SanyTokenProof) || p.startsProofStepAt(0)
 	if p.match(SanyTokenProof) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	}
@@ -568,25 +574,27 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 		p.proofCommandTail(&heirs, by, true)
 		return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
 	}
-	if p.check(SanyTokenQed) || p.startsProofStepAt(0) {
-		for !p.check(SanyTokenEOF) && !p.check(SanyTokenEndModule) && !p.startsQEDStep() {
+	if nonterminal {
+		for p.tokenAt(1).Kind != SanyTokenQed {
 			heirs = append(heirs, p.Step())
+			p.expecting = "a proof step"
 		}
 		heirs = append(heirs, p.QEDStep())
 		node := NewSanyNode(SanySyntaxNodeKindByName["N_Proof"], heirs...)
 		node.ProofLevel = p.currentProofLevel()
 		return node
 	}
-	p.add(p.peek().Begin, "E1300", "expected terminal proof")
-	return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
+	p.throwParseException([][]SanyTokenKind{{SanyTokenProof}}, "expected proof")
+	return nil
 }
 
 func (p *SanyParser) QEDStep() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	if p.startsProofStepAt(0) {
-		heirs = append(heirs, p.StepStartToken())
-	}
-	qed := p.consume(SanyTokenQed, "expected QED")
+	p.beginProduction("QED step")
+	defer p.endProduction()
+	p.expecting = "Step number"
+	heirs := []*SanySyntaxNode{p.proofStepNumber("QED step's number has bad level.")}
+	p.expecting = "QED"
+	qed := p.consumeParseToken(SanyTokenQed, "expected QED")
 	qedStep := NewSanyNode(SanySyntaxNodeKindByName["N_QEDStep"], qed)
 	heirs = append(heirs, qedStep)
 	if p.beginsProofAt(0) {
@@ -596,8 +604,11 @@ func (p *SanyParser) QEDStep() *SanySyntaxNode {
 }
 
 func (p *SanyParser) Step() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.StepStartToken())
+	p.beginProduction("Step")
+	defer p.endProduction()
+	p.expecting = "Step number"
+	heirs := []*SanySyntaxNode{p.proofStepNumber("step's number has bad level.")}
+	p.expecting = "proof step"
 	var body *SanySyntaxNode
 	mayHaveProof := false
 	switch {
@@ -605,7 +616,7 @@ func (p *SanyParser) Step() *SanySyntaxNode {
 		body = p.UseOrHide()
 	case p.check(SanyTokenInstance):
 		body = p.Instantiation()
-	case p.check(SanyTokenDefbreak) || p.check(SanyTokenDefine) || p.startsOperatorOrFunctionDefinition():
+	case p.check(SanyTokenDefbreak) || p.check(SanyTokenDefine):
 		body = p.DefStep()
 	case p.check(SanyTokenHave):
 		body = p.HaveStep()
@@ -619,16 +630,19 @@ func (p *SanyParser) Step() *SanySyntaxNode {
 	case p.check(SanyTokenCase):
 		body = p.CaseStep()
 		mayHaveProof = true
-	default:
+	case p.check(SanyTokenSuffices) || p.startsAssumeProveAt(0) || p.startsExpressionLookahead():
 		body = p.AssertStep()
 		mayHaveProof = true
+	default:
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected proof step")
 	}
 	heirs = append(heirs, body)
 	if p.beginsProofAt(0) {
 		if mayHaveProof {
 			heirs = append(heirs, p.Proof())
 		} else {
-			p.add(p.peek().Begin, "E1300", "proof of step that does not take a proof")
+			message := p.junctionLocation(body.Range) + ": proof of step that does not take a proof."
+			p.throwReportedParseException(message, body.Range.Begin, "E1300", message)
 		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_ProofStep"], heirs...)
@@ -764,15 +778,15 @@ func (p *SanyParser) ExpressionUntilUseOrHideItemBoundary() *SanySyntaxNode {
 }
 
 func (p *SanyParser) DefStep() *SanySyntaxNode {
+	p.beginProduction("DefStep")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenDefine) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	}
+	heirs = append(heirs, p.ProofOperatorOrFunctionDefinition())
 	for p.startsOperatorOrFunctionDefinition() {
 		heirs = append(heirs, p.ProofOperatorOrFunctionDefinition())
-	}
-	if len(heirs) == 0 || !p.atProofBoundary() {
-		p.add(p.peek().Begin, "E1300", "expected proof definition")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_DefStep"], heirs...)
 }
@@ -793,13 +807,19 @@ func (p *SanyParser) ProofOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNod
 	p.expecting = "Expression"
 	if lhs.Kind.JavaName() == "N_IdentLHS" {
 		p.expecting = "Expression or Instance"
+		if !p.startsExpressionLookahead() {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenInstance}}, "expected expression or instance in definition")
+		}
 	}
 	heirs = append(heirs, p.ExpressionUntilProofBoundary())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
 }
 
 func (p *SanyParser) HaveStep() *SanySyntaxNode {
-	have := p.consume(SanyTokenHave, "expected HAVE")
+	p.beginProduction("HaveStep")
+	defer p.endProduction()
+	have := p.consumeParseToken(SanyTokenHave, "expected HAVE")
+	p.expecting = "expression"
 	expr := p.ExpressionUntilProofBoundary()
 	return NewSanyNode(SanySyntaxNodeKindByName["N_HaveStep"], have, expr)
 }
@@ -856,20 +876,28 @@ func (p *SanyParser) PickStep() *SanySyntaxNode {
 }
 
 func (p *SanyParser) CaseStep() *SanySyntaxNode {
-	caseTok := p.consume(SanyTokenCase, "expected CASE")
+	p.beginProduction("CaseStep")
+	defer p.endProduction()
+	caseTok := p.consumeParseToken(SanyTokenCase, "expected CASE")
+	p.expecting = "expression"
 	expr := p.ExpressionUntilProofBoundary()
 	return NewSanyNode(SanySyntaxNodeKindByName["N_CaseStep"], caseTok, expr)
 }
 
 func (p *SanyParser) AssertStep() *SanySyntaxNode {
+	p.beginProduction("AssertStep")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenSuffices) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "expression or ASSUME/PROVE"
 	}
-	if p.startsAssumeProveAt(0) {
+	if p.startsExpressionLookahead() {
+		heirs = append(heirs, p.ExpressionUntilProofBoundary())
+	} else if p.startsAssumeProveAt(0) {
 		heirs = append(heirs, p.AssumeProve())
 	} else {
-		heirs = append(heirs, p.ExpressionUntilProofBoundary())
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected assertion")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_AssertStep"], heirs...)
 }
@@ -988,15 +1016,36 @@ func (p *SanyParser) NewSymb() *SanySyntaxNode {
 
 func (p *SanyParser) StepStartToken() *SanySyntaxNode {
 	if p.startsProofStepAt(0) {
-		tok := p.advance()
-		node := NewSanyTokenNode(tok)
-		if !p.correctProofLevel(tok) {
-			p.add(tok.Begin, "E1300", "proof step has bad level")
-		}
-		return node
+		return NewSanyTokenNode(p.advance())
 	}
-	p.add(p.peek().Begin, "E1300", "expected proof step")
+	p.throwParseException([][]SanyTokenKind{{SanyTokenProofsteplexeme}, {SanyTokenProofimplicitsteplexeme}, {SanyTokenProofstepdotlexeme}, {SanyTokenBarelevellexeme}, {SanyTokenUnnumberedsteplexeme}}, "expected proof step")
 	return nil
+}
+
+// Step and QEDStep validate the level and correct only the three numbered
+// token kinds. Keep the lexer's token image intact for parse diagnostics.
+func (p *SanyParser) proofStepNumber(badLevel string) *SanySyntaxNode {
+	node := p.StepStartToken()
+	tok := p.previous()
+	if !p.correctProofLevel(tok) {
+		message := p.junctionLocation(node.Range) + ": " + badLevel
+		p.throwReportedParseException(message, node.Range.Begin, "E1300", message)
+	}
+	switch tok.Kind {
+	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme, SanyTokenProofstepdotlexeme:
+		node.Original = node.Image
+		level, _ := sanyProofStepLevel(tok)
+		suffix := strings.IndexByte(tok.Image, '>')
+		if tok.Image[1] == '*' || tok.Image[1] == '+' {
+			level = p.currentProofLevel()
+			if level < 0 && len(p.proofLevelStack) > 1 {
+				level = p.proofLevelStack[len(p.proofLevelStack)-2]
+			}
+			suffix = 2
+		}
+		node.Image = "<" + strconv.Itoa(level) + tok.Image[suffix:]
+	}
+	return node
 }
 
 func (p *SanyParser) ExpressionUntilProofBoundary() *SanySyntaxNode {
@@ -1041,13 +1090,6 @@ func (p *SanyParser) isProofBoundary(tok *SanyToken) bool {
 		p.startsProofStepAt(0) ||
 		tok.Kind == SanyTokenQed ||
 		p.startsBodyItemAt(0)
-}
-
-func (p *SanyParser) startsQEDStep() bool {
-	if p.check(SanyTokenQed) {
-		return true
-	}
-	return p.startsProofStepAt(0) && p.tokenAt(1).Kind == SanyTokenQed
 }
 
 func (p *SanyParser) atTerminalProofBoundary(startColumn int) bool {
@@ -1140,7 +1182,7 @@ func beginsSanyProof(tok *SanyToken) bool {
 		return false
 	}
 	switch tok.Kind {
-	case SanyTokenProof, SanyTokenBy, SanyTokenObvious, SanyTokenOmitted, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme, SanyTokenProofstepdotlexeme, SanyTokenBarelevellexeme, SanyTokenUnnumberedsteplexeme, SanyTokenQed:
+	case SanyTokenProof, SanyTokenBy, SanyTokenObvious, SanyTokenOmitted, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme, SanyTokenProofstepdotlexeme, SanyTokenBarelevellexeme, SanyTokenUnnumberedsteplexeme:
 		return true
 	default:
 		return false
@@ -1341,6 +1383,9 @@ func (p *SanyParser) OperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 	p.expecting = "Expression"
 	if lhs.Kind.JavaName() == "N_IdentLHS" {
 		p.expecting = "Expression or Instance"
+		if !p.startsExpressionLookahead() {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenInstance}}, "expected expression or instance in definition")
+		}
 	}
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(nil))
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
@@ -1354,6 +1399,9 @@ func (p *SanyParser) LetOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode 
 	p.expecting = "Expression"
 	if lhs.Kind.JavaName() == "N_IdentLHS" {
 		p.expecting = "Expression or Instance"
+		if !p.startsExpressionLookahead() {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenInstance}}, "expected expression or instance in definition")
+		}
 	}
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenLetin

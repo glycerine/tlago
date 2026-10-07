@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-06 Hierarchical proof steps and original-image generation:
+Previous completed commit: c7295b2. Port source StepStartToken's mandatory token,
+Step/QEDStep frames, expectations, level failures and correctedStepNum behavior.
+Only the three numbered token kinds retain original images and normalize levels;
+bare-level/unnumbered kinds retain their source image. Illegal nested proofs throw
+with the body node's location. Step dispatch admits definitions only at DEFBREAK
+or DEFINE. DefStep requires its first definition and repeats with the source
+lookahead; remove the invented proof-boundary validation. Hierarchical Proof uses
+source token-two QED selection, requires QED, and pops levels only on normal
+completion. HaveStep/CaseStep/AssertStep gain their source frames and mandatory
+choices. UseOrHideOrBy, TAKE/PICK/WITNESS, depth limits, general JavaCC rescan and
+Theorem's Assume-Prove preview remain pending; no whole-Proof parity claim.
+
+A missing identifier-definition body exposed the source one-token expression
+choice before entering Expression. Apply it to module, LET and proof definitions.
+The original semantic corpus then caught E4350 Plus/Star losing diagnostics after
+image normalization. Port Generator's original-image check in projection; both
+unchanged source fixtures pass again. The first source-package run failed those
+two cases (1.516 seconds) and earns no pass credit. No original Java test assertion,
+fixture, setting or workload changed; no permanent new tests were invented.
+
+The handwritten native parser fixture THEOREM T == TRUE PROOF QED is rejected by
+pinned Java inside Step with expectation Step number; the numbered equivalent
+PROOF <1> QED succeeds. Correct only that native fixture and the stale PLAN.md
+example, preserving all assertions. Source receipts are
+/mnt/oldrog/tmp/tlago-proof-qed-source/{original,corrected}.java.log.
+
+All 365 complete actual parser TRACE/result observations match pinned Java,
+including 25 new hierarchical-proof cases; inspect MATCH count 365 and different
+[]. Log: /mnt/oldrog/tmp/tlago-sany-proof-parser-audit.log. All 25 selected complete
+module trees match kinds, images, ranges, original images and proof levels:
+/mnt/oldrog/tmp/tlago-proof-module-tree-audit.log. Original SANY package passes
+1.916 seconds; existing native/parser, source ParseErrorTests, six original
+proof/selector/lifecycle models, GetScopedIdentifiers and reference/scaffold checks
+pass 4.307 seconds. Logs: /mnt/oldrog/tmp/tlago-sany-proof-{sany,root}.log.
+These bounded observations earn no test-inventory credit and do not resolve the
+previous full-workspace failures. Preserve live full MSB session 5144.
+Every package compiles: /mnt/oldrog/tmp/tlago-sany-proof-compile.log. The older
+scratch filesystem filled during the first compile-log write, leaving an empty
+receipt; repeat only compilation after moving the inactive 19 GB regenerable Go
+cache to ignored .codex-gocache on /mnt/b. All source, vectors, verification logs,
+and live stress process files are preserved; the old disk now has about 19 GB
+free. Use GOCACHE=$PWD/.codex-gocache going forward, as the handoff specifies.
+
 2026-10-06 Module-body lookahead budgets and declaration/fact failures:
 Previous turn completed 879d5c4. Port Body's one-token entry choices and source
 USE ONLY exclusion, then its two-token definition/assumption/theorem decisions.
