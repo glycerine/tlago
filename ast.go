@@ -238,7 +238,7 @@ type NewSymbol struct {
 // Parenthesized expressions retain their inner expression node.
 type SanyExprSource struct {
 	semanticGraph              sanySemanticGraphNode
-	definitionLabels           map[string]*sanySemLabelNode
+	definitionLabels           *sanyLabelTable
 	definitionFormals          []*sanyFormalParamNode
 	operatorArgumentsGenerated bool
 	Syntax                     *SanySyntaxNode

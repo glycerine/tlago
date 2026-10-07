@@ -11,7 +11,7 @@ import (
 // Generator.LSlabels and LSformalParams retain a separate label table and
 // formal-group sequence for each definition or label body.
 type sanyLabelScope struct {
-	labels     map[string]*sanySemLabelNode
+	labels     *sanyLabelTable
 	parameters [][]*sanyFormalParamNode
 }
 
@@ -31,25 +31,40 @@ func newSanySemLabelNode(syntax *SanySyntaxNode, name string, parameters []*sany
 	return node
 }
 
-func (node *sanySemLabelNode) setLabels(labels map[string]*sanySemLabelNode) { node.labels = labels }
-func (node *sanySemLabelNode) getLabel(name string) *sanySemLabelNode        { return node.labels[name] }
+func (node *sanySemLabelNode) setLabels(labels *sanyLabelTable)       { node.labels = labels }
+func (node *sanySemLabelNode) getLabel(name string) *sanySemLabelNode { return node.labels.get(name) }
 func (node *sanySemLabelNode) addLabel(label *sanySemLabelNode) bool {
 	if node.labels == nil {
-		node.labels = make(map[string]*sanySemLabelNode)
+		node.labels = newSanyLabelTable()
 	}
-	if _, exists := node.labels[label.name]; exists {
-		return false
-	}
-	node.labels[label.name] = label
-	return true
+	return node.labels.add(label)
+}
+func (node *sanySemLabelNode) getLabels() []*sanySemLabelNode { return node.labels.elements() }
+func (node *sanySemLabelNode) getName() string                { return node.name }
+func (node *sanySemLabelNode) getArity() int                  { return node.arity }
+func (node *sanySemLabelNode) getBody() sanySemanticGraphNode { return node.body }
+func (node *sanySemLabelNode) getGoal() sanySemanticGraphNode { return node.goal }
+func (node *sanySemLabelNode) getChildren() []sanySemanticGraphNode {
+	return []sanySemanticGraphNode{node.body}
 }
 
-func (g *sanyExpressionGeneration) pushLabelScope() func() map[string]*sanySemLabelNode {
+func (node *sanySemOpDefNode) setLabels(labels *sanyLabelTable)       { node.labels = labels }
+func (node *sanySemOpDefNode) getLabel(name string) *sanySemLabelNode { return node.labels.get(name) }
+func (node *sanySemOpDefNode) addLabel(label *sanySemLabelNode) bool {
+	if node.labels == nil {
+		node.labels = newSanyLabelTable()
+	}
+	return node.labels.add(label)
+}
+func (node *sanySemOpDefNode) getLabels() []*sanySemLabelNode { return node.labels.elements() }
+func (node *sanySemOpDefNode) getLabelsHT() *sanyLabelTable   { return node.labels }
+
+func (g *sanyExpressionGeneration) pushLabelScope() func() *sanyLabelTable {
 	previousEnabled := g.labelsEnabled
 	g.labelsEnabled = true
 	scope := &sanyLabelScope{parameters: make([][]*sanyFormalParamNode, 0)}
 	g.labelScopes = append(g.labelScopes, scope)
-	return func() map[string]*sanySemLabelNode {
+	return func() *sanyLabelTable {
 		if len(g.labelScopes) == 0 || g.labelScopes[len(g.labelScopes)-1] != scope {
 			panic(tlc.NewWrongInvocationException("popLabelNodeSet called on empty stack."))
 		}
@@ -115,17 +130,15 @@ func (g *sanyExpressionGeneration) generateLabel(label *LabelExpr, context map[s
 	check := labelCheckContext{allowed: true, formalGroups: scope.parameters}
 	diagnostics = append(diagnostics, checkLabelParameters(label, check)...)
 	if scope.labels == nil {
-		scope.labels = make(map[string]*sanySemLabelNode)
+		scope.labels = newSanyLabelTable()
 	}
-	if _, exists := scope.labels[label.Name]; exists {
+	if !scope.labels.add(node) {
 		diagnostic := sanyDiagnosticParameters(errorAt(label.Pos, "E4336", "Duplicate label %s", label.Name), label.Name)
 		diagnostic.SANYMessage = fmt.Sprintf("Duplicate label `%s'.", label.Name)
 		if label.Syntax != nil {
 			diagnostic.SANYRange = label.Syntax.Range
 		}
 		diagnostics = append(diagnostics, diagnostic)
-	} else {
-		scope.labels[label.Name] = node
 	}
 	return diagnostics
 }

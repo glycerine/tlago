@@ -1021,8 +1021,15 @@ Existing focused root/TLC tests, full sany_tests and compile-all pass. Detailed
 receipts belong in PORT_PROGRESS.md. No permanent tests or original-method credits
 were added in these construction slices; basicOpDefTest remains reconcile.
 
+Label tables now preserve Java's default Hashtable bucket/chain enumeration and
+rehash behavior. LabelNode and OpDef accessors retain nullable table identity,
+earlier duplicate entries and shared mutable tables. LabelNode exposes its name,
+arity, body, goal and single body child. The 22 bounded table/accessor cases match
+all 869 rows; 25 generated-label cases match all 602 graph/enumeration rows and
+complete diagnostics. Existing focused root/TLC, SANY and compile gates pass.
+
 Canonical AP/NEW/goal/marker ownership, goal-clause lifetime after AP, LabelNode
-Hashtable enumeration/getters, AtNode level data, full inherited checking and visitors remain
+level checking and visitors, AtNode level data and full inherited checks remain
 unfinished. Qualified selectors, INSTANCE/fact and imported identities, recursive
 level iteration, shared Errors/exception integration and evaluator graph sharing
 also remain pending. Proof/AP contexts keep the existing native fallback until

@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-07 Label table enumeration and source accessors:
+Previous completed commit: 9712c3a. Replace label maps with shared nullable
+sanyLabelTable pointers in LS frames, source bodies, LabelNodes and OpDefs. Port
+default Java Hashtable head insertion, UTF-16 string hashing/sign masking,
+descending bucket enumeration and rehash chain reversal. Capacity starts at 11,
+threshold at eight, and grows 2*n+1 with the source load threshold. Updating an
+existing table value preserves its chain position; duplicate addLabel preserves
+the earlier node and does not resize. Source getters/setters retain nullable table
+identity and shared mutation. LabelNode also exposes source name, arity, body,
+goal and single body child. Missing level/visitor APIs remain explicit gaps.
+
+All 869 rows match Java across 22 direct source table/accessor cases: both label
+and definition owners at counts 0, 1, 7, 8, 9, 16, 17, 34, 35, 70 and 103.
+Observations include 600 insertions, 66 enumeration arrays, 22 each of case/empty/
+shared/later/replacement/cleared checks, 20 each of duplicate/array identity/array
+mutation checks and 11 label getter checks. Names cover hash collisions, negative
+hashes, BMP and supplementary Unicode. Verify aliasing via attaching one actual
+table to two owners, insertion through the second owner and replacement through
+the returned table. Mutating a nonempty getLabels array cannot mutate the table.
+No permanent tests were invented; observers remain outside the repository.
+
+All 602 complete output rows match Java across 25 generated-label cases: 597
+prefixed observations (291 graph nodes, 120 unsorted enumeration arrays, 87 label
+references, 28 module-context entries, 25 cases, 21 symbol references, 13 diagnostics,
+11 bound groups and one LET context). Add generated tuples of nine, 17 and 35
+labels to the prior 22 cases to exercise rehashing through actual LS attachment.
+All 25 frontend diagnostic codes, ranges and messages agree. Prior 22 EXCEPT
+cases retain all 350 matching graph/reference rows after the table replacement.
+
+Verification: focused existing root/SANY/TLC gate passes in 47.539s (74497), full
+sany_tests in 2.021s and compile-all succeeds (16615). Initial 869-row getter run
+succeeds (50561); generated-label and EXCEPT comparisons succeed (74077). Final
+name-getter observer succeeds (9747), as does the rebuilt 25-case diagnostic
+observer (56354). All handles are terminal zero. Receipts are under
+/mnt/oldrog/tmp/tlago-label-table-* and tlago-label-enumeration-*, including complete
+Java/Go output, root JSON, compile log and per-case diagnostics. No race workload,
+fixture or source assertion was changed.
+
+Remaining: canonical AP/NEW/goal/marker and clause lifetime, complete label/AtNode
+level data and visitors, qualified/imported/INSTANCE/fact identities, shared
+Errors/exception ownership and evaluator sharing. Complete Hashtable APIs,
+concurrent enumeration and nullable UniqueString-key APIs are not claimed by the
+Generator's sequential label-table subset. basicOpDefTest remains reconcile.
+No original-method, inventory or full-workspace completion credit is added.
+
 2026-10-07 Canonical EXCEPT construction and AtNode references:
 Previous completed commit: e5894c8. Port Generator.processExcept allocation order:
 generate the base, allocate the mutable EXCEPT operands/node, generate component

@@ -48,9 +48,22 @@ explicit graph gap; no substitute completes its enclosing definition. The bounde
 ordinary-label comparisons cover initial nil goal/zero clause fields. AP/proof
 contexts continue using the native path: their actual goal nodes, clause lifetime,
 NEW/marker ownership and labeled AP bodies require further implementation.
-Hashtable enumeration order, complete LabelNode getters/level checking/visitors,
-complete EXCEPT/AtNode level data and evaluator sharing remain pending. Sorted table-entry
-comparisons establish associations and retained identities, not enumeration order.
+Label tables preserve default Java Hashtable capacity 11, threshold 8, head
+insertion, descending bucket enumeration and source rehash chain reversal at
+capacity growth 2*n+1. Hash names as Java UTF-16 strings, then mask the sign bit
+for bucket selection. Replacing a value preserves its chain slot; rejected
+addLabel duplicates change neither entry nor capacity. A nullable table remains
+distinct from an allocated empty table. setLabels/getLabelsHT preserve the shared
+mutable table pointer; getLabels returns a nonnil slice and a separate mutable
+array for nonempty results. LabelNode accessors retain name/arity/body/goal and
+getChildren's single body entry, including a null body.
+
+Bounded comparisons now include actual unsorted enumeration, collisions, Unicode,
+rehash boundaries, duplicates, table alias mutation and returned-array mutation.
+Complete Hashtable APIs/concurrent enumeration, nullable UniqueString-key APIs,
+LabelNode level checking/visitors, complete EXCEPT/AtNode level data and evaluator
+sharing remain pending. The table here serves the Generator's sequential default
+label-table operations; it does not claim every Java Hashtable API.
 
 ## Explicit recursive declarations and completion
 

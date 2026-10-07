@@ -16,7 +16,7 @@ type sanySemanticGraphNode interface {
 
 type sanySemOpDefNode struct {
 	sanySemSymbolBase
-	labels             map[string]*sanySemLabelNode
+	labels             *sanyLabelTable
 	formalNodes        []*sanyFormalParamNode
 	body               sanySemanticGraphNode
 	module             *sanySemModuleNode
@@ -54,7 +54,7 @@ type sanySemOpArgNode struct {
 
 type sanySemLabelNode struct {
 	sanySemanticNode
-	labels          map[string]*sanySemLabelNode
+	labels          *sanyLabelTable
 	goal            sanySemanticGraphNode
 	goalClause      int
 	isAssumeProve   bool
