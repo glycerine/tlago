@@ -2,7 +2,11 @@
 // Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
-import "github.com/glycerine/tlago/tlc"
+import (
+	"reflect"
+
+	"github.com/glycerine/tlago/tlc"
+)
 
 // Subst is not a SemanticNode: constructing or mutating it does not allocate a
 // semantic UID. It retains the original declaration, expression and syntax.
@@ -36,6 +40,19 @@ func (subst *sanySemSubst) getExprSTN() *SanySyntaxNode       { return subst.exp
 func (subst *sanySemSubst) setExprSTN(syntax *SanySyntaxNode) { subst.exprSTN = syntax }
 func (subst *sanySemSubst) isImplicit() bool                  { return subst.implicit }
 func sanySubstGetSub(param any, substitutions []*sanySemSubst) sanySemanticGraphNode {
+	if symbol, ok := param.(sanySemSymbol); ok {
+		param = sanyLevelSymbolReference(symbol)
+	}
+	if param != nil {
+		value := reflect.ValueOf(param)
+		switch value.Kind() {
+		case reflect.Pointer, reflect.Interface, reflect.Slice, reflect.Map, reflect.Func, reflect.Chan:
+			if value.IsNil() {
+				param = nil
+			}
+		}
+	}
+
 	if substitutions == nil {
 		panic(tlc.NewNullPointerException(""))
 	}

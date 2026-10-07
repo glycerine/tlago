@@ -1,5 +1,30 @@
 # TLC Port Progress
 
+2026-10-07 Canonical Subst static level helpers:
+Previous completed commit: d8afc97. Translate paramSet/allParamSet and all three
+LC/ALC/ALP transformations. Preserve reference/first-match lookup, returned set
+identity, fresh unmatched singletons, source map tightening and actual child
+level checks before metadata reads. Normalize typed-null lookup arguments to
+Java null. Preserve cast/null failure phase and original retained key objects.
+
+External observers /mnt/oldrog/tmp/tlago-substitution-level-* compare actual
+source declarations, formals, OpArg and OpDef objects with controlled ExprNode
+metadata. Initial 120 full rows agree. Expanded identity/malformed cases produce
+130 exact final rows (observer 84833 retired). Runtime failures compare exception
+class, not JVM enhanced messages. Scratch setup corrections: fix Java newline
+escaping; install nullable LC through the source raw-map copy constructor; insert
+a valid ALP before mutating its operator null, since inserting an already null
+operator fails during source hashing. The initially failing expanded observer
+83239 is retired; corrected final source and Go runs pass. No production test
+is invented and no original-method completion credit is added.
+
+Affected original semantic/parser/resolver/scoped/incremental/builtin gate 77385
+passes normally in 9.312s with 180 passing test events. Full SANY 78383 passes in
+1.917s; all-package compile 29933 passes. All handles retired. No race or shortened
+workloads. This is not a new full-workspace receipt. SubstIn/APSubstIn, Instance,
+application/module level checks and evaluator sharing remain pending. Update
+handoff and architecture; inventory completion counts remain unchanged.
+
 2026-10-07 Canonical AssumeProveNode level check:
 Previous completed commit: 8bf4d91. Translate complete source two-pass assumption
 checking, ignored PROVE boolean result, direct level initialization and repeated

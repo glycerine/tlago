@@ -1252,6 +1252,12 @@ ignored PROVE boolean result, retained metadata merges and temporal-constant
 constraints only when assumption checks succeed. Preserve null failure order
 and repeated virtual level reads. All 143 direct Java rows agree. No original
 method completion credit is added.
+Subst now translates the five static parameter/constraint/dependency helpers,
+including first-match reference lookup, shared replacement sets, fresh unmatched
+singletons and source tightening order. Typed-null lookup matches Java null. All
+130 direct Java rows agree; runtime failures compare exception class rather than
+JVM-specific enhanced messages. SubstIn, APSubstIn and Instance level-checking
+callers remain pending. No original-method completion credit is added.
 Application, instance, remaining proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.

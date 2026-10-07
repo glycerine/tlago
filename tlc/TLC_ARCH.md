@@ -9542,3 +9542,31 @@ fourteen partial-failure scenarios, complete metadata and child-call counts,
 and a virtual level getter that changes between reads. These observations add
 no original-method credit and do not complete unported descendant classes or
 shared evaluator integration.
+
+
+## Canonical substitution level helpers
+
+`sany_substitution_level.go` translates Subst.paramSet, allParamSet, getSubLCSet,
+getSubALCSet and getSubALPSet. Lookup uses symbol reference identity and the first
+matching substitution. Parameter helpers return the actual replacement set;
+unmatched parameters get a fresh HashSet singleton, including null. A matched
+null replacement fails in these helpers, whereas getSub returns null. The
+existing getSub lookup now normalizes typed-null references to Java null.
+
+LC translation tightens constant/variable declaration bounds only for a
+nonconstant module, expands replacement parameters and checks actual defined
+operators before reading their maximum argument levels. Preserve the OpArg cast
+before testing whether its operator is defined. ALC translation retains original
+unsubstituted key objects, renames substituted parameter operators and checks
+parameter replacements before reading their levels. ALP translation retains
+original unsubstituted dependency objects, expands parameter operators and drops
+defined-operator dependencies. All maps/sets use the source hashing, iteration,
+reference equality and tightening rules; null failures retain source phase order.
+
+All 130 external Java/Go observation rows agree, covering constant-module modes,
+null/duplicate substitutions, shared set identity, same-UID distinct symbols,
+nullable values, null collection keys and a dependency mutated after insertion.
+Runtime failure observations compare NPE/ClassCastException classes, not enhanced
+JVM messages. These are manual observations, not original-method test credit.
+SubstInNode, APSubstInNode and InstanceNode level algorithms and shared evaluator
+integration remain separate implementation work.
