@@ -24,6 +24,9 @@ type sanyRecursiveBinding struct {
 
 type sanyExpressionGeneration struct {
 	apGoalUnavailable    bool
+	currentGoal          *sanySemThmOrAssumpDefNode
+	outerAPContextOwned  bool
+	allowLabeledAP       bool
 	currentGoalClause    int
 	excepts              []*sanySemOpApplNode
 	exceptSpecs          []*sanySemOpApplNode

@@ -1047,39 +1047,37 @@ complete graph/metadata rows and frontend diagnostics. Existing focused root/TLC
 full sany_tests, compile-all and AP/formal comparisons pass. Receipts belong in
 PORT_PROGRESS.md.
 
-The concrete theorem/assumption definition class now has provisional and full
-constructors, source/instantiation identity, completion, parameter-array aliasing,
-label accessors and source matching. Registration precedes parameter installation,
-so it sees initial arity zero. All 155 constructor/origin output rows match Java.
-Generator wiring to these actual goals remains pending; these constructor
-comparisons add no original-method completion credit. Concrete AssumeNode and
-TheoremNode owner constructors now preserve definition backlinks, AXIOM and
-Suffices metadata, theorem-body assertions and child arrays. LeafProofNode
-construction retains actual arrays and flags. Module assertion/top-level collection
-operations preserve Java's cached mutable getter arrays. All 64 owner/leaf/cache
-observations match upstream. Assumption expression generation now registers actual named definitions after
-body generation, attaches labels, then allocates the separate owner. Accepted
-bindings retain their identity in later scalar references; rejected definitions
-preserve the earlier table binding. All 306 whole-module comparison rows across
-22 bounded cases match Java, including diagnostic codes/ranges/messages. Missing
-child graphs or earlier native-only import identities remain incomplete. Theorem
-generation, proof ownership and EXTENDS collection inheritance remain pending;
-no full generated-module completion or new original-method credit is claimed.
+Concrete theorem/assumption definition and owner constructors retain source,
+module, body, proof, parameter-array and backlink identities. Registration precedes
+parameter installation. Leaf-proof construction aliases its arrays; module
+assertion/top-level getters preserve Java's cached mutable arrays.
 
-Named theorem/assumption and proof-step goal ownership, full proof marker/context
-and clause lifetime, labeled AP, Suffices integration, LabelNode level checking
-and visitors, AtNode level data and full inherited checks remain unfinished.
-Qualified selectors, INSTANCE/fact and imported identities, recursive
-level iteration, shared Errors/exception integration and evaluator graph sharing
-also remain pending. Proof/AP contexts keep the existing native fallback until
-these actual graphs exist. These bounded comparisons establish neither complete
-graph parity nor a new full-workspace pass.
+Assumption generation creates a named definition after its body, then allocates
+the separate owner. Theorem generation creates a named provisional goal before
+its body, completes/registers it before the proof, then allocates its owner after
+the proof. Outer AP and labels retain the actual goal; nested AP goals remain null.
+Top-level AP declaration and marker contexts remain open through proof processing,
+with named theorem registration in the enclosing module context. Ordinary and
+labeled AP bodies preserve actual children and clause metadata. AP theorem names
+used as expressions fail before application allocation, returning the actual
+source failure node. Real owners are retained for complete bodies with no proof
+or OBVIOUS/OMITTED proofs; BY and structured proof owners remain incomplete.
 
-The earlier 70-formal construction prefix and hash matched Java without offsets;
-complete allocation order across all graphs remains pending. Next semantic work:
-complete named AP/goal and proof marker scope integration, remaining label
-operations and qualified selector identities, then level checking and evaluator
-sharing. Receipts are in PORT_PROGRESS.md.
+All 1,083 comparison rows across 47 bounded theorem modules match Java, including
+syntax kinds, UID order, exact goal/reference pointers, label tables, declaration
+scope, failure nodes and diagnostic codes/ranges/messages. Assumption and direct
+constructor comparisons also pass. Existing focused tests, full sany_tests and
+compile-all are the affected gates; receipts belong in PORT_PROGRESS.md. These
+observations add no original-method or full-workspace completion credit.
+
+BY/structured proof graphs and proof-step goal ownership, Suffices integration,
+EXTENDS assertion inheritance, complete module vectors, qualified selectors,
+INSTANCE/fact/imported identities, recursive inherited level checks, visitors,
+shared Errors/exception integration and evaluator graph sharing remain pending.
+Missing canonical children or earlier native-only import identities keep owners
+incomplete. Next semantic work is actual BY/UseOrHide and structured proof
+ownership, followed by remaining selector/instance identities, level checking and
+evaluator sharing. Complete allocation order across all graphs remains unproven.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

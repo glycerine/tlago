@@ -1973,8 +1973,8 @@ func sanyLabel(node *SanySyntaxNode) (Expr, Diagnostics) {
 			label.Name = sanyFirstTokenImage(name.GetHeirs()[1])
 		}
 	}
-	body, diags := sanyExpr(lastSanyExpression(node))
-	label.Body = body
+	body, assumeProve, diags := sanyExprWithAssumeProveBody(lastSanyExpression(node))
+	label.Body, label.AssumeProveBody = body, assumeProve
 	return label, diags
 }
 

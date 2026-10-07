@@ -1,5 +1,36 @@
 # TLC Architecture Notes for the Go Port
 
+## Theorem statements, AP goals and proof scope
+
+Create a named theorem's provisional ThmOrAssumpDefNode before its statement.
+For AP statements, the outer AP and ordinary/labeled AP labels retain this actual
+goal; nested AP nodes retain null goals. Ordinary expression theorems do not set
+currentGoal. Complete/register the definition after the body, pop its label set,
+and append the definition before proof generation. For AP, temporarily remove the
+assumption context for registration, then push the same context back for the proof.
+A proof-local NEW declaration may shadow the theorem name; the enclosing module
+binding still determines accepted registration and exported scope metadata.
+
+The top-level caller owns the AP context until proof processing ends. Nested AP
+contexts close at body completion. Preserve actual NEW declaration bindings and
+ordinary ASSUME marker visibility through the proof; restore symbols/context and
+reset only the outer AP's inProof afterward. Clause counters and labels retain
+source timing. Labeled AP syntax retains its own AP body rather than generating
+the native quantifier view. Generate its body before resolving label formals and
+constructing the LabelNode. AP theorem references in expression contexts produce
+E4355 and the actual null operator application before allocating a normal call.
+
+Allocate the theorem owner after a complete statement and proof. OBVIOUS and
+OMITTED produce actual LeafProofNodes with nonnil empty fact/definition arrays,
+source flags and syntax. BY and structured proof graphs remain unported; their
+owners stay incomplete rather than pretending the proof is absent. Missing
+statement children or earlier native-only imported identities also keep owners
+incomplete. Complete inherited level checking, visitors, imported/INSTANCE
+identities, EXTENDS vectors and other top-level owners remain separate work.
+
+The bounded 47-module comparison establishes the observed constructor/generation
+paths only. It is not original Java method completion or complete module parity.
+
 ## Assumption generation
 
 For source expression assumptions, generate the body before allocating either a
@@ -17,9 +48,9 @@ incomplete. Legacy scope metadata changes only for an accepted canonical binding
 the fallback remains for paths without those identities. Legacy label checking
 runs after generation so canonical labels retain their own source diagnostics.
 
-Theorem/proof generation, AP goals, inherited assertion vectors, other top-level
-owners and complete inherited level checking/visitors remain separate unfinished
-work. A partially populated module vector is not evidence of complete module
+BY/structured proof generation, proof-step goals, inherited assertion vectors,
+other top-level owners and complete inherited level checking/visitors remain
+separate unfinished work. A partially populated module vector is not evidence of complete module
 construction. Bounded assumption graph observations do not add original Java
 method completion credit.
 
@@ -40,10 +71,9 @@ of nonempty facts. Module assertion additions append the same owner to the typed
 assertion vector and ordered top-level vector. Each getter caches its first array;
 mutating that array persists and later vector appends do not invalidate it.
 
-Assumption expression generation now populates its owners and collections.
-Theorem and proof generation,
-EXTENDS collection inheritance, other top-level owners, inherited level checking
-and visitors remain unfinished. Direct constructor observations are separate from
+Assumption and complete theorem statement generation populate these owners and
+collections. BY/structured proof generation, EXTENDS collection inheritance, other
+top-level owners, inherited level checking and visitors remain unfinished. Direct constructor observations are separate from
 whole generated-module and original Java test-suite coverage.
 
 ## Theorem/assumption definition constructors
@@ -65,11 +95,10 @@ have no constant/variable declarations. Label tables retain the same operations
 and aliasing as other label owners. Matching tests the application's actual
 operator arity, ignoring the receiver's arity and operands, as Java does.
 
-The constructor class and matching dispatch are ready for generator integration.
-Actual processTheorem ownership and AP goal installation, complete module
-vectors, generated theorem/proof backlinks and complete
-inherited level data/visitors still require implementation. Bounded constructor
-comparisons do not establish complete named AP or theorem graph parity.
+Assumption/theorem statement generation uses the constructor class and matching
+dispatch. BY/structured proofs, complete module vectors and inherited level data/
+visitors still require implementation. Bounded constructor comparisons alone do
+not establish complete named AP or theorem graph parity.
 
 ## Unnamed ASSUME/PROVE bodies and scope metadata
 
@@ -89,13 +118,10 @@ assumptions. Restore nested declaration contexts after generation. The current
 clause resets at outer AP entry and advances after each outer assumption only;
 ordinary labels following these AP bodies retain that clause rather than zero.
 
-Named theorem/assumption and proof-step goal nodes are still unported. Their
-outer AP is not marked graph-complete, and labels requiring those actual goals
-retain the native path. Missing children also leave the owner incomplete. Full
-proof marker/context lifetime, clause lifetime through proof APs, labeled AP,
-Suffices integration, inherited level data/checking, visitors and evaluator graph
-reuse remain pending. The bounded graph comparisons cover unnamed AP bodies and
-post-AP label clause metadata, not complete theorem/module graph ownership.
+Named theorem statements now provide their actual goals and top-level AP context
+lifetime. Proof-step goals remain unported and retain the native fallback. Missing
+children leave owners incomplete. Complete proof graph construction, Suffices,
+level checking and visitors remain pending.
 
 ## NEW declaration construction and binding identity
 

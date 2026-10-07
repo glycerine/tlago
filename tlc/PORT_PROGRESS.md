@@ -1,5 +1,55 @@
 # TLC Port Progress
 
+2026-10-07 Theorem statements, actual AP goals and labeled AP construction:
+Previous completed commit: 317f792. Port named provisional goal allocation before
+body generation, completion/registration before proof, and theorem owner allocation
+after proof. Outer AP and label nodes retain the actual goal; nested AP goals
+remain null. ProcessTheorem owns the outer AP context through proof processing;
+temporarily pop it for named definition registration, then push the same context
+back. Nested AP contexts restore their bindings at body completion. Preserve actual
+NEW declaration identities and ordinary ASSUME marker visibility until proof end.
+Enclosing module bindings determine registration even when NEW shadows the name.
+
+Retain parsed labeled AP bodies on LabelExpr and construct their actual AP nodes,
+then resolve label formals and build LabelNode with source goal/clause metadata.
+Do not generate fake NEW formals or quantifier graphs from the native view. Preserve
+ordinary-expression versus labeled-AP acceptance at the expression entry point.
+OBVIOUS/OMITTED create real LeafProofNodes with source empty arrays, syntax and
+flags before the theorem owner. BY and structured proofs remain explicitly
+incomplete; do not substitute an absent proof or allocate their owner too early.
+
+The source comparison exposed the native shortcut for AP theorem names used as
+expressions: Go allocated an ordinary application and diagnosed later. Implement
+source E4355 before application allocation and return the owning generator's actual
+failure node; suppress the later duplicate native diagnostic. Also preserve null
+goals when converting a nil concrete goal pointer to the Go graph interface.
+Align label-scope pop order with source registration. Initial compile used the
+void popContext call as a value; correct it to save topContext before popping.
+
+All 1,083 full Java/Go rows agree across 47 whole modules: 1,056 prefixed observations
+(413 graph nodes, 55 theorem owners, 55 top-level entries, 63 bindings, 16 operator
+references, 17 label references, 41 label-goal pointers, 28 complete diagnostic
+codes/ranges/messages, six leaf-proof rows, two LET bindings, 80 each AP metadata,
+AP-goal and child-identity rows, 73 null children and 47 cases), plus multiline
+source/diagnostic continuations. Cover ordinary/failed statements, duplicate and
+cross-class definitions, actual AP goals, NEW shadowing/domain/formal conflicts,
+nested AP/labels, boxed errors, ordinary clause lifetime and absent/simple terminal
+proofs. Temporary observers remain outside the repository. One scratch parameterized
+AP label was rejected by both parsers; use grammar-valid plain AP labels for those
+scope cases. No original source test or assertion was weakened.
+
+Initial affected root gate passes 46.313s (82028), sany_tests 1.901s (84104).
+Expanded final comparison passes (59269 failed only invalid scratch syntax; corrected
+complete comparison terminal zero), and final full sany_tests passes 2.000s (66497),
+with compile-all in that same terminal-zero handle. Final focused root gate passes 46.162s (62143); all verification handles
+are retired. No race workload or permanent invented test was added, and no
+original Java method completion or full-workspace pass is claimed.
+
+BY/UseOrHide and structured proof graphs, proof-step goals, Suffices, EXTENDS and
+complete module vectors, selectors/imported/INSTANCE identities, inherited level
+checking/visitors and evaluator graph sharing remain pending. Complete TLC parity
+is still unproven; distributed architecture work remains postponed.
+
 2026-10-07 Assumption generation and named definition identities:
 Previous completed commit: 1446c72. Port processAssumption ordering for source
 expression bodies: named assumptions push label scope, generate the body, create

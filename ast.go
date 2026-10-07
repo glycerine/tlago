@@ -567,6 +567,7 @@ func (e *ExceptExpr) Position() Position { return e.Pos }
 func (*ExceptExpr) exprNode()            {}
 
 type LabelExpr struct {
+	AssumeProveBody        *AssumeProve
 	labelGenerated         bool
 	formalNodes            []*sanyFormalParamNode
 	illegalParameterSyntax []*SanySyntaxNode

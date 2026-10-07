@@ -820,7 +820,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	}
 	registerAssumption := func(assumption NamedExpr) {
 		if node := assumption.definitionNode; node != nil {
-			if expressionGeneration.formalSymbolTable().resolveSymbol(node.semName()) == node {
+			if mod.semanticNode.context.getSymbol(node.semName()) == node {
 				pos := assumption.SourcePosition()
 				defined[assumption.Name] = pos
 				expressionGeneration.moduleSymbols[assumption.Name] = localSymbol{theoremDefNode: node, kind: semanticTheoremImportKind, arity: 0, pos: pos}
@@ -923,17 +923,19 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return correct, diags
 		}}})
 	}
-	generateTheorem := func(theorem NamedExpr) {
-		diags = append(diags, checks.generator.fact(theorem)...)
+	var finishTheoremGeneration func()
+	generateTheorem := func(theorem *NamedExpr) {
+		diags = append(diags, checks.generator.fact(*theorem)...)
 		expr := theorem.Expr
 		if expr == nil {
 			return
 		}
-		if !theorem.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
-		}
-		if !assumeProveExprPositions[positionKey(expr.Position())] {
-			if theorem.AssumeProve && theorem.AssumeProveBody != nil {
+		if finishTheoremGeneration == nil && !assumeProveExprPositions[positionKey(expr.Position())] {
+			if theorem.Syntax != nil {
+				var current Diagnostics
+				current, finishTheoremGeneration = expressionGeneration.generateTheoremStatement(theorem, expressionContexts.at(theorem.Syntax, defined))
+				diags = append(diags, current...)
+			} else if theorem.AssumeProve && theorem.AssumeProveBody != nil {
 				// The native quantifier-shaped view is for legacy consumers;
 				// it must not generate false FormalParam/quantifier graphs for NEW.
 				if source := sanyGenerationSource(expr); source != nil {
@@ -943,6 +945,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			} else {
 				diags = append(diags, checkExpr(expr, expressionContexts.at(theorem.Syntax, defined), nil)...)
 			}
+		}
+		if !theorem.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
+			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
 		}
 		diags = append(diags, checkCallArity(expr, arities, operatorParamSpecs, nil)...)
 		diags = append(diags, checkOperatorArgumentKinds(expr, operatorParamSpecs, arities, nil)...)
@@ -971,7 +976,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		diags = append(diags, checks.generator.functionDomains(&def)...)
 		diags = append(diags, checkDefinitionFunctionDomains(def, expressionContexts.at(def.Syntax, defined), nil, expressionGeneration)...)
 	}
-	generateDefinition := func(definition *Definition) {
+	generateDefinition := func(definition *Definition, theorem *NamedExpr) {
 		definition.semanticNode = nil
 		def := *definition
 		if def.FunctionDef {
@@ -988,7 +993,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		defArities := definitionBodyArities(arities, def)
 		bodyContext := expressionContexts.at(def.Syntax, defined)
-		if def.AssumeProve && def.AssumeProveBody != nil {
+		if def.TheoremLike && theorem != nil && theorem.Syntax != nil {
+			var current Diagnostics
+			current, finishTheoremGeneration = expressionGeneration.generateTheoremStatement(theorem, bodyContext)
+			diags = append(diags, current...)
+		} else if def.AssumeProve && def.AssumeProveBody != nil {
 			diags = append(diags, expressionGeneration.checkAssumeProveBody(def.AssumeProveBody, bodyContext, locals, true)...)
 		} else if def.FunctionDef {
 			diags = append(diags, expressionGeneration.prepareNamedFunctionDefinition(definition)...)
@@ -1101,19 +1110,26 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		case unit.definition != nil:
 			definition := *unit.definition
 			if definition.TheoremLike {
-				generateDefinition(unit.definition)
-				registerDefinition(definition)
+				generateDefinition(unit.definition, unit.theorem)
+				if unit.theorem != nil && unit.theorem.definitionNode != nil {
+					registerAssumption(*unit.theorem)
+					if mod.semanticNode.context.getSymbol(definition.Name) == unit.theorem.definitionNode {
+						addSubexpressionReferenceNames(defined, definition.Name, definition.Expr)
+					}
+				} else {
+					registerDefinition(definition)
+				}
 			} else {
 				if definition.FunctionDef {
 					generateFunctionDomains(definition)
 				}
 				registerDefinition(definition)
-				generateDefinition(unit.definition)
+				generateDefinition(unit.definition, nil)
 				finishDefinition(*unit.definition)
 			}
 		}
 		if unit.theorem != nil {
-			generateTheorem(*unit.theorem)
+			generateTheorem(unit.theorem)
 		}
 		entries := 0
 		for _, ref := range unit.references {
@@ -1126,6 +1142,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		for _, proof := range unit.proofs {
 			generateProof(proof)
+		}
+		if finishTheoremGeneration != nil {
+			finishTheoremGeneration()
+			finishTheoremGeneration = nil
 		}
 		if unit.theorem != nil && unit.theorem.AssumeProveBody != nil && unit.theorem.AssumeProveBody.semanticNode != nil {
 			unit.theorem.AssumeProveBody.semanticNode.inProof = false
@@ -1188,7 +1208,11 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 	}
 	var generation *sanyExpressionGeneration
 	body.semanticNode = nil
-	node := newSanySemAssumeProveNode(body.Syntax, nil)
+	var goal sanySemanticGraphNode
+	if len(generators) != 0 && generators[0] != nil && generators[0].labelAPDepth == 0 && generators[0].currentGoal != nil {
+		goal = generators[0].currentGoal
+	}
+	node := newSanySemAssumeProveNode(body.Syntax, goal)
 	node.assumes = make([]sanySemanticGraphNode, len(body.Assumptions))
 	node.inScopeOfDecl = make([]bool, len(body.Assumptions)+1)
 	if body.Syntax != nil {
@@ -1234,15 +1258,18 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 			generation.labelAPDepth--
 			generation.labelAPForbidden = previousAPForbidden
 		}()
-		generation.labelsEnabled = false
+		generation.labelsEnabled = true
 		defer func() { generation.labelsEnabled = previousLabelsEnabled }()
 		previous := generation.symbols
 		generation.symbols = make(map[string]localSymbol, len(previous))
 		for name, symbol := range previous {
 			generation.symbols[name] = symbol
 		}
-		defer func() { generation.symbols = previous }()
-		defer generation.pushFormalContext(0)()
+		ownedContext := generation.labelAPDepth == 1 && generation.outerAPContextOwned
+		if !ownedContext {
+			defer func() { generation.symbols = previous }()
+			defer generation.pushFormalContext(0)()
+		}
 		if generation.nodes != nil {
 			table := generation.formalSymbolTable()
 			if node.isBoxAssumeProve {
@@ -1293,7 +1320,15 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 				node.assumes[i] = item.Nested.semanticNode
 			}
 		case item.Expr != nil:
+			previousAllowed := false
+			if generation != nil {
+				previousAllowed = generation.allowLabeledAP
+				generation.allowLabeledAP = true
+			}
 			diags = append(diags, generate(item.Expr, apLocals)...)
+			if generation != nil {
+				generation.allowLabeledAP = previousAllowed
+			}
 			node.assumes[i] = sanyGeneratedExpressionNode(item.Expr)
 		}
 		complete = complete && (node.assumes[i] != nil || (item.Expr != nil && sanyExpressionGenerationFailure(item.Expr) == sanyGenerationNullExpression))
@@ -2789,6 +2824,9 @@ func checkAssumeProveDefinitionUse(expr Expr, assumeProveDefs map[string]bool, l
 	var diags Diagnostics
 	switch e := expr.(type) {
 	case *IdentExpr:
+		if sanyExpressionGenerationFailure(e) != sanyGenerationSucceeded {
+			return nil
+		}
 		if !locals[e.Name] && assumeProveDefs[e.Name] {
 			diags = append(diags, errorAt(e.Pos, "E4355", "ASSUME/PROVE definition %s cannot be used where an ordinary expression is required", e.Name))
 		}
@@ -3316,6 +3354,9 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool, g
 
 func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) (result Diagnostics) {
 	var diags Diagnostics
+	allowLabeledAP := generation.allowLabeledAP
+	generation.allowLabeledAP = false
+	defer func() { generation.allowLabeledAP = allowLabeledAP }()
 	fact := generation.fact
 	operatorArgument := generation.operatorArgument
 	symbolReferenceOnly := generation.symbolReferenceOnly
@@ -3495,6 +3536,16 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			graphSymbol = symbol.opDefNode
 		} else {
 			graphSymbol = sanyGlobalInitialContext(false).getSymbol(e.Name)
+		}
+		if definition, ok := graphSymbol.(*sanySemThmOrAssumpDefNode); ok && !fact && definition.body != nil && definition.body.Kind() == tlc.SemanticKind(sanyAssumeProveKind) {
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+			diagnostic := errorAt(e.Pos, "E4355", "ASSUME/PROVE used where an expression is required.")
+			diagnostic.SANYMessage = diagnostic.Message
+			diagnostic.SANYRange = SanyRange{Begin: e.Pos, End: e.Pos.SourceEnd()}
+			if e.Syntax != nil {
+				diagnostic.SANYRange = e.Syntax.Range
+			}
+			return Diagnostics{diagnostic}
 		}
 		if !symbolReferenceOnly && !operatorArgument && graphSymbol != nil && graphSymbol.semArity() > 0 {
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
@@ -3818,6 +3869,14 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		e.labelGenerated = false
 		if generation.labelsEnabled && !generation.labelGoalUnsupported {
 			diags = append(diags, generation.generateLabel(e, defined, locals)...)
+			if label, ok := e.semanticGraph.(*sanySemLabelNode); ok && label.isAssumeProve && !allowLabeledAP {
+				diagnostic := errorAt(e.Pos, "E4004", "Labeled ASSUME/PROVE used where an expression is required.")
+				diagnostic.SANYMessage = diagnostic.Message
+				if e.Syntax != nil {
+					diagnostic.SANYRange = e.Syntax.Range
+				}
+				diags = append(diags, diagnostic)
+			}
 		} else {
 			diags = append(diags, generation.checkExpr(e.Body, defined, locals)...)
 			generation.resolveLabelFormals(e, defined)

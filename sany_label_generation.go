@@ -111,17 +111,29 @@ func (g *sanyExpressionGeneration) generateLabel(label *LabelExpr, context map[s
 		return guard("E4335", "Labels inside EXCEPT clauses are not yet implemented.")
 	}
 	finishBodyLabels := g.pushLabelScope()
-	diagnostics := g.checkExpr(label.Body, context, locals)
+	var diagnostics Diagnostics
+	var body sanySemanticGraphNode
+	if label.AssumeProveBody != nil {
+		diagnostics = g.checkAssumeProveBody(label.AssumeProveBody, context, locals, false)
+		if label.AssumeProveBody.semanticNode != nil {
+			body = label.AssumeProveBody.semanticNode
+		}
+	} else {
+		diagnostics = g.checkExpr(label.Body, context, locals)
+		body = sanyGeneratedExpressionNode(label.Body)
+	}
 	bodyLabels := finishBodyLabels()
 	g.resolveLabelFormals(label, context)
-	body := sanyGeneratedExpressionNode(label.Body)
 	if body == nil && sanyExpressionGenerationFailure(label.Body) == sanyGenerationNullOperator {
 		g.retainNullOperatorOperand(label.Body, false)
 		body = sanyGeneratedExpressionNode(label.Body)
 	}
-	// Canonical AP/goal nodes are handled separately; this path constructs
-	// ordinary expression labels with the source's current clause, with goal ownership still pending.
-	node := newSanySemLabelNode(label.Syntax, label.Name, label.formalNodes, nil, g.currentGoalClause, body, false)
+	// Ordinary expression labels retain the generator's current goal and clause.
+	var goal sanySemanticGraphNode
+	if g.currentGoal != nil {
+		goal = g.currentGoal
+	}
+	node := newSanySemLabelNode(label.Syntax, label.Name, label.formalNodes, goal, g.currentGoalClause, body, label.AssumeProveBody != nil)
 	node.setLabels(bodyLabels)
 	if body != nil || sanyExpressionGenerationFailure(label.Body) == sanyGenerationNullExpression {
 		label.semanticGraph = node
