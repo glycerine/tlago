@@ -230,13 +230,19 @@ func (p *SanyParser) Module() *SanySyntaxNode {
 func (p *SanyParser) BeginModule() *SanySyntaxNode {
 	p.beginProduction("Begin module")
 	defer p.endProduction()
-	begin := p.consumeAny([]SanyTokenKind{SanyTokenBm0, SanyTokenBm1, SanyTokenBm2}, "expected ---- MODULE")
+	p.expecting = "---- MODULE (beginning of module)"
+	if !p.atModuleStart() {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenBm0}, {SanyTokenBm1}, {SanyTokenBm2}}, "expected ---- MODULE")
+	}
+	begin := NewSanyTokenNode(p.advance())
+	p.expecting = "Identifier"
 	p.reclassifyFieldName()
 	name := p.Identifier()
 	if name != nil && p.moduleName == "" {
 		p.moduleName = name.Image
 	}
-	separator := p.consume(SanyTokenSeparator, "expected ---- after module name")
+	p.expecting = "----"
+	separator := p.consumeParseToken(SanyTokenSeparator, "expected ---- after module name")
 	return NewSanyNode(SanySyntaxNodeKindByName["N_BeginModule"], begin, name, separator)
 }
 
@@ -301,7 +307,7 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 			heirs = append(heirs, p.Theorem())
 		case p.check(SanyTokenUse) || p.check(SanyTokenHide):
 			heirs = append(heirs, p.UseOrHide())
-		case p.startsOperatorOrFunctionDefinition():
+		case p.check(SanyTokenDefbreak) || (p.check(SanyTokenLocal) && p.peekNext().Kind == SanyTokenDefbreak):
 			heirs = append(heirs, p.OperatorOrFunctionDefinition())
 		default:
 			return NewSanyNode(SanySyntaxNodeKindByName["N_Body"], heirs...)
@@ -755,25 +761,18 @@ func (p *SanyParser) ProofOperatorOrFunctionDefinition() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ProofFunctionDefinition() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.Identifier())
-	heirs = append(heirs, p.consume(SanyTokenLsb, "expected [ in function definition"))
-	heirs = append(heirs, p.QuantBound())
-	for p.match(SanyTokenComma) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.QuantBound())
-	}
-	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ] in function definition"))
-	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in function definition"))
-	p.belchDEF()
-	heirs = append(heirs, p.ExpressionUntilProofBoundary())
-	return NewSanySplitNode(SanySyntaxNodeKindByName["N_FunctionDefinition"], nil, heirs)
+	return p.functionDefinition(p.ExpressionUntilProofBoundary)
 }
 
 func (p *SanyParser) ProofOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 	heirs := []*SanySyntaxNode{lhs}
-	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in operator definition"))
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in operator definition"))
 	p.belchDEF()
+	p.expecting = "Expression"
+	if lhs.Kind.JavaName() == "N_IdentLHS" {
+		p.expecting = "Expression or Instance"
+	}
 	heirs = append(heirs, p.ExpressionUntilProofBoundary())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
 }
@@ -1236,6 +1235,7 @@ func (p *SanyParser) OperatorOrFunctionDefinition() *SanySyntaxNode {
 func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
 	p.beginProduction("Definition")
 	defer p.endProduction()
+	p.expecting = "LOCAL, Identifier or Operator Symbol"
 	var local *SanySyntaxNode
 	if p.match(SanyTokenLocal) {
 		local = NewSanyTokenNode(p.previous())
@@ -1247,6 +1247,7 @@ func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
 		}
 	}()
 	p.consumeParseToken(SanyTokenDefbreak, "expected beginning of definition")
+	p.expecting = "LOCAL, Identifier or Operator Symbol"
 	operator := p.OperatorDefinition
 	function := p.FunctionDefinition
 	if proof {
@@ -1262,13 +1263,21 @@ func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
 		return function()
 	case p.check(SanyTokenIdentifier) && p.isPostfixOperator(p.peekNext()):
 		return operator(p.PostfixLHS())
-	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()) && p.tokenAt(2).Kind == SanyTokenIdentifier:
+	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()):
 		return operator(p.InfixLHS())
 	case p.startsModuleDefinitionHeadAt(0):
 		return p.ModuleDefinition()
 	case p.check(SanyTokenIdentifier) && (p.peekNext().Kind == SanyTokenLbr || p.peekNext().Kind == SanyTokenDef):
 		return operator(p.IdentLHS())
 	default:
+		// Failed definition-head alternatives scan a second token only
+		// after their common Identifier. Preserve that error-input span.
+		if p.check(SanyTokenIdentifier) {
+			p.rememberFailedLookahead(2)
+		}
+		if !p.startsDefinitionPrefix() {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenOp76}}, "expected definition identifier or prefix operator")
+		}
 		return operator(p.PrefixLHS())
 	}
 }
@@ -1291,40 +1300,40 @@ func (p *SanyParser) startsModuleDefinitionHeadAt(offset int) bool {
 func (p *SanyParser) ModuleDefinition() *SanySyntaxNode {
 	lhs := p.IdentLHS()
 	heirs := []*SanySyntaxNode{lhs}
-	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in module definition"))
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in module definition"))
 	p.belchDEF()
+	p.expecting = "Expression or Instance"
 	heirs = append(heirs, p.Instantiation())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_ModuleDefinition"], nil, heirs)
 }
 
 func (p *SanyParser) FunctionDefinition() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.Identifier())
-	heirs = append(heirs, p.consume(SanyTokenLsb, "expected [ in function definition"))
-	heirs = append(heirs, p.QuantBound())
-	for p.match(SanyTokenComma) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.QuantBound())
-	}
-	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ] in function definition"))
-	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in function definition"))
-	p.belchDEF()
-	heirs = append(heirs, p.ExpressionUntilBodyBoundary())
-	return NewSanySplitNode(SanySyntaxNodeKindByName["N_FunctionDefinition"], nil, heirs)
+	return p.functionDefinition(p.ExpressionUntilBodyBoundary)
 }
 
 func (p *SanyParser) OperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 	heirs := []*SanySyntaxNode{lhs}
-	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in operator definition"))
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in operator definition"))
 	p.belchDEF()
+	p.expecting = "Expression"
+	if lhs.Kind.JavaName() == "N_IdentLHS" {
+		p.expecting = "Expression or Instance"
+	}
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(nil))
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
 }
 
 func (p *SanyParser) LetOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 	heirs := []*SanySyntaxNode{lhs}
-	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in LET definition"))
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in LET definition"))
 	p.belchDEF()
+	p.expecting = "Expression"
+	if lhs.Kind.JavaName() == "N_IdentLHS" {
+		p.expecting = "Expression or Instance"
+	}
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenLetin
 	}))
@@ -1336,16 +1345,19 @@ func (p *SanyParser) IdentLHS() *SanySyntaxNode {
 	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.Identifier())
+	p.expecting = "( or =="
 	if p.match(SanyTokenLbr) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		if !p.check(SanyTokenRbr) {
+		p.expecting = "Identifier Declaration, prefix op, _ or )"
+		heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
+		p.expecting = "COMMA or )"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "Identifier Declaration, prefix op or _"
 			heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
-			for p.match(SanyTokenComma) {
-				heirs = append(heirs, NewSanyTokenNode(p.previous()))
-				heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
-			}
+			p.expecting = "COMMA or )"
 		}
-		heirs = append(heirs, p.consume(SanyTokenRbr, "expected ) in operator definition parameters"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator definition parameters"))
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentLHS"], heirs...)
 }
@@ -1354,6 +1366,7 @@ func (p *SanyParser) PrefixLHS() *SanySyntaxNode {
 	p.beginProduction("Prefix LHS")
 	defer p.endProduction()
 	op := p.consumeOperator("expected prefix operator in definition")
+	p.expecting = "Identifier"
 	id := p.Identifier()
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixLHS"], op, id)
 }
@@ -1375,26 +1388,45 @@ func (p *SanyParser) PostfixLHS() *SanySyntaxNode {
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PostfixLHS"], left, op)
 }
 
+func (p *SanyParser) startsDefinitionPrefix() bool {
+	switch p.peek().Kind {
+	case SanyTokenOp76, SanyTokenOp26, SanyTokenOp29, SanyTokenOp58,
+		SanyTokenCasesep, SanyTokenOp61, SanyTokenOp112, SanyTokenOp113,
+		SanyTokenOp114, SanyTokenOp115, SanyTokenOp116:
+		return true
+	default:
+		return false
+	}
+}
+
 func (p *SanyParser) IdentDeclOrSomeFixDecl() *SanySyntaxNode {
 	if p.check(SanyTokenIdentifier) {
 		return p.IdentDecl()
 	}
-	return p.SomeFixDecl()
+	if p.check(SanyTokenUs) || p.startsDefinitionPrefix() {
+		return p.SomeFixDecl()
+	}
+	p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenUs}, {SanyTokenOp76}}, "expected formal declaration")
+	return nil
 }
 
 func (p *SanyParser) IdentDecl() *SanySyntaxNode {
 	p.beginProduction("Identifier Declation")
 	defer p.endProduction()
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.Identifier())
+	heirs := []*SanySyntaxNode{p.Identifier()}
+	p.expecting = "( or ..."
 	if p.match(SanyTokenLbr) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.consume(SanyTokenUs, "expected _ in operator parameter declaration"))
+		p.expecting = "_"
+		heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in operator parameter declaration"))
+		p.expecting = "COMMA or )"
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.consume(SanyTokenUs, "expected _ in operator parameter declaration"))
+			p.expecting = "_"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in operator parameter declaration"))
+			p.expecting = "COMMA or )"
 		}
-		heirs = append(heirs, p.consume(SanyTokenRbr, "expected ) in operator parameter declaration"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator parameter declaration"))
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentDecl"], heirs...)
 }
@@ -2028,20 +2060,30 @@ func (p *SanyParser) LetOperatorOrFunctionDefinition() *SanySyntaxNode {
 }
 
 func (p *SanyParser) LetFunctionDefinition() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.Identifier())
-	heirs = append(heirs, p.consume(SanyTokenLsb, "expected [ in LET function definition"))
+	return p.functionDefinition(func() *SanySyntaxNode {
+		return p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool { return tok.Kind == SanyTokenLetin })
+	})
+}
+
+// All caller contexts share OperatorOrFunctionDefinition's function branch.
+func (p *SanyParser) functionDefinition(body func() *SanySyntaxNode) *SanySyntaxNode {
+	heirs := []*SanySyntaxNode{p.Identifier()}
+	p.expecting = "["
+	heirs = append(heirs, p.consumeParseToken(SanyTokenLsb, "expected [ in function definition"))
+	p.expecting = "Identifier"
 	heirs = append(heirs, p.QuantBound())
+	p.expecting = "COMMA or ]"
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier"
 		heirs = append(heirs, p.QuantBound())
 	}
-	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ] in LET function definition"))
-	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in LET function definition"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ] in function definition"))
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in function definition"))
 	p.belchDEF()
-	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
-		return tok.Kind == SanyTokenLetin
-	}))
+	p.expecting = "Expression"
+	heirs = append(heirs, body())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_FunctionDefinition"], nil, heirs)
 }
 

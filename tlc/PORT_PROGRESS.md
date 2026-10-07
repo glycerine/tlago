@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-06 Definition grammar, mandatory formals and header failure boundaries:
+Previous turn completed c533263. Restore source Definition expectation state,
+mandatory function-bound delimiters/DEF, shared function branches across module,
+LET and proof contexts, source IdentLHS/IdentDecl expectations and mandatory first
+formals/underscores. Invalid formals fail in the actual owning frame. Restrict the
+prefix-definition fallback to Java's eleven token kinds. Infix selection uses two
+tokens, leaving a malformed right identifier to fail inside Infix LHS. No permanent
+tests, original assertions or fixtures changed.
+
+Initial 232 complete parser comparisons expose three further mismatches: malformed
+marked definitions were skipped by speculative head validation, empty function
+heads lost failed-lookahead input length, and BeginModule recorded a missing
+separator but continued. Correct those production paths and source expectation
+state. Final 236 complete TRACE/result comparisons all match pinned Java (75381
+terminal 0; inspected all MATCH records and different []). Log:
+/mnt/oldrog/tmp/tlago-sany-definition-parser-final-audit.log. This includes 28 new
+definition observations and all previous 208. General JavaCC rescan and complete
+module-body/head lookahead remain reconciliation work.
+
+Sixteen selected complete definition trees match kinds, images and ranges,
+including LOCAL function/higher-order definitions (64494 terminal 0), log
+/mnt/oldrog/tmp/tlago-definition-tree-final-audit.log. The first tree run 88941
+failed because it started before two generated input files existed; no production
+mismatch or success credit for that run. Correct the probe dependency and rerun.
+These scratch observations earn no test-inventory credit or whole-module AST claim.
+
+Final normal checks: complete existing sany_tests 1.607 seconds (51580 terminal
+0); existing parser/semantic/token/operator classes, original ParseErrorTests,
+five original TLC models and native reference/scaffold checks 13.714 seconds
+(7917 terminal 0). All-package compilation passes without additional workloads.
+Logs /mnt/oldrog/tmp/tlago-sany-definition-final-{sany,root,compile}.log. No race
+workload. Full workspace green remains unproven; prior native imports and trace
+failures retain their documented unresolved status and unchanged tests.
+MSB 5144 remains live with the same isolated binary and original full bounds;
+last logged progress 1,440,128,170/2,147,483,648. Do not restart it.
+
 2026-10-06 Conditional/CASE/LET grammar and function application reduction:
 Previous turn completed 659c778. Port IfThenElse/Case/CaseArm/OtherArm's actual
 frames and mandatory token failures. Case follows the source ordinary-arm loop

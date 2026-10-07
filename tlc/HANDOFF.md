@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 16.999 seconds, session `37999` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.908 seconds, session `32563` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 13.714 seconds, session `7917` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.607 seconds, session `51580` retired |
 | Existing focused TLC context/tool and tuple tests | Pass | 0.027 seconds, session `17606` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
@@ -569,13 +569,21 @@ in zero and the bracket node's heirs in one, matching source `reducePostfix`.
 The translator no longer compensates for a fabricated application wrapper, so a
 real nested function application remains an argument.
 
-Current bounded observations match Java: 208 complete parser TRACE/results, 41
+Definition parsing now preserves Java's expectation state and mandatory tokens
+for function bounds, operator bodies, formal lists and higher-order declarations.
+An operator parameter list requires its first formal, including nested underscore
+lists. Infix head selection uses the source two-token lookahead; malformed right
+identifiers fail inside `Infix LHS`. Module headers throw at a missing separator,
+and marked malformed definitions enter their production instead of being skipped.
+General module-body and definition-head JavaCC rescan remain reconciliation work.
+
+Current bounded observations match Java: 236 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
 runtime probes, plus 56 selected expression trees including ranges and four function-application
-runtime probes.
-Keep each scope distinct. Whole-module trees, general
+runtime probes and 16 selected complete definition trees with kinds, images
+and ranges. Keep each scope distinct. Whole-module trees, general
 source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.
 Numeric/general-Object driver formatting, PrintStream error-state queries and remaining production-frame
