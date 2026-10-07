@@ -31,3 +31,10 @@ present, and its one-based position/required-level parameters are `[1, 3]`.
 The production phase entry points are `ParseSanySpecSource`, `GenerateSanySpec`
 and `CheckSanySpecLevels`. This does not credit the whole Java frontend helper
 API or complete canonical semantic graphs; those remain separately pending.
+
+`semantic.TestLevelChecking.testAll` is **port complete** across all 51 original
+parameter rows. Exact expressions, Unicode synonyms and expected results match
+the source matrix. The method retains syntax/dependency loading, both semantic
+log success assertions, level-log/result agreement, and the expected level
+result. Unchanged Java and the full Go SANY package pass. This method does not
+establish full frontend-helper API or canonical semantic-graph parity.

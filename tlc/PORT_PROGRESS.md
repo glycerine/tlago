@@ -1,5 +1,28 @@
 # TLC Port Progress
 
+2026-10-07 Complete original TestLevelChecking phase assertions:
+Previous completed commit: 51d0c1f. Review the original-test surface after the
+production level fixes. The existing TestLevelChecking translation preserves its
+51-row matrix but checks only combined diagnostics. Replace that surrogate with
+the original separate syntax/dependency, semantic-generation and level phases.
+Retain both semantic-log success assertions, agreement between level-log success
+and the actual level result, and the expected result for each original row.
+Mechanically compare every source expression/expected boolean: all 51 rows match
+exactly, including Unicode synonyms. Preserve the original module template and
+copy the source MIT notice. Remove the stale comment claiming skipped tests.
+No production changes, invented tests, fixture changes or weakened assertions.
+
+Compile the unchanged original Java TestLevelChecking into the existing scratch
+frontend API directory and run JUnit: all 51 pass in 0.093 seconds, terminal 0.
+The full Go SANY package passes in 2.009 seconds (69601, terminal 0). Inspect
+JSONL: exactly 51 passing TestLevelChecking parameter rows, no failed events.
+Receipt /mnt/oldrog/tmp/tlago-levelchecking-original-go.jsonl. No other production
+checks repeated because production is unchanged from the verified 51d0c1f gate.
+All handles terminal and retired. Mark this whole SANY method port complete in
+README and the inventory scope note without changing TLC counts. No new full-
+workspace pass or complete semantic graph/frontend-helper API parity claimed.
+New distributed service remains postponed.
+
 2026-10-07 Ordinary LET signatures and higher-order level conditions:
 Previous completed commit: f274a03. Read LetInNode field propagation and audit
 ordinary formal maxima, beyond module collection. Initial 11 parseable cases

@@ -936,6 +936,11 @@ and shadowing diagnostics match source. Symbolic operator-level conditions also
 retain Java's higher-order Leibniz propagation; local caches distinguish captured
 formal identities and actual operators between specializations. All 22 additional
 signature comparisons match, and earlier bounded comparisons remain exact.
+The original SANY `TestLevelChecking.testAll` now retains all phase assertions
+and all 51 parameter rows, mechanically verified against source. Unchanged Java
+passes all 51; full Go SANY passes in 2.009 seconds. This is SANY method credit
+only and changes no TLC inventory totals. No production changes in that test-port
+commit; reuse the verified production receipts.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

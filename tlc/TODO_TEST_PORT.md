@@ -21,7 +21,7 @@ These are conservative translation counts. Credit requires an explicit original-
 
 Methods are counted **before parameter expansion**, and non-`@Ignore` does not imply every upstream Ant target executes them: assumptions, target exclusions, platforms, and JVM requirements still apply. For example, `OffHeapIndexerEquivalenceTest.testInfiniteInfMult` has **7,254 parameter rows**; each of the three concrete `OffHeapIndexerParameterizedTest` subclasses inherits five methods over **1,104 rows** (16,560 contexts before assumptions). `GetScopedIdentifiersTests` has all 18 rows ported. Preserve complete matrices rather than substituting a few samples.
 
-Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and CommunityModules (a separate project). The complete CommunityModules Ant test target already has its own Go translation in [community_modules_java_test.go](../community_modules_java_test.go). Email reporting and dependencies pursued for email remain excluded under the user’s scope directive.
+Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and CommunityModules (a separate project). SANY `semantic.TestLevelChecking.testAll` is **Port complete** with all 51 original rows and separate generation/level assertions; see [the SANY test-port notes](../sany_tests/README.md). This adds no TLC inventory credit. The complete CommunityModules Ant test target already has its own Go translation in [community_modules_java_test.go](../community_modules_java_test.go). Email reporting and dependencies pursued for email remain excluded under the user’s scope directive.
 
 ## Topic totals for the main suite
 
