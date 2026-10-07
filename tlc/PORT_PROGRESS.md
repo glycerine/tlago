@@ -1,5 +1,54 @@
 # TLC Port Progress
 
+2026-10-07 Expression namespaces and INSTANCE substitution processing:
+Previous completed commit: 85e7d77. Java rejects module-name-qualified constants,
+variables, operators and theorems without a named INSTANCE. Remove fabricated
+semantic aliases from local/imported declarations, recursive declarations,
+definitions, theorem names, completion flags and subexpression lookup. Preserve
+actual named INSTANCE exports, including Base == INSTANCE Base. Private runtime
+lookup indexes remain separate from accepted source bindings.
+
+Resolve INSTANCE defaults from the current source context, retaining canonical
+target declaration locations/signatures and source Context enumeration order.
+Later declarations cannot supply defaults; earlier LOCAL operators can. Follow
+SubstInNode.constructSubst, explicit RHS generation/duplicate detection, remaining
+operator-default arity checks and matchAll completeness order. Scalar default
+applications are checked even if WITH later replaces them. Preserve OpDeclNode
+and OpDefNode's distinct 4004 messages and FormalParamNode's match behavior.
+Wrong-arity explicit GeneralId operators retain both 4271 and the subsequent
+4243 at nullOpArg's null location. Missing, duplicate and illegal-target messages
+and ranges now match Java exactly.
+
+Initial six cases match after alias/default fixes (65983 terminal 0). Expanded
+14-case comparison 52528 terminal 1 exposed implicit wrong-arity code/range;
+16-case comparison 24790 terminal 1 exposed scalar-default construction. The
+first corrected scalar comparison 11493 terminal 1 exposed Go formatting of
+numeric parameters; corrected 16-case comparison 20143 terminal 0. Expanded
+28-case comparison 62216 terminal 1 exposed the missing 4271/nullOpArg error;
+30-case comparison 83177 terminal 1 exposed the diagnostic position fallback.
+Fix production rather than altering the comparison. Final 75087 terminal 0:
+all 30 complete comparisons match codes, messages, ranges, counts and ordering.
+Nine existing declaration comparisons and all 45 existing label cases also match
+(15 flow, 16 required, nine semantic, five aggregate cases). Helpers and vectors
+remain outside the repository; no invented permanent tests or inventory credit.
+Logs: /mnt/oldrog/tmp/tlago-qualified-final-30.log and
+/mnt/oldrog/tmp/tlago-qualified-final-{registration,label-flow,label-required,
+label-semantic,label-extra}.log.
+
+Exact native fixtures verified against unchanged Java SANY before correction:
+missing substitution reports 4240 at 5:1..5:16; qualified references and three
+model fixtures require an actual Helper == INSTANCE Helper namespace. Preserve
+existing model assertions, config and counts; strengthen the missing-substitution
+assertion to exact code/message/range. Full source comparisons include all five
+corrected/unchanged fixtures. Prior focused root 7797 failed the two outdated
+native expectations; complete SANY 21205 and six models 56616 passed. Final
+existing focused root passes 4.734 seconds (37139), complete SANY passes 1.437
+seconds (34255), six unchanged original TLC models pass 2.120 seconds (62991),
+and all-package compilation passes (14214). All handles terminal and retired.
+Logs: /mnt/oldrog/tmp/tlago-qualified-final-verified-{root,sany,models,compile}.log.
+No new full-workspace pass is established. Canonical operator/theorem/application/
+label graphs and evaluator sharing remain pending; distributed service postponed.
+
 2026-10-07 TLC bridge accepted declaration metadata:
 Previous completed commit: cfbe4f9. Actual lower Java FastTool comparison finds
 that the Go bridge still reads the last per-name location for repeated x, C and

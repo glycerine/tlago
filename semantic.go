@@ -432,29 +432,13 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 					if _, exists := defined[name]; !exists {
 						defined[name] = d.Pos
 					}
-					qualified := depMod.Name + "!" + name
-					if depMod.Name != "" {
-						if _, exists := defined[qualified]; !exists {
-							defined[qualified] = d.Pos
-						}
-					}
 					if _, exists := declKinds[name]; !exists {
 						declKinds[name] = d.Kind
-					}
-					if depMod.Name != "" {
-						if _, exists := declKinds[qualified]; !exists {
-							declKinds[qualified] = d.Kind
-						}
 					}
 					if d.Kind == ConstantDecl {
 						if arity, ok := declarationArity(d, name); ok {
 							if _, exists := arities[name]; !exists {
 								arities[name] = arity
-							}
-							if depMod.Name != "" {
-								if _, exists := arities[qualified]; !exists {
-									arities[qualified] = arity
-								}
 							}
 						}
 					}
@@ -467,12 +451,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				diags = append(diags, checkImportedSymbolAmbiguity(def.Name, semanticDefinitionImportKind(def), def.SourcePosition(), depMod.Name, extendedSymbols, "W4800")...)
 				if _, exists := defined[def.Name]; !exists {
 					defined[def.Name] = def.Pos
-				}
-				qualified := depMod.Name + "!" + def.Name
-				if depMod.Name != "" {
-					if _, exists := defined[qualified]; !exists {
-						defined[qualified] = def.Pos
-					}
 				}
 				if _, exists := arities[def.Name]; !exists {
 					arities[def.Name] = len(def.Params)
@@ -491,12 +469,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				if _, exists := declKinds[def.Name]; !exists {
 					declKinds[def.Name] = OperatorDecl
 				}
-				if depMod.Name != "" {
-					if _, exists := arities[qualified]; !exists {
-						arities[qualified] = len(def.Params)
-					}
-					addSubexpressionReferenceNames(defined, qualified, def.Expr)
-				}
 			}
 			for _, assumption := range depMod.Assumptions {
 				if assumption.Name == "" {
@@ -507,25 +479,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				if _, exists := defined[assumption.Name]; !exists {
 					defined[assumption.Name] = pos
 				}
-				qualified := depMod.Name + "!" + assumption.Name
-				if depMod.Name != "" {
-					if _, exists := defined[qualified]; !exists {
-						defined[qualified] = pos
-					}
-				}
 				if _, exists := arities[assumption.Name]; !exists {
 					arities[assumption.Name] = 0
 				}
 				if _, exists := declKinds[assumption.Name]; !exists {
 					declKinds[assumption.Name] = OperatorDecl
-				}
-				if depMod.Name != "" {
-					if _, exists := arities[qualified]; !exists {
-						arities[qualified] = 0
-					}
-					if _, exists := declKinds[qualified]; !exists {
-						declKinds[qualified] = OperatorDecl
-					}
 				}
 			}
 			for _, inst := range depMod.Instances {
@@ -634,11 +592,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 			addName(name, position, d.Kind)
 			declKinds[name] = d.Kind
-			if mod.Name != "" {
-				qualified := mod.Name + "!" + name
-				defined[qualified] = position
-				declKinds[qualified] = d.Kind
-			}
 			if d.Kind == ConstantDecl {
 				if _, ok := declarationArity(d, name); ok {
 					arities[name] = arity
@@ -680,12 +633,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			expressionGeneration.bindings[name] = &sanyRecursiveBinding{name: name, position: recursivePositions[name], arity: arity, level: 0}
 			expressionGeneration.declarations = append(expressionGeneration.declarations, expressionGeneration.bindings[name])
 			arities[name] = arity
-			if mod.Name != "" {
-				qualified := mod.Name + "!" + name
-				defined[qualified] = d.Pos
-				declKinds[qualified] = RecursiveDecl
-				arities[qualified] = arity
-			}
 		}
 	}
 	constructorConflicts := map[string]localSymbol{}
@@ -731,7 +678,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				addName(def.Name, def.Pos, OperatorDecl)
 			}
 		}
-
 		if binding := expressionGeneration.bindings[def.Name]; binding != nil {
 			if !def.FunctionDef {
 				binding.arity = len(def.Params)
@@ -757,18 +703,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if arity, ok := definitionFunctionArity(def); ok {
 			functionArities[def.Name] = arity
 		}
-		if mod.Name != "" {
-			qualified := mod.Name + "!" + def.Name
-			defined[qualified] = def.Pos
-			arities[qualified] = len(def.Params)
-			addSubexpressionReferenceNames(defined, qualified, def.Expr)
-			if specs, ok := definitionOperatorParamSpecs(def); ok {
-				operatorParamSpecs[qualified] = specs
-			}
-			if arity, ok := definitionFunctionArity(def); ok {
-				functionArities[qualified] = arity
-			}
-		}
 	}
 	finishDefinition := func(def Definition) {
 		if previous, exists := constructorConflicts[positionKey(def.SourcePosition())]; exists && !def.FunctionDef {
@@ -787,12 +721,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		addName(assumption.Name, pos, OperatorDecl)
 		arities[assumption.Name] = 0
 		declKinds[assumption.Name] = OperatorDecl
-		if mod.Name != "" {
-			qualified := mod.Name + "!" + assumption.Name
-			defined[qualified] = pos
-			arities[qualified] = 0
-			declKinds[qualified] = OperatorDecl
-		}
 	}
 	assumeProveDefs := assumeProveDefinitionNames(mod.Definitions)
 	theoremLikeDefs := theoremLikeDefinitionNames(mod.Definitions)
@@ -812,7 +740,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		diags = append(diags, checks.generator.instance(inst)...)
 		diags = append(diags, checkInstanceSubstitutions(mod, inst, spec, expressionContexts.at(inst.Syntax, defined), declKinds, arities, operatorParamSpecs, false)...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{inst.SourcePosition(), func() Diagnostics {
-			return checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs, true)
+			return checkInstanceSubstitutions(mod, inst, spec, expressionContexts.at(inst.Syntax, defined), declKinds, arities, operatorParamSpecs, true)
 		}})
 	}
 	generateProofRef := func(ref ProofRef) bool {
@@ -1027,10 +955,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				diags = append(diags, diagnostic)
 			}
 		}
-
 		checks.recursiveGeneration.sum -= checks.recursiveGeneration.count
 	}
-
 	return diags
 }
 
@@ -2656,13 +2582,24 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		return nil
 	}
 	targets := moduleSubstitutionTargets(target, spec)
+	targetEntries := tlcBridgeContextContentOrder(tlcBridgeContextEntries(spec, target, map[*Module]bool{}))
+	for _, entry := range targetEntries {
+		if entry.declaration != nil {
+			targets[entry.name] = substitutionTarget{Kind: entry.kind, Arity: entry.declaration.semArity(), Pos: entry.declaration.semPosition()}
+		}
+	}
 	var temporalConstraints map[string]tlaLevel
 	matchLevels := false
 	if levelChecking {
 		temporalConstraints = moduleTemporalConstantConstraints(target, spec)
 		matchLevels = moduleRequiresSubstitutionLevelMatch(target, spec)
 	}
-	implicit := moduleImplicitSubstitutions(mod, spec)
+	// constructSubst resolves defaults in the current SymbolTable. Later
+	// declarations and definitions cannot provide a default retroactively.
+	implicit := make(map[string]int, len(defined))
+	for name := range defined {
+		implicit[name] = arities[name]
+	}
 	// Generator.generateModuleDefinition pushes a context for the instance's
 	// formal parameters before processing WITH. These are local formal
 	// parameters, not additional substitution targets of the instancee.
@@ -2677,6 +2614,31 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		arities[param] = inst.ParamArities[param]
 		delete(declKinds, param)
 		implicit[param] = inst.ParamArities[param]
+	}
+	// SubstInNode.constructSubst constructs scalar defaults before WITH is
+	// processed. OpApplNode checks the resolved symbol with zero arguments,
+	// even when an explicit substitution will later replace that default.
+	if !levelChecking {
+		for _, entry := range targetEntries {
+			if entry.kind != ConstantDecl && entry.kind != VariableDecl {
+				continue
+			}
+			if entry.kind == ConstantDecl && targets[entry.name].Arity != 0 {
+				continue
+			}
+			got, exists := implicit[entry.name]
+			if !exists || got == 0 || locals[entry.name] {
+				continue
+			}
+			position := inst.SourcePosition()
+			var diagnostic Diagnostic
+			if kind := declKinds[entry.name]; kind == ConstantDecl || kind == VariableDecl {
+				diagnostic = sanyRegistrationDiagnostic(position, "E4004", "Operator used with the wrong number of arguments.")
+			} else {
+				diagnostic = sanyRegistrationDiagnostic(position, "E4004", "Wrong number of arguments (%d) given to operator '%s', \nwhich requires %d arguments.", 0, entry.name, got)
+			}
+			diags = append(diags, diagnostic)
+		}
 	}
 	substitutions := instanceSubstitutions(inst)
 	substitutionExprs := map[string]Expr{}
@@ -2693,22 +2655,38 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		if name == "" || expr == nil {
 			continue
 		}
-		if prev, ok := seen[name]; ok && !levelChecking {
-			diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4241", "duplicate INSTANCE substitution for %s; first substitution at %s", name, prev), name))
-		} else {
+		previous, duplicate := seen[name]
+		if !duplicate {
 			seen[name] = subst.Pos
 		}
 		substTarget, ok := targets[name]
 		if !ok {
 			if !levelChecking {
-				diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4242", "INSTANCE substitution target %s is not a CONSTANT or VARIABLE of module %s", name, inst.Module), name))
+				diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4242", "INSTANCE substitution target %s is not a CONSTANT or VARIABLE of module %s", name, inst.Module), name)
+				diagnostic.SANYRange = SanyRange{Begin: subst.Pos, End: subst.Pos.SourceEnd()}
+				diagnostic.SANYMessage = fmt.Sprintf("Identifier '%s' is not a legal target of a substitution. \nA legal target must be a declared CONSTANT or VARIABLE in the module being instantiated. \n(Also, check for warnings about multiple declarations of this same identifier.)", name)
+				diags = append(diags, diagnostic)
 			}
 			continue
 		}
 		want := substTarget.Arity
 		got := substitutionExprArity(expr, arities)
 		if !levelChecking && got != want {
-			diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4243", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want), name, want))
+			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4243", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want), name, want)
+			position := expr.Position()
+			if _, identifier := expr.(*IdentExpr); identifier && want > 0 {
+				// selectorToNode rejects a GeneralId of the wrong arity;
+				// generateOpArg then returns nullOpArg, whose location is null.
+				arityDiagnostic := sanyDiagnosticParameters(errorAt(position, "E4271", "operator argument arity mismatch: got %d, want %d", got, want), want, got)
+				arityDiagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+				arityDiagnostic.SANYMessage = fmt.Sprintf("Expected arity %d but found operator of arity %d.", want, got)
+				diags = append(diags, arityDiagnostic)
+				position = Position{}
+				diagnostic.Pos = position
+			}
+			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+			diagnostic.SANYMessage = fmt.Sprintf("An operator must be substituted for symbol '%s', and it must have arity %d.", name, want)
+			diags = append(diags, diagnostic)
 		}
 
 		if matchLevels {
@@ -2750,24 +2728,54 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		if levelChecking {
 			diags = append(diags, checkPrimedConstants(expr, declKinds, locals)...)
 		}
+		if duplicate && !levelChecking {
+			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4241", "duplicate INSTANCE substitution for %s; first substitution at %s", name, previous), name)
+			position := expr.Position()
+			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+			diagnostic.SANYMessage = fmt.Sprintf("Multiple substitutions for symbol '%s' in substitution.", name)
+			diags = append(diags, diagnostic)
+		}
 	}
 	if levelChecking {
 		diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.SourcePosition(), declKinds)...)
 	}
-	for name, target := range targets {
+	// Generator checks remaining operator defaults before matchAll reports
+	// missing declarations. Scalar defaults are ExprNodes with arity zero.
+	if !levelChecking {
+		for _, entry := range targetEntries {
+			if entry.kind != ConstantDecl || targets[entry.name].Arity == 0 {
+				continue
+			}
+			if _, explicit := seen[entry.name]; explicit {
+				continue
+			}
+			want := targets[entry.name].Arity
+			if got, exists := implicit[entry.name]; exists && got != want {
+				diags = append(diags, sanyRegistrationDiagnostic(inst.SourcePosition(), "E4243", "An operator must be substituted for symbol '%s', and it must have arity %d.", entry.name, want))
+			}
+		}
+	}
+	for _, entry := range targetEntries {
+		if entry.kind != ConstantDecl && entry.kind != VariableDecl {
+			continue
+		}
+		name := entry.name
+		target, exists := targets[name]
+		if !exists {
+			continue
+		}
 		if _, ok := seen[name]; ok {
 			continue
 		}
-		want := target.Arity
-		got, ok := implicit[name]
+		_, ok := implicit[name]
 		if !ok {
 			if !levelChecking {
-				diags = append(diags, sanyDiagnosticParameters(errorAt(inst.Pos, "E4240", "INSTANCE %s requires substitution for %s", inst.Module, name), name, sanySymbolLocation(target.Pos), mod.Name))
+				position := inst.SourcePosition()
+				message := "Substitution missing for symbol %s declared at %s \nand instantiated in module %s."
+				diagnostic := sanyRegistrationDiagnostic(position, "E4240", message, name, sanyDiagnosticLocation{Position: target.Pos}, mod.Name)
+				diags = append(diags, diagnostic)
 			}
 			continue
-		}
-		if !levelChecking && got != want {
-			diags = append(diags, errorAt(inst.Pos, "E4240", "An operator must be substituted for symbol '%s', and it must have arity %d.", name, want))
 		}
 		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(&IdentExpr{Name: name}, mod, locals) > maximum {
 			diagnostic := sanyDiagnosticParameters(errorAt(inst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum), inst.Module, name, maximum)

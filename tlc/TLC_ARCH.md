@@ -1,5 +1,28 @@
 # TLC Architecture Notes for the Go Port
 
+## Expression namespaces and INSTANCE substitutions
+
+A source module name is not an expression namespace. EXTENDS imports its names
+without a module prefix; only an actual named INSTANCE registers qualified
+exports. Keep private evaluator lookup indexes separate from names accepted by
+semantic generation. A named instance may have the same name as its module.
+
+SubstInNode.constructSubst resolves defaults against the current SymbolTable,
+not a completed-module scan. Earlier LOCAL definitions and instance parameters
+are eligible; later declarations are not. Scalar defaults construct zero-argument
+applications before explicit WITH substitutions are generated. OpDeclNode and
+OpDefNode have different wrong-arity messages; FormalParamNode's match does not
+report that application error. Replacing a scalar default with WITH does not
+undo its construction diagnostics. After explicit substitutions, check remaining
+operator defaults, then report missing declarations in Context enumeration order.
+
+Duplicate substitutions report the second RHS location after RHS generation.
+Illegal targets report the target location. For a wrong-arity GeneralId operator
+argument, selectorToNode reports 4271; generateOpArg returns nullOpArg and the
+subsequent substitution check reports 4243 at its null location. Preserve both
+errors, exact messages and ranges. These paths match 30 complete Java comparisons;
+complete canonical failure nodes and shared evaluator graphs remain pending.
+
 ## TLC bridge declaration metadata
 
 For generated source modules, use the retained owned declaration object when

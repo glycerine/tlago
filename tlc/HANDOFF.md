@@ -824,6 +824,17 @@ existing metadata path for native AST APIs without generated source graphs.
 All 34 lower Java FastTool observations match across repeated declarations,
 enclosing rejections and EXTENDS rejections: complete arrays/counts, locations,
 signatures and initial-state counts/values. Six unchanged original TLC models pass.
+Module names alone no longer create expression namespaces. EXTENDS imports
+unqualified names; a named INSTANCE creates its qualified exports, including an
+instance with the same name as its module. INSTANCE defaults resolve only names
+available at that source point, including preceding LOCAL definitions. Scalar
+default construction precedes WITH; remaining operator-default arity checks
+precede missing-substitution errors, in source context enumeration order.
+All 30 complete Java diagnostic comparisons match. Four native model/reference
+fixtures now declare the actual named INSTANCE their qualified calls require;
+the missing-substitution assertion checks Java's exact code, message and range.
+Existing focused root/SANY checks, six unchanged original models and all-package
+compilation pass. This establishes no new full-workspace pass or inventory credit.
 Full registration against operator/theorem graphs, qualified declaration selectors,
 other imported graph identities, ordered module definitions and complete canonical
 node sharing with the evaluator remain pending.
@@ -832,9 +843,8 @@ The five expanded aggregate-label cases now match completely. The 70-formal UID
 range and first hash match Java exactly (305..374, 1607), without offsets. This
 verifies that construction prefix, not complete allocation order across all graphs.
 Next semantic work: complete ordinary operator graph construction and registration,
-qualified declaration selectors, canonical failure results and label generation
-guards. Complete
-LS/LabelNode graphs, marker scope integration, level data and evaluator sharing
+remaining qualified selector graphs, canonical failure results and label generation
+guards. Complete LS/LabelNode graphs, marker scope integration, level data and evaluator sharing
 remain pending. Receipts are in PORT_PROGRESS.md.
 
 Function and set-comprehension bridge nodes retain one group per syntactic

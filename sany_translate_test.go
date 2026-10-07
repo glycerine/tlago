@@ -1543,6 +1543,7 @@ One == Zero + 1
 ====`)
 		writeFile(t, root, `---- MODULE Root ----
 EXTENDS Helper
+Helper == INSTANCE Helper
 VARIABLE x
 Init == x = Helper!Zero
 Next == (x < Helper!One /\ x' = x + Helper!One) \/ (x = Helper!One /\ x' = x)
@@ -1710,7 +1711,17 @@ INSTANCE Illegal WITH c <- 0
 		spec, diags := LoadSanySpec(root, LoadOptions{})
 		requireNoErrors(t, diags)
 		sem := CheckSpec(spec)
-		requireHasErrorContaining(t, sem, "requires substitution")
+		if len(sem) != 3 || sem[0].Code != "E4240" {
+			t.Fatalf("want three INSTANCE errors starting with 4240: %v", sem)
+		}
+		message := "Substitution missing for symbol c declared at line 3, col 10 to line 3, col 10 of module Root \nand instantiated in module Root."
+		if sem[0].SANYMessage != message {
+			t.Fatalf("missing substitution message=%q, want %q", sem[0].SANYMessage, message)
+		}
+		location := sem[0].SANYRange
+		if location.Begin.Line != 5 || location.Begin.Column != 1 || location.End.Line != 5 || location.End.Column != 16 {
+			t.Fatalf("missing substitution range=%v, want 5:1 to 5:16", location)
+		}
 		requireHasErrorContaining(t, sem, "duplicate INSTANCE substitution")
 		requireHasErrorContaining(t, sem, "not a CONSTANT or VARIABLE")
 	})
@@ -2070,6 +2081,7 @@ Inc(n) == n + 1
 ====`)
 		writeFile(t, root, `---- MODULE Root ----
 EXTENDS Helper
+Helper == INSTANCE Helper
 VARIABLE x
 Init == x = 0
 Next == (x < 3 /\ x' = Helper!Inc(x)) \/ (x = 3 /\ x' = x)
@@ -2086,7 +2098,7 @@ Inv == Helper!Inc(x) <= 4
 		}
 	})
 
-	t.Run("checks module-qualified sibling references", func(t *testing.T) {
+	t.Run("checks named INSTANCE sibling references", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
@@ -2095,6 +2107,7 @@ Inc(n) == n + 1
 ====`)
 		writeFile(t, root, `---- MODULE Root ----
 EXTENDS Helper
+Helper == INSTANCE Helper
 Good == Helper!Inc(Helper!Zero)
 BadName == Helper!Missing
 BadArity == Helper!Inc(1, 2)
@@ -2106,7 +2119,7 @@ BadArity == Helper!Inc(1, 2)
 		requireHasErrorContaining(t, sem, "arity")
 	})
 
-	t.Run("inlines qualified sibling module infix operator calls", func(t *testing.T) {
+	t.Run("inlines named INSTANCE infix operator calls", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
@@ -2114,6 +2127,7 @@ a \oplus b == a + b
 ====`)
 		writeFile(t, root, `---- MODULE Root ----
 EXTENDS Helper
+Helper == INSTANCE Helper
 VARIABLE x
 Init == x = Helper!\oplus(1, 2)
 Next == x' = x

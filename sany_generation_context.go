@@ -83,9 +83,6 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 	}
 	addLocal := func(name string, position Position) {
 		add(name, position)
-		if mod.Name != "" {
-			add(mod.Name+"!"+name, position)
-		}
 	}
 	for _, unit := range heirs[2].GetHeirs() {
 		contexts.bindings[unit] = copySanyExpressionContext(context)
@@ -109,9 +106,6 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 				for _, name := range declaration.Names {
 					addLocal(name, declarationSymbolPosition(declaration, name))
 					recursiveArities[name], _ = declarationArity(declaration, name)
-					if mod.Name != "" {
-						recursiveArities[mod.Name+"!"+name] = recursiveArities[name]
-					}
 				}
 			}
 		case "N_OperatorDefinition", "N_FunctionDefinition", "N_Theorem":
@@ -125,18 +119,13 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 					complete = false
 				}
 				completed[definition.Name] = complete
-				completed[mod.Name+"!"+definition.Name] = complete
 				addSubexpressionReferenceNames(context, definition.Name, definition.Expr)
-				if mod.Name != "" {
-					addSubexpressionReferenceNames(context, mod.Name+"!"+definition.Name, definition.Expr)
-				}
 			}
 		case "N_Assumption":
 			for _, assumption := range mod.Assumptions {
 				if assumption.Syntax == unit && assumption.Name != "" {
 					addLocal(assumption.Name, assumption.SourcePosition())
 					completed[assumption.Name] = true
-					completed[mod.Name+"!"+assumption.Name] = true
 					addSubexpressionReferenceNames(context, assumption.Name, assumption.Expr)
 				}
 			}
