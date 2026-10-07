@@ -20,6 +20,7 @@ type SanyParser struct {
 	expecting            string
 	failedLookaheadSizes map[*SanyToken]int
 	fairnessHook         *SanySyntaxNode
+	lastOperator         *SanyOperatorInfo
 	numberFlag           bool
 	decimalFlag          bool
 }
@@ -885,39 +886,51 @@ func (p *SanyParser) assumeProveItem() *SanySyntaxNode {
 }
 
 func (p *SanyParser) assumeProveUntil(proveStop func(*SanyToken) bool) *SanySyntaxNode {
+	p.beginProduction("Assume-Prove")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
+	if p.check(SanyTokenIdentifier) {
+		label := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"],
+			NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), p.Identifier())
+		colon := p.consumeParseToken(SanyTokenColoncolon, "expected :: in Assume-Prove label")
+		return NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, p.assumeProveUntil(proveStop))
+	}
 	if p.match(SanyTokenAssume) || p.match(SanyTokenBoxassume) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
-		heirs = append(heirs, p.consume(SanyTokenAssume, "expected ASSUME"))
+		p.throwParseException([][]SanyTokenKind{{SanyTokenAssume}, {SanyTokenBoxassume}}, "expected ASSUME")
 	}
+	p.expecting = "Expression, Declaration, or AssumeProve"
 	heirs = append(heirs, p.AssumeProveItem())
+	p.expecting = "PROVE or `,'"
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Expression, Declaration, or AssumeProve"
 		heirs = append(heirs, p.AssumeProveItem())
+		p.expecting = "PROVE or `,'"
 	}
 	if p.match(SanyTokenProve) || p.match(SanyTokenBoxprove) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
-		heirs = append(heirs, p.consume(SanyTokenProve, "expected PROVE"))
+		p.throwParseException([][]SanyTokenKind{{SanyTokenProve}, {SanyTokenBoxprove}}, "expected PROVE")
 	}
+	p.expecting = "Expression"
 	heirs = append(heirs, p.ExpressionUntil(proveStop))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_AssumeProve"], heirs...)
 }
 
 func (p *SanyParser) AssumeProveItem() *SanySyntaxNode {
-	if p.startsLabeledAssumeProveAt(0) {
-		label := p.LabelName()
-		colon := p.consume(SanyTokenColoncolon, "expected :: after label")
-		return NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, p.assumeProveItem())
-	}
-	if p.startsAssumeProveAt(0) {
+	if p.startsAssumeProveAt(0) || (p.tokenAt(1).Kind == SanyTokenColoncolon && p.startsAssumeProveAt(2)) {
 		return p.assumeProveItem()
 	}
 	if p.startsNewSymbAt(0) {
 		return p.NewSymb()
 	}
-	return p.ExpressionUntilAssumeProveBoundary()
+	if p.startsExpressionLookahead() {
+		return p.ExpressionUntilAssumeProveBoundary()
+	}
+	p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected expression, declaration or Assume-Prove")
+	return nil
 }
 
 func (p *SanyParser) NewSymb() *SanySyntaxNode {
@@ -1068,10 +1081,6 @@ func (p *SanyParser) startsAssumeProveAt(offset int) bool {
 	}
 }
 
-func (p *SanyParser) startsLabeledAssumeProveAt(offset int) bool {
-	return p.startsLabelAt(offset) && p.startsAssumeProveAt(offset+2)
-}
-
 func (p *SanyParser) startsNewSymbAt(offset int) bool {
 	switch p.tokenAt(offset).Kind {
 	case SanyTokenNew, SanyTokenConstant, SanyTokenVariable, SanyTokenState, SanyTokenAction, SanyTokenTemporal:
@@ -1125,11 +1134,14 @@ func beginsSanyProof(tok *SanyToken) bool {
 
 func (p *SanyParser) pushProofLevel() {
 	p.proofLevelStack = append(p.proofLevelStack, -1)
+	if len(p.proofLevelStack) > 100 {
+		p.throwReportedParseException("Proofs nested more than 100deep.", p.peek().Begin, "E1300", "Proofs nested more than 100deep.")
+	}
 }
 
 func (p *SanyParser) popProofLevel() {
 	if len(p.proofLevelStack) == 0 {
-		return
+		p.throwReportedParseException("Parser bug: an extra QED step found.", p.peek().Begin, "E1300", "Parser bug: an extra QED step found.")
 	}
 	p.proofLevelStack = p.proofLevelStack[:len(p.proofLevelStack)-1]
 }
@@ -1648,8 +1660,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 	defer p.endProduction()
 	if IsSanyJunctionBullet(p.peek().Kind) && stack.PreInEmptyTop() {
 		stack.Push(p.JunctionList(stop), nil)
-	} else if p.startsLabelAt(0) {
-		stack.Push(p.LabelExpression(stop, stack.TopOperator()), nil)
+
 	} else {
 		switch p.peek().Kind {
 		case SanyTokenWF, SanyTokenSF:
@@ -1685,6 +1696,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 			node := p.SBracketCases()
 			if node.Kind.JavaName() == "N_FcnAppl" {
 				op, _ := GetSanyOperator("[")
+				p.lastOperator = &op
 				stack.Push(node, &op)
 			} else {
 				stack.Push(node, nil)
@@ -1705,6 +1717,21 @@ continuation:
 			p.throwOperatorStackFailure(err, tok.Begin)
 		}
 		p.expressionOperand(stack, stop)
+	} else if p.aboveCurrentJunction() && !stop(p.peek()) && p.check(SanyTokenColoncolon) {
+		colon := NewSanyTokenNode(p.advance())
+		label := stack.TopNode()
+		if !sanyIsLabel(label) {
+			message := "`::' at " + p.junctionLocation(colon.Range) + " does not follow a label."
+			p.throwReportedParseException(message, colon.Range.Begin, "E1300", message)
+		}
+		stack.PopCurrentTop()
+		expr := p.ExpressionUntil(stop)
+		if (expr.Kind.JavaName() == "N_InfixExpr" || expr.Kind.JavaName() == "N_PostfixExpr") && stack.TopOperator() != nil &&
+			(p.lastOperator == nil || !SanyOperatorPrec(*stack.TopOperator(), *p.lastOperator)) {
+			message := "Removing label at " + p.junctionLocation(label.Range) + " would change expression parsing."
+			p.throwReportedParseException(message, label.Range.Begin, "E1300", message)
+		}
+		stack.Push(NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, expr), nil)
 	}
 }
 
@@ -1866,58 +1893,26 @@ func (p *SanyParser) OperatorReference() *SanySyntaxNode {
 	return node
 }
 
-func (p *SanyParser) LabelExpression(stop func(*SanyToken) bool, stackOp *SanyOperatorInfo) *SanySyntaxNode {
-	label := p.LabelName()
-	colon := p.consume(SanyTokenColoncolon, "expected :: after label")
-	expr := p.ExpressionUntil(stop)
-	if !p.labelDoesNotChangeParse(expr, stackOp) {
-		p.add(label.Range.Begin, "E1300", "removing label would change expression parsing")
+// TLAplusParser.isLabel validates the already parsed node. An application
+// accepts only unqualified GeneralId arguments; Java does not check its callee.
+func sanyIsLabel(node *SanySyntaxNode) bool {
+	if node == nil {
+		return false
 	}
-	return NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, expr)
-}
-
-func (p *SanyParser) LabelName() *SanySyntaxNode {
-	if p.startsNoOpExtension() {
-		return p.primitiveSelectorExpr(p.NoOpExtensionBase())
+	heirs := node.GetHeirs()
+	if node.Kind.JavaName() == "N_GeneralId" {
+		return len(heirs[0].GetHeirs()) == 0
 	}
-	heirs := []*SanySyntaxNode{
-		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
-		p.Identifier(),
+	if node.Kind.JavaName() != "N_OpApplication" {
+		return false
 	}
-	if p.check(SanyTokenLbr) {
-		heirs = append(heirs, p.OpArgs())
-	}
-	return NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"], heirs...)
-}
-
-func (p *SanyParser) labelDoesNotChangeParse(expr *SanySyntaxNode, stackOp *SanyOperatorInfo) bool {
-	if expr == nil || stackOp == nil {
-		return true
-	}
-	labelOp, ok := sanyLabelExpressionOperator(expr)
-	if !ok {
-		return true
-	}
-	return SanyOperatorPrec(*stackOp, labelOp)
-}
-
-func sanyLabelExpressionOperator(expr *SanySyntaxNode) (SanyOperatorInfo, bool) {
-	if expr == nil {
-		return SanyOperatorInfo{}, false
-	}
-	switch expr.Kind.JavaName() {
-	case "N_InfixExpr":
-		heirs := expr.GetHeirs()
-		if len(heirs) >= 2 {
-			return GetSanyOperator(sanyOperatorImage(heirs[1]))
-		}
-	case "N_PostfixExpr":
-		heirs := expr.GetHeirs()
-		if len(heirs) >= 2 {
-			return GetSanyOperator(sanyOperatorImage(heirs[1]))
+	args := heirs[1].GetHeirs()
+	for i := 1; i < len(args); i += 2 {
+		if args[i].Kind.JavaName() != "N_GeneralId" || len(args[i].GetHeirs()[0].GetHeirs()) != 0 {
+			return false
 		}
 	}
-	return SanyOperatorInfo{}, false
+	return true
 }
 
 func (p *SanyParser) startsOpenExpression() bool {
@@ -2782,62 +2777,6 @@ func (p *SanyParser) isOperatorTokenAt(offset int) bool {
 	return ok
 }
 
-func (p *SanyParser) startsLabelAt(offset int) bool {
-	if p.tokenAt(offset).Kind != SanyTokenIdentifier {
-		return false
-	}
-	if p.tokenAt(offset+1).Kind == SanyTokenColoncolon {
-		return true
-	}
-	if p.tokenAt(offset+1).Kind == SanyTokenLbr {
-		end := p.findMatchingBracketOffset(offset + 1)
-		if end >= 0 && p.tokenAt(end+1).Kind == SanyTokenColoncolon {
-			return true
-		}
-	}
-	return p.startsPrefixedLabelAt(offset)
-}
-
-func (p *SanyParser) startsPrefixedLabelAt(offset int) bool {
-	at := offset
-	if p.tokenAt(at).Kind != SanyTokenIdentifier {
-		return false
-	}
-	at++
-	if p.tokenAt(at).Kind == SanyTokenLbr {
-		end := p.findMatchingBracketOffset(at)
-		if end < 0 {
-			return false
-		}
-		at = end + 1
-	}
-	sawBang := false
-	for p.tokenAt(at).Kind == SanyTokenBang {
-		sawBang = true
-		at++
-		switch {
-		case p.tokenAt(at).Kind == SanyTokenLbr:
-			end := p.findMatchingBracketOffset(at)
-			if end < 0 {
-				return false
-			}
-			at = end + 1
-		case p.startsStructOpAt(at), p.isOperatorTokenAt(at), p.tokenAt(at).Kind == SanyTokenIdentifier:
-			at++
-			if p.tokenAt(at).Kind == SanyTokenLbr {
-				end := p.findMatchingBracketOffset(at)
-				if end < 0 {
-					return false
-				}
-				at = end + 1
-			}
-		default:
-			return false
-		}
-	}
-	return sawBang && p.tokenAt(at).Kind == SanyTokenColoncolon
-}
-
 func (p *SanyParser) startsOpApplication() bool {
 	return p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenLbr
 }
@@ -3020,6 +2959,7 @@ func (p *SanyParser) BangOperatorSelector() *SanySyntaxNode {
 		p.add(tok.Begin, "E1300", "expected operator selector")
 		return NewSanyTokenNode(p.advance())
 	}
+	p.lastOperator = &op
 	kindName := "N_InfixOp"
 	if op.IsPrefix() {
 		kindName = "N_NonExpPrefixOp"
@@ -3111,6 +3051,7 @@ func reduceTLAString(image string) string {
 }
 
 func (p *SanyParser) genericOperatorNode(tok *SanyToken, op SanyOperatorInfo) *SanySyntaxNode {
+	p.lastOperator = &op
 	kindName := "N_GenInfixOp"
 	leafKindName := "N_InfixOp"
 	if op.IsPrefix() {
@@ -3128,6 +3069,7 @@ func (p *SanyParser) genericOperatorNode(tok *SanyToken, op SanyOperatorInfo) *S
 }
 
 func (p *SanyParser) genericOperatorReferenceNode(tok *SanyToken, op SanyOperatorInfo) *SanySyntaxNode {
+	p.lastOperator = &op
 	if !op.IsPrefix() {
 		return p.genericOperatorNode(tok, op)
 	}
@@ -3398,7 +3340,11 @@ func (p *SanyParser) add(pos Position, code, msg string) {
 func (p *SanyParser) infixOpToken() *SanyToken {
 	p.beginProduction("Infix Op")
 	defer p.endProduction()
-	return p.advance()
+	token := p.advance()
+	if op, ok := GetSanyOperator(token.Image); ok {
+		p.lastOperator = &op
+	}
+	return token
 }
 
 // Source SyntaxTreeNode(module, kind, token) is a leaf with the token's image.

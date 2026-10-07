@@ -145,6 +145,13 @@ func (s *SanyOperatorStack) TopNode() *SanySyntaxNode {
 	return top[len(top)-1].Node
 }
 
+// Java OperatorStack.popCurrentTop removes the label operand before parsing
+// the labeled expression, leaving the enclosing operator available to its check.
+func (s *SanyOperatorStack) PopCurrentTop() {
+	top := len(s.stackOfStacks) - 1
+	s.stackOfStacks[top] = s.stackOfStacks[top][:len(s.stackOfStacks[top])-1]
+}
+
 func (s *SanyOperatorStack) TopOperator() *SanyOperatorInfo {
 	if s.CurrentSize() == 0 {
 		return nil

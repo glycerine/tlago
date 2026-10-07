@@ -605,9 +605,26 @@ shared `QuantBound` nodes. Unbounded PICK uses identifier leaves, without
 fabricated declaration wrappers. TAKE/PICK/WITNESS retain source frames and
 expectations, including missing items, commas, domains and PICK's colon/body.
 Remove the separate proof-bound scanner and its unused search helper.
-General JavaCC rescan, the theorem's three-token Assume-Prove selection,
-proof-depth limits and remaining proof/Assume-Prove productions are reconciliation
-work; this is not complete Proof grammar or generation parity.
+Assume-Prove retains its source frame, mandatory assumptions/PROVE/body and
+expectations. Nested labels use the exact identifier/`::`/recursive production,
+without the former broad label-name scan. Proof nesting admits 100 levels and
+rejects 101 before entering a new Proof frame, matching Java.
+Expression labels are formed after parsing the primitive and postfix extensions.
+Their source shape is validated at `::`; parameterized labels retain an
+`N_OpApplication`. The operator stack removes the label operand before parsing
+its body, then uses source last-operator state for the precedence check. Projection
+reads the source callee's final name and arguments instead of fabricated wrappers.
+General JavaCC rescan, the theorem's three-token Assume-Prove selection, NEW
+production grammar and remaining proof productions are reconciliation work; this
+is not complete Proof grammar or generation parity.
+
+Next semantic work: port Generator's label-parameter checks and formal-parameter
+identity handling. A nine-case detailed label-generation comparison has three
+matches and six differences: extra parameters need one aggregated diagnostic,
+repeated/missing parameter messages differ, and non-formal arguments need the
+source additional leaf-location diagnostic. Preserve SemanticNode's UID-based
+hashing and source HashSet iteration rather than inventing a sorted/declared order.
+Receipts and case names are in PORT_PROGRESS.md; do not count this audit as green.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain
@@ -619,7 +636,7 @@ source image and zero-valued slot, then reports constructor errors before name
 resolution. Reconstructed tuple membership retains both structural diagnostics.
 General selector and constructor fidelity remains reconciliation work.
 
-Current bounded observations match Java: 469 complete parser TRACE/results, 41
+Current bounded observations match Java: 513 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
@@ -628,7 +645,7 @@ runtime probes, ten bracket constructor/group metadata and runtime probes,
 16 brace semantic observations, 25 command-generation observations, nine binder-generation observations,
 nine brace metadata/runtime probes, all 446
 node-image entries, and 16 selected complete definition trees with kinds, images
-and ranges, plus 76 selected complete module trees with kinds, images,
+and ranges, plus 94 selected complete module trees with kinds, images,
 ranges, original images and proof levels.
 Keep each scope distinct. Whole-module canonical AST assertions, general source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.

@@ -1075,7 +1075,7 @@ Precedence == a + Lab:: b * c
 		if expr := defs[0].GetHeirs()[2]; expr.Kind.JavaName() != "N_Label" {
 			t.Fatalf("labeled expression = %s heirs %v, want N_Label", expr.Kind.JavaName(), sanyNodeKindNames(expr.GetHeirs()))
 		}
-		if expr := defs[1].GetHeirs()[2]; expr.Kind.JavaName() != "N_Label" || countSanyChildren(findSanyChild(t, expr, "N_GeneralId"), "N_OpArgs") != 1 {
+		if expr := defs[1].GetHeirs()[2]; expr.Kind.JavaName() != "N_Label" || countSanyChildren(findSanyChild(t, expr, "N_OpApplication"), "N_OpArgs") != 1 {
 			t.Fatalf("parameterized label = %s heirs %v, want N_Label with N_OpArgs", expr.Kind.JavaName(), sanyNodeKindNames(expr.GetHeirs()))
 		}
 		if countSanyDescendants(defs[2], "N_Label") != 1 {

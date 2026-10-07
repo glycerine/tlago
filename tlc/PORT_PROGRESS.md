@@ -1,5 +1,59 @@
 # TLC Port Progress
 
+2026-10-06 Assume-Prove frames, proof depth and actual expression labels:
+Previous completed commit: b0f924e. Port Assume-Prove's frame and expectations,
+mandatory ASSUME/BOXASSUME, facts, PROVE/BOXPROVE and body. Nested label selection
+uses source token-two COLONCOLON/token-three ASSUME checks. AssumeProve itself
+constructs the exact Identifier label, empty IdPrefix, COLONCOLON and recursive
+body, rather than using the broader expression LabelName parser. Proof depth
+admits 100 levels and rejects 101 before bpa; preserve the source literal error
+including its missing space. Pop with no level reports the source parser-bug
+exception. The theorem's three-token preview and NEW grammar remain pending.
+
+Actual traces exposed the expression-label shortcut bypassing PrimitiveExp and
+accepting qualified simple labels. Port labels after primitive/postfix parsing,
+source isLabel, operator-stack popCurrentTop, last-operator state and precedence
+failure, including source locations/messages. Parameterized labels are actual
+N_OpApplication nodes; remove old label-name and prefixed-label preview helpers.
+The unchanged source semantic corpus and model 219 exposed projection depending
+on the invented N_GeneralId-with-arguments shape. Fix production projection to
+read source application name/arguments. Generator uses the callee's final name,
+even for qualified application callees admitted by the source isLabel quirk.
+Remove the obsolete argument-name fallback. Preserve original assertions/vectors.
+The initial failed source-package run (1.408 seconds) and root/model run
+(3.092 seconds) earn no pass credit; failures were fixed in production.
+
+Pinned Java's complete tree for the unchanged handwritten native labeled-expression
+fixture contains N_OpApplication with N_OpArgs under N_Label. Align that native
+shape assertion only, preserving the exact one-argument-list count and other
+assertions. Receipt: /mnt/oldrog/tmp/tlago-label-source-fixture.java.log.
+No permanent new tests or original Java assertions/fixtures changed.
+
+All 513 complete actual parser TRACE/results match pinned Java: 44 new Assume-Prove,
+label and 99/100/101-depth cases, plus all earlier 469. Inspect MATCH count 513 and
+different [] in /mnt/oldrog/tmp/tlago-sany-assume-parser-audit.log. All 94 selected
+complete module trees match kinds, images, ranges, original images and proof
+levels, including 18 new accepted cases and the complete 99/100-depth trees:
+/mnt/oldrog/tmp/tlago-assume-module-tree-audit.log. Existing source SANY package
+passes 1.799 seconds; explicit relevant native parser/bridge/context/scaffold,
+source ParseErrorTests, six original proof/selector/lifecycle models and scoped
+identifier/reference checks pass 5.045 seconds. Logs:
+/mnt/oldrog/tmp/tlago-sany-assume-{sany,root}.log. Every package compiles:
+/mnt/oldrog/tmp/tlago-sany-assume-compile.log. No inventory or full-workspace credit.
+
+A detailed nine-case semantic label comparison exposes older generation gaps;
+it is NOT a passing receipt. Three cases match (nested, quant_params, simple).
+Six differ: arg_constant, label_select, params, qualified_callee, quant_missing,
+repeated. Receipts: /mnt/oldrog/tmp/tlago-sany-label-semantic.log and
+/mnt/oldrog/tmp/tlago-label-semantic-audit/*/{java,go}.log. Source formalParamsEqual
+aggregates extra parameters, reports exact repeated/missing messages, and uses
+FormalParamNode identities; generateLabel emits an additional argument-location
+error for non-formal arguments. SemanticNode.hashCode uses kind and myUID, so
+faithful HashSet iteration requires real semantic identity allocation, not a new
+sorting or declaration-order shortcut. Existing tests remain unchanged and green;
+these additional detailed differences remain next semantic work. No general
+label-generation parity claim. Preserve live full MSB session 5144, polled this turn.
+
 2026-10-06 Proof binder lookahead and common bounds:
 Previous completed commit: 388604d. Port TakeStep/PickStep/WitnessStep frames,
 mandatory tokens and source expectation transitions. TAKE's unlimited preview

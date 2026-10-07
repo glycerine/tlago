@@ -1950,48 +1950,29 @@ func sanyExceptComponent(node *SanySyntaxNode) (ExceptComponent, Diagnostics) {
 func sanyLabel(node *SanySyntaxNode) (Expr, Diagnostics) {
 	label := &LabelExpr{Pos: sanyNodePosition(node)}
 	heirs := node.GetHeirs()
-	if len(heirs) > 0 && heirs[0].Kind.JavaName() == "N_GeneralId" {
-		label.Name = sanyGeneralIDName(heirs[0])
-		label.Params = sanyGeneralIDArgNames(heirs[0])
+	if len(heirs) > 0 {
+		name := heirs[0]
+		if name.Kind.JavaName() == "N_OpApplication" {
+			application := name.GetHeirs()
+			label.Params = sanyLabelArgumentNames(name)
+			name = application[0]
+		}
+		if name.Kind.JavaName() == "N_GeneralId" {
+			label.Name = sanyFirstTokenImage(name.GetHeirs()[1])
+		}
 	}
 	body, diags := sanyExpr(lastSanyExpression(node))
 	label.Body = body
 	return label, diags
 }
 
-func sanyGeneralIDArgNames(node *SanySyntaxNode) []string {
+func sanyLabelArgumentNames(application *SanySyntaxNode) []string {
 	var params []string
-	if node == nil {
-		return params
-	}
-	for _, child := range node.GetHeirs() {
-		if child.Kind.JavaName() != "N_OpArgs" {
-			continue
-		}
-		for _, arg := range expressionChildren(child) {
-			if name := sanyLabelParamName(arg); name != "" {
-				params = append(params, name)
-			}
-		}
+	args := application.GetHeirs()[1].GetHeirs()
+	for i := 1; i < len(args); i += 2 {
+		params = append(params, sanyFirstTokenImage(args[i].GetHeirs()[1]))
 	}
 	return params
-}
-
-func sanyLabelParamName(node *SanySyntaxNode) string {
-	if node == nil {
-		return ""
-	}
-	switch node.Kind.JavaName() {
-	case "IDENTIFIER":
-		return node.Image
-	case "N_GeneralId":
-		return sanyGeneralIDName(node)
-	default:
-		if id := firstSanyIdentifier(node); id != nil {
-			return id.Image
-		}
-	}
-	return ""
 }
 
 func sanyAction(node *SanySyntaxNode) (Expr, Diagnostics) {
