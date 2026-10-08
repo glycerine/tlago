@@ -18420,6 +18420,42 @@ long race workload was run. All handles are retired. These native checks add
 no original disabled-harness completion credit; broader failure/recovery and
 payload audits remain pending, and the distributed goal is incomplete.
 
+## October 8, 2026: source ToolIO routing for FP failover warnings
+
+Worker shutdown inspection confirmed the existing orderly executor shutdown and
+exit-latch sequencing; no new cancellation or forced-task policy was introduced.
+The accompanying manager audit found direct os.Stdout writes in failover even
+though Java FPSetManager and FPSetManagerCallable use ToolIO.out.println.
+Corrected that shared helper to ToolIOPrintln for the connection warning and
+the no-server warning. Embedded detail newline and nullable-message "null"
+text retain source formatting. Failover/retry and result behavior are unchanged.
+
+No original manager test asserts warning stream routing. Added a short six-call
+matrix covering put/contains, both block calls and size/states-seen, in system
+and tool capture modes, with text and null failure details. Require exact system
+output without stderr output, or exact two captured println messages. ToolIO
+stream, capture, pending-message and mode state are restored after each case.
+Reassignment must still mark the only endpoint unavailable.
+
+Added a short native TCP failover check with two owned endpoints. Close the lost
+host before issuing any insertion, then require storage at the surviving host,
+no insertion at the lost host, one surviving wrapper and one captured connection
+warning with its native failure detail. This is an unambiguous pre-call loss;
+no ambiguous completed insertion is blindly retried by a new transport layer.
+Broader FP process/model failures remain separate work, and these checks add no
+original-method completion credit.
+
+Initial compile check caught a nullable-pointer argument passed to the existing
+variadic-string IOException constructor. Corrected the test to use its empty
+constructor for null, or the original string constructor for text.
+Final warnings/native failover/original dynamic-manager selection passes normally
+in 0.057 seconds (95189 terminal status 0; earlier local selection 54433 passed
+in 0.052 seconds). Only the exact short native failover check runs under -race,
+passing in 1.035 seconds (96056 terminal status 0). No full suite, long model
+or broad race selection was run for this output-routing change. All handles
+are retired. HANDOFF, architecture and inventory are current; the distributed
+goal remains incomplete.
+
 ## October 8, 2026: checkpoint barrier with an assigned TCP block
 
 Added TestDistributedCheckpointWaitsForAssignedBlock. Upstream has no enabled

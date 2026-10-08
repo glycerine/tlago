@@ -252,9 +252,9 @@ func (m *DistributedFPSetManager) failover(index int, failure error) bool {
 	if detail := javaThrowableDetailMessage(failure); detail != nil {
 		message = *detail
 	}
-	fmt.Fprintf(os.Stdout, "Warning: Failed to connect from %s to the fp server at %s.\n%s\n", m.GetHostName(), m.entry(index).hostname, message)
+	ToolIOPrintln(fmt.Sprintf("Warning: Failed to connect from %s to the fp server at %s.\n%s", m.GetHostName(), m.entry(index).hostname, message))
 	if m.Reassign(index) == -1 {
-		fmt.Fprintln(os.Stdout, "Warning: there is no fp server available.")
+		ToolIOPrintln("Warning: there is no fp server available.")
 		return false
 	}
 	return true

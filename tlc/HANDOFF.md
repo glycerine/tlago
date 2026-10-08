@@ -1996,6 +1996,14 @@ through native error traits. Original bit-vector formatting and manager tests,
 short native checks and focused race checks pass. Full remote-FP verification
 is recorded in PORT_PROGRESS.md; no Java wire protocol is introduced.
 
+Fingerprint failover warnings now use ToolIO, matching the original manager and
+callables. Configured system streams and tool-mode message collection retain
+the exact two println calls, embedded failure-detail newline and null-message
+text. Scalar, batch and statistics routing checks and the original manager
+translations pass. A short TCP test closes an endpoint before any insertion,
+then verifies surviving-server reassignment and warning capture; this does not
+retry an ambiguously completed insertion. Broader FP failure models remain open.
+
 
 
 These focused checks do not prove distributed completion.

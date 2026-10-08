@@ -10982,3 +10982,10 @@ carry the null-failure trait instead of reconstructing JVM exception objects.
 FP TCP replies include word-array nullness separately from vector presence, so
 gob's empty-slice encoding cannot turn an initialized empty answer into an
 uninitialized one. Initialized empty vectors remain valid and yield no bits.
+
+Distributed FP failover diagnostics go through ToolIO rather than bypassing it
+with direct stdout writes. The first println call includes the warning and
+failure detail separated by an embedded newline; the second is issued only
+when reassignment reports no available server. Tool mode records those two
+messages, and system mode honors its assigned output stream. Reassignment,
+retry and final scalar/block/statistics answers retain the original behavior.
