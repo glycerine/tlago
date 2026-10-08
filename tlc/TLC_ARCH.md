@@ -11480,3 +11480,23 @@ concurrent trace's prior embedded fallback behavior is unchanged and is not
 claimed as fully audited here. Focused native failure tests, original
 TLCGetLevel/TTrace methods and actual TCP checkpoint checks pass. Supplemental
 failure checks add no original-method completion credit.
+
+
+### Distributed server-thread catch/finally and goroutine ownership
+
+Run uses separate deferred catch and finally operations. The catch is executed
+first; an error raised inside it still executes finally and escapes to the
+owned goroutine boundary. Compute/publication failures outside their narrow
+remote/null catches raise into this one outer catch rather than invoking the
+handler from within the body and recatching handler failures. Finally reads
+remote cache statistics, cancels keepalive and clears assigned states in order.
+Returned/panicked remote cache failures enter the same warning catch. Unchecked
+cache failures escape and skip the remaining finally operations.
+
+Start prints uncaught failures using existing native stack diagnostics before
+closing its join channel. Failure terminates only the owned goroutine, matching
+the source thread lifetime. Direct Run calls still propagate an uncaught
+handler/finalizer failure to their caller. No extra model cleanup, worker count
+decrement or result mutation occurs. Five joined native child-process tests
+and focused local/TCP checks verify these boundaries; supplemental checks add
+no original-method completion credit. No Java runtime machinery is introduced.

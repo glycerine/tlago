@@ -946,6 +946,13 @@ monotonic successful depth, management `-1` catches and final reporting's
 shutdown/count mutation order. Existing original TLCGetLevel and its TTrace
 methods pass; supplemental failure tests add no original-method credit.
 
+Server-thread finalizer checks now cover returned/panicked remote cache failures,
+uncaught runtime/fatal cache failures and fatal trace printing inside the catch.
+Native goroutine ownership preserves source catch/finally order without killing
+the process, recatching handler failures or executing later finally steps after
+a cache failure. Focused RPC/codec/checkpoint and original smart-proxy checks pass.
+No direct original finalizer methods exist; supplemental checks add no credit.
+
 Returned fatal local endpoint errors now escape exactly like fatal panics;
 scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
 warning or availability mutation. Original Java manager translations and native

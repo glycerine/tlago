@@ -19921,3 +19921,47 @@ coordinator retry/loss checks pass (0.047 seconds). There are no direct source
 failure methods for these boundaries, so supplemental checks add no method
 completion credit. No full suite, long workload or race instrumentation was
 selected. All handles are terminal; distributed completion remains unproven.
+
+
+## October 8, 2026: coordinator server-thread catch/finally ownership
+
+Compared TLCServerThread.run's outer catch/finally with Go Run and Start.
+Unchecked final cache-read failures escaped the goroutine and killed the whole
+Go process; source leaves them uncaught only in the owned thread. A panicked
+remote cache failure also bypassed the source RemoteException catch, while
+the same returned failure warned normally. Start now prints an uncaught native
+diagnostic before completing its join channel and terminates only that owned
+goroutine. The final cache read normalizes return/panic forms through the
+existing generic invocation boundary, preserving the remote-only warning catch.
+
+Registered Run's finally separately from its outer catch, so a failure raised
+by error handling still executes finalization. The first repaired check also
+exposed handler failures being caught a second time: computeBlock and publication
+called handleRunError inside the body protected by the catch. They now raise
+non-inner-caught failures into the single outer catch. Handler failures escape
+that catch while finally still executes; unchecked final cache failures skip
+remaining timer cancellation/state clearing as in Java. No invented cleanup,
+worker decrement, cancellation or model-result mutation was added.
+
+Added distributed_thread_finalizer_test.go because upstream has no direct tests
+for these boundaries. Two direct remote cache cases cover return/panic warning
+parity. Five fresh joined native processes check returned/panicked runtime and
+fatal cache failures plus fatal trace reconstruction inside the error handler.
+They verify process survival, uncaught diagnostics, finalization ordering, timer
+cancel/state-clear boundaries, retained worker count/model state and absence
+of later queue finish after fatal trace printing. They call the actual Start/Run
+without launching a keepalive timer; timer flags/channels expose cancellation.
+
+Initial verification failed on panicked remote cache and all five process cases
+(52692, status 1, 0.077 seconds). Intermediate handler verification exposed the
+second catch (48254, status 1, 0.063 seconds). Corrected finalizer, trace-publication
+and original nine smart-proxy contexts pass (90107, status 0, 0.068 seconds).
+Broader focused local registration/publication/finalizer/smart-proxy checks pass
+(0.091 seconds). Native TCP retry/loss, worker lifecycle, fatal boundary and
+assigned-block checkpoint checks pass (0.054 seconds). Exact RPC codec and
+unevaluated lazy failure checks pass separately (0.018 seconds). Supplemental
+checks add no original-method credit. No full suite, long workload or race
+instrumentation was selected. Distributed completion remains unproven.
+
+Final strengthened queue-finish assertion also passes (21086, status 0,
+0.063 seconds). All test handles are terminal.

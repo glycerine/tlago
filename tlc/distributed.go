@@ -886,6 +886,13 @@ func (t *TLCServerThread) Start() {
 	}
 	go func() {
 		defer close(t.runDone)
+		// Uncaught source thread failures stop this goroutine, after Run's
+		// catch/finally sequence, without terminating the process.
+		defer func() {
+			if failure := recover(); failure != nil {
+				fmt.Fprint(os.Stderr, javaThrowableStackTrace(panicValueAsError(failure)))
+			}
+		}()
 		t.Run()
 	}()
 }
@@ -937,13 +944,17 @@ func (t *TLCServerThread) Run() {
 	}
 	IncNumWorkers(1)
 	stateQueue := t.Server.StateQueue
+	// Register finally separately so an exception raised by the catch itself
+	// still executes it. A failure within finally skips its remaining steps.
+	defer func() {
+		t.readCacheRateRatio()
+		t.cancelKeepAlive()
+		t.setStates([]*TLCStateMut{})
+	}()
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			t.handleRunError(panicValueAsError(recovered), stateQueue)
 		}
-		t.readCacheRateRatio()
-		t.cancelKeepAlive()
-		t.setStates([]*TLCStateMut{})
 	}()
 	for {
 		if t.Selector == nil {
@@ -978,8 +989,7 @@ func (t *TLCServerThread) Run() {
 		newStates := res.GetNextStates()
 		newFps := res.GetNextFingerprints()
 		if err := t.publishBlock(stateQueue, newStates, newFps); err != nil {
-			t.handleRunError(err, stateQueue)
-			return
+			panic(err)
 		}
 	}
 }
@@ -1045,8 +1055,7 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 	}
 	// Other exceptions escape Java's inner remote/NPE catches into the
 	// server thread's outer Throwable catch, including WorkerException.
-	t.handleRunError(err, stateQueue)
-	return nil, false
+	panic(err)
 }
 
 func invokeDistributedWorker(worker *DistributedWorkerSmartProxy, states []*TLCStateMut) (result *NextStateResult, err error) {
@@ -1221,7 +1230,7 @@ func (t *TLCServerThread) readCacheRateRatio() {
 	if t == nil || t.Worker == nil {
 		return
 	}
-	ratio, err := t.Worker.GetCacheRateRatio()
+	ratio, err := invokeRegistryBoundary(t.Worker.GetCacheRateRatio)
 	if err != nil {
 		if !isDistributedRemoteFailure(err) {
 			panic(err)

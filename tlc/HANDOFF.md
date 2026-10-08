@@ -147,6 +147,14 @@ Focused failure, monotonic-depth, fresh-process final-reporting, native TCP and
 original TLCGetLevel/TTrace checks pass. Direct source tests for these failure
 boundaries do not exist, so supplemental checks add no method credit.
 
+Server-thread catch and finally run in source order even if trace printing in
+the catch fails. Uncaught handler/finalizer failures print a native diagnostic
+and stop only the owned goroutine. A final cache-read remote failure, returned
+or panicked, warns and continues; an unchecked cache failure skips the remaining
+finally operations. Five joined native process checks and focused worker RPC,
+codec, checkpoint and original smart-proxy tests pass. Supplemental finalizer
+checks have no direct original methods and add no completion credit.
+
 Fingerprint check tasks now catch I/O failures before executor completion
 wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for
 fingerprint distance, `false` for invariants). Unchecked task failures retain
