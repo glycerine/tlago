@@ -796,8 +796,13 @@ sequences; short messages use only the longest generated sequence. Junction
 failure contributes no invented bullet tokens, and formal declarations require
 their actual caller site. All 341 external cases also match Java's ordered
 expected-token entries, including 14,741 sequences in 117 nonempty results.
-Current original frontend/model checks pass in 9.738 seconds, complete SANY in
-1.914 seconds and compilation passes. Exhaustive malformed rescan contexts,
+Generated exceptions now own Java's full getMessage and short-message
+formatters; ordinary exceptions return their supplied message. Full messages
+escape following tokens and list alternatives; short messages escape only the
+prior token. Both match Java across 2,400 external formatting observations.
+The 341 expected-entry and 5,823 syntax/message rows remain equal. Current
+original frontend/model checks pass in 9.783 seconds, complete SANY in 2.024
+seconds and compilation passes. Exhaustive malformed rescan contexts,
 syntax AST parity and proof generation remain reconciliation work.
 These bounded observations do not establish every semantic-predicate context or
 full parser parity.

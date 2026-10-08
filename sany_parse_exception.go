@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 )
 
@@ -12,6 +13,8 @@ type sanyParseFrame struct {
 
 type sanyParseException struct {
 	diagnostic             Diagnostic
+	specialConstructor     bool
+	message                string
 	currentToken           *SanyToken
 	expectedTokenSequences [][]SanyTokenKind
 }
@@ -71,44 +74,116 @@ func (p *SanyParser) directExpectedSequences(expected [][]SanyTokenKind) [][]San
 	return append(result, longer...)
 }
 
-// throwParseException uses the actual expected token sequences, as JavaCC's
-// special ParseException constructor does. getShortMessage uses their maximum
-// length when rendering the following input, and escapes only the prior token.
+// Generated exceptions preserve JavaCC's token and sequence references. Token
+// lookahead fills the chain before either ParseException formatter walks it.
 func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessage string) {
 	expected = p.rescanLookaheads(p.directExpectedSequences(expected))
-	var message strings.Builder
 	maxSize := 0
 	for _, sequence := range expected {
 		if len(sequence) > maxSize {
 			maxSize = len(sequence)
 		}
 	}
+	if maxSize > 0 {
+		p.tokenAt(maxSize - 1)
+	}
+	token := p.peek()
+	failure := &sanyParseException{
+		specialConstructor:     true,
+		currentToken:           p.previous(),
+		expectedTokenSequences: expected,
+	}
+	if failure.currentToken == nil {
+		// JavaCC starts with an unconsumed dummy token linked to the input.
+		failure.currentToken = &SanyToken{Next: token}
+	}
+	failure.diagnostic = p.reportedParseException(failure.shortMessage(), token.Begin, "E1300", nativeMessage).diagnostic
+	panic(failure)
+}
+
+// shortMessage ports ParseExceptionExtended.getShortMessage. Only the prior
+// token is escaped; following token images are printed literally.
+func (e *sanyParseException) shortMessage() string {
+	if !e.specialConstructor {
+		return e.Error()
+	}
+	maxSize := 0
+	for _, sequence := range e.expectedTokenSequences {
+		if len(sequence) > maxSize {
+			maxSize = len(sequence)
+		}
+	}
+	var message strings.Builder
 	message.WriteString("Encountered \"")
+	token := e.currentToken.Next
 	for i := 0; i < maxSize; i++ {
-		if i > 0 {
+		if i != 0 {
 			message.WriteByte(' ')
 		}
-		token := p.tokenAt(i)
 		if token.Kind == SanyTokenEOF {
 			message.WriteString(token.Kind.JavaImage())
 			break
 		}
 		message.WriteString(token.Image)
+		token = token.Next
 	}
-	token := p.peek()
-	prior := ""
-	if previous := p.previous(); previous != nil {
-		prior = sanyLexicalEscapes(previous.Image)
+	next := e.currentToken.Next
+	fmt.Fprintf(&message, "\" at line %d, column %d and token \"%s\" ", next.Begin.Line, next.Begin.Column, sanyLexicalEscapes(e.currentToken.Image))
+	return message.String()
+}
+
+// Error ports ParseException.getMessage, including the generated constructor's
+// complete alternatives and escapes. Ordinary message constructors return the
+// supplied message directly.
+func (e *sanyParseException) Error() string {
+	if !e.specialConstructor {
+		return e.message
 	}
-	fmt.Fprintf(&message, "\" at line %d, column %d and token \"%s\" ", token.Begin.Line, token.Begin.Column, prior)
-	failure := p.reportedParseException(message.String(), token.Begin, "E1300", nativeMessage)
-	failure.currentToken = p.previous()
-	if failure.currentToken == nil {
-		// JavaCC starts with an unconsumed dummy token linked to the input.
-		failure.currentToken = &SanyToken{Next: token}
+	eol := "\n"
+	if runtime.GOOS == "windows" {
+		eol = "\r\n"
 	}
-	failure.expectedTokenSequences = expected
-	panic(failure)
+	var expected strings.Builder
+	maxSize := 0
+	for _, sequence := range e.expectedTokenSequences {
+		if len(sequence) > maxSize {
+			maxSize = len(sequence)
+		}
+		for _, kind := range sequence {
+			expected.WriteString(kind.JavaImage())
+			expected.WriteByte(' ')
+		}
+		if sequence[len(sequence)-1] != SanyTokenEOF {
+			expected.WriteString("...")
+		}
+		expected.WriteString(eol)
+		expected.WriteString("    ")
+	}
+	var message strings.Builder
+	message.WriteString("Encountered \"")
+	token := e.currentToken.Next
+	for i := 0; i < maxSize; i++ {
+		if i != 0 {
+			message.WriteByte(' ')
+		}
+		if token.Kind == SanyTokenEOF {
+			message.WriteString(token.Kind.JavaImage())
+			break
+		}
+		message.WriteString(sanyLexicalEscapes(token.Image))
+		token = token.Next
+	}
+	next := e.currentToken.Next
+	fmt.Fprintf(&message, "\" at line %d, column %d.%s", next.Begin.Line, next.Begin.Column, eol)
+	if len(e.expectedTokenSequences) == 1 {
+		message.WriteString("Was expecting:")
+	} else {
+		message.WriteString("Was expecting one of:")
+	}
+	message.WriteString(eol)
+	message.WriteString("    ")
+	message.WriteString(expected.String())
+	return message.String()
 }
 
 // A source ParseException created with a message uses getShortMessage's ordinary
@@ -135,7 +210,7 @@ func (p *SanyParser) reportedParseException(shortMessage string, position Positi
 	}
 	diagnostic := errorAt(position, code, "%s", nativeMessage)
 	diagnostic.SANYParseMessage = message.String()
-	return &sanyParseException{diagnostic: diagnostic}
+	return &sanyParseException{diagnostic: diagnostic, message: shortMessage}
 }
 
 func (p *SanyParser) throwOperatorStackFailure(failure error, position Position) {

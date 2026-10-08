@@ -10281,3 +10281,23 @@ and Go's exception entries on the same 341 production cases. All entries agree,
 including 14,741 sequences over 117 nonempty results; the 5,823 syntax/message
 rows also remain identical. This is bounded evidence, not exhaustive parser,
 syntax allocation, constructor API or evaluator parity.
+
+
+## ParseException formatters retain their distinct source behavior
+
+Generated parser failures construct an exception retaining currentToken and
+expectedTokenSequences before formatting its diagnostic. ParseException's
+getMessage is represented by Error: it escapes following token images, includes
+all expected alternatives in order, retains the source ellipses and indentation,
+and distinguishes one expected sequence from multiple or zero sequences.
+Platform line separation follows the host OS. ParseExceptionExtended's short
+formatter instead prints following images literally and escapes only the prior
+token. Ordinary message exceptions return their supplied message directly.
+
+External Java/Go observations cover all 295 singleton token alternatives,
+empty expectations, EOF, multi-token/multiple alternatives and eight prior
+images including quotes, slashes, controls, non-ASCII and a supplementary Unicode
+character. All 2,400 full/short formatter observations agree on Linux. Existing
+341 expected-entry and 5,823 syntax/message production rows remain identical.
+Windows newline behavior, full constructor/token-reference identity and exhaustive
+malformed rescan/AST contexts are not established by these observations.

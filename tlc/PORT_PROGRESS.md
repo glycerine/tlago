@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-07 Port the actual ParseException message formatters:
+Previous completed commit: f46a48f. Generated failures now create an exception
+with retained token/sequence references and special-constructor state before
+formatting the diagnostic. Port ParseException.getMessage as Error and
+ParseExceptionExtended.getShortMessage as shortMessage. Preserve complete
+alternative order, ellipses, spaces, singular/plural wording, EOF, and distinct
+escaping: full messages escape following tokens; short messages escape only the
+prior token. Ordinary exceptions retain and return their supplied message.
+Line separator follows the host OS; only Linux execution is observed here.
+
+External ExceptionFormattingProbe.java and tlago-exception-format-manual_test.go
+compare empty expectations, all 295 singleton alternatives, multi-token/multiple
+alternatives, EOF and eight prior images covering controls, quotes, slashes,
+non-ASCII and supplementary Unicode. All 2,400 full/short observations match
+Java. Java returned 0; Go observer 30576 returned 0 and is retired. Existing
+BodyExpected observer 42750 returned 0 and is retired; 341 expected-entry rows
+and 5,823 syntax/message rows still agree. External probes/overlays/logs remain
+under /mnt/oldrog/tmp with prefix tlago-exception-format. No invented permanent
+tests, weakened original assertions or new original-method credit.
+
+Final original frontend/model gate 15527 returned 0 in 9.783 seconds; complete
+SANY 11150 returned 0 in 2.024 seconds; all-package compilation 11638 returned
+0. All handles retired. Normal execution without race. Logs:
+tlago-exception-format-originals, -sany and -compile under /mnt/oldrog/tmp.
+Constructor/token-reference identity, exhaustive malformed contexts and broader
+parser/semantic/evaluator parity remain pending. Known native XML failures and
+main inventory counts are unchanged; no new full-workspace green claim.
+
 2026-10-07 Remove native failure-span estimates and observe expected entries:
 Previous completed commit: 3357bd7. Trace the last manual span estimator to three
 obsolete identifier-LHS branches in ordinary/proof/LET operator helpers. Actual
