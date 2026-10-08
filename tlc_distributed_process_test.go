@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +30,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		name                                       string
 		remoteFP, recovering, workerLoss, combined bool
 		allWorkersLost                             bool
+		workerReplyLoss                            bool
 		fingerprintLoss                            bool
 		fingerprintServers                         int
 		midRunCheckpoint                           bool
@@ -50,6 +52,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "checkpoint_interruption_after_first_fingerprint_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true, checkpointInterruptedAfterIntern: true, checkpointInterruptedAfterFirstFP: true},
 		{name: "worker_loss", workerLoss: true},
 		{name: "all_workers_lost", workerLoss: true, allWorkersLost: true},
+		{name: "computed_worker_reply_loss", workerLoss: true, allWorkersLost: true, workerReplyLoss: true},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
@@ -81,7 +84,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
 				command.Dir = model
 				command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
-				if role == "worker-fingerprint-loss" {
+				if role == "worker-fingerprint-loss" || role == "worker-reply-loss" {
 					command.Env = append(command.Env, "TLAGO_NATIVE_WORKER_RELEASE="+releaseWorker)
 				}
 				if scenario.fingerprintServers > 1 && role == "fpserver" {
@@ -474,17 +477,20 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				t.Log("coordinator retains two partitions sharing the surviving fingerprint registration")
 			}
 			if scenario.workerLoss {
-				failed := start("worker-failpoint", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
-				// Wait for a real assigned RPC block and all registrations.
-				// The failpoint pauses actual successor evaluation, so killing
-				// it deterministically discards an unfinished assigned block.
+				role, marker := "worker-failpoint", "NATIVE_WORKER_BLOCK_ASSIGNED"
+				if scenario.workerReplyLoss {
+					role, marker = "worker-reply-loss", "NATIVE_WORKER_REPLY_COMPUTED"
+				}
+				failed := start(role, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				// Wait for a real RPC block and all registrations. Process-loss
+				// rows pause evaluation; reply-loss waits for actual completion.
 				ticker := time.NewTicker(10 * time.Millisecond)
 				defer ticker.Stop()
 				registrations := 2
 				if scenario.allWorkersLost {
 					registrations = 1
 				}
-				for !strings.Contains(failed.output.String(), "NATIVE_WORKER_BLOCK_ASSIGNED") || strings.Count(server.output.String(), "@!@!@STARTMSG 7001:") < registrations {
+				for !strings.Contains(failed.output.String(), marker) || strings.Count(server.output.String(), "@!@!@STARTMSG 7001:") < registrations {
 					select {
 					case err := <-server.done:
 						server.joined = true
@@ -497,13 +503,19 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					case <-ticker.C:
 					}
 				}
-				if err := failed.command.Process.Kill(); err != nil {
-					t.Fatal(err)
+				if scenario.workerReplyLoss {
+					if err := os.WriteFile(releaseWorker, nil, 0o600); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					if err := failed.command.Process.Kill(); err != nil {
+						t.Fatal(err)
+					}
+					if err := <-failed.done; err == nil {
+						t.Fatal("killed worker unexpectedly exited successfully")
+					}
+					failed.joined = true
 				}
-				if err := <-failed.done; err == nil {
-					t.Fatal("killed worker unexpectedly exited successfully")
-				}
-				failed.joined = true
 				if scenario.allWorkersLost {
 					// The finally-block cache warning follows the source worker
 					// cleanup and worker-count decrement. Wait for both before
@@ -529,7 +541,28 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					}
 					t.Log("last worker cleanup completed; coordinator remains available with unfinished work")
 				}
-				t.Log("killed worker with an unfinished assigned block; starting replacement")
+				if scenario.workerReplyLoss {
+					for !strings.Contains(failed.output.String(), "NATIVE_WORKER_TRANSPORT_CLOSED_RUNTIME_ALIVE") {
+						select {
+						case err := <-failed.done:
+							failed.joined = true
+							t.Fatalf("worker exited before live-runtime confirmation: %v", err)
+						case <-ctx.Done():
+							t.Fatal("worker live-runtime confirmation watchdog expired")
+						case <-ticker.C:
+						}
+					}
+					if err := os.WriteFile(releaseWorker+".retire", nil, 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if err := <-failed.done; err != nil {
+						t.Fatalf("retiring disconnected worker: %v", err)
+					}
+					failed.joined = true
+					t.Log("computed reply lost; live worker retired after coordinator cleanup; starting replacement")
+				} else {
+					t.Log("killed worker with an unfinished assigned block; starting replacement")
+				}
 				start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 			}
 			for _, process := range roles {
@@ -560,6 +593,19 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			if scenario.workerLoss {
 				if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerLost)) || strings.Count(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerDeregistered)) != 1 {
 					t.Fatal("worker loss was not reported and deregistered exactly once")
+				}
+				if scenario.workerReplyLoss {
+					if len(nativeDistributedMessages(output, tlc.ECTLCDistributedExceedBlocksize)) != 1 {
+						t.Fatal("lost computed reply did not preserve the single source EOF smaller-block retry")
+					}
+					for _, process := range roles {
+						if process.output.role == "worker-reply-loss" {
+							workerOutput := process.output.String()
+							if strings.Count(workerOutput, "NATIVE_WORKER_REPLY_COMPUTED") != 1 || strings.Count(workerOutput, "NATIVE_WORKER_TRANSPORT_CLOSED_RUNTIME_ALIVE") != 1 || len(nativeDistributedMessages(workerOutput, tlc.ECGeneral)) != 0 {
+								t.Fatal("disconnected worker did not retain one completed reply and a live runtime without GENERAL")
+							}
+						}
+					}
 				}
 			}
 			if scenario.recovering {
@@ -666,6 +712,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				} else {
 					status = ExitOK
 				}
+			} else if len(args) > 0 && args[0] == "worker-reply-loss" {
+				if err := nativeDistributedLostReplyWorker(args[1:], os.Getenv("TLAGO_NATIVE_WORKER_RELEASE")); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
 			} else if len(args) > 0 && args[0] == "worker-fingerprint-loss" {
 				if err := nativeDistributedPausedWorker(args[1:], os.Getenv("TLAGO_NATIVE_WORKER_RELEASE")); err != nil {
 					fmt.Fprintln(os.Stderr, err)
@@ -687,6 +739,99 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 // test process is killed. No successor response or fingerprint put is faked.
 func nativeDistributedBlockedWorker(args []string) error {
 	return nativeDistributedPausedWorker(args, "")
+}
+
+// Hold an actual completed result before native RPC serialization. The parent
+// closes this host while keeping evaluation/runtime ownership in this process.
+type nativeDistributedHeldReply struct {
+	*tlc.LocalWorkerEndpoint
+	host        *tlc.DistributedRPCServer
+	releasePath string
+}
+
+func (e *nativeDistributedHeldReply) GetNextStates(states []*tlc.TLCStateMut) (*tlc.NextStateResult, error) {
+	result, err := e.LocalWorkerEndpoint.GetNextStates(states)
+	if err != nil || result == nil {
+		return nil, fmt.Errorf("held worker computation: %v", err)
+	}
+	fmt.Println("NATIVE_WORKER_REPLY_COMPUTED")
+	if err := nativeDistributedWaitForFile(e.releasePath); err != nil {
+		return nil, err
+	}
+	if err := e.host.Close(); err != nil {
+		return nil, err
+	}
+	if !e.Worker.IsAlive() {
+		return nil, fmt.Errorf("transport closure terminated worker runtime")
+	}
+	fmt.Println("NATIVE_WORKER_TRANSPORT_CLOSED_RUNTIME_ALIVE")
+	if err := nativeDistributedWaitForFile(e.releasePath + ".retire"); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func nativeDistributedWaitForFile(path string) error {
+	for {
+		if _, err := os.Stat(path); err == nil {
+			return nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func nativeDistributedLostReplyWorker(args []string, releasePath string) error {
+	args, err := tlc.ExtractDistributedStartupProperties(args)
+	if err != nil {
+		return err
+	}
+	if releasePath == "" {
+		return fmt.Errorf("worker reply gate path missing")
+	}
+	network, err := tlc.NewDistributedWorkerNetwork("127.0.0.1:0", "127.0.0.1")
+	if err != nil {
+		return err
+	}
+	defer network.Close()
+	process := tlc.NewDistributedWorkerProcess()
+	env := network.Environment(tlc.DistributedWorkerEnvironment{LoadApp: func(server tlc.DistributedServerEndpoint, resolver *tlc.DistributedFilenameToStreamResolver) (*tlc.TLCApp, error) {
+		app, diagnostics, err := loadDistributedEndpointApp(server, resolver, tlc.RuntimeParameters{})
+		if err != nil {
+			return nil, err
+		}
+		if app == nil || diagnostics.HasErrors() {
+			return nil, fmt.Errorf("worker model failed to load: %v", diagnostics)
+		}
+		return app, nil
+	}})
+	publish := env.PublishWorker
+	env.PublishWorker = func(worker *tlc.DistributedWorker) error {
+		if err := publish(worker); err != nil {
+			return err
+		}
+		uri, err := url.Parse(worker.GetURI())
+		if err != nil {
+			return err
+		}
+		name := strings.TrimPrefix(uri.Path, "/")
+		network.Host.UnregisterWorker(name)
+		return network.Host.RegisterWorker(name, &nativeDistributedHeldReply{LocalWorkerEndpoint: tlc.NewLocalWorkerEndpoint(worker), host: network.Host, releasePath: releasePath})
+	}
+	if _, err := RunDistributedWorker(process, args, env, tlc.RuntimeParameters{}); err != nil {
+		return err
+	}
+	if process.Group == nil {
+		return fmt.Errorf("worker startup failed")
+	}
+	if err := nativeDistributedWaitForFile(releasePath + ".retire"); err != nil {
+		return err
+	}
+	if err := process.Shutdown(); err != nil {
+		return err
+	}
+	return process.Runtime.AwaitTermination()
 }
 
 func nativeDistributedPausedWorker(args []string, releasePath string) error {

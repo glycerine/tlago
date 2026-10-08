@@ -59,6 +59,15 @@ loss/timer reports do not repeat deregistration. The worker runtime stays alive;
 late replies cannot publish into the coordinator. These supplemental checks add
 no original-method credit or full-model network partition claim.
 
+The full native MC06 `computed_worker_reply_loss` row extends this boundary to
+the unchanged N=7 model. Its real endpoint computes a batch before closing TCP,
+confirms the worker runtime remains alive and waits for coordinator cleanup.
+The coordinator must remain available with unfinished work before replacement
+registration. The replacement must reach 114,942 distinct states and an empty
+queue, with one smaller-block retry, one deregistration and only the exact source
+cache-statistic warning. This is native connection-loss coverage; general network
+partitions and the disabled original harnesses remain pending.
+
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production
 implementation. Fix implementation shortcuts before proceeding. Preserve the

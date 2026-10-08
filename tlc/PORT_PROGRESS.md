@@ -22344,3 +22344,32 @@ be2ee8 status 0; package time 51.981 seconds). Logs were inspected and processes
 are terminal. No original assertions or bounds changed; no full suite or race
 run was performed. These six supplemental cases have no direct original method
 counterparts and add no completion credit. Distributed completion remains unproven.
+
+### 2026-10-08: Full-model completed worker reply loss
+
+Extended the native MC06 process harness with `computed_worker_reply_loss`.
+A test-owned wrapper retains a real completed worker result before RPC encoding.
+It closes only the TCP host and confirms that the worker runtime stays alive.
+The parent waits for coordinator cleanup and verifies the available coordinator
+is not done before retiring the disconnected worker and registering a replacement.
+Normal worker shutdown and accepted-handler joining retain native ownership;
+no production hook, fabricated successor response or storage operation was added.
+
+Compared the retry and result-publication sequence with pinned TLCServerThread.
+The full-model row requires one EOF smaller-block retry, one deregistration and
+only the exact source cache-statistic warning. The unchanged N=7 model must
+finish with 114,942 distinct states and an empty queue. No implementation change
+was needed. This supplements native connection-loss coverage and adds no credit
+for the four assumption-disabled original remote harness methods. General network
+partitions, restart/recovery and the other listed interruption gaps remain open.
+
+Initial full-model check passes (full-worker-reply-loss.log, terminal process
+a484c2 status 0; package time 61.314 seconds). After adding explicit retry and
+live-runtime marker assertions, the final selection passes both the new row and
+unchanged all_workers_lost row (full-worker-reply-loss-final.log, terminal process
+f2ae82 status 0; package time 109.876 seconds, rows 60.88 and 48.97 seconds).
+Related short WorkerRPC, duplicate-loss, timer and original smart-proxy checks
+pass (full-worker-reply-loss-related.log, terminal process ac4b35 status 0;
+package time 0.042 seconds). Logs were inspected and all processes are terminal.
+No original assertions or bounds changed. No full suite or race run was performed.
+Distributed completion remains unproven.

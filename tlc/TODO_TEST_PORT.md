@@ -1405,6 +1405,14 @@ retry/requeue/deregistration before releasing the old reply. They verify no
 FP/trace/statistics publication, exact source diagnostics and no repeated cleanup,
 with the worker runtime still alive. These cases add no original-method credit
 and do not complete full-model network partition coverage.
+The native MC06 `computed_worker_reply_loss` row also holds a fully computed
+batch in a separate worker process before closing its TCP host. It confirms the
+runtime remains alive, waits for coordinator cleanup and verifies unfinished work
+before registering a replacement. Original N=7 final counts remain 114,942
+distinct states and an empty queue. One source smaller-block retry, one
+deregistration and the exact cache-statistic warning are required. This supplements
+connection-loss coverage without credit for the four disabled original methods;
+general network partitions remain missing.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
 distinction between null vectors, null words and initialized empty words.

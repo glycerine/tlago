@@ -12074,6 +12074,16 @@ loss/timer reports retain one deregistration, and late replies do not publish.
 Closing transport does not terminate the owned worker runtime. This is short
 native connection-loss coverage, not full-model network partition completion.
 
+The full native MC06 reply-loss row uses the same boundary in a separate Go
+worker process. A test-owned endpoint wraps the normal published endpoint after
+identity assignment, holds the actual batch result and closes only the RPC host.
+No successor response or storage operation is fabricated. The worker confirms
+it is alive after closure and remains owned until the parent observes completed
+coordinator cleanup and unfinished work. Native worker shutdown and accepted-RPC
+handler joining precede replacement registration. The original N=7 distinct and
+queue assertions, one EOF smaller-block retry, one deregistration and exact final
+cache warning remain required. General network partition coverage is still open.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization
