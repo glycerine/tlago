@@ -1595,8 +1595,10 @@ func (p *SanyParser) QuantBoundUntil(stopKinds ...SanyTokenKind) *SanySyntaxNode
 			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected bound identifier"))
 			p.expecting = ", or \\in"
 		}
+		p.recordDirectChoice(87)
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenLab}, {SanyTokenIdentifier}}, "expected bound identifier or tuple")
+		p.recordDirectChoice(88)
+		p.throwParseException(nil, "expected bound identifier or tuple")
 	}
 	in := p.consumeParseToken(SanyTokenIN, "expected \\in in quantifier bound")
 	in.Kind = SanySyntaxNodeKindByName["T_IN"]
@@ -1864,7 +1866,7 @@ func (p *SanyParser) OpOrExpr(stop func(*SanyToken) bool) *SanySyntaxNode {
 	} else if p.scanLookahead(40, 1) {
 		return p.ExpressionUntil(stop)
 	}
-	p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected operator or expression")
+	p.throwParseException(nil, "expected operator or expression")
 	return nil
 }
 
@@ -1952,6 +1954,10 @@ func (p *SanyParser) isGrammarPostfixOperator(token *SanyToken) bool {
 }
 
 func (p *SanyParser) OperatorReference() *SanySyntaxNode {
+	if !p.startsDefinitionPrefix() && !p.isGrammarInfixOperator(p.peek()) && !p.isGrammarPostfixOperator(p.peek()) {
+		p.recordDirectChoice(80)
+		p.throwParseException(nil, "expected operator reference")
+	}
 	tok := p.advance()
 	op, ok := GetSanyOperator(tok.Image)
 	if !ok {
@@ -2003,12 +2009,10 @@ func (p *SanyParser) OpenExpression(stop func(*SanyToken) bool) *SanySyntaxNode 
 		return p.Case(stop)
 	case SanyTokenChoose:
 		return p.UnboundOrBoundChoose(stop)
-	case SanyTokenLambda:
-		return p.Lambda(stop)
-	case SanyTokenWF, SanyTokenSF:
-		return p.FairnessExpr()
 	default:
-		return p.PrimitiveExpression()
+		p.recordDirectChoice(78)
+		p.throwParseException(nil, "expected open expression")
+		return nil
 	}
 }
 
@@ -2268,7 +2272,8 @@ func (p *SanyParser) SomeQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 	if p.match(SanyTokenExists) || p.match(SanyTokenForall) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenExists}, {SanyTokenForall}}, "expected quantified expression")
+		p.recordDirectChoice(81)
+		p.throwParseException(nil, "expected quantified expression")
 	}
 	kind := SanySyntaxNodeKindByName["N_UnboundQuant"]
 	if p.scanLookahead(41, 2147483647) {
@@ -2277,16 +2282,19 @@ func (p *SanyParser) SomeQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected quantified identifier"))
 		}
+		p.recordDirectChoice(82)
 	} else {
 		kind = SanySyntaxNodeKindByName["N_BoundQuant"]
 		if !p.startsQuantBoundIntro() {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenLab}, {SanyTokenIdentifier}}, "expected quantified bound")
+			p.recordDirectChoice(84)
+			p.throwParseException(nil, "expected quantified bound")
 		}
 		heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
 		}
+		p.recordDirectChoice(83)
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in quantified expression"))
 	heirs = append(heirs, p.ExpressionUntil(p.stopAfterOpenExpressionBody(stop)))
@@ -2313,13 +2321,15 @@ func (p *SanyParser) SomeTQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 	if p.match(SanyTokenTExists) || p.match(SanyTokenTForall) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenTExists}, {SanyTokenTForall}}, "expected temporal quantified expression")
+		p.recordDirectChoice(85)
+		p.throwParseException(nil, "expected temporal quantified expression")
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected temporal quantified identifier"))
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected temporal quantified identifier"))
 	}
+	p.recordDirectChoice(86)
 	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in temporal quantified expression"))
 	heirs = append(heirs, p.ExpressionUntil(stop))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_UnboundQuant"], heirs...)
@@ -2336,10 +2346,6 @@ func (p *SanyParser) startsPrimitiveExpression() bool {
 
 func (p *SanyParser) PrimitiveExpression() *SanySyntaxNode {
 	switch p.peek().Kind {
-	case SanyTokenNumberLiteral:
-		return p.Number()
-	case SanyTokenStringLiteral:
-		return p.String()
 	case SanyTokenLbr:
 		return p.ParenExpr()
 	case SanyTokenLbc:
@@ -2348,8 +2354,12 @@ func (p *SanyParser) PrimitiveExpression() *SanySyntaxNode {
 		return p.TupleOrAction()
 	case SanyTokenLsb:
 		return p.SBracketCases()
+	case SanyTokenWF, SanyTokenSF:
+		return p.FairnessExpr()
 	default:
-		return NewSanyTokenNode(p.advance())
+		p.recordDirectChoice(77)
+		p.throwParseException(nil, "expected parenthesized expression")
+		return nil
 	}
 }
 
@@ -2394,7 +2404,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenColon || tok.Kind == SanyTokenRbc || tok.Kind == SanyTokenEOF
 		})
 	}
-	readElements := func() {
+	readElements := func(site int) {
 		for p.match(SanyTokenComma) {
 			if held != nil {
 				heirs = append(heirs, held)
@@ -2402,20 +2412,25 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 			}
 			heirs = append(heirs, NewSanyTokenNode(p.previous()), readExpression())
 		}
+		p.recordDirectChoice(site)
 	}
-	readBounds := func() {
+	readBounds := func(site int) {
 		heirs = append(heirs, p.QuantBound())
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.QuantBound())
 		}
+		p.recordDirectChoice(site)
 	}
 	if p.scanLookahead(45, 1) {
 		if p.matchFcnConst() {
 			var intro *SanySyntaxNode
 			if p.check(SanyTokenLab) {
 				intro = p.IdentifierTuple()
-			} else {
+			} else if p.check(SanyTokenIdentifier) {
 				intro = p.Identifier()
+			} else {
+				p.recordDirectChoice(89)
+				p.throwParseException(nil, "expected set bound identifier")
 			}
 			p.expecting = "\\in"
 			in := p.consumeParseToken(SanyTokenIN, "expected \\in in set form")
@@ -2429,16 +2444,18 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 				held = nil
 				kind = "N_SubsetOf"
 				heirs = append(heirs, intro, in, domain, NewSanyTokenNode(p.previous()), readExpression())
+			} else if p.check(SanyTokenComma) {
+				readElements(90)
 			} else {
-				readElements()
+				p.recordDirectChoice(92)
 			}
 		} else if p.scanLookahead(42, 2147483647) {
 			heirs = append(heirs, readExpression())
-			readElements()
+			readElements(93)
 		} else if p.scanLookahead(43, 2147483647) {
 			kind = "N_SetOfAll"
 			heirs = append(heirs, readExpression(), p.consumeParseToken(SanyTokenColon, "expected : in set comprehension"))
-			readBounds()
+			readBounds(94)
 		} else if p.scanLookahead(44, 1) {
 			expression := readExpression()
 			heirs = append(heirs, expression)
@@ -2454,12 +2471,14 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 					}
 				}
 				heirs = append(heirs, NewSanyTokenNode(colon))
-				readBounds()
+				readBounds(95)
+			} else if p.check(SanyTokenComma) {
+				readElements(96)
 			} else {
-				readElements()
+				p.recordDirectChoice(98)
 			}
 		} else {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected set expression")
+			p.throwParseException(nil, "expected set expression")
 		}
 	}
 	close := p.consumeParseToken(SanyTokenRbc, "expected }")
@@ -2774,6 +2793,7 @@ func (p *SanyParser) OpArgs() *SanySyntaxNode {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
 		}))
 	}
+	p.recordDirectChoice(79)
 	heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator arguments"))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_OpArgs"], heirs...)
 }

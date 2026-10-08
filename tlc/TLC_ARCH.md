@@ -10201,3 +10201,25 @@ Connected direct-choice sites are 4, 5, 7–76, 120 and 123–128. External prod
 observations match 5,001 rows across 295 cases. Remaining grammar sites, native
 error-span estimates and complete parser/AST and canonical/evaluator fidelity
 remain requirements beyond these bounded observations.
+
+
+## Expression and set choices retain source expectation boundaries
+
+Parenthesized/OpenExpression failures use sites 77/78 and reject token kinds
+outside their source productions. OpArgs comma exit uses 79, operator-reference
+failure 80, ordinary quantifier choices 81–84, temporal quantifier choices 85/86
+and QuantBound choices 87/88. Converted failures retain generated expectations
+and actual saved-call rescans instead of native token estimates.
+
+BraceCases uses bound-intro failure 89, membership enumeration exit 90 or absent
+continuation 92, simple enumeration exit 93, comprehension bound exits 94/95,
+generic enumeration exit 96 or absent continuation 98. Shared loops receive
+the caller's site explicitly. Absent continuation and a comma-loop exit are
+separate source decisions, even when they occur at the same consumed generation.
+Redundant source inner-switch failures 91/97 and remaining grammar sites remain
+pending.
+
+Connected direct-choice sites are 4, 5, 7–90, 92–96, 98, 120 and 123–128. External
+production observations match 5,424 rows across 317 cases. Remaining expected-token
+bookkeeping and full parser/AST and canonical/evaluator fidelity remain separate
+requirements beyond this bounded evidence.

@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 Expression, quantifier and set expectation choices:
+Previous completed commit: 4630fec. Connect source sites 77–90, 92–96 and 98.
+Parenthesized/OpenExpression failures use 77/78 and now reject token kinds
+outside those Java productions rather than taking native fallback branches.
+OpArgs comma exit records 79; operator-reference failure 80. SomeQuant records
+keyword failure 81, unbounded/bounded comma exits 82/83 and bound-choice failure
+84. SomeTQuant records keyword failure 85 and comma exit 86. QuantBound records
+identifier comma exit 87 and intro failure 88.
+
+BraceCases records bound-intro failure 89, membership-enumeration comma exit 90,
+absent membership continuation 92, simple enumeration comma exit 93, simple
+comprehension bound exit 94, generic comprehension bound exit 95, generic
+enumeration comma exit 96 and absent generic continuation 98. Shared element/
+bound loops receive each actual source site. Do not record comma-loop exits
+when Java takes the separate absent-continuation branch. The source's redundant
+inner-switch failures 91/97 remain pending, as do other grammar sites. Connected
+sites: 4, 5, 7–90, 92–96, 98, 120 and 123–128. Converted scanner-only failure
+branches retain actual rescans without native expected-token estimates.
+
+All previous 5,001 production rows remain equal. Extend external observer by 22
+valid/malformed membership enumerations, comprehensions, tuple/bounded/temporal
+quantifiers and operator arguments. All 5,424 rows across 317 cases match actual
+Java syntax kinds/images/four coordinates and complete parse messages/residual
+stack text, with outer log whitespace excluded. Java returns 0; Go observer
+83880 passes. Existing BodyDefinitionProbe.java, Go observer and overlay remain
+external under /mnt/oldrog/tmp; receipts tlago-set-expression-choice-*. No
+permanent invented tests, original-method credit, assertion/fixture weakening,
+race or optional corpus sweeps.
+
+Existing original frontend/model gate 68157 passes 9.739s; complete SANY 47515
+passes 1.923s; compile 46174 passes. All handles retired; diff check green. Update
+handoff and architecture; inventory totals unchanged. The qualified earlier
+failing full-workspace snapshot remains unchanged evidence. Remaining grammar
+bookkeeping, parser/AST, canonical/runtime sharing and documented TLC gaps keep
+the overall goal active and incomplete.
+
 2026-10-07 Fact-command and proof-step direct choices:
 Previous completed commit: 102cc8c. Connect source sites 55–76. UseOrHideOrBy
 records absent PROOF 55, separate absent ONLY sites 56/57, command keyword
