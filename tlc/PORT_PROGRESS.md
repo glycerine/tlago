@@ -22,16 +22,16 @@ External probes, overlays and logs remain under /mnt/oldrog/tmp; scanner results
 use scanner-go suffixes, with tlago-scanner-state logs for internal observations.
 
 Complete SANY passes in 2.224 seconds. Focused root original/parser/token/scaffold/
-selector/debugger gate 53151 passes in 9.658 seconds and is retired. Remaining
-all-package compilation and git diff check pass. All 5,823 parser tree/error rows
+selector/debugger gate 53151 passes in 9.658 seconds and is retired.
+All-package compilation and git diff check pass. All 5,823 parser tree/error rows
 remain exact. ScannerResetProbe adds 300 identical observations of ReInit across
 all six starting states and eight target states, plus four signed round values
 per state around reset/overflow; these compare full state arrays. Its external
 source/overlay/log prefix is tlago-scanner-reset. All handles are terminal and
 retired. Normal execution without race; unrelated long workloads are not repeated.
 General decoder/reader exception paths remain pending. Main TLC inventory and
-native XML failures remain unchanged; no whole-
-workspace green or full SANY/TLC completion claim.
+native XML failures remain unchanged. No whole-workspace green or full SANY/TLC
+completion claim.
 
 
 2026-10-07 Port the actual character-stream prerequisite:
