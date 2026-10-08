@@ -399,7 +399,12 @@ the source level guard, array-bounds boundary and lower-level clamp. All 4,256
 bounded state/diagnostic observations across 23 cases agree with Java, and the
 247 earlier LET graph rows remain exact. These receipts cover the observed body/
 domain failures; constructor-abort paths and runtime LET context sharing still
-need source reconciliation.
+need source reconciliation. ASSUME/PROVE now retains the source 100-entry
+`inScopeOfAPDecl` array, signed 32-bit depth and successful-path context/depth
+cleanup. Label restrictions scan the active declaration scopes from depth 2,
+as Java does. All 1,077 bounded state observations across 21 cases agree,
+including nested/domain failures, array bounds and signed endpoints; the earlier
+225 AP graph rows remain exact. Other generation boundaries remain audit work.
 
 The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and

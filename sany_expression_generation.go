@@ -34,8 +34,8 @@ type sanyExpressionGeneration struct {
 	exceptSpecs           []*sanySemOpApplNode
 	labelsEnabled         bool
 	labelScopes           []*sanyLabelScope
-	labelAPDepth          int
-	labelAPForbidden      bool
+	labelAPDepth          int32
+	inScopeOfAPDecl       [100]bool
 	labelGoalUnsupported  bool
 	functions             []sanyFunctionGeneration
 	nodes                 *sanyGeneratorNodes

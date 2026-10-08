@@ -1286,6 +1286,8 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 	if len(generators) != 0 && generators[0] != nil && generators[0].labelAPDepth == 0 && generators[0].currentGoal != nil {
 		goal = generators[0].currentGoal
 	}
+	generation = generators[0]
+	generation.labelAPDepth++
 	node := newSanySemAssumeProveNode(body.Syntax, goal)
 	node.assumes = make([]sanySemanticGraphNode, len(body.Assumptions))
 	node.inScopeOfDecl = make([]bool, len(body.Assumptions)+1)
@@ -1315,34 +1317,31 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 		}
 	}
 	complete := true
+	var closeContext func()
+	var previousSymbols map[string]localSymbol
+	var previousLabelsEnabled, previousGoalUnsupported bool
 	if len(generators) != 0 && generators[0] != nil {
-		generation = generators[0]
-		previousLabelsEnabled := generation.labelsEnabled
-		previousAPForbidden := generation.labelAPForbidden
-		generation.labelAPDepth++
-		previousGoalUnsupported := generation.labelGoalUnsupported
+		previousLabelsEnabled = generation.labelsEnabled
+		previousGoalUnsupported = generation.labelGoalUnsupported
 		if generation.labelAPDepth == 1 && generation.apGoalUnavailable {
 			generation.labelGoalUnsupported = true
 		}
-		defer func() { generation.labelGoalUnsupported = previousGoalUnsupported }()
 		if generation.labelAPDepth == 1 {
 			generation.currentGoalClause = 0
 		}
-		defer func() {
-			generation.labelAPDepth--
-			generation.labelAPForbidden = previousAPForbidden
-		}()
+		if generation.labelAPDepth < 0 || generation.labelAPDepth >= int32(len(generation.inScopeOfAPDecl)) {
+			panic(tlc.NewArrayIndexOutOfBoundsException(int(generation.labelAPDepth), len(generation.inScopeOfAPDecl)))
+		}
+		generation.inScopeOfAPDecl[generation.labelAPDepth] = false
 		generation.labelsEnabled = true
-		defer func() { generation.labelsEnabled = previousLabelsEnabled }()
-		previous := generation.symbols
-		generation.symbols = make(map[string]localSymbol, len(previous))
-		for name, symbol := range previous {
+		previousSymbols = generation.symbols
+		generation.symbols = make(map[string]localSymbol, len(previousSymbols))
+		for name, symbol := range previousSymbols {
 			generation.symbols[name] = symbol
 		}
 		ownedContext := generation.labelAPDepth == 1 && generation.outerAPContextOwned
 		if !ownedContext {
-			defer func() { generation.symbols = previous }()
-			defer generation.pushFormalContext(0)()
+			closeContext = generation.pushFormalContext(0)
 		}
 		if generation.nodes != nil {
 			table := generation.formalSymbolTable()
@@ -1385,8 +1384,8 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 			}
 			node.inScopeOfDecl[i+1] = true
 			apLocals[sym.Name] = true
-			if generation != nil && generation.labelAPDepth > 1 {
-				generation.labelAPForbidden = true
+			if generation != nil {
+				generation.inScopeOfAPDecl[generation.labelAPDepth] = true
 			}
 		case item.Nested != nil:
 			diags = append(diags, checkAssumeProveBindings(item.Nested, defined, apLocals, generators...)...)
@@ -1418,6 +1417,13 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 	if generation != nil && complete && !(generation.labelAPDepth == 1 && generation.apGoalUnavailable) {
 		body.semanticNode = node
 	}
+	if closeContext != nil {
+		closeContext()
+		generation.symbols = previousSymbols
+	}
+	generation.labelAPDepth--
+	generation.labelGoalUnsupported = previousGoalUnsupported
+	generation.labelsEnabled = previousLabelsEnabled
 	return diags
 }
 

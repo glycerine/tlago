@@ -1,5 +1,40 @@
 # TLC Port Progress
 
+2026-10-07 Retain the actual ASSUME/PROVE declaration-scope state:
+Previous completed commit: d8bd7d1. Continue failure lifecycle audit. Labels and
+EXCEPT already use explicit successful-path cleanup, but checkAssumeProveBindings
+still deferred context/depth cleanup and replaced inScopeOfAPDecl[100] with a
+single forbidden-label boolean. Translate the retained source array, NEW updates,
+noLabelsAllowed loop and normal context/depth completion. Increment depth before
+node construction and preserve the actual array boundary before inner-context
+push. Use int32 depth and loop arithmetic, including signed endpoint overflow.
+Native unsupported-goal/label-enabled metadata is restored on normal completion;
+other constructor/generation caller boundaries remain audit work.
+
+External APAbortProbe invokes actual private generateAssumeProve with the caller's
+outer context supplied, as processTheorem supplies it. Eighteen cases initially
+produce 1,047 exact state/context rows. Adding actual noLabelsAllowed verdicts
+produces 1,065 exact rows; three supplied negative/signed-endpoint initial depths
+bring the final matrix to 21 cases and 1,077 matching rows. Compare every source
+array flag, depth, current goal clause, context binding order and exception family.
+The earlier 225 AP graph/identity rows remain exact (70063 retired). External
+probes/inputs/overlays/logs use tlago-ap-abort under /mnt/oldrog/tmp. No invented
+permanent tests, fixture/assertion weakening or original-method credit.
+
+Complete SANY initially passes in 2.601 seconds (41859 retired). Focused originals/
+selectors/scoped/debugger gate passes in 10.460 seconds (33145 retired). After
+int32 endpoint correction, original Test212/Test213 and selector methods pass in
+0.349 seconds; final SANY passes in 2.583 seconds (15189 retired). Initial state
+observer 79091,
+expanded 80801 and endpoint 24862 are terminal and retired. All-package compilation
+and git diff checks pass. A final-test regex accidentally selected all root Test
+methods; interrupt 97525 (terminal 130), earn no success credit, and run the intended
+focused selection separately. No race; no intended long workload rerun. Main TLC
+inventory and native XML failures remain unchanged; no full workspace-green claim.
+Runtime LET/canonical-evaluator integration and further source failure boundaries
+remain incomplete.
+
+
 2026-10-07 Retain Java generation scopes when expressions throw:
 Previous completed commit: d1c0424. Begin runtime LET context audit. Source
 processLetIn retains its generated Context for walkGraph; runtime reconstruction

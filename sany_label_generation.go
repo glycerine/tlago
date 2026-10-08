@@ -88,6 +88,19 @@ func (g *sanyExpressionGeneration) pushLabelFormals(parameters []*sanyFormalPara
 	}
 }
 
+// Source noLabelsAllowed ignores declarations in the outermost ASSUME/PROVE.
+func (g *sanyExpressionGeneration) noLabelsAllowed() bool {
+	for i := int32(2); i <= g.labelAPDepth; i++ {
+		if i >= int32(len(g.inScopeOfAPDecl)) {
+			panic(tlc.NewArrayIndexOutOfBoundsException(int(i), len(g.inScopeOfAPDecl)))
+		}
+		if g.inScopeOfAPDecl[i] {
+			return true
+		}
+	}
+	return false
+}
+
 func (g *sanyExpressionGeneration) generateLabel(label *LabelExpr, context map[string]Position, locals map[string]bool) Diagnostics {
 	label.labelGenerated = true
 	guard := func(code, message string) Diagnostics {
@@ -104,7 +117,7 @@ func (g *sanyExpressionGeneration) generateLabel(label *LabelExpr, context map[s
 	if len(g.labelScopes) == 0 {
 		return guard("E4333", "Label not in definition or proof step.")
 	}
-	if g.labelAPForbidden {
+	if g.noLabelsAllowed() {
 		return guard("E4334", "Label not allowed within scope of declaration in nested ASSUME/PROVE.")
 	}
 	if len(g.excepts) > 0 && len(g.exceptSpecs) > 0 {

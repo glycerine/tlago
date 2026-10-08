@@ -10569,3 +10569,27 @@ label stacks/parameter groups, function-stack size and diagnostic messages.
 The prior 247 normal LET graph rows remain exact. These are bounded body/domain
 failure receipts, not constructor-abort or complete runtime canonical-sharing
 verification. No invented permanent tests or extra original-method credit.
+
+
+## ASSUME/PROVE declaration-scope array and failure state
+
+The expression generator retains Java's 100-entry `inScopeOfAPDecl` array and
+signed 32-bit assume/prove depth. Generation increments depth before constructing
+the AP node, initializes that depth's array slot before pushing an inner context,
+and marks it after generating each NEW declaration. A thrown body/domain retains
+its active depth and symbol contexts. Normal completion pops the inner context
+and decrements depth; array entries remain as source-owned state.
+
+`noLabelsAllowed` now scans actual declaration flags from depth 2 through the
+active depth. It excludes outermost declarations and preserves source array-
+bounds behavior. The previous single forbidden-label boolean and deferred AP
+scope cleanup are removed. Source endpoint arithmetic is retained, including
+increment from Integer.MAX_VALUE to Integer.MIN_VALUE before array access.
+
+All 1,077 external state/context/label-restriction observations agree across 21
+cases: normal and nested APs, NEW declarations, boxed AP, thrown LET bodies and
+NEW domains, depths 98–101 and signed endpoints. These compare all array flags,
+depth, current goal clause, context binding order and exception families. The
+225 prior AP graph rows still agree; original selector/Test212/Test213 and SANY
+checks pass. These bounded observations do not establish all generation callers,
+constructor-abort paths or canonical/evaluator graph sharing.
