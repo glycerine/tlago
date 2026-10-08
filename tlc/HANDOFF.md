@@ -233,6 +233,15 @@ receiver ownership across gob and worker TCP. Further metadata/custom-data and
 process failure/recovery work remains pending.
 These short native checks add no original-method completion credit.
 
+Native state transfer now supports predecessor references in the shared state
+graph. Shared parents, non-root ancestors, typed nulls and cycles retain their
+identity and stored levels without invoking metadata-mutating setters. Gob/TCP
+request, result and worker-exception checks preserve receiver isolation and
+shared values. Invalid references and unsupported ancestor evaluator objects
+are rejected. All communicating roles need the updated payload build. Other
+evaluator metadata and custom state/data types remain separately tracked; this
+adds no original-method credit or Java serialization/RMI support.
+
 Worker predecessor/successor/result partitions now retain the source’s separate
 unbounded vector behavior: default capacity 10, doubling on growth and indexing
 the backing array. They no longer inherit the tool `StateVec`’s `SetBound`

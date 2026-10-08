@@ -34,6 +34,7 @@ type DistributedStateNode struct {
 	Values      []int
 	ValuesArray int
 	ValuesNil   bool
+	Predecessor int
 }
 
 type DistributedStringNode struct {
@@ -133,9 +134,9 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 	if state.level < 0 || state.level > math.MaxInt32 {
 		return 0, fmt.Errorf("invalid network state level %d", state.level)
 	}
-	// The ordinary distributed app uses TLCStateMut. Extended debugger/executor
-	// state graphs require their own metadata contract and must not be dropped.
-	if state.functional || state.functionalBindings != nil || state.TracePredecessor() != nil || state.action != nil || state.callable != nil || len(state.cached) != 0 || state.printRecord != nil {
+	// Evaluator objects require their own representation and must not be dropped.
+	// Predecessor links use the same native state graph as invocation roots.
+	if state.functional || state.functionalBindings != nil || state.action != nil || state.callable != nil || len(state.cached) != 0 || state.printRecord != nil {
 		return 0, fmt.Errorf("network state contains extended evaluator metadata")
 	}
 	id := len(e.payload.States) + 1
@@ -145,7 +146,18 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil}
+	var predecessor int
+	if parent := state.TracePredecessor(); parent != nil {
+		mutable, ok := parent.(*TLCStateMut)
+		if !ok {
+			return 0, fmt.Errorf("unsupported distributed predecessor state %T", parent)
+		}
+		predecessor, err = e.state(mutable)
+		if err != nil {
+			return 0, err
+		}
+	}
+	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil, Predecessor: predecessor}
 	return id, nil
 }
 
@@ -529,6 +541,16 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, err
 		}
 		objects[i] = &TLCStateMut{WorkerID: node.WorkerID, UID: node.UID, level: int(node.Level), values: values}
+	}
+	for i, node := range payload.States {
+		if node.Predecessor < 0 || node.Predecessor > len(objects) {
+			return nil, fmt.Errorf("invalid distributed predecessor reference %d", node.Predecessor)
+		}
+		if node.Predecessor != 0 {
+			// Restore stored graph fields directly. SetTracePredecessor changes
+			// level and consults process-local metadata settings.
+			objects[i].pred = objects[node.Predecessor-1]
+		}
 	}
 	if payload.Nil {
 		return nil, nil

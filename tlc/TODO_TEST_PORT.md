@@ -940,6 +940,13 @@ Short native checks cover six queue success/failure cases, nine missing-owner
 cases and a joined real reporting wait. Upstream has no direct methods for
 these controls; no original test statuses or completion credit change.
 
+Native predecessor graph transfer now passes gob/TCP request/result and worker
+exception checks for shared parents, non-root ancestors, nulls, cycles, stored
+levels and shared values. Invalid IDs and unsupported ancestor metadata fail
+explicitly. Upstream has no direct predecessor-transfer test methods; these
+supplemental checks do not change original-method status or credit. Remaining
+evaluator metadata/custom-state coverage is tracked separately.
+
 Distributed worker partition vectors now retain TLCStateVec’s unbounded
 growth, capacity-ten default and backing-array indexing, independent of the
 tool StateVec’s SetBound. Native result decoding restores the same collection

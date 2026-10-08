@@ -20212,3 +20212,32 @@ LongVec and smart-proxy checks pass (54501, status 0, 0.028 seconds). Final
 loopback TCP selection passes 0.057 seconds; original root distributed init
 methods pass (41855). All handles are terminal. No full suite, long workload or
 race selection was run. Overall distributed completion remains unproven.
+
+### 2026-10-08: Native predecessor graph transfer
+
+Audited TLCState/TLCStateMutExt reference fields. TLCState is Serializable and
+the extended predecessor field is not transient; action-free/callable-free
+predecessor graphs should not be categorically rejected. Added a native
+Predecessor state reference to the existing state graph. Encode reserves IDs
+before following links; decode allocates every state before restoring links
+directly. Stored levels survive regardless of process-local metadata settings,
+and shared values still use the same invocation graph. Invalid IDs, custom
+predecessors and unsupported ancestor evaluator objects remain explicit errors.
+All communicating roles need the current payload build. This introduces no
+Java serialization, RMI or evaluator-object reconstruction.
+
+Added supplemental gob checks for shared parents, non-root ancestors, self
+cycles, typed nulls, exact UID/level fields and mutation-visible receiver
+sharing with sender isolation. Validation rejects negative/out-of-range IDs
+and unsupported ancestor actions. Native TCP checks require the same graph
+on requests, results and WorkerException state context, including a hidden
+parent and cyclic second state. Upstream has no direct predecessor-transfer
+method tests; no original-method completion credit is added.
+
+Focused predecessor checks pass (86941, status 0, 0.012 seconds). Existing
+state/result/failure graph checks and original nine smart-proxy contexts pass
+0.019 seconds. Native TCP graph/lifecycle/failure/codec and assigned-block
+checkpoint checks pass 0.045 seconds; expanded exception-path assertions are
+verified in final handle 49105. All handles are terminal. No full suite, long
+workload or race selection was run. Other evaluator metadata/custom state/data
+work remains separately tracked, and distributed completion remains unproven.

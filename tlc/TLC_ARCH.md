@@ -11628,3 +11628,28 @@ capacity 11 after transfer and capacity 22 after receiver growth. Malformed FP
 selections at indexes nine and ten retain their distinct null-slot/state-check
 and out-of-capacity failure contexts. Supplemental checks add no method credit;
 there are no direct upstream TLCStateVec tests.
+
+
+### Native predecessor graph transfer
+
+TLCState implements Serializable in the Java reference; TLCStateMutExt’s
+predecessor is an ordinary, non-transient TLCState field. Blanket rejection of
+predecessors therefore excluded state graphs that have no action or callable.
+The native DistributedStateNode now has a one-based Predecessor reference into
+the existing state graph. Encoding reserves each state ID before following its
+parent, preserving cycles and shared/non-root ancestors. The same value/array
+tables apply to roots and ancestors, retaining shared value storage.
+
+Decoding allocates all states before linking predecessor fields. It assigns the
+fields directly rather than invoking SetTracePredecessor, which would alter
+stored levels and consult process-local metadata configuration. Zero references
+remain null; invalid IDs fail explicitly. Only supported native mutable-state
+predecessors are accepted. Functional states, evaluator action/callable/cache
+objects, record-backed states and custom predecessor types remain outside this
+chunk’s supported representation. No evaluator objects are silently dropped.
+
+Gob and TCP request/result/failure checks preserve shared parents, hidden
+ancestors, typed nulls, self-cycles, stored levels, shared values and independent
+receiver ownership. All communicating roles need the current payload build. No
+Java serialization protocol, RMI or JVM runtime is introduced. No direct
+upstream predecessor-transfer tests exist; native checks add no method credit.
