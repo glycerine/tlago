@@ -703,7 +703,7 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
-Remote server/worker integration, init failures, fingerprint-manager failover, and smart-proxy calculations. Full wire transport is still an implementation prerequisite for transport tests.
+Remote server/worker integration, init failures, fingerprint-manager failover, and smart-proxy calculations. Native Go fingerprint TCP calls are now implemented and unit-verified. Coordinator/worker transport and state serialization still need implementation before the original remote model tests can be run. The new Go boundary tests add no original-method completion credit.
 
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Missing**: `testSpec`.
   Upstream DistributedTLCTestCase.setUp unconditionally Assume.assumeTrue(false); retain as transport backlog, not a completed/skipped Go port.

@@ -7847,8 +7847,13 @@ copies of string metadata. `DistributedFingerprintEndpoint` supplies storage
 operations without local allocation/configuration methods. The manager consumes
 returned failures as well as existing local storage exceptions. Worker manager
 snapshots copy failover state and retain shared registration-wrapper identity;
-the coordinator recovery trace is excluded. Real network transport and its
-serialization/process integration remain to be implemented.
+the coordinator recovery trace is excluded. The first network endpoint uses
+Go net/rpc over TCP for named fingerprint objects. The transport performs no
+insertion retry. It preserves scalar/batch answers, full fingerprint bits,
+null/empty vectors and checkpoint-file recovery; trace objects remain local to
+the coordinator. Server shutdown closes listeners and client connections
+without implicitly exiting storage. Coordinator/worker network calls and
+state/value serialization/process integration remain to be implemented.
 
 The Java reference implementation uses RMI:
 

@@ -1821,9 +1821,16 @@ manager, coordinator registration and FP server startup. Its local adapter
 retains storage ownership. Endpoint-returned failures enter the same manager
 failover paths as local failures. Workers receive independent manager snapshots,
 preserving aliased partition wrappers and shared storage endpoints while omitting
-the coordinator-only trace. Network transport remains unimplemented. Next:
-network messages, serialization and process/CLI integration; local adapters and
-focused unit checks do not prove distributed completion.
+the coordinator-only trace. The fingerprint network endpoint now runs over Go net/rpc and TCP. The host
+supports named fingerprint objects, concurrent calls and listener/connection
+shutdown independent of storage lifetime. Requests are not retried by the
+transport. Source-style manager failover consumes connection/storage failures.
+Scalar/batch answers, all 64 fingerprint bits, null/empty vectors and checkpoint
+filenames cross the wire. Null batches now fail across all six native storage
+backends, matching the source dereference rather than being treated as empty.
+Trace recovery stays coordinator-local. Coordinator
+and worker network calls, state/value serialization and process/CLI integration
+remain pending; these focused checks do not prove distributed completion.
 
 ## Testing and workflow
 

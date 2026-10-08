@@ -17522,3 +17522,83 @@ TLC and 1.844 seconds for root; handles 40252, 5868 and 84712 are retired. All
 handles are terminal. No full suite, long workload or race instrumentation ran.
 Next requirements remain actual Go networking, state/value serialization,
 standalone process/CLI wiring and distributed model integration. Goal active.
+
+
+### 2026-10-08 — Native Go fingerprint TCP endpoint
+
+Continued from a7502f6 with a clean worktree. Inspected the upstream state/value
+serialization: disk TLCState.write limits depth to Short.MAX_VALUE, while the
+in-memory/network state level is an int. FcnLambdaValue's object serialization
+materializes its function record, SetPredValue materializes its set, and LazyValue
+requires its cached value. Reusing the disk stream unchanged would introduce a
+network depth limit and omit these contracts. Full state serialization remains
+a required next feature rather than a claimed completed subset.
+
+Implemented DistributedRPCServer and NetworkFingerprintEndpoint using native
+Go net/rpc over TCP. The host exports named fingerprint objects and concurrently
+serves calls; duplicate names do not replace live objects. Lifecycle operations,
+scalar/batch membership/insertion, statistics, checks and checkpoint-file
+recovery dispatch through DistributedFingerprintEndpoint. Requests retain full
+64-bit fingerprints and explicit null/empty vector presence. Replies retain
+bit-vector backing words. The transport performs no insertion retries, and the
+manager retains its original failover algorithm. CloseConnection does not close
+storage; host Close closes listeners/connections independently of FPSet.Exit.
+Trace-based recovery is deliberately coordinator-local, as in the source
+manager; the native network method rejects transmitting a trace and directs
+remote recovery to its checkpoint-file method.
+
+Native DistributedEndpointError retains message and I/O category; the existing
+manager I/O classifier recognizes it. Storage panics are captured at the server
+boundary so an endpoint failure does not kill the RPC host. Fatal remote failures
+are reported as endpoint I/O failures, matching the source remote-boundary
+behavior rather than the local fatal-panic catch. No Java RMI, JVM machinery,
+rpc25519 or alternative transaction protocol was implemented.
+
+The original remote model harness is unconditionally disabled upstream. No
+existing Java network test covers this Go transport. Following the latest user
+instruction, added five short TCP unit tests: exact scalar/duplicate/batch
+answers including signed/high-bit fingerprints; storage failure and disconnect
+failover; object identity and independent connection lifetime; actual checkpoint
+file recovery to a second object; and sixteen concurrent insertions of the same
+32-fingerprint batch, requiring exactly 32 new answers overall. These earn no
+missing original distributed-model completion credit. Existing affected Java
+manager translations retain all assertions/loops and pass.
+
+Initial build checks exposed two incorrectly recalled helper names; corrected
+them to native LongVec data copying and BitVector.TrueCount. The first socket
+run failed because the sandbox denies net.Listen, not because of a TLC failure.
+Unrestricted loopback rerun of the initial three TCP checks passes in 0.024
+seconds. Final focused TCP/endpoint/original-manager checks pass normally in
+0.105 seconds (15974 terminal status 0), and original root TLCSet/init plus
+app-failure-order checks pass in 1.770 seconds (69365 terminal status 0).
+The sole race selection is the short TestFingerprintRPCConcurrentInsertion;
+its final receipt follows. No full suite or long workload was run.
+
+The short exact race test passes in 1.047 seconds (26702 terminal status 0).
+Added final assertions distinguishing null from empty batch requests and
+returning the original FaultyFPSet unchecked panic without losing the RPC host;
+these are short Go transport checks rather than new original-method credit.
+The following null-vector assertion exposed a production shortcut; the
+correction and final receipts are recorded below.
+
+
+Final null-vector check initially failed (40017 terminal status 1): native
+fingerprint implementations treated null as an empty batch. Java FPSet.putBlock
+and containsBlock immediately dereference fpv, and the memory/multi/no-op
+classes inherit those methods. Changed the twelve Go methods across the six
+backends to throw the existing NullPointerException instead of returning an
+empty bit vector. The network assertion was retained, not weakened. Added a
+short six-backend/two-operation unit matrix requiring failure before storage
+access, because the source has no direct null-vector test. These assertions
+cover the production correction without allocating fingerprint storage.
+
+Corrected TCP/original manager selection passes in 0.081 seconds (89292
+terminal status 0); focused root original distributed checks pass in 1.901
+seconds (35618 terminal status 0). The final broader focused selection, adding
+the twelve null cases and existing scalar/disk-merge checks, passes in 1.624
+seconds (70480 terminal status 0). The earlier exact concurrent TCP race
+receipt remains applicable to unchanged concurrency behavior; only early null
+argument guards changed afterward. All handles are retired. Updated inventory
+transport prerequisites without changing original-method completion counts.
+Goal remains active: coordinator/worker networking, native state/value payloads,
+process/CLI lifecycle wiring and distributed model execution are not complete.

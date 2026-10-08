@@ -435,7 +435,7 @@ func (s *DiskFPSet) Contains(fp uint64) bool {
 
 func (s *DiskFPSet) PutBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	bv := NewBitVector(fpv.Size())
 	for i := 0; i < fpv.Size(); i++ {
@@ -448,7 +448,7 @@ func (s *DiskFPSet) PutBlock(fpv *LongVec) *BitVector {
 
 func (s *DiskFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	s.mu.Lock()
 	s.statesSeen += uint64(fpv.Size())

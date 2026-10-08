@@ -521,7 +521,7 @@ func (s *MemFPSet) Put(fp uint64) bool {
 
 func (s *MemFPSet) PutBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	size := fpv.Size()
 	bv := NewBitVector(size)
@@ -535,7 +535,7 @@ func (s *MemFPSet) PutBlock(fpv *LongVec) *BitVector {
 
 func (s *MemFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	size := fpv.Size()
 	s.mu.Lock()
@@ -832,7 +832,7 @@ func (s *NoopFPSet) UnexportObject(force bool)               {}
 
 func (s *NoopFPSet) PutBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	bv := NewBitVector(fpv.Size())
 	for i := 0; i < fpv.Size(); i++ {
@@ -843,7 +843,7 @@ func (s *NoopFPSet) PutBlock(fpv *LongVec) *BitVector {
 
 func (s *NoopFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	// Keep FPSet's separate load/modify/store (including lost updates),
 	// with atomic snapshots instead of an unsynchronized Go memory access.
@@ -918,7 +918,7 @@ func (s *MemFPSet1) Contains(fp uint64) bool {
 
 func (s *MemFPSet1) PutBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	size := fpv.Size()
 	bv := NewBitVector(size)
@@ -932,7 +932,7 @@ func (s *MemFPSet1) PutBlock(fpv *LongVec) *BitVector {
 
 func (s *MemFPSet1) ContainsBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	size := fpv.Size()
 	s.mu.Lock()
@@ -1144,7 +1144,7 @@ func (s *MemFPSet2) Contains(fp uint64) bool {
 
 func (s *MemFPSet2) PutBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	size := fpv.Size()
 	bv := NewBitVector(size)
@@ -1158,7 +1158,7 @@ func (s *MemFPSet2) PutBlock(fpv *LongVec) *BitVector {
 
 func (s *MemFPSet2) ContainsBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	size := fpv.Size()
 	s.mu.Lock()
@@ -1489,7 +1489,7 @@ func (s *MultiFPSet) Contains(fp uint64) bool {
 
 func (s *MultiFPSet) PutBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	bv := NewBitVector(fpv.Size())
 	for i := 0; i < fpv.Size(); i++ {
@@ -1502,7 +1502,7 @@ func (s *MultiFPSet) PutBlock(fpv *LongVec) *BitVector {
 
 func (s *MultiFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
-		return NewBitVector(0)
+		panic(NewNullPointerException())
 	}
 	// Java's inherited FPSet counter is a separate read/modify/write.
 	s.statesSeen.Store(s.statesSeen.Load() + uint64(fpv.Size()))
