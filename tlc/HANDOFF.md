@@ -186,6 +186,10 @@ without modifying it. Worker depth comparison uses signed 32-bit next-level
 arithmetic, preserving the previous maximum when addition wraps. At the depth
 limit, completed record and UID/worker updates survive the later predecessor
 failure; extended states retain the predecessor assigned before that failure.
+Missing predecessor assignment fails rather than silently returning. Extended
+states clear their prior predecessor before that failure; level, UID, worker and
+action remain unchanged. Mutable typed nil pointers are normalized at the native
+polymorphic boundary. Original simulation trace checks remain green.
 Worker recovery publishes the checkpoint pointer after its complete read, then
 closes the checkpoint reader and seeks the existing trace owner. It cannot
 reopen missing or closed owners; closing retains the closed handle. Truncated

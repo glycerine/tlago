@@ -21585,3 +21585,26 @@ or race run was performed. Supplemental cases add no original-method credit.
 Distributed behavior uses native Go transport and failure traits; no RMI, Java
 serialization or JVM machinery is required. Construction, filename/context
 guards and trace cleanup remain pending; distributed parity is incomplete.
+
+### 2026-10-08: Missing predecessor assignment failure ordering
+
+Audited TLCState.setPredecessor and TLCStateMutExt.setPredecessor in pinned source.
+Removed the silent missing-predecessor success from mutable and polymorphic state
+setters. Extended metadata assigns the predecessor before the base level access,
+including clearing a prior predecessor when that access fails. Level, UID, worker
+and action remain unchanged. Typed nil mutable pointers normalize to an absent
+predecessor at the native interface boundary; missing receivers also report the
+existing missing-value diagnostic category. No transport or JVM machinery added.
+
+No original method directly covers this boundary. Six supplemental cases cover
+ordinary/extended metadata and mutable, polymorphic and typed nil inputs. All six
+initially failed (07caa0, status 1, 0.012 seconds): four silently succeeded and two
+returned an unclassified native pointer panic. Focused state/worker/concurrent/
+distributed trace and all seven original simulation trace methods pass (8ae438,
+status 0, 0.109 seconds). Related regeneration, alias and original MCState checks
+pass (3958e5, status 0, 1.796 seconds). Original checkpoint-on-violation/time-bound,
+error-trace and Github461 assertion call-stack models plus all four existing
+DieHard/TSnapShot native process storage variants pass (1612a0, status 0, 54.607
+seconds). Source assertions and workload bounds are unchanged. All processes are
+terminal. No full suite or race run was performed. Supplemental cases add no
+original-method credit; construction/context and trace cleanup audits remain.

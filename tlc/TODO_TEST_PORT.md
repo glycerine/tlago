@@ -807,6 +807,12 @@ Successor depth updates precede owner access. Native fixtures initialize owners
 during setup; original assertions remain unchanged. No original method directly
 covers these boundaries; completion counts remain unchanged.
 
+Six native predecessor-assignment cases cover ordinary/extended metadata with
+mutable, polymorphic and typed nil inputs. Extended states clear the predecessor
+before missing-predecessor failure; level and unrelated metadata stay unchanged.
+No original method directly covers these boundaries; completion counts remain
+unchanged. The seven original simulation trace methods retain their assertions.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly
