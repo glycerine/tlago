@@ -1424,6 +1424,11 @@ instead of exposing nested children as distributed servers. They verify original
 storage membership and identity, scalar/block answers and internal high-bit
 routing for memory/MSB/LSB storage. Existing original nested storage/manager tests
 remain separate; these supplemental cases add no original-method credit.
+Three native coordinator-run startup cases now reject missing thread/coordinator
+ownership, retain the source worker-increment boundary and keep startup failures
+outside catch/finally. Direct and owned-goroutine checks preserve assigned states,
+keepalive, cleanup flag and cache-read behavior. No direct original method covers
+these invalid-owner cases; original-method completion credit is unchanged.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
 distinction between null vectors, null words and initialized empty words.

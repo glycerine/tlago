@@ -82,6 +82,13 @@ the storage's high-bit routing; they are not separate distributed servers.
 Memory/MSB/LSB checks verify scalar and block membership through both the manager
 and original storage, along with server identity and per-child counts.
 
+Coordinator thread run entry also requires its owner. Worker count increments
+before queue capture; a missing coordinator fails before catch/finally installation.
+It therefore retains assigned work and keepalive state, performs no final cache
+read and reports an uncaught failure through the native goroutine wrapper.
+Missing thread receivers fail before incrementing. Three supplemental checks
+cover these boundaries; existing run-handler/finalizer assertions are intact.
+
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production
 implementation. Fix implementation shortcuts before proceeding. Preserve the

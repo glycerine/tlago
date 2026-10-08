@@ -12104,6 +12104,14 @@ memory/MSB/LSB checks preserve identity, server counts, scalar/block insertion
 and contains answers, and both high-bit child counts. Dynamic managers with
 explicitly registered servers retain their independent low-bit routing.
 
+`TLCServerThread.Run` requires the owning coordinator after worker increment
+and before queue capture. That access precedes both catch and finally in source;
+missing ownership cannot become a successful no-op or enter final cache reading,
+timer cancellation or assigned-state clearing. Native `Start` still joins the
+goroutine and reports its uncaught failure. A nil thread receiver fails before
+the run body and worker increment. Missing-owner native checks distinguish these
+paths from the existing in-run handler/finalizer failures.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

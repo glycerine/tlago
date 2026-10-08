@@ -22430,3 +22430,28 @@ worker partition/capacity/TCP checks (local-multi-manager-related.log, terminal
 process 47bf3f status 0; package time 0.068 seconds). Logs were inspected and all
 processes are terminal. No original assertions or bounds changed; no full suite
 or race run was performed. Distributed completion remains unproven.
+
+### 2026-10-08: Coordinator thread run-entry ownership
+
+Audited fingerprint block callable/manager flow and TLCServerThread run entry
+against pinned source. No block-call change was supported by this read. The
+actual mismatch was Run's successful early return when the coordinator was
+missing. Source increments workers and then captures the coordinator queue,
+outside its catch/finally region. Go now fails at that access after increment;
+missing thread receivers fail before increment. Neither path invents successful
+work or invokes the later error handler/finalizer.
+
+The direct and owned-goroutine missing-coordinator cases initially failed
+(thread-start-owner-red.log, terminal process 950297 status 1; package time
+0.012 seconds). Final three native cases additionally require unchanged assigned
+states, cleanup flag, keepalive state and cache ratio, with no final cache read.
+The native goroutine reports the uncaught failure and remains joinable.
+
+Focused thread handlers/finalizers/selector ownership, batch statistics, worker
+loss/wakeup, native TCP retry and all original smart-proxy cases pass
+(thread-start-owner-focused.log, terminal process da495c status 0; package time
+0.077 seconds). Logs were inspected and all processes are terminal. Existing
+source assertions and bounds are unchanged. No full suite, repeated full-model
+workload or race run was needed. There is no direct original method for these
+three invalid-owner cases; completion credit is unchanged. Distributed completion
+remains unproven.

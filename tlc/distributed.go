@@ -938,10 +938,13 @@ func (t *TLCServerThread) runKeepAlive() {
 }
 
 func (t *TLCServerThread) Run() {
-	if t == nil || t.Server == nil {
-		return
+	if t == nil {
+		panic(NewNullPointerException())
 	}
 	IncNumWorkers(1)
+	if t.Server == nil {
+		panic(NewNullPointerException())
+	}
 	stateQueue := t.Server.StateQueue
 	// Register finally separately so an exception raised by the catch itself
 	// still executes it. A failure within finally skips its remaining steps.
