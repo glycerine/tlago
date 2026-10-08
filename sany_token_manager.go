@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"strings"
+	"sync/atomic"
 	"unicode/utf8"
 )
 
@@ -16,6 +17,7 @@ type SanyTokenManager struct {
 	diags              Diagnostics
 	pendingSpecialHead *SanyToken
 	pendingSpecialTail *SanyToken
+	lexicalBegin       Position
 }
 
 type sanyLexCandidate struct {
@@ -80,7 +82,12 @@ func (tm *SanyTokenManager) LexAll() (tokens []*SanyToken, diags Diagnostics) {
 }
 
 func (tm *SanyTokenManager) NextToken() *SanyToken {
+	// Java getNextToken owns its special-token chain for one call only.
+	tm.pendingSpecialHead, tm.pendingSpecialTail = nil, nil
 	for {
+		if tm.eof() {
+			return tm.eofToken()
+		}
 		switch tm.state {
 		case SanyLexDefault:
 			return tm.nextDefaultToken()
@@ -204,84 +211,100 @@ func (tm *SanyTokenManager) skipSpecWhitespaceOrSpecial() bool {
 	return false
 }
 
+// Java's bracketCount is class-wide and is not reset by construction or ReInit.
+// Atomic updates retain that shared state without introducing a Go data race.
+var sanyCommentBracketCount atomic.Int32
+
 func (tm *SanyTokenManager) consumeLineSpecial() {
-	begin := tm.pos()
-	start := tm.offset
-	lexState := SanyLexInEOLComment
-	tm.state = lexState
-	for !tm.eof() {
-		r := tm.peek()
-		tm.advance()
-		if r == '\n' || r == '\r' {
-			break
-		}
-	}
-	tm.state = SanyLexSpec
-	tm.appendSpecial(tm.emitDetachedToken(SanyTokenEOLComment, begin, tm.lastEnd, tm.input[start:tm.offset], lexState))
+	begin, start := tm.pos(), tm.offset
+	tm.lexicalBegin = begin
+	tm.state = SanyLexInEOLComment
+	tm.consumeBytes(2)
+	tm.consumeCommentSegment(begin, start, SanyLexInEOLComment, true)
 }
-
 func (tm *SanyTokenManager) consumeStartedLineComment() {
-	for !tm.eof() {
-		r := tm.peek()
-		tm.advance()
-		if r == '\n' || r == '\r' {
-			break
-		}
-	}
-	tm.state = SanyLexSpec
+	begin, start := tm.pos(), tm.offset
+	tm.lexicalBegin = begin
+	tm.consumeCommentSegment(begin, start, SanyLexInEOLComment, false)
 }
-
 func (tm *SanyTokenManager) consumeBlockSpecial() {
-	begin := tm.pos()
-	start := tm.offset
-	lexState := SanyLexInComment
-	tm.state = lexState
-	depth := 0
-	for !tm.eof() {
-		if strings.HasPrefix(tm.rest(), "(*") {
-			depth++
-			tm.consumeBytes(2)
-			if depth > 1 {
-				tm.state = SanyLexEmbedded
-			}
-			continue
-		}
-		if strings.HasPrefix(tm.rest(), "*)") {
-			tm.consumeBytes(2)
-			depth--
-			if depth == 0 {
-				tm.state = SanyLexSpec
-				tm.appendSpecial(tm.emitDetachedToken(SanyTokenBlockComment, begin, tm.lastEnd, tm.input[start:tm.offset], lexState))
-				return
-			}
-			continue
-		}
-		tm.advance()
+	begin, start := tm.pos(), tm.offset
+	tm.lexicalBegin = begin
+	tm.state = SanyLexInComment
+	n := 2
+	if strings.HasPrefix(tm.rest(), "(*.") {
+		n = 3
 	}
-	tm.state = SanyLexSpec
-	tm.lexicalFailure(begin, "E1201", "unterminated block comment", tm.lexicalEOFPosition(), "", 0, true)
+	tm.consumeBytes(n)
+	tm.consumeCommentSegment(begin, start, SanyLexInComment, true)
+}
+func (tm *SanyTokenManager) consumeStartedBlockComment() {
+	begin, start := tm.pos(), tm.offset
+	tm.lexicalBegin = begin
+	tm.consumeCommentSegment(begin, start, tm.state, false)
 }
 
-func (tm *SanyTokenManager) consumeStartedBlockComment() {
-	depth := 1
-	for !tm.eof() {
-		if strings.HasPrefix(tm.rest(), "(*") {
-			depth++
-			tm.consumeBytes(2)
-			tm.state = SanyLexEmbedded
-			continue
-		}
-		if strings.HasPrefix(tm.rest(), "*)") {
-			tm.consumeBytes(2)
-			depth--
-			if depth == 0 {
-				break
+// Each Java SPECIAL_TOKEN completes the accumulated MORE image. The next
+// segment begins a fresh token, even while the manager remains in a comment.
+func (tm *SanyTokenManager) consumeCommentSegment(begin Position, start int, lexState SanyLexState, more bool) {
+	for {
+		if tm.eof() {
+			if more {
+				tm.lexicalFailure(begin, "E1201", "unterminated comment", tm.lexicalEOFPosition(), "", 0, true)
 			}
+			return
+		}
+		var kind SanyTokenKind
+		n := 0
+		switch tm.state {
+		case SanyLexInEOLComment:
+			if tm.peek() == '\n' || tm.peek() == '\r' {
+				kind = 33
+				n = 1
+				if strings.HasPrefix(tm.rest(), "\r\n") {
+					n = 2
+				}
+			}
+		case SanyLexInComment, SanyLexEmbedded:
+			if strings.HasPrefix(tm.rest(), "(*") {
+				kind = 29
+				if tm.state == SanyLexEmbedded {
+					kind = 32
+				}
+				n = 2
+				if strings.HasPrefix(tm.rest(), "(*.") {
+					n = 3
+				}
+			} else if strings.HasPrefix(tm.rest(), "*)") {
+				kind = 30
+				if tm.state == SanyLexEmbedded {
+					kind = 31
+				}
+				n = 2
+			}
+		}
+		if n == 0 {
+			tm.advance()
+			more = true
 			continue
 		}
-		tm.advance()
+		tm.consumeBytes(n)
+		tm.appendSpecial(tm.emitDetachedToken(kind, begin, tm.lastEnd, tm.input[start:tm.offset], lexState))
+		switch kind {
+		case 29, 32:
+			sanyCommentBracketCount.Add(1)
+			tm.state = SanyLexEmbedded
+		case 31:
+			if sanyCommentBracketCount.Add(-1) == 0 {
+				tm.state = SanyLexInComment
+			}
+		case 30, 33:
+			tm.state = SanyLexSpec
+			return
+		}
+		begin, start, lexState, more = tm.pos(), tm.offset, tm.state, false
+		tm.lexicalBegin = begin
 	}
-	tm.state = SanyLexSpec
 }
 
 func (tm *SanyTokenManager) bestSpecCandidate() sanyLexCandidate {
@@ -519,7 +542,7 @@ func (tm *SanyTokenManager) consumeToken(kind SanyTokenKind, n int, nextState Sa
 func (tm *SanyTokenManager) emitToken(kind SanyTokenKind, begin, end Position, image string, lexState SanyLexState) *SanyToken {
 	tok := tm.emitDetachedToken(kind, begin, end, image, lexState)
 	if tm.pendingSpecialHead != nil {
-		tok.Special = tm.pendingSpecialHead
+		tok.Special = tm.pendingSpecialTail
 		tm.pendingSpecialHead = nil
 		tm.pendingSpecialTail = nil
 	}
@@ -547,6 +570,7 @@ func (tm *SanyTokenManager) appendSpecial(tok *SanyToken) {
 		tm.pendingSpecialTail = tok
 		return
 	}
+	tok.Special = tm.pendingSpecialTail
 	tm.pendingSpecialTail.Next = tok
 	tm.pendingSpecialTail = tok
 }

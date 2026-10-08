@@ -10406,3 +10406,32 @@ preserves checked translation errors separately from structural assertion failur
 known failures invert acceptance and do not compare ASTs, as in Java. All 355
 actual outputs agree, and the original Java class passes 710 test contexts.
 No permissive fallback or placeholder AST translation is installed.
+
+
+## Comment scanning preserves JavaCC segments and EOF boundaries
+
+The token manager translates SPEC's comment-opening MORE rules, IN_COMMENT and
+EMBEDDED's SPECIAL_TOKEN delimiters, and IN_EOL_COMMENT's newline special token.
+Each special completes the accumulated image and starts a new segment. Actual
+source kind values 29 through 33 replace synthetic grouped-comment kinds.
+A following token points to the last special token; backward Special links and
+forward Next links preserve the source chain. Syntax-node pre-comments reverse
+the backward chain into chronological images. A fresh getNextToken call starts
+with an empty local special chain, as Java does.
+
+Source bracketCount is class-wide and survives construction and state switching;
+the Go counter uses signed atomic updates to retain that shared state without a
+Go data race. Embedded close transitions back only when the decremented count
+is zero. At EOF, unfinished MORE input throws TokenMgrError and retains lexical
+state. EOF immediately after a completed special token returns EOF, including
+inside an unfinished outer comment. Do not repair this source behavior during
+the faithful port. The parser's catch emits Java's multiline open-comment
+summary using actual token-begin and last-character lines; direct tokenizer
+errors retain TokenMgrError's original text.
+
+All 200 bounded stream rows across DEFAULT, SPEC, IN_COMMENT, EMBEDDED and
+IN_EOL_COMMENT agree on token/special kinds, images, coordinates, final state,
+shared nesting count and failure messages. Another 28 rows agree on sequential
+state and full parser output, including shared-counter effects. All 355 corpus
+actual outputs remain equal after the change. These are bounded comparisons,
+not exhaustive lexer, character-stream or concurrent-interleaving verification.

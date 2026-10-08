@@ -37,11 +37,7 @@ type SanyTokenDefinition struct {
 	Image string
 }
 
-const (
-	SanyTokenInvalid      SanyTokenKind = -1
-	SanyTokenBlockComment SanyTokenKind = -2
-	SanyTokenEOLComment   SanyTokenKind = -3
-)
+const SanyTokenInvalid SanyTokenKind = -1
 
 type SanyToken struct {
 	Kind     SanyTokenKind
@@ -50,7 +46,9 @@ type SanyToken struct {
 	End      Position
 	LexState SanyLexState
 	Next     *SanyToken
-	Special  *SanyToken
+	// Special points to the last preceding special token. On a special token,
+	// it points backward; Next links the chronological special sequence.
+	Special *SanyToken
 }
 
 func (k SanyTokenKind) JavaName() string {

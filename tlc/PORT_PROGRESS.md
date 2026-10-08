@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-07 Correct JavaCC comment segments and EOF handling:
+Previous completed commit: a4826de. Audit found native grouped-comment tokens,
+forward-only special ownership, per-comment depth and unconditional reset at EOF.
+Translate actual MORE/SPECIAL_TOKEN rules: comment images end at each source
+special delimiter, kinds 29 through 33 are retained, and each regular token owns
+the last special with backward links. Syntax nodes collect chronological images
+from that chain. Remove unused synthetic negative comment kinds. Preserve Java's
+class-wide signed bracketCount using atomic Go updates; constructors/state changes
+do not reset it. Preserve source EOF acceptance after a complete special segment
+inside an outer comment and failure after unfinished MORE input. A fresh
+getNextToken call discards the prior call's special chain. Actual scanner begin/end
+lines drive the parser's source multiline open-comment summary.
+
+CommentLexicalProbe compares 14 sequential inputs through both raw token manager
+and parser wrapper: all 28 state/full-output rows match, including retained shared
+counter effects. CommentTokenProbe compares 40 inputs across five lexical states:
+all 200 token/special kind/image/coordinate/state/counter/error rows match. The
+initial Go observer exposed an EOF loop after a completed special segment in a
+comment state; stop session 79786 (130, retired), add the source immediate EOF
+return, and rerun successfully. Final stream comparison still matches all 200.
+All 355 corpus translated outputs remain identical to Java. Probes, overlays and
+logs remain outside the repository under /mnt/oldrog/tmp with prefixes
+tlago-comment-lexical, tlago-comment-token and tlago-comment-corpus-translation.
+No invented permanent tests. Existing native chronological-comment assertions
+now follow the source backward chain to its first element; their input, order,
+nonnull and lexical-state requirements remain unchanged.
+
+Original Java TokenizerTests and ProofTests pass all 13 contexts (0.028s).
+Final complete SANY package passes in 2.023 seconds; all-package compilation and
+git diff check pass. Focused root originals and existing parser/token/scaffold/
+selector/debugger models pass. Earlier root check passed in 9.750 seconds; final
+root handle 64274 returned 0 and is retired. No active handles remain. Normal
+execution without race; unchanged long workloads were not repeated. No additional
+original-method credit or whole-workspace green claim. Remaining canonical graph,
+character-stream/lexer and production parser parity are still incomplete.
+
+
 2026-10-07 Complete original syntax corpus AST assertions:
 Previous completed commit: 4dbe598. Port full recursive translate/flatTranslate
 switches and expression-dependent quantifier-bound/use-body helpers from

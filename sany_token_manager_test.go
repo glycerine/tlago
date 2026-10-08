@@ -26,11 +26,17 @@ func TestSanyTokenManagerBehaviors(t *testing.T) {
 		tokens, diags := SanyTokenize("M.tla", source)
 		requireNoErrors(t, diags)
 		assume := findSanyToken(t, tokens, "ASSUME")
-		if assume.Special == nil || assume.Special.Next == nil {
+		// Java stores the last special token; follow its backward links to
+		// the first comment before checking the existing chronological order.
+		first := assume.Special
+		for first != nil && first.Special != nil {
+			first = first.Special
+		}
+		if first == nil || first.Next == nil {
 			t.Fatalf("ASSUME token did not receive both special comments: %#v", assume)
 		}
-		if assume.Special.LexState != SanyLexInEOLComment || assume.Special.Next.LexState != SanyLexInComment {
-			t.Fatalf("unexpected special lex states: %#v %#v", assume.Special, assume.Special.Next)
+		if first.LexState != SanyLexInEOLComment || first.Next.LexState != SanyLexInComment {
+			t.Fatalf("unexpected special lex states: %#v %#v", first, first.Next)
 		}
 	})
 

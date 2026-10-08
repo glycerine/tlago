@@ -61,6 +61,7 @@ func sanyLexicalError(eof bool, position Position, after string, character rune)
 }
 
 func (tm *SanyTokenManager) lexicalFailure(begin Position, code, nativeMessage string, position Position, after string, character rune, eof bool) {
+	tm.lexicalBegin = begin
 	diagnostic := errorAt(begin, code, "%s", nativeMessage)
 	diagnostic.SANYParseMessage = sanyLexicalError(eof, position, after, character)
 	panic(&sanyTokenMgrError{diagnostic: diagnostic, message: diagnostic.SANYParseMessage})

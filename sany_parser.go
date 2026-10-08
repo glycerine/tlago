@@ -1,6 +1,7 @@
 package tlago
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -49,7 +50,12 @@ func parseSanySyntaxUsingOutput(file, source string, out SanyOutput) (node *Sany
 		if failure := recover(); failure != nil {
 			switch failure := failure.(type) {
 			case *sanyTokenMgrError:
-				diags = append(parser.diags, failure.diagnostic)
+				diagnostic := failure.diagnostic
+				begin, end := parser.tokenManager.lexicalBegin, parser.tokenManager.lastEnd
+				if strings.Contains(failure.message, "EOF") && begin.Line != end.Line {
+					diagnostic.SANYParseMessage = fmt.Sprintf("Lexical {error: EOF reached, possibly open comment starting around line %d", begin.Line)
+				}
+				diags = append(parser.diags, diagnostic)
 				dependencies = parser.Dependencies()
 			case *sanyParseException:
 				diags = append(parser.diags, failure.diagnostic)

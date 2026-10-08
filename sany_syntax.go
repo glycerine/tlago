@@ -63,8 +63,12 @@ func NewSanyTokenNode(tok *SanyToken) *SanySyntaxNode {
 		ProofLevel: -1,
 		Level:      -1,
 	}
-	for special := tok.Special; special != nil; special = special.Next {
-		node.PreComments = append(node.PreComments, special.Image)
+	var comments []*SanyToken
+	for special := tok.Special; special != nil; special = special.Special {
+		comments = append(comments, special)
+	}
+	for i := len(comments) - 1; i >= 0; i-- {
+		node.PreComments = append(node.PreComments, comments[i].Image)
 	}
 	return node
 }

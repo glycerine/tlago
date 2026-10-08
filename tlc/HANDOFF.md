@@ -353,7 +353,15 @@ order, remaining constructor and semantic-node boundaries. The parser now reads
 tokens lazily and catches actual lexical failures. It reports source
 TokenMgrError text before ParseUnit's single E4003 abort, including EOF and
 UTF-16 character details. Fifteen lexical/trailing-text observations match
-Java. The Java `belchDEF` token-stream operation and its production call sites
+Java. Comment scanning now retains Java's MORE/SPECIAL_TOKEN segments,
+actual special-token kinds and backward links, shared signed nesting counter,
+lexical state at EOF and checked failure behavior. EOF after a completed special
+segment remains accepted by the token manager even inside an outer comment, as
+in Java; an unfinished MORE segment fails. Syntax nodes retain chronological
+pre-comment images. The parser wrapper emits the source multiline open-comment
+message from actual scanner begin/end lines. All 200 bounded token-stream rows
+and 28 state/parser-output rows match Java; these do not establish every lexical
+rule or concurrent interleaving. The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and
 `DefStep` leaves it for the definition parser as Java does. Twenty-one scratch
 comparisons match actual non-EOF token kinds, images, positions and marker
