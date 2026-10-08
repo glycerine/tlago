@@ -73,10 +73,12 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
-Next production repair: `TLCTraceEnumerator` currently suppresses cursor/read
-failures. The source propagates I/O failures through fingerprint reconstruction.
-Preserve that propagation and verify corrupt/inaccessible trace handling before
-continuing the recovery audit.
+Trace enumeration now propagates creation, cursor, read and reset errors through
+native Go return values. MultiFPSet, disk and off-heap trace recovery and CheckImpl
+retain those failures instead of inserting zero or treating them as end-of-trace.
+Reset refreshes length from the owner and preserves its cursor semantics; closed
+handles remain errors. Focused checks and full pre-commit interruption recovery
+pass. Between-commit interruption and broader distributed parity remain pending.
 
 The native MC06 process harness now verifies a mid-run local MemFPSet checkpoint.
 A real TCP worker processes successors before the production checkpoint barrier

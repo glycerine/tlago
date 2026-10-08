@@ -19199,3 +19199,47 @@ atomicity across file commits. Between-commit interruption remains open. The
 source audit also found Go TLCTraceEnumerator suppressing read/cursor errors
 instead of propagating source IOException; repair and focused verification of
 that production gap are the next action. Broader distributed parity is incomplete.
+
+## October 8, 2026: trace enumeration I/O propagation through recovery
+
+Fixed the source-audit gap recorded in ebd82aa. Go enumeration previously
+returned zero on failed predecessor/fingerprint reads, -1 on cursor failure,
+an empty memory enumerator on opening failure, and silently ignored reset
+length/cursor/open/seek errors. Added native error returns to Elements,
+NextPos, NextFP and Reset, updated all known callers, retained closed-handle
+failures and used the owner RAF length when refreshing reset. Removed the
+extra flush during construction: source enumeration does not flush buffered
+writes. Successful reset releases its replaced native reader; failed open
+preserves the existing reader. MultiFPSet, disk and off-heap reconstruction
+stop before inserting failed records and return normal close failures.
+CheckImpl initialization/reset/trace generation propagate failures as well.
+
+New native checks require I/O failures for truncated predecessor/fingerprint
+fields after one valid record, no spurious zero insertion, missing trace files,
+closed cursor/read/owner handles and reset opening failure. They distinguish
+valid fingerprint zero from a read error and require owner-length refresh after
+trace growth with the original -1 cursor behavior. Direct MSB/OffHeap fixtures
+explicitly disable nesting so their recovery implementations are exercised.
+No enabled original Java method directly covers these boundaries; no original
+completion credit is added. Initial fixtures required correcting Go method names
+and using the real MultiFPSet constructor; their initial build/panic outcomes
+are fixture errors, not production-failure evidence.
+
+Initial corrected new recovery checks pass in 0.017 seconds (2703 terminal
+status 0). Short trace/assigned-block checks pass in 1.774 seconds (85950 terminal
+status 0); root publication/whole-root compilation passes in 0.031 seconds
+(55489 terminal status 0). Initial new trace/reset and existing original short
+MultiFPSet PutMax/PutMin/PutZero checks pass in 4.132 seconds (41586 terminal
+status 0). Expanded error checks pass in 0.066 seconds (89521 terminal status 0).
+Final exact short selection, including direct nonnested disk/offheap recovery,
+closed-owner guard, original MultiFPSet methods and TCP assigned-block recovery,
+passes in 3.483 seconds (95668 terminal status 0).
+
+One full normal pre-commit interruption/recovery scenario verifies the changed
+API in 61.593 seconds (85746 terminal status 0;
+/mnt/oldrog/tmp/tlago-ewd840-trace-io-recovery-final.log), retaining exact old queue,
+full-trace fingerprint reconstruction and final 114,942 distinct/0 queued counts.
+That full run precedes the closed-owner guard/direct fixture refinements; final
+short checks cover those branches without repeating the unchanged long workload.
+All handles are retired. No race instrumentation or full suite was selected.
+Between-commit interruption and broader distributed parity remain incomplete.

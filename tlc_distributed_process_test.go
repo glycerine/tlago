@@ -171,10 +171,23 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 						// the complete persisted trace, not the old FP checkpoint.
 						// Trace.recover seeks to the saved cursor without truncation.
 						trace := tlc.NewTLCTrace(path[1], "MC06")
-						elements := trace.Elements()
+						elements, err := trace.Elements()
+						if err != nil {
+							t.Fatal(err)
+						}
 						seen := make(map[uint64]bool)
-						for elements.NextPos() != -1 {
-							fp := elements.NextFP()
+						for {
+							pos, err := elements.NextPos()
+							if err != nil {
+								t.Fatal(err)
+							}
+							if pos == -1 {
+								break
+							}
+							fp, err := elements.NextFP()
+							if err != nil {
+								t.Fatal(err)
+							}
 							if seen[fp] {
 								t.Fatal("persisted interrupted trace contains duplicate fingerprints")
 							}

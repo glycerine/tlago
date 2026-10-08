@@ -28,6 +28,7 @@ type TLCTrace struct {
 	raf           *BufferedRandomAccessFile
 	lastPtr       int64
 	traceErr      error
+	closed        bool
 }
 
 func NewTLCTrace(metaDir ...string) *TLCTrace {
@@ -724,26 +725,32 @@ func (t *TLCTrace) recordIndexByUIDLocked(uid int64) int {
 	return -1
 }
 
-func (t *TLCTrace) Elements() *TLCTraceEnumerator {
+func (t *TLCTrace) Elements() (*TLCTraceEnumerator, error) {
 	if t == nil {
-		return &TLCTraceEnumerator{}
+		return &TLCTraceEnumerator{}, nil
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if err := t.ensureTraceRAFLocked(); err == nil && t.raf != nil {
-		if err := t.raf.Flush(); err == nil {
-			length, lenErr := t.raf.Length()
-			if lenErr == nil {
-				enumRAF, openErr := NewBufferedRandomAccessFile(t.traceFileName(), "r")
-				if openErr == nil {
-					return &TLCTraceEnumerator{length: length, raf: enumRAF, path: t.traceFileName()}
-				}
-			}
+	if t.closed {
+		return nil, NewIOException("File handle closed")
+	}
+	if err := t.ensureTraceRAFLocked(); err != nil {
+		return nil, err
+	}
+	if t.raf != nil {
+		length, err := t.raf.Length()
+		if err != nil {
+			return nil, err
 		}
+		enumRAF, err := NewBufferedRandomAccessFile(t.traceFileName(), "r")
+		if err != nil {
+			return nil, err
+		}
+		return &TLCTraceEnumerator{length: length, raf: enumRAF, path: t.traceFileName(), trace: t}, nil
 	}
 	out := make([]TraceRecord, len(t.records))
 	copy(out, t.records)
-	return &TLCTraceEnumerator{records: out}
+	return &TLCTraceEnumerator{records: out}, nil
 }
 
 func (t *TLCTrace) BeginChkpt() error {
@@ -1035,6 +1042,7 @@ func (t *TLCTrace) Close() error {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.closed = true
 	if t.raf == nil {
 		return nil
 	}
@@ -1049,81 +1057,83 @@ type TLCTraceEnumerator struct {
 	length  int64
 	raf     *BufferedRandomAccessFile
 	path    string
+	trace   *TLCTrace
 }
 
-func (e *TLCTraceEnumerator) NextPos() int64 {
+func (e *TLCTraceEnumerator) NextPos() (int64, error) {
 	if e != nil && e.raf != nil {
 		pos, err := e.raf.GetFilePointer()
-		if err != nil || pos >= e.length {
-			return -1
+		if err != nil {
+			return 0, err
 		}
-		return pos
+		if pos >= e.length {
+			return -1, nil
+		}
+		return pos, nil
 	}
 	if e == nil || e.index >= len(e.records) {
-		return -1
+		return -1, nil
 	}
-	return int64(e.index)
+	return int64(e.index), nil
 }
 
-func (e *TLCTraceEnumerator) NextFP() uint64 {
+func (e *TLCTraceEnumerator) NextFP() (uint64, error) {
 	if e != nil && e.raf != nil {
 		if _, err := e.raf.ReadLongNat(); err != nil {
-			return 0
+			return 0, err
 		}
 		fp, err := e.raf.ReadLong()
-		if err != nil {
-			return 0
-		}
-		return uint64(fp)
+		return uint64(fp), err
 	}
 	if e == nil || e.index >= len(e.records) {
-		return 0
+		return 0, nil
 	}
 	fp := e.records[e.index].FP
 	e.index++
-	return fp
+	return fp, nil
 }
 
 func (e *TLCTraceEnumerator) Close() error {
 	if e != nil && e.raf != nil {
-		err := e.raf.Close()
-		e.raf = nil
-		return err
+		return e.raf.Close()
 	}
 	return nil
 }
 
-func (e *TLCTraceEnumerator) Reset(pos int64) {
+func (e *TLCTraceEnumerator) Reset(pos int64) error {
 	if e == nil {
-		return
+		return nil
 	}
 	if e.raf != nil {
-		if pos == -1 {
-			pos, _ = e.raf.GetFilePointer()
-		}
-		path := e.path
-		_ = e.raf.Close()
-		raf, err := NewBufferedRandomAccessFile(path, "r")
+		e.trace.mu.Lock()
+		length, err := e.trace.raf.Length()
+		e.trace.mu.Unlock()
 		if err != nil {
-			e.raf = nil
-			e.length = 0
-			e.index = 0
-			return
+			return err
 		}
+		e.length = length
+		if pos == -1 {
+			pos, err = e.raf.GetFilePointer()
+			if err != nil {
+				return err
+			}
+		}
+		raf, err := NewBufferedRandomAccessFile(e.path, "r")
+		if err != nil {
+			return err
+		}
+		// Native ownership releases the replaced read-only handle.
+		_ = e.raf.Close()
 		e.raf = raf
-		if length, err := e.raf.Length(); err == nil {
-			e.length = length
+		return e.raf.Seek(pos)
+	}
+	if pos >= 0 {
+		if pos > int64(len(e.records)) {
+			pos = int64(len(e.records))
 		}
-		_ = e.raf.Seek(pos)
-		return
+		e.index = int(pos)
 	}
-	if pos < 0 {
-		return
-	}
-	if pos > int64(len(e.records)) {
-		pos = int64(len(e.records))
-	}
-	e.index = int(pos)
+	return nil
 }
 
 func TLCTraceWriteBehavior(fileName string, state *TLCStateMut, stateTrace *StateVec) error {

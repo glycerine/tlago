@@ -703,6 +703,14 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native trace recovery now propagates enumerator creation/cursor/read/reset I/O
+failures. Short checks cover truncated predecessor/fingerprint fields, missing
+files, closed handles, valid zero fingerprints and reset after trace growth.
+MultiFPSet and direct disk/off-heap reconstruction reject failed records without
+inserting zero. Existing short original MultiFPSet translations and full native
+pre-commit interruption recovery pass. No enabled original method covers these
+error boundaries; supplemental checks add no original-method completion credit.
+
 Native value-array graph checks cover tuple, record, function, operator argument
 row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
 references and isolated receiver mutations across worker request/result TCP.

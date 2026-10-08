@@ -63,21 +63,27 @@ func (c *CheckImpl) Init() (int, error) {
 	fmt.Fprintln(os.Stdout, "completed.")
 	c.LastTraceTime = time.Now()
 	if c.Trace != nil {
-		c.StateEnum = c.Trace.Elements()
+		c.StateEnum, err = c.Trace.Elements()
+		if err != nil {
+			return ECGeneral, err
+		}
 	}
 	return NoError, nil
 }
 
-func (c *CheckImpl) Reset() {
+func (c *CheckImpl) Reset() error {
 	if c == nil {
-		return
+		return nil
 	}
 	c.CurState = nil
 	if c.StateEnum != nil {
-		c.StateEnum.Reset(-1)
+		return c.StateEnum.Reset(-1)
 	} else if c.Trace != nil {
-		c.StateEnum = c.Trace.Elements()
+		var err error
+		c.StateEnum, err = c.Trace.Elements()
+		return err
 	}
+	return nil
 }
 
 func (c *CheckImpl) MakeStateSpace(state *TLCStateMut, depth int) (int, error) {
@@ -180,8 +186,18 @@ func (c *CheckImpl) GenerateNewTrace() ([]*TLCStateInfo, error) {
 	if c == nil || c.StateEnum == nil || c.Trace == nil {
 		return nil, nil
 	}
-	for pos := c.StateEnum.NextPos(); pos != -1; pos = c.StateEnum.NextPos() {
-		fp := c.StateEnum.NextFP()
+	for {
+		pos, err := c.StateEnum.NextPos()
+		if err != nil {
+			return nil, err
+		}
+		if pos == -1 {
+			break
+		}
+		fp, err := c.StateEnum.NextFP()
+		if err != nil {
+			return nil, err
+		}
 		if c.CoverSet == nil || !c.CoverSet.Contains(fp) {
 			return c.Trace.GetTraceAt(pos, true), nil
 		}

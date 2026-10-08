@@ -218,9 +218,25 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remoteCount int) 
 	if successor == nil || successor.UID != trace.Records()[1].State.UID || successor.Level() != 2 {
 		t.Fatal("recovered frontier does not identify the committed successor trace")
 	}
-	enumerator := recoveredTrace.Elements()
+	enumerator, err := recoveredTrace.Elements()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer enumerator.Close()
-	if enumerator.NextPos() != initial.UID || enumerator.NextFP() != 61 || enumerator.NextPos() != successor.UID || enumerator.NextFP() != uint64(successorFP) || enumerator.NextPos() != -1 {
-		t.Fatal("recovered disk trace does not match the committed frontier and fingerprints")
+	for _, want := range []struct {
+		pos int64
+		fp  uint64
+	}{{initial.UID, 61}, {successor.UID, uint64(successorFP)}} {
+		pos, err := enumerator.NextPos()
+		if err != nil || pos != want.pos {
+			t.Fatalf("trace position = %d/%v, want %d", pos, err, want.pos)
+		}
+		fp, err := enumerator.NextFP()
+		if err != nil || fp != want.fp {
+			t.Fatalf("trace fingerprint = %d/%v, want %d", fp, err, want.fp)
+		}
+	}
+	if pos, err := enumerator.NextPos(); err != nil || pos != -1 {
+		t.Fatalf("trace end = %d/%v", pos, err)
 	}
 }

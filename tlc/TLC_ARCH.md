@@ -11248,3 +11248,25 @@ real producer worker and no premature FINISHED/GENERAL, then retains all final
 EWD840 assertions. It does not claim atomic recovery or between-commit safety.
 A separate audit found that Go TLCTraceEnumerator suppresses read/cursor errors;
 source methods propagate IOException. This production gap remains pending.
+
+TLCTrace.Elements and TLCTraceEnumerator.NextPos/NextFP/Reset now return native
+Go errors instead of suppressing source IOException. Enumerator creation reads
+owner RAF length and opens a read-only handle without the former extra flush;
+source creation does not flush buffered writes. Missing files and closed owners
+fail. NextFP preserves both predecessor/read-long failure paths, including a
+valid zero fingerprint distinct from an error. Closing an enumerator retains
+its closed handle state, so subsequent cursor/read calls fail rather than
+falling back to an empty memory enumeration. Reset refreshes length from the
+owner, preserves the current reader cursor for -1, opens before replacing the
+reader and propagates length/cursor/open/seek failures. Native ownership releases
+a successfully replaced read-only handle; a failed open keeps the old reader.
+
+MultiFPSet, DiskFPSet and OffHeapDiskFPSet trace reconstruction now propagate
+creation/cursor/read errors before inserting failed records, and return normal
+reader-close failures. Deferred native cleanup on failure leaves its original
+cause intact. CheckImpl creation/reset/trace generation and all known tests and
+process oracles consume the error-returning API. Existing assertions are retained.
+The full native interrupted-checkpoint recovery still finishes the unchanged
+MC06 model after restoring old queue/full-trace fingerprints. This repairs the
+previously documented error-propagation gap; it does not establish atomicity
+across checkpoint file commits or broader distributed completion.

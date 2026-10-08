@@ -562,15 +562,28 @@ func (s *DiskFPSet) RecoverTrace(trace *TLCTrace) error {
 	if trace == nil {
 		return s.Recover()
 	}
-	elements := trace.Elements()
-	defer elements.Close()
-	for pos := elements.NextPos(); pos != -1; pos = elements.NextPos() {
-		fp := elements.NextFP()
+	elements, err := trace.Elements()
+	if err != nil {
+		return err
+	}
+	defer elements.Close() // Release native ownership on failure without replacing the cause.
+	for {
+		pos, err := elements.NextPos()
+		if err != nil {
+			return err
+		}
+		if pos == -1 {
+			break
+		}
+		fp, err := elements.NextFP()
+		if err != nil {
+			return err
+		}
 		if err := s.RecoverFP(fp); err != nil {
 			return err
 		}
 	}
-	return nil
+	return elements.Close()
 }
 
 func (s *DiskFPSet) RecoverFP(fp uint64) error {
