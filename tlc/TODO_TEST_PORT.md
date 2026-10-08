@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental selector-ownership checks cover constructor retention, missing
+selector error handling/finally cleanup and requeue-before-selector-failure
+ordering. No upstream test directly covers these boundaries, so original-method
+completion counts and the missing distributed harness entries are unchanged.
+
 Supplemental application traversal checks preserve evaluator-driven replacement,
 shrink and growth of generation/invariant/implied-init/implied-action arrays.
 Violation names/context and generation failure identity are retained. No original

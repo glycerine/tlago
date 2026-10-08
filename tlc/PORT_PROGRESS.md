@@ -20590,3 +20590,26 @@ contexts pass with unchanged assertions (74091, status 0, 1.432 seconds).
 All handles are terminal. No full suite, long workload or race run was performed.
 Supplemental mutation checks add no original-method completion credit; broader
 distributed parity remains incomplete.
+
+### 2026-10-08: Coordinator thread selector ownership
+
+Compared TLCServerThread constructor, run and recoverable batch retry with the
+pinned Java source. Removed Go fallback selection at construction and each run
+iteration: the thread must retain its supplied selector, including absence.
+Selection failure now reaches the existing model-error handler and finally
+cleanup. Retry still requeues assigned states first, then requires the selector
+for the transfer-limit update. SetMaxTXSize rejects an absent receiver while
+retaining the no-op behavior of concrete static/proportional selectors.
+
+Upstream has no direct tests for these boundaries. Added three short native
+checks for constructor ownership, model-error/notification/finally ordering and
+retry requeue-before-failure ordering. After correcting a test helper embedding
+compile error, all three checks failed before the production fix (379287,
+status 1, 0.012 seconds). They pass with existing selector, handler/finalizer
+checks and nine original smart-proxy contexts (a532ec, status 0, 0.074 seconds).
+Short TCP coordinator retry/loss, assigned-block checkpoint and native worker
+bootstrap/callback checks pass (ab9dbc, status 0, 0.052 seconds). The first TCP
+attempt was denied loopback listeners by the sandbox; the same selection passed
+with the required execution permission. All processes are terminal. No full
+suite, long workload or race run was performed. These supplemental checks add
+no original-method credit; distributed parity remains incomplete.

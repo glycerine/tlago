@@ -11759,3 +11759,17 @@ record fields, shared records/values, stored UID/level and state fingerprints.
 Existing original record methods and Alias safety checks remain green. No direct
 upstream printable-state transfer tests exist; supplemental checks add no
 method credit. No Java serialization/RMI/JVM implementation is introduced.
+
+
+### Coordinator thread block-selector ownership
+
+TLCServerThread retains the constructor's supplied selector; registration passes
+the coordinator's chosen selector explicitly. The constructor and run loop do
+not substitute policies or create selectors. A missing selector fails at block
+selection, entering model-error reporting, queue completion and thread finally
+cleanup. A recoverable batch failure requeues the assigned states before updating
+the selector limit; a missing selector at that point retains the requeued work
+and propagates its failure. Concrete static/proportional selector limit updates
+remain no-ops. Focused native checks and existing original smart-proxy/short TCP
+checks pass. Upstream has no direct selector-ownership test methods, so these
+supplemental checks do not change original-method completion counts.

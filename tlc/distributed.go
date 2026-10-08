@@ -843,12 +843,6 @@ type TLCServerThread struct {
 }
 
 func NewTLCServerThread(worker DistributedWorkerEndpoint, uri string, server *TLCServer, selector *BlockSelector) *TLCServerThread {
-	if selector == nil && server != nil {
-		selector = server.BlockSelector
-	}
-	if selector == nil {
-		selector = NewBlockSelectorFromProperties(server)
-	}
 	thread := &TLCServerThread{
 		ID:                int(tlcServerThreadCount.Add(1) - 1),
 		CacheRateHitRatio: -1,
@@ -954,12 +948,6 @@ func (t *TLCServerThread) Run() {
 		}
 	}()
 	for {
-		if t.Selector == nil {
-			t.Selector = t.Server.BlockSelector
-		}
-		if t.Selector == nil {
-			t.Selector = NewBlockSelectorFromProperties(t.Server)
-		}
 		t.setStates(t.Selector.GetBlocks(stateQueue, t.Worker))
 		if t.currentStates() == nil {
 			t.Server.monitor.Lock()
@@ -1036,9 +1024,7 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 			if stateQueue != nil {
 				stateQueue.SEnqueueAll(t.currentStates())
 			}
-			if t.Selector != nil {
-				t.Selector.SetMaxTXSize(len(t.currentStates()) / 2)
-			}
+			t.Selector.SetMaxTXSize(len(t.currentStates()) / 2)
 			return nil, true
 		}
 		PrintMessage(ECTLCDistributedWorkerLost, t.GetURI())
@@ -1428,7 +1414,10 @@ func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWork
 }
 
 func (b *BlockSelector) SetMaxTXSize(maximum int) {
-	if b != nil && (b.Mode == BlockSelectorLimiting || b.Mode == BlockSelectorStatistical) {
+	if b == nil {
+		panic(NewNullPointerException())
+	}
+	if b.Mode == BlockSelectorLimiting || b.Mode == BlockSelectorStatistical {
 		b.maximumMu.Lock()
 		b.Maximum = maximum
 		b.maximumMu.Unlock()

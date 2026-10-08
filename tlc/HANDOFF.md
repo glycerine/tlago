@@ -35,6 +35,12 @@ remain separately tracked below. The user has supplied a green full-suite
 baseline; run focused checks for changed code rather than repeating that suite.
 Commit each tested chunk, aiming for every 10–15 minutes.
 
+Coordinator threads retain their supplied block selector. They do not borrow
+the server's selector or construct a replacement when it is absent. Missing
+selectors enter the model-error handler and thread cleanup; during a recoverable
+batch failure, requeueing precedes the selector failure, preserving pending work.
+Focused selector, error-handler, original smart-proxy and short TCP checks pass.
+
 The original checkpoint-on-violation and time-bound model tests are now complete.
 Both pass normally with their full assertions; the time-bound test retains the
 source five-second limit. The generated checkpoint trace recheck is also complete
