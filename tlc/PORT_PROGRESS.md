@@ -20241,3 +20241,35 @@ checkpoint checks pass 0.045 seconds; expanded exception-path assertions are
 verified in final handle 49105. All handles are terminal. No full suite, long
 workload or race selection was run. Other evaluator metadata/custom state/data
 work remains separately tracked, and distributed completion remains unproven.
+
+### 2026-10-08: Native cached-state map transfer
+
+Audited TLCStateMutExt’s non-transient Map<Integer, Value> cache. The existing
+codec rejected populated caches and silently omitted empty maps. Added a native
+StateCaches table with map-identity references from each state. Map addresses
+come from Go reflection; retained roots keep source maps alive for encoding.
+Sorted keys give deterministic entry order. Source signed-int keys are checked
+before narrowing, and values use the existing shared value graph. Decoding
+allocates one map per table entry, retaining shared/independent map identity,
+nil/empty distinctions and present null entries. Invalid references, duplicate
+keys and out-of-range keys are explicit errors. No arbitrary evaluator-object
+codec, Java serialization or RMI is introduced. All roles need the current
+native payload build.
+
+Added supplemental cache graph checks for shared maps across roots/predecessors,
+separate equal-content maps, shared empty maps, independent empty/nil maps,
+null values at MaxInt32 and recursive shared values at MinInt32. Receiver
+mutations must stay shared without touching sender storage. Validation checks
+cover map/value IDs, duplicates and signed key overflow on 64-bit platforms.
+Native TCP checks cover requests, results and WorkerException context, including
+shared cache maps/values and retained predecessor links. No direct upstream
+cache transfer test methods exist; no original-method status or credit changes.
+
+Initial cache graph/validation checks pass (70484, status 0, 0.013 seconds).
+Focused cache/predecessor/state/result/failure graph and original nine smart-
+proxy contexts pass (60994, status 0, 0.021 seconds). Native TCP cache/predecessor
+graph, result lifecycle, failure-state/codec and assigned-block checkpoint checks
+pass (23545, status 0, 0.046 seconds). Expanded exception-context map-sharing
+assertions pass in final handle 32991. All handles are terminal. No full suite,
+long workload or race selection was run. Remaining evaluator/custom metadata
+and broader distributed completion are still separately tracked.

@@ -11653,3 +11653,26 @@ ancestors, typed nulls, self-cycles, stored levels, shared values and independen
 receiver ownership. All communicating roles need the current payload build. No
 Java serialization protocol, RMI or JVM runtime is introduced. No direct
 upstream predecessor-transfer tests exist; native checks add no method credit.
+
+
+### Native cached-state map transfer
+
+TLCStateMutExt’s non-transient cache is Map<Integer, Value>. The native graph
+now has a StateCaches table and a one-based cache reference per state node.
+Zero denotes a nil cache; a referenced empty table denotes a non-nil empty map.
+Encoding tracks map identity through native reflection, retaining the maps
+throughout encoding. Sorting signed-int keys gives deterministic native entry
+order. Keys outside the source int32 range are rejected instead of truncated.
+Each entry references the existing value graph, preserving cached values shared
+with state values and other maps, including recursive values and null entries.
+
+Decoding creates a distinct map per table entry and reuses it for all referring
+states, including predecessor states. Equal-content separate maps remain
+separate; shared empty maps remain shared after later insertion. Negative or
+out-of-range map/value references and duplicate keys fail explicitly. Cache
+values retain the existing codec’s supported-value and failure contracts; no
+arbitrary evaluator objects are reconstructed or silently dropped. All roles
+need the updated native payload build. No Java serialization or RMI is added.
+Gob/TCP requests, results and WorkerException contexts verify mutation-visible
+sharing with isolated sender ownership. There are no direct upstream cache
+transfer tests, so supplemental checks add no original-method credit.

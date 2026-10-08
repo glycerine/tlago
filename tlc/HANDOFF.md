@@ -233,6 +233,16 @@ receiver ownership across gob and worker TCP. Further metadata/custom-data and
 process failure/recovery work remains pending.
 These short native checks add no original-method completion credit.
 
+Native cached-state transfer now retains populated, empty and nil maps. Shared
+cache maps stay shared across roots and predecessor states; equal-content
+separate maps remain separate. Cached values share the invocation’s existing
+value graph, including null entries and recursive values. Gob/TCP request,
+result and worker-exception checks pass with isolated receiver ownership.
+Invalid references, duplicate keys and keys outside the source signed-int range
+fail explicitly. All roles need the current payload build. These supplemental
+checks add no original-method credit; unsupported evaluator/custom values remain
+subject to the existing explicit codec errors.
+
 Native state transfer now supports predecessor references in the shared state
 graph. Shared parents, non-root ancestors, typed nulls and cycles retain their
 identity and stored levels without invoking metadata-mutating setters. Gob/TCP

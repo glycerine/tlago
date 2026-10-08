@@ -940,6 +940,13 @@ Short native checks cover six queue success/failure cases, nine missing-owner
 cases and a joined real reporting wait. Upstream has no direct methods for
 these controls; no original test statuses or completion credit change.
 
+Native state-cache transfer now retains map identity, separate equal-content
+maps, nil/empty maps, null entries and shared/recursive values across state
+roots and predecessors. Gob/TCP requests, results and exception contexts pass.
+Invalid map/value references, duplicate keys and out-of-range keys fail. No
+direct upstream cache-transfer test methods exist, so these supplemental checks
+add no original-method status or completion credit.
+
 Native predecessor graph transfer now passes gob/TCP request/result and worker
 exception checks for shared parents, non-root ancestors, nulls, cycles, stored
 levels and shared values. Invalid IDs and unsupported ancestor metadata fail

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"sort"
 )
 
 // DistributedStatePayload is a native Go graph for a single remote invocation.
@@ -20,6 +21,12 @@ type DistributedStatePayload struct {
 	ValueArrays  [][]int
 	ValueVectors []DistributedValueVectorNode
 	NameArrays   [][]int
+	StateCaches  [][]DistributedStateCacheEntry
+}
+
+type DistributedStateCacheEntry struct {
+	Key   int32
+	Value int
 }
 
 type DistributedValueVectorNode struct {
@@ -35,6 +42,7 @@ type DistributedStateNode struct {
 	ValuesArray int
 	ValuesNil   bool
 	Predecessor int
+	Cache       int
 }
 
 type DistributedStringNode struct {
@@ -97,6 +105,8 @@ type distributedPayloadEncoder struct {
 	vectors    map[*ValueVec]int
 	nameArrays map[distributedByteArrayKey]int
 	nameRoots  [][]*UniqueString
+	caches     map[uintptr]int
+	cacheRoots []map[int]Value // Retain address-keyed maps throughout encoding.
 }
 
 type distributedByteArrayKey struct {
@@ -136,7 +146,7 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 	}
 	// Evaluator objects require their own representation and must not be dropped.
 	// Predecessor links use the same native state graph as invocation roots.
-	if state.functional || state.functionalBindings != nil || state.action != nil || state.callable != nil || len(state.cached) != 0 || state.printRecord != nil {
+	if state.functional || state.functionalBindings != nil || state.action != nil || state.callable != nil || state.printRecord != nil {
 		return 0, fmt.Errorf("network state contains extended evaluator metadata")
 	}
 	id := len(e.payload.States) + 1
@@ -157,7 +167,46 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 			return 0, err
 		}
 	}
-	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil, Predecessor: predecessor}
+	cache, err := e.stateCache(state.cached)
+	if err != nil {
+		return 0, err
+	}
+	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil, Predecessor: predecessor, Cache: cache}
+	return id, nil
+}
+
+func (e *distributedPayloadEncoder) stateCache(cache map[int]Value) (int, error) {
+	if cache == nil {
+		return 0, nil
+	}
+	address := uintptr(reflect.ValueOf(cache).UnsafePointer())
+	if id := e.caches[address]; id != 0 {
+		return id, nil
+	}
+	if e.caches == nil {
+		e.caches = make(map[uintptr]int)
+	}
+	id := len(e.payload.StateCaches) + 1
+	e.caches[address] = id
+	e.cacheRoots = append(e.cacheRoots, cache)
+	e.payload.StateCaches = append(e.payload.StateCaches, nil)
+	keys := make([]int, 0, len(cache))
+	for key := range cache {
+		if int64(key) < math.MinInt32 || int64(key) > math.MaxInt32 {
+			return 0, fmt.Errorf("state cache key %d outside signed int32 range", key)
+		}
+		keys = append(keys, key)
+	}
+	sort.Ints(keys)
+	entries := make([]DistributedStateCacheEntry, len(keys))
+	for i, key := range keys {
+		value, err := e.value(cache[key])
+		if err != nil {
+			return 0, err
+		}
+		entries[i] = DistributedStateCacheEntry{Key: int32(key), Value: value}
+	}
+	e.payload.StateCaches[id-1] = entries
 	return id, nil
 }
 
@@ -531,6 +580,22 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, fmt.Errorf("value %d: %w", i+1, err)
 		}
 	}
+	caches := make([]map[int]Value, len(payload.StateCaches))
+	for i, entries := range payload.StateCaches {
+		cache := make(map[int]Value, len(entries))
+		for _, entry := range entries {
+			key := int(entry.Key)
+			if _, duplicate := cache[key]; duplicate {
+				return nil, fmt.Errorf("state cache %d has duplicate key %d", i+1, key)
+			}
+			value, err := decoder.value(entry.Value)
+			if err != nil {
+				return nil, fmt.Errorf("state cache %d: %w", i+1, err)
+			}
+			cache[key] = value
+		}
+		caches[i] = cache
+	}
 	objects := make([]*TLCStateMut, len(payload.States))
 	for i, node := range payload.States {
 		if node.Level < 0 {
@@ -541,6 +606,12 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, err
 		}
 		objects[i] = &TLCStateMut{WorkerID: node.WorkerID, UID: node.UID, level: int(node.Level), values: values}
+		if node.Cache < 0 || node.Cache > len(caches) {
+			return nil, fmt.Errorf("invalid distributed state cache reference %d", node.Cache)
+		}
+		if node.Cache != 0 {
+			objects[i].cached = caches[node.Cache-1]
+		}
 	}
 	for i, node := range payload.States {
 		if node.Predecessor < 0 || node.Predecessor > len(objects) {
