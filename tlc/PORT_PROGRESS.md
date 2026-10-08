@@ -22253,3 +22253,34 @@ process variants pass (worker-action-validation-models.log, terminal process
 all processes are terminal. Original assertions and bounds are unchanged. No
 full suite or race run was performed. Supplemental cases add no original-method
 credit; distributed completion remains unproven.
+
+### 2026-10-08: Literal trace checkpoint commit and native cleanup
+
+Rechecked TLCServer's queue/trace/intern/FP commit order and current full-model
+interruption hooks. Isolated trace-commit interruption remains pending: concrete
+trace/intern operations provide no safe deterministic boundary in that harness.
+No production observer or reordered commit was introduced to manufacture one.
+Found a separate production mismatch: literal disk traces with empty directory
+prefixes opened their native owner and began/recovered checkpoints, but commit
+and Delete returned success without doing their work. Both guards now distinguish
+memory-only traces from literal disk paths. Commit retains source delete-before-
+promotion and IOException failure. Delete is native resource cleanup, closing the
+existing handle and deleting its owned files, without emulating JVM lifetime.
+
+Three supplemental temporary-file cases initially failed: promotion/recovery,
+missing-temporary failure/order and native deletion (trace-empty-directory-red.log,
+terminal process 83ef06 status 1). Literal filenames are constructed entirely
+inside temporary storage; no root filesystem file is created. The first broad
+focused run hit an existing TCP checkpoint test's socket sandbox restriction
+(trace-empty-directory-focused.log, terminal process bc087c status 1). The same
+unchanged selection passes with listener permission (trace-empty-directory-focused-
+allowed.log, terminal process 4c9b1d status 0; package time 1.897 seconds), covering
+trace, worker/concurrent trace, original simulation traces and distributed disk
+checkpoint paths. Original checkpoint-on-violation/time-bound, three-worker
+CodePlexBug08 archive recovery and ErrorTraceConstruction models plus four native
+distributed DieHard/TSnapShot variants pass (trace-empty-directory-models.log,
+terminal process 3d4446 status 0; package time 56.826 seconds). Logs were captured
+and inspected and all processes are terminal. No original bounds/assertions
+changed. No full suite or race run was performed. No original Java method directly
+covers this prefix; supplemental cases add no original-method credit. Distributed
+completion remains unproven.

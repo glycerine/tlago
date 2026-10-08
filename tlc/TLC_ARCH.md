@@ -12053,3 +12053,12 @@ returning empty successors or a non-boolean diagnostic. DistributedWorker retain
 these evaluator failures with predecessor context and a call-stack flag. A real
 false predicate remains an empty successor set and follows ordinary deadlock
 handling. Explicit evaluator overrides retain their existing dispatch boundary.
+
+Literal TLCTrace filenames remain disk-backed even when their directory prefix
+is empty. Checkpoint commit uses the captured literal filename, deletes the old
+checkpoint before promotion and preserves the source IOException on failure.
+Native Delete closes the owned handle and removes its trace/temporary/checkpoint
+files for this prefix too. Memory-only traces retain their separate behavior.
+The checks construct filenames entirely inside temporary storage, so no root
+filesystem file is created. They do not establish the separate isolated full-model
+trace-commit interruption boundary.

@@ -1411,6 +1411,11 @@ Default successor evaluation also rejects missing actions/predicates instead of
 fabricating empty vectors. Six supplemental local/TCP cases distinguish those
 failures from an ordinary false-action deadlock and preserve worker context and
 statistics. No original method directly covers this boundary; credit is unchanged.
+Literal disk traces with empty directory prefixes now commit and clean up their
+owned files. Three supplemental cases cover commit/recovery, delete-before-failed-
+promotion order and native resource deletion. No original method directly covers
+this prefix; original-method credit is unchanged and isolated trace interruption
+remains pending.
 Existing original BitVector printing and dynamic-manager methods remain green;
 the new failure checks add no original-method completion credit.
 Failover warning routing now matches ToolIO for scalar, batch and statistics

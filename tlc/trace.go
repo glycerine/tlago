@@ -925,7 +925,7 @@ func (t *TLCTrace) CommitChkpt() error {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.diskdir == "" {
+	if t.diskdir == "" && !t.rawPaths {
 		return nil
 	}
 	oldChkpt := t.chkptName("chkpt")
@@ -1071,7 +1071,7 @@ func (t *TLCTrace) Delete() error {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.diskdir == "" {
+	if t.diskdir == "" && !t.rawPaths {
 		return nil
 	}
 	if t.raf != nil {

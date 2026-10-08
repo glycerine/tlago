@@ -160,6 +160,14 @@ predecessor, cause and call-stack flag instead of reporting ordinary deadlock.
 A valid false action still reports deadlock normally. Six short local/TCP checks
 cover these cases without changing original-method credit.
 
+Literal trace paths also commit checkpoints and perform native cleanup when
+their directory prefix is empty. Begin and recover already used those paths;
+commit/deletion no longer mistake the owned disk trace for a memory-only trace.
+Commit retains old-checkpoint deletion before promotion and its I/O failure.
+Three temporary-file cases cover promotion/recovery, failed promotion and closing
+and deleting the native owner/files. Isolated trace-commit interruption remains
+pending; these checks do not add original-method completion credit.
+
 Error-trace printing propagates returned state-reconstruction and alias errors
 instead of fabricating fallback states. Ordinary printing errors reach the
 coordinator catch; fatal errors escape before queue completion/notification.
