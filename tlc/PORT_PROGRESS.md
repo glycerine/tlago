@@ -19130,3 +19130,35 @@ boundary, so these native checks add no original-method completion credit.
 The native DTO layout changes; communicating roles use the same build. No Java
 transport or runtime emulation was added. Broader distributed parity, metadata
 and process failure/recovery requirements remain incomplete.
+
+## October 8, 2026: full mid-run checkpoint recovery in fresh native processes
+
+Added mid_run_checkpoint_recovery to the existing unchanged EWD840 MC06/N=7
+native process matrix. The producer uses production application loading,
+coordinator publication and ModelCheck with one real TCP worker and local
+MemFPSet storage. Only checkpoint triggering/count observation is injected:
+wait for fingerprint count beyond the complete initial frontier, then call the
+production checkpoint barrier. A forwarding queue wrapper captures counts at
+BeginChkpt after server threads suspend, avoiding live post-resume counters.
+The producer exits abruptly after commit without completing exploration. Retire
+and join its old worker before starting a fresh real -recover CLI coordinator
+and worker. All owned children are joined on success or failure.
+
+Require a partially explored nonempty checkpoint, exactly one committed
+checkpoint, exactly one real producer worker and no premature FINISHED/GENERAL.
+Fresh recovery must report the saved fingerprint/queue counts once, skip initial
+state generation and complete the full original workload: FINISHED, 114,942
+distinct states, zero queued states and no GENERAL. Both recovered roles must
+also have no GENERAL or unexpected EOF and exit normally. Progress labels
+separate the workers before/after checkpoint. Existing initial-frontier recovery
+retains its exact 16,384/16,384 assertion; the new row adds no disabled original
+remote-harness completion credit.
+
+Initial exact normal scenario passes in 60.121 seconds (65100 terminal status 0;
+/mnt/oldrog/tmp/tlago-ewd840-mid-run-recovery.log). After strengthening role and
+single-checkpoint/recovery assertions, final exact scenario passes in 60.440
+seconds (98556 terminal status 0; /mnt/oldrog/tmp/tlago-ewd840-mid-run-recovery-final.log).
+Both runs commit and restore exactly 20,480 fingerprints and 12,288 queued states.
+No production defect was found. Both handles are retired. No race detector,
+full suite or other long model scenario was selected. Interruption during
+checkpoint, FP-process failure and broader distributed parity remain incomplete.

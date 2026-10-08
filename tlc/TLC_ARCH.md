@@ -11211,3 +11211,19 @@ out-of-range array/string references are rejected. Existing inline fixtures
 remain accepted. As with the value-array table, arbitrary overlapping Go slice
 views and empty-array object identity are outside the source array representation.
 All communicating native roles use the same build; this adds no Java machinery.
+
+The native EWD840 process matrix now has mid_run_checkpoint_recovery with local
+MemFPSet storage. An owned producer uses the production coordinator publication,
+application loading and ModelCheck with a real TCP worker. After fingerprints
+exceed the complete 16,384-state initial frontier, it calls production Checkpoint.
+A forwarding StateQueue wrapper captures fingerprint/queue counts at BeginChkpt,
+after all server threads suspend; counters after resume would describe a newer
+frontier. The producer exits abruptly only after checkpoint commit, leaving the
+saved files for a fresh real -recover CLI coordinator. Its old worker is retired
+and joined before the fresh worker starts. Recovery must report those exact saved
+counts once, skip initial-state regeneration and finish the unchanged MC06/N=7
+model with 114,942 distinct states and no queued states. The recovered roles must
+have no GENERAL/lost replies and exit normally. In both verified runs, the saved
+frontier contains 20,480 fingerprints and 12,288 queued states. This is post-commit
+process-loss coverage, not interruption during commit or distributed checkpoint
+atomicity. No disabled original-harness completion credit is assigned.

@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/rpc"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -27,12 +29,14 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		remoteFP, recovering, workerLoss, combined bool
 		allWorkersLost                             bool
 		fingerprintServers                         int
+		midRunCheckpoint                           bool
 	}{
 		{name: "coordinator_fingerprints"},
 		{name: "standalone_fingerprints", remoteFP: true},
 		{name: "partitioned_fingerprints", remoteFP: true, fingerprintServers: 2},
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
+		{name: "mid_run_checkpoint_recovery", recovering: true, midRunCheckpoint: true},
 		{name: "worker_loss", workerLoss: true},
 		{name: "all_workers_lost", workerLoss: true, allWorkersLost: true},
 	} {
@@ -73,6 +77,12 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if scenario.fingerprintServers > 1 && role == "fpserver" {
 					label = fmt.Sprintf("fpserver-%d", roleCounts[role])
 				}
+				if scenario.midRunCheckpoint && role == "worker" {
+					label = "worker-before-checkpoint"
+					if roleCounts[role] > 1 {
+						label = "worker-after-checkpoint"
+					}
+				}
 				output := &nativeDistributedTestLog{test: t, role: label}
 				command.Stdout, command.Stderr = output, output
 				if err := command.Start(); err != nil {
@@ -94,8 +104,17 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				}
 			}()
 			serverArgs := []string{"-tool", "-deadlock", "-metadir", t.TempDir(), "MC06"}
+			recoveryDistinct, recoveryQueue := "16384", "16384"
 			if scenario.recovering {
-				snapshot := start("checkpoint-frontier", append([]string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet"}, serverArgs...)...)
+				producer := "checkpoint-frontier"
+				if scenario.midRunCheckpoint {
+					producer = "checkpoint-mid-run"
+				}
+				snapshot := start(producer, append([]string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet"}, serverArgs...)...)
+				var snapshotWorker *nativeDistributedTestProcess
+				if scenario.midRunCheckpoint {
+					snapshotWorker = start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				}
 				err := <-snapshot.done
 				snapshot.joined = true
 				if err != nil {
@@ -105,12 +124,38 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if len(path) != 2 {
 					t.Fatal("checkpoint producer did not publish its committed directory")
 				}
+				if snapshotWorker != nil {
+					// The producer deliberately exits after commit, without
+					// finishing exploration. Retire its old worker before restart.
+					if err := snapshotWorker.command.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+						t.Fatal(err)
+					}
+					<-snapshotWorker.done
+					snapshotWorker.joined = true
+					counts := regexp.MustCompile(`(?m)^NATIVE_CHECKPOINT_COUNTS=(\d+),(\d+)$`).FindStringSubmatch(snapshot.output.String())
+					if len(counts) != 3 {
+						t.Fatal("mid-run checkpoint counts absent")
+					}
+					distinct, _ := strconv.ParseUint(counts[1], 10, 64)
+					queued, _ := strconv.ParseUint(counts[2], 10, 64)
+					if distinct <= 16384 || distinct >= 114942 || queued == 0 || queued >= distinct {
+						t.Fatalf("checkpoint was not a partially explored frontier: %d/%d", distinct, queued)
+					}
+					recoveryDistinct, recoveryQueue = counts[1], counts[2]
+					if len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCCheckpointEnd)) != 1 || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECGeneral)) != 0 {
+						t.Fatal("mid-run producer failed to commit exactly one checkpoint without GENERAL")
+					}
+					if len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCDistributedWorkerRegistered)) != 1 || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCFinished)) != 0 {
+						t.Fatal("checkpoint producer did not stop an unfinished run with one real worker")
+					}
+				}
 				serverArgs = []string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "-tool", "-deadlock", "-recover", path[1], "MC06"}
 			}
 			if scenario.remoteFP {
 				count := max(1, scenario.fingerprintServers)
 				serverArgs = append([]string{fmt.Sprintf("-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=%d", count)}, serverArgs...)
 			}
+			recoveredRoleStart := len(roles)
 			server := start("server", serverArgs...)
 			if scenario.combined {
 				// Exercise the production launcher and shared native listener:
@@ -263,11 +308,22 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				}
 			}
 			if scenario.recovering {
-				if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd)) || !strings.Contains(output, "Recovery completed. 16384 states examined. 16384 states on queue.") {
-					t.Fatalf("initial frontier recovery counts absent:\n%s", output)
+				if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd)) || !strings.Contains(output, fmt.Sprintf("Recovery completed. %s states examined. %s states on queue.", recoveryDistinct, recoveryQueue)) {
+					t.Fatalf("checkpoint recovery counts absent:\n%s", output)
 				}
 				if strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCComputingInit)) {
 					t.Fatal("recovered coordinator regenerated initial states")
+				}
+				if scenario.midRunCheckpoint {
+					if len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverEnd)) != 1 {
+						t.Fatal("mid-run coordinator did not report exactly one recovery")
+					}
+					for _, process := range roles[recoveredRoleStart:] {
+						roleOutput := process.output.String()
+						if len(nativeDistributedMessages(roleOutput, tlc.ECGeneral)) != 0 || strings.Contains(roleOutput, "unexpected EOF") {
+							t.Fatalf("recovered role %s emitted GENERAL or lost an RPC reply", process.output.role)
+						}
+					}
 				}
 			}
 			if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCFinished)) {
@@ -304,6 +360,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 			status := ExitToolFailure
 			if len(args) > 0 && args[0] == "checkpoint-frontier" {
 				if err := nativeDistributedCheckpointFrontier(args[1:]); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
+			} else if len(args) > 0 && args[0] == "checkpoint-mid-run" {
+				if err := nativeDistributedCheckpointMidRun(args[1:]); err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				} else {
 					status = ExitOK
@@ -393,6 +455,84 @@ func nativeDistributedCheckpointFrontier(args []string) error {
 	}
 	fmt.Println("NATIVE_CHECKPOINT_PATH=" + app.GetMetadir())
 	return nil
+}
+
+type nativeMidRunCheckpointQueue struct {
+	tlc.StateQueue
+	server   *tlc.TLCServer
+	distinct uint64
+	queued   int64
+}
+
+func (q *nativeMidRunCheckpointQueue) BeginChkpt() error {
+	// Checkpoint has already suspended all server threads here. Capture the
+	// counts of the persisted frontier, rather than post-resume live counters.
+	q.distinct, q.queued = q.server.FPSetManager.Size(), q.Size()
+	return q.StateQueue.BeginChkpt()
+}
+
+// Run the unchanged model with a real TCP worker until successors have been
+// inserted. Commit using the production checkpoint barrier, then abruptly exit
+// this process. The parent starts a fresh CLI coordinator and worker to recover.
+func nativeDistributedCheckpointMidRun(args []string) error {
+	args, err := tlc.ExtractDistributedStartupProperties(args)
+	if err != nil {
+		return err
+	}
+	network := tlc.NewDistributedCoordinatorNetwork("127.0.0.1", "127.0.0.1")
+	defer network.Close()
+	process := tlc.NewDistributedServerProcess()
+	env := tlc.DistributedServerEnvironment{
+		CreateServer: func(app *tlc.TLCApp, _ int) (*tlc.TLCServer, error) {
+			server, err := tlc.NewTLCServerFromApp(app)
+			if err == nil {
+				server.ConfigurePublication(network.Publication())
+			}
+			return server, err
+		},
+		ModelCheck: func(server *tlc.TLCServer) error {
+			queue := &nativeMidRunCheckpointQueue{StateQueue: server.StateQueue, server: server}
+			server.StateQueue = queue
+			stop, joined := make(chan struct{}), make(chan struct{})
+			go func() {
+				defer close(joined)
+				defer func() {
+					if failure := recover(); failure != nil {
+						fmt.Fprintln(os.Stderr, "mid-run checkpoint panic:", failure)
+						os.Exit(ExitToolFailure)
+					}
+				}()
+				ticker := time.NewTicker(time.Millisecond)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-stop:
+						return
+					case <-ticker.C:
+						if server.FPSetManager.Size() <= 16384 {
+							continue
+						}
+					}
+					if err := server.Checkpoint(); err != nil {
+						fmt.Fprintln(os.Stderr, "mid-run checkpoint:", err)
+						os.Exit(ExitToolFailure)
+					}
+					fmt.Printf("NATIVE_CHECKPOINT_COUNTS=%d,%d\n", queue.distinct, queue.queued)
+					fmt.Println("NATIVE_CHECKPOINT_PATH=" + server.Metadir)
+					os.Exit(ExitOK)
+				}
+			}()
+			_, err := server.ModelCheck()
+			close(stop)
+			<-joined
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("model completed before mid-run checkpoint")
+		},
+	}
+	_, err = RunDistributedServer(process, args, env, tlc.RuntimeParameters{})
+	return err
 }
 
 type nativeDistributedTestProcess struct {

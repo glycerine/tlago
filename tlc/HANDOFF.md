@@ -73,6 +73,16 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+The native MC06 process harness now verifies a mid-run local MemFPSet checkpoint.
+A real TCP worker processes successors before the production checkpoint barrier
+captures the frontier. The producer exits abruptly after commit; its old worker
+is retired, and fresh CLI coordinator/worker processes must recover the exact
+saved counts without regenerating initial states. Full unchanged N=7 exploration
+then finishes with 114,942 distinct states and zero queued states, no GENERAL or
+lost replies, and normal exits for both fresh processes. This is supplemental
+native coverage, not disabled original-harness completion credit. Interruption
+during checkpoint and broader process-crash behavior remain pending.
+
 Native state transfer now preserves shared backing value arrays for tuples,
 records, functions, configured operator argument rows, tuple products and record
 sets. Receiver mutations remain visible through shared arrays without touching
@@ -159,8 +169,9 @@ Java flow: the dynamic manager starts empty, recover runs before publication
 and FP registration, and recovery iterates that empty registration list. The
 Go startup retains that order. Restoring remote FP stores through the CLI would
 require an enhancement to the source algorithm. Registered-endpoint recovery
-is verified separately; fresh-process mid-run local-FP recovery and checkpoint
-interruption coverage remain pending.
+is verified separately. Fresh-process mid-run local MemFPSet recovery now also
+completes the full unchanged MC06 model after an abrupt post-commit coordinator
+exit. Checkpoint interruption and broader process-crash coverage remain pending.
 
 Model-value byte data uses native graph references instead of per-value copies.
 Shared buffers stay shared across states and result partitions; equal-content
@@ -2119,10 +2130,11 @@ A real server thread completes and publishes its held block before the disk
 frontier, trace and local or native TCP fingerprints are checkpointed. The worker resumes,
 and reopening storage recovers the selected frontier's exact UID and trace FP
 positions. Normal and exact short race checks pass; no production fix was needed.
-This is same-process storage reopening, not full-model recovery in fresh
-processes after a mid-run checkpoint or failure during the checkpoint. Those
-broader cases remain pending; fresh-process remote-FP CLI recovery is the source
-startup limitation described above.
+That short check reopens storage in the same process. Separate full-model
+coverage now restores a mid-run local MemFPSet checkpoint in fresh coordinator
+and worker processes after abrupt producer exit. Interruption during checkpoint
+remains pending; fresh-process remote-FP CLI recovery is the source startup
+limitation described above.
 
 The shared bit-vector iterator now rejects null input and uninitialized words,
 matching Java rather than treating missing FP answers as empty results. This
