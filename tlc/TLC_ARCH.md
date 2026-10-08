@@ -11398,3 +11398,15 @@ trace independently of the old metadata cursor. Fresh CLI coordinator/worker
 processes retain the full unchanged model and final assertions; no atomicity
 protocol or disabled Java harness completion credit is introduced. Later trace/
 intern/fingerprint commit boundaries remain pending.
+
+The native EWD840 process matrix additionally checks interruption at entry to
+fingerprint commit, after queue, trace and intern commits. Test creation wraps
+the same configured production memory FP factory before recovery/initialization;
+the discarded unused initial memory manager owns no open files. All storage
+operations delegate to the resulting production set, and only CommitChkpt
+triggers abrupt exit. No production checkpoint callback is added. Parent
+inspection requires changed committed trace metadata, promoted queue/trace/intern
+temporaries and retained FP temporaries. Fresh CLI coordinator/worker recovery
+passes with the unchanged model and all final assertions. Isolated trace-commit
+and nested fingerprint-commit interruption remain pending; source atomicity
+or disabled Java harness completion is not claimed.

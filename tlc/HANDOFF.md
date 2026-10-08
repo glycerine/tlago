@@ -73,11 +73,18 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Full native EWD840 recovery also passes after intern-table commit, immediately
+before fingerprint commit. Parent checks require committed queue/trace/intern
+files and both FP temporaries; fresh processes restore 20,480 fingerprints and
+12,288 queued states and finish at 114,942 distinct/zero queued. The failpoint
+wraps the same configured memory storage factory in test code. No production
+checkpoint hook or disabled Java harness completion credit is added.
+
 Full native EWD840 recovery now covers interruption just after queue commit.
 Fresh processes retain the new 12,288-state queue, old trace checkpoint metadata
 and full 20,480-fingerprint trace, then reach the original 114,942 distinct/zero
 queued result. The pre-commit row also passes with its old 16,384-state queue.
-Later file-commit boundaries remain pending; no disabled Java harness credit
+The isolated trace-commit and nested FP-commit boundaries remain pending; no disabled Java harness credit
 is added.
 
 DiskFPSet named checkpoint creation now retains table locks and the flusher
@@ -2217,7 +2224,9 @@ That short check reopens storage in the same process. Separate full-model
 coverage now restores a mid-run local MemFPSet checkpoint in fresh coordinator
 and worker processes after abrupt producer exit. Interruption before the first commit is now also checked with the source old-queue
 and full-trace recovery behavior. Interruption after queue commit is now verified
-with the new queue and old trace metadata. Later file-commit boundaries remain pending;
+with the new queue and old trace metadata. Interruption after intern-table commit
+is also verified with committed trace/intern metadata before FP commit. Isolated
+trace-commit and nested FP-commit boundaries remain pending;
 fresh-process remote-FP CLI recovery is the source startup
 limitation described above.
 

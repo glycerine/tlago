@@ -19547,3 +19547,30 @@ The four original remote model harnesses remain assumption-disabled/Missing;
 this native process coverage adds no original-method credit. Later trace/intern/
 fingerprint commit boundaries and broader distributed parity remain pending.
 All handles are terminal and retired. No full suite or race instrumentation.
+
+## October 8, 2026: full-model recovery after intern-table commit
+
+Added the next precise process boundary: entry into non-distributed FP commit
+after queue/trace/intern commits. The test CreateServer environment replaces
+the constructor's unused initial memory manager with the same configured
+production FP factory plus a thin CommitChkpt exit wrapper. Memory init owns
+no open files; all storage operations still delegate to the production set
+before/after recovery. No production checkpoint hook or protocol was added.
+Parent artifact checks distinguish committed trace/intern metadata from the
+older queue-only interruption boundary and require both FP temporaries.
+
+The full unchanged N=7 MC06 process row passes normally (39811, status 0,
+60.06 seconds; package 60.076 seconds). Independent trace enumeration and
+committed queue inspection require recovery of 20,480 fingerprints and 12,288
+queued states; committed trace metadata differs from the older initial
+checkpoint and trace/intern temporary files are absent. Fresh coordinator/worker
+processes finish at original 114,942 distinct/zero queued, one recovery, no
+repeated initialization, GENERAL or unexpected EOF, normal role exits and
+all children joined. Receipt:
+/mnt/oldrog/tmp/tlago-checkpoint-after-intern-commit.log.
+
+No production fix was needed. The original four assumption-disabled remote
+model harnesses remain Missing; this native coverage adds no original-method
+credit. Isolated trace-commit and nested FP-commit interruption plus broader
+distributed parity remain pending. All handles are terminal and retired.
+No full suite, reduced workload or race instrumentation was selected.

@@ -703,10 +703,16 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Full native EWD840 recovery now passes after intern-table commit and before
+FP commit, retaining committed queue/trace/intern files and both FP temporaries.
+It preserves all final model assertions and adds no disabled Java harness credit.
+The isolated trace-commit and nested FP-commit boundaries remain pending.
+
 Full native EWD840 recovery now passes after interruption immediately following
 queue commit: exact new queue/old trace metadata and full trace reconstruction
 precede the unchanged final model assertions. This adds no disabled Java harness
-credit; later trace/intern/fingerprint commit boundaries remain pending.
+credit; interruption after intern commit is also verified. Isolated trace and
+nested FP commit boundaries remain pending.
 
 Supplemental disk checkpoint checks retain lock/flag ownership after I/O or
 runtime flush/copy failures, release on success and native manager continuation
@@ -910,8 +916,8 @@ verifies mid-run local MemFPSet recovery in fresh coordinator/worker processes
 after abrupt post-commit producer exit. The native pre-commit interruption row
 now requires source old-queue recovery and fingerprints from the full persisted
 trace, then the original full model result. It adds no original-method credit.
-Interruption immediately after queue commit is verified; later file-commit
-boundaries remain pending.
+Interruption immediately after queue commit and after intern commit is verified;
+isolated trace-commit and nested FP-commit boundaries remain pending.
 Fresh-process remote-FP CLI recovery
 is a verified source startup limitation, as documented above.
 Loss of the last worker is now exercised by the full native MC06
@@ -937,7 +943,7 @@ latch behavior and exact option warning/error messages. Native CLI help and
 startup rejection checks remain green; these stream checks add no original
 method completion credit.
 
-Remote server/worker integration, init failures, fingerprint-manager failover, and smart-proxy calculations. Native Go fingerprint, worker and coordinator TCP calls, ordinary state/value/result payloads, structured worker failures, manager snapshots, discovery and worker/coordinator/FP lifecycle publication are implemented and unit-verified. Native CLI entry points are wired with focused help/property/address checks. Native coordinator signal shutdown and separate-process DieHard execution with local and standalone remote fingerprint storage are verified. The native process harness also checkpoints and recovers the full MC06 initial frontier through the real `-recover` CLI in fresh coordinator/worker processes. It requires 16384 recovered fingerprints/queued states, no repeated initialization, and the original final 114942 distinct/0 queued result. This is additional native coverage, not original disabled-harness completion credit. A native worker-loss row also verifies requeueing after killing a worker with an assigned block, survivor/replacement completion, exact one-time deregistration and the original cache-warning behavior. Fresh-process mid-run local MemFPSet recovery now also completes the full unchanged model after abrupt post-commit producer exit, preserving exact checkpoint/recovery counts, no repeated initialization and the original final result. It adds no original-method credit. A pre-commit interruption row also checks old queue recovery with full-trace MultiFPSet reconstruction and the original final model counts. Interruption after queue commit now passes with exact committed queue/full-trace recovery counts and unchanged old trace metadata. Later trace/intern/fingerprint commit boundaries, extended/custom values and broader network/process failure coverage remain pending. Fresh-process remote-FP CLI recovery is a source startup limitation, not implemented Java behavior. The new Go boundary tests add no original-method completion credit.
+Remote server/worker integration, init failures, fingerprint-manager failover, and smart-proxy calculations. Native Go fingerprint, worker and coordinator TCP calls, ordinary state/value/result payloads, structured worker failures, manager snapshots, discovery and worker/coordinator/FP lifecycle publication are implemented and unit-verified. Native CLI entry points are wired with focused help/property/address checks. Native coordinator signal shutdown and separate-process DieHard execution with local and standalone remote fingerprint storage are verified. The native process harness also checkpoints and recovers the full MC06 initial frontier through the real `-recover` CLI in fresh coordinator/worker processes. It requires 16384 recovered fingerprints/queued states, no repeated initialization, and the original final 114942 distinct/0 queued result. This is additional native coverage, not original disabled-harness completion credit. A native worker-loss row also verifies requeueing after killing a worker with an assigned block, survivor/replacement completion, exact one-time deregistration and the original cache-warning behavior. Fresh-process mid-run local MemFPSet recovery now also completes the full unchanged model after abrupt post-commit producer exit, preserving exact checkpoint/recovery counts, no repeated initialization and the original final result. It adds no original-method credit. A pre-commit interruption row also checks old queue recovery with full-trace MultiFPSet reconstruction and the original final model counts. Interruption after queue commit now passes with exact committed queue/full-trace recovery counts and unchanged old trace metadata. Interruption after intern commit also passes with committed trace/intern metadata before fingerprint commit. Isolated trace-commit and nested fingerprint-commit boundaries, extended/custom values and broader network/process failure coverage remain pending. Fresh-process remote-FP CLI recovery is a source startup limitation, not implemented Java behavior. The new Go boundary tests add no original-method completion credit.
 
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Missing**: `testSpec`.
   Upstream DistributedTLCTestCase.setUp unconditionally Assume.assumeTrue(false); retain as transport backlog, not a completed/skipped Go port. Permanent supplemental native coverage is in [tlc_distributed_trace_process_test.go](../tlc_distributed_trace_process_test.go): unchanged DieHard fixtures, FINISHED, no GENERAL across all roles, BEHAVIOR and all seven exact original trace states. Both coordinator-owned and standalone TCP fingerprint stores are checked. One worker thread and MemFPSet for the remote role are explicit native harness choices; the disabled original harness receives no completion credit.
