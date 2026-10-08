@@ -53,7 +53,7 @@ func RunDistributedFPServer(args []string, env DistributedFPServerEnvironment) {
 	fmt.Fprintln(env.ToolOut, "TLC Distributed FP Server "+TLCVersion())
 	if len(args) != 1 {
 		fmt.Fprintln(env.ToolOut, "Error: Missing hostname of the TLC server to be contacted.")
-		fmt.Fprintln(env.ToolOut, "Usage: java tlc2.tool.distributed.fp.DistributedFPSet host")
+		fmt.Fprintln(env.ToolOut, "Usage: tlago fpserver host")
 		return
 	}
 	flush, err := runDistributedFPServer(args[0], env)

@@ -191,5 +191,5 @@ func setTLCAppFPMemory(config *FPSetConfiguration, value float64) (valid bool) {
 
 func PrintTLCAppUsageError(message string) {
 	ToolIOPrintln(message)
-	ToolIOPrintln("Usage: java tlc2.tool.TLCServer [-option] inputfile")
+	ToolIOPrintln("Usage: tlago server [-option] inputfile")
 }

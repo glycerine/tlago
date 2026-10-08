@@ -68,7 +68,7 @@ func TestDistributedOptionConsoleUsesToolIO(t *testing.T) {
 		}{
 			{"coverage", []string{"-coverage", "3", "Spec"}, []string{"Warning: coverage reporting not supported in distributed TLC, ignoring -coverage 3 parameter."}, true},
 			{"absolute_fp_memory", []string{"-fpmem", "2", "Spec"}, []string{"Using -fpmem with an abolute memory value has been deprecated. Please allocate memory for the TLC process via the JVM mechanisms and use -fpmem to set the fraction to be used for fingerprint storage."}, true},
-			{"missing_config", []string{"-config"}, []string{"Error: configuration file required.", "Usage: java tlc2.tool.TLCServer [-option] inputfile"}, false},
+			{"missing_config", []string{"-config"}, []string{"Error: configuration file required.", "Usage: tlago server [-option] inputfile"}, false},
 		} {
 			t.Run(fmt.Sprintf("%s/mode=%d", test.name, mode), func(t *testing.T) {
 				captureFailoverToolIO(t, mode)
@@ -86,6 +86,33 @@ func TestDistributedOptionConsoleUsesToolIO(t *testing.T) {
 					}
 				} else if output.String() != strings.Join(test.want, "\n")+"\n" || errors.Len() != 0 {
 					t.Fatalf("option console = %q, stderr %q", output.String(), errors.String())
+				}
+			})
+		}
+	}
+}
+
+func TestDistributedRoleUsageNamesNativeCommands(t *testing.T) {
+	for _, role := range []string{"worker", "fpserver"} {
+		for _, args := range [][]string{nil, {"first", "second"}} {
+			t.Run(fmt.Sprintf("%s/args=%d", role, len(args)), func(t *testing.T) {
+				var output, errors bytes.Buffer
+				lookup := func(string) (DistributedServerEndpoint, error) {
+					t.Fatal("invalid role arguments reached coordinator discovery")
+					return nil, nil
+				}
+				banner := "TLC Worker "
+				if role == "worker" {
+					if err := NewDistributedWorkerProcess().Run(args, DistributedWorkerEnvironment{ToolOut: &output, SystemErr: &errors, Lookup: lookup}); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					banner = "TLC Distributed FP Server "
+					RunDistributedFPServer(args, DistributedFPServerEnvironment{ToolOut: &output, SystemErr: &errors, Lookup: lookup})
+				}
+				want := banner + TLCVersion() + "\nError: Missing hostname of the TLC server to be contacted.\nUsage: tlago " + role + " host\n"
+				if output.String() != want || errors.Len() != 0 {
+					t.Fatalf("role usage = %q, stderr %q", output.String(), errors.String())
 				}
 			})
 		}

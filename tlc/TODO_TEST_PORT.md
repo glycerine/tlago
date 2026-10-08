@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental role-usage checks preserve invalid-argument early returns and
+banner/error/usage order while naming native Go commands. Server usage checks
+cover both ToolIO output modes. These add no original-method completion credit.
+
 Supplemental coordinator-mode checks preserve base-server registration rejection
 before manager access, locally and over native TCP. Distributed registration and
 original manager tests remain green. No original method directly covers this

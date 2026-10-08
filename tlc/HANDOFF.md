@@ -30,10 +30,14 @@ are verified against the Go port, and full normal workspace verification passes.
 Current priority is the original distributed TLC algorithm on `master`. Leave
 the rpc25519/Tube alternative aside. Port its behavior using Go interfaces and
 transport, without Java RMI, Java serialization or JVM machinery. Java remote
-interfaces are behavioral references, not compatibility targets. Canonical adapter/context gaps
-remain separately tracked below. The user has supplied a green full-suite
+interfaces are behavioral references, not compatibility targets. Canonical
+adapter/context gaps remain separately tracked below. The user has supplied a green full-suite
 baseline; run focused checks for changed code rather than repeating that suite.
 Commit each tested chunk, aiming for every 10–15 minutes.
+
+Distributed role usage errors name the native `tlago server`, `tlago worker`
+and `tlago fpserver` commands. Explicit Java counterpart descriptions in help
+remain reference information; error usage does not require a Java installation.
 
 Coordinator threads retain their supplied block selector. They do not borrow
 the server's selector or construct a replacement when it is absent. Missing

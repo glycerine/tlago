@@ -72,7 +72,7 @@ func (p *DistributedWorkerProcess) Run(args []string, env DistributedWorkerEnvir
 	fmt.Fprintln(env.ToolOut, "TLC Worker "+TLCVersion())
 	if len(args) != 1 {
 		fmt.Fprintln(env.ToolOut, "Error: Missing hostname of the TLC server to be contacted.")
-		fmt.Fprintln(env.ToolOut, "Usage: java tlc2.tool.distributed.TLCWorker host")
+		fmt.Fprintln(env.ToolOut, "Usage: tlago worker host")
 		return nil
 	}
 	count := int(int32(env.AvailableProcessors()))

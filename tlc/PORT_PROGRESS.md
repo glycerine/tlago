@@ -20755,3 +20755,24 @@ distributed initializer-continue, evaluator-error and TLCSet model contexts pass
 (3338, status 0, 1.526 seconds). All processes are terminal. No full suite, long
 workload or race run was performed. Supplemental checks add no original-method credit;
 broader distributed parity remains incomplete.
+
+### 2026-10-08: Native distributed role usage errors
+
+Startup audit found copied Java invocation lines in TLCApp option errors,
+TLCWorker invalid-argument output and DistributedFPSet invalid-argument output.
+Replaced only the command references with tlago server, tlago worker and tlago
+fpserver. Arguments, diagnostic text/order, output destination and early returns
+are retained. Explicit Java counterpart explanations in CLI help remain reference
+information. Updated the worker-group comment to describe a Go worker process.
+
+Upstream has no direct usage-output test methods. Extended existing native console
+checks with exact worker/FP banner-error-usage output for zero and two arguments,
+and a discovery callback that must remain unused. Updated the server usage
+expectation in both ToolIO output modes to the native command. All six changed
+contexts initially failed (88ddc2, status 1, 0.013 seconds). Focused console,
+startup-property and original nine smart-proxy contexts pass (3ff41e, status 0,
+0.014 seconds). Existing root distributed CLI help and invalid-startup checks
+pass (64375, status 0, 0.016 seconds). All processes are terminal. No full suite,
+TCP workload or race run was needed for this output-only change. Supplemental
+usage checks add no original-method completion credit; distributed parity
+remains incomplete.

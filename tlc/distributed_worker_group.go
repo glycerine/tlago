@@ -10,7 +10,7 @@ import (
 )
 
 // DistributedWorkerGroup is the post-lookup portion of TLCWorker.main in one
-// worker JVM. All registration runnables share the Tool, executor, and latch.
+// worker process. All registration runnables share the Tool, executor, and latch.
 type DistributedWorkerGroup struct {
 	Runtime   *DistributedWorkerRuntime
 	server    DistributedServerEndpoint

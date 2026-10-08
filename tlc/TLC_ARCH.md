@@ -11839,3 +11839,13 @@ state; they register the supplied endpoint, then count down the latch and print
 acceptance. Local and native TCP checks preserve base rejection without manager
 mutation, probing or acceptance output. Existing distributed registration and
 original fingerprint-manager tests remain green.
+
+
+### Native invocation text in distributed usage errors
+
+Invalid coordinator options and worker/fingerprint-server arguments retain their
+source validation, diagnostic ordering and early-return behavior. Their usage
+lines name the corresponding native tlago commands. They do not direct Go users
+to execute Java classes. Explicit Java counterpart descriptions in CLI help are
+reference documentation. Exact output checks cover worker/FP zero and extra
+arguments, skipped discovery and both server ToolIO output destinations.
