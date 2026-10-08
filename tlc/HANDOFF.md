@@ -73,6 +73,11 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Next production repair: `TLCTraceEnumerator` currently suppresses cursor/read
+failures. The source propagates I/O failures through fingerprint reconstruction.
+Preserve that propagation and verify corrupt/inaccessible trace handling before
+continuing the recovery audit.
+
 The native MC06 process harness now verifies a mid-run local MemFPSet checkpoint.
 A real TCP worker processes successors before the production checkpoint barrier
 captures the frontier. The producer exits abruptly after commit; its old worker
@@ -80,8 +85,10 @@ is retired, and fresh CLI coordinator/worker processes must recover the exact
 saved counts without regenerating initial states. Full unchanged N=7 exploration
 then finishes with 114,942 distinct states and zero queued states, no GENERAL or
 lost replies, and normal exits for both fresh processes. This is supplemental
-native coverage, not disabled original-harness completion credit. Interruption
-during checkpoint and broader process-crash behavior remain pending.
+native coverage, not disabled original-harness completion credit. Interruption before the first commit is also verified separately: queue recovery
+uses its old committed frontier while MultiFPSet reconstructs fingerprints from
+the full persisted trace. Interruption between commits and broader process-crash
+behavior remain pending.
 
 Native state transfer now preserves shared backing value arrays for tuples,
 records, functions, configured operator argument rows, tuple products and record
@@ -171,7 +178,10 @@ Go startup retains that order. Restoring remote FP stores through the CLI would
 require an enhancement to the source algorithm. Registered-endpoint recovery
 is verified separately. Fresh-process mid-run local MemFPSet recovery now also
 completes the full unchanged MC06 model after an abrupt post-commit coordinator
-exit. Checkpoint interruption and broader process-crash coverage remain pending.
+exit. Interruption before the first replacement-file commit now has a full native
+model check: the old queue survives while default MultiFPSet rebuilds from the
+full persisted trace. Interruption between commits and broader process-crash
+coverage remain pending.
 
 Model-value byte data uses native graph references instead of per-value copies.
 Shared buffers stay shared across states and result partitions; equal-content
@@ -2132,8 +2142,9 @@ and reopening storage recovers the selected frontier's exact UID and trace FP
 positions. Normal and exact short race checks pass; no production fix was needed.
 That short check reopens storage in the same process. Separate full-model
 coverage now restores a mid-run local MemFPSet checkpoint in fresh coordinator
-and worker processes after abrupt producer exit. Interruption during checkpoint
-remains pending; fresh-process remote-FP CLI recovery is the source startup
+and worker processes after abrupt producer exit. Interruption before the first commit is now also checked with the source old-queue
+and full-trace recovery behavior. Interruption between commits remains pending;
+fresh-process remote-FP CLI recovery is the source startup
 limitation described above.
 
 The shared bit-vector iterator now rejects null input and uninitialized words,

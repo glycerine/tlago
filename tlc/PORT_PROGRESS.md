@@ -19162,3 +19162,40 @@ Both runs commit and restore exactly 20,480 fingerprints and 12,288 queued state
 No production defect was found. Both handles are retired. No race detector,
 full suite or other long model scenario was selected. Interruption during
 checkpoint, FP-process failure and broader distributed parity remain incomplete.
+
+## October 8, 2026: interruption before the first checkpoint file commit
+
+Audited TLCServer.checkpoint and queue/trace/intern/FP begin, commit and recovery.
+Added checkpoint_interruption_before_commit to the unchanged native MC06 matrix.
+Establish the complete initial-frontier checkpoint first. Recover it in an owned
+producer with a real worker, advance successors and use production Checkpoint.
+Exit at queue CommitChkpt entry after temporary files are written, before any
+replacement-file commit. Retire/join the old worker, then recover with fresh CLI
+roles and retain the full original FINISHED/114,942 distinct/0 queued/no GENERAL
+assertions. No disabled original-harness completion credit is assigned.
+
+Initial normal probe fails in 61.231 seconds (2134 terminal status 1;
+/mnt/oldrog/tmp/tlago-ewd840-checkpoint-before-commit-interruption.log) because my
+new native oracle incorrectly expected old fingerprints as well as old queue.
+Source audit explains the actual behavior: default MultiFPSet wraps the selected
+MemFPSet; its recover(TLCTrace) enumerates the complete trace file. Trace recovery
+only seeks its saved cursor and does not truncate the file. Go preserves this
+source behavior. No production change or original-test weakening is warranted.
+
+The corrected native oracle independently enumerates the persisted trace before
+restart, rejects duplicate fingerprints/lost flushed records, requires that exact
+fingerprint count and the old 16,384-state queue. It also requires one started
+checkpoint with no completed checkpoint, one producer worker, no premature
+FINISHED/GENERAL, one final recovery, no regenerated initial states and normal
+fresh-role exits without GENERAL or lost replies. Final exact normal case passes
+in 61.303 seconds (29073 terminal status 0;
+/mnt/oldrog/tmp/tlago-ewd840-checkpoint-before-commit-interruption-final.log).
+Both probes recover 20,480 fingerprints with the old 16,384-state queue and
+complete 114,942 distinct states with no queued states. All handles are retired.
+No race instrumentation, full suite or other long model scenario was selected.
+
+This proves this pre-commit interruption boundary, not coherent rollback or
+atomicity across file commits. Between-commit interruption remains open. The
+source audit also found Go TLCTraceEnumerator suppressing read/cursor errors
+instead of propagating source IOException; repair and focused verification of
+that production gap are the next action. Broader distributed parity is incomplete.

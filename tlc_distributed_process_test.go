@@ -30,6 +30,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		allWorkersLost                             bool
 		fingerprintServers                         int
 		midRunCheckpoint                           bool
+		checkpointInterrupted                      bool
 	}{
 		{name: "coordinator_fingerprints"},
 		{name: "standalone_fingerprints", remoteFP: true},
@@ -37,6 +38,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
 		{name: "mid_run_checkpoint_recovery", recovering: true, midRunCheckpoint: true},
+		{name: "checkpoint_interruption_before_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true},
 		{name: "worker_loss", workerLoss: true},
 		{name: "all_workers_lost", workerLoss: true, allWorkersLost: true},
 	} {
@@ -110,7 +112,24 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if scenario.midRunCheckpoint {
 					producer = "checkpoint-mid-run"
 				}
-				snapshot := start(producer, append([]string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet"}, serverArgs...)...)
+				producerArgs := append([]string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet"}, serverArgs...)
+				if scenario.checkpointInterrupted {
+					// Establish an older complete checkpoint. The next producer
+					// advances it but exits before committing any replacement file.
+					baseline := start("checkpoint-frontier", producerArgs...)
+					err := <-baseline.done
+					baseline.joined = true
+					if err != nil {
+						t.Fatalf("baseline checkpoint: %v\n%s", err, baseline.output.String())
+					}
+					path := regexp.MustCompile(`(?m)^NATIVE_CHECKPOINT_PATH=(.+)$`).FindStringSubmatch(baseline.output.String())
+					if len(path) != 2 {
+						t.Fatal("baseline checkpoint directory absent")
+					}
+					producer = "checkpoint-interrupt"
+					producerArgs = []string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "-tool", "-deadlock", "-recover", path[1], "MC06"}
+				}
+				snapshot := start(producer, producerArgs...)
 				var snapshotWorker *nativeDistributedTestProcess
 				if scenario.midRunCheckpoint {
 					snapshotWorker = start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
@@ -132,7 +151,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					}
 					<-snapshotWorker.done
 					snapshotWorker.joined = true
-					counts := regexp.MustCompile(`(?m)^NATIVE_CHECKPOINT_COUNTS=(\d+),(\d+)$`).FindStringSubmatch(snapshot.output.String())
+					countMarker := "NATIVE_CHECKPOINT_COUNTS"
+					if scenario.checkpointInterrupted {
+						countMarker = "NATIVE_INTERRUPTED_CHECKPOINT_COUNTS"
+					}
+					counts := regexp.MustCompile(`(?m)^` + countMarker + `=(\d+),(\d+)$`).FindStringSubmatch(snapshot.output.String())
 					if len(counts) != 3 {
 						t.Fatal("mid-run checkpoint counts absent")
 					}
@@ -141,9 +164,40 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					if distinct <= 16384 || distinct >= 114942 || queued == 0 || queued >= distinct {
 						t.Fatalf("checkpoint was not a partially explored frontier: %d/%d", distinct, queued)
 					}
-					recoveryDistinct, recoveryQueue = counts[1], counts[2]
-					if len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCCheckpointEnd)) != 1 || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECGeneral)) != 0 {
-						t.Fatal("mid-run producer failed to commit exactly one checkpoint without GENERAL")
+					completedCheckpoints := 1
+					if scenario.checkpointInterrupted {
+						completedCheckpoints = 0
+						// The default nested MultiFPSet rebuilds fingerprints from
+						// the complete persisted trace, not the old FP checkpoint.
+						// Trace.recover seeks to the saved cursor without truncation.
+						trace := tlc.NewTLCTrace(path[1], "MC06")
+						elements := trace.Elements()
+						seen := make(map[uint64]bool)
+						for elements.NextPos() != -1 {
+							fp := elements.NextFP()
+							if seen[fp] {
+								t.Fatal("persisted interrupted trace contains duplicate fingerprints")
+							}
+							seen[fp] = true
+						}
+						if err := elements.Close(); err != nil {
+							t.Fatal(err)
+						}
+						if err := trace.Close(); err != nil {
+							t.Fatal(err)
+						}
+						if uint64(len(seen)) < distinct {
+							t.Fatal("interrupted trace lost flushed successor records")
+						}
+						// The untouched queue.chkpt still contains the old initial
+						// frontier. Require both exact independent recovery counts.
+						recoveryDistinct = strconv.Itoa(len(seen))
+						t.Logf("interrupted checkpoint retains old queue %s and complete trace %s", recoveryQueue, recoveryDistinct)
+					} else {
+						recoveryDistinct, recoveryQueue = counts[1], counts[2]
+					}
+					if len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCCheckpointStart)) != 1 || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCCheckpointEnd)) != completedCheckpoints || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECGeneral)) != 0 {
+						t.Fatal("mid-run producer checkpoint phase or GENERAL assertion failed")
 					}
 					if len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCDistributedWorkerRegistered)) != 1 || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCFinished)) != 0 {
 						t.Fatal("checkpoint producer did not stop an unfinished run with one real worker")
@@ -365,7 +419,13 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 					status = ExitOK
 				}
 			} else if len(args) > 0 && args[0] == "checkpoint-mid-run" {
-				if err := nativeDistributedCheckpointMidRun(args[1:]); err != nil {
+				if err := nativeDistributedCheckpointMidRun(args[1:], false); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
+			} else if len(args) > 0 && args[0] == "checkpoint-interrupt" {
+				if err := nativeDistributedCheckpointMidRun(args[1:], true); err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				} else {
 					status = ExitOK
@@ -459,9 +519,10 @@ func nativeDistributedCheckpointFrontier(args []string) error {
 
 type nativeMidRunCheckpointQueue struct {
 	tlc.StateQueue
-	server   *tlc.TLCServer
-	distinct uint64
-	queued   int64
+	server    *tlc.TLCServer
+	distinct  uint64
+	queued    int64
+	interrupt bool
 }
 
 func (q *nativeMidRunCheckpointQueue) BeginChkpt() error {
@@ -471,10 +532,22 @@ func (q *nativeMidRunCheckpointQueue) BeginChkpt() error {
 	return q.StateQueue.BeginChkpt()
 }
 
+func (q *nativeMidRunCheckpointQueue) CommitChkpt() error {
+	if q.interrupt {
+		// Queue commit is the first replacement-file commit. Temporary queue,
+		// trace, fingerprint and intern files have been written. Recovery still
+		// reads the old queue, while MultiFPSet enumerates the full trace file.
+		fmt.Printf("NATIVE_INTERRUPTED_CHECKPOINT_COUNTS=%d,%d\n", q.distinct, q.queued)
+		fmt.Println("NATIVE_CHECKPOINT_PATH=" + q.server.Metadir)
+		os.Exit(ExitOK)
+	}
+	return q.StateQueue.CommitChkpt()
+}
+
 // Run the unchanged model with a real TCP worker until successors have been
 // inserted. Commit using the production checkpoint barrier, then abruptly exit
 // this process. The parent starts a fresh CLI coordinator and worker to recover.
-func nativeDistributedCheckpointMidRun(args []string) error {
+func nativeDistributedCheckpointMidRun(args []string, interrupt bool) error {
 	args, err := tlc.ExtractDistributedStartupProperties(args)
 	if err != nil {
 		return err
@@ -491,7 +564,7 @@ func nativeDistributedCheckpointMidRun(args []string) error {
 			return server, err
 		},
 		ModelCheck: func(server *tlc.TLCServer) error {
-			queue := &nativeMidRunCheckpointQueue{StateQueue: server.StateQueue, server: server}
+			queue := &nativeMidRunCheckpointQueue{StateQueue: server.StateQueue, server: server, interrupt: interrupt}
 			server.StateQueue = queue
 			stop, joined := make(chan struct{}), make(chan struct{})
 			go func() {

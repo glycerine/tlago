@@ -11227,3 +11227,24 @@ have no GENERAL/lost replies and exit normally. In both verified runs, the saved
 frontier contains 20,480 fingerprints and 12,288 queued states. This is post-commit
 process-loss coverage, not interruption during commit or distributed checkpoint
 atomicity. No disabled original-harness completion credit is assigned.
+
+The native checkpoint_interruption_before_commit process row first creates a
+complete initial-frontier checkpoint, then recovers it in an owned producer and
+advances the unchanged MC06 model with a real TCP worker. The production barrier
+writes temporary queue/trace/FP/intern files. A forwarding queue exits the process
+at CommitChkpt entry, before the first replacement-file commit. The old worker
+is retired; fresh CLI roles recover and finish the original full model.
+
+Do not infer coherent rollback of all components here. TLCTrace.recover seeks to
+its saved cursor without truncating the trace. MultiFPSet.recover(TLCTrace) reads
+an enumerator whose length is the complete file length; it does not use the old
+child fingerprint checkpoints. Default nesting wraps the selected MemFPSet in
+MultiFPSet. Thus queue recovery reads the old 16,384-state frontier while FP
+reconstruction reads the persisted 20,480-record trace in the verified runs.
+The test enumerates that persisted trace before restart to require its exact FP
+count, retains the exact old queue count, forbids duplicate trace fingerprints
+and lost flushed records, requires one started/uncompleted checkpoint with a
+real producer worker and no premature FINISHED/GENERAL, then retains all final
+EWD840 assertions. It does not claim atomic recovery or between-commit safety.
+A separate audit found that Go TLCTraceEnumerator suppresses read/cursor errors;
+source methods propagate IOException. This production gap remains pending.
