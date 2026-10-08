@@ -21,16 +21,15 @@ func (q *activeCheckpointQueue) BeginChkpt() error {
 // thread, TCP worker endpoint, disk queue, trace and local/remote FP recovery. Only
 // remote evaluation is gated to make the assigned-block ordering observable.
 func TestDistributedCheckpointWaitsForAssignedBlock(t *testing.T) {
-	for _, remote := range []bool{false, true} {
-		name := "local_fingerprints"
-		if remote {
-			name = "tcp_fingerprints"
-		}
-		t.Run(name, func(t *testing.T) { checkDistributedCheckpointWithAssignedBlock(t, remote) })
+	for _, scenario := range []struct {
+		name        string
+		remoteCount int
+	}{{"local_fingerprints", 0}, {"tcp_fingerprints", 1}, {"partitioned_tcp_fingerprints", 2}} {
+		t.Run(scenario.name, func(t *testing.T) { checkDistributedCheckpointWithAssignedBlock(t, scenario.remoteCount) })
 	}
 }
 
-func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remote bool) {
+func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remoteCount int) {
 	t.Helper()
 	oldWorkers, oldVariables, oldVarCount, oldEmpty := NumWorkers(), stateVariables, UniqueStringVariableCount(), EmptyState
 	t.Cleanup(func() {
@@ -46,12 +45,33 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remote bool) {
 	metadir := t.TempDir()
 	queue := &activeCheckpointQueue{DiskStateQueue: NewDiskStateQueue(metadir), begin: make(chan int64, 1)}
 	trace := NewTLCTrace(metadir, "Spec")
-	set := NewMemFPSet()
-	set.Init(1, metadir, "Spec")
-	manager := NewNonDistributedFPSetManager(set, "local", trace)
-	if remote {
-		_, endpoint := startFingerprintRPC(t, NewLocalFingerprintEndpoint(set))
-		manager = NewDistributedFPSetManager(endpoint)
+	storeDirectories := []string{metadir}
+	if remoteCount == 2 {
+		// Real FP servers own separate metadata directories. Their common
+		// checkpoint filename must not overwrite another partition's file.
+		storeDirectories = []string{t.TempDir(), t.TempDir()}
+	}
+	openStores := func(recoveryTrace *TLCTrace) (*DistributedFPSetManager, []*MemFPSet) {
+		var stores []*MemFPSet
+		var endpoints []DistributedFingerprintEndpoint
+		for _, directory := range storeDirectories {
+			set := NewMemFPSet()
+			set.Init(1, directory, "Spec")
+			stores = append(stores, set)
+			if remoteCount > 0 {
+				_, endpoint := startFingerprintRPC(t, NewLocalFingerprintEndpoint(set))
+				endpoints = append(endpoints, endpoint)
+			}
+		}
+		if remoteCount == 0 {
+			return NewNonDistributedFPSetManager(stores[0], "local", recoveryTrace), stores
+		}
+		return NewDistributedFPSetManager(endpoints...), stores
+	}
+	manager, stores := openStores(trace)
+	successorFP := int64(71)
+	if remoteCount == 2 {
+		successorFP = 72 // Initial 61 is in partition 1, successor 72 in 0.
 	}
 	server := NewTLCServer("Spec", "Spec", metadir, manager, queue, trace)
 	initial := &TLCStateMut{UID: TLCStateInitUID, level: 1}
@@ -70,11 +90,22 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remote bool) {
 			assigned <- states[0].UID
 			<-releaseFirst
 			successor := &TLCStateMut{UID: states[0].UID, level: 2}
-			return NewNextStateResult([]*StateVec{NewStateVecFrom([]*TLCStateMut{successor})}, []*LongVec{NewLongVecFrom([]int64{71})}, 0, 1), nil
+			statePartitions := []*StateVec{NewStateVecFrom([]*TLCStateMut{successor})}
+			fpPartitions := []*LongVec{NewLongVecFrom([]int64{successorFP})}
+			if remoteCount == 2 {
+				statePartitions = append(statePartitions, NewStateVec(0))
+				fpPartitions = append(fpPartitions, NewLongVec())
+			}
+			return NewNextStateResult(statePartitions, fpPartitions, 0, 1), nil
 		}
 		continued <- struct{}{}
 		<-releaseSecond
-		return NewNextStateResult([]*StateVec{NewStateVec(0)}, []*LongVec{NewLongVec()}, 0, 0), nil
+		statePartitions, fpPartitions := []*StateVec{NewStateVec(0)}, []*LongVec{NewLongVec()}
+		if remoteCount == 2 {
+			statePartitions = append(statePartitions, NewStateVec(0))
+			fpPartitions = append(fpPartitions, NewLongVec())
+		}
+		return NewNextStateResult(statePartitions, fpPartitions, 0, 0), nil
 	}}
 	_, endpoint := startWorkerRPC(t, worker)
 	thread := &TLCServerThread{Server: server, Worker: NewDistributedWorkerSmartProxy(endpoint), Selector: NewStaticBlockSelector(server, 1)}
@@ -164,15 +195,8 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remote bool) {
 	t.Cleanup(recoveredQueue.FinishAll)
 	recoveredTrace := NewTLCTrace(metadir, "Spec")
 	t.Cleanup(func() { _ = recoveredTrace.Close() })
-	recoveredSet := NewMemFPSet()
-	recoveredSet.Init(1, metadir, "Spec")
-	recoveredManager := NewNonDistributedFPSetManager(recoveredSet, "local", recoveredTrace)
-	if remote {
-		// Reopen owned storage behind a new host/client: recovery must use the
-		// committed remote checkpoint file, not the old in-memory table.
-		_, endpoint := startFingerprintRPC(t, NewLocalFingerprintEndpoint(recoveredSet))
-		recoveredManager = NewDistributedFPSetManager(endpoint)
-	}
+	// Open fresh tables behind fresh hosts; Recover must read committed files.
+	recoveredManager, recoveredStores := openStores(recoveredTrace)
 	if recoveredManager.Size() != 0 {
 		t.Fatal("recovery must start with newly opened empty fingerprint storage")
 	}
@@ -180,8 +204,15 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remote bool) {
 	if err := recovered.Recover(); err != nil {
 		t.Fatal(err)
 	}
-	if recoveredQueue.Size() != 1 || recoveredManager.Size() != 2 || !recoveredManager.Contains(61) || !recoveredManager.Contains(71) {
+	if recoveredQueue.Size() != 1 || recoveredManager.Size() != 2 || !recoveredManager.Contains(61) || !recoveredManager.Contains(uint64(successorFP)) {
 		t.Fatal("recovery lost the published fingerprint/frontier relationship")
+	}
+	if remoteCount == 2 {
+		for _, partitions := range [][]*MemFPSet{stores, recoveredStores} {
+			if partitions[0].Size() != 1 || !partitions[0].Contains(uint64(successorFP)) || partitions[0].Contains(61) || partitions[1].Size() != 1 || !partitions[1].Contains(61) || partitions[1].Contains(uint64(successorFP)) {
+				t.Fatal("checkpoint/recovery merged, swapped or lost fingerprint partitions")
+			}
+		}
 	}
 	successor := recoveredQueue.Dequeue()
 	if successor == nil || successor.UID != trace.Records()[1].State.UID || successor.Level() != 2 {
@@ -189,7 +220,7 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remote bool) {
 	}
 	enumerator := recoveredTrace.Elements()
 	defer enumerator.Close()
-	if enumerator.NextPos() != initial.UID || enumerator.NextFP() != 61 || enumerator.NextPos() != successor.UID || enumerator.NextFP() != 71 || enumerator.NextPos() != -1 {
+	if enumerator.NextPos() != initial.UID || enumerator.NextFP() != 61 || enumerator.NextPos() != successor.UID || enumerator.NextFP() != uint64(successorFP) || enumerator.NextPos() != -1 {
 		t.Fatal("recovered disk trace does not match the committed frontier and fingerprints")
 	}
 }

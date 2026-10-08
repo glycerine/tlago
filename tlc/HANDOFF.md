@@ -73,6 +73,21 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Assigned-block checkpoint recovery now covers two independent native TCP FP
+stores. Initial and successor fingerprints occupy different partitions, stored
+in separate metadata directories and reopened behind fresh hosts/tables. The
+queue frontier and disk trace keep their exact committed identities; recovery
+must neither merge nor swap the FP partitions. Local and single-store cases
+retain their existing assertions.
+
+Fresh-process remote-FP CLI recovery is a verified limitation of the pinned
+Java flow: the dynamic manager starts empty, recover runs before publication
+and FP registration, and recovery iterates that empty registration list. The
+Go startup retains that order. Restoring remote FP stores through the CLI would
+require an enhancement to the source algorithm. Registered-endpoint recovery
+is verified separately; fresh-process mid-run local-FP recovery and checkpoint
+interruption coverage remain pending.
+
 Model-value byte data uses native graph references instead of per-value copies.
 Shared buffers stay shared across states and result partitions; equal-content
 separate buffers remain distinct, and receiver data stays isolated from sender
@@ -2032,7 +2047,8 @@ and reopening storage recovers the selected frontier's exact UID and trace FP
 positions. Normal and exact short race checks pass; no production fix was needed.
 This is same-process storage reopening, not full-model recovery in fresh
 processes after a mid-run checkpoint or failure during the checkpoint. Those
-broader cases and fresh-process remote-FP CLI recovery remain pending.
+broader cases remain pending; fresh-process remote-FP CLI recovery is the source
+startup limitation described above.
 
 The shared bit-vector iterator now rejects null input and uninitialized words,
 matching Java rather than treating missing FP answers as empty results. This
@@ -2130,4 +2146,5 @@ Assigned-block checkpoint verification now also reopens a native TCP FP store
 from its committed file, starting with an empty new table. Queue, trace and both
 fingerprints recover consistently. The Java CLI recovers before coordinator
 publication/FP registration; fresh-process remote-FP CLI recovery remains a
-source limitation to audit, not a feature proved by this method-level check.
+verified source startup limitation, not a feature proved by this method-level
+check.

@@ -11077,3 +11077,19 @@ receiver ownership and reuses it for every model-data reference, validating
 bounds. Sharing therefore survives across states and result partitions without
 aliasing sender storage. This changes the native DTO layout; communicating roles
 use the same build. No Java serialization or opaque custom-data codec is added.
+
+Partitioned checkpoint/recovery coverage uses two independent native FP hosts
+with private metadata directories and a common checkpoint name. The initial FP
+61 occupies partition 1; successor FP 72 occupies partition 0. The checkpoint
+waits for assigned successor publication and restores the queue/trace plus both
+partition files into empty new tables without swapping or merging partitions.
+Local and single-host cases retain their original boundary assertions.
+
+The fresh-process remote-FP startup limitation is confirmed by the pinned source:
+FPSetManager's default constructor starts with an empty ArrayList;
+DistributedFPSetTLCServer.getFPSetManagerImpl constructs that dynamic manager;
+TLCServer.modelCheck calls recover before publishing itself or awaiting FP
+registration. FPSetManager.recover invokes chkptInner, which has no endpoint to
+call in this empty manager. Go mirrors that ordering. The registered-endpoint
+recovery checks do not claim the CLI restores those remote stores. Supporting
+that startup flow would require an explicit algorithm enhancement beyond parity.

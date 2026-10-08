@@ -18781,3 +18781,32 @@ terminal status 0). Only the exact short byte-data worker RPC case runs under
 No full suite or long model/race workload was run. The native DTO layout changed,
 so peers use the same build. Docs/inventory are current; custom payload, recovery
 and broader distributed failure parity work remains pending.
+
+## October 8, 2026: partitioned native checkpoint recovery
+
+Extended TestDistributedCheckpointWaitsForAssignedBlock with two independent
+native TCP fingerprint stores. Each has a private metadata directory. The
+initial fingerprint 61 and successor 72 occupy different partitions; recovery
+starts with empty new tables and fresh hosts/clients, then requires both exact
+partition contents plus the committed queue frontier and trace identities.
+The existing local and single-store cases retain their assertions. No production
+fix was needed, and this supplemental boundary check adds no original-method
+completion credit.
+
+The exact three-case selection passes normally in 0.037 seconds (19007 terminal
+status 0). Only the new short partitioned case runs under -race, passing in
+1.072 seconds (92299 terminal status 0). An initial compilation error comparing
+uint64 NextFP to the int64 fixture was corrected with an explicit cast. All
+handles are retired; no full suite or long workload was run.
+
+Reconciled fresh-process remote-FP CLI recovery against the pinned Java source:
+the dynamic fingerprint manager starts empty, and TLCServer.modelCheck recovers
+before coordinator publication and fingerprint registration. Recovery therefore
+has no registered endpoint to call. Go retains that ordering. Registered-store
+recovery is verified separately; making this CLI startup restore remote stores
+would require an explicit algorithm enhancement. Broader checkpoint and failure
+coverage remains pending.
+
+The user's transport boundary remains native Go: preserve distributed TLC
+algorithms and failure handling without Java RMI, Java serialization or JVM
+emulation. The checkpoint coverage above uses the existing Go TCP transport.
