@@ -1255,9 +1255,10 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	priorParams := make([]*tlc.SymbolNode, len(def.Params))
 	for i, param := range def.Params {
 		priorParams[i] = b.symbols[param]
-		params[i] = b.formalParameter(param, def.ParamArities[param], def.ParamPositions[param], def.Syntax)
 		if def.semanticNode != nil && i < len(def.semanticNode.formalNodes) {
 			params[i] = b.canonicalFormalParameter(def.semanticNode.formalNodes[i])
+		} else {
+			params[i] = b.formalParameter(param, def.ParamArities[param], def.ParamPositions[param], def.Syntax)
 		}
 		b.symbols[param] = params[i]
 	}
@@ -1393,9 +1394,10 @@ func (b *tlcBridge) prepareInstanceBinding(binding *tlcBridgeInstance) {
 	if binding.params == nil {
 		binding.params = make([]*tlc.SymbolNode, len(inst.Params))
 		for i, param := range inst.Params {
-			binding.params[i] = b.formalParameter(param, inst.ParamArities[param], inst.ParamPositions[param], nil)
 			if inst.definitionNode != nil && i < len(inst.definitionNode.formalNodes) {
 				binding.params[i] = b.canonicalFormalParameter(inst.definitionNode.formalNodes[i])
+			} else {
+				binding.params[i] = b.formalParameter(param, inst.ParamArities[param], inst.ParamPositions[param], nil)
 			}
 		}
 	}
@@ -2005,9 +2007,10 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 	node := b.builtinNode(op)
 	parameters := make([]*tlc.SymbolNode, len(quantifiers))
 	for i, quantifier := range quantifiers {
-		parameters[i] = b.formalParameter(quantifier.Var, quantifier.OperatorArity, quantifier.VarPos, e.Syntax)
 		if quantifier.formalNode != nil {
 			parameters[i] = b.canonicalFormalParameter(quantifier.formalNode)
+		} else {
+			parameters[i] = b.formalParameter(quantifier.Var, quantifier.OperatorArity, quantifier.VarPos, e.Syntax)
 		}
 	}
 	// Generator.processQuantBoundArgs converts every domain before adding any
@@ -2090,9 +2093,10 @@ func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc
 	var self *tlc.SymbolNode
 	if exprReferencesName(e, def.Name, nil) {
 		op = tlc.OpRFS
-		self = b.formalParameter(def.Name, 0, def.SourcePosition(), def.Syntax)
 		if e.functionSymbol != nil {
 			self = b.canonicalFormalParameter(e.functionSymbol)
+		} else {
+			self = b.formalParameter(def.Name, 0, def.SourcePosition(), def.Syntax)
 		}
 		previous := b.symbols[def.Name]
 		b.symbols[def.Name] = self

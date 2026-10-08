@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 Retain formal semantic bases and indexed lookup objects:
+Previous completed commit: ce96a6d; clean tree confirmed. The new formal identity
+cache still recreated a SymbolNode with copied metadata and no canonical base.
+Retain the actual source SemanticNodeBase pointer and indexed slot ownership.
+Standalone runtime formals receive their own kind-11 base; runtime OpDef symbols
+retain their definition's base. Canonical bridge paths no longer construct and
+discard native formals before selecting actual source declarations.
+
+Source SymbolNodeValueLookupProvider checks Context, symbol tool slots, then
+user-defined body slots. Translate active-tool indexed symbol/body lookup before
+remaining generic cache paths. Delegate symbol slot access to its semantic owner.
+Generic aliases without semantic declarations remain explicitly incomplete;
+legacy generic Data/ToolObject/definition-table migration and all-symbol/base
+integration remain work. Copied declaration location/tree facade is not yet a
+full live canonical metadata view. No full lookup or graph parity claim.
+
+External FormalBaseLookupProbe invokes actual Java provider over 64 cases:
+formal/user definitions, empty/bound contexts, symbol slots absent/0/1/4 and
+lookup tool IDs -1/0/1/4, with an indexed tuple-body value at tool 1. Align the
+initial Java numeral body with Go's empty tuple before the final comparison.
+All 64 identical-input observations agree (99716 retired). FormalBaseIdentityProbe
+adds two matching observations: repeated actual base/UID, writes visible both
+ways and exactly one UID allocation for the next source declaration (52694
+retired). External files/inputs/overlays/logs use tlago-formal-base under
+/mnt/oldrog/tmp. No invented permanent tests or original-method inventory credit.
+
+Initial 40-method gate passes (40736 retired) and SANY passes in 2.474 seconds
+(73783 retired). Final 40 original LET/legacy/scoped/debugger methods pass in
+9.909 seconds (51372 retired); 19 original coverage methods pass in 5.334 seconds
+(48958 retired). All-package compilation passes (48778 retired), and focused
+Context/CallableValue methods pass (24481 retired). Git diff checks pass; all
+handles terminal and retired. No race or long workload selected, fixture change,
+assertion weakening or full workspace-green claim. Main inventory and recorded
+native XML failures are unchanged. Complete Context transfer and the remaining
+canonical/evaluator adapters still need implementation.
+
 2026-10-07 Begin canonical LET/formal runtime adapters:
 Previous completed commit: c9b2abb; clean tree confirmed. Replace copied local
 Definition values with original pointers and cache each actual canonical LET's

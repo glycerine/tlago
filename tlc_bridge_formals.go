@@ -10,9 +10,11 @@ func (b *tlcBridge) canonicalFormalParameter(source *sanyFormalParamNode) *tlc.S
 	if parameter := b.canonicalFormals[source]; parameter != nil {
 		return parameter
 	}
-	parameter := tlc.NewFormalParamSymbolNode(source.semName(), source.semArity())
-	parameter.Location = source.Location
-	parameter.TreeNode = source.TreeNode
+	parameter := &tlc.SymbolNode{
+		SemanticBase: source.SemanticNodeBase,
+		Name:         tlc.UniqueStringOf(source.semName()), Arity: source.semArity(), Kind: tlc.SymbolFormalParam,
+		Location: source.Location, TreeNode: source.TreeNode,
+	}
 	if b.canonicalFormals == nil {
 		b.canonicalFormals = map[*sanyFormalParamNode]*tlc.SymbolNode{}
 	}

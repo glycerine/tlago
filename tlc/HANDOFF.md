@@ -425,6 +425,13 @@ bodies and no longer claim the original LET's canonical identity. All 40 focused
 original methods and 19 coverage methods pass; seven external Java/Go identity/
 evaluation observations agree. Context transfer, full semantic-base sharing and
 remaining native selector reconstruction still need implementation.
+Canonical formal adapters now retain the actual `SemanticNodeBase` pointer,
+including UID and indexed tool objects. Standalone runtime formals allocate
+their own base; adapter paths do not allocate throwaway formal nodes. Runtime
+OpDef symbols retain their definition's base, and lookup checks indexed symbol/
+body objects for the active tool. All 64 bounded Java/Go lookup observations and
+two shared-base observations agree. Legacy generic caches and the other canonical
+node adapters still require integration; this is not full lookup/graph parity.
 
 Recursive declarations now update the actual node and unresolved counters inside
 `endRecursiveDefinition`, before label-scope completion. Canonical named functions

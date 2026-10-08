@@ -80,6 +80,7 @@ func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body Semant
 		Body:             body,
 	}
 	symbol.Definition = definition
+	symbol.SemanticBase = &definition.SemanticNodeBase
 	return definition
 }
 

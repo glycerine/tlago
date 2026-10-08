@@ -17,8 +17,11 @@ const (
 )
 
 type SymbolNode struct {
-	Name *UniqueString
-	Data any
+	// The runtime declaration view retains the actual semantic owner when
+	// supplied by SANY. Generic lookup aliases may have no semantic base yet.
+	SemanticBase *SemanticNodeBase
+	Name         *UniqueString
+	Data         any
 	// The evaluator's qualified lookup key can differ from SANY's declaration name.
 	DeclarationName *UniqueString
 	// SANY's operator symbol is the OpDefNode itself. Retain that semantic
@@ -36,7 +39,19 @@ func (s *SymbolNode) GetTreeNode() any                          { return s.TreeN
 func (s *SymbolNode) SetTreeNode(tree any)                      { s.TreeNode = tree }
 
 func NewFormalParamSymbolNode(name string, arity int) *SymbolNode {
-	return &SymbolNode{Name: UniqueStringOf(name), Arity: arity, Kind: SymbolFormalParam}
+	base := NewSemanticNodeBase(SemanticFormalParamKind, name)
+	return &SymbolNode{SemanticBase: &base, Name: UniqueStringOf(name), Arity: arity, Kind: SymbolFormalParam}
+}
+
+func (s *SymbolNode) GetToolObjectAt(toolID int32) any {
+	return s.SemanticBase.GetToolObjectAt(toolID)
+}
+
+func (s *SymbolNode) SetToolObjectAt(toolID int32, value any) {
+	if s.SemanticBase == nil {
+		panic(NewClassCastException("lookup alias has no semantic declaration"))
+	}
+	s.SemanticBase.SetToolObjectAt(toolID, value)
 }
 
 func (s *SymbolNode) GetName() *UniqueString {

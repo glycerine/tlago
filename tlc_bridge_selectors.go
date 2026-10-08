@@ -45,7 +45,7 @@ func (b *tlcBridge) instanceBinding(owner *Module, inst Instance) *tlcBridgeInst
 // Source definitions and INSTANCE substitution nodes remain distinct; the
 // selected body is compiled in its original module, with the lifted formals.
 func (b *tlcBridge) selectorNode(expr Expr, selected *sanySelectorSelection) tlc.SemanticNode {
-	params := b.boundParameters(selected.params, selected.definition.def.Syntax)
+	var params []*tlc.SymbolNode
 	var canonicalParameters []*sanyFormalParamNode
 	switch node := sanyGeneratedExpressionNode(expr).(type) {
 	case *sanySemOpApplNode:
@@ -57,10 +57,13 @@ func (b *tlcBridge) selectorNode(expr Expr, selected *sanySelectorSelection) tlc
 			canonicalParameters = definition.formalNodes
 		}
 	}
-	if len(canonicalParameters) == len(params) {
+	if len(canonicalParameters) == len(selected.params) {
+		params = make([]*tlc.SymbolNode, len(canonicalParameters))
 		for i, parameter := range canonicalParameters {
 			params[i] = b.canonicalFormalParameter(parameter)
 		}
+	} else {
+		params = b.boundParameters(selected.params, selected.definition.def.Syntax)
 	}
 	var bindings []*tlcBridgeInstance
 	offset := 0

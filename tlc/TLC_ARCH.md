@@ -10667,9 +10667,9 @@ Runtime conversion therefore needs a canonical node adapter with an identity
 cache before it can transfer the actual context. The bridge now retains original local AST Definition pointers and caches actual
 LET adapters; it still constructs runtime OpDefs after converting bodies
 and separately reconstructs INSTANCE exports. These are not canonical-context
-identity mappings. Formal symbols also lack their canonical SemanticNode base;
-imported ThmOrAssumpDef bodies and module-instance kind/parameters require their
-actual canonical counterparts. Preserve cycles by publishing adapter shells
+identity mappings. Canonical formal adapters now retain their actual SemanticNode base; other
+symbol facades, imported ThmOrAssumpDef bodies and module-instance kind/parameters
+still require complete integration with their canonical counterparts. Preserve cycles by publishing adapter shells
 before traversing their children, and use the retained context rather than a
 name-matching substitute. The complete context integration remains unimplemented. The source
 completion fixes above do not earn runtime LET parity credit.
@@ -10700,3 +10700,32 @@ constant evaluation. All 40 focused original model/debugger methods and 19
 coverage methods pass unchanged. These receipts do not complete canonical
 Context transfer, semantic-base/UID sharing, imported theorem adapters, complete
 OpDef shell publication or source substitution-array sharing.
+
+## Formal adapters retain the actual semantic base
+
+`SymbolNode.SemanticBase` identifies the semantic owner of an evaluator symbol
+view. A canonical formal adapter retains the parser's actual base pointer,
+without allocating another UID or copying indexed tool slots. Its formal-name,
+arity and declaration facade remain available to current evaluator callers.
+Standalone runtime FormalParam symbols allocate their own kind-11 base. Runtime
+OpDef symbols retain their actual runtime definition base; this does not yet
+replace that definition with the parser's canonical node. Generic lookup aliases
+can still lack an actual semantic owner and cannot store indexed tool objects.
+
+Symbol indexed-slot operations delegate to this owner. Tool lookup checks the
+context first, then the active tool's indexed symbol object. Definition body
+lookup also checks the active indexed slot before its existing generic body
+cache. Legacy Data, generic ToolObject and definition-table paths remain until
+all producers and consumers are translated; full lookup parity is not claimed.
+The current declaration facade's copied location/tree fields and other node
+adapters also remain separate from the canonical semantic-base integration.
+
+Canonical paths no longer allocate a temporary runtime formal before replacing
+it with the actual adapter. Selector parameter conversion likewise resolves
+actual formals before constructing a native fallback list. Two Java/Go rows
+verify retained base/UID identity, writes visible in both directions and exactly
+one UID allocation for the following declaration. Sixty-four lookup observations
+match actual SymbolNodeValueLookupProvider across formal/definition symbols,
+empty/bound contexts, tool IDs -1/0/1/4, indexed symbol values and indexed tuple-
+body values. These bounded cases do not verify the remaining generic caches or
+all symbol classes. Existing original methods and coverage checks remain intact.

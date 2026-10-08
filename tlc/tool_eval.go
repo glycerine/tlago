@@ -93,6 +93,11 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 	if val := con.LookupCutoff(sym, cutoff); val != nil {
 		return val
 	}
+	if sym.SemanticBase != nil {
+		if value := SemanticToolObjectForTool(t, sym); value != nil {
+			return muxToolObject(value)
+		}
+	}
 	if sym.Definition != nil {
 		if value := SemanticToolObject(sym.Definition); value != nil {
 			return muxToolObject(value)
@@ -101,6 +106,11 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 		// wrappers for the original definition body's native/config override.
 		body := sym.Definition.Body
 		for body != nil {
+			if _, ok := body.(interface{ GetToolObjectAt(int32) any }); ok {
+				if value := SemanticToolObjectForTool(t, body); value != nil {
+					return muxToolObject(value)
+				}
+			}
 			if node, ok := body.(interface{ GetToolObject() any }); ok {
 				if value := node.GetToolObject(); value != nil {
 					return value
