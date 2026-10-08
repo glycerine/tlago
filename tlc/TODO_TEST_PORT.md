@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental partial trace-write checks preserve the attempted-record pointer,
+partial bytes and unchanged state/record publication for initial, distributed
+successor and shared single-process successor writers. Upstream has no direct
+methods for these failure boundaries; completion counts are unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

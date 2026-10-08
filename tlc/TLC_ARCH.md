@@ -11875,3 +11875,15 @@ A recorded failure suppresses subsequent elements. Seen states skip trace/queue
 access and property checks; excluded states skip publication owners but still
 check properties. Focused native contracts, original initializer/model checks
 and actual distributed DieHard trace execution pass.
+
+
+### Trace last-record pointer on partial writes
+
+Native trace writers assign the attempted record's file pointer to lastPtr before
+writing predecessor and fingerprint bytes. The assignment survives partial write
+failure. Buffered bytes/cursor mutations also remain, while state UID/metadata
+updates and native record publication require successful writing. This order
+matches TLCTrace's common source writer and applies to initial, distributed
+successor and single-process successor paths. Closed native descriptor checks
+force predecessor/fingerprint buffer-boundary failures without production hooks;
+focused trace, checkpoint and native TCP checks pass.

@@ -20827,3 +20827,32 @@ fingerprint-storage variants with unchanged original seven-state trace/event
 assertions (36888, status 0, 24.408 seconds). All processes are terminal. No full
 suite or race run was performed. Supplemental checks add no original-method
 completion credit; broader distributed parity remains incomplete.
+
+### 2026-10-08: Trace pointer mutation before record writes
+
+Compared TLCTrace.writeState(long,long) with native trace writers. Source assigns
+lastPtr from the current file pointer before writing predecessor and fingerprint
+bytes. Go assigned it only after successful writes, retaining the previous record
+pointer on a partial write failure. Moved the assignment before both writes in
+the shared initial/distributed record writer and the single-process successor
+writer. State UID/metadata updates and record publication still follow successful
+writing, as before.
+
+No original method directly covers this failure boundary. Added native closed-
+descriptor checks at two buffer positions, forcing flush failure during the
+predecessor header or fingerprint. Initial and distributed successor cases all
+failed on the retained old pointer (edbdd0, status 1, 0.013 seconds). Added the
+same two cases for the shared single-process successor path. Final six cases
+preserve attempted-record pointer, partial cursor/header/fingerprint bytes,
+I/O category and unchanged state metadata/record publication. No production
+fault hook or replacement checkpoint sequence was added.
+
+Initial focused checks pass with distributed initialization/publication/depth
+failure and original nine smart-proxy contexts (89152e, status 0, 0.031 seconds).
+Final checks include shared trace behavior regeneration and checkpoint commit/
+phase failure contracts (67153, status 0, 1.743 seconds). Short TCP assigned-block
+checkpoint, worker state lifecycle/results and bootstrap/callback pass (32d812,
+status 0, 0.048 seconds). The three original distributed initializer-continue,
+evaluator-error and TLCSet model contexts pass (63352, status 0, 2.071 seconds).
+All processes are terminal. No full suite, long workload or race run was performed. Supplemental checks add
+no original-method completion credit; broader distributed parity is incomplete.

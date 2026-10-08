@@ -156,13 +156,13 @@ func (t *TLCTrace) writeState(predecessor *TLCStateMut, fp uint64, state *TLCSta
 			return TLCStateInitUID, err
 		}
 		uid = ptr
+		t.lastPtr = ptr
 		if err := t.raf.WriteLongNat(prevUID); err != nil {
 			return TLCStateInitUID, err
 		}
 		if err := t.raf.WriteLong(int64(fp)); err != nil {
 			return TLCStateInitUID, err
 		}
-		t.lastPtr = ptr
 	}
 	t.records = append(t.records, TraceRecord{
 		PreviousUID: prevUID,
@@ -233,13 +233,13 @@ func (t *TLCTrace) WriteNextStateForWorker(workerID int, curState *TLCStateMut, 
 			return err
 		}
 		uid = ptr
+		t.lastPtr = ptr
 		if err := t.raf.WriteLongNat(prevUID); err != nil {
 			return err
 		}
 		if err := t.raf.WriteLong(int64(succFP)); err != nil {
 			return err
 		}
-		t.lastPtr = ptr
 	}
 	generatedWorkerID := int16(workerID)
 	if workerID < 0 || workerID > int(TLCStateInitWorkerID) {

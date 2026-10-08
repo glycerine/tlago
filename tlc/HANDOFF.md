@@ -140,6 +140,9 @@ process/network failures remain pending; this does not establish atomic recovery
 
 Focused recovery contracts are also verified:
 
+- Trace writes publish the attempted record pointer before predecessor and
+  fingerprint bytes. Partial write failures retain that pointer and buffered
+  bytes without publishing a record or changing the state UID/metadata.
 - Trace metadata reads update the saved pointer before seek, including closed
   owners. Enumeration creation/cursor/read/reset errors propagate without zero
   insertion or false end-of-trace; reset retains source cursor/length behavior.
