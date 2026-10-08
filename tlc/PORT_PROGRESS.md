@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 Integrate the actual monolith extractor with SANY loading:
+Previous completed commit: b56c0f7. Source FileUtil.createNamedInputStream falls
+back to MonolithSpecExtractor.module, which performs default-charset FileReader/
+FileWriter extraction and returns a real NamedInputStream. The native SANY
+fallback still duplicated extraction over raw byte-to-string text and used a
+shared temporary directory. Replace that path with tlc.MonolithModule, read and
+close its stream, and pass metadata and bytes to common loadSource. The explicit
+extracted flag preserves sibling syntax rebasing; root-file provenance remains.
+
+External MonolithLoaderProbe exercises actual Java extraction and byte parsing.
+Twelve byte/string cases with three line terminators yield 36 rows per default
+charset. All 108 rows agree across UTF-8, US-ASCII and UTF-16: retained source,
+parser status/full textual output, stream basename/module name or missing result.
+An overlay of prior b56c0f7 production proves 27 of 36 US-ASCII rows differed.
+Observer output is normalized to UTF-8 for comparing text across platform charsets.
+External source, vectors, overlays and logs use tlago-monolith-loader under
+/mnt/oldrog/tmp. No invented permanent tests, weakened fixtures/assertions or
+extra original-method credit; the existing five extractor methods are already
+translated.
+
+Pinned Java util.MonolithSpecExtractorTest passes all five methods in 0.047
+seconds. Go original MonolithSpec, MonolithSpecExtractor and native SANY bridge
+checks pass normally: root 1.177 seconds, TLC 0.012 seconds (68961 retired).
+Complete SANY passes in 2.558 seconds (3757 retired). All-package compilation
+91872 and git diff check pass. Final observer 29077 and prior-production observer
+59204 are terminal and retired; all other observations complete inline. No race
+or unrelated long workload rerun. Canonical/evaluator sharing and general reader/
+encoding/filesystem exception boundaries remain incomplete. Main TLC inventory
+and known native XML failures remain unchanged; no whole-workspace green claim.
+
+
 2026-10-07 Preserve Java UTF-8 decoding at SANY file boundaries:
 Previous completed commit: 76bce85. Audit the remaining runtime LET context gap;
 canonical context integration still requires actual symbol identity and complete

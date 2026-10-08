@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -96,20 +97,19 @@ func ModelCheckSanySource(specFile, specSource, cfgSource string, opts ModelChec
 }
 
 type sanyLoader struct {
-	initialContext  *sanyContext
-	opts            LoadOptions
-	modules         map[string]*Module
-	diags           Diagnostics
-	parseUnits      map[string]*sanyLoadUnit
-	moduleUnits     map[*Module]*sanyLoadUnit
-	moduleParents   map[*Module]*Module
-	moduleBindings  map[*Module]map[string]*Module
-	semanticOrder   []string
-	moduleFiles     []string
-	rootDir         string
-	rootPath        string
-	rootModule      *Module
-	monolithTempDir string
+	initialContext *sanyContext
+	opts           LoadOptions
+	modules        map[string]*Module
+	diags          Diagnostics
+	parseUnits     map[string]*sanyLoadUnit
+	moduleUnits    map[*Module]*sanyLoadUnit
+	moduleParents  map[*Module]*Module
+	moduleBindings map[*Module]map[string]*Module
+	semanticOrder  []string
+	moduleFiles    []string
+	rootDir        string
+	rootPath       string
+	rootModule     *Module
 }
 
 // sanyParseAbort is Errors.addMessage's unrecoverable load failure. The TLC
@@ -296,9 +296,12 @@ func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string
 		l.diags = append(l.diags, errorAt(Position{File: path, Line: 1, Column: 1}, "E1202", "cannot read %s: %v", path, err))
 		return nil
 	}
+	return l.loadSource(path, data, standard, logicalFilename, false, provenance...)
+}
+
+func (l *sanyLoader) loadSource(path string, data []byte, standard bool, logicalFilename string, extracted bool, provenance ...string) *Module {
 	l.moduleFiles = append(l.moduleFiles, logicalFilename)
 	l.reportParsing(path, provenance...)
-	extracted := l.monolithTempDir != "" && filepath.Dir(path) == l.monolithTempDir
 	mod, _, diags := parseSanyModuleSourceWithDependencies(path, tlc.DecodeUTF8Replacing(data), extracted)
 	parserFailure := false
 	for _, diagnostic := range diags {
@@ -344,25 +347,16 @@ func (l *sanyLoader) loadMonolithModule(name string) *Module {
 	if l.rootPath == "" {
 		return nil
 	}
-	data, err := os.ReadFile(l.rootPath)
+	stream, err := tlc.MonolithModule(l.rootPath, name)
+	if err != nil || stream == nil {
+		return nil
+	}
+	defer stream.Close()
+	data, err := io.ReadAll(stream)
 	if err != nil {
 		return nil
 	}
-	text, active := tlc.ExtractMonolithModuleSource(string(data), name)
-	if !active {
-		return nil
-	}
-	if l.monolithTempDir == "" {
-		l.monolithTempDir, err = os.MkdirTemp("", "tlago-monolith-")
-		if err != nil {
-			return nil
-		}
-	}
-	path := filepath.Join(l.monolithTempDir, filepath.Base(name)+".tla")
-	if err = os.WriteFile(path, []byte(text), 0600); err != nil {
-		return nil
-	}
-	return l.loadPath(path, false, name+".tla", l.rootPath)
+	return l.loadSource(stream.SourceFile(), data, false, stream.GetFileName(), true, l.rootPath)
 }
 
 func (l *sanyLoader) reportParsing(path string, provenance ...string) {

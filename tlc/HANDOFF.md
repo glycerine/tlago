@@ -380,7 +380,12 @@ arbitrary reader/exception boundary or concurrent interleaving. Production
 module and debugger-dependency loading now decode UTF-8 with Java replacement
 lengths, preserving columns for malformed prefixes. All 49,430 byte-decoding/token
 rows and 6,166 parser-output rows agree with Java; seven direct file-loader cases
-pass. General encoding constructors and I/O-failure paths remain audit work.
+pass. Monolith fallback now calls the actual ported `MonolithModule` extractor,
+reads and closes its NamedInputStream, and uses an explicit extracted-source flag.
+It retains default-charset extraction before UTF-8 parsing, temporary-file metadata
+and root provenance. All 108 bounded observations across UTF-8, US-ASCII and
+UTF-16 defaults agree with Java; 27 prior US-ASCII differences are resolved.
+General encoding constructors and I/O-failure paths remain audit work.
 Another 300 ReInit/round-reset rows agree, including complete state arrays and
 invalid lexical-state handling. Continue the remaining parser and canonical
 semantic-graph audit. Preserve source error

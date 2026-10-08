@@ -10525,3 +10525,22 @@ BOM and a supplementary character in strings and expression positions. All
 outputs agree; seven direct file-loader cases pass. This does not establish
 arbitrary stream chunking, I/O failures or every encoding constructor. No new
 permanent tests or original test-method credit.
+
+
+## SANY monolith fallback uses the ported extractor
+
+`sanyLoader.loadMonolithModule` now calls `tlc.MonolithModule`, matching
+FileUtil.createNamedInputStream's fallback. It reads and closes the actual
+NamedInputStream and passes its bytes, source-file path and logical basename to
+the common loader. The common `loadSource` path explicitly identifies extracted
+siblings for syntax rebasing and retains root-file parsing provenance. The
+separate loader extraction loop and shared temporary-directory field are removed.
+
+Monolith extraction reads and writes with the default charset before SANY parses
+the resulting file as UTF-8. The prior byte-to-string extraction bypassed those
+steps: 27 of 36 bounded US-ASCII cases differed in retained source text. All 108
+observations now agree across UTF-8, US-ASCII and UTF-16 defaults, covering malformed
+prefixes, non-ASCII/supplementary values, BOM, missing extraction and CR/LF/CRLF.
+Comparisons include source text, parser success/output and stream names. Original
+MonolithSpecExtractorTest's five methods and the Go extractor/model checks pass.
+This does not establish all filesystem failures or every default charset.
