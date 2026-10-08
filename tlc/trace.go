@@ -560,7 +560,6 @@ func (t *TLCTrace) traceFPsFromDisk(pos int64, included bool) ([]uint64, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = t.raf.Seek(current) }()
 	loc := pos
 	if !included {
 		loc, err = t.getPrevFromDiskLocked(pos)
@@ -579,10 +578,10 @@ func (t *TLCTrace) traceFPsFromDisk(pos int64, included bool) ([]uint64, error) 
 		if err != nil {
 			return nil, err
 		}
-		if next == predecessorLoc {
-			break
-		}
 		predecessorLoc = next
+	}
+	if err := t.raf.Seek(current); err != nil {
+		return nil, err
 	}
 	return fps, nil
 }

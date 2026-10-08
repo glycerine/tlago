@@ -20992,3 +20992,33 @@ Both actual distributed DieHard fingerprint-storage variants also pass unchanged
 original trace/event assertions (8b9f6f, status 0, 24.342 seconds). All processes
 are terminal. Disk trace cursor restoration on failure remains to audit;
 distributed parity is incomplete.
+
+### 2026-10-08: Disk fingerprint traversal cursor restoration
+
+Compared TLCTrace.getTrace(loc,included)'s synchronized file traversal with
+traceFPsFromDisk. Source seeks back to the saved cursor only after all reads
+succeed; that final seek can itself fail. Go used a defer, rewinding after read
+failures and ignoring restoration errors. Replaced it with an explicit checked
+seek after traversal. Partial-read failures retain their consumed cursor and
+failed restoration cannot publish the fingerprint sequence. Removed the self-
+link break that returned a partial chain rather than following source predecessor
+traversal to the initial-state sentinel.
+
+No original method directly exercises these cursor failure boundaries. Added
+four native partial-record cases (included header, excluded header, fingerprint
+and later predecessor record), two normal included/excluded restoration cases
+and one native closed-descriptor restoration failure. The latter keeps the record
+cached and the saved logical cursor outside the buffer, forcing refill failure
+only when restoring; there is no production hook or replacement file interface.
+All five failure checks initially failed (fd9564, status 1, 0.015 seconds).
+
+Final new/related trace regeneration, metadata, sequence, disk/nested recovery,
+write/depth failure and original nine smart-proxy checks pass (4f51e8, status 0,
+2.023 seconds). Original Alias safety/liveness, TLCExtTrace alias and three
+initializer-continue, evaluator-error and TLCSet distributed model contexts pass
+(0db767, status 0, 2.458 seconds). Actual distributed DieHard passes both
+fingerprint-storage variants with unchanged original trace/event assertions
+(acad0a, status 0, 23.369 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit.
+ConcurrentTLCTrace reconstruction still differs in normal-only random restoration
+and missing-result handling; distributed parity remains incomplete.

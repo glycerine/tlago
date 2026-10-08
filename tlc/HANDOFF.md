@@ -126,7 +126,11 @@ a successor reconstructed in the noninitial branch. Empty-prefix current and
 initial-transition reconstruction retain their own metadata before alias evaluation.
 A missing initial transition fails at the state printer after printing the initial
 state; the ordinary coordinator catch reports it and completes/notifies the queue.
-Disk trace cursor restoration on failure remains a separate audit item.
+Disk fingerprint traversal restores its saved cursor only after normal completion
+and propagates a failed restoration. Partial-read failures retain the consumed
+cursor; the predecessor chain follows the source initial-state sentinel without
+a self-link shortcut. Concurrent trace reconstruction still needs the corresponding
+normal-only random restoration and missing-result audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

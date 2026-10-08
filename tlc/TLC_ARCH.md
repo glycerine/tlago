@@ -11916,5 +11916,10 @@ evaluation. Empty-prefix and initial-transition reconstructions retain their own
 metadata. A missing initial transition reaches the state printer and raises a
 null-pointer failure before another state event, allowing the ordinary coordinator
 catch to report the printing failure and finish/notify the queue. The state printer
-requires a nonnil info/state instead of rendering an empty substitute. Disk cursor
-restoration remains a separate audit item. No RMI or JVM machinery is introduced.
+requires a nonnil info/state instead of rendering an empty substitute. Disk
+fingerprint traversal restores its saved cursor only after successful reads and
+propagates restoration failures instead of publishing a fingerprint sequence.
+Failed reads retain the consumed cursor. Traversal follows predecessor links until
+the source initial-state sentinel, without returning a partial self-linked chain.
+Concurrent trace reconstruction still needs its normal-only random restoration
+and missing-result audit. No RMI or JVM machinery is introduced.
