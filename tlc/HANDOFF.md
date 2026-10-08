@@ -236,9 +236,12 @@ evaluation/runtime errors still produce the source's `_ALIASEvalError` state;
 this does not turn those displayable errors into escaping failures.
 Returned initial/final-state reconstruction errors now propagate before aliases
 or postconditions, retaining their identity rather than substituting a raw state.
-Nil reconstruction results, reconstruction overload choice and missing-owner
-guards remain pending.
-The latest related model selection failed once with its assertion lost to output
+Noninitial final-state recovery now uses state equality against generated
+successors, matching the source overload. Initial recovery retains fingerprint
+selection. Both paths retain returned metadata without copying the target's
+worker ID or trace pointer. Nil reconstruction results and missing-owner guards
+remain pending.
+An earlier related model selection failed once with its assertion lost to output
 truncation, then passed unchanged with captured output. This failure is unresolved;
 do not claim it diagnosed. Preserve failing output to a file on future runs.
 

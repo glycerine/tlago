@@ -2026,23 +2026,16 @@ func (mc *ModelChecker) stateInfoForState(tool *Tool, state *TLCStateMut, predec
 	if state == nil {
 		return nil
 	}
+	if predecessor != nil {
+		return mc.stateInfoForTransition(tool, state, predecessor)
+	}
 	if mc != nil && tool != nil {
-		var (
-			info *TLCStateInfo
-			err  error
-		)
 		fp := state.FingerPrint()
-		if predecessor == nil {
-			info, err = tool.GetState(fp)
-		} else {
-			info, err = tool.GetState(fp, predecessor)
-		}
+		info, err := tool.GetState(fp)
 		if err != nil {
 			panic(err)
 		}
 		if info != nil && info.State != nil {
-			info.State.WorkerID = state.WorkerID
-			info.State.UID = state.UID
 			return info
 		}
 	}
@@ -2062,8 +2055,6 @@ func (mc *ModelChecker) stateInfoForTransition(tool *Tool, state *TLCStateMut, p
 			panic(err)
 		}
 		if info != nil && info.State != nil {
-			info.State.WorkerID = state.WorkerID
-			info.State.UID = state.UID
 			return info
 		}
 	}

@@ -20614,6 +20614,33 @@ with the required execution permission. All processes are terminal. No full
 suite, long workload or race run was performed. These supplemental checks add
 no original-method credit; distributed parity remains incomplete.
 
+### 2026-10-08: Final-state reconstruction overload and metadata
+
+Compared Worker.doPostCondition's initial/current/transition recovery with
+pinned source Tool.getState overloads. Noninitial current-state recovery now
+uses generated successor equality, matching getState(state, predecessor), rather
+than getState(fingerprint, predecessor). Initial recovery keeps fingerprint
+selection. Initial and transition helpers no longer overwrite returned worker
+IDs and trace pointers with target metadata; source does not make that copy.
+Returned errors still propagate. Nil recovery results and missing-owner guards
+remain pending and are not claimed corrected here.
+
+No original method directly distinguishes these helper boundaries. Three native
+cases cover initial/noninitial/transition recovery, overload routing, returned
+state identity/metadata and transition action. All three initially failed
+(cb10db log, terminal process 6d5639 status 1, 3.736 seconds). Focused worker/
+native RPC, concurrent trace, original simulation trace, reporting serialization,
+pairwise postcondition and distributed trace alias-failure checks pass (fc6f41
+log, terminal process d7bf13 status 0, 13.353 seconds). Original checkpoint-on-
+violation/time-bound, error-trace, Github461, Github743 incomparable-successor,
+three-worker CodePlexBug08 archive recovery, AliasSafety and TLCExtTraceAlias
+tests plus four native DieHard/TSnapShot process variants pass (215cbe log,
+terminal process bf709c status 0, 59.007 seconds). All output was captured and all
+processes are terminal. The earlier truncated model failure remains unexplained;
+passing runs do not diagnose it. Original assertions and bounds are unchanged.
+No full suite or race run was performed. Supplemental cases add no original-
+method credit; distributed parity remains incomplete.
+
 ### 2026-10-08: Required recoverable-batch requeueing
 
 Compared TLCServerThread's recoverable worker-failure catch with pinned source.

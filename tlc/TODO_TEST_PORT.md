@@ -895,6 +895,12 @@ retained; alias and postcondition evaluation cannot proceed after failed recover
 No original method directly covers these returned-error boundaries; completion
 counts remain unchanged.
 
+Three native final-state recovery checks distinguish initial fingerprint
+selection from noninitial state-equality reconstruction and verify returned
+metadata and transition action. Worker ID and trace pointer are not copied from
+the target onto generated states. No original method directly covers these
+helper boundaries; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly
