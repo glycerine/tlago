@@ -222,8 +222,12 @@ owner snapshots still need source audit.
 Successor insertion retains the worker's captured fingerprint set and state
 writer. Normal, excluded and unsatisfied transitions use that writer; writer
 failures cannot disappear silently. Liveness stuttering output retains the
-source's explicit access to the checker's current writer. Successor evaluation's
-tool ownership and remaining missing-owner guards still need audit.
+source's explicit access to the checker's current writer. Successor validity,
+state/action constraints and their exclusion reasons, invariants and implied
+actions use the executing worker's tool. Fingerprinting cannot borrow a missing
+worker tool. Incomplete-state diagnostic parameter selection retains the
+source's checker tool access. Error/postcondition tool ownership and remaining
+missing-owner guards still need audit.
 
 Concurrent trace registration retains its fixed worker-owner list. Missing trace
 or worker references and out-of-range IDs fail before assignment; registration

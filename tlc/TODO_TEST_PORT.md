@@ -871,6 +871,12 @@ writer failure propagation. Captured owners retain insertion and transition
 output; liveness stuttering keeps the source's current-checker writer access.
 No original method directly covers these boundaries; counts remain unchanged.
 
+Four native successor-evaluation cases cover eligible/excluded states after
+replacement/removal of the checker's tool. Ordered validity, constraints,
+exclusion reasons, invariant and implied-action evaluation retain the executing
+worker's tool. No original method directly covers these boundaries; original
+completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

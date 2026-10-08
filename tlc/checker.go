@@ -1675,18 +1675,22 @@ func workerIDForReplayWorker(worker *Worker) int {
 }
 
 func (mc *ModelChecker) processSuccessorForWorker(worker *Worker, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
-	if !mc.Tool.IsGoodState(succState) {
+	tool := worker.Tool
+	if tool == nil {
+		panic(NewNullPointerException())
+	}
+	if !tool.IsGoodState(succState) {
 		return mc.doNextSetErrParamsWithPostCondition(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
 	}
 	if succState != nil {
 		succState.SetPredecessor(curState).SetAction(action)
 	}
-	inModel, err := mc.Tool.IsInModel(succState)
+	inModel, err := tool.IsInModel(succState)
 	if err != nil {
 		return true, false, err
 	}
 	if inModel {
-		inActions, err := mc.Tool.IsInActions(curState, succState)
+		inActions, err := tool.IsInActions(curState, succState)
 		if err != nil {
 			return true, false, err
 		}
@@ -1702,17 +1706,17 @@ func (mc *ModelChecker) processSuccessorForWorker(worker *Worker, curState *TLCS
 	} else if worker.stateWriter == nil {
 		panic(NewNullPointerException())
 	} else if worker.stateWriter.IsConstrained() {
-		if err := mc.writeConstrainedTransitionReasons(worker.stateWriter, curState, succState, action); err != nil {
+		if err := mc.writeConstrainedTransitionReasons(tool, worker.stateWriter, curState, succState, action); err != nil {
 			return true, false, err
 		}
 	}
 	if unseen {
-		stop, err := mc.doNextCheckInvariants(curState, succState)
+		stop, err := mc.doNextCheckInvariantsWithTool(tool, curState, succState, true)
 		if stop || err != nil {
 			return stop, false, err
 		}
 	}
-	stop, err := mc.doNextCheckImplied(curState, succState)
+	stop, err := mc.doNextCheckImpliedWithTool(tool, curState, succState, true)
 	if stop || err != nil {
 		return stop, false, err
 	}
@@ -1727,9 +1731,9 @@ func (mc *ModelChecker) processSuccessorForWorker(worker *Worker, curState *TLCS
 	return false, false, nil
 }
 
-func (mc *ModelChecker) writeConstrainedTransitionReasons(writer IStateWriter, curState *TLCStateMut, succState *TLCStateMut, action *Action) error {
-	for _, constraint := range mc.Tool.GetModelConstraints() {
-		ok, err := mc.Tool.IsInModelForConstraint(constraint, succState)
+func (mc *ModelChecker) writeConstrainedTransitionReasons(tool *Tool, writer IStateWriter, curState *TLCStateMut, succState *TLCStateMut, action *Action) error {
+	for _, constraint := range tool.GetModelConstraints() {
+		ok, err := tool.IsInModelForConstraint(constraint, succState)
 		if err != nil {
 			return err
 		}
@@ -1739,8 +1743,8 @@ func (mc *ModelChecker) writeConstrainedTransitionReasons(writer IStateWriter, c
 			}
 		}
 	}
-	for _, constraint := range mc.Tool.GetActionConstraints() {
-		ok, err := mc.Tool.IsInActionsForConstraint(constraint, curState, succState)
+	for _, constraint := range tool.GetActionConstraints() {
+		ok, err := tool.IsInActionsForConstraint(constraint, curState, succState)
 		if err != nil {
 			return err
 		}
@@ -1783,8 +1787,11 @@ func (mc *ModelChecker) GetDistinctStatesGenerated() uint64 {
 
 func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, error) {
 	tool := mc.Tool
-	if worker != nil && worker.Tool != nil {
+	if worker != nil {
 		tool = worker.Tool
+		if tool == nil {
+			panic(NewNullPointerException())
+		}
 	}
 	fp := succState.FingerPrintWithTool(tool)
 	fingerprintSet, writer := mc.FPSet, mc.AllStateWriter

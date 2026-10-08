@@ -21853,3 +21853,28 @@ native process storage variants pass (b12ad6, status 0, 58.336 seconds). All
 processes are terminal. Original assertions and bounds are unchanged. No full
 suite or race run was performed. Eight supplemental cases add no original-method
 credit; remaining source audits are pending and distributed parity is incomplete.
+
+### 2026-10-08: Successor evaluation retains worker tool ownership
+
+Compared Worker.addElement, constrained-reason evaluation, invariant checks and
+implied-action checks with pinned source. Successor processing now uses the
+executing worker's tool throughout these evaluations rather than the checker's
+mutable tool reference. Fingerprinting no longer borrows a missing worker tool.
+Incomplete-state diagnostic parameter selection explicitly uses the checker
+tool in ModelChecker.doNextSetErr; that source access is retained. Error and
+postcondition tool ownership remain separate audit work.
+
+No original method directly covers replacement/removal of the checker tool.
+Four supplemental cases preserve ordered evaluation and enqueue decisions for
+eligible/excluded states. A new expected queue-size type was corrected after
+compilation rejected it (fe8df4). All four then failed against the earlier port
+(0a410f, status 1, 4.388 seconds), exposing redirected or silently skipped checks.
+Focused worker/native RPC, concurrent trace and original simulation trace checks
+pass (7967f5, status 0, 10.329 seconds). After retaining source diagnostic-owner
+selection, focused functor and new evaluation checks also pass (8fbb67, status 0,
+3.596 seconds). Original checkpoint-on-violation/time-bound, error-trace, Github461
+assertion/call-stack and three-worker CodePlexBug08 archive recovery plus all four
+existing DieHard/TSnapShot native process storage variants pass (b13b89, status 0,
+58.211 seconds). All processes are terminal. Original assertions and bounds are
+unchanged. No full suite or race run was performed. Supplemental cases add no
+original-method credit; distributed parity remains incomplete.
