@@ -96,11 +96,11 @@ func (s *TLCServer) printProgressStatsLocked(oldGenerated int64, oldDistinct uin
 	s.DistinctStatesPerMinute = javaDoubleToLong(float64(int64(distinct)-int64(oldDistinct)) / factor)
 	level := s.Trace.GetLevelForReporting()
 	PrintMessage(ECTLCProgressStats, fmtInt(level),
-		groupDecimalIntegerPart(fmtInt64(generated)),
-		groupDecimalIntegerPart(fmtInt64(int64(distinct))),
-		groupDecimalIntegerPart(fmtInt64(s.getNewStatesLocked())),
-		groupDecimalIntegerPart(fmtInt64(s.StatesPerMinute)),
-		groupDecimalIntegerPart(fmtInt64(s.DistinctStatesPerMinute)))
+		MessageNumberFormat(generated),
+		MessageNumberFormat(int64(distinct)),
+		MessageNumberFormat(s.getNewStatesLocked()),
+		MessageNumberFormat(s.StatesPerMinute),
+		MessageNumberFormat(s.DistinctStatesPerMinute))
 	return generated, distinct
 }
 

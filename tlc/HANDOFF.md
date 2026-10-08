@@ -132,6 +132,13 @@ still returns without accessing later owners. Focused native ordering and TCP
 checkpoint checks pass; there are no direct original methods for these missing
 component cases, so they add no original-method completion credit.
 
+Periodic coordinator progress and final tool progress now use the existing
+locale-aware message integer formatter, matching Java's `MP.format` calls.
+Nine fresh native locale processes verify grouping, digits, negative affixes,
+signed limits and the plain final `TLC_STATS` parameters. Existing worker locale
+checks and the four original MP methods pass. These supplemental coordinator
+formatting checks add no original-method completion credit.
+
 Fingerprint check tasks now catch I/O failures before executor completion
 wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for
 fingerprint distance, `false` for invariants). Unchecked task failures retain

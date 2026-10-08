@@ -11440,3 +11440,20 @@ Earlier I/O failures still return unchanged and stop subsequent operations.
 No transport compatibility or JVM machinery is involved. Supplemental native
 ownership tests and focused actual TCP checkpoint checks pass, without new
 original-method completion credit or a broader completion claim.
+
+
+### Distributed coordinator progress locale formatting
+
+Periodic TLC_PROGRESS_STATS formats its five signed counters through the
+existing MessageNumberFormat, corresponding to Java MP.format. Final tool
+progress uses the same formatter for generated, distinct and queue counts.
+Source conversion from unsigned Go fingerprint totals to signed long bits is
+retained. Report rates and baseline timing are unchanged. Trace levels use
+plain integer strings, final rate zeros are literal ASCII "0", and final
+TLC_STATS parameters remain plain signed strings as in Java printSummary.
+Nine fresh Go processes validate source DecimalFormat reference rows for
+locale grouping/digits/negative affixes, positive/negative rates and signed
+limits, including POSIX explicit grouping and Arabic/Persian bidi affixes.
+Tool mode controls final progress, while success controls search depth.
+No new formatter or Java runtime dependency is introduced. Supplemental tests
+add no original-method completion credit; existing MP tests remain green.

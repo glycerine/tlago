@@ -934,6 +934,12 @@ suspension still bypasses later owners. Focused checkpoint/TCP checks pass.
 Upstream has no direct methods for missing coordinator components; these native
 checks add no original-method completion credit or changes to Missing entries.
 
+Periodic/final coordinator progress now uses the existing message locale
+formatter instead of fixed comma grouping. Supplemental native process checks
+verify nine source locale reference rows, signed limits, rates, plain final
+statistics and tool/success conditions. Original MP tests remain green. No
+direct original coordinator-formatting method exists; no method credit is added.
+
 Returned fatal local endpoint errors now escape exactly like fatal panics;
 scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
 warning or availability mutation. Original Java manager translations and native

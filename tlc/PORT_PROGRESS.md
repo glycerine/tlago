@@ -19848,3 +19848,34 @@ retry/loss and the original nine smart-proxy contexts pass (0.045 seconds).
 These supplemental checks add no original-method completion credit. The full
 suite was not rerun; no long workload or race instrumentation was selected.
 All test handles are terminal. Distributed completion remains unproven.
+
+
+## October 8, 2026: coordinator progress integer locale parity
+
+Compared periodic progress and printSummary against TLCServer.java. Both
+called fixed comma grouping in Go, while Java calls MP.format for generated,
+distinct, queue and rate counters. Replaced those call sites with the existing
+MessageNumberFormat. Numeric arithmetic/baselines, level formatting, tool mode
+and success conditions are unchanged. Final TLC_STATS retains plain signed
+integer parameters; final progress rate zeros remain literal ASCII zeros.
+
+Generated nine locale reference rows using the source's exact
+DecimalFormat("###,###.###") pattern with OpenJDK 21.0.12.1. The rows cover
+1234, -1234, Long.MIN_VALUE and Long.MAX_VALUE in English, German, French,
+Arabic, POSIX, Swiss Walser, Thai numbering, Persian and Swedish. Persistent
+vectors are in test_vectors/distributed/progress_numbers.tsv; the source
+reference generator is /mnt/oldrog/tmp/DistributedProgressNumberReference.java.
+The Go tests read these saved rows and spawn only their own native test binary.
+
+Added distributed_progress_statistics_test.go. Real memory queue/store counters
+exercise periodic progress and positive/negative rates with the original
+one-minute report interval. The summary checks cover tool/console and
+success/failure combinations, exact localized signed limits, plain statistics
+and unlocalized levels/zero rates. Every locale child is joined. Initial
+verification reproduced the missing locale formatting (60446, status 1,
+0.206 seconds). Fixed verification passes all nine locale processes, existing
+271 canonical worker ratio rows, 1,860 worker locale rows, twelve worker
+initialization-order processes and all four original MP methods (31356,
+status 0, 0.324 seconds). No original coordinator-formatting method exists;
+supplemental checks add no original-method credit. No full suite, long workload
+or race instrumentation was selected; all handles are terminal.
