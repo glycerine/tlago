@@ -28,7 +28,7 @@ func isCLIHelpFlag(arg string) bool {
 
 func canonicalCLICommand(command string) string {
 	switch command {
-	case "parse", "check", "apalache-json", "sany-xml":
+	case "parse", "check", "apalache-json", "sany-xml", "server", "worker", "fpserver", "worker-fpserver":
 		return command
 	case "modelcheck", "mc":
 		return "modelcheck"
@@ -42,6 +42,10 @@ func canonicalCLICommand(command string) string {
 }
 
 func printCLIHelp(w io.Writer, command string) {
+	if isDistributedCLICommand(command) {
+		printDistributedCLIHelp(w, command)
+		return
+	}
 	fmt.Fprintln(w, "tlago: TLA+ parsing, semantic checking, and the Go TLC model checker")
 	fmt.Fprintln(w)
 	if command == "" {
@@ -58,6 +62,7 @@ func printCLIHelp(w io.Writer, command string) {
 		{"parse", "Parse FILE... with the Go SANY parser; Java counterpart: SANY -s."},
 		{"check", "Parse and check FILE...; Java counterpart: tla2sany.SANY, Toolbox Parse Spec."},
 		{"modelcheck (mc)", "Run the Go port of Java tlc2.TLC; also the default without a subcommand."},
+		{"server / worker / fpserver / worker-fpserver", "Distributed TLC processes; use tlago help COMMAND for role options."},
 		{"checkimplfile (check-impl-file)", "Monitor implementation trace files; Java: tlc2.tool.CheckImplFile."},
 		{"repl-expr (repl)", "Evaluate one quoted expression; Java: tlc2.REPL expression evaluation."},
 		{"apalache-json", "Export checked modules as JSON IR; no Java TLC checking-mode equivalent."},

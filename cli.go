@@ -57,11 +57,13 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		printCLIHelp(stdout, command)
 		return ExitOK
 	}
-	if len(files) == 0 && cmd != "modelcheck" && cmd != "mc" && cmd != "sany-xml" {
+	if len(files) == 0 && cmd != "modelcheck" && cmd != "mc" && cmd != "sany-xml" && cmd != "server" {
 		fmt.Fprintln(stderr, "at least one file is required")
 		return ExitToolFailure
 	}
 	switch cmd {
+	case "server", "worker", "fpserver", "worker-fpserver":
+		return runDistributedCLI(cmd, files, stdout, stderr)
 	case "parse":
 		return runParse(files, stdout, stderr)
 	case "check":

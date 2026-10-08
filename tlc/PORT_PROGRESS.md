@@ -17921,3 +17921,32 @@ seconds (98203 terminal status 0). No full suite or long race workload was run.
 All handles are retired; the tested chunk is ready to commit. Remaining payload
 types, CLI/process lifecycle and separate-process full model verification still
 need implementation; distributed completion is not claimed.
+
+## Native distributed CLI roles (October 8, 2026)
+
+Added `tlago server`, `worker`, `fpserver` and `worker-fpserver`, using the
+existing original distributed command implementations with Go TCP publication
+and discovery. Startup `-D` properties are validated before any are applied,
+then consumed before role constructors initialize cached settings. The
+coordinator retains TLCApp.create's original flag subset, local versus remote
+fingerprint-manager construction and packaged-model loading. Dedicated help
+lists that subset, original entry classes and property names, and explains the
+native bind/advertise/callback-port properties. Local TLC invocation is unchanged.
+
+Worker processes wait for their source exit latch and grace period; combined
+processes preserve FP-thread-first launch order and retain both role lifetimes.
+A bare advertised callback hostname now uses the actual bound port, including
+an OS-selected ephemeral port; explicit host:port remains unchanged. There are
+no enabled original tests for this native CLI adapter. Added focused Go tests
+for all role help paths, invalid startup, property atomicity, and advertised
+hostname/IPv4/IPv6/explicit-port behavior. Existing original distributed model
+and init-failure tests remain unchanged. No original-method completion credit
+is added to the inventory.
+
+Focused CLI/property plus original distributed model/init selection passes:
+root 1.725 seconds and TLC 0.012 seconds (49307 terminal status 0). Native callback
+address/bootstrap and coordinator publication checks pass in 0.025 seconds
+(65993 terminal status 0). All-package compilation with `-run '^$'` passes
+(18820 terminal status 0). No full suite or race workload was run. Signal-driven
+shutdown, separate-process model execution and remaining extended/custom
+payloads are still pending; this chunk does not establish distributed completion.

@@ -1876,8 +1876,13 @@ the command's rejection or reporting-loop shutdown points. Native registration
 rejection retains the source early return without flush, and leaves a worker on
 the same host available. Reporting preserves the five-minute wait boundary;
 remote exit wakes it through the existing storage lifecycle. Remaining payload
-classes, process/CLI integration and separate-process full model execution
-remain pending. These focused checks do not prove distributed completion.
+classes, signal-driven process shutdown and separate-process full model execution
+remain pending. Native CLI entry points now expose `server`, `worker`,
+`fpserver` and `worker-fpserver`, with dedicated help and startup property
+consumption before role initialization. Worker command lifetime follows its
+exit latch; the combined command waits for both roles. Callback publication
+accepts a reachable host with the OS-selected port. These entry points still
+need separate-process model verification and native signal shutdown handling. These focused checks do not prove distributed completion.
 
 ## Testing and workflow
 
