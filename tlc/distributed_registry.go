@@ -191,7 +191,7 @@ func (s *TLCServer) RunWorkerShutdownHook() error {
 		return registry.Lookup(TLCServerName)
 	})
 	if err != nil {
-		if javaRemoteException(err) != nil {
+		if isDistributedRemoteFailure(err) {
 			return nil
 		}
 		if failure, missing := err.(*NotBoundException); missing && failure != nil {

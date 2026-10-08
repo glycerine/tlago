@@ -55,7 +55,7 @@ func (r *RMIFilenameToStreamResolver) fetch(name string) (bs []byte) {
 	bs = []byte{} // Java's initial byte[0] is not null.
 	defer func() {
 		if failure := recover(); failure != nil {
-			if err, ok := failure.(error); ok && javaRemoteException(err) != nil {
+			if err, ok := failure.(error); ok && isDistributedRemoteFailure(err) {
 				printDistributedFileException(err)
 				return
 			}

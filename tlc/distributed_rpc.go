@@ -22,13 +22,16 @@ func (e *DistributedEndpointError) Error() string { return e.Message }
 // Calls are independent and concurrent. It performs no implicit retries: a
 // failed insertion may already have changed storage, so TLC owns retry policy.
 type DistributedRPCServer struct {
-	rpc          *rpc.Server
-	mu           sync.Mutex
-	closed       bool
-	listeners    map[net.Listener]struct{}
-	connections  map[net.Conn]struct{}
-	fingerprints map[string]DistributedFingerprintEndpoint
-	workers      map[string]DistributedWorkerEndpoint
+	rpc                 *rpc.Server
+	mu                  sync.Mutex
+	closed              bool
+	listeners           map[net.Listener]struct{}
+	connections         map[net.Conn]struct{}
+	fingerprints        map[string]DistributedFingerprintEndpoint
+	workers             map[string]DistributedWorkerEndpoint
+	coordinators        map[string]distributedCoordinatorBinding
+	fingerprintSequence uint64
+	outbound            distributedConnections
 }
 
 func NewDistributedRPCServer() *DistributedRPCServer {
@@ -37,11 +40,15 @@ func NewDistributedRPCServer() *DistributedRPCServer {
 		connections:  make(map[net.Conn]struct{}),
 		fingerprints: make(map[string]DistributedFingerprintEndpoint),
 		workers:      make(map[string]DistributedWorkerEndpoint),
+		coordinators: make(map[string]distributedCoordinatorBinding),
 	}
 	if err := s.rpc.RegisterName("Fingerprint", &distributedFingerprintService{server: s}); err != nil {
 		panic(err)
 	}
 	if err := s.rpc.RegisterName("Worker", &distributedWorkerService{server: s}); err != nil {
+		panic(err)
+	}
+	if err := s.rpc.RegisterName("Coordinator", &distributedServerService{server: s}); err != nil {
 		panic(err)
 	}
 	return s
@@ -128,6 +135,9 @@ func (s *DistributedRPCServer) Close() error {
 	}
 	s.mu.Unlock()
 	var failures []error
+	if err := s.outbound.close(); err != nil {
+		failures = append(failures, err)
+	}
 	for _, listener := range listeners {
 		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			failures = append(failures, err)

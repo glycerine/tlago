@@ -1848,7 +1848,15 @@ failures retain both error states, their sharing, `KeepCallStack`, nullable
 messages, cause/suppression graphs and sender diagnostic stacks. Shutdown
 recognizes unavailable native workers. Focused TCP, retry/loss and codec checks
 pass, as does one short concurrent computation/keepalive race check.
-Coordinator network calls, remaining payload classes and process/CLI integration
+`NetworkServerEndpoint` now supplies every coordinator call over TCP, including
+settings, files, interning, worker/fingerprint registration and manager snapshots.
+Registration sends named TCP endpoint references; local unpublished endpoints
+are rejected. Coordinator-owned storage is published on its advertised listener
+for worker snapshots. Manager wrapper sharing and availability are preserved,
+while failover state and trace ownership remain isolated. Acquired callback and
+snapshot connections have explicit owners and close on host/client shutdown.
+Native failures now enter the existing resolver and worker keepalive catches.
+Remaining payload classes, native discovery/bootstrap and process/CLI integration
 remain pending. These focused checks do not prove distributed completion.
 
 ## Testing and workflow

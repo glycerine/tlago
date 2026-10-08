@@ -317,7 +317,7 @@ func (t *distributedWorkerKeepAlive) run() (err error) {
 		t.logFailure(err)
 		return nil
 	}
-	if javaRemoteException(err) != nil {
+	if isDistributedRemoteFailure(err) {
 		return t.exitWorker(err, count)
 	}
 	if failure, notBound := err.(*NotBoundException); notBound && failure != nil {

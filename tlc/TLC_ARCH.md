@@ -7876,8 +7876,19 @@ Failure nodes preserve shared/cyclic causes and suppression, nullable messages,
 sender diagnostic class/stack text, worker error states and KeepCallStack. Only
 the existing concrete WorkerException is reconstructed for the coordinator's
 error-state path; general remote causes remain native Go operation errors.
-Coordinator networking, remaining payload types and process/CLI wiring remain
-to be implemented.
+NetworkServerEndpoint supplies all coordinator operations through a named Go
+TCP endpoint. Worker/fingerprint registrations pass address/object references
+and establish coordinator-owned callback connections. Fingerprint manager nodes
+retain wrapper aliases, hostname, availability, mask and mode settings, omitting
+the transient trace. Coordinator-local storage is published on the explicitly
+advertised host listener; existing network endpoints retain their references.
+Snapshot decoding reuses endpoints within each manager and closes newly acquired
+connections if decoding/dialing fails. Successful snapshot connections belong
+to the coordinator client; callback connections belong to the RPC host. Both
+owners close their connections independently of worker/storage exit. Native
+coordinator failures enter the existing file resolver and keepalive catches.
+Remaining payload types, native discovery/bootstrap and process/CLI wiring
+remain to be implemented.
 
 The Java reference implementation uses RMI:
 

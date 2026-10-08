@@ -17740,3 +17740,49 @@ wiring and real separate-process model execution still need implementation.
 Final root original distributed selection passes in 1.718 seconds (60091
 terminal status 0), including native shutdown classification changes. All test
 handles are retired; focused checks are green and the chunk is ready to commit.
+
+### 2026-10-08 — Native coordinator TCP calls and manager snapshots
+
+Continued from cd07e20. Reviewed the complete TLCServer endpoint contract and
+existing manager snapshot fields. Added named coordinator publications with an
+explicit advertised TCP address and NetworkServerEndpoint implementing every
+coordinator operation: settings/status, file names/bytes, interning, worker/FP
+registration and manager snapshots. Requests preserve signed-independent full
+64-bit polynomial bits, null/empty file arrays and raw intern metadata without
+mutating receiver interning. Registration transfers native address/object
+references and makes coordinator-owned callback connections; unpublished local
+endpoints are explicitly rejected. No registration or storage call is retried.
+
+Added manager graph payloads retaining wrapper aliases, shared endpoint
+references, availability, mask, description, expected-server count and local
+mode, omitting the transient recovery trace. Coordinator-owned local storage is
+published on its advertised host; storage already on another host retains that
+reference. Publication reuse has deterministic sorted-name selection. A worker
+gets independent failover state while talking to the same storage. A failed
+snapshot closes its acquired connections; successful snapshots belong to the
+coordinator client. Callback connections belong to the RPC host, including dials
+overlapping shutdown. Closing these owners does not invoke storage/worker exit.
+Native remote failures now enter existing file resolver and worker keepalive
+catches rather than bypassing their source handling.
+
+No direct usable upstream coordinator transport tests exist. Added four focused
+Go checks for all operations, actual reverse callbacks, manager snapshot/remote
+storage sharing and failover isolation, metadata/byte ownership, remote errors,
+missing names and malformed snapshot rejection before dialing. An additional
+short eight-call concurrency test exercises simultaneous snapshots and interning.
+The resolver check proves its actual fetch method catches a native failure and
+retains the initial non-null empty array. Existing original dynamic-manager and
+smart-proxy tests are unchanged; no original-method completion credit is added.
+
+Initial coordinator checks passed in 0.023 seconds (75987 terminal status 0).
+Final focused coordinator/worker/fingerprint TCP, payload, original dynamic
+manager/smart-proxy and registration/bootstrap selection passed in 0.090 seconds
+(26427 terminal status 0). Root original distributed model/init/app-boundary
+checks passed in 1.940 seconds (53605 terminal status 0). The exact short native
+concurrency race receipt follows. No full suite or long race workload was run.
+Remaining extended/custom payload types, native discovery/bootstrap, role/CLI
+lifecycle and separate-process model execution still require implementation.
+
+The exact short concurrent snapshot/interning race check passes in 1.042 seconds
+(72902 terminal status 0). All test handles are retired. Focused checks are green
+and the coordinator transport chunk is ready to commit.
