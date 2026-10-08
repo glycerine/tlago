@@ -883,6 +883,12 @@ postcondition evaluation use the worker tool; checker reporting remains under
 the same lock. Fixtures supply the initial trace and reconstructable transitions.
 No original method directly covers tool replacement; counts remain unchanged.
 
+Four native postcondition alias checks cover an escaping native or fatal failure
+at the first or second alias. Failure identity is retained, later aliases stop,
+and the postcondition is not evaluated. Tool-level displayable alias errors keep
+their source handling. No original method directly covers this boundary;
+original completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

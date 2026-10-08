@@ -2140,7 +2140,10 @@ func aliasTraceWithToolPairs(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo 
 			successor = aliased[i+1].OriginalState()
 		}
 		alias, err := tool.EvalAliasInfoPair(current, successor)
-		if err == nil && alias != nil {
+		if err != nil {
+			panic(err)
+		}
+		if alias != nil {
 			aliased[i] = alias
 		}
 	}

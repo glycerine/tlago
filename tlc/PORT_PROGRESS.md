@@ -21911,3 +21911,29 @@ variants. The first failure remains unexplained and is not claimed diagnosed or
 fixed. All processes are terminal. No original assertions or bounds changed;
 no full suite or race run was performed. Supplemental cases add no original-
 method credit. Distributed parity remains incomplete.
+
+### 2026-10-08: Escaping postcondition ALIAS failures
+
+Compared Worker.doPostCondition's pairwise alias loop with pinned source and
+Tool's explicit EvalException/TLCRuntimeException display handling. The Go
+postcondition helper discarded errors escaping EvalAliasInfoPair and continued
+to the postcondition with the unaliased state. It now propagates the original
+failure immediately, suppressing later aliases and postcondition evaluation.
+Tool-level displayable alias errors still produce the source's _ALIASEvalError
+state; their handling is unchanged. Nil alias results and reconstruction
+fallbacks remain separate audit work.
+
+No original method directly covers this escaping-failure boundary. Four native
+cases exercise native/fatal failure identity at the first/second alias. All four
+initially failed (c32838 log, status 1, 3.940 seconds), with both aliases and the
+postcondition still evaluated. Focused worker/native RPC, concurrent trace,
+original simulation trace, reporting serialization, pairwise postcondition and
+distributed trace alias-failure checks pass (bf9c3e log, status 0, 11.366 seconds).
+Original checkpoint-on-violation/time-bound, error-trace, Github461, three-worker
+CodePlexBug08 archive recovery, AliasSafety and TLCExtTraceAlias tests plus four
+native DieHard/TSnapShot process variants pass (15877e log, terminal process
+cf00b4 status 0, 58.685 seconds). All failure output was captured to local logs.
+The preceding chunk's truncated model failure remains unexplained; this passing
+run does not diagnose it. Original assertions and bounds are unchanged. No full
+suite or race run was performed. Supplemental cases add no original-method
+credit; distributed parity is incomplete.

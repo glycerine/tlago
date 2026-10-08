@@ -230,6 +230,10 @@ source's checker tool access. Worker error postconditions use the worker tool
 for final-state reconstruction, pairwise aliases and counterexample evaluation;
 coordinator trace-prefix recovery and error reporting retain their own owners.
 The reporting lock spans both diagnostics and postcondition evaluation.
+Postcondition pairwise alias failures now escape immediately, preserving their
+identity and suppressing later aliases and postcondition evaluation. Tool-level
+evaluation/runtime errors still produce the source's `_ALIASEvalError` state;
+this does not turn those displayable errors into escaping failures.
 Remaining reconstruction fallbacks and missing-owner guards still need audit.
 The latest related model selection failed once with its assertion lost to output
 truncation, then passed unchanged with captured output. This failure is unresolved;
