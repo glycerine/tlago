@@ -967,6 +967,13 @@ category. Twelve completion processes, 56 hook cases and actual unavailable TCP
 workers pass. No direct original methods exist for these boundaries; no credit
 is added.
 
+SimpleCache raw ratio arithmetic now passes 271 source counter rows and native
+TCP nonfinite/signed-zero/extreme checks. Missing cache owners retain source
+failure behavior. Native worker cache replies carry IEEE bits to preserve
+negative zero through gob. No original SimpleCache methods exist; no method credit is
+added. Its worker exit-message formatter remains pending, including locale and
+special-value symbols; this is distinct from coordinator worker statistics.
+
 Returned fatal local endpoint errors now escape exactly like fatal panics;
 scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
 warning or availability mutation. Original Java manager translations and native

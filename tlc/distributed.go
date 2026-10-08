@@ -1818,7 +1818,7 @@ func (w *DistributedWorker) IsAlive() bool {
 
 func (w *DistributedWorker) GetCacheRateRatio() float64 {
 	if w == nil || w.Cache == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
 	return w.Cache.GetHitRatio()
 }

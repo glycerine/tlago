@@ -20035,3 +20035,47 @@ shutdown, fatal boundaries and fingerprint failure graphs pass (48850, status 0,
 0.033 seconds). Upstream has no direct exit-order methods; supplemental checks
 add no original-method completion credit. No full suite, long workload or race
 instrumentation was selected. All handles are terminal.
+
+
+## October 8, 2026: distributed cache ratio arithmetic
+
+Compared worker successor processing against TLCWorker.getNextStates: the
+reviewed cache/filter, signed fingerprint sorting, partitioning, invariant/
+constraint ordering and UID assignment paths match the source. No changes
+were made to those paths. SimpleCache.getHitRatio instead had a shortcut
+returning zero for a zero miss count. Java evaluates hit / (double) miss.
+Removed the guard, preserving hit-before-miss observation, IEEE infinities,
+NaN, signed zero and signed counter overflow conversion. Nil cache or worker
+ratio access now raises the existing null-failure trait instead of zero.
+
+Generated 271 reference counter rows from the exact source expression with
+OpenJDK 21.0.12.1: 15 edges plus 256 seeded signed long pairs (20261008).
+Persistent vectors are test_vectors/distributed/simple_cache_ratios.tsv;
+the scratch generator is /mnt/oldrog/tmp/SimpleCacheRatioReference.java.
+Rows also retain source DecimalFormat strings for the pending formatter work;
+this arithmetic chunk does not claim those string outputs are implemented.
+Arithmetic tests compare finite/infinite/signed-zero reference bits, and classify
+NaN rather than relying on its hardware-specific sign/payload. Native RPC
+checks additionally require exact sender/receiver bits, including NaN.
+
+Initial counter checks pass (64335, status 0, 0.012 seconds). Final focused
+counter/missing-owner, existing cache, coordinator ratio, finalizer and original
+nine smart-proxy contexts pass (46495, status 0, 0.065 seconds). Upstream has
+no original SimpleCache tests, so supplemental checks add no method credit.
+
+A separate formatting audit found the worker exit-message cache string still
+uses fixed ASCII formatting and incorrect nonfinite symbols. Source reference
+locale rows are at /mnt/oldrog/tmp/simple_cache_ratio_locales.tsv (1,860 rows).
+NaN/infinity symbols cannot simply be grouped by base locale: Japanese/Thai
+legacy variants and Arabic numbering extensions change NaN labels. Implement
+this actual DecimalFormat contract next; do not substitute the coordinator's
+separate two-decimal Formatter semantics or assume base-locale-only symbols.
+No full suite, long workload or race instrumentation was selected.
+
+Native TCP edge verification initially failed on negative zero (29431, status 1,
+0.015 seconds). Gob omitted a struct float field equal to zero, dropping its
+sign. Replaced the cache reply float with CacheRateBits, populated/decoded via
+math.Float64bits/Float64frombits. Cache ratios now retain all IEEE bits, including
+NaN payload, over the native wire. All roles need the current reply build.
+Corrected TCP extremes, worker lifecycle and fatal boundary checks pass (85038,
+status 0, 0.027 seconds). All test handles are terminal.

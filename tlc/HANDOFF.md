@@ -170,6 +170,16 @@ and iteration continues. Payload round trips, 12 fresh completion processes,
 56 hook cases and actual unavailable TCP endpoints pass. All communicating
 roles need the current payload build. Supplemental checks add no method credit.
 
+SimpleCache ratio arithmetic now retains source floating-point division,
+including zero-denominator infinity/NaN and signed zero. Missing cache ownership
+fails instead of reporting zero. All 271 source counter reference rows and
+native TCP edge values pass. The RPC reply carries raw IEEE bits because gob's
+float-field omission lost negative zero; all roles need the current build.
+The worker exit-message DecimalFormat equivalent
+still needs implementation: locale digits/affixes, nonfinite labels and legacy
+locale/numbering variants remain pending. Do not confuse that formatter with
+the already verified two-decimal coordinator worker statistics formatter.
+
 Fingerprint check tasks now catch I/O failures before executor completion
 wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for
 fingerprint distance, `false` for invariants). Unchecked task failures retain

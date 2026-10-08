@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/rpc"
 )
@@ -38,11 +39,11 @@ type DistributedWorkerRequest struct {
 	States    *DistributedStatePayload
 }
 type DistributedWorkerReply struct {
-	Result    *DistributedResultPayload
-	Alive     bool
-	URI       string
-	CacheRate float64
-	Failure   *DistributedFailurePayload
+	Result        *DistributedResultPayload
+	Alive         bool
+	URI           string
+	CacheRateBits uint64
+	Failure       *DistributedFailurePayload
 }
 
 type distributedWorkerService struct{ server *DistributedRPCServer }
@@ -90,7 +91,9 @@ func (service *distributedWorkerService) Call(request DistributedWorkerRequest, 
 	case "uri":
 		reply.URI, failure = endpoint.GetURI()
 	case "cache":
-		reply.CacheRate, failure = endpoint.GetCacheRateRatio()
+		var ratio float64
+		ratio, failure = endpoint.GetCacheRateRatio()
+		reply.CacheRateBits = math.Float64bits(ratio)
 	case "exit":
 		failure = endpoint.Exit()
 		if failure == nil {
@@ -183,7 +186,7 @@ func (e *NetworkWorkerEndpoint) GetURI() (string, error) {
 }
 func (e *NetworkWorkerEndpoint) GetCacheRateRatio() (float64, error) {
 	reply, err := e.call(DistributedWorkerRequest{Operation: "cache"})
-	return reply.CacheRate, err
+	return math.Float64frombits(reply.CacheRateBits), err
 }
 func (e *NetworkWorkerEndpoint) Exit() error {
 	_, err := e.call(DistributedWorkerRequest{Operation: "exit"})

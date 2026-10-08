@@ -52,13 +52,9 @@ func (c *SimpleCache) Hit(fp uint64) bool {
 
 func (c *SimpleCache) GetHitRatio() float64 {
 	if c == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
-	miss := c.cacheMiss.Load()
-	if miss == 0 {
-		return 0
-	}
-	return float64(c.cacheHit.Load()) / float64(miss)
+	return float64(c.cacheHit.Load()) / float64(c.cacheMiss.Load())
 }
 
 func (c *SimpleCache) GetHitRatioAsString() string {

@@ -11537,3 +11537,29 @@ overload formats a string event, which the existing Go printer preserves.
 Focused local/payload, fresh completion-process and actual TCP checks pass. No
 direct original methods cover these exit-order boundaries; no method credit is
 added and broader distributed completion remains unproven.
+
+
+### Distributed cache raw ratio arithmetic
+
+SimpleCache.GetHitRatio loads the signed hit count before the signed miss count
+and performs native floating-point division, matching the source expression.
+Zero denominators produce IEEE infinity/NaN rather than a substitute zero;
+signed zero and signed-counter overflow conversion remain observable through
+the worker endpoint. Missing worker/cache ownership raises the existing null
+trait. Reference tests cover 271 original-expression counter pairs, with NaN
+classified independently of architecture-specific arithmetic sign/payload.
+Native TCP checks require exact sender/receiver bits. No original SimpleCache
+methods exist and supplemental tests add no method credit.
+
+GetHitRatioAsString remains a separate pending source DecimalFormat contract
+for worker exit messages. It is distinct from the coordinator's two-decimal
+worker statistics Formatter. Source labels/grouping/digits/negative affixes,
+nonfinite output and numbering/legacy-locale variations need faithful native
+implementation; raw-ratio verification does not prove that formatter complete.
+
+The native worker cache reply stores CacheRateBits as uint64 and decodes it
+with math.Float64frombits. Gob's default float-field omission otherwise turns
+negative zero into positive zero. Nonzero sign bits remain explicit with this
+representation; finite/nonfinite values and NaN payloads retain exact sender
+bits. Communicating roles need the current native reply build. Focused TCP
+extreme/lifecycle/fatal-boundary checks pass.
