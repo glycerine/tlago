@@ -10435,3 +10435,29 @@ shared nesting count and failure messages. Another 28 rows agree on sequential
 state and full parser output, including shared-counter effects. All 355 corpus
 actual outputs remain equal after the change. These are bounded comparisons,
 not exhaustive lexer, character-stream or concurrent-interleaving verification.
+
+
+## PRAGMA longest match, junction prefixes and state validation
+
+PRAGMA considers NUMBER, IDENTIFIER, BAND/BOR, module-header and anonymous
+one-character SKIP candidates together. Greater matched length wins; ties use
+source numeric kind priority. The SKIP kind 22 wins over a single-character
+IDENTIFIER kind 289, while NUMBER kind 20 wins its single-character tie. This
+retains digit-leading identifiers as whole tokens and recognizes junction tokens
+in PRAGMA rather than discarding their suffix. The source header switches to SPEC.
+SPEC whitespace remains exactly space, tab, CR and LF.
+
+BAND/BOR use the grammar's CASE1b/c, CASE2b/c and CASE6b/c prefixes. They contain
+ASCII letters/digits only; they exclude underscore, a lone W/S and WF/SF starts.
+They must not use the broader general-identifier scanner. Invalid prefixes
+therefore produce ordinary identifier/number/punctuation tokens according to
+normal longest matching, including valid suffix junctions after an underscore.
+All 1,080 bounded DEFAULT/PRAGMA/SPEC token-stream rows agree with Java on kinds,
+images, coordinates, final state and lexical errors.
+
+SwitchTo accepts exactly source states 0 through 5. Invalid states throw typed
+TokenMgrError with original text and errorCode 2, preserving the old state.
+The nil receiver retains NullPointerException. Lexical failures retain default
+reason 0. All 66 valid/invalid transition observations agree, including signed
+32-bit endpoint values. These observations do not establish full ReInit,
+constructor, Unicode decoding or character-stream parity.

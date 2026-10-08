@@ -11,6 +11,7 @@ import (
 type sanyTokenMgrError struct {
 	diagnostic Diagnostic
 	message    string
+	errorCode  int32
 }
 
 func (failure *sanyTokenMgrError) Error() string { return failure.message }

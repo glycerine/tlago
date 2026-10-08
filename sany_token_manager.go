@@ -1,9 +1,12 @@
 package tlago
 
 import (
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"unicode/utf8"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 type SanyTokenManager struct {
@@ -47,7 +50,13 @@ func (tm *SanyTokenManager) State() SanyLexState {
 
 func (tm *SanyTokenManager) SwitchTo(state SanyLexState) {
 	if tm == nil {
-		return
+		panic(tlc.NewNullPointerException())
+	}
+	if state < 0 || state >= 6 {
+		message := fmt.Sprintf("Error: Ignoring invalid lexical state : %d. State unchanged.", state)
+		diagnostic := errorAt(tm.pos(), "E1204", "%s", message)
+		diagnostic.SANYParseMessage = message
+		panic(&sanyTokenMgrError{diagnostic: diagnostic, message: message, errorCode: 2})
 	}
 	tm.state = state
 }
@@ -118,20 +127,32 @@ func (tm *SanyTokenManager) nextDefaultToken() *SanyToken {
 
 func (tm *SanyTokenManager) nextPragmaToken() *SanyToken {
 	for !tm.eof() {
-		if n, ok := matchSanyBeginModule(tm.rest()); ok {
-			return tm.consumeToken(SanyTokenBm2, n, SanyLexSpec)
+		// PRAGMA's anonymous one-character SKIP has source kind 22. It wins
+		// ties with one-character IDENTIFIER (289), but loses to NUMBER (20).
+		_, size := utf8.DecodeRuneInString(tm.rest())
+		best := sanyLexCandidate{kind: 22, n: size, priority: 22}
+		candidates := []sanyLexCandidate{tm.identifierCandidate(), tm.junctionCandidate()}
+		if n := scanSanyDecimalNumber(tm.rest()); n > 0 {
+			candidates = append(candidates, sanyLexCandidate{kind: SanyTokenNumber, n: n, priority: int(SanyTokenNumber)})
 		}
-		if isHorizontalOrVerticalWhitespace(tm.peek()) {
-			tm.advance()
+		if n, ok := matchSanyBeginModule(tm.rest()); ok {
+			candidates = append(candidates, sanyLexCandidate{kind: SanyTokenBm2, n: n, priority: int(SanyTokenBm2)})
+		}
+		for _, candidate := range candidates {
+			candidate.priority = int(candidate.kind)
+			if candidate.n > best.n || (candidate.n == best.n && candidate.priority < best.priority) {
+				best = candidate
+			}
+		}
+		if best.kind == 22 {
+			tm.consumeBytes(best.n)
 			continue
 		}
-		if n := scanSanyDecimalNumber(tm.rest()); n > 0 {
-			return tm.consumeToken(SanyTokenNumber, n, SanyLexPragma)
+		nextState := SanyLexPragma
+		if best.kind == SanyTokenBm2 {
+			nextState = SanyLexSpec
 		}
-		if ident := tm.identifierCandidate(); ident.n > 0 {
-			return tm.consumeToken(SanyTokenIdentifier, ident.n, SanyLexPragma)
-		}
-		tm.advance()
+		return tm.consumeToken(best.kind, best.n, nextState)
 	}
 	return tm.eofToken()
 }
@@ -439,24 +460,33 @@ func (tm *SanyTokenManager) identifierCandidate() sanyLexCandidate {
 	return sanyLexCandidate{kind: SanyTokenIdentifier, n: i, priority: 50}
 }
 
+// BAND/BOR use CASE1b/c, CASE2b/c and CASE6b/c, rather than the
+// general identifier grammar. Prefixes contain ASCII letters/digits only;
+// CASE2 excludes a lone W/S and WF/SF (there is no CASE3b/c).
 func (tm *SanyTokenManager) junctionCandidate() sanyLexCandidate {
 	rest := tm.rest()
-	i := 0
-	for i < len(rest) {
-		r, size := utf8.DecodeRuneInString(rest[i:])
-		if !isSanyIdentifierPart(r) {
-			break
-		}
-		i += size
-	}
-	if i == 0 {
+	if len(rest) == 0 {
 		return sanyLexCandidate{}
+	}
+	first := rune(rest[0])
+	if !isSanyLetter(first) && !isSanyDigit(first) {
+		return sanyLexCandidate{}
+	}
+	i := 1
+	if first == 'W' || first == 'S' {
+		if len(rest) < 2 || (!isSanyLetter(rune(rest[1])) && !isSanyDigit(rune(rest[1]))) || rest[1] == 'F' {
+			return sanyLexCandidate{}
+		}
+		i = 2
+	}
+	for i < len(rest) && (isSanyLetter(rune(rest[i])) || isSanyDigit(rune(rest[i]))) {
+		i++
 	}
 	switch {
 	case strings.HasPrefix(rest[i:], `./\`):
-		return sanyLexCandidate{kind: SanyTokenBand, n: i + len(`./\`), priority: 10}
+		return sanyLexCandidate{kind: SanyTokenBand, n: i + 3, priority: 10}
 	case strings.HasPrefix(rest[i:], `.\/`):
-		return sanyLexCandidate{kind: SanyTokenBor, n: i + len(`.\/`), priority: 10}
+		return sanyLexCandidate{kind: SanyTokenBor, n: i + 3, priority: 10}
 	default:
 		return sanyLexCandidate{}
 	}

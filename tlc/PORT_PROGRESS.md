@@ -1,5 +1,40 @@
 # TLC Port Progress
 
+2026-10-07 Correct PRAGMA matching, junction prefixes and state validation:
+Previous completed commit: e388bff. Source audit confirms SPEC whitespace already
+matches its exact four-character set. PRAGMA instead had early number selection,
+no junction candidate and unconditional identifier acceptance. Translate source
+longest match and kind-number tie priority across NUMBER, IDENTIFIER, BAND/BOR,
+module header and one-character SKIP. Preserve source SKIP's tie win over
+single-character identifiers. Junction prefixes now use CASE1b/c, CASE2b/c and
+CASE6b/c, not general identifier scanning: no underscores, lone W/S or WF/SF
+starts. Valid suffix junctions after rejected prefix characters remain discoverable
+through normal token scanning. SwitchTo now validates states 0 through 5, preserving
+old state and exact TokenMgrError message/reason 2 on invalid input. Nil receiver
+throws NullPointerException; ordinary lexical failures retain reason 0.
+
+External JunctionTokenProbe compares 360 source inputs across DEFAULT/PRAGMA/SPEC.
+Initial comparison found 464 differences (261 PRAGMA, 202 SPEC, one DEFAULT input
+switching to PRAGMA). All 1,080 complete stream rows now match token kinds/images,
+coordinates, final state and lexical error text. LexicalStateProbe compares six
+starting states with eleven valid/invalid targets including signed int endpoints:
+all 66 rows match final state, exception message and errorCode. Probes, input
+vectors, overlays and logs remain outside the repository under /mnt/oldrog/tmp
+with prefixes tlago-junction-token and tlago-lexical-state. No invented permanent
+tests, fixture changes or additional original-method credit. Source TokenizerTests
+is already translated; its nine original contexts pass in the SANY package.
+
+Initial SwitchTo edit did not replace its old body, so two imports were unused;
+those Go observer/package compilations returned 1, without success credit. Install
+the actual validation body and rerun: final state comparison returned 0;
+complete SANY package passes in 2.088 seconds; focused root originals/parser/
+token/scaffold/selector/debugger gate 44675 passes in 9.951 seconds and is retired.
+All-package compilation and git diff check pass. All handles retired. Normal
+execution without race; unchanged long workloads are not repeated. Main TLC
+totals, native XML failures and broader canonical/character-stream parity gaps
+remain unchanged. No whole-workspace green or full lexer completion claim.
+
+
 2026-10-07 Correct JavaCC comment segments and EOF handling:
 Previous completed commit: a4826de. Audit found native grouped-comment tokens,
 forward-only special ownership, per-comment depth and unconditional reset at EOF.

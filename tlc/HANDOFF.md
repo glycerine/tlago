@@ -361,7 +361,14 @@ in Java; an unfinished MORE segment fails. Syntax nodes retain chronological
 pre-comment images. The parser wrapper emits the source multiline open-comment
 message from actual scanner begin/end lines. All 200 bounded token-stream rows
 and 28 state/parser-output rows match Java; these do not establish every lexical
-rule or concurrent interleaving. The Java `belchDEF` token-stream operation and its production call sites
+rule or concurrent interleaving. PRAGMA now selects NUMBER, identifiers,
+junctions and module headers by source longest match and token-kind priority;
+its one-character SKIP wins ties with single-character identifiers. BAND/BOR
+prefixes follow CASE1b/c, CASE2b/c and CASE6b/c, excluding underscores, lone W/S
+and WF/SF prefixes. All 1,080 bounded stream rows match Java. SwitchTo rejects
+invalid states with source TokenMgrError reason 2 and unchanged current state;
+all 66 valid/invalid transition rows match. Full ReInit/constructor and general
+character-stream fidelity remain pending. The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and
 `DefStep` leaves it for the definition parser as Java does. Twenty-one scratch
 comparisons match actual non-EOF token kinds, images, positions and marker
