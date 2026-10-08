@@ -1643,24 +1643,24 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 			stack.Push(p.PrimitiveExp(), nil)
 		}
 	}
-	for p.aboveCurrentJunction() && !stop(p.peek()) {
+	for p.scanLookahead(58, 1) {
 		switch {
-		case p.check(SanyTokenOp57) || p.check(SanyTokenOp68) || p.check(SanyTokenOp69) || p.check(SanyTokenOp70):
+		case p.scanLookahead(59, 2147483647) && p.aboveCurrentJunction():
 			tok := p.advance()
 			op, _ := GetSanyOperator(tok.Image)
 			stack.Push(p.genericOperatorNode(tok, op), &op)
-		case p.check(SanyTokenDot):
+		case p.scanLookahead(60, 2147483647) && p.aboveCurrentJunction():
 			middle := NewSanyTokenNode(p.advance())
 			p.reclassifyFieldName()
 			if !p.aboveCurrentJunction() {
-				p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected properly indented record field")
+				p.throwParseException(nil, "expected properly indented record field")
 			}
 			right := p.consumeParseToken(SanyTokenIdentifier, "expected record field identifier")
 			if err := stack.ReduceRecord(middle, right); err != nil {
 				p.throwOperatorStackFailure(err, middle.Range.Begin)
 			}
 			continue
-		case p.check(SanyTokenLsb):
+		case p.scanLookahead(61, 2147483647) && p.aboveCurrentJunction():
 			p.expecting = "function argument"
 			node := p.SBracketCases()
 			if node.Kind.JavaName() == "N_FcnAppl" {
@@ -1671,36 +1671,39 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 				stack.Push(node, nil)
 			}
 		default:
-			goto continuation
+			p.throwParseException(nil, "expected expression extension")
 		}
 		if err := stack.ReduceStack(); err != nil {
 			p.throwOperatorStackFailure(err, p.previous().End)
 		}
 	}
-continuation:
-	if p.aboveCurrentJunction() && !stop(p.peek()) && p.isGrammarInfixOperator(p.peek()) {
-		tok := p.infixOpToken()
-		op, _ := GetSanyOperator(tok.Image)
-		stack.Push(p.genericOperatorNode(tok, op), &op)
-		if err := stack.ReduceStack(); err != nil {
-			p.throwOperatorStackFailure(err, tok.Begin)
+	if p.scanLookahead(66, 1) {
+		if p.scanLookahead(64, 2147483647) && p.aboveCurrentJunction() {
+			tok := p.infixOpToken()
+			op, _ := GetSanyOperator(tok.Image)
+			stack.Push(p.genericOperatorNode(tok, op), &op)
+			if err := stack.ReduceStack(); err != nil {
+				p.throwOperatorStackFailure(err, tok.Begin)
+			}
+			p.expressionOperand(stack, stop, 62, 63)
+		} else if p.scanLookahead(65, 2147483647) && p.aboveCurrentJunction() {
+			colon := NewSanyTokenNode(p.advance())
+			label := stack.TopNode()
+			if !sanyIsLabel(label) {
+				message := "`::' at " + p.junctionLocation(colon.Range) + " does not follow a label."
+				p.throwReportedParseException(message, colon.Range.Begin, "E1300", message)
+			}
+			stack.PopCurrentTop()
+			expr := p.ExpressionUntil(stop)
+			if (expr.Kind.JavaName() == "N_InfixExpr" || expr.Kind.JavaName() == "N_PostfixExpr") && stack.TopOperator() != nil &&
+				(p.lastOperator == nil || !SanyOperatorPrec(*stack.TopOperator(), *p.lastOperator)) {
+				message := "Removing label at " + p.junctionLocation(label.Range) + " would change expression parsing."
+				p.throwReportedParseException(message, label.Range.Begin, "E1300", message)
+			}
+			stack.Push(NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, expr), nil)
+		} else {
+			p.throwParseException(nil, "expected infix operator or label continuation")
 		}
-		p.expressionOperand(stack, stop, 62, 63)
-	} else if p.aboveCurrentJunction() && !stop(p.peek()) && p.check(SanyTokenColoncolon) {
-		colon := NewSanyTokenNode(p.advance())
-		label := stack.TopNode()
-		if !sanyIsLabel(label) {
-			message := "`::' at " + p.junctionLocation(colon.Range) + " does not follow a label."
-			p.throwReportedParseException(message, colon.Range.Begin, "E1300", message)
-		}
-		stack.PopCurrentTop()
-		expr := p.ExpressionUntil(stop)
-		if (expr.Kind.JavaName() == "N_InfixExpr" || expr.Kind.JavaName() == "N_PostfixExpr") && stack.TopOperator() != nil &&
-			(p.lastOperator == nil || !SanyOperatorPrec(*stack.TopOperator(), *p.lastOperator)) {
-			message := "Removing label at " + p.junctionLocation(label.Range) + " would change expression parsing."
-			p.throwReportedParseException(message, label.Range.Begin, "E1300", message)
-		}
-		stack.Push(NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, expr), nil)
 	}
 }
 

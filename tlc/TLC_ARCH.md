@@ -10053,3 +10053,27 @@ results, syntax kinds/images/four coordinates and complete parse messages with
 outer log whitespace excluded. This bounded evidence does not prove every stack
 or indentation context, expected-token alternative, allocation identity or
 canonical/evaluator-sharing requirement.
+
+
+## Extension and continuation previews own expression boundaries
+
+ExtendableExpr uses source loop preview 58 (budget 1), then calls 59/60/61
+(Integer.MAX_VALUE) before the source column predicates for postfix, record-field
+and function-argument alternatives. The generated loop predicate owns indentation
+and eligibility; a separate native stop guard would skip saved source calls.
+Optional continuation uses preview 66 (budget 1), then infix 64 or label 65
+(Integer.MAX_VALUE), followed by their source column predicates. Infix right
+operands retain distinct calls 62/63.
+
+The record-field indentation failure and extension/continuation alternative
+failures use source jj_consume_token(-1), contributing no explicit expected-token
+entry. Pass an empty expected list and retain actual saved-call rescans. An
+invented Identifier expectation changes Java's empty following-input diagnostic
+for an outdented record field, even though both parsers reject the input.
+
+Source entry points 1–66, 68 and 72 are connected. Remaining selector callers
+and complete expected-token/bookkeeping fidelity still require work. External
+production observations match 3,125 rows across 181 cases, comparing actual syntax
+kinds/images/four coordinates and complete messages with outer log whitespace
+excluded. They do not establish exhaustive predicate contexts or whole parser,
+canonical graph or evaluator-sharing completion.

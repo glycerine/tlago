@@ -749,9 +749,14 @@ expression prefixes and open expressions use calls 54/55; infix right operands
 retain distinct calls 62/63, all with Integer.MAX_VALUE. Initial extendable
 operands use junction preview 56 before the operator-stack predicate, then
 primitive preview 57 (budget 1) after direct parenthesized-form choices.
-Connected entry points are now 1–57, 62, 63, 68 and 72. All 2,661 external rows
-agree across 157 valid/malformed cases. Current original frontend/model checks
-pass in 9.791 seconds, complete SANY in 1.709 seconds and compilation passes.
+Expression extensions now use the source loop preview 58 (budget 1), then
+postfix, record-field and function-argument calls 59–61 (Integer.MAX_VALUE)
+before their column predicates. Continuation preview 66 (budget 1) precedes
+infix/label calls 64/65 (Integer.MAX_VALUE). Predicate-failure branches retain
+Java's empty expected-token list rather than estimating a following identifier.
+Connected entry points are now 1–66, 68 and 72. All 3,125 external rows agree
+across 181 valid/malformed cases. Current original frontend/model checks pass in
+9.637 seconds, complete SANY in 1.884 seconds and compilation passes.
 Remaining call-site integration, grammar expectations, general rescan integration
 and proof generation remain reconciliation work. These bounded observations do
 not establish every semantic-predicate context or full parser parity.

@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-07 Source expression-extension and continuation decisions:
+Previous completed commit: 9ded18d. ExtendableExpr's extension loop now uses
+source preview 58 with budget 1, then postfix 59, record field 60 and function
+argument 61 (Integer.MAX_VALUE) before each source junction-column predicate.
+Remove the native loop's stop/eligibility guards and its silent continuation
+fallback; generated previews own these decisions. Optional continuation uses
+66 (budget 1), then infix 64 and label 65 (Integer.MAX_VALUE) with their column
+predicates. Preserve the already distinct right-operand calls 62/63. Connected
+source entry points are now 1–66, 68 and 72; six selector decisions and full
+JavaCC bookkeeping remain pending.
+
+Extend the existing external observer by 24 valid/malformed postfix, record,
+function, label and outdented extension cases. Initial comparison has one mismatch
+among 3,125 rows: Java's record-field column failure reports empty following
+input, while Go reports the following identifier. Source jj_consume_token(-1)
+adds no explicit expected-token entry; remove the Go estimate from this branch
+and preserve empty expected-token inputs on the newly connected extension and
+continuation failure branches. Do not weaken the observation or input. Final
+comparison matches all 3,125 rows across 181 cases, retaining actual syntax
+kinds/images/four coordinates and complete parse messages/residual stack text
+with outer log whitespace excluded. Java returns 0; Go 37509 passes. Existing
+external BodyDefinitionProbe.java, tlago-body-definition-manual_test.go and overlay
+remain under /mnt/oldrog/tmp; receipts tlago-expression-extension-lookahead-*. No
+permanent invented tests, original-method credit, fixture/assertion changes, race
+or optional corpus sweeps.
+
+Initial original frontend/model gate 96075 passes 9.827s; complete SANY 61056
+passes 1.702s; compilation 98084 passes. After diagnostic correction, original
+gate 10016 passes 9.637s, complete SANY 69735 passes 1.884s and all-package compile
+passes. All handles retired; diff check green. Update handoff and architecture;
+main test inventory totals unchanged. The earlier failing full-workspace snapshot
+remains qualified evidence; remaining parser/canonical integration, runtime LET
+sharing, traces and documented TLC requirements keep the goal incomplete.
+
 2026-10-07 Fairness, junction and expression-operand source previews:
 Previous completed commit: dd730b9. FairnessExpr now uses source call 51 with
 budget 2; remove its native opening-parenthesis preview and manual failed span.
