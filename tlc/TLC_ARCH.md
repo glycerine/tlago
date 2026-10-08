@@ -11037,3 +11037,11 @@ Previously worker/coordinator services wrapped only panics. Ordinary exceptions
 and the worker's own evaluation/OutOfMemory wrappers retain their existing
 traits. Failed worker Exit does not unpublish its endpoint. The shared encoder
 uses native Go payloads and stacks, without RMI or JVM exception reconstruction.
+
+Worker keepalive uses PrintErrorThrowable for a failed coordinator lookup/status
+call, matching TLCTimerTask.exitWorker's source overload. Nullable detail text
+still supplies the normal message; Globals.Debug additionally prints the sender
+failure stack through ToolIO. The native lifecycle check invokes the public
+RunKeepAliveOnce boundary against real TCP calls, preserving the production
+schedule and timeout. Computing/recent activity suppresses lookup; idle completion
+or loss shuts down the executor, worker callback, completion latch and timer.

@@ -18655,3 +18655,35 @@ Java dynamic manager translations. Only the exact short new RPC test runs under
 -race, passing in 1.062 seconds (21902 terminal status 0). All handles are retired.
 No full suite or long model/race workload was run. Docs and inventory are current;
 broader distributed failure/recovery and payload parity remains pending.
+
+## October 8, 2026: native worker keepalive lifecycle and debug diagnostics
+
+Compared TLCTimerTask.run/exitWorker with the Go worker runtime. Source failure
+reporting calls MP.printError(code, Throwable); the port called PrintErrorNullable
+and lost debug-enabled throwable stacks. Restored the existing PrintErrorThrowable
+path without changing ordinary message detail, catch ordering or shutdown.
+
+No enabled upstream direct test covers this timer boundary. Added eight short
+native TCP cases: finished, unbound, disconnected and failed-status coordinators,
+each with debug off/on. Computing and recent activity must suppress lookup and
+shutdown. An idle worker must shut down its executor, release its completion
+latch, cancel the timer, reject subsequent callbacks and record exactly one
+source completion/loss event. Remote status detail and sender stack are checked;
+stack presence follows debug. Invoke public RunKeepAliveOnce without reducing
+the actual timer schedule or activity timeout. All hosts/clients are owned and
+closed in cleanup; ToolIO, recorder and debug globals are restored.
+
+The initial test fixture returned IOException from the coordinator's remote-only
+status API and therefore hit the ordinary unchecked boundary. Corrected that
+fixture to its declared remote failure category. The valid pre-fix run reproduces
+only the missing debug stack (65757 terminal status 1, 0.026 seconds; log in
+/mnt/oldrog/tmp/tlago-keepalive-before.log). After the fix, lifecycle, worker
+console, coordinator publication and worker/coordinator RPC selection passes
+normally in 0.046 seconds (66121 terminal status 0); original native bootstrap
+passes in 0.023 seconds. Initial exact short race check passes in 1.081 seconds
+(97907 terminal status 0). Replaced a timestamp-sensitive text comparison with
+exact recorder parameters and stable diagnostic text; final normal and exact
+short race checks pass in 0.026/1.069 seconds (81965/41087 terminal status 0).
+All handles are retired. No full suite or long model/race workload was run.
+These native checks add no original-method completion credit. Broader failure,
+recovery and payload parity work remains pending; the goal is incomplete.

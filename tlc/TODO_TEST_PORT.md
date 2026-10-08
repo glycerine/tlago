@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native worker keepalive checks now cover finished, unbound, disconnected and
+status-failure coordinators, with debug stacks enabled/disabled. They retain
+activity suppression, idle shutdown, completion latch, cancelled timer and
+unavailable callback behavior. The production failure diagnostic now uses the
+source throwable overload. No enabled direct Java test covers these boundaries;
+the additional native checks add no original-method completion credit.
+
 Worker/coordinator fatal endpoint errors now use the same native remote I/O
 policy for returns and panics as fingerprint RPC. Ten short TCP cases retain
 cause/suppressed sharing and actual Go diagnostics; successful subsequent calls

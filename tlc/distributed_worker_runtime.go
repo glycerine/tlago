@@ -330,7 +330,7 @@ func (t *distributedWorkerKeepAlive) exitWorker(failure error, count int) error 
 	if failure == nil {
 		PrintError(ECTLCDistributedServerFinished)
 	} else {
-		PrintErrorNullable(ECTLCDistributedServerNotRunning, javaThrowableDetailMessage(failure))
+		PrintErrorThrowable(ECTLCDistributedServerNotRunning, failure)
 	}
 	for i := 0; i < count; i++ {
 		worker := t.workerAt(i)

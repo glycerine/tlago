@@ -73,6 +73,12 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Worker keepalive now reports coordinator failures through the throwable printer,
+retaining debug-enabled sender stacks. Short native TCP checks cover completion,
+missing binding, disconnected coordinator and status failure. Computing/recently
+active workers stay running; idle workers exit, release their latch, cancel
+keepalive and reject callbacks. No timer interval or activity timeout is reduced.
+
 Worker, coordinator and fingerprint RPC handlers share fatal-error encoding.
 Returned and panicked fatal endpoint failures both receive the native remote
 I/O category, retaining the original diagnostic/cause graph. Ordinary failure
