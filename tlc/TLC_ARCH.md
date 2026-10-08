@@ -11029,3 +11029,11 @@ catches. Distributed Close uses this same boundary, so a fatal local Exit does
 not become a printed ordinary error. Remote fatal failures are already wrapped
 as native I/O operation errors by the RPC handler, retaining the source remote
 failover behavior without reconstructing JVM exception objects.
+
+All three native RPC services use encodeDistributedRPCFailure. It wraps fatal
+endpoint failures as remote I/O operation errors, preserving the original graph
+as cause regardless of whether the endpoint returned the error or panicked.
+Previously worker/coordinator services wrapped only panics. Ordinary exceptions
+and the worker's own evaluation/OutOfMemory wrappers retain their existing
+traits. Failed worker Exit does not unpublish its endpoint. The shared encoder
+uses native Go payloads and stacks, without RMI or JVM exception reconstruction.

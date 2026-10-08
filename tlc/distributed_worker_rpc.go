@@ -52,13 +52,10 @@ func (service *distributedWorkerService) Call(request DistributedWorkerRequest, 
 	defer func() {
 		if caught := recover(); caught != nil {
 			failure = panicValueAsError(caught)
-			if isJavaError(failure) {
-				failure = &DistributedOperationError{Message: javaString(failure.Error()), Class: javaThrowableClassName(failure), Stack: javaThrowableStackTrace(failure), Cause: failure, Remote: true, IO: true}
-			}
 		}
 		if failure != nil {
 			var err error
-			reply.Failure, err = EncodeDistributedFailure(failure)
+			reply.Failure, err = encodeDistributedRPCFailure(failure)
 			if err != nil {
 				callErr = fmt.Errorf("encode worker failure: %w", err)
 			}

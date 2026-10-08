@@ -101,6 +101,15 @@ func isDistributedNullFailure(err error) bool {
 	return isJavaNullPointerException(err)
 }
 
+// Fatal endpoint failures cross the remote invocation's I/O boundary. Apply
+// this to returned errors and panics alike; preserve the original cause graph.
+func encodeDistributedRPCFailure(failure error) (*DistributedFailurePayload, error) {
+	if isJavaError(failure) {
+		failure = &DistributedOperationError{Message: javaString(failure.Error()), Class: javaThrowableClassName(failure), Stack: javaThrowableStackTrace(failure), Cause: failure, Remote: true, IO: true}
+	}
+	return EncodeDistributedFailure(failure)
+}
+
 func EncodeDistributedFailure(failure error) (*DistributedFailurePayload, error) {
 	payload := &DistributedFailurePayload{}
 	ids := make(map[error]int)

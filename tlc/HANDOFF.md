@@ -73,6 +73,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Worker, coordinator and fingerprint RPC handlers share fatal-error encoding.
+Returned and panicked fatal endpoint failures both receive the native remote
+I/O category, retaining the original diagnostic/cause graph. Ordinary failure
+traits and real worker evaluation wrappers remain intact. Exact short TCP
+checks cover next-state, aliveness, cache and exit calls plus a coordinator
+settings call; existing native RPC and original manager checks remain green.
+
 Local fingerprint endpoint fatal errors now escape manager catches whether
 returned or panicked. Scalar/block/statistics, checkpoint/recovery and close
 paths retain the source fatal category without failover or availability changes.

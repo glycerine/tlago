@@ -203,7 +203,10 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 			failure = panicValueAsError(caught)
 		}
 		if failure != nil {
-			reply.Failure, err = encodeFingerprintFailure(failure)
+			reply.Failure, err = encodeDistributedRPCFailure(failure)
+			if err != nil {
+				err = fmt.Errorf("encode fingerprint failure: %w", err)
+			}
 		}
 	}()
 	service.server.mu.Lock()
@@ -260,19 +263,6 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 		reply.Words = append([]uint64(nil), bits.word...)
 	}
 	return nil
-}
-
-func encodeFingerprintFailure(failure error) (*DistributedFailurePayload, error) {
-	// Fatal storage failures escape local catches but arrive through the remote
-	// invocation's I/O boundary. Preserve their original graph as the cause.
-	if isJavaError(failure) {
-		failure = &DistributedOperationError{Message: javaString(failure.Error()), Class: javaThrowableClassName(failure), Stack: javaThrowableStackTrace(failure), Cause: failure, Remote: true, IO: true}
-	}
-	payload, err := EncodeDistributedFailure(failure)
-	if err != nil {
-		return nil, fmt.Errorf("encode fingerprint failure: %w", err)
-	}
-	return payload, nil
 }
 
 type NetworkFingerprintEndpoint struct {

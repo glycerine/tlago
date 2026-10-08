@@ -18627,3 +18627,31 @@ checks and failover ToolIO checks. Both handles are retired. No full suite,
 long model or race workload was run for this catch-boundary change. These
 boundary checks add no original-method completion credit. Broader distributed
 failure/recovery and payload coverage remains pending; the goal is incomplete.
+
+## October 8, 2026: consistent fatal native RPC boundary
+
+Audit found worker and coordinator services wrapped fatal panics with native
+remote I/O traits, but encoded returned fatal errors without that boundary.
+Fingerprint RPC had already fixed both forms. Moved its policy to the shared
+encodeDistributedRPCFailure helper and used it for all three services. Ordinary
+exception graphs and the actual worker's evaluation/OutOfMemory wrappers are
+unchanged; no RMI, Java serialization or JVM exception reconstruction is added.
+
+No enabled upstream direct test covers Go endpoint return forms. Added ten
+short TCP cases: returned/panicked fatal errors for next-state, aliveness, cache,
+worker Exit and coordinator polynomial calls. Require remote I/O category,
+non-recoverable block status, original fatal/cause diagnostics and actual Go
+stack, shared cause/suppressed reference and receiver ownership. A subsequent
+URI/spec call must succeed, and failed Exit must retain worker publication.
+No original-method completion credit is added.
+
+Initial compilation caught a test field named SpecFile instead of the existing
+FileName and was corrected. The valid pre-fix run reproduces all five returned
+failures while all five panic cases pass (92911 terminal status 1, 0.023 seconds;
+/mnt/oldrog/tmp/tlago-remote-fatal-before.log). After the fix, the focused normal
+selection passes in 0.135 seconds (3402 terminal status 0), including all worker,
+coordinator and fingerprint RPC checks, local fatal boundary cases and original
+Java dynamic manager translations. Only the exact short new RPC test runs under
+-race, passing in 1.062 seconds (21902 terminal status 0). All handles are retired.
+No full suite or long model/race workload was run. Docs and inventory are current;
+broader distributed failure/recovery and payload parity remains pending.
