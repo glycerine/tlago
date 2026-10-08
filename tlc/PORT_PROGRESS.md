@@ -18456,6 +18456,35 @@ or broad race selection was run for this output-routing change. All handles
 are retired. HANDOFF, architecture and inventory are current; the distributed
 goal remains incomplete.
 
+## October 8, 2026: worker and distributed option console destinations
+
+Extended the console audit after FP failover. Java TLCWorker.exit and its main
+readiness message use ToolIO.out; Go worker Exit and local group Start still
+wrote directly to os.Stdout. TLCApp coverage warnings, absolute-FP-memory
+deprecation and option usage errors had the same shortcut. Corrected these
+calls to ToolIOPrintln, preserving message text, timestamps, option behavior
+and worker lifecycle order. The native CLI already installs its requested
+streams through ToolIOSetSystemStreams, so these messages now reach that owner.
+Remaining direct stderr calls correspond to source System.err exception traces
+and retain their original destination.
+
+No enabled direct upstream tests assert these stream destinations. Added short
+system/tool-capture cases for worker readiness and completion, plus coverage,
+absolute memory and missing-config diagnostics. Require one worker message with
+its original counters/cache ratio, exact option message arrays/system output,
+no unexpected stderr, and unchanged option acceptance. Worker Exit must still
+shut down its shared executor, unpublish and release the latch; timers are
+cancelled in cleanup, and ToolIO state is restored through the existing helper.
+No original Java method completion credit is added by these native checks.
+
+Console/failover routing selection passes normally in 0.028 seconds (84330
+terminal status 0). Only the exact short worker-console check runs under -race,
+passing in 1.030 seconds (32054 terminal status 0). Existing native CLI help and
+invalid-startup checks pass in 0.016 seconds (86408 terminal status 0). No full
+workspace suite or long model/race workload was run for this output-only change.
+All handles are retired. HANDOFF, architecture and inventory are current;
+broader distributed failure/recovery and payload audit work remains pending.
+
 ## October 8, 2026: checkpoint barrier with an assigned TCP block
 
 Added TestDistributedCheckpointWaitsForAssignedBlock. Upstream has no enabled

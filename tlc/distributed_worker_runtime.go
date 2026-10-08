@@ -378,8 +378,8 @@ func (w *DistributedWorker) Exit() (err error) {
 	if w.Cache == nil {
 		return NewNullPointerException()
 	}
-	fmt.Fprintf(os.Stdout, "%s, work completed at: %s Computed: %d and a cache hit ratio of %s, Thank you!\n",
-		host, time.Now().Format("Mon Jan 02 15:04:05 MST 2006"), w.OverallStatesComputed.Load(), w.Cache.GetHitRatioAsString())
+	ToolIOPrintln(fmt.Sprintf("%s, work completed at: %s Computed: %d and a cache hit ratio of %s, Thank you!",
+		host, time.Now().Format("Mon Jan 02 15:04:05 MST 2006"), w.OverallStatesComputed.Load(), w.Cache.GetHitRatioAsString()))
 	if w.Runtime == nil {
 		return NewNullPointerException()
 	}

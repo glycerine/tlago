@@ -68,7 +68,7 @@ func ParseTLCAppOptions(args []string) *TLCAppOptions {
 				PrintTLCAppUsageError("Error: coverage report interval required.")
 				return nil
 			}
-			fmt.Fprintln(os.Stdout, "Warning: coverage reporting not supported in distributed TLC, ignoring -coverage "+args[index]+" parameter.")
+			ToolIOPrintln("Warning: coverage reporting not supported in distributed TLC, ignoring -coverage " + args[index] + " parameter.")
 			index++
 		case "-terse":
 			index++
@@ -180,7 +180,7 @@ func setTLCAppFPMemory(config *FPSetConfiguration, value float64) (valid bool) {
 		}
 	}()
 	if value > 1 {
-		fmt.Fprintln(os.Stdout, "Using -fpmem with an abolute memory value has been deprecated. Please allocate memory for the TLC process via the JVM mechanisms and use -fpmem to set the fraction to be used for fingerprint storage.")
+		ToolIOPrintln("Using -fpmem with an abolute memory value has been deprecated. Please allocate memory for the TLC process via the JVM mechanisms and use -fpmem to set the fraction to be used for fingerprint storage.")
 		config.SetMemory(javaDoubleToLong(value))
 		config.SetRatio(1)
 	} else {
@@ -190,6 +190,6 @@ func setTLCAppFPMemory(config *FPSetConfiguration, value float64) (valid bool) {
 }
 
 func PrintTLCAppUsageError(message string) {
-	fmt.Fprintln(os.Stdout, message)
-	fmt.Fprintln(os.Stdout, "Usage: java tlc2.tool.TLCServer [-option] inputfile")
+	ToolIOPrintln(message)
+	ToolIOPrintln("Usage: java tlc2.tool.TLCServer [-option] inputfile")
 }

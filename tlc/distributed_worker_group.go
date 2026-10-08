@@ -73,7 +73,7 @@ func (g *DistributedWorkerGroup) Start() {
 		}(runnable)
 	}
 	g.Runtime.StartKeepAlive(g.server)
-	fmt.Fprintf(os.Stdout, "TLC worker with %d threads ready at: %s\n", len(g.runnables), time.Now().Format("Mon Jan 02 15:04:05 MST 2006"))
+	ToolIOPrintln(fmt.Sprintf("TLC worker with %d threads ready at: %s", len(g.runnables), time.Now().Format("Mon Jan 02 15:04:05 MST 2006")))
 }
 
 // WaitForRegistrations observes the registration threads for local callers;

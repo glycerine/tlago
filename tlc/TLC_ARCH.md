@@ -10989,3 +10989,10 @@ failure detail separated by an embedded newline; the second is issued only
 when reassignment reports no available server. Tool mode records those two
 messages, and system mode honors its assigned output stream. Reassignment,
 retry and final scalar/block/statistics answers retain the original behavior.
+
+Worker completion/readiness and TLCApp option diagnostics also use ToolIO's
+println boundary, honoring native CLI stream assignments and tool-mode capture.
+The completion message precedes executor shutdown, keepalive cancellation,
+unpublication and latch countdown, as in the source. These routing corrections
+retain existing diagnostic text and option acceptance. Source System.err stack
+traces still use stderr; they are not redirected into ToolIO's message buffer.

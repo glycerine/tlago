@@ -740,6 +740,11 @@ calls, including configured streams, captured messages and null detail text.
 A short native TCP check verifies surviving-server reassignment after an
 unambiguous pre-insertion disconnect and captures the warning. Original manager
 translations remain green; broader FP failure models remain pending.
+Worker readiness/completion and distributed option diagnostics now route through
+ToolIO too. Short system/capture checks retain worker shutdown/unpublication/
+latch behavior and exact option warning/error messages. Native CLI help and
+startup rejection checks remain green; these stream checks add no original
+method completion credit.
 
 Remote server/worker integration, init failures, fingerprint-manager failover, and smart-proxy calculations. Native Go fingerprint, worker and coordinator TCP calls, ordinary state/value/result payloads, structured worker failures, manager snapshots, discovery and worker/coordinator/FP lifecycle publication are implemented and unit-verified. Native CLI entry points are wired with focused help/property/address checks. Native coordinator signal shutdown and separate-process DieHard execution with local and standalone remote fingerprint storage are verified. The native process harness also checkpoints and recovers the full MC06 initial frontier through the real `-recover` CLI in fresh coordinator/worker processes. It requires 16384 recovered fingerprints/queued states, no repeated initialization, and the original final 114942 distinct/0 queued result. This is additional native coverage, not original disabled-harness completion credit. A native worker-loss row also verifies requeueing after killing a worker with an assigned block, survivor/replacement completion, exact one-time deregistration and the original cache-warning behavior. Outstanding-block checkpoints, remote-FP recovery, extended/custom values and broader network failure coverage remain pending. The new Go boundary tests add no original-method completion credit.
 

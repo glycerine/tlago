@@ -2004,6 +2004,14 @@ translations pass. A short TCP test closes an endpoint before any insertion,
 then verifies surviving-server reassignment and warning capture; this does not
 retry an ambiguously completed insertion. Broader FP failure models remain open.
 
+Worker exit/readiness and distributed option warnings/errors now honor ToolIO
+as well. Native CLI-assigned streams receive these messages; tool-mode callers
+capture the original println messages. Exit still shuts down the executor,
+cancels keepalive, unpublishes and releases the latch in source order. Focused
+system/capture checks, one exact short worker-lifecycle race selection and the
+existing CLI help/invalid-startup checks pass. Direct stderr exception traces
+retain their original System.err destination.
+
 
 
 These focused checks do not prove distributed completion.
