@@ -20667,3 +20667,36 @@ and TLCSet model contexts pass (30681, status 0, 2.042 seconds). All processes
 are terminal. No full-suite, long workload or race run was performed.
 Supplemental startup checks add no original-method completion credit; broader
 distributed parity remains incomplete.
+
+### 2026-10-08: Required batch statistics owners
+
+Compared TLCServerThread result handling and TLCServer.addStatesGeneratedDelta
+with pinned source. Go skipped the keepalive timestamp when TimerTask was absent
+and silently ignored generated-state updates on an absent server. Removed both
+shortcuts. The received-state counter updates before the required timestamp,
+which precedes the required coordinator delta update. Explicit null failures
+remain inside the worker-call/null-failure catch boundary. SetLastInvocation and
+AddStatesGeneratedDelta now require their receivers, including zero deltas.
+
+Upstream has no direct tests of these absent owners. Added missing-timer,
+missing-server and healthy result cases, direct receiver checks and an actual
+computeBlock case verifying worker-loss deregistration, assigned-work requeue,
+worker-count decrement and skipped publication after the timer failure. The
+initial checks expose both suppressed owner failures (050c32, status 1, 0.012
+seconds). That draft also expected an incorrect healthy delta; source
+NextStateResult subtracts partition count, not total successor count, and the
+assertion was corrected to preserve that source behavior. Two older native
+fixtures manually construct threads without the production constructor; they
+now supply its TimerTask without changing any assertion.
+
+Focused checks pass with existing trace-publication failure, result getters,
+thread/finalizer/selector checks and nine original smart-proxy contexts
+(ef8783, status 0, 0.189 seconds). Final focused checks including the added
+worker-loss/requeue case pass (717b1b, status 0, 0.076 seconds). Short TCP
+assigned-block checkpoint, retry/loss, worker bootstrap/callback and timer-failure
+checks pass (573d2e, status 0, 0.050 seconds). The three original distributed
+initializer-continue, evaluator-error and TLCSet model contexts pass (7969,
+status 0, 1.872 seconds). All processes are terminal. No full suite, long workload
+or race run was performed.
+Supplemental checks add no original-method credit; distributed parity remains
+incomplete.

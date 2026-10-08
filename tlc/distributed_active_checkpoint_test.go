@@ -109,6 +109,7 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remoteCount int) 
 	}}
 	_, endpoint := startWorkerRPC(t, worker)
 	thread := &TLCServerThread{Server: server, Worker: NewDistributedWorkerSmartProxy(endpoint), Selector: NewStaticBlockSelector(server, 1)}
+	thread.TimerTask = &TLCTimerTask{Thread: thread}
 	threadDone := make(chan struct{})
 	go func() { defer close(threadDone); thread.Run() }()
 	var checkpointDone chan error

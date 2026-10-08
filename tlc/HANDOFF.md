@@ -47,6 +47,11 @@ Block-selector mode settings are captured once for the process, with static,
 unlimiting and limiting precedence. The static batch size is captured separately
 when first constructing a static selector, including a failed construction.
 Later setting changes cannot silently replace the process's selection policy.
+Batch-result handling requires its timer task and coordinator: received-state
+counts update first, then the keepalive timestamp, then generated-state delta.
+An absent timer enters worker-loss cleanup and requeues assigned work rather
+than returning a publishable result. Direct-construction fixtures supply the
+timer task normally created by the production constructor.
 
 The original checkpoint-on-violation and time-bound model tests are now complete.
 Both pass normally with their full assertions; the time-bound test retains the

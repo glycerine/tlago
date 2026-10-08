@@ -721,9 +721,10 @@ func (s *TLCServer) IsDone() bool {
 }
 
 func (s *TLCServer) AddStatesGeneratedDelta(delta int64) {
-	if s != nil && delta != 0 {
-		s.WorkerStatesGenerated.Add(delta)
+	if s == nil {
+		panic(NewNullPointerException())
 	}
+	s.WorkerStatesGenerated.Add(delta)
 }
 
 func (s *TLCServer) GetStatesGenerated() int64 {
@@ -1006,9 +1007,7 @@ func (t *TLCServerThread) computeBlockAttempt() (res *NextStateResult, err error
 		panic(NewNullPointerException())
 	}
 	t.ReceivedStates = int(int32(t.ReceivedStates) + int32(newStates[0].Size()))
-	if t.TimerTask != nil {
-		t.TimerTask.SetLastInvocation(time.Now())
-	}
+	t.TimerTask.SetLastInvocation(time.Now())
 	t.Server.AddStatesGeneratedDelta(res.GetStatesComputedDelta())
 	return res, nil
 }
@@ -1266,7 +1265,7 @@ func (t *TLCTimerTask) Run() {
 
 func (t *TLCTimerTask) SetLastInvocation(when time.Time) {
 	if t == nil {
-		return
+		panic(NewNullPointerException())
 	}
 	t.LastInvocation.Store(when.UnixMilli())
 }

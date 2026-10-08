@@ -11800,3 +11800,17 @@ implemented with native sync.Once fields, without Java class loading or runtime
 machinery. Existing explicit Go constructor size arguments override the captured
 default per instance. Fresh-process setting-lifetime checks and existing original
 smart-proxy/distributed model and short TCP checks pass.
+
+
+### Required owners and ordering of batch-success statistics
+
+Coordinator threads first add the first returned partition's size to their
+received-state count, then update their timer task's keepalive timestamp, then
+add the result's generated-state delta to the coordinator. Neither owner is
+optional. The result delta retains source subtraction of partition count,
+rather than total successor count. Missing owners yield explicit null failures
+within the existing worker-call catch boundary. An absent timer therefore
+triggers worker-loss cleanup and requeues the assigned states; it does not return
+a publishable result. Counts already updated remain updated. Production thread
+construction supplies the task; direct-construction test fixtures must do so too.
+Focused native checks cover mutation/failure ordering and assigned-state recovery.

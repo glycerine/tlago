@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental batch-statistics checks preserve required timer/coordinator owners,
+received-count/timestamp/delta ordering and worker-loss requeueing after an
+absent timer. No original method covers these boundaries; counts are unchanged.
+
 Supplemental fresh-process selector checks preserve startup setting capture,
 flag precedence, boolean parsing, deferred static-size initialization and failed
 constructor timing. Upstream has no direct methods for these boundaries;

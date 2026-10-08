@@ -141,6 +141,7 @@ func TestDistributedTracePublicationFailureStopsServerThread(t *testing.T) {
 		return NewNextStateResult([]*StateVec{NewStateVecFrom([]*TLCStateMut{{level: 2}})}, []*LongVec{NewLongVecFrom([]int64{71})}, 0, 1), nil
 	}}
 	thread := &TLCServerThread{Server: server, Worker: NewDistributedWorkerSmartProxy(worker), Selector: NewStaticBlockSelector(server, 1)}
+	thread.TimerTask = &TLCTimerTask{Thread: thread}
 	thread.Run()
 	if server.LastError != failure || !server.Done.Load() || !queue.finish.Load() || queue.dequeues != 1 {
 		t.Fatalf("trace failure did not terminate the server thread: error %v, done %v, finished %v, dequeues %d", server.LastError, server.Done.Load(), queue.finish.Load(), queue.dequeues)
