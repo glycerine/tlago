@@ -155,6 +155,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Call-stack replay requires its existing evaluator. A missing source tool cannot
+select a fresh default tool; valid replay retains its ordinary evaluator copy and
+fresh call stack. Coordinator missing-state initialization was separately audited
+and already matched source: constraints run first, in-model nil states fail before
+publication, and excluded states still reach property checks. Supplemental owner
+and initialization checks add no original-method credit.
+
 Successor validation distinguishes a missing state from a present, incomplete
 state. The former escapes evaluator validation and becomes a worker failure with
 its predecessor, cause and call-stack flag; the latter retains the ordinary

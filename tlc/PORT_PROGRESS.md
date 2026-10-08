@@ -22315,3 +22315,32 @@ was combined with race and no full suite was run. No original assertion or bound
 changed. These native cases have no direct original counterpart and add no method
 credit. Full-model network partitions and the previously listed distributed
 restart/recovery and interruption gaps remain pending.
+
+### 2026-10-08: Replay evaluator ownership and initialization audit
+
+Compared distributed initialization and replay with pinned TLCServer, CallStackTool,
+Tool and Spec constructors. An initial suspicion that nil states fingerprint as
+empty states was disproved: current state-values access already fails before
+insertion. Five new native checks confirm constraints run before fingerprinting,
+excluded nil states still reach checks, constraint failures retain identity and
+recorded failures suppress later work. Both fingerprint entry forms already
+reject nil. No state/fingerprint implementation change was made.
+
+The actual mismatch was NewCallStackTool(nil), which allocated a fresh Tool instead
+of requiring the evaluator whose shared Spec Java copies. It now fails without
+inventing an evaluator. Existing ordinary evaluator selection and fresh stack
+construction are unchanged. The new null-constructor assertion initially failed
+(call-stack-owner-red.log; failed test package time 0.013 seconds). The five
+initialization/fingerprint audit cases were already green (init-missing-state-
+audit.log, terminal process 1d58fe status 0; package time 0.022 seconds).
+
+Final focused constructor, initialization/publication, fingerprint, worker liveness
+ownership/replay and Tool checks pass (call-stack-owner-focused.log, terminal
+process 2985e7 status 0; package time 5.760 seconds). Original distributed
+DoInitFunctor invariant-continuation and evaluation-error checks, Github317/317a
+exact call stacks and IncompatibleTypesLive plus four native distributed
+DieHard/TSnapShot trace variants pass (call-stack-owner-models.log, terminal process
+be2ee8 status 0; package time 51.981 seconds). Logs were inspected and processes
+are terminal. No original assertions or bounds changed; no full suite or race
+run was performed. These six supplemental cases have no direct original method
+counterparts and add no completion credit. Distributed completion remains unproven.

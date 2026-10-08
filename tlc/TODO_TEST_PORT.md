@@ -1422,6 +1422,11 @@ owned files. Three supplemental cases cover commit/recovery, delete-before-faile
 promotion order and native resource deletion. No original method directly covers
 this prefix; original-method credit is unchanged and isolated trace interruption
 remains pending.
+Call-stack construction now rejects missing evaluator owners rather than creating
+a fresh default tool. Five additional native initialization/fingerprint checks
+verify the existing source constraint-before-fingerprint boundary and suppression
+of later work after failure; no fingerprint implementation change was needed.
+These owner/initialization cases have no direct original method and add no credit.
 Existing original BitVector printing and dynamic-manager methods remain green;
 the new failure checks add no original-method completion credit.
 Failover warning routing now matches ToolIO for scalar, batch and statistics

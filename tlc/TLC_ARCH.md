@@ -12073,3 +12073,11 @@ trace records, received-state counts, timestamps or generation deltas. Repeated
 loss/timer reports retain one deregistration, and late replies do not publish.
 Closing transport does not terminate the owned worker runtime. This is short
 native connection-loss coverage, not full-model network partition completion.
+
+Call-stack evaluator construction requires the source Tool whose shared Spec is
+copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
+selection and fresh-stack behavior remain intact. Coordinator initialization
+constraints precede fingerprinting: an in-model nil state already fails at its
+state access before FP/trace/queue publication, while excluded states still reach
+property checks. These initialization paths were verified without changing their
+implementation; the replay constructor fallback was the actual repaired mismatch.

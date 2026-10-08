@@ -16,7 +16,7 @@ func NewCallStack() *CallStack {
 
 func NewCallStackTool(other *Tool) *Tool {
 	if other == nil {
-		other = NewTool()
+		panic(NewNullPointerException())
 	}
 	// Java constructs a Tool from the shared Spec fields, not a DebugTool.
 	// Start from its ordinary evaluator so replay cannot bypass this call stack.
