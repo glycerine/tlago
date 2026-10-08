@@ -129,8 +129,13 @@ state; the ordinary coordinator catch reports it and completes/notifies the queu
 Disk fingerprint traversal restores its saved cursor only after normal completion
 and propagates a failed restoration. Partial-read failures retain the consumed
 cursor; the predecessor chain follows the source initial-state sentinel without
-a self-link shortcut. Concurrent trace reconstruction still needs the corresponding
-normal-only random restoration and missing-result audit.
+a self-link shortcut. Concurrent reconstruction excludes the anchor record from
+the result length, restores randomness only after normal completion and retains
+source UID/worker updates before later lookup failures. Missing initial results
+fail at metadata dereference; missing successors print branch `2` diagnostics
+and exit. Public concurrent trace methods propagate reconstruction errors before
+printing rather than discarding them for fallback traces. Unavailable-worker
+fallback and record traversal remain separate audit items.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

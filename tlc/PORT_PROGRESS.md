@@ -21022,3 +21022,40 @@ fingerprint-storage variants with unchanged original trace/event assertions
 race run was performed. Supplemental checks add no original-method credit.
 ConcurrentTLCTrace reconstruction still differs in normal-only random restoration
 and missing-result handling; distributed parity remains incomplete.
+
+### 2026-10-08: Concurrent trace reconstruction failure and result contracts
+
+Compared ConcurrentTLCTrace.getTrace(sinfo,records) with Go reconstruction.
+Source result length is record count minus one, excluding the anchor. Go
+reconstructed the sole anchor and accepted an invalid empty record list. The
+helper now returns an empty allocated result without a lookup for the anchor-
+only case and preserves the source negative-allocation failure for empty input,
+after resetting randomness. Normal reconstruction preserves source initial/
+successor UID/worker writes and worker narrowing. Missing initial reconstruction
+fails at metadata dereference; missing successor reconstruction prints recovery
+and signed-fingerprint branch 2 diagnostics then exits 1. Randomness is restored
+only after normal completion, preserving earlier metadata on later failure.
+
+No original method directly covers these boundaries. Seven native cases cover
+invalid empty/anchor-only/success/supplied initial/initial error/successor error/
+missing initial. Extended the actual-exit child checks with a concurrent branch
+using real tool lookups. Five helper cases and the missing-successor child case
+initially failed (0094cd, status 1, 0.075 seconds).
+
+Public concurrent trace methods also discarded returned reconstruction errors,
+selecting fallback traces instead. Added six disk-backed worker cases across
+state/between-state/printing entries and I/O/fatal failures. All six exposed lost
+failure identity or unwanted behavior/state printing (4d240a, status 1, 0.014
+seconds). Public methods now propagate the original error before printing.
+Unavailable-worker fallback and record collection remain separate audit work.
+
+Final new/related trace regeneration, sequence, cursor, metadata, disk/nested
+recovery, depth/write failure and original nine smart-proxy checks pass (487413,
+status 0, 2.087 seconds). Original Alias safety/liveness, TLCExtTrace alias and
+three distributed initializer-continue, evaluator-error and TLCSet model contexts
+pass (99d7d0, status 0, 2.009 seconds). Original eight-state error-trace construction
+passes (b10cbc, status 0, 0.295 seconds). Both actual distributed DieHard
+fingerprint-storage variants pass unchanged original trace/event assertions
+(7b3102, status 0, 23.404 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit;
+distributed parity remains incomplete. No RMI or JVM machinery was introduced.

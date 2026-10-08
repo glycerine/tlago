@@ -717,7 +717,11 @@ Missing initial-transition checks preserve partial output and ordinary coordinat
 catch/completion. Native disk-traversal checks cover four partial-read failures,
 included/excluded successful restoration and native descriptor failure during
 restoration. These verify normal-only cursor restoration and failure propagation.
-No original-method credit is added.
+Concurrent reconstruction checks cover anchor-only/invalid-empty inputs, normal
+and supplied initial metadata, failure/random lifetime, missing initial dereference
+and actual missing-successor exit. Six disk-backed public-entry checks preserve
+ordinary/fatal reconstruction error identity and stop before behavior/state
+printing. No original-method credit is added.
 
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed

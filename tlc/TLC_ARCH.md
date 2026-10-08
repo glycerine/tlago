@@ -11921,5 +11921,11 @@ fingerprint traversal restores its saved cursor only after successful reads and
 propagates restoration failures instead of publishing a fingerprint sequence.
 Failed reads retain the consumed cursor. Traversal follows predecessor links until
 the source initial-state sentinel, without returning a partial self-linked chain.
-Concurrent trace reconstruction still needs its normal-only random restoration
-and missing-result audit. No RMI or JVM machinery is introduced.
+Concurrent reconstruction uses a result length of record count minus one,
+excluding the anchor record. It restores randomness only after normal completion,
+retains source metadata updates before later failures, fails on missing initial
+metadata dereference and exits on missing successors with branch `2` diagnostics.
+Public methods propagate reconstruction errors before trace printing rather than
+swallowing them and selecting another trace. Unavailable-worker fallback and
+record traversal remain separate audit items. No RMI or JVM machinery is
+introduced.

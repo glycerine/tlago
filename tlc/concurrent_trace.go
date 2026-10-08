@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"errors"
+	"fmt"
 	"os"
 )
 
@@ -107,7 +108,9 @@ func (t *ConcurrentTLCTrace) GetTraceFromState(state *TLCStateMut) []*TLCStateIn
 	if state.IsInitial() {
 		return []*TLCStateInfo{NewTLCStateInfo(state)}
 	}
-	if trace, err := t.recoverTrace(state, nil); err == nil && len(trace) > 0 {
+	if trace, err := t.recoverTrace(state, nil); err != nil {
+		panic(err)
+	} else if len(trace) > 0 {
 		return trace
 	}
 	if t == nil || t.TLCTrace == nil {
@@ -123,7 +126,9 @@ func (t *ConcurrentTLCTrace) GetTraceBetweenStates(from *TLCStateMut, to *TLCSta
 	if to.IsInitial() || (from != nil && from.Equal(to)) {
 		return []*TLCStateInfo{NewTLCStateInfo(to)}
 	}
-	if trace, err := t.recoverTrace(to, from); err == nil && len(trace) > 0 {
+	if trace, err := t.recoverTrace(to, from); err != nil {
+		panic(err)
+	} else if len(trace) > 0 {
 		return trace
 	}
 	if t == nil || t.TLCTrace == nil {
@@ -207,39 +212,47 @@ func (t *ConcurrentTLCTrace) predecessorRecord(record ConcurrentTraceRecord) (Co
 }
 
 func (t *ConcurrentTLCTrace) recoverTraceFromRecords(sinfo *TLCStateInfo, records []ConcurrentTraceRecord) ([]*TLCStateInfo, error) {
-	if t == nil || t.Tool == nil || len(records) == 0 {
+	if t == nil || t.Tool == nil {
 		return nil, nil
 	}
 	snapshot := ResetRandomEnumerableValues()
-	defer SetRandomEnumerableGenerator(snapshot)
 	end := len(records) - 1
-	if sinfo == nil {
-		initRecord := records[end]
-		info, err := t.Tool.GetState(initRecord.FP)
-		if err != nil || info == nil {
-			return nil, err
-		}
-		sinfo = info
-		if end > 0 {
+	if end < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(end)))
+	}
+	out := make([]*TLCStateInfo, 0, end)
+	if end > 0 {
+		if sinfo == nil {
+			info, err := t.Tool.GetState(records[end].FP)
+			if err != nil {
+				return nil, err
+			}
+			sinfo = info
+			if sinfo == nil || sinfo.State == nil {
+				panic(NewNullPointerException())
+			}
 			prev := records[end-1]
 			sinfo.State.WorkerID = int16(prev.Worker)
 			sinfo.State.UID = prev.Ptr
 		}
-	}
-	out := make([]*TLCStateInfo, 0, end+1)
-	out = append(out, sinfo)
-	for i := end - 2; i >= 0; i-- {
-		record := records[i+1]
-		info, err := t.Tool.GetState(record.FP, sinfo.State)
-		if err != nil || info == nil {
-			return nil, err
+		out = append(out, sinfo)
+		for i := end - 2; i >= 0; i-- {
+			record := records[i+1]
+			info, err := t.Tool.GetState(record.FP, sinfo.State)
+			if err != nil {
+				return nil, err
+			}
+			if info == nil {
+				traceRecoveryExit(fmt.Sprintf("2 %d", int64(record.FP)), nil)
+			}
+			prev := records[i]
+			info.State.WorkerID = int16(prev.Worker)
+			info.State.UID = prev.Ptr
+			out = append(out, info)
+			sinfo = info
 		}
-		prev := records[i]
-		info.State.WorkerID = int16(prev.Worker)
-		info.State.UID = prev.Ptr
-		out = append(out, info)
-		sinfo = info
 	}
+	SetRandomEnumerableGenerator(snapshot)
 	return out, nil
 }
 

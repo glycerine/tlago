@@ -29,7 +29,7 @@ func TestDistributedTraceRecoveryExit(t *testing.T) {
 		tool := &Tool{}
 		var prefix []*TLCStateInfo
 		switch branch {
-		case "2":
+		case "2", "concurrent-2":
 			tool.InitStates = []*TLCStateMut{current}
 		case "3":
 			successor = nil
@@ -43,7 +43,13 @@ func TestDistributedTraceRecoveryExit(t *testing.T) {
 		}
 		trace := NewTLCTrace()
 		trace.Tool = tool
-		if branch == "2" {
+		if branch == "concurrent-2" {
+			trace := &ConcurrentTLCTrace{Tool: tool}
+			_, err := trace.recoverTraceFromRecords(nil, []ConcurrentTraceRecord{{Ptr: 22, Worker: 5}, {Ptr: 11, Worker: 4, FP: ^uint64(0)}, {Ptr: 1, FP: current.FingerPrint()}})
+			if err != nil {
+				fmt.Fprintln(os.Stdout, "TRACE_ERROR", err)
+			}
+		} else if branch == "2" {
 			_, err := trace.recoverTraceFromFPs(nil, []uint64{^uint64(0), current.FingerPrint()})
 			if err != nil {
 				fmt.Fprintln(os.Stdout, "TRACE_ERROR", err)
@@ -54,7 +60,7 @@ func TestDistributedTraceRecoveryExit(t *testing.T) {
 		fmt.Fprintln(os.Stdout, "TRACE_RETURNED")
 		return
 	}
-	for _, branch := range []string{"2", "3", "4", "5"} {
+	for _, branch := range []string{"2", "3", "4", "5", "concurrent-2"} {
 		t.Run(branch, func(t *testing.T) {
 			command := exec.Command(os.Args[0], "-test.run=^TestDistributedTraceRecoveryExit$", "-test.v")
 			command.Env = append(os.Environ(), "TLAGO_TRACE_RECOVERY_EXIT="+branch)
@@ -71,11 +77,11 @@ func TestDistributedTraceRecoveryExit(t *testing.T) {
 				}
 			}
 			var want []string
-			if branch != "2" {
+			if branch != "2" && branch != "concurrent-2" {
 				want = append(want, fmt.Sprintf("TRACE_EVENT %d [] 0", ECTLCBehaviorUpToThisPoint))
 			}
 			bug := branch
-			if branch == "2" {
+			if branch == "2" || branch == "concurrent-2" {
 				bug = "2 -1"
 			}
 			if branch == "4" || branch == "5" {
