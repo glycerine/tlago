@@ -25,10 +25,12 @@ with parser integration and model tests in the repository's root package.
 The SANY audit goal is complete: every defect in
 [SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md) is repaired, the original methods
 are verified against the Go port, and full normal workspace verification passes.
-Resume remaining faithful Java TLC parity afterward on `master`, including the
-canonical adapter/context integration gaps listed below. The new reusable
-rpc25519/Tube distributed service remains postponed until the remaining port is
-complete. Do not resume its unfinished code or its service BDD work here.
+Current priority is the original distributed TLC algorithm on `master`. Leave
+the rpc25519/Tube alternative aside. Port its behavior using Go interfaces and
+transport, without Java RMI or JVM machinery. Canonical adapter/context gaps
+remain separately tracked below. The user has supplied a green full-suite
+baseline; run focused checks for changed code rather than repeating that suite.
+Commit each tested chunk, aiming for every 10–15 minutes.
 
 The original checkpoint-on-violation and time-bound model tests are now complete.
 Both pass normally with their full assertions; the time-bound test retains the
@@ -1799,10 +1801,15 @@ sorting, or the existing Java HashMap ordering helpers as the source requires.
 Do not introduce a second parser, compatibility fallback, or speculative
 behavior changes. Consult existing audit notes before repeating old work.
 
-Distributed integration remains deferred. The selected future transport is
-`github.com/glycerine/rpc25519` with Greenpack serialization, using asynchronous
-peer/circuit/fragment APIs. Preserve TLC deduplication, recovery, and termination
-semantics when that work resumes; see `TLC_ARCH.md`.
+Distributed integration is active again. Follow the original TLC coordinator,
+worker and fingerprint-server algorithm through Go endpoint boundaries; the
+rpc25519 alternative and Java RMI implementation are outside this work.
+`DistributedWorkerEndpoint` now supplies worker calls to server threads, the
+smart proxy and shutdown. Registration preserves both source URI calls and
+propagates failures, including failures after the thread starts. The nine
+original smart-proxy cases now use the public method with the source dummy
+worker rather than bypassing the endpoint call. Network transport is still
+unimplemented; this chunk establishes the worker boundary only.
 
 ## Testing and workflow
 

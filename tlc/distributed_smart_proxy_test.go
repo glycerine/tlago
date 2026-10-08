@@ -7,7 +7,7 @@ import (
 
 // Port of tlc2/tool/distributed/TLCWorkerSmartProxyTest.java. Java's
 // DummyTLCWorker returns a NextStateResult with the requested duration;
-// measureNextStates is the Go proxy's decorator around that endpoint call.
+// the test calls the same public smart-proxy method as the original.
 func TestJavaTLCWorkerSmartProxyNetworkOverhead(t *testing.T) {
 	// Preserve Java's integer division: MAX_ARRAY_SIZE is actually zero.
 	const maxArraySize = math.MaxInt32 * (1 / 10)
@@ -28,10 +28,9 @@ func TestJavaTLCWorkerSmartProxyNetworkOverhead(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			proxy := NewDistributedWorkerSmartProxy(nil)
-			result, err := proxy.measureNextStates(make([]*TLCStateMut, test.count), func() (*NextStateResult, error) {
-				return NewNextStateResult(nil, nil, test.duration, -1), nil
-			})
+			worker := &javaDummyTLCWorker{DistributedWorkerSmartProxy: NewDistributedWorkerSmartProxy(nil), duration: test.duration}
+			proxy := NewDistributedWorkerSmartProxy(worker)
+			result, err := proxy.GetNextStates(make([]*TLCStateMut, test.count))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -43,4 +42,15 @@ func TestJavaTLCWorkerSmartProxyNetworkOverhead(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Source helper: tlc2/tool/distributed/selector/DummyTLCWorker.java.
+// The superclass is constructed with null; only getNextStates is overridden.
+type javaDummyTLCWorker struct {
+	*DistributedWorkerSmartProxy
+	duration int64
+}
+
+func (w *javaDummyTLCWorker) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {
+	return NewNextStateResult(nil, nil, w.duration, -1), nil
 }

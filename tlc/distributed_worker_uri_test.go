@@ -77,7 +77,7 @@ func TestDistributedWorkerURIDiagnosticsAndRegistration(t *testing.T) {
 		t.Fatalf("registration URI = %q, want %q", got, want)
 	}
 	worker.Runtime.executor.Shutdown()
-	proxy := NewDistributedWorkerSmartProxy(worker)
+	proxy := NewDistributedWorkerSmartProxy(NewLocalWorkerEndpoint(worker))
 	_, err := proxy.GetNextStates([]*TLCStateMut{})
 	server, ok := err.(*ServerException)
 	if !ok {

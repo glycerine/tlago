@@ -27,6 +27,12 @@ complete, all 96 primary methods are reconciled and full normal verification
 passes with zero failures. Read `tlc/HANDOFF.md` first, then
 `tlc/PORT_PROGRESS.md`, before resuming work. Resume core TLC parity afterward.
 
+Current distributed priority (2026-10-08): continue the original Java distributed
+TLC algorithm in Go. Leave the rpc25519 alternative aside. Port the coordinator,
+worker and fingerprint-server behavior using Go boundaries; do not implement
+Java RMI or JVM machinery. Use the user's green full-suite run as the baseline
+and run focused checks for each change. Commit tested chunks every 10–15 minutes.
+
 Current TLC method:
 
 - Continue breadth-first mechanical parity against Java TLC in

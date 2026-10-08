@@ -7830,20 +7830,16 @@ Port guidance:
 
 ## Distributed TLC Architecture
 
-Go transport decision from the user (2026-10-03): use `~/rpc25519`
-(`github.com/glycerine/rpc25519`) with Greenpack serialization
-(`github.com/glycerine/greenpack`). Local reference source is
-`/mnt/oldrog/home/jaten/rpc25519`; `ckt_example.go` demonstrates the
-peer/circuit/fragment actor API. This is the selected transport, with integration
-still pending.
+Current direction (2026-10-08): port the original distributed TLC algorithm
+using Go coordinator/worker/fingerprint-server boundaries. Leave the rpc25519
+alternative aside. Java uses RMI, but the Go implementation must not emulate
+Java RMI or a JVM. Preserve batching, fingerprint answers, retries, checkpoint
+boundaries and termination behavior independently of transport.
 
-The intended mapping is peers for the coordinator, workers and fingerprint
-servers, circuits for their batch traffic, and Greenpack-encoded fragments for
-state/fingerprint requests and results. Correlate asynchronous results with
-outstanding batches and keep multiple independent batches in flight. A batch
-still needs its fingerprint answers before dependent work proceeds. Preserve
-Java TLC's deduplication, checkpoint boundaries, failure/retry behavior and
-termination detection as networking is introduced.
+`DistributedWorkerEndpoint` supplies the five worker operations used by the
+coordinator. Server registration, server threads, smart-proxy measurements and
+shutdown use this interface. `LocalWorkerEndpoint` supplies the existing
+in-process behavior. Network endpoints remain to be implemented.
 
 The Java reference implementation uses RMI:
 
@@ -8371,10 +8367,10 @@ Important Java data structures:
 
 Port guidance:
 
-- Do not port RMI mechanically as networking first.
-- Preserve semantics in local concrete abstractions first.
-- Use the selected rpc25519/Greenpack transport and its peer/circuit/fragment
-  API when introducing networking, preserving the local Java semantics.
+- Port the distributed TLC algorithm faithfully through Go endpoints.
+- Do not implement Java RMI/JVM machinery or the rpc25519 alternative.
+- Preserve existing batching, failure and retry semantics when introducing
+  Go network endpoints.
 - Port a feature's Java tests after implementing that feature in Go. Keep
   transport-dependent tests with the transport feature they exercise.
 - The Go port should keep `TLCServer`, `DistributedWorker`,

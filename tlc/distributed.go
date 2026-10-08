@@ -112,7 +112,7 @@ type TLCServer struct {
 	monitor                     distributedServerMonitor
 	completionWaiter            chan struct{}
 	threadsMu                   sync.Mutex
-	threadsToWorkers            *InsMap[*TLCServerThread, *DistributedWorker]
+	threadsToWorkers            *InsMap[*TLCServerThread, DistributedWorkerEndpoint]
 	executor                    DistributedExecutor
 	BlockSelector               *BlockSelector
 	FinalNumberOfDistinctStates int64
@@ -137,7 +137,7 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 		Metadir:                     metadir,
 		FileName:                    fileName,
 		ConfigName:                  configName,
-		threadsToWorkers:            NewInsMap[*TLCServerThread, *DistributedWorker](),
+		threadsToWorkers:            NewInsMap[*TLCServerThread, DistributedWorkerEndpoint](),
 		FinalNumberOfDistinctStates: -1,
 	}
 	server.BlockSelector = NewBlockSelectorFromProperties(server)
@@ -537,25 +537,39 @@ func distributedServerHost() string {
 	return "localhost"
 }
 
-func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
+func (s *TLCServer) RegisterWorker(worker DistributedWorkerEndpoint) error {
 	if s == nil {
-		return
+		return NewNullPointerException()
 	}
-	// Java serializes registration, including its wakeup, start and diagnostic.
+	// Java serializes registration, including both remote getURI calls.
 	s.monitor.Lock()
 	defer s.monitor.Unlock()
 	if s.StateQueue != nil {
 		s.StateQueue.ResumeAllStuck()
 	}
 	if worker == nil {
-		panic(NewNullPointerException())
+		return NewNullPointerException()
 	}
-	thread := NewTLCServerThread(worker, distributedWorkerURI(worker), s, s.BlockSelector)
+	uri, err := worker.GetURI()
+	if err != nil {
+		return err
+	}
+	thread := NewTLCServerThread(worker, uri, s, s.BlockSelector)
 	thread.Start()
-	PrintMessage(ECTLCDistributedWorkerRegistered, thread.GetURI())
-	if worker.Runtime != nil && !worker.Runtime.launchKeepAlive {
-		worker.Runtime.StartKeepAlive(s)
+	// The second call is intentionally after registration/start. A failure
+	// here does not undo the registered thread in the Java implementation.
+	uri, err = worker.GetURI()
+	if err != nil {
+		return err
 	}
+	PrintMessage(ECTLCDistributedWorkerRegistered, uri)
+	if local, ok := worker.(*LocalWorkerEndpoint); ok && local.Worker != nil {
+		runtime := local.Worker.Runtime
+		if runtime != nil && !runtime.launchKeepAlive {
+			runtime.StartKeepAlive(s)
+		}
+	}
+	return nil
 }
 
 func (s *TLCServer) RegisterTLCServerThread(thread *TLCServerThread) {
@@ -570,14 +584,14 @@ func (s *TLCServer) RegisterTLCServerThread(thread *TLCServerThread) {
 	s.threadsMu.Lock()
 	defer s.threadsMu.Unlock()
 	if s.threadsToWorkers == nil {
-		s.threadsToWorkers = NewInsMap[*TLCServerThread, *DistributedWorker]()
+		s.threadsToWorkers = NewInsMap[*TLCServerThread, DistributedWorkerEndpoint]()
 	}
 	// URI is display metadata. Even the same remote worker can be registered
 	// more than once; Java's map keys are the distinct server-thread objects.
 	s.threadsToWorkers.Set(thread, thread.Worker.Worker)
 }
 
-func (s *TLCServer) removeServerThreadOnly(thread *TLCServerThread) *DistributedWorker {
+func (s *TLCServer) removeServerThreadOnly(thread *TLCServerThread) DistributedWorkerEndpoint {
 	if s == nil || thread == nil {
 		return nil
 	}
@@ -591,7 +605,7 @@ func (s *TLCServer) removeServerThreadOnly(thread *TLCServerThread) *Distributed
 	return worker
 }
 
-func (s *TLCServer) RemoveTLCServerThread(thread *TLCServerThread) *DistributedWorker {
+func (s *TLCServer) RemoveTLCServerThread(thread *TLCServerThread) DistributedWorkerEndpoint {
 	worker := s.removeServerThreadOnly(thread)
 	if worker != nil {
 		PrintMessage(ECTLCDistributedWorkerDeregistered, thread.GetURI())
@@ -834,10 +848,7 @@ type TLCServerThread struct {
 	runDone           chan struct{}
 }
 
-func NewTLCServerThread(worker *DistributedWorker, uri string, server *TLCServer, selector *BlockSelector) *TLCServerThread {
-	if uri == "" && worker != nil {
-		uri = distributedWorkerURI(worker)
-	}
+func NewTLCServerThread(worker DistributedWorkerEndpoint, uri string, server *TLCServer, selector *BlockSelector) *TLCServerThread {
 	if selector == nil && server != nil {
 		selector = server.BlockSelector
 	}
@@ -1479,40 +1490,20 @@ func (w *DistributedWorker) GetASCIIURI() string {
 }
 
 type DistributedWorkerSmartProxy struct {
-	Worker          *DistributedWorker
+	Worker          DistributedWorkerEndpoint
 	NetworkOverhead float64
 }
 
-func NewDistributedWorkerSmartProxy(worker *DistributedWorker) *DistributedWorkerSmartProxy {
+func NewDistributedWorkerSmartProxy(worker DistributedWorkerEndpoint) *DistributedWorkerSmartProxy {
 	return &DistributedWorkerSmartProxy{Worker: worker, NetworkOverhead: math.MaxFloat64}
 }
 
 func (p *DistributedWorkerSmartProxy) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {
-	return p.measureNextStates(states, func() (*NextStateResult, error) {
-		if p == nil || p.Worker == nil {
-			return nil, NewNullPointerException()
-		}
-		if err := p.Worker.remoteEndpointError(); err != nil {
-			return nil, err
-		}
-		nextStates, err := p.Worker.GetNextStates(states)
-		if err != nil {
-			// The local proxy preserves UnicastServerRef's client-visible envelope
-			// for a RemoteException thrown at the worker, without requiring RPC.
-			if javaRemoteException(err) != nil {
-				err = NewServerException(javaString("RemoteException occurred in server thread"), err)
-			}
-			return nil, err
-		}
-		return nextStates, nil
-	})
-}
-
-// This is the smart proxy's call decorator; the endpoint supplies computation
-// and transport errors while the proxy measures the complete invocation.
-func (p *DistributedWorkerSmartProxy) measureNextStates(states []*TLCStateMut, call func() (*NextStateResult, error)) (*NextStateResult, error) {
 	start := time.Now().UnixMilli()
-	nextStates, err := call()
+	if p == nil || p.Worker == nil {
+		return nil, NewNullPointerException()
+	}
+	nextStates, err := p.Worker.GetNextStates(states)
 	if err != nil {
 		return nil, err
 	}
@@ -1527,9 +1518,6 @@ func (p *DistributedWorkerSmartProxy) measureNextStates(states []*TLCStateMut, c
 		panic(NewNullPointerException())
 	}
 	p.NetworkOverhead = percentageNetworkOverhead / float64(len(states))
-	if p.Worker != nil {
-		p.Worker.NetworkOverhead = p.NetworkOverhead
-	}
 	return nextStates, nil
 }
 
@@ -1541,47 +1529,31 @@ func (p *DistributedWorkerSmartProxy) GetNetworkOverhead() float64 {
 }
 
 func (p *DistributedWorkerSmartProxy) Exit() error {
-	if p == nil {
+	if p == nil || p.Worker == nil {
 		return NewNullPointerException()
 	}
-	if err := p.Worker.remoteEndpointError(); err != nil {
-		return err
-	}
-	err := p.Worker.Exit()
-	if javaRemoteException(err) != nil {
-		return NewServerException(javaString("RemoteException occurred in server thread"), err)
-	}
-	return err
+	return p.Worker.Exit()
 }
 
 func (p *DistributedWorkerSmartProxy) GetURI() (string, error) {
-	if p == nil {
+	if p == nil || p.Worker == nil {
 		return "", NewNullPointerException()
 	}
-	if err := p.Worker.remoteEndpointError(); err != nil {
-		return "", err
-	}
-	return p.Worker.GetURI(), nil
+	return p.Worker.GetURI()
 }
 
 func (p *DistributedWorkerSmartProxy) IsAlive() (bool, error) {
-	if p == nil {
+	if p == nil || p.Worker == nil {
 		return false, NewNullPointerException()
 	}
-	if err := p.Worker.remoteEndpointError(); err != nil {
-		return false, err
-	}
-	return p.Worker.IsAlive(), nil
+	return p.Worker.IsAlive()
 }
 
 func (p *DistributedWorkerSmartProxy) GetCacheRateRatio() (float64, error) {
-	if p == nil {
+	if p == nil || p.Worker == nil {
 		return 0, NewNullPointerException()
 	}
-	if err := p.Worker.remoteEndpointError(); err != nil {
-		return 0, err
-	}
-	return p.Worker.GetCacheRateRatio(), nil
+	return p.Worker.GetCacheRateRatio()
 }
 
 func sanitizeDistributedComputationTime(computationTime int64) int64 {

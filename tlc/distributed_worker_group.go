@@ -151,6 +151,5 @@ func (r *DistributedWorkerRunnable) Run() (err error) {
 	if r.register != nil {
 		return r.register(r.server, worker)
 	}
-	r.server.RegisterWorker(worker)
-	return nil
+	return r.server.RegisterWorker(NewLocalWorkerEndpoint(worker))
 }

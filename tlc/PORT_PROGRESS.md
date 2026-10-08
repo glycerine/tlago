@@ -17402,3 +17402,43 @@ fixture bytes verified. Expected40-path commit after current race check.
 
 Final whole 16-method race passes 75.251s, handle 1892 retired. All handles
 retired; all source/related checks green. Ready for the explicit 40-path commit.
+
+
+### 2026-10-08 — Distributed worker endpoint boundary
+
+User resumed the original distributed TLC algorithm, leaving the rpc25519
+alternative aside. The user supplied a green full-suite baseline and prohibited
+repeating that expensive run. The later clarification explicitly rejects Java
+RMI/JVM emulation: use Go boundaries and preserve TLC behavior. Update PLAN,
+HANDOFF and architecture direction accordingly; historical transport plans are
+not active requirements.
+
+Introduced DistributedWorkerEndpoint for the coordinator's five worker calls.
+Server registration, worker registry, server threads, smart proxy and shutdown
+now accept this boundary instead of concrete local worker pointers. The local
+adapter retains existing lifecycle/error behavior; no network transport or Java
+RMI protocol was added. Smart-proxy overhead remains proxy-local as in Java,
+and the proxy delegates errors without adding another server exception layer.
+
+Source TLCServer.registerWorker resumes stuck queues, calls getURI, registers
+and starts the thread, then calls getURI again for the diagnostic. Restored the
+second call and propagated failures at both calls; a second-call failure does
+not undo the already-started thread. Worker registration runnables now preserve
+returned errors. Added a focused three-row unit test for this previously
+untested failure-order boundary, as authorized by the user's latest testing
+instruction. Each started thread is joined before restoring class globals.
+
+The existing nine original TLCWorkerSmartProxyTest cases now use the public
+GetNextStates method with a mechanical DummyTLCWorker helper, replacing the
+previous direct call to an internal measurement decorator. Original durations,
+integer-division zero maximum, array lengths and assertions remain unchanged.
+Focused endpoint/original proxy/URI checks pass normally in 0.020 seconds;
+original TLCSet and distributed initialization checks pass normally (receipt
+below). No full-suite run, long workload or race instrumentation was used.
+Network transport and server/fingerprint endpoint integration remain pending;
+the distributed goal is active, not complete.
+
+Final focused root receipt: original TLCSet/distributed initialization checks
+pass in 1.816 seconds; handle 46409 is terminal with status 0. Endpoint/proxy/
+URI handle 1621 is terminal with status 0. Earlier corresponding handles
+2220, 88377 and 31684 also completed successfully. No live test handles remain.

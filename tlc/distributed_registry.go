@@ -200,7 +200,7 @@ func (s *TLCServer) RunWorkerShutdownHook() error {
 		return err
 	}
 	s.threadsMu.Lock()
-	workers := make([]*DistributedWorker, 0, s.threadsToWorkers.Len())
+	workers := make([]DistributedWorkerEndpoint, 0, s.threadsToWorkers.Len())
 	for _, worker := range s.threadsToWorkers.All() {
 		workers = append(workers, worker)
 	}
