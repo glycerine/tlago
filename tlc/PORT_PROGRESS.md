@@ -19336,3 +19336,21 @@ larger ten-minute watchdog. Receipt:
 /mnt/oldrog/tmp/tlago-nested-recovery-original-methods.log. All handles are
 terminal and retired. No full suite was rerun. Distributed parity remains
 incomplete; transport remains native Go, without RMI or Java serialization.
+
+## October 8, 2026: remove unused RMI-specific error carriers
+
+Following the user clarification that Go must not pretend to be Java, audited
+remaining RMI references. Removed the unused RMIUnknownHostException,
+ConnectIOException and AccessException types, constructors and classification
+branches. A repository-wide Go reference search showed no callers beyond their
+own declaration and generic exception switches. Native transport already uses
+DistributedOperationError traits; this removes unused compatibility scaffolding
+without changing its retry or shutdown decisions. Remaining source exception
+carriers used by translated algorithms/tests are not an RMI implementation.
+
+Existing short failure-graph, smart-proxy and nested-recovery checks pass in
+0.074 seconds. Focused native TCP discovery, malformed location, publication,
+worker failure/shutdown and fatal-boundary checks pass in 0.034 seconds. No
+new feature or Java method completion is claimed; no full suite or race run.
+Root package compile-only check also passes (0.016 seconds, no tests selected).
+All checks are terminal and retired.

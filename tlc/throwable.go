@@ -80,8 +80,6 @@ func javaThrowableClassName(err error) string {
 		return "java.rmi.UnmarshalException"
 	case *ExportException:
 		return "java.rmi.server.ExportException"
-	case *AccessException:
-		return "java.rmi.AccessException"
 	case *CharacterCodingException:
 		return "java.nio.charset.CharacterCodingException"
 	case *MalformedInputException:
@@ -168,10 +166,6 @@ func javaThrowableClassName(err error) string {
 		return "java.net.MalformedURLException"
 	case *InterruptedException:
 		return "java.lang.InterruptedException"
-	case *RMIUnknownHostException:
-		return "java.rmi.UnknownHostException"
-	case *ConnectIOException:
-		return "java.rmi.ConnectIOException"
 	case *NoRouteToHostException:
 		return "java.net.NoRouteToHostException"
 	case *RejectedExecutionException:

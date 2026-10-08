@@ -508,14 +508,6 @@ func javaRemoteException(err error) *RemoteException {
 		if failure != nil {
 			return failure.RemoteException
 		}
-	case *ConnectIOException:
-		if failure != nil {
-			return failure.RemoteException
-		}
-	case *RMIUnknownHostException:
-		if failure != nil {
-			return failure.RemoteException
-		}
 	case *FPSetManagerException:
 		if failure != nil {
 			return failure.RemoteException
@@ -525,10 +517,6 @@ func javaRemoteException(err error) *RemoteException {
 			return failure.RemoteException
 		}
 	case *ExportException:
-		if failure != nil {
-			return failure.RemoteException
-		}
-	case *AccessException:
 		if failure != nil {
 			return failure.RemoteException
 		}

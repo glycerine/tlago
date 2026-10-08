@@ -30,20 +30,6 @@ func NewInterruptedException(message ...string) *InterruptedException {
 }
 func (e *InterruptedException) Error() string { return javaThrowableMessage(e) }
 
-type RMIUnknownHostException struct{ *RemoteException }
-
-func NewRMIUnknownHostException(message string, cause error) *RMIUnknownHostException {
-	return &RMIUnknownHostException{NewRemoteException(javaString(message), cause)}
-}
-func (e *RMIUnknownHostException) Error() string { return javaThrowableMessage(e) }
-
-type ConnectIOException struct{ *RemoteException }
-
-func NewConnectIOException(message string, cause error) *ConnectIOException {
-	return &ConnectIOException{NewRemoteException(javaString(message), cause)}
-}
-func (e *ConnectIOException) Error() string { return javaThrowableMessage(e) }
-
 type NoRouteToHostException struct{ javaExceptionBase }
 
 func NewNoRouteToHostException(message ...string) *NoRouteToHostException {
@@ -64,10 +50,3 @@ func NewExportException(message string, cause error) *ExportException {
 	return &ExportException{NewRemoteException(javaString(message), cause)}
 }
 func (e *ExportException) Error() string { return javaThrowableMessage(e) }
-
-type AccessException struct{ *RemoteException }
-
-func NewAccessException(message string, cause error) *AccessException {
-	return &AccessException{NewRemoteException(javaString(message), cause)}
-}
-func (e *AccessException) Error() string { return javaThrowableMessage(e) }

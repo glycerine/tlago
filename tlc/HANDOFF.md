@@ -73,6 +73,10 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Unused RMI-specific unknown-host, connect-I/O and access error carriers have
+been removed. Native distributed failure payloads and retry/shutdown categories
+remain the transport contract; no RMI compatibility implementation is required.
+
 MultiFPSet trace recovery now calls the selected child's RecoverFP method,
 matching source dispatch. Disk and off-heap children retain recovery-corruption
 failures or duplicate warnings according to the source option, with exact
