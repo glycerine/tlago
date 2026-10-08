@@ -12,6 +12,22 @@ All 96 Java methods have Go counterparts. **59 methods have a recorded assertion
 
 The concrete defects below are established by comparing test source and helper behavior. No production fixes or test changes were made, and no test workload was run for this audit. Where a restored assertion would expose missing production behavior, the implementation requirement is stated explicitly. “No identified divergence” is a source-review result, not certification that the SANY implementation is bug-free or that every helper has been formally proved equivalent.
 
+## Repair status
+
+Repairs are now in progress under the user’s instruction to fix this audit and
+then fix the production failures found by the restored tests. The finding text
+below records the original audit baseline; this status and the method ledger
+track the current repairs.
+
+- **F01–F03: port complete for all nine affected original methods.** The four
+  Errors methods and five formatting methods now live in root-package tests,
+  exercise production logging/rendering, and preserve generation-only semantics.
+  Targeted tests pass, as do the remaining dedicated SANY package and selected
+  original root SANY methods. No original parameter or assertion was weakened.
+- **F04–F25: pending.** A green run of their current counterparts does not resolve
+  their recorded test-contract defects. Final verification of the fully restored
+  96-method inventory has not yet occurred.
+
 ## Evidence and counting rules
 
 - The Go copies of all **227 files** in `sany_tests/test_vectors` were compared with their corresponding upstream `test/tla2sany` or `test-model` originals: all match byte for byte; none of those Go files lacks an upstream counterpart. No upstream syntax, semantic or semantic-error corpus fixture is absent from its mirrored corpus directory.
@@ -28,13 +44,13 @@ Restore the original operations, inputs, stage boundaries, assertions and except
 
 If the faithfully restored test fails, repair the actual Go port before considering the test complete. Do not add post-hoc deduplication, allow arbitrary failures, omit flags, suppress a failing parameter, replace exact checks with broad substrings, or silently skip unavailable schema validation. Preserve actual upstream ignores and commented-out bodies. Do not invent new regression cases in this repair pass.
 
-Run the restored original tests normally with their original bounds. Long corpus or operator workloads must not be combined with `-race`. Store any required fixture under `test_vectors`, never a directory named `testdata`. This audit authorizes no source changes or git actions.
+Run the restored original tests normally with their original bounds. Long corpus or operator workloads must not be combined with `-race`. Store any required fixture under `test_vectors`, never a directory named `testdata`. The original audit itself authorized no source changes or git actions; the user’s later repair request now authorizes this implementation work.
 
 ## Detailed findings
 
 ### F01 — `TestErrors`: constructed diagnostic slices substitute for the production logger
 
-**Affected:** all four methods in [semantic_testerrors_test.go](sany_tests/semantic_testerrors_test.go). Java: `semantic/TestErrors.java`.
+**Affected:** all four methods in [semantic_testerrors_test.go](sany_errors_java_test.go). Java: `semantic/TestErrors.java`.
 
 Java constructs `Errors`, calls `addMessage`, and checks the logger's returned strings, details, severity, counts and summary. Go constructs already-classified `Diagnostic` values and puts them directly into a slice. Deep equality against those same values tests slice filtering, not the original logging operation.
 
@@ -51,7 +67,7 @@ Specific lost or changed behavior:
 
 ### F02 — percent-format logger tests do not call the formatter they claim to test
 
-**Affected:** the first two methods of [semantic_testerrormessageformatting_test.go](sany_tests/semantic_testerrormessageformatting_test.go).
+**Affected:** the first two methods of [semantic_testerrormessageformatting_test.go](sany_error_message_formatting_java_test.go).
 
 The literal-text test assigns `Message: message` then checks `log[0].Message == message`. The parameter test calls `fmt.Sprintf` **inside the test**, assigns its result, and checks it. Neither invokes the SANY error logger or its detail renderer. A broken production formatter has no effect on either test. Both also invent a string-valued code name instead of using the real `SUSPECTED_UNREACHABLE_CHECK` metadata (4004).
 
@@ -518,11 +534,11 @@ Reviewed: All five original methods present; production logger bypass in first t
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testPercentSignInMessageTextIsNotAFormatSpecifier`](sany_tests/semantic_testerrormessageformatting_test.go:15) | Fix | F02 |
-| [`testPercentSignInMessageParameterIsNotAFormatSpecifier`](sany_tests/semantic_testerrormessageformatting_test.go:27) | Fix | F02 |
-| [`testUnresolvedPercentOperator`](sany_tests/semantic_testerrormessageformatting_test.go:38) | Fix | F03 |
-| [`testUnresolvedNonfixPercentOperator`](sany_tests/semantic_testerrormessageformatting_test.go:43) | Fix | F03 |
-| [`testUnresolvedDoublePercentOperatorIsNotRenamed`](sany_tests/semantic_testerrormessageformatting_test.go:48) | Fix | F03 |
+| [`testPercentSignInMessageTextIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go) | Port complete | F02 |
+| [`testPercentSignInMessageParameterIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go) | Port complete | F02 |
+| [`testUnresolvedPercentOperator`](sany_error_message_formatting_java_test.go) | Port complete | F03 |
+| [`testUnresolvedNonfixPercentOperator`](sany_error_message_formatting_java_test.go) | Port complete | F03 |
+| [`testUnresolvedDoublePercentOperatorIsNotRenamed`](sany_error_message_formatting_java_test.go) | Port complete | F03 |
 
 ### TestErrors
 
@@ -532,10 +548,10 @@ Reviewed: Original message texts retained, but logger insertion, original error 
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testWarningMessages`](sany_tests/semantic_testerrors_test.go:12) | Fix | F01 |
-| [`testErrorMessages`](sany_tests/semantic_testerrors_test.go:43) | Fix | F01 |
-| [`testMixedMessageLevels`](sany_tests/semantic_testerrors_test.go:74) | Fix | F01 |
-| [`testDuplicateErrorsIgnored`](sany_tests/semantic_testerrors_test.go:97) | Fix | F01 |
+| [`testWarningMessages`](sany_errors_java_test.go) | Port complete | F01 |
+| [`testErrorMessages`](sany_errors_java_test.go) | Port complete | F01 |
+| [`testMixedMessageLevels`](sany_errors_java_test.go) | Port complete | F01 |
+| [`testDuplicateErrorsIgnored`](sany_errors_java_test.go) | Port complete | F01 |
 
 ### TestInstanceNode
 

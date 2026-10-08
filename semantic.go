@@ -227,16 +227,16 @@ func appendSanyDiagnostics(diags Diagnostics, added ...Diagnostic) Diagnostics {
 	if len(added) == 0 {
 		return diags
 	}
-	type details struct{ code, text string }
-	seen := make(map[details]bool, len(diags)+len(added))
-	for _, diagnostic := range diags {
-		seen[details{diagnostic.Code, sanyJavaErrorDetails(diagnostic)}] = true
-	}
 	for _, diagnostic := range added {
-		key := details{diagnostic.Code, sanyJavaErrorDetails(diagnostic)}
-		if !seen[key] {
+		present := false
+		for _, stored := range diags {
+			if sameSanyLoggedDiagnostic(stored, diagnostic) {
+				present = true
+				break
+			}
+		}
+		if !present {
 			diags = append(diags, diagnostic)
-			seen[key] = true
 		}
 	}
 	return diags

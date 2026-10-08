@@ -1,5 +1,31 @@
 # TLC Port Progress
 
+2026-10-08 Restore SANY logger and percent-error tests (F01–F03):
+Context prerequisite committed as 87cc2c4. Inspect the pinned original Errors
+and TestErrors/TestErrorMessageFormatting classes. Move all nine original
+methods into root-package translations. Restore logger calls, codes 4003/4004/
+4800/4801, actual absent-location normalization, the local zero-seed location
+formula, complete rendered arrays/details, all counts and summaries, and six
+insertion calls for the duplicate test. No test-side deduplication or formatting.
+Production string-parameter logging retains raw format and parameters, formats
+only when parameters are supplied, returns the source abort carrier, and uses
+insertion-time equality of code/location/format/parameters. Rendering recognizes
+these retained details. Existing normalized generator diagnostics retain their
+separate adapter path; this does not claim complete generic Object formatting
+or complete Errors integration across every producer.
+
+The three unresolved percent reproducers require successful syntax/dependencies
+and call GenerateSanySpec without levels/linting. Unexpected aborts propagate;
+only actual error details satisfy the source substring checks. All nine repaired
+methods pass in 0.020 seconds (41119 retired). Final selection including the
+original root corpus/context/builtin/incremental/selector methods passes in
+0.279 seconds (52829 retired); the remaining dedicated SANY package passes in
+2.344 seconds (9316 retired). All-package compile passes (99610 retired).
+All original fixtures remain unchanged. Audit status marks only F01–F03 and
+their nine methods complete; F04–F25 remain pending. No full repaired-suite,
+full-workspace or goal completion claim. Next: warning settings/driver output
+and CLI contracts (F04–F06).
+
 2026-10-08 Finish Context state-transfer prerequisite; switch to SANY test audit:
 Previous completed commit: 6336b72. Add an exact Context state descriptor and
 runtime import path, preserving oldest-to-newest Pair history, current bucket

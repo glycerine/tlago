@@ -12,6 +12,14 @@ Each Java `@Test` method should have a corresponding Go test. Most translations
 live in this directory. The direct `semantic.TestContext` translation lives in
 root `sany_context_java_test.go` to access the private Context implementation and
 check the original merge result, error code and structured parameters.
+The primary `semantic.TestErrors` and `semantic.TestErrorMessageFormatting`
+translations now live in root [sany_errors_java_test.go](../sany_errors_java_test.go)
+and [sany_error_message_formatting_java_test.go](../sany_error_message_formatting_java_test.go).
+They call production logging/rendering and generation-only semantics rather
+than constructing expected diagnostic slices or formatting inside the tests.
+The remaining fidelity repairs are tracked in
+[SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md); current green tests alone do not
+resolve that audit.
 Keep translated assertions faithful to the Java source, and add any copied
 fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
 locations.

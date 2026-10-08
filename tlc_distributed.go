@@ -452,6 +452,9 @@ func RunDistributedWorkerAndFPServer(process *tlc.DistributedWorkerProcess, args
 // SANY.ErrorDetails renders the source location followed by a blank line and
 // its message. Keep the generic diagnostic rendering for other frontends.
 func sanyJavaErrorDetails(diagnostic Diagnostic) string {
+	if diagnostic.sanyDetails != nil {
+		return diagnostic.sanyDetails.String()
+	}
 	rng := diagnostic.SANYRange
 	if rng.Begin.Line == 0 {
 		rng = SanyRange{Begin: diagnostic.Pos, End: diagnostic.Pos}

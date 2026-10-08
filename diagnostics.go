@@ -193,6 +193,7 @@ func (p Position) SourceEnd() Position {
 }
 
 type Diagnostic struct {
+	sanyDetails      *sanyErrorDetails
 	Code             string
 	Severity         Severity
 	Pos              Position
@@ -208,7 +209,11 @@ func (d Diagnostic) String() string {
 	if code == "" {
 		code = "TLAGO"
 	}
-	return fmt.Sprintf("%s: %s %s: %s", d.Pos, d.Severity, code, d.Message)
+	message := d.Message
+	if d.sanyDetails != nil {
+		message = d.sanyDetails.getMessage()
+	}
+	return fmt.Sprintf("%s: %s %s: %s", d.Pos, d.Severity, code, message)
 }
 
 type Diagnostics []Diagnostic
