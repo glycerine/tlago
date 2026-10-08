@@ -9981,3 +9981,26 @@ WITH lists, named assumptions/theorems and multiple/labeled ASSUME/PROVE clauses
 Compare complete observed syntax kinds/images/coordinates and parse messages,
 with only outer log whitespace excluded. This is bounded evidence, not full
 JavaCC diagnostic, semantic-predicate or evaluator graph completion.
+
+## Proof alternatives and commands use source previews
+
+Proof first retains Java's direct BY choice, then uses terminal preview 25 with
+budget 2, structured preview 26 with budget 1 and optional PROOF preview 24 with
+budget 2. Do not eagerly consume PROOF before those decisions. USE/HIDE/BY uses
+preview 29 with budget 1 for its optional fact list, and distinct expression
+calls 27/28 for its first/subsequent facts and 30/31 after DEF. MODULE items retain
+the source direct choice before expression lookahead.
+
+Step assertions use call 32 with budget 1; repeated proof definitions use 33 with
+budget 2. TAKE/PICK choices use 34/35 with Integer.MAX_VALUE, replacing separate
+native identifier/bound scanners. AssertStep uses 36 with budget 1. Number uses
+37 with budget 2 after consuming its first literal, replacing the manually
+estimated decimal preview/error span. Preserve parser number/decimal flags.
+Connected source entry points are now 1–37, 50, 68 and 72; later expression/selector
+call sites and complete JavaCC diagnostic bookkeeping remain pending.
+
+External observations match 1,301 complete rows across 83 cases, including earlier
+module/definition/declaration/fact cases and valid/malformed proof and number
+forms. Compare syntax kinds/images/four coordinates and complete parse messages,
+with outer log whitespace excluded. This does not establish every proof state,
+node allocation, expected-token set or evaluator graph-sharing requirement.

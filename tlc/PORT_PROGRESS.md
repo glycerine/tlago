@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-07 Actual proof and numeric lookahead integration:
+Previous completed commit: 627be3b. Translate source production callers 24–37.
+Proof preserves direct BY selection, then terminal 25 (budget 2), structured 26
+(budget 1), and optional PROOF 24 (budget 2). Remove eager PROOF consumption before
+previewing these alternatives. Fact-command optional list uses 29; first/comma
+expressions use 27/28 and after-DEF expressions 30/31, all budget 1. Keep MODULE
+choices before expression scans. Step assertions use 32 (1); proof definition
+repetition 33 (2); TAKE/PICK 34/35 (Integer.MAX_VALUE); AssertStep 36 (1). Remove
+unused native bound/identifier preview helpers, including their failure-span
+estimates. Number now uses actual decimal preview 37 (2) after its first literal,
+retaining number/decimal flags. Connected entry points: 1–37, 50, 68 and 72.
+Remaining expression/selector callers and full bookkeeping remain pending.
+
+Extend existing external production observer by 28 valid/malformed proof cases
+and eight numeric/bound cases. Initial 1,163 rows match after proof integration;
+final 1,301 rows across all 83 cases match after number integration and unused
+helper deletion. Compare actual syntax kinds/images/four coordinates and complete
+parse messages/residual stack text with outer log whitespace excluded. Source
+runs return 0; initial Go 38488 and final Go 10710 pass and are retired. Existing
+external probe inputs are observations, not permanent regression tests or method
+credit. Artifacts /mnt/oldrog/tmp/BodyDefinitionProbe.java,
+/mnt/oldrog/tmp/tlago-body-definition-manual_test.go and existing overlay; logs
+/mnt/oldrog/tmp/tlago-proof-lookahead-*. No source fixture/assertion edits, invented
+permanent tests, race or optional corpus sweeps.
+
+Initial complete SANY 97283 passes 2.009s. Final original ParseErrorTests,
+BelchDef/incremental/selector/corpus, GetScopedIdentifiers, legacy Test201–209 and
+EWD998ChanDebugger gate 63306 passes 9.755s. Complete SANY 86572 passes 1.800s;
+all-package compile 22126 passes. All handles retired; diff check green. Update
+HANDOFF and architecture to current caller coverage. Full-workspace verification
+remains the qualified earlier failing snapshot. Remaining parser/canonical graph
+integration, runtime LET sharing, trace reconciliation and other documented TLC
+requirements keep the goal active and incomplete.
+
 2026-10-07 Actual declaration, substitution and fact lookahead calls:
 Previous completed commit: 9d152e5. Connect remaining source calls 6/12/13/14/15/
 21/23 with their Java budgets: constant parameter preview 2; repeated substitution

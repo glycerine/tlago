@@ -530,15 +530,21 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 		return p.UseOrHideOrBy()
 	}
 	var heirs []*SanySyntaxNode
-	nonterminal := p.check(SanyTokenProof) || p.startsProofStepAt(0)
-	if p.match(SanyTokenProof) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-	}
-	if p.match(SanyTokenObvious) || p.match(SanyTokenOmitted) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	if p.scanLookahead(25, 2) {
+		if p.match(SanyTokenProof) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		}
+		if p.match(SanyTokenObvious) || p.match(SanyTokenOmitted) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenObvious}, {SanyTokenOmitted}}, "expected OBVIOUS or OMITTED")
+		}
 		return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
 	}
-	if nonterminal {
+	if p.scanLookahead(26, 1) {
+		if p.scanLookahead(24, 2) {
+			heirs = append(heirs, p.consumeParseToken(SanyTokenProof, "expected PROOF"))
+		}
 		for p.tokenAt(1).Kind != SanyTokenQed {
 			heirs = append(heirs, p.Step())
 			p.expecting = "a proof step"
@@ -594,7 +600,7 @@ func (p *SanyParser) Step() *SanySyntaxNode {
 	case p.check(SanyTokenCase):
 		body = p.CaseStep()
 		mayHaveProof = true
-	case p.check(SanyTokenSuffices) || p.startsAssumeProveAt(0) || p.startsExpressionLookahead():
+	case p.scanLookahead(32, 1):
 		body = p.AssertStep()
 		mayHaveProof = true
 	default:
@@ -638,12 +644,12 @@ func (p *SanyParser) UseOrHideOrBy() *SanySyntaxNode {
 		p.throwParseException([][]SanyTokenKind{{SanyTokenBy}, {SanyTokenProof}, {SanyTokenUse}, {SanyTokenHide}}, "expected BY, USE or HIDE")
 	}
 	p.expecting = "an expression, `MODULE' or `DEF'"
-	if p.check(SanyTokenModule) || p.startsExpressionLookahead() {
-		p.proofCommandItem(&heirs)
+	if p.scanLookahead(29, 1) {
+		p.proofCommandItem(&heirs, 27)
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			p.expecting = "MODULE or expression"
-			p.proofCommandItem(&heirs)
+			p.proofCommandItem(&heirs, 28)
 			if kind.JavaName() == "N_TerminalProof" {
 				p.expecting = "comma, DEF, or [.]"
 			} else {
@@ -654,11 +660,11 @@ func (p *SanyParser) UseOrHideOrBy() *SanySyntaxNode {
 	if p.match(SanyTokenDF) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		p.expecting = "MODULE or expression"
-		p.proofCommandItem(&heirs)
+		p.proofCommandItem(&heirs, 30)
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			p.expecting = "MODULE or expression"
-			p.proofCommandItem(&heirs)
+			p.proofCommandItem(&heirs, 31)
 			if kind.JavaName() == "N_TerminalProof" {
 				p.expecting = "comma or [.]"
 			} else {
@@ -672,12 +678,12 @@ func (p *SanyParser) UseOrHideOrBy() *SanySyntaxNode {
 	return NewSanyNode(kind, heirs...)
 }
 
-func (p *SanyParser) proofCommandItem(heirs *[]*SanySyntaxNode) {
+func (p *SanyParser) proofCommandItem(heirs *[]*SanySyntaxNode, lookahead int) {
 	if p.match(SanyTokenModule) {
 		*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
 		p.expecting = "identifier"
 		*heirs = append(*heirs, p.Identifier())
-	} else if p.startsExpressionLookahead() {
+	} else if p.scanLookahead(lookahead, 1) {
 		*heirs = append(*heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenDF
 		}))
@@ -694,7 +700,7 @@ func (p *SanyParser) DefStep() *SanySyntaxNode {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	}
 	heirs = append(heirs, p.ProofOperatorOrFunctionDefinition())
-	for p.startsOperatorOrFunctionDefinition() {
+	for p.scanLookahead(33, 2) {
 		heirs = append(heirs, p.ProofOperatorOrFunctionDefinition())
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_DefStep"], heirs...)
@@ -738,7 +744,7 @@ func (p *SanyParser) TakeStep() *SanySyntaxNode {
 	defer p.endProduction()
 	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenTake, "expected TAKE")}
 	p.expecting = "identifier"
-	if p.takeUsesQuantBounds() {
+	if p.scanLookahead(34, 2147483647) {
 		heirs = append(heirs, p.QuantBound())
 		p.expecting = "comma or step"
 		for p.match(SanyTokenComma) {
@@ -782,7 +788,7 @@ func (p *SanyParser) PickStep() *SanySyntaxNode {
 	defer p.endProduction()
 	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenPick, "expected PICK")}
 	p.expecting = "identifier"
-	if p.pickUsesIdentifierList() {
+	if p.scanLookahead(35, 2147483647) {
 		heirs = append(heirs, p.Identifier())
 		p.expecting = "comma, or colon"
 		for p.match(SanyTokenComma) {
@@ -826,7 +832,7 @@ func (p *SanyParser) AssertStep() *SanySyntaxNode {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		p.expecting = "expression or ASSUME/PROVE"
 	}
-	if p.startsExpressionLookahead() {
+	if p.scanLookahead(36, 1) {
 		heirs = append(heirs, p.ExpressionUntilProofBoundary())
 	} else if p.startsAssumeProveAt(0) {
 		heirs = append(heirs, p.AssumeProve())
@@ -1030,37 +1036,6 @@ func (p *SanyParser) isProofBoundary(tok *SanyToken) bool {
 
 func (p *SanyParser) startsProofStepAt(offset int) bool {
 	return isSanyProofStepStartKind(p.tokenAt(offset).Kind)
-}
-
-func (p *SanyParser) takeUsesQuantBounds() bool {
-	return p.proofIdentifierListFollowedBy(SanyTokenIN) || p.check(SanyTokenLab)
-}
-
-func (p *SanyParser) pickUsesIdentifierList() bool {
-	return p.proofIdentifierListFollowedBy(SanyTokenColon)
-}
-
-// The source previews scan Identifier (COMMA Identifier)* then the separator.
-// A failed repetition restores the scan position before testing the separator;
-// JavaCC's rescan still retains the following token reached by that repetition.
-func (p *SanyParser) proofIdentifierListFollowedBy(separator SanyTokenKind) bool {
-	if p.tokenAt(0).Kind != SanyTokenIdentifier {
-		p.rememberFailedLookahead(1)
-		return false
-	}
-	offset := 1
-	for p.tokenAt(offset).Kind == SanyTokenComma {
-		if p.tokenAt(offset+1).Kind != SanyTokenIdentifier {
-			p.rememberFailedLookahead(offset + 2)
-			break
-		}
-		offset += 2
-	}
-	if p.tokenAt(offset).Kind == separator {
-		return true
-	}
-	p.rememberFailedLookahead(offset + 1)
-	return false
 }
 
 func (p *SanyParser) startsAssumeProveAt(offset int) bool {
@@ -2332,16 +2307,11 @@ func (p *SanyParser) String() *SanySyntaxNode {
 
 func (p *SanyParser) Number() *SanySyntaxNode {
 	first := p.consumeParseToken(SanyTokenNumberLiteral, "expected number literal")
-	if p.check(SanyTokenDot) {
-		if p.tokenAt(1).Kind == SanyTokenNumberLiteral {
-			dot := p.consumeParseToken(SanyTokenDot, "expected decimal point")
-			second := p.consumeParseToken(SanyTokenNumberLiteral, "expected number literal after decimal point")
-			p.decimalFlag = true
-			return NewSanyNode(SanySyntaxNodeKindByName["N_Real"], first, dot, second)
-		}
-		p.rememberFailedLookahead(2)
-	} else {
-		p.rememberFailedLookahead(1)
+	if p.scanLookahead(37, 2) {
+		dot := p.consumeParseToken(SanyTokenDot, "expected decimal point")
+		second := p.consumeParseToken(SanyTokenNumberLiteral, "expected number literal after decimal point")
+		p.decimalFlag = true
+		return NewSanyNode(SanySyntaxNodeKindByName["N_Real"], first, dot, second)
 	}
 	p.numberFlag = true
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Number"], first)

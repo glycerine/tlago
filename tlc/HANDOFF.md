@@ -733,9 +733,14 @@ compilation passes. Declaration/fact parsing now uses source calls 6, 12, 13, 14
 with their actual budgets. Constant operator parameters, repeated WITH
 substitutions, optional fact names and first/subsequent ASSUME/PROVE expression
 clauses retain actual saved calls rather than manually estimated failed spans.
-The connected entry points are 1–23, 50, 68 and 72. All 580 external comparison
-rows agree across 47 valid/malformed cases; current original frontend/model checks
-pass in 9.688 seconds, complete SANY in 1.970 seconds and compilation passes.
+Proof alternatives and commands, definition repetition, TAKE/PICK selection,
+assertion expressions and decimal preview now use source calls 24–37 with Java's
+budgets and saved-call order. Proof consumes PROOF only on its source preview;
+failed terminal/structured alternatives retain the actual source token position.
+Obsolete proof-bound/identifier scanners and decimal failure-span estimates are
+removed. Connected entry points are now 1–37, 50, 68 and 72. All 1,301 external
+rows agree across 83 valid/malformed cases. Current original frontend/model checks
+pass in 9.755 seconds, complete SANY in 1.800 seconds and compilation passes.
 Remaining call-site integration, grammar expectations, general rescan integration
 and proof generation remain reconciliation work. These bounded observations do
 not establish every semantic-predicate context or full parser parity.
