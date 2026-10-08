@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-07 Port failed-kind state and the generated exception constructor:
+Previous completed commit: a8dbab2. Remove native arbitrary expected-sequence
+injection, including its longer-sequence compatibility branch. Record one failed
+kind or -1 at actual consuming failures; generateParseException unions the
+nonnegative kind with active masks, clears it, then rescans saved calls. It
+returns the exception without formatting or fetching a successor, as Java does.
+Actual failure reporting obtains the next token before recording the kind and
+formats afterward. Existing external observers are adapted to the source API
+without changing their inputs or assertions.
+
+External ExceptionGenerationProbe.java compares seven active-site groups,
+failed kinds -1 through 294 and two consecutive generations. All 4,144 rows
+match Java for entries, kind clearing, current-token reference and unfetched
+successor. Groups include overlapping declaration/set/expression sites and all
+130 sites together. Java returned 0; Go observer 22396 returned 0 and is retired.
+BodyExpected observer 67574 returned 0 and is retired; all 341 expected-entry and
+5,823 syntax/message rows remain equal. Direct-choice observer 60872 returned 0
+and is retired; all 641 state rows remain equal. External probes/overlays/logs
+remain under /mnt/oldrog/tmp with prefix tlago-exception-generation. No invented
+permanent tests, weakened fixtures/assertions or new original-method credit.
+
+Original frontend/model gate 59175 returned 0 in 9.867 seconds; complete SANY
+55456 returned 0 in 1.967 seconds; all-package compilation 25080 returned 0.
+All handles retired. Normal execution without race. Main inventory and known
+native XML failures remain unchanged; no new full-workspace green claim.
+Broader syntax corpus AST comparison, constructor/ReInit, canonical/evaluator
+integration and malformed contexts remain pending beyond these observations.
+
 2026-10-07 Save actual JavaCC current-token references:
 Previous completed commit: 401cb79. Source jj_save retains token, the last
 consumed token; Go retained the next token and compensated during rescanning.

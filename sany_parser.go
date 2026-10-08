@@ -28,6 +28,8 @@ type SanyParser struct {
 	lookaheadGC            int
 	directChoiceGeneration [130]int
 	directChoiceRecorded   [130]bool
+	expectedKind           SanyTokenKind
+	expectedKindRecorded   bool
 	numberFlag             bool
 	decimalFlag            bool
 }
@@ -228,7 +230,7 @@ func (p *SanyParser) Prelude() {
 			p.consumeParseToken(SanyTokenIdentifier, "expected prelude identifier")
 		default:
 			p.recordDirectChoice(6)
-			p.throwParseException(nil, "expected prelude token")
+			p.throwParseException(-1, "expected prelude token")
 		}
 	}
 	p.recordDirectChoice(5)
@@ -261,7 +263,7 @@ func (p *SanyParser) BeginModule() *SanySyntaxNode {
 	p.expecting = "---- MODULE (beginning of module)"
 	if !p.atModuleStart() {
 		p.recordDirectChoice(7)
-		p.throwParseException(nil, "expected ---- MODULE")
+		p.throwParseException(-1, "expected ---- MODULE")
 	}
 	begin := NewSanyTokenNode(p.advance())
 	p.expecting = "Identifier"
@@ -342,7 +344,7 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 					if p.check(SanyTokenHide) || (p.check(SanyTokenUse) && p.tokenAt(1).Kind != SanyTokenOnly) {
 						heirs = append(heirs, p.UseOrHideOrBy())
 					} else {
-						p.throwParseException(nil, "expected module body unit")
+						p.throwParseException(-1, "expected module body unit")
 					}
 				}
 			}
@@ -499,7 +501,7 @@ func (p *SanyParser) Substitution() *SanySyntaxNode {
 		target = sanyOperatorTokenNode("N_PostfixOp", p.advance())
 	default:
 		p.recordDirectChoice(35)
-		p.throwParseException(nil, "expected substitution target")
+		p.throwParseException(-1, "expected substitution target")
 	}
 	p.expecting = "<-"
 	arrow := p.consumeParseToken(SanyTokenSubstitute, "expected <- in substitution")
@@ -514,7 +516,7 @@ func (p *SanyParser) Assumption() *SanySyntaxNode {
 	p.expecting = "ASSUM..."
 	if !p.check(SanyTokenAssume) && !p.check(SanyTokenAssumption) {
 		p.recordDirectChoice(36)
-		p.throwParseException(nil, "expected ASSUME or ASSUMPTION")
+		p.throwParseException(-1, "expected ASSUME or ASSUMPTION")
 	}
 	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
 	if p.scanLookahead(13, 2) {
@@ -537,7 +539,7 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 	p.expecting = "THEOREM, PROPOSITION"
 	if !p.check(SanyTokenTheorem) && !p.check(SanyTokenProposition) {
 		p.recordDirectChoice(52)
-		p.throwParseException(nil, "expected THEOREM or PROPOSITION")
+		p.throwParseException(-1, "expected THEOREM or PROPOSITION")
 	}
 	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
 	p.expecting = "Identifier, Assume-Prove or Expression"
@@ -554,7 +556,7 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 			return beginsSanyProof(tok)
 		}))
 	} else {
-		p.throwParseException(nil, "expected theorem statement")
+		p.throwParseException(-1, "expected theorem statement")
 	}
 	if beginsSanyProof(p.peek()) {
 		heirs = append(heirs, p.Proof())
@@ -586,7 +588,7 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		} else {
 			p.recordDirectChoice(54)
-			p.throwParseException(nil, "expected OBVIOUS or OMITTED")
+			p.throwParseException(-1, "expected OBVIOUS or OMITTED")
 		}
 		return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
 	}
@@ -603,7 +605,7 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 		node.ProofLevel = p.currentProofLevel()
 		return node
 	}
-	p.throwParseException(nil, "expected proof")
+	p.throwParseException(-1, "expected proof")
 	return nil
 }
 
@@ -655,7 +657,7 @@ func (p *SanyParser) Step() *SanySyntaxNode {
 			body = p.AssertStep()
 			mayHaveProof = true
 		} else {
-			p.throwParseException(nil, "expected proof step")
+			p.throwParseException(-1, "expected proof step")
 		}
 	}
 	heirs = append(heirs, body)
@@ -700,7 +702,7 @@ func (p *SanyParser) UseOrHideOrBy() *SanySyntaxNode {
 		heirs = append(heirs, NewSanyTokenNode(p.advance()))
 	default:
 		p.recordDirectChoice(58)
-		p.throwParseException(nil, "expected BY, USE or HIDE")
+		p.throwParseException(-1, "expected BY, USE or HIDE")
 	}
 	p.expecting = "an expression, `MODULE' or `DEF'"
 	if p.scanLookahead(29, 1) {
@@ -753,7 +755,7 @@ func (p *SanyParser) proofCommandItem(heirs *[]*SanySyntaxNode, lookahead, site 
 				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenDF
 			}))
 		} else {
-			p.throwParseException(nil, "expected MODULE or expression")
+			p.throwParseException(-1, "expected MODULE or expression")
 		}
 	}
 }
@@ -828,7 +830,7 @@ func (p *SanyParser) TakeStep() *SanySyntaxNode {
 		p.recordDirectChoice(70)
 	} else {
 		p.recordDirectChoice(71)
-		p.throwParseException(nil, "expected TAKE identifier")
+		p.throwParseException(-1, "expected TAKE identifier")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_TakeStep"], heirs...)
 }
@@ -876,7 +878,7 @@ func (p *SanyParser) PickStep() *SanySyntaxNode {
 		p.recordDirectChoice(74)
 	} else {
 		p.recordDirectChoice(75)
-		p.throwParseException(nil, "expected PICK identifier or tuple")
+		p.throwParseException(-1, "expected PICK identifier or tuple")
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in PICK step"))
 	p.expecting = "expression"
@@ -908,7 +910,7 @@ func (p *SanyParser) AssertStep() *SanySyntaxNode {
 	} else if p.startsAssumeProveAt(0) {
 		heirs = append(heirs, p.AssumeProve())
 	} else {
-		p.throwParseException(nil, "expected assertion")
+		p.throwParseException(-1, "expected assertion")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_AssertStep"], heirs...)
 }
@@ -943,7 +945,7 @@ func (p *SanyParser) assumeProveUntil(proveStop func(*SanyToken) bool) *SanySynt
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
 		p.recordDirectChoice(39)
-		p.throwParseException(nil, "expected ASSUME")
+		p.throwParseException(-1, "expected ASSUME")
 	}
 	p.expecting = "Expression, Declaration, or AssumeProve"
 	heirs = append(heirs, p.AssumeProveItem(14))
@@ -959,7 +961,7 @@ func (p *SanyParser) assumeProveUntil(proveStop func(*SanyToken) bool) *SanySynt
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
 		p.recordDirectChoice(43)
-		p.throwParseException(nil, "expected PROVE")
+		p.throwParseException(-1, "expected PROVE")
 	}
 	p.expecting = "Expression"
 	heirs = append(heirs, p.ExpressionUntil(proveStop))
@@ -985,7 +987,7 @@ func (p *SanyParser) AssumeProveItem(lookahead ...int) *SanySyntaxNode {
 	if p.scanLookahead(production, 1) {
 		return p.ExpressionUntilAssumeProveBoundary()
 	}
-	p.throwParseException(nil, "expected expression, declaration or Assume-Prove")
+	p.throwParseException(-1, "expected expression, declaration or Assume-Prove")
 	return nil
 }
 
@@ -1002,7 +1004,7 @@ func (p *SanyParser) NewSymb() *SanySyntaxNode {
 			heirs = append(heirs, NewSanyTokenNode(p.advance()))
 		} else {
 			p.recordDirectChoice(44)
-			p.throwParseException(nil, "expected NEW or CONSTANT")
+			p.throwParseException(-1, "expected NEW or CONSTANT")
 		}
 		p.expecting = "Constant declaration"
 		if p.scanLookahead(17, 2) {
@@ -1023,7 +1025,7 @@ func (p *SanyParser) NewSymb() *SanySyntaxNode {
 			heirs = append(heirs, p.SomeFixDecl())
 		} else {
 			p.recordDirectChoice(46)
-			p.throwParseException(nil, "expected constant declaration")
+			p.throwParseException(-1, "expected constant declaration")
 		}
 	case p.scanLookahead(19, 2):
 		if p.match(SanyTokenNew) {
@@ -1042,13 +1044,13 @@ func (p *SanyParser) NewSymb() *SanySyntaxNode {
 		}
 		if !isSanyStateActionTemporal(p.peek().Kind) {
 			p.recordDirectChoice(49)
-			p.throwParseException(nil, "expected STATE, ACTION or TEMPORAL")
+			p.throwParseException(-1, "expected STATE, ACTION or TEMPORAL")
 		}
 		heirs = append(heirs, NewSanyTokenNode(p.advance()))
 		p.expecting = "Declaration"
 		heirs = append(heirs, p.IdentDeclOrSomeFixDecl(50))
 	default:
-		p.throwParseException(nil, "expected NEW symbol declaration")
+		p.throwParseException(-1, "expected NEW symbol declaration")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_NewSymb"], heirs...)
 }
@@ -1058,7 +1060,7 @@ func (p *SanyParser) StepStartToken() *SanySyntaxNode {
 		return NewSanyTokenNode(p.advance())
 	}
 	p.recordDirectChoice(66)
-	p.throwParseException(nil, "expected proof step")
+	p.throwParseException(-1, "expected proof step")
 	return nil
 }
 
@@ -1349,7 +1351,7 @@ func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
 	default:
 		if !p.startsDefinitionPrefix() {
 			p.recordDirectChoice(22)
-			p.throwParseException(nil, "expected definition identifier or prefix operator")
+			p.throwParseException(-1, "expected definition identifier or prefix operator")
 		}
 		return operator(p.PrefixLHS())
 	}
@@ -1371,7 +1373,7 @@ func (p *SanyParser) identifierDefinition(body func() *SanySyntaxNode) *SanySynt
 		heirs = append(heirs, p.Instantiation())
 	} else {
 		p.recordDirectChoice(21)
-		p.throwParseException(nil, "expected expression or instance in definition")
+		p.throwParseException(-1, "expected expression or instance in definition")
 	}
 	return NewSanySplitNode(SanySyntaxNodeKindByName[kind], nil, heirs)
 }
@@ -1487,7 +1489,7 @@ func (p *SanyParser) IdentDeclOrSomeFixDecl(site int) *SanySyntaxNode {
 		return p.SomeFixDecl()
 	}
 	p.recordDirectChoice(site)
-	p.throwParseException(nil, "expected formal declaration")
+	p.throwParseException(-1, "expected formal declaration")
 	return nil
 }
 
@@ -1533,10 +1535,10 @@ func (p *SanyParser) fixDeclaration(constant bool) *SanySyntaxNode {
 	if !p.check(SanyTokenUs) {
 		if constant {
 			p.recordDirectChoice(18)
-			p.throwParseException(nil, "expected operator declaration")
+			p.throwParseException(-1, "expected operator declaration")
 		}
 		p.recordDirectChoice(32)
-		p.throwParseException(nil, "expected operator declaration")
+		p.throwParseException(-1, "expected operator declaration")
 	}
 	left := NewSanyTokenNode(p.advance())
 	p.expecting = "infix or postfix operator"
@@ -1552,10 +1554,10 @@ func (p *SanyParser) fixDeclaration(constant bool) *SanySyntaxNode {
 	if !p.isGrammarPostfixOperator(p.peek()) {
 		if constant {
 			p.recordDirectChoice(17)
-			p.throwParseException(nil, "expected infix or postfix operator declaration")
+			p.throwParseException(-1, "expected infix or postfix operator declaration")
 		}
 		p.recordDirectChoice(31)
-		p.throwParseException(nil, "expected infix or postfix operator declaration")
+		p.throwParseException(-1, "expected infix or postfix operator declaration")
 	}
 	op := sanyOperatorTokenNode("N_PostfixOp", p.advance())
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PostfixDecl"], left, op)
@@ -1582,7 +1584,7 @@ func (p *SanyParser) QuantBoundUntil(stopKinds ...SanyTokenKind) *SanySyntaxNode
 		p.recordDirectChoice(87)
 	default:
 		p.recordDirectChoice(88)
-		p.throwParseException(nil, "expected bound identifier or tuple")
+		p.throwParseException(-1, "expected bound identifier or tuple")
 	}
 	in := p.consumeParseToken(SanyTokenIN, "expected \\in in quantifier bound")
 	in.Kind = SanySyntaxNodeKindByName["T_IN"]
@@ -1716,7 +1718,7 @@ func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*Sany
 				site = 121
 			}
 			p.recordDirectChoice(site)
-			p.throwParseException(nil, "expected expression prefix")
+			p.throwParseException(-1, "expected expression prefix")
 		}
 		op, _ := GetSanyOperator(tok.Image)
 		stack.Push(p.genericOperatorNode(tok, op), &op)
@@ -1729,7 +1731,7 @@ func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*Sany
 		return
 	}
 	if !p.aboveCurrentJunction() {
-		p.throwParseException(nil, "expected properly indented expression")
+		p.throwParseException(-1, "expected properly indented expression")
 	}
 	p.ExtendableExpr(stack, stop)
 }
@@ -1755,7 +1757,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 		default:
 			p.recordDirectChoice(120)
 			if !p.scanLookahead(57, 1) {
-				p.throwParseException(nil, "expected expression")
+				p.throwParseException(-1, "expected expression")
 			}
 			stack.Push(p.PrimitiveExp(), nil)
 		}
@@ -1770,7 +1772,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 			middle := NewSanyTokenNode(p.advance())
 			p.reclassifyFieldName()
 			if !p.aboveCurrentJunction() {
-				p.throwParseException(nil, "expected properly indented record field")
+				p.throwParseException(-1, "expected properly indented record field")
 			}
 			right := p.consumeParseToken(SanyTokenIdentifier, "expected record field identifier")
 			if err := stack.ReduceRecord(middle, right); err != nil {
@@ -1788,7 +1790,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 				stack.Push(node, nil)
 			}
 		default:
-			p.throwParseException(nil, "expected expression extension")
+			p.throwParseException(-1, "expected expression extension")
 		}
 		if err := stack.ReduceStack(); err != nil {
 			p.throwOperatorStackFailure(err, p.previous().End)
@@ -1819,7 +1821,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 			}
 			stack.Push(NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, expr), nil)
 		} else {
-			p.throwParseException(nil, "expected infix operator or label continuation")
+			p.throwParseException(-1, "expected infix operator or label continuation")
 		}
 	}
 }
@@ -1845,10 +1847,10 @@ func (p *SanyParser) PrimitiveExp() *SanySyntaxNode {
 			if p.scanLookahead(67, 2147483647) {
 				return p.primitiveSelectorExpr(p.BangOperatorSelector())
 			}
-			p.throwParseException(nil, "expected operator selector")
+			p.throwParseException(-1, "expected operator selector")
 		}
 		p.recordDirectChoice(125)
-		p.throwParseException(nil, "expected expression")
+		p.throwParseException(-1, "expected expression")
 		return nil
 	}
 }
@@ -1862,7 +1864,7 @@ func (p *SanyParser) OpOrExpr(stop func(*SanyToken) bool) *SanySyntaxNode {
 	} else if p.scanLookahead(40, 1) {
 		return p.ExpressionUntil(stop)
 	}
-	p.throwParseException(nil, "expected operator or expression")
+	p.throwParseException(-1, "expected operator or expression")
 	return nil
 }
 
@@ -1877,7 +1879,7 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	} else if p.scanLookahead(53, 2147483647) {
 		listKind, itemKind = "N_ConjList", "N_ConjItem"
 	} else {
-		p.throwParseException(nil, "expected junction bullet")
+		p.throwParseException(-1, "expected junction bullet")
 	}
 	items := []*SanySyntaxNode{p.junctionItem(stop, itemKind)}
 	for p.junctionListContext.isNewBullet(p.peek().Begin.Column, p.peek().Kind) {
@@ -1903,7 +1905,7 @@ func (p *SanyParser) junctionItem(stop func(*SanyToken) bool, itemKind string) *
 	}()
 	if !p.check(SanyTokenAND) && !p.check(SanyTokenOR) {
 		p.recordDirectChoice(116)
-		p.throwParseException(nil, "expected junction bullet")
+		p.throwParseException(-1, "expected junction bullet")
 	}
 	bullet := NewSanyTokenNode(p.advance())
 	expression := p.ExpressionUntil(stop)
@@ -1953,7 +1955,7 @@ func (p *SanyParser) isGrammarPostfixOperator(token *SanyToken) bool {
 func (p *SanyParser) OperatorReference() *SanySyntaxNode {
 	if !p.startsDefinitionPrefix() && !p.isGrammarInfixOperator(p.peek()) && !p.isGrammarPostfixOperator(p.peek()) {
 		p.recordDirectChoice(80)
-		p.throwParseException(nil, "expected operator reference")
+		p.throwParseException(-1, "expected operator reference")
 	}
 	tok := p.advance()
 	op, ok := GetSanyOperator(tok.Image)
@@ -2008,7 +2010,7 @@ func (p *SanyParser) OpenExpression(stop func(*SanyToken) bool) *SanySyntaxNode 
 		return p.UnboundOrBoundChoose(stop)
 	default:
 		p.recordDirectChoice(78)
-		p.throwParseException(nil, "expected open expression")
+		p.throwParseException(-1, "expected open expression")
 		return nil
 	}
 }
@@ -2016,7 +2018,7 @@ func (p *SanyParser) OpenExpression(stop func(*SanyToken) bool) *SanySyntaxNode 
 func (p *SanyParser) OpenStart() {
 	if !sanyDirectChoiceAccepts(129, p.peek().Kind) {
 		p.recordDirectChoice(129)
-		p.throwParseException(nil, "expected open expression start")
+		p.throwParseException(-1, "expected open expression start")
 	}
 	p.advance()
 }
@@ -2038,7 +2040,7 @@ func (p *SanyParser) FairnessExpr() *SanySyntaxNode {
 		heirs[0] = NewSanyTokenNode(p.advance())
 	} else {
 		p.recordDirectChoice(113)
-		p.throwParseException(nil, "expected WF_ or SF_")
+		p.throwParseException(-1, "expected WF_ or SF_")
 	}
 	expr := p.ReducedExpression()
 	if p.scanLookahead(51, 2) {
@@ -2112,7 +2114,7 @@ func (p *SanyParser) LetDefinitions() *SanySyntaxNode {
 			heirs = append(heirs, p.Recursive())
 		default:
 			p.recordDirectChoice(114)
-			p.throwParseException(nil, "expected LET definition")
+			p.throwParseException(-1, "expected LET definition")
 		}
 		kind := p.peek().Kind
 		if kind != SanyTokenLocal && kind != SanyTokenDefbreak && kind != SanyTokenRecursive {
@@ -2215,7 +2217,7 @@ func (p *SanyParser) UnboundOrBoundChoose(stop func(*SanyToken) bool) *SanySynta
 		intro = p.IdentifierTuple()
 	default:
 		p.recordDirectChoice(117)
-		p.throwParseException(nil, "expected CHOOSE identifier or tuple")
+		p.throwParseException(-1, "expected CHOOSE identifier or tuple")
 	}
 	maybe := p.MaybeBound()
 	colon := p.consumeParseToken(SanyTokenColon, "expected : in CHOOSE expression")
@@ -2283,7 +2285,7 @@ func (p *SanyParser) SomeQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
 		p.recordDirectChoice(81)
-		p.throwParseException(nil, "expected quantified expression")
+		p.throwParseException(-1, "expected quantified expression")
 	}
 	kind := SanySyntaxNodeKindByName["N_UnboundQuant"]
 	if p.scanLookahead(41, 2147483647) {
@@ -2297,7 +2299,7 @@ func (p *SanyParser) SomeQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 		kind = SanySyntaxNodeKindByName["N_BoundQuant"]
 		if !p.startsQuantBoundIntro() {
 			p.recordDirectChoice(84)
-			p.throwParseException(nil, "expected quantified bound")
+			p.throwParseException(-1, "expected quantified bound")
 		}
 		heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
 		for p.match(SanyTokenComma) {
@@ -2332,7 +2334,7 @@ func (p *SanyParser) SomeTQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
 		p.recordDirectChoice(85)
-		p.throwParseException(nil, "expected temporal quantified expression")
+		p.throwParseException(-1, "expected temporal quantified expression")
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected temporal quantified identifier"))
 	for p.match(SanyTokenComma) {
@@ -2359,7 +2361,7 @@ func (p *SanyParser) PrimitiveExpression() *SanySyntaxNode {
 		return p.FairnessExpr()
 	default:
 		p.recordDirectChoice(77)
-		p.throwParseException(nil, "expected parenthesized expression")
+		p.throwParseException(-1, "expected parenthesized expression")
 		return nil
 	}
 }
@@ -2431,7 +2433,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 				intro = p.Identifier()
 			} else {
 				p.recordDirectChoice(89)
-				p.throwParseException(nil, "expected set bound identifier")
+				p.throwParseException(-1, "expected set bound identifier")
 			}
 			p.expecting = "\\in"
 			in := p.consumeParseToken(SanyTokenIN, "expected \\in in set form")
@@ -2452,7 +2454,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 					readElements(90)
 				default:
 					p.recordDirectChoice(91)
-					p.throwParseException(nil, "expected set continuation")
+					p.throwParseException(-1, "expected set continuation")
 				}
 			} else {
 				p.recordDirectChoice(92)
@@ -2487,13 +2489,13 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 					readElements(96)
 				default:
 					p.recordDirectChoice(97)
-					p.throwParseException(nil, "expected set continuation")
+					p.throwParseException(-1, "expected set continuation")
 				}
 			} else {
 				p.recordDirectChoice(98)
 			}
 		} else {
-			p.throwParseException(nil, "expected set expression")
+			p.throwParseException(-1, "expected set expression")
 		}
 	}
 	close := p.consumeParseToken(SanyTokenRbc, "expected }")
@@ -2530,7 +2532,7 @@ func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 		return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
 	default:
 		p.recordDirectChoice(110)
-		p.throwParseException(nil, "expected >> or >>_")
+		p.throwParseException(-1, "expected >> or >>_")
 		return nil
 	}
 }
@@ -2573,7 +2575,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 		p.recordDirectChoice(102)
 	} else {
 		if !p.scanLookahead(48, 1) {
-			p.throwParseException(nil, "expected bracket expression")
+			p.throwParseException(-1, "expected bracket expression")
 		}
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenArsb || tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenExcept || tok.Kind == SanyTokenEOF
@@ -2605,7 +2607,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 			return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
 		default:
 			p.recordDirectChoice(105)
-			p.throwParseException(nil, "expected bracket expression continuation")
+			p.throwParseException(-1, "expected bracket expression continuation")
 		}
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
@@ -2722,7 +2724,7 @@ func (p *SanyParser) ExceptComponent() *SanySyntaxNode {
 		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ] in EXCEPT component"))
 	default:
 		p.recordDirectChoice(108)
-		p.throwParseException(nil, "expected EXCEPT component")
+		p.throwParseException(-1, "expected EXCEPT component")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_ExceptComponent"], heirs...)
 }
@@ -2743,7 +2745,7 @@ func (p *SanyParser) ReducedExpression() *SanySyntaxNode {
 		return p.TupleOrAction()
 	default:
 		p.recordDirectChoice(112)
-		p.throwParseException(nil, "expected restricted expression after action subscript")
+		p.throwParseException(-1, "expected restricted expression after action subscript")
 		return nil
 	}
 }
@@ -2846,7 +2848,7 @@ func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
 			selector = p.BangOperatorSelector()
 		} else {
 			p.recordDirectChoice(126)
-			p.throwParseException(nil, "expected identifier or operator selector")
+			p.throwParseException(-1, "expected identifier or operator selector")
 		}
 		if p.startsOpArgs(72) {
 			args = p.OpArgs()
@@ -2858,7 +2860,7 @@ func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
 		if p.scanLookahead(74, 1) {
 			selector = p.StructOp()
 		} else {
-			p.throwParseException(nil, "expected argument or structural selector")
+			p.throwParseException(-1, "expected argument or structural selector")
 		}
 	}
 	return bang, selector, args
@@ -2899,7 +2901,7 @@ func (p *SanyParser) NoOpExtensionBase() *SanySyntaxNode {
 	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
 		if !p.check(SanyTokenProofsteplexeme) && !p.check(SanyTokenProofimplicitsteplexeme) {
 			p.recordDirectChoice(122)
-			p.throwParseException(nil, "expected proof expression token")
+			p.throwParseException(-1, "expected proof expression token")
 		}
 		tok := p.advance()
 		node := NewSanyTokenNode(tok)
@@ -2987,7 +2989,7 @@ func (p *SanyParser) StructOp() *SanySyntaxNode {
 		if p.peek().Image == "@" {
 			child = p.consumeParseToken(SanyTokenIdentifier, "expected @")
 		} else {
-			p.throwParseException(nil, "expected structural operator")
+			p.throwParseException(-1, "expected structural operator")
 		}
 	}
 	p.endProduction()
@@ -3341,7 +3343,7 @@ func (p *SanyParser) sourceOperatorToken(site int, nativeMessage string) *SanyTo
 	kind := p.peek().Kind
 	if !sanyDirectChoiceAccepts(site, kind) {
 		p.recordDirectChoice(site)
-		p.throwParseException(nil, nativeMessage)
+		p.throwParseException(-1, nativeMessage)
 	}
 	return p.advance()
 }

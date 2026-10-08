@@ -45,15 +45,12 @@ func (p *SanyParser) recordDirectChoice(site int) {
 }
 
 // Direct expected tokens precede rescan entries in ascending source token order.
-func (p *SanyParser) directExpectedSequences(expected [][]SanyTokenKind) [][]SanyTokenKind {
+func (p *SanyParser) directExpectedSequences() [][]SanyTokenKind {
 	var tokens [295]bool
-	var longer [][]SanyTokenKind
-	for _, sequence := range expected {
-		if len(sequence) == 1 {
-			tokens[sequence[0]] = true
-		} else {
-			longer = append(longer, sequence)
-		}
+	if p.expectedKindRecorded && p.expectedKind >= 0 {
+		tokens[p.expectedKind] = true
+		p.expectedKind = -1
+		p.expectedKindRecorded = false
 	}
 	for site, masks := range sanyDirectChoiceMasks {
 		if !p.directChoiceRecorded[site] || p.directChoiceGeneration[site] != p.at {
@@ -71,27 +68,33 @@ func (p *SanyParser) directExpectedSequences(expected [][]SanyTokenKind) [][]San
 			result = append(result, []SanyTokenKind{SanyTokenKind(kind)})
 		}
 	}
-	return append(result, longer...)
+	return result
 }
 
-// Generated exceptions preserve JavaCC's token and sequence references. Token
-// lookahead fills the chain before either ParseException formatter walks it.
-func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessage string) {
-	expected = p.rescanLookaheads(p.directExpectedSequences(expected))
+// generateParseException ports JavaCC's generated constructor path without
+// consuming tokens or formatting the exception. The failed kind is cleared by
+// directExpectedSequences before saved lookahead calls contribute their entries.
+func (p *SanyParser) generateParseException() *sanyParseException {
+	return &sanyParseException{
+		specialConstructor:     true,
+		currentToken:           p.currentToken(),
+		expectedTokenSequences: p.rescanLookaheads(p.directExpectedSequences()),
+	}
+}
+
+func (p *SanyParser) throwParseException(kind SanyTokenKind, nativeMessage string) {
+	// jj_consume_token obtains the next token before recording the failed kind.
+	token := p.peek()
+	p.expectedKind, p.expectedKindRecorded = kind, kind >= 0
+	failure := p.generateParseException()
 	maxSize := 0
-	for _, sequence := range expected {
+	for _, sequence := range failure.expectedTokenSequences {
 		if len(sequence) > maxSize {
 			maxSize = len(sequence)
 		}
 	}
 	if maxSize > 0 {
 		p.tokenAt(maxSize - 1)
-	}
-	token := p.peek()
-	failure := &sanyParseException{
-		specialConstructor:     true,
-		currentToken:           p.currentToken(),
-		expectedTokenSequences: expected,
 	}
 	failure.diagnostic = p.reportedParseException(failure.shortMessage(), token.Begin, "E1300", nativeMessage).diagnostic
 	panic(failure)
@@ -218,7 +221,7 @@ func (p *SanyParser) throwOperatorStackFailure(failure error, position Position)
 
 func (p *SanyParser) consumeParseToken(kind SanyTokenKind, nativeMessage string) *SanySyntaxNode {
 	if !p.check(kind) {
-		p.throwParseException([][]SanyTokenKind{{kind}}, nativeMessage)
+		p.throwParseException(kind, nativeMessage)
 	}
 	return NewSanyTokenNode(p.advance())
 }

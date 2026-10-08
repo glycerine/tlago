@@ -801,7 +801,7 @@ formatters; ordinary exceptions return their supplied message. Full messages
 escape following tokens and list alternatives; short messages escape only the
 prior token. Both match Java across 2,400 external formatting observations.
 The 341 expected-entry and 5,823 syntax/message rows remain equal. Current
-original frontend/model checks pass in 9.624 seconds, complete SANY in 1.774
+original frontend/model checks pass in 9.867 seconds, complete SANY in 1.967
 seconds and compilation passes. Successful consumption now advances generation
 and cleanup for EOF too; subsequent token requests retain distinct EOF identities
 and linked tokens rather than clamping to the last token. Token-manager and
@@ -812,7 +812,11 @@ helpers are removed. Saved lookaheads now retain Java's actual current consumed
 token instead of the next token. A persistent initial dummy token is shared by
 lookaheads and generated exceptions; rescans start immediately after that saved
 token. All 1,998 saved-reference observations across 74 entry points and 18
-repeated-exception observations agree with Java. Exhaustive malformed rescan contexts,
+repeated-exception observations agree with Java. Exception generation now
+uses the failed token kind, active masks and saved rescans exclusively. The kind
+is cleared after generation; arbitrary expected-sequence injection is removed.
+All 4,144 generation observations match Java, including repeated calls and mask
+unions. Generation alone retains the current token without fetching a successor. Exhaustive malformed rescan contexts,
 syntax AST parity and proof generation remain reconciliation work.
 These bounded observations do not establish every semantic-predicate context or
 full parser parity.

@@ -10340,3 +10340,25 @@ full message and short message. Existing 641 saved-call/direct-choice rows, 341
 expected-entry rows and 5,823 syntax/message rows also agree. This establishes
 these reference paths within the observed contexts, not full ReInit/constructor,
 syntax allocation, semantic graph or evaluator parity.
+
+
+## Exception generation consumes failed-kind state once
+
+Go generateParseException now follows Java's jj_kind path: union the recorded
+failed kind with active direct-choice masks, clear a nonnegative failed kind,
+order singleton alternatives by token kind, then rescan saved calls. Remove the
+native API for injecting arbitrary singleton or longer expected sequences. The
+generated constructor retains the current token and resulting sequences without
+formatting or fetching the next token. Actual consume-failure paths obtain the
+next token first and record their one expected kind (or -1 for a failed choice),
+matching jj_consume_token. Short-message formatting remains the outer reporting
+operation.
+
+External observations exercise seven active-site groups, every failed kind
+including -1, and two consecutive generations: all 4,144 rows match Java on
+ordered entries, kind clearing, current-token identity and an unfetched successor.
+Groups include no sites, one site, overlapping declaration/set/expression masks
+and all 130 sites together. Existing 341 expected-entry, 5,823 syntax/message and
+641 saved-call/direct-choice state rows remain equal. These observations do not
+establish full ReInit/constructor, syntax AST, canonical/evaluator fidelity or
+all malformed rescan contexts.
