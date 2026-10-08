@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-08 Finish Context state-transfer prerequisite; switch to SANY test audit:
+Previous completed commit: 6336b72. Add an exact Context state descriptor and
+runtime import path, preserving oldest-to-newest Pair history, current bucket
+chains, replacement membership, threshold and mapped node identity. The SANY
+exporter retains actual Pair references in those bucket chains instead of
+replaying AddSymbolToContext. Import preserves the runtime ModuleTable owner.
+This is transfer infrastructure, not completed LET bridge wiring: full runtime
+adapters for every Context symbol class are still required before using it in
+LET evaluation/coverage. Do not claim the current filtered LET view is complete.
+
+An external adapter observer reuses the original Context duplication inputs,
+including hash collisions, namespace-separated module names, lookup aliases,
+replacement, mutation, empty contexts and null entries. Recompile/run the actual
+pinned Java observer. All 1,381 Content/lookup/null rows match the transferred
+runtime view; original-history operator order and shared node pointers are also
+checked against retained source Pairs. Null Context/entry duplication exposed
+missing runtime NullPointerException guards; restore those source failures.
+No persistent tests or inventory credit. Source/Go observer logs use
+tlago-context-transfer under /mnt/oldrog/tmp (34818 retired). All-package compile
+passes (70310 retired), and selected original root SANY corpus/context/builtin/
+selector/incremental methods pass in 0.309 seconds (19737 retired). All handles
+are terminal; diff checks pass. Broader canonical graph and native XML gaps remain.
+
+User priority now: finish this chunk, then repair every test-contract defect in
+SANY_TESTS_TO_FIX.md, run the faithfully restored suites and fix all production
+issues they expose. This explicitly authorizes the previously deferred XML test
+and schema work. Do not resume additional LET bridge work before this audit task.
+
 2026-10-07 Share canonical operator identities before body adaptation:
 Previous completed commit: 6c91722; clean tree confirmed before this slice.
 The LET Context audit finds a prerequisite: runtime OpDefNodes still own a

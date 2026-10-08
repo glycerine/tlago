@@ -10790,6 +10790,15 @@ Canonical LET Context and imported-wrapper graph transfer remain pending;
 filtered runtime LET arrays and coverage's reconstructed Hashtable remain
 incomplete representations of source Context membership/history.
 
+Context state transfer now has a source descriptor for retained Pair history
+and actual Hashtable bucket chains. Runtime import builds those structures
+without replaying insertions and retains mapped semantic node/Pair identity,
+the source threshold and the runtime module-table owner. The 1,381 bounded
+Java Content/lookup/null observations agree, including subsequent duplication
+and mutation. This infrastructure is not yet wired into LET: complete symbol
+and graph adapters remain required. The SANY test fidelity audit is now the
+user's priority before further bridge integration.
+
 Java Spec's toolId is static final and obtained once from semantic.FrontEnd's
 allocator. Current specToolID uses sync.Once for the same ownership. The tool
 ID is shared by subclasses; allocating a new ID for each ordinary Tool would

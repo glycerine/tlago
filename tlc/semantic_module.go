@@ -106,9 +106,15 @@ func (c *SemanticContext) OccurSymbol(key SemanticContextKey) bool {
 }
 
 func (c *SemanticContext) Duplicate(table *ExternalModuleTable) *SemanticContext {
+	if c == nil {
+		panic(NewNullPointerException())
+	}
 	dup := NewSemanticContext(table)
 	var tail *semanticContextPair
 	for pair := c.lastPair; pair != nil; pair = pair.link {
+		if pair.node == nil {
+			panic(NewNullPointerException())
+		}
 		// Java uses info.getName(), even when the source entry used the
 		// distinct ModuleName namespace or another context lookup name.
 		key := SemanticContextKey{Name: pair.key.Name}

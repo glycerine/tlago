@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 7, 2026. Full-workspace verification baseline: `44aaf11`.
+Updated: October 8, 2026. Full-workspace verification baseline: `44aaf11`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -22,7 +22,11 @@ The Java reference checkout is `../tlaplus`, pinned to
 `github.com/glycerine/tlago`; most TLC implementation lives in package `tlc`,
 with parser integration and model tests in the repository's root package.
 
-Current priority: finish faithful Java TLC parity on `master`. The new reusable
+Current priority: repair every test-contract defect in
+[SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md), then run the restored original
+SANY suites and fix their production failures. This includes XML entry points,
+schema validation and the exact diagnostic/logger contracts. Resume remaining
+faithful Java TLC parity afterward on `master`. The new reusable
 rpc25519/Tube distributed service is postponed until the remaining port is
 complete. Do not resume its unfinished code or its service BDD work here.
 
@@ -43,7 +47,8 @@ Email reporting is forbidden and its removal is already committed. Do not
 restore JavaMail, SMTP, MIME/Activation, ImageIO/AWT, image codecs, or JVM
 emulation pursued for email. Preserve generic exceptions, console output,
 packaged properties, networking primitives, OpenJDK notices, and `x/text`.
-Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
+The current user request authorizes the SANY XML repairs listed in the audit.
+ApalacheIR corpus sweeps remain deferred.
 
 ## Current verified state
 
@@ -475,6 +480,12 @@ This prepares canonical LET Context transfer, which is still pending. Preserve
 source Context Pair history and Hashtable buckets rather than reconstructing
 them from filtered `getLets` definitions; module-instance and theorem entries
 must not disappear. Full run receipts belong in PORT_PROGRESS.md.
+
+The operator identity changes are committed as `6336b72`. Context transfer
+infrastructure now preserves separate source Pair history and Hashtable bucket
+chains, with exact runtime null-duplication failures. All 1,381 bounded Java
+Content/lookup/null observations match. Full LET bridge wiring remains pending;
+the user's SANY test fidelity audit takes priority before that work resumes.
 
 Recursive declarations now update the actual node and unresolved counters inside
 `endRecursiveDefinition`, before label-scope completion. Canonical named functions
