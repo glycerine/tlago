@@ -1632,7 +1632,7 @@ func (s *MultiFPSet) RecoverTrace(trace *TLCTrace) error {
 		if err != nil {
 			return err
 		}
-		if err := s.RecoverFP(fp); err != nil {
+		if err := s.fpSet(fp).RecoverFP(fp); err != nil {
 			return err
 		}
 	}

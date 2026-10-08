@@ -11294,3 +11294,18 @@ They require retained inactive/unreached slots, completed enqueue records,
 partial worker/UID fields, the original queue-header updates and failure before
 fingerprint recovery, hostname lookup or publication. These checks add no
 original-method credit. Later recovery phases and broader parity remain pending.
+
+MultiFPSet.RecoverTrace now invokes fpSet(fp).RecoverFP(fp), matching source
+getFPSet(fp).recoverFP(fp). Its own RecoverFP method remains the separate source
+operation that uses parent Put and the FP-not-in-set assertion. The old trace
+path incorrectly used that parent operation, bypassing child disk/off-heap
+recovery insertion/flush semantics and replacing duplicate recovery-corruption
+handling with FP-not-in-set. Four native cases retain the exact child runtime
+code/parameters or one duplicate-warning event with continued reconstruction,
+source option settings, selected partitions and prior insertions. Error-message
+construction emits its source formatting-only recorder event without printing
+a warning; the native oracle distinguishes that event from diagnostics. A fifth
+case injects a selected child's checked I/O failure after real trace and disk
+queue recovery, requiring original cause identity, partial insertions and no
+later publication or recovery-end/initialization output. No disabled original
+harness completion credit is assigned. Broader parity remains incomplete.

@@ -19308,3 +19308,31 @@ local/single/partitioned TCP assigned-block recovery selection passes in 0.060
 seconds (17104 terminal status 0). All handles are retired. No full suite, long
 model or race instrumentation was selected. Later recovery phases and broader
 distributed parity remain incomplete.
+
+## October 8, 2026: nested fingerprint trace recovery dispatch
+
+MultiFPSet trace recovery now invokes the selected child's RecoverFP, matching
+MultiFPSet.java, rather than invoking the parent's insertion-based operation.
+This preserves disk/off-heap duplicate recovery errors and warning policy,
+partition routing, partial insertion and child I/O failures before coordinator
+publication. The separate parent RecoverFP operation is unchanged.
+
+Four supplemental native disk/off-heap warning/error cases initially failed
+against production in 0.072 seconds. After fixing dispatch, corrected the native
+oracle to retain the source formatting-only exception message event rather than
+mistaking it for a printed warning. Added real queue/trace coordinator recovery
+with a child I/O failure and checked exact failure identity, partial fingerprint
+mutation, restored queue and absence of publication. These checks do not claim
+additional original Java method completion. Focused native/trace and original
+short MultiFPSet methods pass in 3.435 seconds; the final native nested, queue,
+assigned-block and trace selection passes in 0.145 seconds.
+
+The existing original LSB/MSB recovery, forced-flush recovery and duplicate
+recovery methods all pass with unchanged workload bounds, normally without race
+instrumentation: six method contexts, 478.063 seconds total (LSB 58.09 seconds;
+MSB 419.63 seconds). The earlier one-minute watchdog expired after 60.308
+seconds; the authoritative retry, session 40715, exited successfully with a
+larger ten-minute watchdog. Receipt:
+/mnt/oldrog/tmp/tlago-nested-recovery-original-methods.log. All handles are
+terminal and retired. No full suite was rerun. Distributed parity remains
+incomplete; transport remains native Go, without RMI or Java serialization.

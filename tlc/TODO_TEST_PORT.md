@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native nested recovery checks now require selected-child RecoverFP dispatch,
+source disk/off-heap duplicate failure or warning-and-continue behavior, exact
+partition routing and retained earlier insertions. Child I/O failure must escape
+after real queue recovery and before coordinator publication, without replacing
+its cause. No enabled original method covers this complete dispatch boundary;
+supplemental checks add no original-method credit.
+
 Native queue recovery failure checks cover enqueue/dequeue records truncated
 before UID or level. They require untouched slots, publication of the new empty
 state before reading, completed header-field mutations and failure before FP

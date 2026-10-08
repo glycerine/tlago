@@ -73,6 +73,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+MultiFPSet trace recovery now calls the selected child's RecoverFP method,
+matching source dispatch. Disk and off-heap children retain recovery-corruption
+failures or duplicate warnings according to the source option, with exact
+partition routing and partial insertion state. A child I/O failure escapes
+coordinator recovery after the queue is restored and before publication.
+These supplemental native checks add no original-method completion credit.
+
 Disk queue recovery now retains source partial mutation on failed state reads.
 Untouched buffer slots survive; each visited slot receives its empty state before
 reading, and completed worker/UID fields survive a later read failure. The input
