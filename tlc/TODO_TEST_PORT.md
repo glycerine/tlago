@@ -788,6 +788,11 @@ temporary ordering, stale creation errors, retained owners/pointers, exact metad
 bytes and lock release. Worker commit joins the existing missing-temporary,
 blocked-delete and successful-promotion matrix, including native I/O payloads and
 file mutation ordering.
+Five worker read-owner cases retain original owner/last-pointer identity, stale
+error handling, closed-owner mark-before-seek order and high-bit fingerprints.
+Every partial length from zero through twelve bytes retains its consumed cursor;
+the complete thirteen-byte record restores the saved writer position. No original
+method directly covers these boundaries; completion counts remain unchanged.
 Upstream has no direct methods for these failure boundaries; completion counts
 are unchanged.
 

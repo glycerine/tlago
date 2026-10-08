@@ -606,11 +606,8 @@ func (w *Worker) traceRecordsFallback() []TraceRecord {
 func (w *Worker) ReadStateRecord(ptr int64) (ConcurrentTraceRecord, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if err := w.ensureTraceRAF(); err != nil {
-		return ConcurrentTraceRecord{}, err
-	}
 	if w.traceRAF == nil {
-		return ConcurrentTraceRecord{}, newTLCError(ECGeneral, "worker has no trace file")
+		panic(NewNullPointerException())
 	}
 	w.traceRAF.Mark()
 	if err := w.traceRAF.Seek(ptr); err != nil {

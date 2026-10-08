@@ -21503,3 +21503,30 @@ pass (7b3158, status 0, 54.438 seconds). The time-bound model retains five secon
 All processes are terminal. No full suite or race run was performed. Supplemental
 cases add no original-method credit. Worker construction, filename/context guards,
 other owner access and trace cleanup remain pending; distributed parity is incomplete.
+
+### 2026-10-08: Worker trace-read ownership and cursor lifetime
+
+Compared Worker.readStateRecord with pinned Java. Removed lazy owner creation and
+saved-creation-error preflight from reads. The existing owner is required before
+mark publication. Mark remains before seek, including closed-owner seek failure;
+only a complete predecessor/worker/fingerprint record restores the saved cursor.
+Partial reads retain consumed positions and return no record. Owner identity and
+the writer's last pointer remain unchanged.
+
+No original method directly covers these read boundaries. Five supplemental owner
+cases cover healthy/missing/closed owners and saved errors with/without an existing
+owner, including high-bit fingerprints and lock release. Three cases initially
+failed because reads reopened owners or consulted saved errors (e0ebed, status 1,
+0.016 seconds). Fourteen length cases cover every zero-through-twelve-byte partial
+record and the complete thirteen-byte record. They retain the saved mark and
+consumed failure cursor; successful reads restore the original writer position.
+No original Java test assertion was changed.
+
+Final worker/concurrent/distributed trace, recovery/checkpoint and original short
+smart-proxy/simulation trace checks pass (3dc66d, status 0, 0.275 seconds). Original
+checkpoint-on-violation/time-bound and error-trace models plus all four existing
+DieHard/TSnapShot process storage variants pass (833754, status 0, 53.533 seconds).
+The time-bound workload retains five seconds. All check processes are terminal.
+No full suite or race run was performed. Supplemental cases add no original-
+method credit. Worker construction, filename/context guards, writer owner access
+and trace cleanup remain pending; distributed parity is incomplete.

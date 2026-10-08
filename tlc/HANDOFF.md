@@ -192,9 +192,11 @@ reopen missing or closed owners; closing retains the closed handle. Truncated
 checkpoint reads leave the pointer unchanged. Checkpoint creation also requires
 the existing owner: it flushes before opening/truncating temporary metadata and
 does not consult a saved creation error. Commit failures preserve source I/O
-classification, text and delete-before-promotion mutations. Worker construction,
-filename/context guards, other owner access and trace cleanup boundaries still
-need audit.
+classification, text and delete-before-promotion mutations. Record reads also
+require the existing owner and ignore saved creation errors. They publish the
+mark before seeking, restore the cursor only after a complete record, and retain
+consumed bytes after partial reads. Worker construction, filename/context guards,
+writer owner access and trace cleanup boundaries still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes
