@@ -21133,3 +21133,41 @@ DieHard fingerprint-storage variants pass unchanged trace/event assertions
 race run was performed. Supplemental checks add no original-method credit.
 Missing-tool and concurrent enumerator boundaries still need audit; distributed
 parity remains incomplete. No RMI or JVM machinery was introduced.
+
+### 2026-10-08: Concurrent and worker trace enumerator contracts
+
+Compared source ConcurrentTLCTrace.elements and Worker.Enumerator with Go.
+Concurrent creation now requires each worker under the trace monitor, preserving
+source order without fabricating empty readers or adding a cleanup loop when a
+later construction fails. Worker reader creation snapshots the existing writer
+cursor and opens the read-only file; removed writer reopening, extra flushing
+and missing-resource substitution. This preserves source unflushed-buffer behavior.
+
+Worker HasMoreFP now preserves cursor errors rather than treating them as EOF;
+its checked native form lets NextFP return the same failure before selector
+advancement, while NextPos propagates it. Concurrent exhausted reads preserve
+source index failures instead of returning fingerprint zero. Reader close stops
+at the first failure, leaves later readers untouched and retains the closed owner
+so subsequent access sees the original resource failure. Source neighbor-only
+position advancement and selector-only reset remain unchanged.
+
+No original method directly covers these boundaries. Added native checks for
+zero/one-reader exhausted access, position/fingerprint cursor failures, underlying
+close failure order, missing enumerated worker, unflushed writer snapshot and
+normal advance/reset. The five boundary test groups initially failed (7b9826,
+status 1, 0.013 seconds). Initial corrected new/related trace checks pass (88228d,
+status 0, 1.940 seconds). Added missing/closed writer and removed reader-file
+checks, plus empty-neighbor and genuine zero-fingerprint behavior. Final new/
+related concurrent lifecycle/ownership/reconstruction, shared trace sequence,
+metadata, cursor/depth/write failures, disk/nested recovery and original nine
+smart-proxy checks pass (4dbb92, status 0, 1.503 seconds).
+
+Original checkpoint-on-violation/time-bound, Alias safety/liveness, TLCExtTrace
+alias, error-trace construction and three distributed initializer-continue,
+evaluator-error and TLCSet model contexts pass (73a1b0, status 0, 8.284 seconds).
+The time-bound model retains its original five seconds. Both actual distributed
+DieHard fingerprint-storage variants pass unchanged trace/event assertions
+(a37ffd, status 0, 24.369 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit.
+Missing-tool and remaining trace cleanup boundaries still need audit;
+distributed parity remains incomplete. No RMI or JVM machinery was introduced.

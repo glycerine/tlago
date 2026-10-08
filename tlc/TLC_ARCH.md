@@ -11936,5 +11936,14 @@ caller controls traversal termination. Checkpoint begin, commit and recovery
 require every worker in source order; failure preserves earlier mutations and
 stops before later workers or marker publication. Begin holds the trace monitor,
 as does level reporting. Concurrent levels use worker maxima with a minimum of
-one and do not consult the base trace level. Missing-tool and concurrent
-enumerator boundaries still need audit. No RMI or JVM machinery is introduced.
+one and do not consult the base trace level. Enumeration constructs required
+worker readers under the trace monitor, preserving source creation order without
+an added cleanup loop on construction failure. A worker reader snapshots the
+existing writer cursor and opens a separate read-only file without flushing or
+reopening the writer. Cursor failures propagate before selector advancement, and
+exhausted fingerprint access returns an index failure instead of fabricated zero.
+Close stops on its first failure and retains the reader owner, so subsequent
+access still observes the closed resource. Position lookup checks only the next
+neighbor; reset changes only the selector, preserving child-reader positions.
+Missing-tool and remaining trace cleanup boundaries still need audit. No RMI or
+JVM machinery is introduced.

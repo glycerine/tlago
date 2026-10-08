@@ -314,19 +314,17 @@ func (t *ConcurrentTLCTrace) Recover() error {
 
 func (t *ConcurrentTLCTrace) Elements() (*ConcurrentTraceEnumerator, error) {
 	if t == nil {
-		return &ConcurrentTraceEnumerator{}, nil
+		panic(NewNullPointerException())
 	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	enums := make([]*WorkerTraceEnumerator, len(t.Workers))
 	for i, worker := range t.Workers {
 		if worker == nil {
-			enums[i] = &WorkerTraceEnumerator{}
-			continue
+			panic(NewNullPointerException())
 		}
 		enum, err := worker.Elements()
 		if err != nil {
-			for _, opened := range enums {
-				_ = opened.Close()
-			}
 			return nil, err
 		}
 		enums[i] = enum
@@ -380,46 +378,75 @@ type ConcurrentTraceEnumerator struct {
 }
 
 func (e *ConcurrentTraceEnumerator) NextPos() int64 {
-	if e == nil || e.idx >= len(e.enums) {
+	if e == nil {
+		panic(NewNullPointerException())
+	}
+	if e.idx >= len(e.enums) {
 		return -1
 	}
-	if e.enums[e.idx].HasMoreFP() {
+	reader, err := e.readerAtCurrentIndex()
+	if err != nil {
+		panic(err)
+	}
+	if reader.HasMoreFP() {
 		return 42
 	}
 	if e.idx+1 >= len(e.enums) {
 		return -1
 	}
 	e.idx++
-	if e.enums[e.idx].HasMoreFP() {
+	reader, err = e.readerAtCurrentIndex()
+	if err != nil {
+		panic(err)
+	}
+	if reader.HasMoreFP() {
 		return 42
 	}
 	return -1
 }
 
+func (e *ConcurrentTraceEnumerator) readerAtCurrentIndex() (*WorkerTraceEnumerator, error) {
+	if e == nil {
+		return nil, NewNullPointerException()
+	}
+	if e.idx < 0 || e.idx >= len(e.enums) {
+		return nil, NewArrayIndexOutOfBoundsException(e.idx, len(e.enums))
+	}
+	if e.enums[e.idx] == nil {
+		return nil, NewNullPointerException()
+	}
+	return e.enums[e.idx], nil
+}
+
 func (e *ConcurrentTraceEnumerator) NextFP() (uint64, error) {
-	if e == nil || e.idx >= len(e.enums) {
-		return 0, nil
+	reader, err := e.readerAtCurrentIndex()
+	if err != nil {
+		return 0, err
 	}
-	if !e.enums[e.idx].HasMoreFP() {
+	more, err := reader.HasMoreFPWithError()
+	if err != nil {
+		return 0, err
+	}
+	if !more {
 		e.idx++
+		reader, err = e.readerAtCurrentIndex()
+		if err != nil {
+			return 0, err
+		}
 	}
-	if e.idx >= len(e.enums) {
-		return 0, nil
-	}
-	return e.enums[e.idx].NextFP()
+	return reader.NextFP()
 }
 
 func (e *ConcurrentTraceEnumerator) Close() error {
 	if e == nil {
-		return nil
+		return NewNullPointerException()
 	}
-	var err error
 	for _, enum := range e.enums {
-		if closeErr := enum.Close(); closeErr != nil && err == nil {
-			err = closeErr
+		if err := enum.Close(); err != nil {
+			return err
 		}
 	}
-	return err
+	return nil
 }
 
 func (e *ConcurrentTraceEnumerator) Reset(pos int64) {

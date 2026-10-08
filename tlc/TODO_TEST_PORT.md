@@ -727,8 +727,11 @@ worker records verify full and requested predecessor ranges, while reconstructio
 checks verify the trace monitor is held and released on success/failure. Native
 checkpoint/level checks require each worker in order, preserve earlier mutations
 and suppress later worker/marker operations after a missing slot. Level checks
-retain the source worker-only maximum and minimum of one. No original-method
-credit is added.
+retain the source worker-only maximum and minimum of one. Native enumerator
+checks preserve exhausted-index and closed-cursor failures, first-failure close
+ordering, required worker/writer/file access, unflushed reader construction,
+neighbor-only advancement, genuine zero fingerprints and selector-only reset.
+No original-method credit is added.
 
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed

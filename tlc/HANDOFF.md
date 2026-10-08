@@ -143,8 +143,13 @@ do not require workers. Checkpoint begin, commit and recovery require each
 worker in source order, preserving earlier mutations and stopping before later
 workers or marker publication on failure. Begin and level reporting hold the
 trace monitor. Level reporting uses worker maxima with a minimum of one; it
-does not substitute the base trace level. Missing-tool and concurrent enumerator
-boundaries still need audit.
+does not substitute the base trace level. Concurrent enumeration creates required
+worker readers under the trace monitor. Reader creation snapshots the existing
+writer cursor without flushing or reopening the writer. Cursor failures propagate
+before selector advancement; exhausted fingerprint access fails instead of
+returning zero. Closing stops at the first failure and retains the closed reader
+owner. Neighbor-only advancement and selector-only reset preserve source behavior.
+Missing-tool and remaining trace cleanup boundaries still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

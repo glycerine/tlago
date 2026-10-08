@@ -746,34 +746,19 @@ func (w *Worker) DeleteTrace() error {
 
 func (w *Worker) Elements() (*WorkerTraceEnumerator, error) {
 	if w == nil {
-		return &WorkerTraceEnumerator{}, nil
+		panic(NewNullPointerException())
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if err := w.ensureTraceRAF(); err != nil {
+	if w.traceRAF == nil {
+		panic(NewNullPointerException())
+	}
+	length, err := w.traceRAF.GetFilePointer()
+	if err != nil {
 		return nil, err
-	}
-	if w.traceRAF != nil {
-		if err := w.traceRAF.Flush(); err != nil {
-			return nil, err
-		}
-	}
-	if w.traceFileBase == "" {
-		return &WorkerTraceEnumerator{}, nil
-	}
-	length := int64(0)
-	if w.traceRAF != nil {
-		filePtr, err := w.traceRAF.GetFilePointer()
-		if err != nil {
-			return nil, err
-		}
-		length = filePtr
 	}
 	raf, err := NewBufferedRandomAccessFile(w.traceFileBase+tlcTraceExt, "r")
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return &WorkerTraceEnumerator{}, nil
-		}
 		return nil, err
 	}
 	return &WorkerTraceEnumerator{length: length, raf: raf}, nil
@@ -785,16 +770,27 @@ type WorkerTraceEnumerator struct {
 }
 
 func (e *WorkerTraceEnumerator) HasMoreFP() bool {
+	more, err := e.HasMoreFPWithError()
+	if err != nil {
+		panic(err)
+	}
+	return more
+}
+
+func (e *WorkerTraceEnumerator) HasMoreFPWithError() (bool, error) {
 	if e == nil || e.raf == nil {
-		return false
+		return false, NewNullPointerException()
 	}
 	pos, err := e.raf.GetFilePointer()
-	return err == nil && pos < e.length
+	if err != nil {
+		return false, err
+	}
+	return pos < e.length, nil
 }
 
 func (e *WorkerTraceEnumerator) NextFP() (uint64, error) {
 	if e == nil || e.raf == nil {
-		return 0, nil
+		return 0, NewNullPointerException()
 	}
 	if _, err := e.raf.ReadLongNat(); err != nil {
 		return 0, err
@@ -808,11 +804,9 @@ func (e *WorkerTraceEnumerator) NextFP() (uint64, error) {
 
 func (e *WorkerTraceEnumerator) Close() error {
 	if e == nil || e.raf == nil {
-		return nil
+		return NewNullPointerException()
 	}
-	err := e.raf.Close()
-	e.raf = nil
-	return err
+	return e.raf.Close()
 }
 
 func (w *Worker) GetLocalValue(index int) Value {
