@@ -940,6 +940,13 @@ Short native checks cover six queue success/failure cases, nine missing-owner
 cases and a joined real reporting wait. Upstream has no direct methods for
 these controls; no original test statuses or completion credit change.
 
+Native printable-state transfer now retains shared record/value/cache identity,
+default display, extra fields and fingerprints over gob/TCP and worker exception
+contexts. A real transfer check exposed and fixed ToState’s pointer comparison
+where the source uses token equality. Existing original record/alias methods
+remain green; no direct original printable-state transfer tests exist, so these
+supplemental checks add no original-method status or completion credit.
+
 Native state-cache transfer now retains map identity, separate equal-content
 maps, nil/empty maps, null entries and shared/recursive values across state
 roots and predecessors. Gob/TCP requests, results and exception contexts pass.

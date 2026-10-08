@@ -20273,3 +20273,36 @@ pass (23545, status 0, 0.046 seconds). Expanded exception-context map-sharing
 assertions pass in final handle 32991. All handles are terminal. No full suite,
 long workload or race selection was run. Remaining evaluator/custom metadata
 and broader distributed completion are still separately tracked.
+
+### 2026-10-08: Native record-backed printable states
+
+Audited RecordValue.PrintTLCState: it inherits TLCState’s serializability and
+holds a RecordValue plus underlying state. Added the native PrintRecord value
+reference to state nodes, preserving record identity with caches, state values
+and other printable states. Decoding validates both the ID and RecordValue
+type. Existing value graphs preserve record/name/value sharing and receiver
+isolation. All communicating roles need the updated native payload build.
+No Java serialization, RMI or evaluator reconstruction is introduced.
+
+Supplemental gob/TCP tests retain default display, fields outside spec variables,
+underlying fingerprints, repeated-state/record identity, cache/value sharing,
+stored UID/level and WorkerException context. Malformed record IDs/types fail.
+A transfer test exposed a real RecordValue.ToState shortcut (31631, status 1,
+0.012 seconds): its field-name pointer comparison skipped received names.
+Changed the comparison to source UniqueString.equals(UniqueString)’s token
+equality; the received record now binds local spec variables. The _format
+selection is a distinct source identity rule: Arrays.asList.indexOf calls
+Object.equals, which UniqueString does not override. A separate local/received
+format-name check retains that behavior rather than changing it along with
+ToState. No direct original printable-state transfer methods exist, so the
+new checks add no original-method credit.
+
+Focused printable/cache/predecessor/state/result/failure graph, both original
+RecordValueTest methods and nine original smart-proxy contexts pass (38506,
+status 0, 0.020 seconds). Native TCP metadata graphs, lifecycle/failure/codec
+and assigned-block checkpoint checks pass 0.048 seconds. Expanded format-name
+and existing pairwise alias checks pass (65152, status 0, 1.575 seconds).
+The original root Alias safety model, retaining its exact four-state trace and
+statistics, passes (53406, status 0, 0.240 seconds). All handles are terminal.
+No full suite, long workload or race selection was run. Other evaluator/custom
+metadata and broader distributed completion remain separately tracked.

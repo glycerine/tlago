@@ -43,6 +43,7 @@ type DistributedStateNode struct {
 	ValuesNil   bool
 	Predecessor int
 	Cache       int
+	PrintRecord int
 }
 
 type DistributedStringNode struct {
@@ -146,7 +147,7 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 	}
 	// Evaluator objects require their own representation and must not be dropped.
 	// Predecessor links use the same native state graph as invocation roots.
-	if state.functional || state.functionalBindings != nil || state.action != nil || state.callable != nil || state.printRecord != nil {
+	if state.functional || state.functionalBindings != nil || state.action != nil || state.callable != nil {
 		return 0, fmt.Errorf("network state contains extended evaluator metadata")
 	}
 	id := len(e.payload.States) + 1
@@ -171,7 +172,11 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil, Predecessor: predecessor, Cache: cache}
+	printRecord, err := e.value(state.printRecord)
+	if err != nil {
+		return 0, err
+	}
+	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil, Predecessor: predecessor, Cache: cache, PrintRecord: printRecord}
 	return id, nil
 }
 
@@ -606,6 +611,14 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, err
 		}
 		objects[i] = &TLCStateMut{WorkerID: node.WorkerID, UID: node.UID, level: int(node.Level), values: values}
+		record, err := decoder.value(node.PrintRecord)
+		if err != nil {
+			return nil, fmt.Errorf("state print record: %w", err)
+		}
+		objects[i].printRecord, err = distributedValueCast[*RecordValue](record)
+		if err != nil {
+			return nil, fmt.Errorf("state print record: %w", err)
+		}
 		if node.Cache < 0 || node.Cache > len(caches) {
 			return nil, fmt.Errorf("invalid distributed state cache reference %d", node.Cache)
 		}

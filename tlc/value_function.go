@@ -604,7 +604,7 @@ func (v *RecordValue) ToState() *TLCStateMut {
 	state := NewEmptyState()
 	for _, variable := range StateVariables() {
 		for i, name := range v.Names {
-			if name == variable.Name {
+			if name.Equal(variable.Name) {
 				state.Bind(variable.Name, v.Values[i])
 			}
 		}

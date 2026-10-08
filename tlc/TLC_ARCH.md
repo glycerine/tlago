@@ -11676,3 +11676,27 @@ need the updated native payload build. No Java serialization or RMI is added.
 Gob/TCP requests, results and WorkerException contexts verify mutation-visible
 sharing with isolated sender ownership. There are no direct upstream cache
 transfer tests, so supplemental checks add no original-method credit.
+
+
+### Native record-backed printable state transfer
+
+RecordValue.PrintTLCState inherits TLCState’s serializability and holds its
+record plus underlying state. The native Go state representation’s printRecord
+now refers to the existing value graph through DistributedStateNode.PrintRecord.
+Decoding requires a RecordValue and rejects invalid IDs or other value types.
+Sharing with state values, caches and other printable states remains visible
+without aliasing sender storage. State fields and ordinary-state distinctions
+remain unchanged; all communicating roles need the updated payload build.
+
+Transfer exposed a separate RecordValue.ToState shortcut: source
+UniqueString.equals(UniqueString) compares tokens, while Go compared pointers.
+ToState now uses token equality when binding spec variables, allowing received
+record names to bind local variable objects. PrintTLCState’s _format selection
+uses Arrays.asList.indexOf/Object.equals instead: UniqueString does not override
+Object.equals. Its existing identity behavior is retained and explicitly
+checked; received format-name objects do not match the static format object.
+Gob/TCP request/result/WorkerException checks preserve default display, extra
+record fields, shared records/values, stored UID/level and state fingerprints.
+Existing original record methods and Alias safety checks remain green. No direct
+upstream printable-state transfer tests exist; supplemental checks add no
+method credit. No Java serialization/RMI/JVM implementation is introduced.

@@ -233,6 +233,16 @@ receiver ownership across gob and worker TCP. Further metadata/custom-data and
 process failure/recovery work remains pending.
 These short native checks add no original-method completion credit.
 
+Record-backed printable states now retain their record through the native value
+graph, including sharing with caches, ordinary state values and other printable
+states. Gob/TCP request/result/failure checks preserve default display, extra
+record fields, stored metadata and underlying fingerprints. `RecordValue.ToState`
+now compares variable-name tokens as the source does, so received records bind
+local spec variables correctly. The source’s separate `_format` object-identity
+behavior remains covered. Invalid print-record IDs/types are rejected. All roles
+need the current payload build. Existing original record and alias checks pass;
+new transfer checks add no original-method credit.
+
 Native cached-state transfer now retains populated, empty and nil maps. Shared
 cache maps stay shared across roots and predecessor states; equal-content
 separate maps remain separate. Cached values share the invocation’s existing
