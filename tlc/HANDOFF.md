@@ -50,6 +50,15 @@ absence of GENERAL remain required. This adds no disabled-harness completion
 credit. Full-model server restart/recovery, other failure phases and network
 partitions remain pending.
 
+Short native worker reply-loss checks now hold a fully computed result, close its
+TCP host, and run coordinator cleanup before releasing the old reply. Single-state
+blocks retire immediately; multi-state EOF preserves the source smaller-block
+retry before the closed connection causes retirement. All assigned work remains
+queued in source order, with no FP/trace/result-statistics publication. Repeated
+loss/timer reports do not repeat deregistration. The worker runtime stays alive;
+late replies cannot publish into the coordinator. These supplemental checks add
+no original-method credit or full-model network partition claim.
+
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production
 implementation. Fix implementation shortcuts before proceeding. Preserve the

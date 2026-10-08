@@ -22284,3 +22284,34 @@ and inspected and all processes are terminal. No original bounds/assertions
 changed. No full suite or race run was performed. No original Java method directly
 covers this prefix; supplemental cases add no original-method credit. Distributed
 completion remains unproven.
+
+### 2026-10-08: Lost computed worker replies over native TCP
+
+Reviewed TLCServerThread EOF retry, worker-loss cleanup and result publication
+against pinned source. Added two short native cases with a real DistributedWorker
+computation held before endpoint serialization. Closing the TCP host retires the
+connection while keeping the worker runtime alive. A single-state block retires
+directly; a two-state EOF requeues and halves the limit, then the closed-client
+retry retires the worker and requeues its smaller assigned block. Source queue
+rotation is checked exactly. No reply can publish fingerprints, trace records,
+received states, keepalive timestamps or generated-state deltas. Repeated loss
+and timer reports retain one deregistration and the same pending work. Source
+retry/loss counts and the exact final cache-statistic warning remain required.
+Late replies are released only after coordinator cleanup; accepted handlers are
+joined before fixture/global restoration. No production change was needed.
+
+Initial cases pass (worker-lost-reply-focused.log, terminal process 107b59 status
+0; package time 0.018 seconds). Related short WorkerRPC, worker-loss, timer and
+original smart-proxy checks pass (worker-lost-reply-related.log, terminal process
+6a4432 status 0; package time 0.049 seconds). A short-only race selection of the
+new cases and concurrent duplicate-loss cleanup passes (worker-lost-reply-short-
+race.log, terminal process 1fc986 status 0; package time 1.050 seconds). After
+adding complete accepted-handler joins, final related normal checks pass
+(worker-lost-reply-related-final.log, terminal process f2f808 status 0; package
+time 0.049 seconds) and the same two short concurrency checks pass under race
+(worker-lost-reply-short-race-final.log, terminal process f117d9 status 0; package
+time 1.050 seconds). Logs were inspected; processes are terminal. No long workload
+was combined with race and no full suite was run. No original assertion or bound
+changed. These native cases have no direct original counterpart and add no method
+credit. Full-model network partitions and the previously listed distributed
+restart/recovery and interruption gaps remain pending.

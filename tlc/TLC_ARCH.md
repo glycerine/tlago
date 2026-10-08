@@ -12062,3 +12062,14 @@ files for this prefix too. Memory-only traces retain their separate behavior.
 The checks construct filenames entirely inside temporary storage, so no root
 filesystem file is created. They do not establish the separate isolated full-model
 trace-commit interruption boundary.
+
+Native worker reply loss is covered separately from worker process death. The
+short checks hold an actual computed result before endpoint serialization, close
+the TCP host and let the coordinator finish source retry/loss cleanup before
+releasing the reply. A multi-state EOF requeues the block and halves the limit;
+the next closed-client call retires the worker and requeues the smaller assigned
+block. A single-state EOF retires directly. Neither path publishes fingerprints,
+trace records, received-state counts, timestamps or generation deltas. Repeated
+loss/timer reports retain one deregistration, and late replies do not publish.
+Closing transport does not terminate the owned worker runtime. This is short
+native connection-loss coverage, not full-model network partition completion.

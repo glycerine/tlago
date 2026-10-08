@@ -1399,6 +1399,12 @@ states; existing ordinary model rows keep their 114,942 assertions. This adds
 native failure coverage, not completion credit for the disabled Java harness.
 Full-model fingerprint-server restart/recovery, other failure phases and network
 partitions remain open.
+Short native worker reply-loss cases additionally retain fully computed but
+unreceived results behind a gate, close TCP and require source coordinator
+retry/requeue/deregistration before releasing the old reply. They verify no
+FP/trace/statistics publication, exact source diagnostics and no repeated cleanup,
+with the worker runtime still alive. These cases add no original-method credit
+and do not complete full-model network partition coverage.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
 distinction between null vectors, null words and initialized empty words.
