@@ -8,13 +8,19 @@ import (
 
 // No enabled original method covers these checkpoint commit failure boundaries.
 func TestDistributedCheckpointCommitRetainsIOAndFileMutation(t *testing.T) {
-	for _, owner := range []string{"trace", "memory_queue", "disk_queue"} {
+	for _, owner := range []string{"trace", "worker", "memory_queue", "disk_queue"} {
 		for _, phase := range []string{"missing_temporary", "blocked_delete", "success"} {
 			t.Run(owner+"/"+phase, func(t *testing.T) {
 				directory := t.TempDir()
 				var commit func() error
 				var oldPath, newPath, message string
 				switch owner {
+				case "worker":
+					worker := NewWorker(0)
+					worker.SetTraceContext(directory, "Spec")
+					commit = worker.CommitChkpt
+					oldPath, newPath = worker.traceFileBase+".chkpt", worker.traceFileBase+".tmp"
+					message = "Trace.commitChkpt: cannot delete "
 				case "trace":
 					trace := NewTLCTrace(directory, "Spec")
 					defer trace.Close()

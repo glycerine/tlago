@@ -783,6 +783,11 @@ record/UID/worker updates, extended predecessor assignment and failure-time
 counter/mirror behavior. Worker recovery checks cover publication before
 missing-owner, closed-owner and seek failures, preservation of the existing
 owner, and every truncated checkpoint length from zero through fifteen bytes.
+Seven worker checkpoint creation cases cover required owner access, flush-before-
+temporary ordering, stale creation errors, retained owners/pointers, exact metadata
+bytes and lock release. Worker commit joins the existing missing-temporary,
+blocked-delete and successful-promotion matrix, including native I/O payloads and
+file mutation ordering.
 Upstream has no direct methods for these failure boundaries; completion counts
 are unchanged.
 

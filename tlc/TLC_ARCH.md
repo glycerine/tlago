@@ -11989,8 +11989,12 @@ also precedes the base depth check, retaining that assignment on failure. Worker
 recovery publishes the last pointer immediately after reading it, before closing
 the checkpoint reader and seeking the existing trace owner. Missing or closed
 owners cannot be reopened by recovery; closing retains the closed owner handle.
-Truncated reads do not publish the pointer. Worker construction, other owner
-access and trace cleanup boundaries still need audit. No RMI or JVM machinery
+Truncated reads do not publish the pointer. Worker checkpoint creation requires
+its existing trace owner and flushes before opening temporary metadata, without
+reopening the owner or consulting a saved creation error. Checkpoint commit
+failures preserve the source I/O category and delete-before-promotion order.
+Worker construction, filename/context guards, other owner access and trace cleanup
+boundaries still need audit. No RMI or JVM machinery
 is introduced.
 
 Fingerprint transport failures use the shared DistributedOperationError with

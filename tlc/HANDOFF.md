@@ -189,8 +189,12 @@ failure; extended states retain the predecessor assigned before that failure.
 Worker recovery publishes the checkpoint pointer after its complete read, then
 closes the checkpoint reader and seeks the existing trace owner. It cannot
 reopen missing or closed owners; closing retains the closed handle. Truncated
-checkpoint reads leave the pointer unchanged. Worker construction, other owner
-access and trace cleanup boundaries still need audit.
+checkpoint reads leave the pointer unchanged. Checkpoint creation also requires
+the existing owner: it flushes before opening/truncating temporary metadata and
+does not consult a saved creation error. Commit failures preserve source I/O
+classification, text and delete-before-promotion mutations. Worker construction,
+filename/context guards, other owner access and trace cleanup boundaries still
+need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

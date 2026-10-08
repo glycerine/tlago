@@ -21473,3 +21473,33 @@ processes are terminal. No full suite or race run was performed. Supplemental
 changes add no original-method credit. Source algorithm, checkpoint/trace owner
 audits and the four assumption-disabled original remote harnesses remain pending;
 distributed parity is incomplete.
+
+### 2026-10-08: Worker checkpoint owner ordering and commit I/O failures
+
+Compared Worker.beginChkpt/commitChkpt with pinned Java. Begin now requires the
+existing trace owner rather than opening/replacing it or consulting a saved
+creation error. Flush remains before temporary metadata creation/truncation,
+followed by current cursor, last pointer and stream close. Missing owners fail
+before temporary access; closed-owner and native descriptor flush failures retain
+the previous temporary bytes. Worker commit now returns the source IOException
+category and unchanged text after blocked deletion or failed promotion, preserving
+the old-checkpoint deletion before a missing-temporary failure.
+
+No original method directly covers these failure boundaries. Seven supplemental
+begin cases cover healthy/missing/closed owners, saved creation errors with and
+without an existing owner, actual native flush failure and temporary-open failure.
+They retain exact sixteen metadata bytes, owner/pointer identity, temporary file
+mutation order, flushed trace bytes and lock release. Added workers to the existing
+three-phase commit matrix (missing temporary, blocked deletion and success),
+retaining all file mutation and native I/O payload assertions. The initial missing-
+owner/stale-error and two worker commit failure cases failed (4caecb, status 1,
+0.018 seconds). No original Java assertion was changed.
+
+Final worker trace, concurrent trace, distributed checkpoint/recovery, native
+fingerprint checkpoint and original short smart-proxy/simulation trace checks pass
+(6eeaae, status 0, 0.242 seconds). Original checkpoint-on-violation/time-bound and
+error-trace models plus all four existing DieHard/TSnapShot process storage variants
+pass (7b3158, status 0, 54.438 seconds). The time-bound model retains five seconds.
+All processes are terminal. No full suite or race run was performed. Supplemental
+cases add no original-method credit. Worker construction, filename/context guards,
+other owner access and trace cleanup remain pending; distributed parity is incomplete.

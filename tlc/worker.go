@@ -637,10 +637,10 @@ func (w *Worker) ReadStateRecord(ptr int64) (ConcurrentTraceRecord, error) {
 func (w *Worker) BeginChkpt() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if err := w.ensureTraceRAF(); err != nil {
-		return err
+	if w.traceRAF == nil {
+		panic(NewNullPointerException())
 	}
-	if w.traceRAF == nil || w.traceFileBase == "" {
+	if w.traceFileBase == "" {
 		return nil
 	}
 	if err := w.traceRAF.Flush(); err != nil {
@@ -676,10 +676,10 @@ func (w *Worker) CommitChkpt() error {
 	oldChkpt := w.traceFileBase + ".chkpt"
 	newChkpt := w.traceFileBase + ".tmp"
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("Trace.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("Trace.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("Trace.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("Trace.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	return nil
 }
