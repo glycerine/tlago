@@ -22,9 +22,15 @@ import (
 // needs its own process because FP64 and the tool's interning are process-wide.
 func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 	for _, scenario := range []struct {
-		name                             string
-		remoteFP, recovering, workerLoss bool
-	}{{"coordinator_fingerprints", false, false, false}, {"standalone_fingerprints", true, false, false}, {"checkpoint_recovery", false, true, false}, {"worker_loss", false, false, true}} {
+		name                                       string
+		remoteFP, recovering, workerLoss, combined bool
+	}{
+		{name: "coordinator_fingerprints"},
+		{name: "standalone_fingerprints", remoteFP: true},
+		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
+		{name: "checkpoint_recovery", recovering: true},
+		{name: "worker_loss", workerLoss: true},
+	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 			if err != nil {
@@ -89,12 +95,18 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				serverArgs = append([]string{"-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=1"}, serverArgs...)
 			}
 			server := start("server", serverArgs...)
-			if scenario.remoteFP {
+			if scenario.combined {
+				// Exercise the production launcher and shared native listener:
+				// both roles must bootstrap and finish in this one process.
+				start("worker-fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+			} else if scenario.remoteFP {
 				// A supported native implementation avoids inheriting the
 				// upstream harness's known OffHeap assumption failure.
 				start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 			}
-			start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+			if !scenario.combined {
+				start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+			}
 			if scenario.workerLoss {
 				failed := start("worker-failpoint", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 				// Wait for a real assigned RPC block and both registrations.

@@ -18280,3 +18280,32 @@ An initial compile check caught the new test's incorrect GetKind spelling;
 corrected it to the existing Kind method before both green checks. No full
 suite or race workload was run. HANDOFF, architecture and test inventory are
 updated; the broader distributed goal remains incomplete.
+
+## October 8, 2026: combined worker/fingerprint process coverage
+
+Compared the fingerprint-manager checkpoint sequence with pinned Java. Source
+Checkpoint extends Thread but chkptInner invokes run directly, so the existing
+sequential Go begin/commit/recovery order is accurate; no concurrency rewrite
+was made. The combined launcher starts the FP command before the worker without
+assuming readiness, matching TLCWorkerAndFPSet.main. Its Go CLI owner waits for
+both command lifetimes because Go does not retain main for other goroutines.
+
+Added combined_worker_fingerprints to the existing native EWD840 process matrix.
+It starts a real coordinator and one production worker-fpserver command; that
+single command shares the native listener between one worker and remote MemFPSet
+storage. Source MC06 N=7 model/configuration, full exploration bounds, source
+reporting intervals and worker shutdown grace remain unchanged. All existing
+ordinary assertions apply: FINISHED, 114942 distinct states, zero queued states,
+no GENERAL event and no lost-reply unexpected EOF. Both owned child processes
+must exit normally and are joined on every path. Existing rows keep their
+previous settings; keyed scenario fields make the new combination explicit.
+
+The exact new process row passes normally in 60.652 seconds (95622 terminal
+status 0). Log: .codex-gotmp/distributed-combined-process-test.log. Both roles
+registered, full exploration completed, the FP reporting loop printed its exit
+message and both processes returned normally. No production shortcut or test
+weakening was necessary. No full workspace suite or race workload was run.
+This is native transport/command coverage using the original model assertions,
+not completion credit for the unconditional assumption-disabled Java harness.
+All handles are retired. Remaining failure/recovery and payload audit work
+keeps the distributed goal incomplete.
