@@ -17835,3 +17835,45 @@ in 1.038 seconds (68084 terminal status 0). No full suite or long race workloads
 were run. All handles are retired. Coordinator/FP role publication, CLI/process
 wiring, remaining payload types and separate-process full model verification
 remain required; the goal stays active.
+
+### 2026-10-08 — Native coordinator lifecycle publication
+
+Continued from 51f735f. Reviewed modelCheck's recovery/hostname/registry/master
+publication/FP barrier/init/worker publication order and its normal cleanup.
+DistributedCoordinatorNetwork now supplies TLCServerPublication callbacks to
+the native TCP host. The listener opens only at CreateRegistry. Rebind replaces
+a named coordinator; Unbind checks and removes one binding; local shutdown
+Lookup observes the same host map. Unexport removes only aliases owned by the
+supplied coordinator and leaves the listener, other objects and dispatched calls
+alone. The owner closes networking separately, including init-error returns
+where source modelCheck intentionally retains the master binding. Repeated Close
+waits for the same completed shutdown result. No Java registry protocol or JVM
+export machinery is implemented.
+
+There is no enabled direct upstream native-publication test. Three focused Go
+tests cover actual TCP discovery through the publication callbacks, deferred
+listener creation, duplicate creation, replacement/alias isolation, missing
+unbind/unexport, listener failure without partial state, owner cleanup and eight
+concurrent bind/lookup/unbind operations. A root integration check uses the
+existing DoInitFunctorEvalException model through actual TLCServer.ModelCheck:
+its initialization diagnostic/FINISHED remain present with no GENERAL, the
+master stays reachable and reports done, no worker binding is published, and
+owner Close releases the retained connection. The original Java model test and
+its assertions remain unchanged; this additional native-boundary check adds no
+original-method completion credit and does not establish full distributed model
+execution.
+
+Initial publication checks passed in 0.015 seconds (10196 terminal status 0).
+Focused publication/discovery/bootstrap/worker/coordinator/fingerprint TCP and
+original smart-proxy selection passed in 0.064 seconds. Root native init-path
+integration plus original distributed model/init/app-boundary checks passed in
+1.883 seconds (68161 terminal status 0). The exact short concurrent publication
+race check passed in 1.028 seconds (58626 terminal status 0). Final native
+publication checks after the Close completion refinement follow. No full suite
+or long race workload was run. FP role publication, CLI/process wiring,
+remaining payload types and separate-process model execution remain required.
+
+Final native publication checks pass in 0.014 seconds (32753 terminal status 0)
+after the Close refinement. Final actual modelCheck init-path integration passes
+in 0.032 seconds (59169 terminal status 0). All handles are retired; focused
+checks are green and the lifecycle publication chunk is ready to commit.

@@ -1864,8 +1864,14 @@ them to shutdown/keepalive, then register their named references with the
 coordinator. Bootstrap retains its polynomial/interner/resolver/app/manager
 order. Worker addresses now use `tcp://`; source URI authority/index/NFC checks
 are retained with the scheme change required by the user. An actual empty-block
-worker callback passes over TCP. Remaining payload classes, coordinator/FP role
-publication, process/CLI integration and separate-process full model execution
+worker callback passes over TCP. `DistributedCoordinatorNetwork.Publication`
+now supplies the existing model-checking lifecycle with a listener opened at
+`CreateRegistry`, native binding replacement/removal and local shutdown lookup.
+Unpublishing one coordinator leaves other hosted endpoints intact. Initialization
+failure retains the master binding and skips worker publication, as in the
+source; the process owner closes the retained listener. Actual model-checking
+init-error and focused publication checks pass. Remaining payload classes, FP
+role publication, process/CLI integration and separate-process full model execution
 remain pending. These focused checks do not prove distributed completion.
 
 ## Testing and workflow

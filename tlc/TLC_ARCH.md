@@ -7901,8 +7901,18 @@ pointer, preserving construction-before-visibility. Unique native object names
 allow repeated worker thread IDs without overwriting earlier publications.
 Registration transfers a published reference without requiring a self-dial.
 Bootstrap keeps polynomial/interner/resolver/app/manager initialization order.
-Networking shutdown and worker runtime shutdown remain distinct. Remaining
-payload types, coordinator/FP role publication and process/CLI wiring still need
+Networking shutdown and worker runtime shutdown remain distinct.
+
+DistributedCoordinatorNetwork.Publication connects the existing modelCheck
+callbacks to native TCP publication. Listener creation stays at CreateRegistry,
+after recovery and hostname resolution. Rebind replaces a named endpoint;
+Unbind removes only that binding, and the shutdown hook's local Lookup observes
+the same host publications. Unexport removes the supplied coordinator's aliases
+without closing the host or cancelling calls that already captured an endpoint.
+Process-owned Close releases the listener and connections, including the early
+initialization-error path where modelCheck deliberately skips normal unbinding.
+Repeated Close calls wait for the same shutdown result. Remaining payload types,
+FP role publication and process/CLI wiring still need
 implementation and separate-process model verification.
 
 The Java reference implementation uses RMI:
