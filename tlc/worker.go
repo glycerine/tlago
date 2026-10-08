@@ -510,8 +510,8 @@ func (w *Worker) ensureTraceRAF() error {
 }
 
 func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
-	if w == nil || initialState == nil {
-		return nil
+	if w == nil {
+		panic(NewNullPointerException())
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -539,6 +539,9 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 		ptr = int64(len(w.traceRecordsFallback()))
 	}
 	w.lastPtr = ptr
+	if initialState == nil {
+		panic(NewNullPointerException())
+	}
 	initialState.WorkerID = int16(w.ID)
 	initialState.UID = ptr
 	if !w.DisableTraceMirror && w.Checker != nil && w.Checker.Trace != nil {
@@ -548,23 +551,22 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 }
 
 func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action) error {
-	if w == nil || succState == nil {
-		return nil
+	if w == nil {
+		panic(NewNullPointerException())
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if curState == nil {
+		panic(NewNullPointerException())
+	}
+	if level := int(int32(curState.Level()) + int32(1)); level > w.GetMaxLevel() {
+		w.SetLevel(level)
+	}
 	if err := w.ensureTraceRAF(); err != nil {
 		return err
 	}
-	prevUID := TLCStateInitUID
-	prevWorker := TLCStateInitWorkerID
-	if curState != nil {
-		prevUID = curState.UID
-		prevWorker = curState.WorkerID
-		if level := int(int32(curState.Level()) + int32(1)); level > w.GetMaxLevel() {
-			w.SetLevel(level)
-		}
-	}
+	prevUID := curState.UID
+	prevWorker := curState.WorkerID
 	var ptr int64
 	if w.traceRAF != nil {
 		filePtr, err := w.traceRAF.GetFilePointer()
@@ -586,6 +588,9 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 		ptr = int64(len(w.traceRecordsFallback()))
 	}
 	w.lastPtr = ptr
+	if succState == nil {
+		panic(NewNullPointerException())
+	}
 	succState.WorkerID = int16(w.ID)
 	succState.UID = ptr
 	succState.SetPredecessor(curState)

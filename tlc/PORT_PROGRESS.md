@@ -21530,3 +21530,31 @@ The time-bound workload retains five seconds. All check processes are terminal.
 No full suite or race run was performed. Supplemental cases add no original-
 method credit. Worker construction, filename/context guards, writer owner access
 and trace cleanup remain pending; distributed parity is incomplete.
+
+### 2026-10-08: Worker null-state write ordering
+
+Compared both Worker.writeState overloads with pinned Java. Removed silent success
+for nil targets and initial-anchor substitution for a nil predecessor. Successor
+writes now require the predecessor before depth/file access and update depth
+before owner/cursor access. Initial/successor target dereference follows completed
+record bytes and last-pointer publication; failures retain those earlier mutations
+without state metadata, unseen count or mirror publication. Closed-owner cursor
+failure precedes target dereference, but missing predecessor fails before owner
+access. Nil worker calls also fail rather than report a successful write.
+
+No original method directly covers these boundaries. Eight supplemental cases
+cover initial/successor nil targets with healthy/closed owners, nil predecessor
+with healthy/closed/missing owners, and both missing states. All eight initially
+failed (9c59f2, status 1, 0.015 seconds). Checks preserve exact completed bytes,
+depth, last pointer, original owner, target metadata, counters, mirror state and
+lock release; a missing predecessor cannot create a trace file. No original
+Java assertion was changed.
+
+Final worker/concurrent/distributed trace, recovery/checkpoint and original short
+smart-proxy/simulation trace checks pass (d8ad39, status 0, 0.281 seconds). Original
+checkpoint-on-violation/time-bound and error-trace models plus all four existing
+DieHard/TSnapShot storage variants pass (7af668, status 0, 54.472 seconds). The
+time-bound workload retains five seconds. All processes are terminal. No full
+suite or race run was performed. Supplemental cases add no original-method
+credit. Writer lazy creation/in-memory fallback, construction, filename/context
+guards and trace cleanup remain pending; distributed parity is incomplete.

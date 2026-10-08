@@ -195,8 +195,12 @@ does not consult a saved creation error. Commit failures preserve source I/O
 classification, text and delete-before-promotion mutations. Record reads also
 require the existing owner and ignore saved creation errors. They publish the
 mark before seeking, restore the cursor only after a complete record, and retain
-consumed bytes after partial reads. Worker construction, filename/context guards,
-writer owner access and trace cleanup boundaries still need audit.
+consumed bytes after partial reads. Writes require their predecessor before depth
+or file access, without substituting an initial-state anchor. Missing initial/
+successor targets fail after the complete record; earlier depth/last-pointer/byte
+updates remain, while state/count/mirror publication does not occur. Worker
+construction, filename/context guards, writer owner access and trace cleanup
+boundaries still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

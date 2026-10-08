@@ -793,8 +793,12 @@ error handling, closed-owner mark-before-seek order and high-bit fingerprints.
 Every partial length from zero through twelve bytes retains its consumed cursor;
 the complete thirteen-byte record restores the saved writer position. No original
 method directly covers these boundaries; completion counts remain unchanged.
-Upstream has no direct methods for these failure boundaries; completion counts
-are unchanged.
+
+Eight native null-state write cases retain predecessor-before-owner ordering,
+target dereference after completed initial/successor records, closed-owner error
+precedence, exact bytes and earlier depth/last-pointer updates. Failures suppress
+state/count/mirror publication and release the worker lock. No original method
+directly covers these boundaries; completion counts remain unchanged.
 
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of

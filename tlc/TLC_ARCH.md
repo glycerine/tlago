@@ -11996,8 +11996,13 @@ failures preserve the source I/O category and delete-before-promotion order.
 Worker record reads require the existing owner rather than opening a replacement
 or consulting a saved creation error. Mark publication precedes seek, including
 closed-owner seek failure. Only a complete record restores the original cursor;
-partial reads retain the consumed position and do not publish a record. Worker
-construction, filename/context guards, writer owner access and trace cleanup
+partial reads retain the consumed position and do not publish a record. Writes
+require the predecessor before depth and file access; nil cannot select an
+initial-state anchor. Missing targets fail after completed record bytes, retaining
+earlier depth/last-pointer updates and suppressing metadata/count/mirror publication.
+Closed-owner cursor errors precede target dereference, while missing predecessor
+errors precede owner access. Worker construction, filename/context guards, writer
+owner access and trace cleanup
 boundaries still need audit. No RMI or JVM machinery is introduced.
 
 Fingerprint transport failures use the shared DistributedOperationError with
