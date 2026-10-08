@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -700,10 +701,10 @@ func (s *MemFPSet) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	return nil
 }
@@ -717,13 +718,20 @@ func (s *MemFPSet) RecoverFile(fname string) error {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
-	defer in.Close()
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	in := NewValueInputStreamWithoutHandles(reader)
 
 	for {
+		if _, err := reader.Peek(1); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
 		fp, err := in.ReadLong()
 		if errors.Is(err, io.EOF) {
-			return nil
+			return NewTLCRuntimeException(ECSystemDiskIOErrorForFile, "checkpoints")
 		}
 		if err != nil {
 			return err
@@ -1017,10 +1025,10 @@ func (s *MemFPSet1) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemFPSet1.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("MemFPSet1.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("MemFPSet1.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("MemFPSet1.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	return nil
 }
@@ -1281,10 +1289,10 @@ func (s *MemFPSet2) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemFPSet2.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("MemFPSet2.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("MemFPSet2.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("MemFPSet2.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	return nil
 }
@@ -1298,12 +1306,19 @@ func (s *MemFPSet2) RecoverFile(fname string) error {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
-	defer in.Close()
+	defer file.Close()
+	reader := bufio.NewReader(file)
+	in := NewValueInputStreamWithoutHandles(reader)
 	for {
+		if _, err := reader.Peek(1); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
 		fp, err := in.ReadLong()
 		if errors.Is(err, io.EOF) {
-			return nil
+			return NewIOException("MemFPSet2.recover: failed.")
 		}
 		if err != nil {
 			return err

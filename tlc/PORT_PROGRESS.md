@@ -18121,3 +18121,43 @@ source count/event requirements. All three processes exit normally. Log:
 short race checks pass in 1.114 seconds (85198 terminal status 0); final normal
 focused RPC/source-manager gate passes in 0.128 seconds (94985 terminal status
 0). All handles are retired. No new full-workspace baseline is claimed.
+
+## Fingerprint checkpoint catch and EOF fidelity (October 8, 2026)
+
+Compared Java FPSetManager.chkptInner/Checkpoint.run and TLCServer checkpoint
+order with Go. The source runs each checkpoint helper synchronously, catching
+only IOException and printing through ToolIO. Go incorrectly swallowed every
+returned error and printed directly to os.Stdout. The manager now invokes the
+endpoint with the existing checked/unchecked panic boundary, catches I/O only,
+and returns an unchecked failure immediately. Begin failure skips commit;
+I/O failure continues to the next grouped server; fatal local failures still
+escape. Source checkpoint/commit/recover ordering and grouped-entry behavior
+are unchanged. No asynchronous checkpoint or rollback policy was invented.
+
+MemFPSet, MemFPSet1 and MemFPSet2 commit rename/delete failures now retain their
+source IOException category, allowing the manager and native endpoint to classify
+them accurately. The EOF audit exposed another shortcut: MemFPSet and MemFPSet2
+accepted a truncated fingerprint record as normal termination. Source first
+checks BufferedDataInputStream.atEOF, then catches an EOF during readLong.
+Go now uses one lookahead reader and the unbuffered/no-handle value reader for
+that same fixed-width stream. Clean EOF returns normally. A partial record
+returns the original SYSTEM_DISK_IO_ERROR_FOR_FILE/checkpoints runtime failure
+for MemFPSet and `MemFPSet2.recover: failed.` IOException for MemFPSet2.
+
+There are no enabled original direct checkpoint-helper catch tests. Added focused
+source-contract checks covering all three operations, returned and panicked I/O
+versus unchecked errors, exact ToolIO warning and source order, fatal propagation,
+all three commit error categories, and each one-through-seven-byte truncated
+record. Native TCP corruption recovery must propagate its non-I/O failure rather
+than report an unavailable server. Existing valid native checkpoint round trip
+and original manager methods retain their assertions.
+
+Initial tests caught a lookahead integration error: constructing the buffered
+value reader eagerly consumed the lookahead reader before Peek, hiding partial
+records and valid contents. Fixed the production reader selection; assertions
+were not changed. The initial failure receipts (47017 and 21888) are terminal
+and retired. Corrected focused checks pass in 0.095 seconds (66211 terminal
+status 0). Final storage/source-manager/native checkpoint gate passes in 0.101
+seconds with status 0. No full suite or race instrumentation was used. No original
+method completion credit is added. Coordinator queue/trace/intern recovery and
+process interruption/checkpoint coverage remain pending; the goal is not complete.

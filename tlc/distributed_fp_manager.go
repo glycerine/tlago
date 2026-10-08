@@ -638,16 +638,20 @@ func (m *DistributedFPSetManager) Recover(filename string) error {
 func (m *DistributedFPSetManager) checkpointInner(filename string, checkpoint bool) error {
 	for _, entry := range m.groupedEntries() {
 		// Java calls Thread.run directly, so checkpoint work remains sequential.
-		if checkpoint {
-			if err := entry.set.BeginChkptFile(filename); err != nil {
-				fmt.Fprintf(os.Stdout, "Error: Failed to checkpoint the fingerprint server at %s. This server might be down.\n", entry.hostname)
-				continue
+		_, err := invokeFingerprintEndpoint(func() (struct{}, error) {
+			if checkpoint {
+				if err := entry.set.BeginChkptFile(filename); err != nil {
+					return struct{}{}, err
+				}
+				return struct{}{}, entry.set.CommitChkptFile(filename)
 			}
-			if err := entry.set.CommitChkptFile(filename); err != nil {
-				fmt.Fprintf(os.Stdout, "Error: Failed to checkpoint the fingerprint server at %s. This server might be down.\n", entry.hostname)
+			return struct{}{}, entry.set.RecoverFile(filename)
+		})
+		if err != nil {
+			if !isJavaIOException(err) {
+				return err
 			}
-		} else if err := entry.set.RecoverFile(filename); err != nil {
-			fmt.Fprintf(os.Stdout, "Error: Failed to checkpoint the fingerprint server at %s. This server might be down.\n", entry.hostname)
+			ToolIOPrintln(fmt.Sprintf("Error: Failed to checkpoint the fingerprint server at %s. This server might be down.", entry.hostname))
 		}
 	}
 	return nil

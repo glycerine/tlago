@@ -1918,6 +1918,17 @@ calls. No insertion retry or exception suppression was introduced. Focused
 shutdown checks pass normally and under an exact short race selection; broader
 failure/recovery coverage remains pending.
 
+Distributed fingerprint checkpoint/recovery now preserves the original
+IOException-only catch: sequential begin/commit or recovery stops on an unchecked
+failure, while I/O failures report through ToolIO and continue to the next grouped
+server. Fatal local failures escape. All three memory fingerprint implementations
+retain their Java commit IOException category. MemFPSet and MemFPSet2 now distinguish
+clean EOF from a truncated eight-byte record, preserving their respective coded
+runtime failure and IOException. Valid checkpoint recovery and corrupt-file
+rejection are verified through the native TCP boundary, alongside existing
+original manager methods. End-to-end coordinator queue/trace/intern recovery
+still needs process coverage; these checks do not establish that broader parity.
+
 
 These focused checks do not prove distributed completion.
 
