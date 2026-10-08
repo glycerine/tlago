@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental initial-publication checks preserve metadata, fingerprint/trace/
+queue/property order, missing-owner and I/O failure context, suppression of
+later elements and seen/excluded-state owner access. No original method directly
+covers these boundaries; original initializer methods remain green.
+
 Supplemental coordinator-label checks preserve the statistics prefix, counter
 padding, ASCII URI rendering and unchanged endpoint metadata. No original
 method directly covers these labels; completion counts remain unchanged.

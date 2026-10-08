@@ -11860,3 +11860,18 @@ native ASCII formatter, preserving normalization and escaping without modifying
 the URI metadata used for calls or deregistration output. These are diagnostic
 labels for Go goroutines, without JVM thread emulation. Focused label, URI and
 thread failure/finalizer checks pass.
+
+
+### Distributed initial-state trace publication
+
+DoInitFunctor inserts the fingerprint before publishing a new in-model initial
+state. It requires the trace, writes a root record with predecessor marker 1,
+assigns the resulting UID, requires the queue and enqueues the original object.
+It then checks properties. The record-only trace writer preserves worker,
+predecessor, action and level metadata; the single-process metadata attachment
+path is not used. Failed trace/queue operations retain earlier fingerprint/write
+mutations and record the original state/error through the initialization catch.
+A recorded failure suppresses subsequent elements. Seen states skip trace/queue
+access and property checks; excluded states skip publication owners but still
+check properties. Focused native contracts, original initializer/model checks
+and actual distributed DieHard trace execution pass.

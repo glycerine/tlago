@@ -693,8 +693,14 @@ func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (result any
 		fp := curState.FingerPrint()
 		seen = f.server.FPSetManager.Put(fp)
 		if !seen {
-			if _, err := f.server.Trace.WriteState(nil, fp, curState, nil); err != nil {
+			if f.server.Trace == nil {
+				panic(NewNullPointerException())
+			}
+			if _, err := f.server.Trace.WriteStateRecord(nil, fp, curState); err != nil {
 				return curState, err
+			}
+			if f.server.StateQueue == nil {
+				panic(NewNullPointerException())
 			}
 			f.server.StateQueue.Enqueue(curState)
 		}

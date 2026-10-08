@@ -107,6 +107,12 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Distributed initial-state publication changes only the state UID, preserving
+worker, predecessor, action and level metadata. Fingerprint insertion precedes
+the required root trace write and queue enqueue; property checks follow. Missing
+trace/queue failures retain earlier mutations and suppress later initialization
+elements. Seen or excluded states do not require unused publication owners.
+
 Checkpoint and recovery checks preserve source mutation, failure categories and
 phase ordering through native Go interfaces and transport. Detailed receipts
 belong in PORT_PROGRESS.md; the supplemental checks below add no completion

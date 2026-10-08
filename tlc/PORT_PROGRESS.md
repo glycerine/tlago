@@ -20795,3 +20795,35 @@ thread handler/finalizer checks and original nine smart-proxy contexts (e7d7c3,
 status 0, 0.081 seconds). All processes are terminal. No full suite, TCP workload
 or race run was required for this diagnostic-label change. Supplemental checks
 add no original-method credit; distributed parity remains incomplete.
+
+### 2026-10-08: Distributed initial-state publication ownership
+
+Compared TLCServer.DoInitFunctor with pinned source. The source inserts the
+fingerprint, writes a root trace record, assigns only the UID, enqueues the state
+and then checks properties. Go used the general single-process trace writer,
+which also reset worker/predecessor/action metadata. Its absent-trace shortcut
+returned success, allowing queued work without a recorded initial state. Changed
+the functor to require its trace and queue at their source access points and use
+the existing record-only trace writer. Earlier insertion/write mutations remain
+observable when a later operation fails; no extra state metadata is attached.
+
+Upstream has no direct initial-publication ownership test. Added six native
+cases: healthy publication, absent trace, absent queue, trace I/O failure, seen
+fingerprint and excluded initial state. They preserve metadata, root predecessor
+marker, UID assignment timing, fingerprint insertion, queued state identity,
+property ordering, original error identity/context and suppression of later
+elements after the first recorded failure. Seen states omit trace/queue owners;
+excluded states omit all publication owners. The first three cases initially
+failed (a3e9fd, status 1, 0.019 seconds); remaining cases already matched source.
+Focused checks pass with existing successor publication/trace-failure contracts
+and nine original smart-proxy contexts (a84714, status 0, 0.026 seconds). Final
+strengthened owner/suppression checks pass (86eabb, status 0, 0.023 seconds).
+
+The three original distributed initializer-continue, evaluator-error and TLCSet
+model contexts pass (1427, status 0, 1.973 seconds). Short TCP state lifecycle,
+worker bootstrap/callback and assigned-block checkpoint checks pass (9982c9,
+status 0, 0.051 seconds). Actual distributed DieHard execution passes both
+fingerprint-storage variants with unchanged original seven-state trace/event
+assertions (36888, status 0, 24.408 seconds). All processes are terminal. No full
+suite or race run was performed. Supplemental checks add no original-method
+completion credit; broader distributed parity remains incomplete.
