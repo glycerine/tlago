@@ -6,8 +6,6 @@ import (
 	"os"
 )
 
-var errConcurrentTraceUnavailable = errors.New("concurrent trace record unavailable")
-
 type ConcurrentTLCTrace struct {
 	*TLCTrace
 	Tool    *Tool
@@ -103,51 +101,52 @@ func (t *ConcurrentTLCTrace) PrintTrace(curState *TLCStateMut, succState *TLCSta
 
 func (t *ConcurrentTLCTrace) GetTraceFromState(state *TLCStateMut) []*TLCStateInfo {
 	if state == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	if state.IsInitial() {
 		return []*TLCStateInfo{NewTLCStateInfo(state)}
 	}
-	if trace, err := t.recoverTrace(state, nil); err != nil {
+	trace, err := t.recoverTrace(state, nil)
+	if err != nil {
 		panic(err)
-	} else if len(trace) > 0 {
-		return trace
 	}
-	if t == nil || t.TLCTrace == nil {
-		return trimTraceState(traceFromState(state), state)
-	}
-	return trimTraceState(t.TLCTrace.GetTrace(state), state)
+	return trace
 }
 
 func (t *ConcurrentTLCTrace) GetTraceBetweenStates(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {
 	if to == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
-	if to.IsInitial() || (from != nil && from.Equal(to)) {
+	if to.IsInitial() {
 		return []*TLCStateInfo{NewTLCStateInfo(to)}
 	}
-	if trace, err := t.recoverTrace(to, from); err != nil {
+	if from == nil {
+		panic(NewNullPointerException())
+	}
+	if from.Equal(to) {
+		return []*TLCStateInfo{NewTLCStateInfo(to)}
+	}
+	trace, err := t.recoverTrace(to, from)
+	if err != nil {
 		panic(err)
-	} else if len(trace) > 0 {
-		return trace
 	}
-	if t == nil || t.TLCTrace == nil {
-		return NewTLCTrace().GetTraceBetween(from, to)
-	}
-	return t.TLCTrace.GetTraceBetween(from, to)
+	return trace
 }
 
 func (t *ConcurrentTLCTrace) recoverTrace(state *TLCStateMut, from *TLCStateMut) ([]*TLCStateInfo, error) {
-	if t == nil || t.Tool == nil || state == nil || len(t.Workers) == 0 || state.WorkerID < 0 || int(state.WorkerID) >= len(t.Workers) {
-		return nil, nil
+	if t == nil || state == nil {
+		panic(NewNullPointerException())
 	}
 	if state.IsInitial() {
 		return []*TLCStateInfo{NewTLCStateInfo(state)}, nil
 	}
-	records, err := t.collectTraceRecords(state, from)
-	if errors.Is(err, errConcurrentTraceUnavailable) {
-		return nil, nil
+	first, err := t.recordForState(state)
+	if err != nil {
+		return nil, err
 	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	records, err := t.collectTraceRecordsLocked(state, from, first)
 	if err != nil || len(records) == 0 {
 		return nil, err
 	}
@@ -157,37 +156,42 @@ func (t *ConcurrentTLCTrace) recoverTrace(state *TLCStateMut, from *TLCStateMut)
 	return t.recoverTraceFromRecords(nil, records)
 }
 
-func (t *ConcurrentTLCTrace) collectTraceRecords(state *TLCStateMut, from *TLCStateMut) ([]ConcurrentTraceRecord, error) {
+func (t *ConcurrentTLCTrace) collectTraceRecordsLocked(state *TLCStateMut, from *TLCStateMut, first ConcurrentTraceRecord) ([]ConcurrentTraceRecord, error) {
+	records := []ConcurrentTraceRecord{first}
+	// Source reads the end record again under the trace monitor to obtain its
+	// predecessor, and retains that monitor through state reconstruction.
 	record, err := t.recordForState(state)
 	if err != nil {
 		return nil, err
 	}
-	if from != nil && state.Equal(from) {
-		return []ConcurrentTraceRecord{record}, nil
+	record, err = t.predecessorRecord(record)
+	if err != nil {
+		return nil, err
 	}
-	records := []ConcurrentTraceRecord{record}
 	for {
-		pred, err := t.predecessorRecord(record)
+		if (from == nil && record.IsInitial()) || (from != nil && record.FP == from.FingerPrint()) {
+			return append(records, record), nil
+		}
+		records = append(records, record)
+		record, err = t.predecessorRecord(record)
 		if err != nil {
 			return nil, err
 		}
-		if pred.IsInitial() {
-			records = append(records, pred)
-			return records, nil
-		}
-		records = append(records, pred)
-		if from != nil && pred.FP == from.FingerPrint() {
-			return records, nil
-		}
-		record = pred
 	}
 }
 
 func (t *ConcurrentTLCTrace) recordForState(state *TLCStateMut) (ConcurrentTraceRecord, error) {
-	if state == nil || state.WorkerID < 0 || int(state.WorkerID) >= len(t.Workers) || t.Workers[state.WorkerID] == nil {
-		return ConcurrentTraceRecord{}, errConcurrentTraceUnavailable
+	if t == nil || state == nil {
+		panic(NewNullPointerException())
 	}
-	record, err := t.Workers[state.WorkerID].ReadStateRecord(state.UID)
+	if state.WorkerID < 0 || int(state.WorkerID) >= len(t.Workers) {
+		panic(NewArrayIndexOutOfBoundsException(int(state.WorkerID), len(t.Workers)))
+	}
+	worker := t.Workers[state.WorkerID]
+	if worker == nil {
+		panic(NewNullPointerException())
+	}
+	record, err := worker.ReadStateRecord(state.UID)
 	if err != nil {
 		return ConcurrentTraceRecord{}, err
 	}
@@ -196,12 +200,9 @@ func (t *ConcurrentTLCTrace) recordForState(state *TLCStateMut) (ConcurrentTrace
 }
 
 func (t *ConcurrentTLCTrace) predecessorRecord(record ConcurrentTraceRecord) (ConcurrentTraceRecord, error) {
-	if record.IsInitial() {
-		return record, nil
-	}
 	worker := record.GetWorker()
 	if worker == nil {
-		return ConcurrentTraceRecord{}, errConcurrentTraceUnavailable
+		panic(NewNullPointerException())
 	}
 	pred, err := worker.ReadStateRecord(record.Ptr)
 	if err != nil {
@@ -441,7 +442,7 @@ func (r ConcurrentTraceRecord) IsInitial() bool {
 
 func (r ConcurrentTraceRecord) GetWorker() *Worker {
 	if r.Worker < 0 || r.Worker >= len(r.Workers) {
-		return nil
+		panic(NewArrayIndexOutOfBoundsException(r.Worker, len(r.Workers)))
 	}
 	return r.Workers[r.Worker]
 }

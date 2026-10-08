@@ -120,7 +120,13 @@ func TestConcurrentTracePublicRecoveryFailure(t *testing.T) {
 					failure = NewAssertionError("public trace recovery failed")
 				}
 				trace := &ConcurrentTLCTrace{TLCTrace: NewTLCTrace(), Workers: []*Worker{worker}}
-				trace.SetTool(&Tool{GetStateFunc: func(*Tool, uint64, ...any) (*TLCStateInfo, error) { return nil, failure }})
+				trace.SetTool(&Tool{GetStateFunc: func(*Tool, uint64, ...any) (*TLCStateInfo, error) {
+					if trace.mu.TryLock() {
+						trace.mu.Unlock()
+						t.Error("reconstruction escaped the trace monitor")
+					}
+					return nil, failure
+				}})
 				err := invokeDistributedServerOperation(func() error {
 					switch operation {
 					case "from-state":
@@ -135,6 +141,10 @@ func TestConcurrentTracePublicRecoveryFailure(t *testing.T) {
 				if err != failure {
 					t.Fatalf("public recovery failure identity: %T/%v", err, err)
 				}
+				if !trace.mu.TryLock() {
+					t.Fatal("failed reconstruction retained the trace monitor")
+				}
+				trace.mu.Unlock()
 				if recorder.Recorded(ECTLCBehaviorUpToThisPoint) || recorder.Recorded(ECTLCStatePrint2) {
 					t.Fatal("failed prefix recovery entered trace printing")
 				}

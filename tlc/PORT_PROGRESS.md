@@ -21059,3 +21059,43 @@ fingerprint-storage variants pass unchanged original trace/event assertions
 (7b3102, status 0, 23.404 seconds). All processes are terminal. No full suite or
 race run was performed. Supplemental checks add no original-method credit;
 distributed parity remains incomplete. No RMI or JVM machinery was introduced.
+
+### 2026-10-08: Required concurrent trace workers and monitored collection
+
+Audited ConcurrentTLCTrace's source record access and collection. Go treated
+missing/out-of-range workers as unavailable, discarded that result and selected
+an in-memory/base trace. Removed that substitute path. Record access now requires
+the source-selected worker slot, preserving index/null failure categories before
+trace printing. Initial/equal-state short paths still omit worker access. Source
+predecessor lookup reads the record even with pointer 1; removed the helper's
+initial-record shortcut. Collection uses the source's separate termination rules
+for initial-state and requested-fingerprint ranges rather than always stopping
+at any initial record.
+
+Source first reads the end record outside its monitor, then rereads it to obtain
+the predecessor under that monitor. Implemented that second read and retained
+the trace monitor through collection and state reconstruction. Deferred unlock
+preserves release when errors/panics escape. Earlier worker record cursor and
+reconstruction metadata mutations remain.
+
+No original method directly covers these owner boundaries. Added twelve public-
+entry worker cases (empty/negative/outside/nil slot across state/between/print),
+three predecessor-owner cases, a closed native initial-predecessor read and
+initial/equal short-path checks. Initial owner/public checks and initial predecessor
+read were red (f601cc, status 1, 0.012 seconds). New/related trace checks pass
+(0d366b, status 0, 1.862 seconds). Extended disk-backed reconstruction failures to
+verify the monitor is held during evaluation and released afterward. Added a
+native three-state record chain to verify full, initial-anchored and middle-
+anchored prefixes, exact lookup counts and monitor release on normal completion.
+Final related checks pass (1cc096, status 0, 2.004 seconds); final concurrent
+checks pass (7068a8, status 0, 0.014 seconds).
+
+Original Alias safety/liveness, TLCExtTrace alias, error-trace construction and
+three distributed initializer-continue, evaluator-error and TLCSet model contexts
+pass (897a14, status 0, 2.981 seconds). No full suite or race run was performed.
+Supplemental checks add no original-method credit. Missing-tool and remaining
+concurrent trace lifecycle/enumerator boundaries still need audit; distributed
+parity remains incomplete. No RMI or JVM machinery was introduced.
+Both actual distributed DieHard fingerprint-storage variants pass unchanged
+original trace/event assertions (d74a1a, status 0, 24.382 seconds). All processes
+are terminal.

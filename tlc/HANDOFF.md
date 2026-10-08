@@ -134,8 +134,13 @@ the result length, restores randomness only after normal completion and retains
 source UID/worker updates before later lookup failures. Missing initial results
 fail at metadata dereference; missing successors print branch `2` diagnostics
 and exit. Public concurrent trace methods propagate reconstruction errors before
-printing rather than discarding them for fallback traces. Unavailable-worker
-fallback and record traversal remain separate audit items.
+printing rather than discarding them for fallback traces. Record lookup requires
+the selected worker slot and preserves index/null failures instead of substituting
+an in-memory trace. Collection rereads the end record under the trace monitor,
+follows the predecessor chain to the source initial/requested-fingerprint boundary,
+and retains the monitor through reconstruction. Initial/equal-state short paths
+do not require workers. Missing-tool and other concurrent trace lifecycle/
+enumerator boundaries still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

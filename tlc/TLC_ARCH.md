@@ -11926,6 +11926,12 @@ excluding the anchor record. It restores randomness only after normal completion
 retains source metadata updates before later failures, fails on missing initial
 metadata dereference and exits on missing successors with branch `2` diagnostics.
 Public methods propagate reconstruction errors before trace printing rather than
-swallowing them and selecting another trace. Unavailable-worker fallback and
-record traversal remain separate audit items. No RMI or JVM machinery is
-introduced.
+swallowing them and selecting another trace. Worker-slot lookup preserves
+index/null failures and does not select an in-memory fallback. Initial/equal-state
+short paths do not access workers. Source record collection rereads the end record
+under the trace monitor, stops at the initial or requested-fingerprint boundary
+and retains the monitor through state reconstruction. Predecessor access reads
+the selected record even when its pointer is the initial-state sentinel; the
+caller controls traversal termination. Missing-tool and remaining concurrent
+trace lifecycle/enumerator boundaries still need audit. No RMI or JVM machinery
+is introduced.

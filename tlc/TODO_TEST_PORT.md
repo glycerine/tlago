@@ -721,7 +721,11 @@ Concurrent reconstruction checks cover anchor-only/invalid-empty inputs, normal
 and supplied initial metadata, failure/random lifetime, missing initial dereference
 and actual missing-successor exit. Six disk-backed public-entry checks preserve
 ordinary/fatal reconstruction error identity and stop before behavior/state
-printing. No original-method credit is added.
+printing. Required-worker checks preserve twelve public-entry index/null
+failures, predecessor lookup failures and initial/equal-state short paths. Native
+worker records verify full and requested predecessor ranges, while reconstruction
+checks verify the trace monitor is held and released on success/failure. No
+original-method credit is added.
 
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed
