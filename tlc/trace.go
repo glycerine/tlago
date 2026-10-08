@@ -1126,8 +1126,18 @@ type TLCTraceEnumerator struct {
 	trace   *TLCTrace
 }
 
+func (e *TLCTraceEnumerator) isDisk() bool {
+	return e.trace != nil || e.path != "" || e.raf != nil
+}
+
 func (e *TLCTraceEnumerator) NextPos() (int64, error) {
-	if e != nil && e.raf != nil {
+	if e == nil {
+		panic(NewNullPointerException())
+	}
+	if e.isDisk() {
+		if e.raf == nil {
+			panic(NewNullPointerException())
+		}
 		pos, err := e.raf.GetFilePointer()
 		if err != nil {
 			return 0, err
@@ -1137,21 +1147,27 @@ func (e *TLCTraceEnumerator) NextPos() (int64, error) {
 		}
 		return pos, nil
 	}
-	if e == nil || e.index >= len(e.records) {
+	if e.index >= len(e.records) {
 		return -1, nil
 	}
 	return int64(e.index), nil
 }
 
 func (e *TLCTraceEnumerator) NextFP() (uint64, error) {
-	if e != nil && e.raf != nil {
+	if e == nil {
+		panic(NewNullPointerException())
+	}
+	if e.isDisk() {
+		if e.raf == nil {
+			panic(NewNullPointerException())
+		}
 		if _, err := e.raf.ReadLongNat(); err != nil {
 			return 0, err
 		}
 		fp, err := e.raf.ReadLong()
 		return uint64(fp), err
 	}
-	if e == nil || e.index >= len(e.records) {
+	if e.index >= len(e.records) {
 		return 0, nil
 	}
 	fp := e.records[e.index].FP
@@ -1160,7 +1176,13 @@ func (e *TLCTraceEnumerator) NextFP() (uint64, error) {
 }
 
 func (e *TLCTraceEnumerator) Close() error {
-	if e != nil && e.raf != nil {
+	if e == nil {
+		panic(NewNullPointerException())
+	}
+	if e.isDisk() {
+		if e.raf == nil {
+			panic(NewNullPointerException())
+		}
 		return e.raf.Close()
 	}
 	return nil
@@ -1168,10 +1190,17 @@ func (e *TLCTraceEnumerator) Close() error {
 
 func (e *TLCTraceEnumerator) Reset(pos int64) error {
 	if e == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
-	if e.raf != nil {
+	if e.isDisk() {
+		if e.trace == nil {
+			panic(NewNullPointerException())
+		}
 		e.trace.mu.Lock()
+		if e.trace.raf == nil {
+			e.trace.mu.Unlock()
+			panic(NewNullPointerException())
+		}
 		length, err := e.trace.raf.Length()
 		e.trace.mu.Unlock()
 		if err != nil {
@@ -1179,6 +1208,9 @@ func (e *TLCTraceEnumerator) Reset(pos int64) error {
 		}
 		e.length = length
 		if pos == -1 {
+			if e.raf == nil {
+				panic(NewNullPointerException())
+			}
 			pos, err = e.raf.GetFilePointer()
 			if err != nil {
 				return err

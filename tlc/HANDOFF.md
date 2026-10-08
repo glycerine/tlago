@@ -227,6 +227,11 @@ returning zero. Public disk-depth queries propagate read failures and retain the
 consumed cursor, without falling back to mirror records. Reporting retains its
 previous maximum only after successful calculation. Enumeration cannot reopen a
 missing disk owner or return a memory snapshot in its place.
+Disk enumerator position/read/close operations require the reader. Reset requires
+the writer first, publishes its length, then requires the old reader only when
+retaining its cursor (`-1`). An explicit position can replace a missing reader.
+Missing disk owners cannot turn enumeration into in-memory completion. Native
+reset continues to release the replaced read-only handle.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

@@ -21708,3 +21708,30 @@ status 0, 57.926 seconds). All processes are terminal. Assertions and bounds are
 unchanged. No full suite or race run was performed. Supplemental cases add no
 original-method credit; construction/context and remaining trace audits are
 pending, and distributed parity is incomplete.
+
+### 2026-10-08: Disk enumerator owner and reset publication ordering
+
+Compared all TLCTraceEnumerator operations with pinned source. Disk enumerators
+retain their disk context even if their reader is absent; position/read/close
+cannot then return native memory completion or fingerprint zero. Missing
+enumerators fail rather than silently return. Reset requires the writer before
+publishing its length, then requires the old reader only for position -1. An
+explicit position can open and seek a replacement when no old reader exists.
+Missing trace/writer failures retain the previous length and reader; missing old
+cursor failure retains the newly published length. Native reset still releases
+the replaced read-only handle without emulating Java resource leaks.
+
+No original method directly covers these missing owners. Eleven supplemental
+cases cover reader/enumerator absence across position/read/close and reset with
+missing enumerator/trace/writer/current reader or explicit replacement. All eleven
+initially failed (713eb5, status 1, 0.015 seconds). Final focused trace/enumerator,
+checkpoint/recovery, worker/concurrent and original simulation trace checks pass
+(dd146e, status 0, 1.139 seconds). Original LSBDiskFPset testFPSetRecovery passes
+with its unchanged 99,999 range, complete assertions and default storage settings
+(913446, status 0, 1.759 seconds). Original checkpoint-on-violation/time-bound,
+error-trace and three-worker CodePlexBug08 archive recovery plus all four existing
+DieHard/TSnapShot native process storage variants pass (f8410a, status 0, 56.923
+seconds). All processes are terminal. Source assertions and bounds are unchanged.
+No full suite or race run was performed. Supplemental cases add no original-
+method credit; construction/context and remaining trace audits remain pending,
+and distributed parity is incomplete.
