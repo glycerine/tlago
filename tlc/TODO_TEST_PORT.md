@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental memory queue recovery checks cover untouched storage/cursor,
+partial state publication, fixed-capacity overflow and coordinator stop ordering.
+Original short memory queue methods pass; no original-method credit is added.
+
 Supplemental checkpoint commit checks cover queue/trace I/O categories, retained
 file/pool mutation and coordinator stop ordering. Original short queue methods
 remain green; these checks add no original-method completion credit.

@@ -19469,3 +19469,26 @@ in 0.065 seconds. The unchanged 2,147,483,648-state growth method is not selecte
 No enabled original method covers these added failure boundaries; no original
 method completion credit is added. All handles are terminal and retired. No
 full suite, long workload or race run. Broader distributed parity remains open.
+
+## October 8, 2026: memory queue recovery partial mutation
+
+Continued checkpoint failure auditing. DiskFPSet begin-checkpoint still defers
+lock release/flusher reset where Java reaches them only on success; this
+source/native ownership difference remains an explicit next audit item. Found
+a concrete memory queue recovery shortcut while comparing the companion
+recovery paths: Go cleared/resized its states array, reset start and stored
+records only after complete reads. Source retains storage/cursor and publishes
+each empty state before reading. Restored those mutation orders and source
+fixed-capacity bounds failure; native input cleanup closes once without
+replacing the primary failure.
+
+Three partial/complete state rows, capacity overflow and real coordinator
+recovery initially fail (74150, status 1, 0.019 seconds). After production fix,
+those checks plus original nine short memory queue methods, disk partial-read
+and commit-order checks pass (25166, status 0, 0.037 seconds). Final expanded
+selection includes local/single/partitioned native TCP assigned-block checkpoint,
+three in-flight checkpoint connection-loss phases and trace recovery/publication
+failures; all pass in 0.075 seconds. No enabled original method covers these
+added boundaries, so no original-method completion credit is added. All handles
+are terminal and retired. No full suite, long workload or race run. Distributed
+parity remains incomplete.

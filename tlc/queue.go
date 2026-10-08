@@ -401,27 +401,28 @@ func (q *MemStateQueue) Recover() error {
 		_ = file.Close()
 		return err
 	}
+	closed := false
+	defer func() {
+		if !closed {
+			_ = in.Close()
+		}
+	}()
 	length, err := in.ReadInt()
 	if err != nil {
-		_ = in.Close()
 		return err
 	}
-	if int(length) > len(q.states) {
-		q.states = make([]*TLCStateMut, max(memStateQueueInitialSize, int(length)))
-	}
-	for i := range q.states {
-		q.states[i] = nil
-	}
-	q.start = 0
 	q.len = int64(length)
 	for i := int32(0); i < length; i++ {
 		state := NewEmptyState()
-		if err := state.Read(in); err != nil {
-			_ = in.Close()
-			return err
+		if int(i) >= len(q.states) {
+			return NewArrayIndexOutOfBoundsException(int(i), len(q.states))
 		}
 		q.states[i] = state
+		if err := state.Read(in); err != nil {
+			return err
+		}
 	}
+	closed = true
 	return in.Close()
 }
 

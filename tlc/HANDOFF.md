@@ -73,6 +73,16 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Next failure audit: DiskFPSet begin-checkpoint ownership. Java reaches lock
+release and flusher flag reset only on success; Go currently defers both.
+Resolve that source/native ownership difference before claiming parity.
+
+Memory queue recovery now retains its cursor and untouched array slots,
+publishes each new empty state before reading, and preserves partial state
+fields on failure. Capacity overflow retains the fixed array and earlier reads
+with the source bounds failure; coordinator recovery stops before fingerprints
+or publication. These checks add no original-method completion credit.
+
 Queue and trace checkpoint commit failures now retain the source I/O category
 through native failure payloads. Checks retain earlier pool deletion, stop at
 failed file promotion, and verify that coordinator failures preserve earlier

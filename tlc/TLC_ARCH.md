@@ -11364,3 +11364,14 @@ removed files without advancing lastLoPool or touching later files after failure
 Real coordinator checkpoint cases remove a queue/trace temporary at the source
 commit boundary and require queue resume, earlier begins/commits, stopped later
 commits and no checkpoint-end event. These are native supplemental checks.
+
+MemStateQueue.recover now retains the source array and start cursor, mutates
+len after its header read, and publishes each empty state before its read.
+The previous clearing/resizing/cursor reset and deferred slot publication are
+removed. Capacity overflow returns the represented bounds failure after the
+earlier records and len mutation; storage is not grown. Native input ownership
+is released once on success or failure without replacing the failed read cause.
+Checks cover missing UID/level, completed reconstruction, the fixed 4096-entry
+capacity boundary and real coordinator recovery before fingerprints/publication.
+DiskFPSet begin-checkpoint failure lock/flag ownership still differs from source
+and requires further audit; no distributed completion claim follows this chunk.
