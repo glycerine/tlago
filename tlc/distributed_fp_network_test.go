@@ -27,7 +27,8 @@ func fpNetworkTestEnvironment(t *testing.T, network *DistributedFPServerNetwork,
 
 func TestNativeFPServerRegistrationReportingAndShutdown(t *testing.T) {
 	manager := NewDynamicDistributedFPSetManager(1)
-	coordinator := NewLocalServerEndpoint(&TLCServer{FPSetManager: manager, InternTable: NewInternTable(16)})
+	registration := &distributedFPRegistration{expected: 1, remaining: 1, done: make(chan struct{})}
+	coordinator := NewLocalServerEndpoint(&TLCServer{FPSetManager: manager, InternTable: NewInternTable(16), fpRegistration: registration})
 	_, client := startCoordinatorRPC(t, coordinator)
 	network, err := NewDistributedFPServerNetwork("127.0.0.1:0", "")
 	if err != nil {
@@ -74,7 +75,9 @@ func TestNativeFPServerRejectionPreservesWorkerHost(t *testing.T) {
 	if err := manager.RegisterFPSet(NewLocalFingerprintEndpoint(NewMemFPSet()), "first"); err != nil {
 		t.Fatal(err)
 	}
-	_, client := startCoordinatorRPC(t, NewLocalServerEndpoint(&TLCServer{FPSetManager: manager, InternTable: NewInternTable(16)}))
+	registration := &distributedFPRegistration{expected: 1, done: make(chan struct{})}
+	close(registration.done) // The first store has already satisfied startup registration.
+	_, client := startCoordinatorRPC(t, NewLocalServerEndpoint(&TLCServer{FPSetManager: manager, InternTable: NewInternTable(16), fpRegistration: registration}))
 	network, err := NewDistributedFPServerNetwork("127.0.0.1:0", "")
 	if err != nil {
 		t.Fatal(err)

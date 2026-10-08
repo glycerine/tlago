@@ -28,6 +28,14 @@ categories. Missing bindings retain discovery retry and suppress shutdown-hook
 worker traversal; keepalive retains its coordinator-loss path. Other legacy
 remote failure classifiers and fingerprint endpoint adapters still need audit.
 
+Fingerprint transport failures use `DistributedOperationError` and preserve Go
+causes for `errors.Is`/`errors.As`, replacing the flattened endpoint error. They
+retain manager I/O/failover handling without acquiring worker smaller-batch retry
+or exit traits. Native checks cover closed clients and a completed insertion whose
+reply is lost: storage remains mutated, and the client does not replay or redial.
+Standalone fingerprint fixtures now supply distributed coordinator registration
+state, preserving the base coordinator's rejection behavior.
+
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production
 implementation. Fix implementation shortcuts before proceeding. Preserve the

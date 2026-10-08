@@ -8,16 +8,6 @@ import (
 	"sync"
 )
 
-// DistributedEndpointError carries a remote operation failure. IO distinguishes
-// storage/connection failures from an unchecked operation failure, preserving
-// the existing TLC manager's different catch behavior for local FP managers.
-type DistributedEndpointError struct {
-	Message string
-	IO      bool
-}
-
-func (e *DistributedEndpointError) Error() string { return e.Message }
-
 // DistributedRPCServer hosts named TLC objects using Go's native RPC protocol.
 // Calls are independent and concurrent. It performs no implicit retries: a
 // failed insertion may already have changed storage, so TLC owns retry policy.
@@ -276,7 +266,7 @@ type NetworkFingerprintEndpoint struct {
 func DialFingerprintEndpoint(address, object string) (*NetworkFingerprintEndpoint, error) {
 	client, err := rpc.Dial("tcp", address)
 	if err != nil {
-		return nil, &DistributedEndpointError{Message: err.Error(), IO: true}
+		return nil, fingerprintConnectionFailure(err)
 	}
 	return &NetworkFingerprintEndpoint{client: client, Address: address, Object: object}, nil
 }
@@ -338,15 +328,15 @@ func (e *NetworkFingerprintEndpoint) call(request DistributedFingerprintRequest)
 	var reply DistributedFingerprintReply
 	client, err := e.clientForCall()
 	if err != nil {
-		return reply, &DistributedEndpointError{Message: err.Error(), IO: true}
+		return reply, fingerprintConnectionFailure(err)
 	}
 	if err := client.Call("Fingerprint.Call", request, &reply); err != nil {
-		return reply, &DistributedEndpointError{Message: err.Error(), IO: true}
+		return reply, fingerprintConnectionFailure(err)
 	}
 	if reply.Failure != nil {
 		failure, err := DecodeDistributedFailure(reply.Failure)
 		if err != nil {
-			return reply, &DistributedEndpointError{Message: err.Error(), IO: true}
+			return reply, fingerprintConnectionFailure(err)
 		}
 		return reply, failure
 	}

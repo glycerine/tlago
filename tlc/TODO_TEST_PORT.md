@@ -724,6 +724,14 @@ catalog from a missing binding and observes later publication. These cases add
 no original-method credit; remaining legacy remote classifiers and fingerprint
 endpoint adapters are pending.
 
+Native fingerprint transport checks preserve network causes through
+`errors.Is`/`errors.As` for failed dial and closed-client operations. A completed
+batch insertion followed by socket closure retains storage mutation, reports
+failure and verifies no replay/redial. Original manager failover/checkpoint tests
+remain unchanged. Standalone fingerprint registration fixtures now supply the
+distributed coordinator's registration state; base-coordinator rejection remains
+intact. No original-method credit is added for these native checks.
+
 Supplemental trace-evaluation checks preserve returned reconstruction/alias
 failure identity, partial output and coordinator ordinary/fatal catch boundaries.
 Original Alias safety and distributed initializer/model checks remain green;

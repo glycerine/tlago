@@ -5,8 +5,8 @@ import (
 	"reflect"
 )
 
-// DistributedOperationError is an operation failure received from another Go
-// process. Its traits drive TLC's catch/retry decisions without a Java remote
+// DistributedOperationError carries a local endpoint, transport or received Go
+// operation failure. Its traits drive TLC's catch/retry decisions without a Java remote
 // object or exception protocol. Diagnostic text and causes belong to the sender.
 type DistributedOperationError struct {
 	Message             *string
@@ -40,6 +40,15 @@ func (e *DistributedOperationError) GetSuppressed() []error {
 }
 func (e *DistributedOperationError) diagnosticClassName() string  { return e.Class }
 func (e *DistributedOperationError) remoteThrowableStack() string { return e.Stack }
+
+// Fingerprint calls preserve their Go transport cause without borrowing the
+// worker's smaller-batch retry or worker-exit categories. No call is replayed.
+func fingerprintConnectionFailure(cause error) *DistributedOperationError {
+	return &DistributedOperationError{
+		Message: javaString(cause.Error()), Class: fmt.Sprintf("%T", cause),
+		Cause: cause, Remote: true, IO: true,
+	}
+}
 
 // Worker resource failures carry coordinator decisions directly. Exhausting
 // worker memory can be retried with a smaller batch; rejected execution cannot.
@@ -161,9 +170,6 @@ func isDistributedWorkerUnavailable(err error) bool {
 func isDistributedRemoteFailure(err error) bool {
 	if failure, ok := err.(*DistributedOperationError); ok {
 		return failure.Remote
-	}
-	if failure, ok := err.(*DistributedEndpointError); ok {
-		return failure.IO
 	}
 	return javaRemoteException(err) != nil
 }

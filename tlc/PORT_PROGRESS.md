@@ -19378,708 +19378,6 @@ no additional original-method completion is claimed. All handles are terminal
 and retired. No full suite, long workload or race run. Broader distributed
 parity remains incomplete.
 
-## October 8, 2026: disk recovery reader replacement order
-
-Audited DiskFPSet.recover(String), source lines 713–728. Go closed/cleared both
-reader arrays before reopening, while Java replaces each slot immediately after
-its close and resets poolIndex only after both loops. Added real named-file
-recovery checks with native descriptor close failures at worker/pool slot 1,
-plus success. Both failure rows expose the shortcut before the fix (74787,
-status 1, 0.023 seconds). Restored sequential per-slot close/open/replacement;
-native reader snapshot publication on exit retains partial state under the
-recovery table write lock. Added a first-open failure check requiring the closed
-old slot and untouched later worker/pool slots with unchanged pool cursor.
-
-Initial corrected recovery, original BufferedRandomAccessFile class, existing
-reader-selection and disk trace/duplicate checks pass (69662, status 0, 5.358
-seconds). Final expanded selection also includes open failure, nested recovery
-and memory duplicate category checks and passes (63294, status 0, 3.605 seconds).
-Tests require completed file/index reconstruction before reader failures, exact
-prior/new reader identities, source closed states and native snapshot agreement.
-No enabled original Java method directly covers these failure boundaries; no
-original-method completion is added. All handles are terminal and retired. No
-full suite, long workload or race run. Broader distributed parity remains pending.
-
-## October 8, 2026: MemFPSet1 backing-set recovery fidelity
-
-Audited source SetOfLong.recover/grow, used by MemFPSet1 file recovery. Go
-normalized the count, deferred header mutation, clamped empty/negative array
-lengths and used a special insertion method without growth. Source assigns each
-read field immediately, allocates the exact length and uses ordinary put.
-Its grow retains zero membership while resetting count and reinserting only
-nonzero entries. Restored these algorithms, including source count quirks,
-and removed the now-unused putWithoutGrow helper.
-
-New bounded checks expose the old behavior (20589, status 1, 0.012 seconds):
-complete count/growth cases, all 29 incomplete file lengths and negative array
-allocation after header mutation. Corrected checks plus existing duplicate,
-truncated memory checkpoint and null-block contracts pass (91307, status 0,
-0.253 seconds). Added actual native TCP MemFPSet1 file recovery for complete
-and partial records. Complete recovery retains source count four for two
-records; incomplete recovery retains count three and the first record, while
-the source manager catches the I/O failure and emits its storage diagnostic.
-These checks plus existing original dynamic manager constructor/index/
-reassignment/failover/block/order methods pass (54026, status 0, 0.077 seconds).
-Repository search finds no upstream SetOfLong test; supplemental checks add no
-original-method completion credit. All handles are terminal and retired. No
-full suite, long workload or race run. Constructor size handling remains a
-separate source audit item; distributed parity is still incomplete.
-
-## October 8, 2026: memory checkpoint file-open and size boundaries
-
-Completed the preceding SetOfLong constructor size audit: source allocates
-exactly the requested size. Removed zero/negative-to-one normalization; zero
-allocation grows on first insertion and negative allocation fails in the
-represented runtime category. Audited the memory fingerprint BeginChkptFile
-methods against source FileOutputStream constructors (BufferedDataOutputStream
-and FileUtil.newDFOS). Removed automatic MkdirAll from all three methods;
-missing parents must cause I/O failure rather than be silently created.
-
-Six supplemental local/native-TCP missing-parent cases and the constructor
-check expose the shortcuts before the fix (79689, status 1, 0.020 seconds).
-Corrected checks plus previous MemFPSet1 field/record recovery, runtime duplicate,
-corrupt checkpoint, manager catch/fatal and existing original dynamic manager
-methods pass (83179, status 0, 0.094 seconds). Existing native fingerprint
-checkpoint success/object lifecycle/scalar-batch and memory storage/commit
-checks also pass in 0.034 seconds. Empty MemFPSet2 storage needs no large table
-allocation to exercise file opening; the failure occurs before table access.
-No enabled original Java method covers these new boundary cases; no original
-method completion credit is added. All handles are terminal and retired. No
-full suite, long workload or race run. Broader distributed parity remains open.
-
-## October 8, 2026: queue/trace checkpoint commit I/O categories
-
-Compared checkpoint commit bodies against Java. Ordinary old-file deletion and
-promotion order match, but MemStateQueue/DiskStateQueue/TLCTrace returned plain
-formatted errors where Java returns I/O failures. Seven error returns now use
-the existing I/O carrier, retaining exact diagnostic text. Supplemental nine-row
-file mutation matrix and partial disk pool deletion first fail on that category
-(1654, status 1, 0.015 seconds). Corrected cases plus original short memory queue
-methods and related disk recovery checks pass (16828, status 0, 0.023 seconds).
-
-Added real TLCServer.Checkpoint queue/trace commit failures requiring earlier
-checkpoint begins/commits, queue resume, retained partial files and stopped later
-commits with no completion event. Expanded source short memory queue selection
-passes (83805, status 0, 0.020 seconds). Related selection passes in 0.066
-seconds; verified selections separately with verbose output to establish all
-intended methods: nine original DiskStateQueue inherited methods pass in 0.017
-seconds, and native local/single/partitioned assigned-block checkpoints, three
-in-flight TCP checkpoint connection-loss phases and all new commit checks pass
-in 0.065 seconds. The unchanged 2,147,483,648-state growth method is not selected.
-No enabled original method covers these added failure boundaries; no original
-method completion credit is added. All handles are terminal and retired. No
-full suite, long workload or race run. Broader distributed parity remains open.
-
-## October 8, 2026: memory queue recovery partial mutation
-
-Continued checkpoint failure auditing. DiskFPSet begin-checkpoint still defers
-lock release/flusher reset where Java reaches them only on success; this
-source/native ownership difference remains an explicit next audit item. Found
-a concrete memory queue recovery shortcut while comparing the companion
-recovery paths: Go cleared/resized its states array, reset start and stored
-records only after complete reads. Source retains storage/cursor and publishes
-each empty state before reading. Restored those mutation orders and source
-fixed-capacity bounds failure; native input cleanup closes once without
-replacing the primary failure.
-
-Three partial/complete state rows, capacity overflow and real coordinator
-recovery initially fail (74150, status 1, 0.019 seconds). After production fix,
-those checks plus original nine short memory queue methods, disk partial-read
-and commit-order checks pass (25166, status 0, 0.037 seconds). Final expanded
-selection includes local/single/partitioned native TCP assigned-block checkpoint,
-three in-flight checkpoint connection-loss phases and trace recovery/publication
-failures; all pass in 0.075 seconds. No enabled original method covers these
-added boundaries, so no original-method completion credit is added. All handles
-are terminal and retired. No full suite, long workload or race run. Distributed
-parity remains incomplete.
-
-## October 8, 2026: disk checkpoint failure ownership
-
-Resolved the previous explicit DiskFPSet begin-checkpoint audit item. Source
-sets the flusher flag/acquires all write stripes, flushes/copies/advances its
-marker, then releases stripes and clears the flag. Go used a defer that released
-ownership after failures. Removed that defer and restored success-only release.
-Short checks inspect stripes with TryLock instead of launching blocked calls;
-fixture cleanup releases retained ownership after assertions so native resources
-and test jobs are retired.
-
-Initial I/O flush/copy and two-partition native TCP manager cases expose the
-old flag reset (75052, status 1, 0.027 seconds). The initial runtime fixture used
-memInsert, which recognizes the marked flushed entry; corrected that setup to
-restore an unflushed duplicate in the table, as the existing duplicate-merge
-check does. Corrected four failure/success rows, TCP manager continuation,
-checkpoint catch/fatal, existing duplicate-merge and native checkpoint success
-checks pass (87898, status 0, 1.568 seconds). Final focused ownership, native
-assigned-block/connection-loss checkpoint and original dynamic manager methods
-pass (88882, status 0, 0.085 seconds).
-
-Failure assertions retain source stripes/flag and unchanged marker; copy failure
-retains its completed flush. Success requires exact checkpoint data and release.
-Native manager catches I/O failure, preserves partition registration/availability,
-prints the source diagnostic and completes the healthy partition. It does not
-reset failed storage ownership. No enabled original method covers these failure
-boundaries; supplemental checks add no original-method credit. All handles are
-terminal and retired. No full suite, long workload or race run. Distributed
-parity remains incomplete.
-
-## October 8, 2026: full-model recovery after queue commit interruption
-
-Extended the existing native EWD840 process harness with interruption just after
-the real disk queue commit and before trace commit. Generalized its owned queue
-wrapper from a pre-commit boolean to an explicit before/after-queue boundary.
-No production change was needed. Producer still recovers an older complete
-initial checkpoint, advances the unchanged N=7 MC06 model with a real TCP worker,
-and enters the production checkpoint barrier before abrupt process exit.
-
-Added independent parent inspection of committed queue headers, unchanged old
-trace metadata, promoted/retained queue temporaries and uncommitted trace/intern/
-FP files. Trace enumeration independently computes the full fingerprint count.
-Both original pre-commit and new after-queue rows pass normally with unchanged
-model/workload bounds (73603, status 0, 120.230 seconds total; 60.16/60.05 seconds).
-Pre-commit recovery reports 20,480 fingerprints and old queue 16,384; after-queue
-recovery reports 20,480 fingerprints and new queue 12,288. Both finish at the
-original 114,942 distinct states/zero queued, exactly one recovery, no repeated
-initialization or GENERAL/unexpected EOF, with fresh coordinator/worker normal
-exit and every owned child joined. Receipt:
-/mnt/oldrog/tmp/tlago-checkpoint-between-commits.log.
-
-The four original remote model harnesses remain assumption-disabled/Missing;
-this native process coverage adds no original-method credit. Later trace/intern/
-fingerprint commit boundaries and broader distributed parity remain pending.
-All handles are terminal and retired. No full suite or race instrumentation.
-
-## October 8, 2026: full-model recovery after intern-table commit
-
-Added the next precise process boundary: entry into non-distributed FP commit
-after queue/trace/intern commits. The test CreateServer environment replaces
-the constructor's unused initial memory manager with the same configured
-production FP factory plus a thin CommitChkpt exit wrapper. Memory init owns
-no open files; all storage operations still delegate to the production set
-before/after recovery. No production checkpoint hook or protocol was added.
-Parent artifact checks distinguish committed trace/intern metadata from the
-older queue-only interruption boundary and require both FP temporaries.
-
-The full unchanged N=7 MC06 process row passes normally (39811, status 0,
-60.06 seconds; package 60.076 seconds). Independent trace enumeration and
-committed queue inspection require recovery of 20,480 fingerprints and 12,288
-queued states; committed trace metadata differs from the older initial
-checkpoint and trace/intern temporary files are absent. Fresh coordinator/worker
-processes finish at original 114,942 distinct/zero queued, one recovery, no
-repeated initialization, GENERAL or unexpected EOF, normal role exits and
-all children joined. Receipt:
-/mnt/oldrog/tmp/tlago-checkpoint-after-intern-commit.log.
-
-No production fix was needed. The original four assumption-disabled remote
-model harnesses remain Missing; this native coverage adds no original-method
-credit. Isolated trace-commit and nested FP-commit interruption plus broader
-distributed parity remain pending. All handles are terminal and retired.
-No full suite, reduced workload or race instrumentation was selected.
-
-## October 8, 2026: recovery between nested fingerprint commits
-
-Extended the native EWD840 harness with interruption after the first nested
-MemFPSet commit and before the second. The same configured production factory
-now receives a test-only child-zero wrapper that delegates actual CommitChkpt
-before abrupt exit. Parent inspection saves the older complete FP files and
-requires first-child promotion/changed contents, byte-identical old second-child
-contents with retained temporary, and earlier queue/trace/intern commits. The
-pre-FP-commit row also now checks both old FP checkpoints against the baseline.
-
-Both full unchanged N=7 MC06 rows pass normally (10281, status 0, 119.149
-seconds total; after-intern 59.31 seconds, after-first-FP 59.82 seconds). Both
-recover 20,480 fingerprints and 12,288 queued states through fresh CLI
-coordinator/worker processes and reach original 114,942 distinct/zero queued.
-All existing recovery/init/error/normal-exit assertions remain; every owned
-child is joined. Receipt:
-/mnt/oldrog/tmp/tlago-checkpoint-partial-fingerprint-commit.log.
-
-No production fix or checkpoint hook was needed. Consolidated overlapping
-checkpoint/recovery paragraphs in HANDOFF into one current summary and process
-receipt table; detailed history stays here. Original assumption-disabled remote
-harnesses remain Missing and receive no completion credit. Isolated trace-commit
-interruption and broader distributed parity remain pending. All handles are
-terminal and retired. No full suite, reduced workload or race instrumentation.
-
-
-## October 8, 2026: native state backing-array ownership
-
-Ordinary TLCStateMut stores a non-transient value array. The native payload
-previously copied each state's reference list independently, even when that
-storage was shared with another state or composite value. State encoding now
-uses the existing value-array graph table; decoding uses the same validated
-array references as composite values. Inline nodes remain decodable. Peers
-must use the same build for the updated payload. No RMI, Java serialization
-implementation or evaluator machinery was added.
-
-The new graph check reproduced the lost identity before the fix (31535, status
-1). Focused state payload/state-array/value-array graph checks pass (35688,
-status 0, 0.013 seconds), covering cycles, separate equal-content arrays,
-receiver mutation isolation, nil/empty arrays and invalid/conflicting state
-references. Both state-array and value-array worker RPC checks pass over owned
-loopback listeners (0.014 seconds), retaining sharing through requests and
-results without aliasing sender storage. No upstream method directly covers
-this boundary; these supplemental checks add no original-method completion
-credit. Value source and cost-model fields are transient in the Java reference;
-this change does not claim extended evaluator/custom-data graph completion.
-No full suite, long workload or race instrumentation was selected.
-
-
-## October 8, 2026: distributed block-selector source contracts
-
-Compared all four source selector implementations. The port substituted one
-worker for zero, directly cast floating results to Go int64 (losing the source
-NaN/overflow conversions), omitted the null-server assertion and updated limits
-for selectors whose source setter is a no-op. Constructors now retain the
-assertion; proportional/statistical selection uses the existing numeric
-conversion helpers and actual worker count. Only limiting/statistical modes
-accept transfer-limit updates. No JVM or transport machinery was added.
-
-New focused checks reproduced the deviations (3259, status 1), then pass after
-the fix (17377 and final 25565, status 0, 0.012 seconds), together with all nine
-original smart-proxy method contexts. Checks include finite rounding, signed
-zero-worker infinities, NaN, large sizes, statistical fallback, setter behavior,
-queue request bounds, fixed-size requests and lossy averages based on actual
-returned counts, including null dequeues. The existing native coordinator
-retry/loss check passes over owned TCP listeners (0.015 seconds). Its fixture
-now explicitly selects limiting mode, as required by its existing reduced-limit
-assertion; a proportional selector correctly ignores that setter.
-
-Upstream's selector test directory contains only DummyTLCWorker, used by the
-ported smart-proxy methods, and no selector test methods. Supplemental checks
-add no original-method completion credit. Broader distributed parity remains
-pending. No full suite, long workload or race instrumentation was selected.
-
-
-## October 8, 2026: shared block-selector statistics and limits
-
-Source BlockSelector publishes its lossy average through volatile reads/writes.
-The Go field used unsynchronized access while multiple coordinator worker
-threads could update it and progress reporting could read it. The focused
-four-goroutine, 1,000-iteration native check also exposed transfer-limit races
-between concurrent retry setters and block-selection readers (5511, status 1,
-0.056 seconds). The average now uses atomic.Int64, preserving each independent
-source read/write and allowing lost updates rather than making the calculation
-a CAS loop. Source rounding, signed overflow and reset after a nonpositive
-average remain intact. Transfer-limit accesses use a small RWMutex; initial
-configuration is set before publication, and each source read remains separate.
-
-The exact short race check passes (95478, status 0, 1.037 seconds). Normal
-selector/arithmetic/queue/average checks and all nine original smart-proxy
-contexts pass (98502, status 0, 0.011 seconds). The native TCP coordinator
-retry/loss check also passes normally (0.013 seconds). No upstream selector
-methods exist; supplemental checks earn no original-method completion credit.
-No full suite or long workload was selected, and race instrumentation covered
-only the exact short concurrency check. Broader distributed parity remains
-pending; all test handles are terminal.
-
-
-## October 8, 2026: coordinator keepalive failure boundary
-
-The coordinator keepalive goroutine let uncaught timer exceptions escape and
-terminate the Go process, unlike source Timer's thread-only termination. Its
-rescheduling also started a fresh minute after task completion instead of using
-the preceding actual execution start. Extracted the production loop into
-runKeepAlive, added thread-boundary failure diagnostics/recovery and matched the
-worker timer's scheduling calculation and cancellation check. No transport or
-JVM machinery was added.
-
-The new native check reproduced the process-ending runtime panic with the
-original ten-second initial delay (21203, status 1, 10.025 seconds). After the
-fix, both returned RuntimeException and panicked AssertionError checks pass in
-concurrent independent timer loops (51113, status 0, 10.022 seconds). Diagnostics
-contain both failures; coordinator completion, assigned state, queue, cleanup
-flag and cancellation state remain unchanged. Each timer owner is joined and
-stderr is restored only after both are terminal. Final normal timer check,
-concurrent loss check and all nine original smart-proxy contexts pass (46791,
-status 0, 10.014 seconds). Focused TCP worker-loss and worker keepalive lifecycle
-checks pass normally too (0.032 seconds).
-
-The sixty-second rescheduling calculation is established by source comparison;
-the check does not claim a second real interval. Upstream has no enabled direct
-method for this boundary; native checks add no original-method completion credit.
-No full suite, reduced timer delay or race instrumentation was selected.
-Broader distributed parity remains pending; all test handles are terminal.
-
-
-## October 8, 2026: fingerprint check callable I/O catches
-
-CheckFPsCallable and CheckInvariantCallable catch IOException inside each task,
-print GENERAL and return Long.MAX_VALUE/false. The port submitted raw endpoint
-checks, so I/O errors instead became ExecutionException results that the manager
-printed and ignored. Invariant checking could consequently return true after
-an I/O failure. Both callables now run through their source I/O-only catch before
-the executor wraps other failures. Native returned errors and panics retain the
-same boundary. No RMI, transport retry, partition reassignment or JVM work.
-
-New checks reproduce the missing diagnostics and false invariant success
-(1231, status 1, 0.019 seconds). Local returned/panicked I/O checks pass after the
-fix (63307, status 0, 0.016 seconds), followed by local unchecked RuntimeException
-and AssertionError cases (3038, status 0, 0.023 seconds). Unchecked cases retain
-the source manager's logged failed-completion behavior; they are not converted
-to callable I/O sentinels. TCP returned/panicked I/O cases pass (0.018 seconds),
-with both diagnostics, false invariants, MaxInt64 distance and unchanged storage
-availability/ownership; a subsequent size RPC confirms host survival. Existing
-original dynamic/static manager methods pass (0.066 seconds).
-
-The generated-state statistics audit confirms the existing initial-state offset
-is already correct; no statistics implementation or supplemental test change
-was needed. Upstream has no direct check-callable failure methods, so supplemental
-coverage adds no original-method completion credit. No full suite, long workload
-or race instrumentation was selected. Broader distributed parity remains pending;
-all test handles are terminal.
-
-
-## October 8, 2026: distributed result getter contracts
-
-The source NextStateResult getters dereference their receiver, and its delta
-also dereferences nextStates.length. Go returned zero/nil for a nil receiver
-and subtracted len(nil) for a null partition array. Restored NullPointerException
-failure traits at these native boundaries; the source delta remains computed
-from partition count, with signed long overflow, rather than state count.
-Array getters still return the original arrays and allow null fields on a
-nonnull result. No transport or JVM machinery was added.
-
-The native null getter check reproduces the fabricated default (45102, status
-1, 0.011 seconds). After the fix, all null/empty/reference/counter checks,
-existing result payload checks and all nine original smart-proxy contexts pass
-(69475, status 0, 0.013 seconds). Native TCP result/lifecycle and coordinator
-retry/loss checks pass (0.015 seconds). Upstream has no direct getter methods;
-supplemental checks add no original-method completion credit. No full suite,
-long workload or race instrumentation was selected.
-
-Batch failover source comparison found no new deviation in the inspected
-reassignment, returned-bit and Exception/Error catch paths. A separate pending
-coordinator summary defect remains: cacheHitRatio < 0 selects unavailable in
-Java, whereas Go's >= 0 availability test also excludes NaN. Correcting its
-formatting needs a separate source numeric rounding/formatting pass, not a
-claim that Go fmt implements String.format. Broader distributed parity remains
-pending; all test handles are terminal.
-
-
-## October 8, 2026: canonical distributed worker cache-ratio output
-
-Coordinator summaries used a nonnegative availability check, excluding NaN,
-and Go fmt's binary/ties-to-even rounding. The source uses ratio < 0 for n/a
-and two-place decimal half-up formatting. Added a native Go formatter using
-the shortest decimal representation, decimal carry and existing three-digit
-grouping. It preserves negative zero, NaN and positive Infinity; negative
-ratios, including negative Infinity, remain n/a. Coordinator summaries now
-call this formatter once for the collected cache ratio.
-
-Generated 271 reference rows from the source ternary and
-String.format(Locale.ROOT, "%1$,.2f", ratio) with local OpenJDK 21.0.12.1:
-15 edge values and 256 deterministic positive bit patterns (seed 20261008).
-They cover 0.005/0.125/0.375/1.005/2.675 decimal rounding, extrema, smallest
-subnormal, signed zero, NaN/infinities and 1e23. The persistent vectors are
-in test_vectors/distributed/worker_cache_ratios.tsv; Go tests read these directly
-and require no Java runtime. Scratch reference command/input/output remain at
-/mnt/oldrog/tmp/DistributedRatioReference.java and distributed-ratio-*.txt/tsv.
-No RMI, Java serialization or JVM emulation was implemented.
-
-All 271 rows pass (20977, status 0, 0.012 seconds). Focused result getter/payload,
-cache-ratio and all nine original smart-proxy contexts pass (0.013 seconds).
-Native TCP worker result/lifecycle and coordinator retry/loss checks pass
-(0.017 seconds). Upstream has no original worker-summary formatting methods;
-supplemental checks add no original-method credit. Locale-specific separators
-and digits remain a separate pending source-output contract; this chunk does
-not claim all-locale or complete distributed parity. No full suite, long
-workload or race instrumentation was selected; all handles are terminal.
-
-
-## October 8, 2026: localized distributed worker statistics
-
-Worker cache-ratio output now reuses the existing console locale/numbering
-selection. Extracted that initialization and selection without changing MP's
-explicit grouping pattern. Locale zero digits and grouping come from the
-existing OpenJDK-derived table; decimal separator pairs and ambiguous-space/
-apostrophe language exceptions are verified against the same source locale
-version. NaN, Infinity and n/a stay unlocalized, and the negative-zero sign
-remains ASCII as in the source formatter. No Java runtime is used by Go tests
-or the Go formatter.
-
-Generated source reference rows with local OpenJDK 21.0.12.1 for all 1,068
-existing locale keys and 792 Unicode numbering variants (12 languages times
-66 systems). Each row records zero/group/decimal symbols and the exact source
-format of 1234.125 and negative zero. Persistent vectors are in
-test_vectors/distributed/worker_cache_ratio_locales.tsv. Scratch source and
-input/output remain at /mnt/oldrog/tmp/DistributedLocaleRatioReference.java
-and distributed-ratio-locales.txt/tsv.
-
-The first locale check exposed the en-US-POSIX no-grouping pattern (12949,
-status 1, 0.015 seconds); Java Formatter obtains its grouping size from that
-locale pattern, whereas MP uses an explicit ###,###.### pattern. Worker
-statistics now suppress grouping for POSIX while retaining MP behavior.
-All 1,860 rows and the original four-method MP class pass (39406, status 0,
-0.016 seconds). Final checks also pass all 271 canonical numeric rows and
-12 fresh Go processes across German, French, Arabic, POSIX, Swiss and Thai
-configuration, in both initialization orders (64407, status 0, 0.140 seconds).
-Native TCP result/lifecycle and coordinator retry/loss checks pass (0.016
-seconds). Every child is joined; no source assertion was weakened.
-
-This closes the tracked locale output gap for the reference coverage above,
-not the broader distributed port. Upstream has no original worker-statistics
-formatting methods; supplemental checks add no method completion credit.
-No full suite, long workload or race instrumentation was selected. All handles
-are terminal.
-
-
-## October 8, 2026: required coordinator checkpoint and cleanup owners
-
-Compared TLCServer.java checkpoint/recover/close with the native coordinator.
-The Go methods silently skipped missing queue, trace or fingerprint ownership,
-allowing incomplete checkpoint/recovery or metadata deletion to report success.
-Removed those skips. Existing native null-failure traits now stop each operation
-at the actual source access, after any preceding mutations. No upfront bulk
-validation, rollback, transport machinery or trace-method changes were added.
-A false queue suspension still returns without accessing trace/fingerprints.
-
-Added distributed_server_ownership_test.go because upstream has no direct
-methods for these missing-component boundaries. It checks nil receivers and
-initial owners, queue/trace temporary checkpoint preservation before failure,
-absence of later commits/intern files/resume/completion output, recovery pointer
-and queue read ordering, trace closure before a missing fingerprint manager,
-and retained metadata after failed close. The initial check failed all four
-test groups (95455, status 1, 0.015 seconds). Focused ordering, commit-error,
-recovery-publication, manager catch and queue recovery checks now pass (92480,
-status 0, 0.053 seconds). Native TCP assigned-block checkpoint checks across
-local/remote/partitioned fingerprints, worker result/lifecycle, coordinator
-retry/loss and the original nine smart-proxy contexts pass (0.045 seconds).
-
-These supplemental checks add no original-method completion credit. The full
-suite was not rerun; no long workload or race instrumentation was selected.
-All test handles are terminal. Distributed completion remains unproven.
-
-
-## October 8, 2026: coordinator progress integer locale parity
-
-Compared periodic progress and printSummary against TLCServer.java. Both
-called fixed comma grouping in Go, while Java calls MP.format for generated,
-distinct, queue and rate counters. Replaced those call sites with the existing
-MessageNumberFormat. Numeric arithmetic/baselines, level formatting, tool mode
-and success conditions are unchanged. Final TLC_STATS retains plain signed
-integer parameters; final progress rate zeros remain literal ASCII zeros.
-
-Generated nine locale reference rows using the source's exact
-DecimalFormat("###,###.###") pattern with OpenJDK 21.0.12.1. The rows cover
-1234, -1234, Long.MIN_VALUE and Long.MAX_VALUE in English, German, French,
-Arabic, POSIX, Swiss Walser, Thai numbering, Persian and Swedish. Persistent
-vectors are in test_vectors/distributed/progress_numbers.tsv; the source
-reference generator is /mnt/oldrog/tmp/DistributedProgressNumberReference.java.
-The Go tests read these saved rows and spawn only their own native test binary.
-
-Added distributed_progress_statistics_test.go. Real memory queue/store counters
-exercise periodic progress and positive/negative rates with the original
-one-minute report interval. The summary checks cover tool/console and
-success/failure combinations, exact localized signed limits, plain statistics
-and unlocalized levels/zero rates. Every locale child is joined. Initial
-verification reproduced the missing locale formatting (60446, status 1,
-0.206 seconds). Fixed verification passes all nine locale processes, existing
-271 canonical worker ratio rows, 1,860 worker locale rows, twelve worker
-initialization-order processes and all four original MP methods (31356,
-status 0, 0.324 seconds). No original coordinator-formatting method exists;
-supplemental checks add no original-method credit. No full suite, long workload
-or race instrumentation was selected; all handles are terminal.
-
-
-## October 8, 2026: distributed trace depth I/O propagation
-
-Compared TLCTrace.getLevel/getLevelForReporting and coordinator periodic/final
-reporting against Java. Go suppressed predecessor read errors and rewound the
-cursor using a deferred seek even after failure; source rewinds only after a
-complete traversal. Removed that rollback and the self-predecessor early-break
-shortcut. Successful final rewind failures now propagate. The checked reporting
-method retains monotonically reported disk depth only after successful reads,
-and closed traces report I/O failure instead of an in-memory stale depth.
-
-Added GetLevelForReportingWithError as the native checked boundary. The existing
-integer-only getter raises errors rather than suppressing them. Coordinator
-periodic and final reporting explicitly return I/O failures at their source
-boundaries. The observation helper now returns an error and publishes baselines
-only after success. ModelChecker's plain-trace progress path catches I/O and
-returns -1; the distributed management getter additionally prints its native
-stack, matching its separate source catch. Existing concurrent-trace fallback
-behavior is retained with an explicit checked call; its wider source parity is
-not claimed by this chunk.
-
-Supplemental distributed_trace_depth_failure_test.go covers a partial two-byte
-predecessor read, success-only rewind, monotonic successful depth, absent
-progress/baseline publication after failure, management catches and closed
-trace errors. A joined fresh native process runs the actual ModelCheck final
-report path with a one-millisecond report interval and closed trace: executor
-shutdown and final distinct count precede the failure, while rate reset,
-success/summary/finished output, flush/unbinding/unexport and metadata cleanup
-do not run. No Java runtime or production test hook is introduced.
-
-Initial cursor verification failed with the old rollback (26994, status 1,
-0.012 seconds); the cursor was 4 rather than the source partial-read position 8.
-The repaired depth/final-process/locale checks pass (43593, status 0, 0.207
-seconds). Focused trace regeneration, enumerator/recovery, reporting, locale
-and original MP tests pass (14621, status 0, 1.988 seconds). The original
-TLCGetLevel and TLCGetLevelTTrace methods pass normally (32041, status 0,
-1.050 seconds). Native TCP assigned-block checkpoint, worker lifecycle and
-coordinator retry/loss checks pass (0.047 seconds). There are no direct source
-failure methods for these boundaries, so supplemental checks add no method
-completion credit. No full suite, long workload or race instrumentation was
-selected. All handles are terminal; distributed completion remains unproven.
-
-
-## October 8, 2026: coordinator server-thread catch/finally ownership
-
-Compared TLCServerThread.run's outer catch/finally with Go Run and Start.
-Unchecked final cache-read failures escaped the goroutine and killed the whole
-Go process; source leaves them uncaught only in the owned thread. A panicked
-remote cache failure also bypassed the source RemoteException catch, while
-the same returned failure warned normally. Start now prints an uncaught native
-diagnostic before completing its join channel and terminates only that owned
-goroutine. The final cache read normalizes return/panic forms through the
-existing generic invocation boundary, preserving the remote-only warning catch.
-
-Registered Run's finally separately from its outer catch, so a failure raised
-by error handling still executes finalization. The first repaired check also
-exposed handler failures being caught a second time: computeBlock and publication
-called handleRunError inside the body protected by the catch. They now raise
-non-inner-caught failures into the single outer catch. Handler failures escape
-that catch while finally still executes; unchecked final cache failures skip
-remaining timer cancellation/state clearing as in Java. No invented cleanup,
-worker decrement, cancellation or model-result mutation was added.
-
-Added distributed_thread_finalizer_test.go because upstream has no direct tests
-for these boundaries. Two direct remote cache cases cover return/panic warning
-parity. Five fresh joined native processes check returned/panicked runtime and
-fatal cache failures plus fatal trace reconstruction inside the error handler.
-They verify process survival, uncaught diagnostics, finalization ordering, timer
-cancel/state-clear boundaries, retained worker count/model state and absence
-of later queue finish after fatal trace printing. They call the actual Start/Run
-without launching a keepalive timer; timer flags/channels expose cancellation.
-
-Initial verification failed on panicked remote cache and all five process cases
-(52692, status 1, 0.077 seconds). Intermediate handler verification exposed the
-second catch (48254, status 1, 0.063 seconds). Corrected finalizer, trace-publication
-and original nine smart-proxy contexts pass (90107, status 0, 0.068 seconds).
-Broader focused local registration/publication/finalizer/smart-proxy checks pass
-(0.091 seconds). Native TCP retry/loss, worker lifecycle, fatal boundary and
-assigned-block checkpoint checks pass (0.054 seconds). Exact RPC codec and
-unevaluated lazy failure checks pass separately (0.018 seconds). Supplemental
-checks add no original-method credit. No full suite, long workload or race
-instrumentation was selected. Distributed completion remains unproven.
-
-Final strengthened queue-finish assertion also passes (21086, status 0,
-0.063 seconds). All test handles are terminal.
-
-
-## October 8, 2026: coordinator timer remote-failure catch parity
-
-Compared TLCTimerTask.run against the source RemoteException catch. Returned
-remote status failures already invoked worker-loss cleanup; panicked failures
-escaped to the timer's uncaught boundary, leaving assigned states and dead-worker
-ownership intact. The status invocation now uses the existing generic call
-boundary so both forms enter the same remote-only catch. Local unchecked
-failures still escape unchanged and do not invoke worker-loss cleanup.
-
-Added distributed_timer_task_test.go because no original method covers these
-status-failure boundaries. Synchronous task checks cover returned/panicked
-remote failures and false liveness, two repeated invocations, exact one-time
-deregistration/count decrement, identity/order of requeued states, timer cancel
-and assigned-state clearing. Diagnostics retain only one deregistration, with
-no worker-lost message or GENERAL. Local returned/panicked runtime/fatal cases
-verify unchanged ownership; recent and future activity suppress status calls.
-Native TCP returned/panicked fatal status failures enter the remote catch while
-the host remains callable. All listeners, connections and host jobs are owned
-and joined by the existing native RPC helpers.
-
-Initial verification reproduced the panicked remote failure escaping its catch
-(29616, status 1, 0.011 seconds). Corrected timer, finalizer and original nine
-smart-proxy contexts pass (4635, status 0, 0.074 seconds). Native TCP timer
-status failures, coordinator retry/loss and fatal endpoint boundary checks pass
-(0.029 seconds). Supplemental cases add no original-method completion credit.
-No timer delay, full suite, long workload or race instrumentation was selected.
-All handles are terminal; distributed completion remains unproven.
-
-
-## October 8, 2026: final worker exit versus shutdown hook catches
-
-Compared normal coordinator completion and WorkerShutdownHook.run with Java.
-Normal completion silently ignores NoSuchObject/Connect/Server failures except
-for its warning, and removes the thread in finally. Panicked ignored failures
-previously bypassed that catch. The exit invocation now normalizes native return
-and panic forms before applying the same narrow catch and finally removal.
-Other failures stop before later workers, executor shutdown and final reporting.
-
-The shutdown hook silently ignores only NoSuchObject/Connect failures, prints
-other I/O failures and continues, and lets unchecked failures stop iteration.
-Its type-only catches did not recognize these distinctions in decoded native
-failures. Added WorkerUnavailable to the native operation error and graph node
-traits, retaining it through encode/decode. It is distinct from ExitIgnorable,
-which additionally includes server failures for normal completion. Unpublished
-TCP worker endpoints and dead transport connections set both traits. The hook
-uses WorkerUnavailable and the source throwable printing overload. This overload
-was behaviorally equivalent to its prior GENERAL formatted-string call; no
-generic formatter changed. All communicating roles need the current build.
-
-Added distributed_worker_exit_order_test.go: 56 hook cases across seven families,
-local/decoded payloads and return/panic forms; 12 joined fresh native completion
-processes across six families and both forms; and actual unpublished/closed TCP
-worker cases. Completion processes use the real ModelCheck method and completed
-thread fixtures with a one-millisecond report interval. Assertions retain exact
-iteration, registration removal/retention, warnings, worker statistics, later
-shutdown/count publication and finished reporting.
-
-The first supplemental hook assertion incorrectly expected GENERAL to record
-the Throwable object. Read MP.printError(int, Throwable) and its GENERAL string
-cause overload: the source records formatted string parameters. Corrected the
-translation to require that exact event shape and retained the source message
-detail; no production formatter or source assertion was weakened. Corrected
-hook/completion/payload/finalizer and original nine smart-proxy contexts pass
-(61518, status 0, 0.237 seconds). Native TCP unavailability, lifecycle, panic/
-shutdown, fatal boundaries and fingerprint failure graphs pass (48850, status 0,
-0.033 seconds). Upstream has no direct exit-order methods; supplemental checks
-add no original-method completion credit. No full suite, long workload or race
-instrumentation was selected. All handles are terminal.
-
-
-## October 8, 2026: distributed cache ratio arithmetic
-
-Compared worker successor processing against TLCWorker.getNextStates: the
-reviewed cache/filter, signed fingerprint sorting, partitioning, invariant/
-constraint ordering and UID assignment paths match the source. No changes
-were made to those paths. SimpleCache.getHitRatio instead had a shortcut
-returning zero for a zero miss count. Java evaluates hit / (double) miss.
-Removed the guard, preserving hit-before-miss observation, IEEE infinities,
-NaN, signed zero and signed counter overflow conversion. Nil cache or worker
-ratio access now raises the existing null-failure trait instead of zero.
-
-Generated 271 reference counter rows from the exact source expression with
-OpenJDK 21.0.12.1: 15 edges plus 256 seeded signed long pairs (20261008).
-Persistent vectors are test_vectors/distributed/simple_cache_ratios.tsv;
-the scratch generator is /mnt/oldrog/tmp/SimpleCacheRatioReference.java.
-Rows also retain source DecimalFormat strings for the pending formatter work;
-this arithmetic chunk does not claim those string outputs are implemented.
-Arithmetic tests compare finite/infinite/signed-zero reference bits, and classify
-NaN rather than relying on its hardware-specific sign/payload. Native RPC
-checks additionally require exact sender/receiver bits, including NaN.
-
-Initial counter checks pass (64335, status 0, 0.012 seconds). Final focused
-counter/missing-owner, existing cache, coordinator ratio, finalizer and original
-nine smart-proxy contexts pass (46495, status 0, 0.065 seconds). Upstream has
-no original SimpleCache tests, so supplemental checks add no method credit.
-
-A separate formatting audit found the worker exit-message cache string still
-uses fixed ASCII formatting and incorrect nonfinite symbols. Source reference
-locale rows are at /mnt/oldrog/tmp/simple_cache_ratio_locales.tsv (1,860 rows).
-NaN/infinity symbols cannot simply be grouped by base locale: Japanese/Thai
-legacy variants and Arabic numbering extensions change NaN labels. Implement
-this actual DecimalFormat contract next; do not substitute the coordinator's
-separate two-decimal Formatter semantics or assume base-locale-only symbols.
-No full suite, long workload or race instrumentation was selected.
-
-Native TCP edge verification initially failed on negative zero (29431, status 1,
-0.015 seconds). Gob omitted a struct float field equal to zero, dropping its
-sign. Replaced the cache reply float with CacheRateBits, populated/decoded via
-math.Float64bits/Float64frombits. Cache ratios now retain all IEEE bits, including
-NaN payload, over the native wire. All roles need the current reply build.
-Corrected TCP extremes, worker lifecycle and fatal boundary checks pass (85038,
-status 0, 0.027 seconds). All test handles are terminal.
-
 ### 2026-10-08: Native compact worker cache formatting
 
 Implemented SimpleCache.GetHitRatioAsString’s source ###,###.### contract
@@ -21406,3 +20704,739 @@ contexts pass (d6ee67, status 0, 50.669 seconds). All processes are terminal.
 No full suite or race run was performed. Supplemental cases add no original-
 method credit; native peers need the updated failure payload build. Distributed
 parity remains incomplete.
+
+### 2026-10-08: Preserve native fingerprint transport causes and no-replay behavior
+
+Fingerprint dial, lazy connection, RPC call and failure-payload decoding errors
+previously used DistributedEndpointError, flattening the cause to a string.
+Replaced it with DistributedOperationError and retained the original Go cause.
+Removed the obsolete endpoint error type and classifier branches. Remote/I/O
+manager handling is preserved; worker smaller-batch retry and exit traits remain
+absent. Application failure payloads retain their existing graph semantics.
+
+No original method directly covers native fingerprint transport. A failed dial
+initially lost its net.OpError cause (426902, status 1, 0.012 seconds). New checks
+verify errors.As for dial and errors.Is(rpc.ErrShutdown) for closed-client scalar/
+batch insertion, batch lookup, checkpoint and recovery, with no storage mutation.
+A lost-reply case completes a two-fingerprint insertion and closes the host before
+reply delivery. The caller receives failure with its cause, storage retains both
+fingerprints, exactly one endpoint call occurs and a subsequent call does not
+redial/replay. The fixture publishes its host pointer atomically.
+
+The related gate exposed two stale native standalone-FP fixtures (18e77a, status
+1, 0.149 seconds). Both constructed the base TLCServer, which correctly rejects
+fingerprint registration following the earlier server-mode repair. Supplied the
+distributed coordinator registration state normally created by its constructor,
+including the already-satisfied latch in the rejection fixture. Preserved all
+registration/reporting/rejection assertions and the production base rejection;
+no original Java test assertion was changed.
+
+Final new/related fingerprint RPC, native FP command, original Java manager
+failover/partition/block tests, reference registration and base-coordinator
+rejection checks pass (57f806, status 0, 0.133 seconds). All four existing
+DieHard/TSnapShot process variants pass their original model trace/event assertions
+(6c36ba, status 0, 48.846 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit;
+legacy remote classifiers and remaining distributed parity still require work.
+
+## October 8, 2026: disk recovery reader replacement order
+
+Audited DiskFPSet.recover(String), source lines 713–728. Go closed/cleared both
+reader arrays before reopening, while Java replaces each slot immediately after
+its close and resets poolIndex only after both loops. Added real named-file
+recovery checks with native descriptor close failures at worker/pool slot 1,
+plus success. Both failure rows expose the shortcut before the fix (74787,
+status 1, 0.023 seconds). Restored sequential per-slot close/open/replacement;
+native reader snapshot publication on exit retains partial state under the
+recovery table write lock. Added a first-open failure check requiring the closed
+old slot and untouched later worker/pool slots with unchanged pool cursor.
+
+Initial corrected recovery, original BufferedRandomAccessFile class, existing
+reader-selection and disk trace/duplicate checks pass (69662, status 0, 5.358
+seconds). Final expanded selection also includes open failure, nested recovery
+and memory duplicate category checks and passes (63294, status 0, 3.605 seconds).
+Tests require completed file/index reconstruction before reader failures, exact
+prior/new reader identities, source closed states and native snapshot agreement.
+No enabled original Java method directly covers these failure boundaries; no
+original-method completion is added. All handles are terminal and retired. No
+full suite, long workload or race run. Broader distributed parity remains pending.
+
+## October 8, 2026: MemFPSet1 backing-set recovery fidelity
+
+Audited source SetOfLong.recover/grow, used by MemFPSet1 file recovery. Go
+normalized the count, deferred header mutation, clamped empty/negative array
+lengths and used a special insertion method without growth. Source assigns each
+read field immediately, allocates the exact length and uses ordinary put.
+Its grow retains zero membership while resetting count and reinserting only
+nonzero entries. Restored these algorithms, including source count quirks,
+and removed the now-unused putWithoutGrow helper.
+
+New bounded checks expose the old behavior (20589, status 1, 0.012 seconds):
+complete count/growth cases, all 29 incomplete file lengths and negative array
+allocation after header mutation. Corrected checks plus existing duplicate,
+truncated memory checkpoint and null-block contracts pass (91307, status 0,
+0.253 seconds). Added actual native TCP MemFPSet1 file recovery for complete
+and partial records. Complete recovery retains source count four for two
+records; incomplete recovery retains count three and the first record, while
+the source manager catches the I/O failure and emits its storage diagnostic.
+These checks plus existing original dynamic manager constructor/index/
+reassignment/failover/block/order methods pass (54026, status 0, 0.077 seconds).
+Repository search finds no upstream SetOfLong test; supplemental checks add no
+original-method completion credit. All handles are terminal and retired. No
+full suite, long workload or race run. Constructor size handling remains a
+separate source audit item; distributed parity is still incomplete.
+
+## October 8, 2026: memory checkpoint file-open and size boundaries
+
+Completed the preceding SetOfLong constructor size audit: source allocates
+exactly the requested size. Removed zero/negative-to-one normalization; zero
+allocation grows on first insertion and negative allocation fails in the
+represented runtime category. Audited the memory fingerprint BeginChkptFile
+methods against source FileOutputStream constructors (BufferedDataOutputStream
+and FileUtil.newDFOS). Removed automatic MkdirAll from all three methods;
+missing parents must cause I/O failure rather than be silently created.
+
+Six supplemental local/native-TCP missing-parent cases and the constructor
+check expose the shortcuts before the fix (79689, status 1, 0.020 seconds).
+Corrected checks plus previous MemFPSet1 field/record recovery, runtime duplicate,
+corrupt checkpoint, manager catch/fatal and existing original dynamic manager
+methods pass (83179, status 0, 0.094 seconds). Existing native fingerprint
+checkpoint success/object lifecycle/scalar-batch and memory storage/commit
+checks also pass in 0.034 seconds. Empty MemFPSet2 storage needs no large table
+allocation to exercise file opening; the failure occurs before table access.
+No enabled original Java method covers these new boundary cases; no original
+method completion credit is added. All handles are terminal and retired. No
+full suite, long workload or race run. Broader distributed parity remains open.
+
+## October 8, 2026: queue/trace checkpoint commit I/O categories
+
+Compared checkpoint commit bodies against Java. Ordinary old-file deletion and
+promotion order match, but MemStateQueue/DiskStateQueue/TLCTrace returned plain
+formatted errors where Java returns I/O failures. Seven error returns now use
+the existing I/O carrier, retaining exact diagnostic text. Supplemental nine-row
+file mutation matrix and partial disk pool deletion first fail on that category
+(1654, status 1, 0.015 seconds). Corrected cases plus original short memory queue
+methods and related disk recovery checks pass (16828, status 0, 0.023 seconds).
+
+Added real TLCServer.Checkpoint queue/trace commit failures requiring earlier
+checkpoint begins/commits, queue resume, retained partial files and stopped later
+commits with no completion event. Expanded source short memory queue selection
+passes (83805, status 0, 0.020 seconds). Related selection passes in 0.066
+seconds; verified selections separately with verbose output to establish all
+intended methods: nine original DiskStateQueue inherited methods pass in 0.017
+seconds, and native local/single/partitioned assigned-block checkpoints, three
+in-flight TCP checkpoint connection-loss phases and all new commit checks pass
+in 0.065 seconds. The unchanged 2,147,483,648-state growth method is not selected.
+No enabled original method covers these added failure boundaries; no original
+method completion credit is added. All handles are terminal and retired. No
+full suite, long workload or race run. Broader distributed parity remains open.
+
+## October 8, 2026: memory queue recovery partial mutation
+
+Continued checkpoint failure auditing. DiskFPSet begin-checkpoint still defers
+lock release/flusher reset where Java reaches them only on success; this
+source/native ownership difference remains an explicit next audit item. Found
+a concrete memory queue recovery shortcut while comparing the companion
+recovery paths: Go cleared/resized its states array, reset start and stored
+records only after complete reads. Source retains storage/cursor and publishes
+each empty state before reading. Restored those mutation orders and source
+fixed-capacity bounds failure; native input cleanup closes once without
+replacing the primary failure.
+
+Three partial/complete state rows, capacity overflow and real coordinator
+recovery initially fail (74150, status 1, 0.019 seconds). After production fix,
+those checks plus original nine short memory queue methods, disk partial-read
+and commit-order checks pass (25166, status 0, 0.037 seconds). Final expanded
+selection includes local/single/partitioned native TCP assigned-block checkpoint,
+three in-flight checkpoint connection-loss phases and trace recovery/publication
+failures; all pass in 0.075 seconds. No enabled original method covers these
+added boundaries, so no original-method completion credit is added. All handles
+are terminal and retired. No full suite, long workload or race run. Distributed
+parity remains incomplete.
+
+## October 8, 2026: disk checkpoint failure ownership
+
+Resolved the previous explicit DiskFPSet begin-checkpoint audit item. Source
+sets the flusher flag/acquires all write stripes, flushes/copies/advances its
+marker, then releases stripes and clears the flag. Go used a defer that released
+ownership after failures. Removed that defer and restored success-only release.
+Short checks inspect stripes with TryLock instead of launching blocked calls;
+fixture cleanup releases retained ownership after assertions so native resources
+and test jobs are retired.
+
+Initial I/O flush/copy and two-partition native TCP manager cases expose the
+old flag reset (75052, status 1, 0.027 seconds). The initial runtime fixture used
+memInsert, which recognizes the marked flushed entry; corrected that setup to
+restore an unflushed duplicate in the table, as the existing duplicate-merge
+check does. Corrected four failure/success rows, TCP manager continuation,
+checkpoint catch/fatal, existing duplicate-merge and native checkpoint success
+checks pass (87898, status 0, 1.568 seconds). Final focused ownership, native
+assigned-block/connection-loss checkpoint and original dynamic manager methods
+pass (88882, status 0, 0.085 seconds).
+
+Failure assertions retain source stripes/flag and unchanged marker; copy failure
+retains its completed flush. Success requires exact checkpoint data and release.
+Native manager catches I/O failure, preserves partition registration/availability,
+prints the source diagnostic and completes the healthy partition. It does not
+reset failed storage ownership. No enabled original method covers these failure
+boundaries; supplemental checks add no original-method credit. All handles are
+terminal and retired. No full suite, long workload or race run. Distributed
+parity remains incomplete.
+
+## October 8, 2026: full-model recovery after queue commit interruption
+
+Extended the existing native EWD840 process harness with interruption just after
+the real disk queue commit and before trace commit. Generalized its owned queue
+wrapper from a pre-commit boolean to an explicit before/after-queue boundary.
+No production change was needed. Producer still recovers an older complete
+initial checkpoint, advances the unchanged N=7 MC06 model with a real TCP worker,
+and enters the production checkpoint barrier before abrupt process exit.
+
+Added independent parent inspection of committed queue headers, unchanged old
+trace metadata, promoted/retained queue temporaries and uncommitted trace/intern/
+FP files. Trace enumeration independently computes the full fingerprint count.
+Both original pre-commit and new after-queue rows pass normally with unchanged
+model/workload bounds (73603, status 0, 120.230 seconds total; 60.16/60.05 seconds).
+Pre-commit recovery reports 20,480 fingerprints and old queue 16,384; after-queue
+recovery reports 20,480 fingerprints and new queue 12,288. Both finish at the
+original 114,942 distinct states/zero queued, exactly one recovery, no repeated
+initialization or GENERAL/unexpected EOF, with fresh coordinator/worker normal
+exit and every owned child joined. Receipt:
+/mnt/oldrog/tmp/tlago-checkpoint-between-commits.log.
+
+The four original remote model harnesses remain assumption-disabled/Missing;
+this native process coverage adds no original-method credit. Later trace/intern/
+fingerprint commit boundaries and broader distributed parity remain pending.
+All handles are terminal and retired. No full suite or race instrumentation.
+
+## October 8, 2026: full-model recovery after intern-table commit
+
+Added the next precise process boundary: entry into non-distributed FP commit
+after queue/trace/intern commits. The test CreateServer environment replaces
+the constructor's unused initial memory manager with the same configured
+production FP factory plus a thin CommitChkpt exit wrapper. Memory init owns
+no open files; all storage operations still delegate to the production set
+before/after recovery. No production checkpoint hook or protocol was added.
+Parent artifact checks distinguish committed trace/intern metadata from the
+older queue-only interruption boundary and require both FP temporaries.
+
+The full unchanged N=7 MC06 process row passes normally (39811, status 0,
+60.06 seconds; package 60.076 seconds). Independent trace enumeration and
+committed queue inspection require recovery of 20,480 fingerprints and 12,288
+queued states; committed trace metadata differs from the older initial
+checkpoint and trace/intern temporary files are absent. Fresh coordinator/worker
+processes finish at original 114,942 distinct/zero queued, one recovery, no
+repeated initialization, GENERAL or unexpected EOF, normal role exits and
+all children joined. Receipt:
+/mnt/oldrog/tmp/tlago-checkpoint-after-intern-commit.log.
+
+No production fix was needed. The original four assumption-disabled remote
+model harnesses remain Missing; this native coverage adds no original-method
+credit. Isolated trace-commit and nested FP-commit interruption plus broader
+distributed parity remain pending. All handles are terminal and retired.
+No full suite, reduced workload or race instrumentation was selected.
+
+## October 8, 2026: recovery between nested fingerprint commits
+
+Extended the native EWD840 harness with interruption after the first nested
+MemFPSet commit and before the second. The same configured production factory
+now receives a test-only child-zero wrapper that delegates actual CommitChkpt
+before abrupt exit. Parent inspection saves the older complete FP files and
+requires first-child promotion/changed contents, byte-identical old second-child
+contents with retained temporary, and earlier queue/trace/intern commits. The
+pre-FP-commit row also now checks both old FP checkpoints against the baseline.
+
+Both full unchanged N=7 MC06 rows pass normally (10281, status 0, 119.149
+seconds total; after-intern 59.31 seconds, after-first-FP 59.82 seconds). Both
+recover 20,480 fingerprints and 12,288 queued states through fresh CLI
+coordinator/worker processes and reach original 114,942 distinct/zero queued.
+All existing recovery/init/error/normal-exit assertions remain; every owned
+child is joined. Receipt:
+/mnt/oldrog/tmp/tlago-checkpoint-partial-fingerprint-commit.log.
+
+No production fix or checkpoint hook was needed. Consolidated overlapping
+checkpoint/recovery paragraphs in HANDOFF into one current summary and process
+receipt table; detailed history stays here. Original assumption-disabled remote
+harnesses remain Missing and receive no completion credit. Isolated trace-commit
+interruption and broader distributed parity remain pending. All handles are
+terminal and retired. No full suite, reduced workload or race instrumentation.
+
+
+## October 8, 2026: native state backing-array ownership
+
+Ordinary TLCStateMut stores a non-transient value array. The native payload
+previously copied each state's reference list independently, even when that
+storage was shared with another state or composite value. State encoding now
+uses the existing value-array graph table; decoding uses the same validated
+array references as composite values. Inline nodes remain decodable. Peers
+must use the same build for the updated payload. No RMI, Java serialization
+implementation or evaluator machinery was added.
+
+The new graph check reproduced the lost identity before the fix (31535, status
+1). Focused state payload/state-array/value-array graph checks pass (35688,
+status 0, 0.013 seconds), covering cycles, separate equal-content arrays,
+receiver mutation isolation, nil/empty arrays and invalid/conflicting state
+references. Both state-array and value-array worker RPC checks pass over owned
+loopback listeners (0.014 seconds), retaining sharing through requests and
+results without aliasing sender storage. No upstream method directly covers
+this boundary; these supplemental checks add no original-method completion
+credit. Value source and cost-model fields are transient in the Java reference;
+this change does not claim extended evaluator/custom-data graph completion.
+No full suite, long workload or race instrumentation was selected.
+
+
+## October 8, 2026: distributed block-selector source contracts
+
+Compared all four source selector implementations. The port substituted one
+worker for zero, directly cast floating results to Go int64 (losing the source
+NaN/overflow conversions), omitted the null-server assertion and updated limits
+for selectors whose source setter is a no-op. Constructors now retain the
+assertion; proportional/statistical selection uses the existing numeric
+conversion helpers and actual worker count. Only limiting/statistical modes
+accept transfer-limit updates. No JVM or transport machinery was added.
+
+New focused checks reproduced the deviations (3259, status 1), then pass after
+the fix (17377 and final 25565, status 0, 0.012 seconds), together with all nine
+original smart-proxy method contexts. Checks include finite rounding, signed
+zero-worker infinities, NaN, large sizes, statistical fallback, setter behavior,
+queue request bounds, fixed-size requests and lossy averages based on actual
+returned counts, including null dequeues. The existing native coordinator
+retry/loss check passes over owned TCP listeners (0.015 seconds). Its fixture
+now explicitly selects limiting mode, as required by its existing reduced-limit
+assertion; a proportional selector correctly ignores that setter.
+
+Upstream's selector test directory contains only DummyTLCWorker, used by the
+ported smart-proxy methods, and no selector test methods. Supplemental checks
+add no original-method completion credit. Broader distributed parity remains
+pending. No full suite, long workload or race instrumentation was selected.
+
+
+## October 8, 2026: shared block-selector statistics and limits
+
+Source BlockSelector publishes its lossy average through volatile reads/writes.
+The Go field used unsynchronized access while multiple coordinator worker
+threads could update it and progress reporting could read it. The focused
+four-goroutine, 1,000-iteration native check also exposed transfer-limit races
+between concurrent retry setters and block-selection readers (5511, status 1,
+0.056 seconds). The average now uses atomic.Int64, preserving each independent
+source read/write and allowing lost updates rather than making the calculation
+a CAS loop. Source rounding, signed overflow and reset after a nonpositive
+average remain intact. Transfer-limit accesses use a small RWMutex; initial
+configuration is set before publication, and each source read remains separate.
+
+The exact short race check passes (95478, status 0, 1.037 seconds). Normal
+selector/arithmetic/queue/average checks and all nine original smart-proxy
+contexts pass (98502, status 0, 0.011 seconds). The native TCP coordinator
+retry/loss check also passes normally (0.013 seconds). No upstream selector
+methods exist; supplemental checks earn no original-method completion credit.
+No full suite or long workload was selected, and race instrumentation covered
+only the exact short concurrency check. Broader distributed parity remains
+pending; all test handles are terminal.
+
+
+## October 8, 2026: coordinator keepalive failure boundary
+
+The coordinator keepalive goroutine let uncaught timer exceptions escape and
+terminate the Go process, unlike source Timer's thread-only termination. Its
+rescheduling also started a fresh minute after task completion instead of using
+the preceding actual execution start. Extracted the production loop into
+runKeepAlive, added thread-boundary failure diagnostics/recovery and matched the
+worker timer's scheduling calculation and cancellation check. No transport or
+JVM machinery was added.
+
+The new native check reproduced the process-ending runtime panic with the
+original ten-second initial delay (21203, status 1, 10.025 seconds). After the
+fix, both returned RuntimeException and panicked AssertionError checks pass in
+concurrent independent timer loops (51113, status 0, 10.022 seconds). Diagnostics
+contain both failures; coordinator completion, assigned state, queue, cleanup
+flag and cancellation state remain unchanged. Each timer owner is joined and
+stderr is restored only after both are terminal. Final normal timer check,
+concurrent loss check and all nine original smart-proxy contexts pass (46791,
+status 0, 10.014 seconds). Focused TCP worker-loss and worker keepalive lifecycle
+checks pass normally too (0.032 seconds).
+
+The sixty-second rescheduling calculation is established by source comparison;
+the check does not claim a second real interval. Upstream has no enabled direct
+method for this boundary; native checks add no original-method completion credit.
+No full suite, reduced timer delay or race instrumentation was selected.
+Broader distributed parity remains pending; all test handles are terminal.
+
+
+## October 8, 2026: fingerprint check callable I/O catches
+
+CheckFPsCallable and CheckInvariantCallable catch IOException inside each task,
+print GENERAL and return Long.MAX_VALUE/false. The port submitted raw endpoint
+checks, so I/O errors instead became ExecutionException results that the manager
+printed and ignored. Invariant checking could consequently return true after
+an I/O failure. Both callables now run through their source I/O-only catch before
+the executor wraps other failures. Native returned errors and panics retain the
+same boundary. No RMI, transport retry, partition reassignment or JVM work.
+
+New checks reproduce the missing diagnostics and false invariant success
+(1231, status 1, 0.019 seconds). Local returned/panicked I/O checks pass after the
+fix (63307, status 0, 0.016 seconds), followed by local unchecked RuntimeException
+and AssertionError cases (3038, status 0, 0.023 seconds). Unchecked cases retain
+the source manager's logged failed-completion behavior; they are not converted
+to callable I/O sentinels. TCP returned/panicked I/O cases pass (0.018 seconds),
+with both diagnostics, false invariants, MaxInt64 distance and unchanged storage
+availability/ownership; a subsequent size RPC confirms host survival. Existing
+original dynamic/static manager methods pass (0.066 seconds).
+
+The generated-state statistics audit confirms the existing initial-state offset
+is already correct; no statistics implementation or supplemental test change
+was needed. Upstream has no direct check-callable failure methods, so supplemental
+coverage adds no original-method completion credit. No full suite, long workload
+or race instrumentation was selected. Broader distributed parity remains pending;
+all test handles are terminal.
+
+
+## October 8, 2026: distributed result getter contracts
+
+The source NextStateResult getters dereference their receiver, and its delta
+also dereferences nextStates.length. Go returned zero/nil for a nil receiver
+and subtracted len(nil) for a null partition array. Restored NullPointerException
+failure traits at these native boundaries; the source delta remains computed
+from partition count, with signed long overflow, rather than state count.
+Array getters still return the original arrays and allow null fields on a
+nonnull result. No transport or JVM machinery was added.
+
+The native null getter check reproduces the fabricated default (45102, status
+1, 0.011 seconds). After the fix, all null/empty/reference/counter checks,
+existing result payload checks and all nine original smart-proxy contexts pass
+(69475, status 0, 0.013 seconds). Native TCP result/lifecycle and coordinator
+retry/loss checks pass (0.015 seconds). Upstream has no direct getter methods;
+supplemental checks add no original-method completion credit. No full suite,
+long workload or race instrumentation was selected.
+
+Batch failover source comparison found no new deviation in the inspected
+reassignment, returned-bit and Exception/Error catch paths. A separate pending
+coordinator summary defect remains: cacheHitRatio < 0 selects unavailable in
+Java, whereas Go's >= 0 availability test also excludes NaN. Correcting its
+formatting needs a separate source numeric rounding/formatting pass, not a
+claim that Go fmt implements String.format. Broader distributed parity remains
+pending; all test handles are terminal.
+
+
+## October 8, 2026: canonical distributed worker cache-ratio output
+
+Coordinator summaries used a nonnegative availability check, excluding NaN,
+and Go fmt's binary/ties-to-even rounding. The source uses ratio < 0 for n/a
+and two-place decimal half-up formatting. Added a native Go formatter using
+the shortest decimal representation, decimal carry and existing three-digit
+grouping. It preserves negative zero, NaN and positive Infinity; negative
+ratios, including negative Infinity, remain n/a. Coordinator summaries now
+call this formatter once for the collected cache ratio.
+
+Generated 271 reference rows from the source ternary and
+String.format(Locale.ROOT, "%1$,.2f", ratio) with local OpenJDK 21.0.12.1:
+15 edge values and 256 deterministic positive bit patterns (seed 20261008).
+They cover 0.005/0.125/0.375/1.005/2.675 decimal rounding, extrema, smallest
+subnormal, signed zero, NaN/infinities and 1e23. The persistent vectors are
+in test_vectors/distributed/worker_cache_ratios.tsv; Go tests read these directly
+and require no Java runtime. Scratch reference command/input/output remain at
+/mnt/oldrog/tmp/DistributedRatioReference.java and distributed-ratio-*.txt/tsv.
+No RMI, Java serialization or JVM emulation was implemented.
+
+All 271 rows pass (20977, status 0, 0.012 seconds). Focused result getter/payload,
+cache-ratio and all nine original smart-proxy contexts pass (0.013 seconds).
+Native TCP worker result/lifecycle and coordinator retry/loss checks pass
+(0.017 seconds). Upstream has no original worker-summary formatting methods;
+supplemental checks add no original-method credit. Locale-specific separators
+and digits remain a separate pending source-output contract; this chunk does
+not claim all-locale or complete distributed parity. No full suite, long
+workload or race instrumentation was selected; all handles are terminal.
+
+
+## October 8, 2026: localized distributed worker statistics
+
+Worker cache-ratio output now reuses the existing console locale/numbering
+selection. Extracted that initialization and selection without changing MP's
+explicit grouping pattern. Locale zero digits and grouping come from the
+existing OpenJDK-derived table; decimal separator pairs and ambiguous-space/
+apostrophe language exceptions are verified against the same source locale
+version. NaN, Infinity and n/a stay unlocalized, and the negative-zero sign
+remains ASCII as in the source formatter. No Java runtime is used by Go tests
+or the Go formatter.
+
+Generated source reference rows with local OpenJDK 21.0.12.1 for all 1,068
+existing locale keys and 792 Unicode numbering variants (12 languages times
+66 systems). Each row records zero/group/decimal symbols and the exact source
+format of 1234.125 and negative zero. Persistent vectors are in
+test_vectors/distributed/worker_cache_ratio_locales.tsv. Scratch source and
+input/output remain at /mnt/oldrog/tmp/DistributedLocaleRatioReference.java
+and distributed-ratio-locales.txt/tsv.
+
+The first locale check exposed the en-US-POSIX no-grouping pattern (12949,
+status 1, 0.015 seconds); Java Formatter obtains its grouping size from that
+locale pattern, whereas MP uses an explicit ###,###.### pattern. Worker
+statistics now suppress grouping for POSIX while retaining MP behavior.
+All 1,860 rows and the original four-method MP class pass (39406, status 0,
+0.016 seconds). Final checks also pass all 271 canonical numeric rows and
+12 fresh Go processes across German, French, Arabic, POSIX, Swiss and Thai
+configuration, in both initialization orders (64407, status 0, 0.140 seconds).
+Native TCP result/lifecycle and coordinator retry/loss checks pass (0.016
+seconds). Every child is joined; no source assertion was weakened.
+
+This closes the tracked locale output gap for the reference coverage above,
+not the broader distributed port. Upstream has no original worker-statistics
+formatting methods; supplemental checks add no method completion credit.
+No full suite, long workload or race instrumentation was selected. All handles
+are terminal.
+
+
+## October 8, 2026: required coordinator checkpoint and cleanup owners
+
+Compared TLCServer.java checkpoint/recover/close with the native coordinator.
+The Go methods silently skipped missing queue, trace or fingerprint ownership,
+allowing incomplete checkpoint/recovery or metadata deletion to report success.
+Removed those skips. Existing native null-failure traits now stop each operation
+at the actual source access, after any preceding mutations. No upfront bulk
+validation, rollback, transport machinery or trace-method changes were added.
+A false queue suspension still returns without accessing trace/fingerprints.
+
+Added distributed_server_ownership_test.go because upstream has no direct
+methods for these missing-component boundaries. It checks nil receivers and
+initial owners, queue/trace temporary checkpoint preservation before failure,
+absence of later commits/intern files/resume/completion output, recovery pointer
+and queue read ordering, trace closure before a missing fingerprint manager,
+and retained metadata after failed close. The initial check failed all four
+test groups (95455, status 1, 0.015 seconds). Focused ordering, commit-error,
+recovery-publication, manager catch and queue recovery checks now pass (92480,
+status 0, 0.053 seconds). Native TCP assigned-block checkpoint checks across
+local/remote/partitioned fingerprints, worker result/lifecycle, coordinator
+retry/loss and the original nine smart-proxy contexts pass (0.045 seconds).
+
+These supplemental checks add no original-method completion credit. The full
+suite was not rerun; no long workload or race instrumentation was selected.
+All test handles are terminal. Distributed completion remains unproven.
+
+
+## October 8, 2026: coordinator progress integer locale parity
+
+Compared periodic progress and printSummary against TLCServer.java. Both
+called fixed comma grouping in Go, while Java calls MP.format for generated,
+distinct, queue and rate counters. Replaced those call sites with the existing
+MessageNumberFormat. Numeric arithmetic/baselines, level formatting, tool mode
+and success conditions are unchanged. Final TLC_STATS retains plain signed
+integer parameters; final progress rate zeros remain literal ASCII zeros.
+
+Generated nine locale reference rows using the source's exact
+DecimalFormat("###,###.###") pattern with OpenJDK 21.0.12.1. The rows cover
+1234, -1234, Long.MIN_VALUE and Long.MAX_VALUE in English, German, French,
+Arabic, POSIX, Swiss Walser, Thai numbering, Persian and Swedish. Persistent
+vectors are in test_vectors/distributed/progress_numbers.tsv; the source
+reference generator is /mnt/oldrog/tmp/DistributedProgressNumberReference.java.
+The Go tests read these saved rows and spawn only their own native test binary.
+
+Added distributed_progress_statistics_test.go. Real memory queue/store counters
+exercise periodic progress and positive/negative rates with the original
+one-minute report interval. The summary checks cover tool/console and
+success/failure combinations, exact localized signed limits, plain statistics
+and unlocalized levels/zero rates. Every locale child is joined. Initial
+verification reproduced the missing locale formatting (60446, status 1,
+0.206 seconds). Fixed verification passes all nine locale processes, existing
+271 canonical worker ratio rows, 1,860 worker locale rows, twelve worker
+initialization-order processes and all four original MP methods (31356,
+status 0, 0.324 seconds). No original coordinator-formatting method exists;
+supplemental checks add no original-method credit. No full suite, long workload
+or race instrumentation was selected; all handles are terminal.
+
+
+## October 8, 2026: distributed trace depth I/O propagation
+
+Compared TLCTrace.getLevel/getLevelForReporting and coordinator periodic/final
+reporting against Java. Go suppressed predecessor read errors and rewound the
+cursor using a deferred seek even after failure; source rewinds only after a
+complete traversal. Removed that rollback and the self-predecessor early-break
+shortcut. Successful final rewind failures now propagate. The checked reporting
+method retains monotonically reported disk depth only after successful reads,
+and closed traces report I/O failure instead of an in-memory stale depth.
+
+Added GetLevelForReportingWithError as the native checked boundary. The existing
+integer-only getter raises errors rather than suppressing them. Coordinator
+periodic and final reporting explicitly return I/O failures at their source
+boundaries. The observation helper now returns an error and publishes baselines
+only after success. ModelChecker's plain-trace progress path catches I/O and
+returns -1; the distributed management getter additionally prints its native
+stack, matching its separate source catch. Existing concurrent-trace fallback
+behavior is retained with an explicit checked call; its wider source parity is
+not claimed by this chunk.
+
+Supplemental distributed_trace_depth_failure_test.go covers a partial two-byte
+predecessor read, success-only rewind, monotonic successful depth, absent
+progress/baseline publication after failure, management catches and closed
+trace errors. A joined fresh native process runs the actual ModelCheck final
+report path with a one-millisecond report interval and closed trace: executor
+shutdown and final distinct count precede the failure, while rate reset,
+success/summary/finished output, flush/unbinding/unexport and metadata cleanup
+do not run. No Java runtime or production test hook is introduced.
+
+Initial cursor verification failed with the old rollback (26994, status 1,
+0.012 seconds); the cursor was 4 rather than the source partial-read position 8.
+The repaired depth/final-process/locale checks pass (43593, status 0, 0.207
+seconds). Focused trace regeneration, enumerator/recovery, reporting, locale
+and original MP tests pass (14621, status 0, 1.988 seconds). The original
+TLCGetLevel and TLCGetLevelTTrace methods pass normally (32041, status 0,
+1.050 seconds). Native TCP assigned-block checkpoint, worker lifecycle and
+coordinator retry/loss checks pass (0.047 seconds). There are no direct source
+failure methods for these boundaries, so supplemental checks add no method
+completion credit. No full suite, long workload or race instrumentation was
+selected. All handles are terminal; distributed completion remains unproven.
+
+
+## October 8, 2026: coordinator server-thread catch/finally ownership
+
+Compared TLCServerThread.run's outer catch/finally with Go Run and Start.
+Unchecked final cache-read failures escaped the goroutine and killed the whole
+Go process; source leaves them uncaught only in the owned thread. A panicked
+remote cache failure also bypassed the source RemoteException catch, while
+the same returned failure warned normally. Start now prints an uncaught native
+diagnostic before completing its join channel and terminates only that owned
+goroutine. The final cache read normalizes return/panic forms through the
+existing generic invocation boundary, preserving the remote-only warning catch.
+
+Registered Run's finally separately from its outer catch, so a failure raised
+by error handling still executes finalization. The first repaired check also
+exposed handler failures being caught a second time: computeBlock and publication
+called handleRunError inside the body protected by the catch. They now raise
+non-inner-caught failures into the single outer catch. Handler failures escape
+that catch while finally still executes; unchecked final cache failures skip
+remaining timer cancellation/state clearing as in Java. No invented cleanup,
+worker decrement, cancellation or model-result mutation was added.
+
+Added distributed_thread_finalizer_test.go because upstream has no direct tests
+for these boundaries. Two direct remote cache cases cover return/panic warning
+parity. Five fresh joined native processes check returned/panicked runtime and
+fatal cache failures plus fatal trace reconstruction inside the error handler.
+They verify process survival, uncaught diagnostics, finalization ordering, timer
+cancel/state-clear boundaries, retained worker count/model state and absence
+of later queue finish after fatal trace printing. They call the actual Start/Run
+without launching a keepalive timer; timer flags/channels expose cancellation.
+
+Initial verification failed on panicked remote cache and all five process cases
+(52692, status 1, 0.077 seconds). Intermediate handler verification exposed the
+second catch (48254, status 1, 0.063 seconds). Corrected finalizer, trace-publication
+and original nine smart-proxy contexts pass (90107, status 0, 0.068 seconds).
+Broader focused local registration/publication/finalizer/smart-proxy checks pass
+(0.091 seconds). Native TCP retry/loss, worker lifecycle, fatal boundary and
+assigned-block checkpoint checks pass (0.054 seconds). Exact RPC codec and
+unevaluated lazy failure checks pass separately (0.018 seconds). Supplemental
+checks add no original-method credit. No full suite, long workload or race
+instrumentation was selected. Distributed completion remains unproven.
+
+Final strengthened queue-finish assertion also passes (21086, status 0,
+0.063 seconds). All test handles are terminal.
+
+
+## October 8, 2026: coordinator timer remote-failure catch parity
+
+Compared TLCTimerTask.run against the source RemoteException catch. Returned
+remote status failures already invoked worker-loss cleanup; panicked failures
+escaped to the timer's uncaught boundary, leaving assigned states and dead-worker
+ownership intact. The status invocation now uses the existing generic call
+boundary so both forms enter the same remote-only catch. Local unchecked
+failures still escape unchanged and do not invoke worker-loss cleanup.
+
+Added distributed_timer_task_test.go because no original method covers these
+status-failure boundaries. Synchronous task checks cover returned/panicked
+remote failures and false liveness, two repeated invocations, exact one-time
+deregistration/count decrement, identity/order of requeued states, timer cancel
+and assigned-state clearing. Diagnostics retain only one deregistration, with
+no worker-lost message or GENERAL. Local returned/panicked runtime/fatal cases
+verify unchanged ownership; recent and future activity suppress status calls.
+Native TCP returned/panicked fatal status failures enter the remote catch while
+the host remains callable. All listeners, connections and host jobs are owned
+and joined by the existing native RPC helpers.
+
+Initial verification reproduced the panicked remote failure escaping its catch
+(29616, status 1, 0.011 seconds). Corrected timer, finalizer and original nine
+smart-proxy contexts pass (4635, status 0, 0.074 seconds). Native TCP timer
+status failures, coordinator retry/loss and fatal endpoint boundary checks pass
+(0.029 seconds). Supplemental cases add no original-method completion credit.
+No timer delay, full suite, long workload or race instrumentation was selected.
+All handles are terminal; distributed completion remains unproven.
+
+
+## October 8, 2026: final worker exit versus shutdown hook catches
+
+Compared normal coordinator completion and WorkerShutdownHook.run with Java.
+Normal completion silently ignores NoSuchObject/Connect/Server failures except
+for its warning, and removes the thread in finally. Panicked ignored failures
+previously bypassed that catch. The exit invocation now normalizes native return
+and panic forms before applying the same narrow catch and finally removal.
+Other failures stop before later workers, executor shutdown and final reporting.
+
+The shutdown hook silently ignores only NoSuchObject/Connect failures, prints
+other I/O failures and continues, and lets unchecked failures stop iteration.
+Its type-only catches did not recognize these distinctions in decoded native
+failures. Added WorkerUnavailable to the native operation error and graph node
+traits, retaining it through encode/decode. It is distinct from ExitIgnorable,
+which additionally includes server failures for normal completion. Unpublished
+TCP worker endpoints and dead transport connections set both traits. The hook
+uses WorkerUnavailable and the source throwable printing overload. This overload
+was behaviorally equivalent to its prior GENERAL formatted-string call; no
+generic formatter changed. All communicating roles need the current build.
+
+Added distributed_worker_exit_order_test.go: 56 hook cases across seven families,
+local/decoded payloads and return/panic forms; 12 joined fresh native completion
+processes across six families and both forms; and actual unpublished/closed TCP
+worker cases. Completion processes use the real ModelCheck method and completed
+thread fixtures with a one-millisecond report interval. Assertions retain exact
+iteration, registration removal/retention, warnings, worker statistics, later
+shutdown/count publication and finished reporting.
+
+The first supplemental hook assertion incorrectly expected GENERAL to record
+the Throwable object. Read MP.printError(int, Throwable) and its GENERAL string
+cause overload: the source records formatted string parameters. Corrected the
+translation to require that exact event shape and retained the source message
+detail; no production formatter or source assertion was weakened. Corrected
+hook/completion/payload/finalizer and original nine smart-proxy contexts pass
+(61518, status 0, 0.237 seconds). Native TCP unavailability, lifecycle, panic/
+shutdown, fatal boundaries and fingerprint failure graphs pass (48850, status 0,
+0.033 seconds). Upstream has no direct exit-order methods; supplemental checks
+add no original-method completion credit. No full suite, long workload or race
+instrumentation was selected. All handles are terminal.
+
+
+## October 8, 2026: distributed cache ratio arithmetic
+
+Compared worker successor processing against TLCWorker.getNextStates: the
+reviewed cache/filter, signed fingerprint sorting, partitioning, invariant/
+constraint ordering and UID assignment paths match the source. No changes
+were made to those paths. SimpleCache.getHitRatio instead had a shortcut
+returning zero for a zero miss count. Java evaluates hit / (double) miss.
+Removed the guard, preserving hit-before-miss observation, IEEE infinities,
+NaN, signed zero and signed counter overflow conversion. Nil cache or worker
+ratio access now raises the existing null-failure trait instead of zero.
+
+Generated 271 reference counter rows from the exact source expression with
+OpenJDK 21.0.12.1: 15 edges plus 256 seeded signed long pairs (20261008).
+Persistent vectors are test_vectors/distributed/simple_cache_ratios.tsv;
+the scratch generator is /mnt/oldrog/tmp/SimpleCacheRatioReference.java.
+Rows also retain source DecimalFormat strings for the pending formatter work;
+this arithmetic chunk does not claim those string outputs are implemented.
+Arithmetic tests compare finite/infinite/signed-zero reference bits, and classify
+NaN rather than relying on its hardware-specific sign/payload. Native RPC
+checks additionally require exact sender/receiver bits, including NaN.
+
+Initial counter checks pass (64335, status 0, 0.012 seconds). Final focused
+counter/missing-owner, existing cache, coordinator ratio, finalizer and original
+nine smart-proxy contexts pass (46495, status 0, 0.065 seconds). Upstream has
+no original SimpleCache tests, so supplemental checks add no method credit.
+
+A separate formatting audit found the worker exit-message cache string still
+uses fixed ASCII formatting and incorrect nonfinite symbols. Source reference
+locale rows are at /mnt/oldrog/tmp/simple_cache_ratio_locales.tsv (1,860 rows).
+NaN/infinity symbols cannot simply be grouped by base locale: Japanese/Thai
+legacy variants and Arabic numbering extensions change NaN labels. Implement
+this actual DecimalFormat contract next; do not substitute the coordinator's
+separate two-decimal Formatter semantics or assume base-locale-only symbols.
+No full suite, long workload or race instrumentation was selected.
+
+Native TCP edge verification initially failed on negative zero (29431, status 1,
+0.015 seconds). Gob omitted a struct float field equal to zero, dropping its
+sign. Replaced the cache reply float with CacheRateBits, populated/decoded via
+math.Float64bits/Float64frombits. Cache ratios now retain all IEEE bits, including
+NaN payload, over the native wire. All roles need the current reply build.
+Corrected TCP extremes, worker lifecycle and fatal boundary checks pass (85038,
+status 0, 0.027 seconds). All test handles are terminal.

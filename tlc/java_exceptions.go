@@ -130,9 +130,6 @@ func isJavaIOException(err error) bool {
 	if operation, ok := err.(*DistributedOperationError); ok {
 		return operation.IO
 	}
-	if endpoint, ok := err.(*DistributedEndpointError); ok {
-		return endpoint.IO
-	}
 	if javaRemoteException(err) != nil {
 		return true
 	}

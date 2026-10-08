@@ -11985,3 +11985,13 @@ owners cannot be reopened by recovery; closing retains the closed owner handle.
 Truncated reads do not publish the pointer. Worker construction, other owner
 access and trace cleanup boundaries still need audit. No RMI or JVM machinery
 is introduced.
+
+Fingerprint transport failures use the shared DistributedOperationError with
+the original Go cause retained. Dial, lazy connection, call and failure-payload
+decoding errors preserve the manager's remote/I/O boundary; they do not acquire
+worker smaller-batch retry or worker-exit traits. Established failed connections
+are not redialed and interrupted calls are not replayed. A completed fingerprint
+insertion may remain in storage after its reply is lost; its caller receives a
+failure, not a fabricated insertion answer. The manager's existing source failover
+policy remains unchanged. Application failure graphs retain their separate
+diagnostic and catch categories.
