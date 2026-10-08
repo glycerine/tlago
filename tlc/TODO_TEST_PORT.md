@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental duplicate recovery checks now require the runtime assertion category
+for memory sets and parent MultiFPSet, including native failure payloads and
+real TCP manager recovery. These add no original Java method completion credit.
+
 Native nested recovery checks now require selected-child RecoverFP dispatch,
 source disk/off-heap duplicate failure or warning-and-continue behavior, exact
 partition routing and retained earlier insertions. Child I/O failure must escape

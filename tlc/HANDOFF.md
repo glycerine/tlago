@@ -73,6 +73,11 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Memory and parent MultiFPSet duplicate recovery now retains the source runtime
+assertion category rather than an evaluator failure. Native payload and TCP
+manager checks retain that category, stop at the duplicate and preserve earlier
+insertion; the manager does not swallow it as unavailable storage.
+
 Unused RMI-specific unknown-host, connect-I/O and access error carriers have
 been removed. Native distributed failure payloads and retry/shutdown categories
 remain the transport contract; no RMI compatibility implementation is required.

@@ -19354,3 +19354,26 @@ worker failure/shutdown and fatal-boundary checks pass in 0.034 seconds. No
 new feature or Java method completion is claimed; no full suite or race run.
 Root package compile-only check also passes (0.016 seconds, no tests selected).
 All checks are terminal and retired.
+
+## October 8, 2026: runtime category for duplicate fingerprint recovery
+
+Audited MemFPSet/MemFPSet1/MemFPSet2/MultiFPSet recoverFP against source
+Assert.check(boolean, int). All four Go methods used an evaluator carrier
+instead of the coded runtime assertion failure. Strengthened the existing
+native duplicate check to require runtime category, unchanged prior insertion
+and correct native failure payload traits. All four cases fail before the
+production fix (46263, status 1, 0.027 seconds). Changed only the four error
+constructors to NewTLCRuntimeException; existing code/message are retained.
+
+Focused duplicate, nested recovery, checkpoint catch/fatal, failure payload and
+original short MultiFPSet checks pass (81479, status 0, 4.008 seconds). Added
+a supplemental actual TCP MemFPSet checkpoint with records 41, 41, 97: manager
+recovery returns the runtime failure, retains 41, does not insert 97 and does
+not print the storage-unavailable diagnostic. TCP duplicate/corrupt checkpoint
+and related native selection passes (54670, status 0, 0.322 seconds). Existing
+original dynamic manager constructor/index/reassignment/failover/block/order
+and nested partition checks plus memory storage checks pass in 0.073 seconds.
+No enabled original Java test directly covers the new duplicate TCP boundary;
+no additional original-method completion is claimed. All handles are terminal
+and retired. No full suite, long workload or race run. Broader distributed
+parity remains incomplete.

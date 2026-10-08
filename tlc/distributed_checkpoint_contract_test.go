@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -143,5 +144,33 @@ func TestFingerprintRPCCorruptCheckpointStopsRecovery(t *testing.T) {
 	manager := NewDistributedFPSetManager(client)
 	if err := manager.Recover("job"); err == nil || isJavaIOException(err) {
 		t.Fatalf("corrupt checkpoint was accepted or swallowed as a down server: %v", err)
+	}
+}
+
+// No enabled original Java method checks this duplicate-file RPC boundary.
+func TestFingerprintRPCDuplicateCheckpointRemainsRuntimeFailure(t *testing.T) {
+	captureFailoverToolIO(t, ToolIOTool)
+	directory := t.TempDir()
+	var data [24]byte
+	for i, fp := range []uint64{41, 41, 97} {
+		binary.BigEndian.PutUint64(data[i*8:], fp)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "job.fp.chkpt"), data[:], 0600); err != nil {
+		t.Fatal(err)
+	}
+	storage := NewMemFPSet()
+	storage.Init(1, directory, "primary")
+	_, client := startFingerprintRPC(t, NewLocalFingerprintEndpoint(storage))
+	manager := NewDistributedFPSetManager(client)
+	err := manager.Recover("job")
+	failure, ok := err.(*DistributedOperationError)
+	if !ok || failure.Class != "util.Assert$TLCRuntimeException" || failure.Error() != "The fingerprint is not in set." || failure.IO || failure.Remote || failure.Recoverable {
+		t.Fatalf("duplicate checkpoint runtime failure = %#v", err)
+	}
+	if storage.Size() != 1 || !storage.Contains(41) || storage.Contains(97) {
+		t.Fatal("duplicate recovery did not retain partial insertion and stop")
+	}
+	if len(ToolIOGetAllMessages()) != 0 {
+		t.Fatalf("runtime failure was swallowed as unavailable storage: %v", ToolIOGetAllMessages())
 	}
 }

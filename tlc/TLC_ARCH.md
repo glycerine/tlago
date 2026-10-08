@@ -11309,3 +11309,12 @@ case injects a selected child's checked I/O failure after real trace and disk
 queue recovery, requiring original cause identity, partial insertions and no
 later publication or recovery-end/initialization output. No disabled original
 harness completion credit is assigned. Broader parity remains incomplete.
+
+Memory/parent fingerprint RecoverFP duplicates now return the coded runtime
+assertion failure used by source Assert.check, retaining its existing code and
+message. MemFPSet, MemFPSet1, MemFPSet2 and MultiFPSet previously returned the
+evaluator carrier. Existing short duplicate checks now require the runtime
+category, preserved size/membership and native payload category. A real TCP
+MemFPSet file recovery through DistributedFPSetManager requires the runtime
+failure to escape its I/O catch, retain the first insertion and stop before
+the next record. No original Java method completion credit is added.

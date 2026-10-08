@@ -285,6 +285,23 @@ func TestMemoryFPSetRecoverDuplicateUsesJavaFPNotInSetError(t *testing.T) {
 			if tlcErr.Error() != "The fingerprint is not in set." {
 				t.Fatalf("error = %q", tlcErr.Error())
 			}
+			if !tlcErr.Runtime || isJavaIOException(err) || isDistributedRemoteFailure(err) || isRecoverableDistributedError(err) {
+				t.Fatalf("duplicate recovery lost runtime assertion category: %#v", err)
+			}
+			if tc.set.Size() != 1 || !tc.set.Contains(42) {
+				t.Fatal("duplicate recovery changed the already inserted fingerprint")
+			}
+			payload, encodeErr := EncodeDistributedFailure(err)
+			if encodeErr != nil {
+				t.Fatal(encodeErr)
+			}
+			decoded, decodeErr := DecodeDistributedFailure(payload)
+			if decodeErr != nil {
+				t.Fatal(decodeErr)
+			}
+			if javaThrowableClassName(decoded) != "util.Assert$TLCRuntimeException" || isJavaIOException(decoded) || isDistributedRemoteFailure(decoded) || isRecoverableDistributedError(decoded) {
+				t.Fatalf("native payload changed runtime failure category: %#v", decoded)
+			}
 		})
 	}
 }
