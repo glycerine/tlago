@@ -18519,3 +18519,25 @@ No long model or full workspace suite was run. Original
 disabled-harness methods receive no completion credit. Fresh-process mid-run
 checkpoint recovery, checkpoint interruption and remote-FP recovery remain
 pending; the distributed goal is incomplete.
+
+## October 8, 2026: native fingerprint failure payloads
+
+Fingerprint endpoints previously flattened failures into a string and I/O flag,
+losing nullable messages, causes, suppressed errors and sender diagnostics.
+Reused the existing native DistributedFailurePayload codec for FP replies.
+Returned and panicked fatal storage failures now both carry the remote I/O
+category and retain their original graph as the cause. Ordinary failures keep
+their source catch traits. Transport/decode failures remain endpoint I/O errors.
+No RMI, Java serialization or JVM exception reconstruction is introduced.
+
+No enabled upstream test directly covers this transfer. Added six short native
+TCP cases covering returned/panicked I/O, null and fatal failures. Assertions
+retain null messages, receiver-owned causes, shared cause/suppressed references,
+actual Go sender stacks, catch traits and continued endpoint availability.
+These checks add no original-method completion credit.
+
+All TestFingerprintRPC checks pass normally in 0.053 seconds (93340 terminal
+status 0). Only TestFingerprintRPCPreservesFailureGraph runs under -race,
+passing in 1.055 seconds (13116 terminal status 0). Both handles are retired.
+No full suite or long model workload was run. Broader distributed failure and
+recovery coverage remains pending; the distributed goal is incomplete.

@@ -10996,3 +10996,10 @@ The completion message precedes executor shutdown, keepalive cancellation,
 unpublication and latch countdown, as in the source. These routing corrections
 retain existing diagnostic text and option acceptance. Source System.err stack
 traces still use stderr; they are not redirected into ToolIO's message buffer.
+
+Fingerprint RPC failures use the shared native Go failure payload rather than
+flattening errors to strings. Nullable messages, cause/suppressed-error graphs,
+sharing and sender Go stacks survive the boundary. Fatal returned or panicked
+storage failures receive the remote I/O category with the original failure as
+cause; ordinary failures retain their existing catch traits. This is TLC
+behavioral parity over Go transport, with no RMI or Java serialization support.

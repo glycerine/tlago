@@ -188,7 +188,7 @@ type DistributedFingerprintReply struct {
 	Words         []uint64
 	WordsNil      bool
 	VectorPresent bool
-	Failure       *DistributedEndpointError
+	Failure       *DistributedFailurePayload
 }
 
 type distributedFingerprintService struct{ server *DistributedRPCServer }
@@ -197,17 +197,20 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 	// An endpoint panic must not take down the RPC process. Remote fatal
 	// failures are endpoint I/O failures to callers, as in the original remote
 	// invocation boundary. Ordinary runtime failures retain their category.
+	var failure error
 	defer func() {
-		if failure := recover(); failure != nil {
-			cause := panicValueAsError(failure)
-			reply.Failure = &DistributedEndpointError{Message: cause.Error(), IO: isJavaError(cause) || isJavaIOException(cause)}
+		if caught := recover(); caught != nil {
+			failure = panicValueAsError(caught)
+		}
+		if failure != nil {
+			reply.Failure, err = encodeFingerprintFailure(failure)
 		}
 	}()
 	service.server.mu.Lock()
 	endpoint := service.server.fingerprints[request.Object]
 	service.server.mu.Unlock()
 	if endpoint == nil {
-		reply.Failure = &DistributedEndpointError{Message: "fingerprint endpoint is not available: " + request.Object, IO: true}
+		failure = &DistributedOperationError{Message: javaString("fingerprint endpoint is not available: " + request.Object), Remote: true, IO: true}
 		return nil
 	}
 	var vector *LongVec
@@ -215,7 +218,6 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 		vector = NewLongVecFrom(request.Fingerprints)
 	}
 	var bits *BitVector
-	var failure error
 	switch request.Operation {
 	case "put":
 		reply.Bool, failure = endpoint.Put(request.Fingerprint)
@@ -252,15 +254,25 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 	default:
 		failure = fmt.Errorf("unknown fingerprint operation %q", request.Operation)
 	}
-	if failure != nil {
-		reply.Failure = &DistributedEndpointError{Message: failure.Error(), IO: isJavaIOException(failure)}
-	}
 	if bits != nil {
 		reply.VectorPresent = true
 		reply.WordsNil = bits.word == nil
 		reply.Words = append([]uint64(nil), bits.word...)
 	}
 	return nil
+}
+
+func encodeFingerprintFailure(failure error) (*DistributedFailurePayload, error) {
+	// Fatal storage failures escape local catches but arrive through the remote
+	// invocation's I/O boundary. Preserve their original graph as the cause.
+	if isJavaError(failure) {
+		failure = &DistributedOperationError{Message: javaString(failure.Error()), Class: javaThrowableClassName(failure), Stack: javaThrowableStackTrace(failure), Cause: failure, Remote: true, IO: true}
+	}
+	payload, err := EncodeDistributedFailure(failure)
+	if err != nil {
+		return nil, fmt.Errorf("encode fingerprint failure: %w", err)
+	}
+	return payload, nil
 }
 
 type NetworkFingerprintEndpoint struct {
@@ -288,7 +300,11 @@ func (e *NetworkFingerprintEndpoint) call(request DistributedFingerprintRequest)
 		return reply, &DistributedEndpointError{Message: err.Error(), IO: true}
 	}
 	if reply.Failure != nil {
-		return reply, reply.Failure
+		failure, err := DecodeDistributedFailure(reply.Failure)
+		if err != nil {
+			return reply, &DistributedEndpointError{Message: err.Error(), IO: true}
+		}
+		return reply, failure
 	}
 	return reply, nil
 }

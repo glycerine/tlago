@@ -29,7 +29,8 @@ The SANY audit goal is complete: every defect in
 are verified against the Go port, and full normal workspace verification passes.
 Current priority is the original distributed TLC algorithm on `master`. Leave
 the rpc25519/Tube alternative aside. Port its behavior using Go interfaces and
-transport, without Java RMI or JVM machinery. Canonical adapter/context gaps
+transport, without Java RMI, Java serialization or JVM machinery. Java remote
+interfaces are behavioral references, not compatibility targets. Canonical adapter/context gaps
 remain separately tracked below. The user has supplied a green full-suite
 baseline; run focused checks for changed code rather than repeating that suite.
 Commit each tested chunk, aiming for every 10–15 minutes.
@@ -2070,3 +2071,10 @@ Before resuming work, read [PLAN.md](../PLAN.md), this handoff,
 [TODO_TEST_PORT.md](TODO_TEST_PORT.md). Choose the next action from current
 pending entries and evidence. The overall porting goal remains incomplete; neither
 the green batch nor the high translation percentage establishes completion.
+
+Fingerprint RPC failures use the shared native Go failure payload rather than
+flattening errors to strings. Nullable messages, cause/suppressed-error graphs,
+sharing and sender Go stacks survive the boundary. Fatal returned or panicked
+storage failures receive the remote I/O category with the original failure as
+cause; ordinary failures retain their existing catch traits. This is TLC
+behavioral parity over Go transport, with no RMI or Java serialization support.

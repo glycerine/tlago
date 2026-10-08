@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Fingerprint RPC failures now use the existing native Go failure payload, retaining
+nullable messages, causes, suppressed-error sharing and actual Go diagnostics.
+Fatal endpoint failures retain the remote I/O category needed by TLC failover.
+Six short returned/panicked failure cases pass normally and under a focused race
+check. They add no original-method completion credit and provide no Java RMI or
+serialization compatibility.
+
 Finite configured constant-operator payloads (`OpRcdValue`) now retain argument
 rows, results, sharing, cycles and operator application through native gob and
 worker TCP request/result checks. Upstream has no direct test of this transfer;
