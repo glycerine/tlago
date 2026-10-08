@@ -54,6 +54,11 @@ func lookupDistributedServerURL(serverName, url string, lookup TLCServerLookup, 
 		}
 		reachable := false
 		switch failure := err.(type) {
+		case *DistributedOperationError:
+			if !failure.DiscoveryRetry {
+				return nil, err
+			}
+			reachable = failure.Reachable
 		case *ConnectException:
 			// Java inspects the immediate cause only, and distinguishes the
 			// java.net exception from java.rmi.ConnectException.

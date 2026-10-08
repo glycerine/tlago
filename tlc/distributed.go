@@ -71,6 +71,7 @@ type DistributedWorker struct {
 	FPSetManager          *DistributedFPSetManager
 	Cache                 *SimpleCache
 	uri                   *distributedWorkerURIValue
+	networkReference      *DistributedEndpointReference
 	Runtime               *DistributedWorkerRuntime
 	unexported            atomic.Bool
 	Computing             atomic.Bool

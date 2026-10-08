@@ -23,6 +23,7 @@ type DistributedWorkerEnvironment struct {
 	StartThread            func(string, func())
 	LocalCanonicalHostName func() (string, error)
 	RegisterWorker         func(DistributedServerEndpoint, *DistributedWorker) error
+	PublishWorker          func(*DistributedWorker) error
 	ReadyDate              func() string
 }
 
@@ -138,7 +139,7 @@ func (p *DistributedWorkerProcess) start(serverName string, count int, env Distr
 	p.Runtime.keepAliveMu.Unlock()
 	group.started.Store(true)
 	for i := range group.runnables {
-		runnable := &DistributedWorkerRunnable{threadID: i, server: server, app: app, manager: manager, runtime: p.Runtime, done: make(chan struct{}), localHost: env.LocalCanonicalHostName, register: env.RegisterWorker}
+		runnable := &DistributedWorkerRunnable{threadID: i, server: server, app: app, manager: manager, runtime: p.Runtime, done: make(chan struct{}), localHost: env.LocalCanonicalHostName, register: env.RegisterWorker, publish: env.PublishWorker}
 		p.Runtime.keepAliveMu.Lock()
 		group.runnables[i] = runnable
 		p.Runtime.keepAliveMu.Unlock()

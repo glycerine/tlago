@@ -7887,8 +7887,23 @@ connections if decoding/dialing fails. Successful snapshot connections belong
 to the coordinator client; callback connections belong to the RPC host. Both
 owners close their connections independently of worker/storage exit. Native
 coordinator failures enter the existing file resolver and keepalive catches.
-Remaining payload types, native discovery/bootstrap and process/CLI wiring
-remain to be implemented.
+DistributedNetworkDiscovery probes binding presence with a dedicated native
+lookup call, independently of coordinator settings/status. Connection refusal
+and reachable/unbound bindings enter the original backoff loop; unrelated
+connection/protocol errors propagate. Owned connections are reused for repeated
+binding probes and discarded after transport failure. UnregisterCoordinator
+removes a binding independently of listener lifetime.
+
+DistributedWorkerNetwork configures discovery, worker publication and
+registration boundaries on the existing worker command. A publication hook
+sets the actual TCP address/object identity before storing the runnable worker
+pointer, preserving construction-before-visibility. Unique native object names
+allow repeated worker thread IDs without overwriting earlier publications.
+Registration transfers a published reference without requiring a self-dial.
+Bootstrap keeps polynomial/interner/resolver/app/manager initialization order.
+Networking shutdown and worker runtime shutdown remain distinct. Remaining
+payload types, coordinator/FP role publication and process/CLI wiring still need
+implementation and separate-process model verification.
 
 The Java reference implementation uses RMI:
 
@@ -8323,10 +8338,11 @@ before queue resume leave the queue suspended like Java; completion messages
 retain the source's recorder arguments. TLCApp restores interning before tool
 construction, separately from TLCServer's trace/queue/FP recovery method.
 
-Worker construction now retains Java's immutable raw URI metadata in the form
-`rmi://hostname:port/threadId`. `DistributedWorkerAddress` supplies the address
-of a future exported endpoint; local construction uses the machine hostname
-and port zero, Java getPort's fallback. The raw URI is used for registration,
+Worker construction retains immutable raw URI metadata in the native form
+`tcp://hostname:port/threadId`. Native publication replaces the default thread
+path with its unique published object name and supplies its actual listener
+address. Local construction uses the machine hostname and port zero until a
+transport supplies an endpoint. The raw URI is used for registration,
 statistics and getURI; worker failures use toASCIIString. Host classification
 follows Java's server/registry authority distinction rather than Go net/url,
 including null hosts for Unicode or underscore registry names, bracketed IPv6

@@ -9,16 +9,18 @@ import (
 // process. Its traits drive TLC's catch/retry decisions without a Java remote
 // object or exception protocol. Diagnostic text and causes belong to the sender.
 type DistributedOperationError struct {
-	Message       *string
-	Class         string
-	Stack         string
-	Cause         error
-	Suppressed    []error
-	Remote        bool
-	Recoverable   bool
-	IO            bool
-	Null          bool
-	ExitIgnorable bool
+	Message        *string
+	Class          string
+	Stack          string
+	Cause          error
+	Suppressed     []error
+	Remote         bool
+	Recoverable    bool
+	IO             bool
+	Null           bool
+	ExitIgnorable  bool
+	DiscoveryRetry bool
+	Reachable      bool
 }
 
 func (e *DistributedOperationError) Error() string {
@@ -43,21 +45,23 @@ type DistributedFailurePayload struct {
 	States *DistributedStatePayload
 }
 type DistributedFailureNode struct {
-	Message       string
-	MessageNil    bool
-	Class         string
-	Stack         string
-	Cause         int
-	Suppressed    []int
-	Worker        bool
-	State1        int
-	State2        int
-	KeepCallStack bool
-	Remote        bool
-	Recoverable   bool
-	IO            bool
-	Null          bool
-	ExitIgnorable bool
+	Message        string
+	MessageNil     bool
+	Class          string
+	Stack          string
+	Cause          int
+	Suppressed     []int
+	Worker         bool
+	State1         int
+	State2         int
+	KeepCallStack  bool
+	Remote         bool
+	Recoverable    bool
+	IO             bool
+	Null           bool
+	ExitIgnorable  bool
+	DiscoveryRetry bool
+	Reachable      bool
 }
 
 func isIgnorableDistributedWorkerExit(err error) bool {
@@ -112,6 +116,9 @@ func EncodeDistributedFailure(failure error) (*DistributedFailurePayload, error)
 			ExitIgnorable: isIgnorableDistributedWorkerExit(err),
 		}
 		message := javaThrowableDetailMessage(err)
+		if operation, ok := err.(*DistributedOperationError); ok {
+			node.DiscoveryRetry, node.Reachable = operation.DiscoveryRetry, operation.Reachable
+		}
 		node.MessageNil = message == nil
 		if message != nil {
 			node.Message = *message
@@ -167,7 +174,7 @@ func DecodeDistributedFailure(payload *DistributedFailurePayload) (error, error)
 			worker.throwableTrace.remoteStack = node.Stack
 			failures[i+1] = worker
 		} else {
-			failures[i+1] = &DistributedOperationError{Message: message, Class: node.Class, Stack: node.Stack, Remote: node.Remote, Recoverable: node.Recoverable, IO: node.IO, Null: node.Null, ExitIgnorable: node.ExitIgnorable}
+			failures[i+1] = &DistributedOperationError{Message: message, Class: node.Class, Stack: node.Stack, Remote: node.Remote, Recoverable: node.Recoverable, IO: node.IO, Null: node.Null, ExitIgnorable: node.ExitIgnorable, DiscoveryRetry: node.DiscoveryRetry, Reachable: node.Reachable}
 		}
 	}
 	for i, node := range payload.Nodes {

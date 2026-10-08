@@ -106,6 +106,7 @@ type DistributedWorkerRunnable struct {
 	address      *DistributedWorkerAddress
 	localHost    func() (string, error)
 	register     func(DistributedServerEndpoint, *DistributedWorker) error
+	publish      func(*DistributedWorker) error
 	worker       atomic.Pointer[DistributedWorker]
 	done         chan struct{}
 	completeOnce sync.Once
@@ -154,6 +155,11 @@ func (r *DistributedWorkerRunnable) Run() (err error) {
 	worker := NewDistributedWorker(r.threadID, nil, r.manager, endpoint)
 	worker.App = r.app
 	worker.Runtime = r.runtime
+	if r.publish != nil {
+		if err := r.publish(worker); err != nil {
+			return err
+		}
+	}
 	r.worker.Store(worker)
 	if r.register != nil {
 		return r.register(r.server, worker)

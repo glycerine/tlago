@@ -17786,3 +17786,52 @@ lifecycle and separate-process model execution still require implementation.
 The exact short concurrent snapshot/interning race check passes in 1.042 seconds
 (72902 terminal status 0). All test handles are retired. Focused checks are green
 and the coordinator transport chunk is ready to commit.
+
+### 2026-10-08 — Native discovery and worker bootstrap/publication
+
+Continued from 858c8bd. Added a native binding-presence probe and owned discovery
+connections. The probe does not call coordinator settings/status, so errors in
+those calls still belong to bootstrap. Connection refusal enters the original
+unreachable retry branch; an unpublished binding on a live listener enters the
+reachable/not-ready branch. Other connection/protocol failures propagate.
+Backoff bounds and interruption remain unchanged. Successful connections are
+reused for keepalive relookup, failed transports are discarded, and shutdown
+owns all retained clients. Coordinator binding removal is independent of host
+lifetime. Discovery accepts native tcp:// and authority/path locations and
+explicitly rejects RMI schemes.
+
+DistributedWorkerNetwork now supplies actual listener publication, discovery
+and registration hooks to the existing command. A worker's TCP identity and
+publication are complete before its runnable pointer becomes visible to
+keepalive/shutdown. Unique object names preserve repeated thread IDs without
+overwriting live endpoints. Registration sends the published address/object
+without a self-dial. The existing polynomial, worker interning, resolver/app and
+manager initialization order, registration threads, timer and exit latch remain
+in the command. Closing networking does not substitute for runtime shutdown.
+
+Changed worker diagnostic/registration URIs from rmi:// to tcp:// as explicitly
+required by the user's native-Go direction. The source-derived URI fixture is
+unchanged; its test changes only the expected three-character scheme while
+retaining authority, error reason/index, scope and normalization assertions.
+There is no upstream dedicated worker-URI test. Existing original smart-proxy
+and distributed model/init tests are unchanged, and no original-method
+completion credit is added.
+
+Added four focused Go checks for native reachable/unreachable discovery, exact
+backoff/interruption, unbinding/closure, invalid schemes/locations, concurrent
+connection reuse and real worker bootstrap/publication/callback. The callback
+uses an actual DistributedWorker with an empty work block and verifies its
+returned partition and exit/unpublication. It does not prove full model checking
+or process-global isolation. Test cleanup restores polynomial, interning and
+port settings and shuts down runtime before networking.
+
+Initial URI/bootstrap boundary checks passed in 0.019 seconds; native discovery
+and callback checks passed in 0.028 seconds (48172 terminal status 0). Final
+focused native discovery/bootstrap, TCP, payload, original smart-proxy and URI
+selection passed in 0.084 seconds (46137 terminal status 0). Root original
+distributed model/init/app-boundary checks passed in 1.820 seconds (44499
+terminal status 0). The exact short eight-lookup concurrency race check passed
+in 1.038 seconds (68084 terminal status 0). No full suite or long race workloads
+were run. All handles are retired. Coordinator/FP role publication, CLI/process
+wiring, remaining payload types and separate-process full model verification
+remain required; the goal stays active.

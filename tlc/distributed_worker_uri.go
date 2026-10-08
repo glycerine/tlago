@@ -98,7 +98,11 @@ func javaURINFC(input string) string {
 }
 
 func newDistributedWorkerURI(address DistributedWorkerAddress, threadID int) *distributedWorkerURIValue {
-	raw := fmt.Sprintf("rmi://%s:%d/%d", address.Hostname, address.Port, threadID)
+	return newDistributedWorkerEndpointURI(address, fmtInt(threadID))
+}
+
+func newDistributedWorkerEndpointURI(address DistributedWorkerAddress, object string) *distributedWorkerURIValue {
+	raw := fmt.Sprintf("tcp://%s:%d/%s", address.Hostname, address.Port, object)
 	parser := workerURIParser{raw: raw, chars: utf16.Encode([]rune(raw))}
 	host, err := parser.parse()
 	if err != nil {
@@ -108,7 +112,7 @@ func newDistributedWorkerURI(address DistributedWorkerAddress, threadID int) *di
 }
 
 // These masks and the hierarchical/server parsing below mirror java.net.URI.
-// Only the rmi:// URI constructed by TLCWorker is needed; scheme selection,
+// Only the tcp:// URI constructed by the worker is needed; scheme selection,
 // relative resolution, normalization and URI comparison are not exposed here.
 type workerURIMask struct{ low, high uint64 }
 
@@ -192,7 +196,7 @@ func (p *workerURIParser) check(start, end int, mask workerURIMask, component st
 
 func (p *workerURIParser) parse() (*string, *URISyntaxException) {
 	end := len(p.chars)
-	pos := 6 // rmi://, already supplied by the constructor
+	pos := 6 // tcp://, already supplied by the constructor
 	authorityEnd := p.until(pos, end, "/?#")
 	var host *string
 	if authorityEnd > pos {

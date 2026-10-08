@@ -1856,7 +1856,16 @@ for worker snapshots. Manager wrapper sharing and availability are preserved,
 while failover state and trace ownership remain isolated. Acquired callback and
 snapshot connections have explicit owners and close on host/client shutdown.
 Native failures now enter the existing resolver and worker keepalive catches.
-Remaining payload classes, native discovery/bootstrap and process/CLI integration
+Native discovery now probes binding presence without invoking coordinator
+settings. It preserves connection-refused versus reachable/not-ready retry
+behavior and retains owned connections for keepalive relookup. Worker network
+environments publish workers on a real advertised TCP listener before exposing
+them to shutdown/keepalive, then register their named references with the
+coordinator. Bootstrap retains its polynomial/interner/resolver/app/manager
+order. Worker addresses now use `tcp://`; source URI authority/index/NFC checks
+are retained with the scheme change required by the user. An actual empty-block
+worker callback passes over TCP. Remaining payload classes, coordinator/FP role
+publication, process/CLI integration and separate-process full model execution
 remain pending. These focused checks do not prove distributed completion.
 
 ## Testing and workflow

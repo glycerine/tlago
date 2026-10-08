@@ -315,7 +315,11 @@ func (e *NetworkServerEndpoint) RegisterWorker(worker DistributedWorkerEndpoint)
 	if !ok {
 		return fmt.Errorf("worker registration requires a published TCP endpoint, got %T", worker)
 	}
-	_, err := e.call(DistributedServerRequest{Operation: "registerWorker", Endpoint: DistributedEndpointReference{network.Address, network.Object}})
+	return e.RegisterWorkerReference(DistributedEndpointReference{network.Address, network.Object})
+}
+
+func (e *NetworkServerEndpoint) RegisterWorkerReference(reference DistributedEndpointReference) error {
+	_, err := e.call(DistributedServerRequest{Operation: "registerWorker", Endpoint: reference})
 	return err
 }
 func (e *NetworkServerEndpoint) RegisterFPSet(fp DistributedFingerprintEndpoint, hostname string) error {
