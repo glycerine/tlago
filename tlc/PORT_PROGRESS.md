@@ -18928,3 +18928,40 @@ short resolver TCP/cache case runs under -race, passing in 1.035 seconds (88134
 terminal status 0). All handles are retired. No full suite or long workload was
 run. This changes the exported Go API names, not the wire protocol. Broader
 distributed parity remains incomplete.
+
+## October 8, 2026: worker codec failures and coordinator catch boundaries
+
+Native request encoding, server request decoding and result encoding failures
+were ordinary application failures. TLCServerThread's source inner catch treats
+remote transfer I/O failures as worker loss: requeue the assigned block and
+deregister that worker, without terminating unfinished checking. Added native
+workerCodecFailure classification at these three boundaries, retaining the
+codec cause. Source exceptions raised during materialization remain application
+failures rather than being turned into connection loss. No transport retry is
+introduced. The existing client result-decoding boundary already classified its
+failures as remote I/O.
+
+Unevaluated LazyValue/LazySupplierValue rejection was a generic Go format error.
+The source LazyValue.writeObject instead calls Assert.fail with "Error(TLC):
+Attempted to serialize lazy value." and its source node. Restored the runtime
+category, exact detail and optional detailed source context. This keeps that
+materialization failure outside the worker-loss catch and prevents dispatch.
+
+New short TCP checks reproduce all three codec category failures in 0.015
+seconds (67645 terminal status 1). They require nonrecoverable remote I/O,
+original codec cause, zero request-side endpoint calls or one result-side call,
+nil result and continued host aliveness. Coordinator checks then require exact
+two-state requeue in order, one deregistration/worker-count decrement, one
+worker-loss message, no GENERAL and an unfinished coordinator. Lazy cases must
+retain application runtime detail without any endpoint call. No enabled direct
+upstream method covers these boundaries; supplemental checks add no original
+method credit.
+
+An initial compile check caught a LazySupplierValue fixture embedding a value
+instead of its declared pointer; corrected the fixture. Initial focused graph/
+worker selection passes in 0.029 seconds (83009 terminal status 0). After adding
+the coordinator assertions, final graph/model-scalar/byte-data/worker selection
+passes in 0.028 seconds (3599 terminal status 0). Only the exact new short codec
+and lazy TCP cases run under -race, passing in 1.044 seconds (77351 terminal
+status 0). All handles are retired. No full suite or long workload was run.
+Broader distributed parity remains incomplete.

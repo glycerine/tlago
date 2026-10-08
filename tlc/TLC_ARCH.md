@@ -11131,3 +11131,14 @@ RMIFilenameToStreamResolver is retained only as a behavior reference: basename
 cache keys, actual file-existence checks before reuse, refetch after deletion,
 ignored library paths/isModule flag, binary/empty writes and private temporary
 directories remain intact. This is a Go API rename, not a wire-format change.
+
+Native worker graph encode/decode validation failures belong to the remote I/O
+boundary, retaining the codec cause with no retry. Request encoding fails before
+dispatch; malformed request graphs fail before endpoint invocation; result
+encoding fails after evaluation. The coordinator's inner remote catch requeues
+the assigned block and removes that worker, rather than recording an application
+GENERAL and terminating the model. Source exceptions raised during value
+materialization retain their application category. In particular, LazyValue's
+write contract raises the exact runtime diagnostic "Error(TLC): Attempted to
+serialize lazy value." for null/undefined cached values, with source context
+when present. Native payload rejection now retains that contract too.

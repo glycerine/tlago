@@ -226,12 +226,12 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 		node.Kind, children = "lambda", []Value{v.ToFcnRcd()}
 	case *LazySupplierValue:
 		if v.Val == nil || v.Val == ValUndef {
-			return 0, fmt.Errorf("attempted to serialize an unevaluated lazy value")
+			return 0, distributedLazySerializationFailure(v.GetSource())
 		}
 		node.Kind, children = "lazy", []Value{v.Val}
 	case *LazyValue:
 		if v.Val == nil || v.Val == ValUndef {
-			return 0, fmt.Errorf("attempted to serialize an unevaluated lazy value")
+			return 0, distributedLazySerializationFailure(v.GetSource())
 		}
 		node.Kind, children = "lazy", []Value{v.Val}
 	case *SetPredValue:
@@ -300,6 +300,16 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 	}
 	e.payload.Values[id-1] = node
 	return id, nil
+}
+
+func distributedLazySerializationFailure(source SemanticNode) error {
+	const message = "Error(TLC): Attempted to serialize lazy value."
+	if source != nil {
+		return NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+	}
+	failure := newTLCError(ECGeneral, "%s", message)
+	failure.Runtime = true
+	return failure
 }
 
 func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data any) error {

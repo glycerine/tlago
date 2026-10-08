@@ -73,6 +73,15 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Worker request/result graph validation and representation failures now retain
+the remote I/O category used by the coordinator's worker-loss catch. Focused
+TCP checks require codec causes, no automatic retry or unintended dispatch,
+continued host availability and exact assigned-block requeue/deregistration
+without marking the unfinished coordinator done. Source exceptions raised
+while materializing values retain their application category. Unevaluated lazy
+values now report the source runtime diagnostic rather than a generic codec
+error, and never dispatch a worker request.
+
 The worker file resolver is now named `DistributedFilenameToStreamResolver`,
 with constructor `NewDistributedFilenameToStreamResolver`; the misleading RMI
 Go API name is removed. Worker bootstrap, root integration and process helpers

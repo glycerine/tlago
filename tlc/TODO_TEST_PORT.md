@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native worker graph codec failures now enter the remote I/O worker-loss catch,
+with their causes preserved. Short TCP/coordinator checks require exact assigned
+state requeue, one deregistration, no GENERAL and continued unfinished work.
+Unevaluated lazy values retain the source runtime category and exact diagnostic.
+No enabled original method directly covers these boundaries; supplemental
+checks add no original-method completion credit.
+
 The native worker resolver API is `DistributedFilenameToStreamResolver`.
 Coordinator TCP file/cache checks retain basename keys, flag-independent fetches,
 binary/empty data, deletion/refetch and independent temporary directories.

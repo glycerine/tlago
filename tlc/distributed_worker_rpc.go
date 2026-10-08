@@ -73,6 +73,7 @@ func (service *distributedWorkerService) Call(request DistributedWorkerRequest, 
 		var states []*TLCStateMut
 		states, failure = DecodeDistributedStates(request.States)
 		if failure != nil {
+			failure = workerCodecFailure(failure)
 			return nil
 		}
 		var result *NextStateResult
@@ -81,6 +82,9 @@ func (service *distributedWorkerService) Call(request DistributedWorkerRequest, 
 			return nil
 		}
 		reply.Result, failure = EncodeDistributedResult(result)
+		if failure != nil {
+			failure = workerCodecFailure(failure)
+		}
 	case "alive":
 		reply.Alive, failure = endpoint.IsAlive()
 	case "uri":
@@ -127,6 +131,17 @@ func workerConnectionFailure(err error) error {
 		Recoverable: err == io.EOF || err == io.ErrUnexpectedEOF,
 	}
 }
+
+// Native graph validation/representation errors belong to the remote I/O
+// boundary. Source exceptions raised while materializing a value retain their
+// application category; serialization does not turn those into connection loss.
+func workerCodecFailure(err error) error {
+	var source interface{ GetMessage() *string }
+	if errors.As(err, &source) && !isJavaIOException(err) {
+		return err
+	}
+	return workerConnectionFailure(err)
+}
 func (e *NetworkWorkerEndpoint) call(request DistributedWorkerRequest) (DistributedWorkerReply, error) {
 	request.Object = e.Object
 	var reply DistributedWorkerReply
@@ -145,7 +160,7 @@ func (e *NetworkWorkerEndpoint) call(request DistributedWorkerRequest) (Distribu
 func (e *NetworkWorkerEndpoint) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {
 	payload, err := EncodeDistributedStates(states)
 	if err != nil {
-		return nil, err
+		return nil, workerCodecFailure(err)
 	}
 	reply, err := e.call(DistributedWorkerRequest{Operation: "next", States: payload})
 	if err != nil {
