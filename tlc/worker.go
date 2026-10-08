@@ -259,7 +259,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	// executes the deadlock/liveness/out-degree tail before the next dequeue
 	// observes finishAll().
 	if w.checkDeadlock && preNext == w.GetStatesGenerated() {
-		w.Checker.doNextSetErrWithPostCondition(curState, nil, false, ECTLCDeadlockReached, "")
+		w.Checker.doNextSetErrWithPostConditionTool(w.Tool, curState, nil, false, ECTLCDeadlockReached, "")
 		recordedOutcome = true
 	}
 	if w.checkLiveness {

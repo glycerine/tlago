@@ -21878,3 +21878,36 @@ existing DieHard/TSnapShot native process storage variants pass (b13b89, status 
 58.211 seconds). All processes are terminal. Original assertions and bounds are
 unchanged. No full suite or race run was performed. Supplemental cases add no
 original-method credit; distributed parity remains incomplete.
+
+### 2026-10-08: Worker error postcondition tool ownership
+
+Compared Worker.doNextSetErr/doPostCondition with pinned source. Worker deadlock,
+incomplete-successor, invariant and implied-action failures now pass their tool
+through the reporting boundary for final-state reconstruction, pairwise ALIAS
+and counterexample postcondition evaluation. Checker trace-prefix recovery and
+diagnostics keep their own owners. The same reporting lock spans diagnostics
+and postcondition evaluation, including original isConsole selection. Existing
+checker entry points still use the checker tool. Reconstruction fallbacks and
+missing-owner guards remain separate audit work.
+
+No original method directly replaces the checker tool. Three supplemental cases
+exercise deadlock/invariant/implied failures with different tool owners. Initial
+fixtures required correction: Worker.DoNext intentionally returns false after
+recording deadlock, and valid trace construction requires the initial trace
+record and reconstructable transitions. The intermediate run exposed deadlock
+postcondition/alias redirection (b8f9b1, status 1, 2.888 seconds); it did not prove
+the other two failures were ownership defects. Corrected fixtures pass against
+the fix (e1ba32, status 0, 3.792 seconds). Focused worker/native RPC, concurrent
+trace, original simulation trace and reporting serialization checks pass
+(0dab95, status 0, 11.213 seconds). The existing pairwise postcondition alias check
+passes separately (e47cf0, status 0, 1.552 seconds).
+
+The related model selection first failed (9013fd, status 1, 57.979 seconds), but
+tool-output truncation lost its failing assertion. Its unchanged captured rerun
+passed (83b327, status 0); the log reports 58.264 seconds. The selection covers
+original checkpoint-on-violation/time-bound, error-trace, Github461 and three-
+worker CodePlexBug08 archive recovery plus four native DieHard/TSnapShot process
+variants. The first failure remains unexplained and is not claimed diagnosed or
+fixed. All processes are terminal. No original assertions or bounds changed;
+no full suite or race run was performed. Supplemental cases add no original-
+method credit. Distributed parity remains incomplete.

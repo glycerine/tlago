@@ -1680,7 +1680,7 @@ func (mc *ModelChecker) processSuccessorForWorker(worker *Worker, curState *TLCS
 		panic(NewNullPointerException())
 	}
 	if !tool.IsGoodState(succState) {
-		return mc.doNextSetErrParamsWithPostCondition(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
+		return mc.doNextSetErrParamsWithPostConditionTool(tool, curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
 	}
 	if succState != nil {
 		succState.SetPredecessor(curState).SetAction(action)
@@ -1856,7 +1856,7 @@ func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCS
 				return false, nil
 			}
 			if withPostCondition {
-				return mc.doNextSetErrWithPostCondition(curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
+				return mc.doNextSetErrWithPostConditionTool(tool, curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
 			}
 			return mc.doNextSetErr(curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
 		}
@@ -1882,7 +1882,7 @@ func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStat
 				return false, nil
 			}
 			if withPostCondition {
-				return mc.doNextSetErrWithPostCondition(curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
+				return mc.doNextSetErrWithPostConditionTool(tool, curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
 			}
 			return mc.doNextSetErr(curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
 		}
@@ -1919,18 +1919,26 @@ func (mc *ModelChecker) doNextSetErrParamsLocked(curState *TLCStateMut, succStat
 }
 
 func (mc *ModelChecker) doNextSetErrWithPostCondition(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, param string) bool {
+	return mc.doNextSetErrWithPostConditionTool(mc.Tool, curState, succState, keep, ec, param)
+}
+
+func (mc *ModelChecker) doNextSetErrWithPostConditionTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, param string) bool {
 	if param == "" {
-		return mc.doNextSetErrParamsWithPostCondition(curState, succState, keep, ec)
+		return mc.doNextSetErrParamsWithPostConditionTool(tool, curState, succState, keep, ec)
 	}
-	return mc.doNextSetErrParamsWithPostCondition(curState, succState, keep, ec, param)
+	return mc.doNextSetErrParamsWithPostConditionTool(tool, curState, succState, keep, ec, param)
 }
 
 func (mc *ModelChecker) doNextSetErrParamsWithPostCondition(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
+	return mc.doNextSetErrParamsWithPostConditionTool(mc.Tool, curState, succState, keep, ec, params...)
+}
+
+func (mc *ModelChecker) doNextSetErrParamsWithPostConditionTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
 	mc.nextErrorMu.Lock()
 	defer mc.nextErrorMu.Unlock()
 	isConsole := !mc.isModelCheckerDone()
 	result := mc.doNextSetErrParamsLocked(curState, succState, keep, ec, params...)
-	mc.checkPostConditionWithErrorTrace(curState, succState, isConsole)
+	mc.checkPostConditionWithErrorTraceTool(tool, curState, succState, isConsole)
 	return result
 }
 
@@ -1953,16 +1961,20 @@ func (mc *ModelChecker) checkPostConditionAfterInitFailure() {
 }
 
 func (mc *ModelChecker) checkPostConditionWithErrorTrace(curState *TLCStateMut, succState *TLCStateMut, isConsole bool) {
-	if mc == nil || mc.Tool == nil {
+	mc.checkPostConditionWithErrorTraceTool(mc.Tool, curState, succState, isConsole)
+}
+
+func (mc *ModelChecker) checkPostConditionWithErrorTraceTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, isConsole bool) {
+	if mc == nil || tool == nil {
 		return
 	}
-	trace := mc.errorTraceInfo(curState, succState)
+	trace := mc.errorTraceInfo(tool, curState, succState)
 	if len(trace) == 0 {
-		mc.Tool.CheckPostCondition()
+		tool.CheckPostCondition()
 		return
 	}
-	trace = aliasTraceWithToolPairs(mc.Tool, trace)
-	mc.Tool.CheckPostConditionWithCounterExample(NewCounterExample(trace, UnknownAction, 0, isConsole))
+	trace = aliasTraceWithToolPairs(tool, trace)
+	tool.CheckPostConditionWithCounterExample(NewCounterExample(trace, UnknownAction, 0, isConsole))
 }
 
 func (mc *ModelChecker) printBehaviorTrace(curState *TLCStateMut, succState *TLCStateMut) {
@@ -1973,34 +1985,34 @@ func (mc *ModelChecker) printBehaviorTrace(curState *TLCStateMut, succState *TLC
 	}
 }
 
-func (mc *ModelChecker) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
+func (mc *ModelChecker) errorTraceInfo(tool *Tool, curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
 	if curState == nil {
 		if succState == nil {
 			return nil
 		}
 		trace := mc.traceInfoPrefix(succState)
-		return append(trace, mc.stateInfoForState(succState, nil))
+		return append(trace, mc.stateInfoForState(tool, succState, nil))
 	}
 	if succState == nil {
 		if curState.IsInitial() {
-			return []*TLCStateInfo{mc.stateInfoForState(curState, nil)}
+			return []*TLCStateInfo{mc.stateInfoForState(tool, curState, nil)}
 		}
 		trace := mc.traceInfoPrefix(curState)
-		return append(trace, mc.stateInfoForState(curState, lastTraceState(trace)))
+		return append(trace, mc.stateInfoForState(tool, curState, lastTraceState(trace)))
 	}
 	if succState.AllAssigned() && succState.WorkerID == TLCStateInitWorkerID {
 		if curState.IsInitial() {
 			return []*TLCStateInfo{
-				mc.stateInfoForState(curState, nil),
-				mc.stateInfoForTransition(succState, curState),
+				mc.stateInfoForState(tool, curState, nil),
+				mc.stateInfoForTransition(tool, succState, curState),
 			}
 		}
 		trace := mc.traceInfoPrefix(curState)
-		trace = append(trace, mc.stateInfoForState(curState, lastTraceState(trace)))
-		return append(trace, mc.stateInfoForTransition(succState, curState))
+		trace = append(trace, mc.stateInfoForState(tool, curState, lastTraceState(trace)))
+		return append(trace, mc.stateInfoForTransition(tool, succState, curState))
 	}
 	trace := mc.traceInfoPrefix(succState)
-	return append(trace, mc.stateInfoForTransition(succState, curState))
+	return append(trace, mc.stateInfoForTransition(tool, succState, curState))
 }
 
 func lastTraceState(trace []*TLCStateInfo) *TLCStateMut {
@@ -2010,20 +2022,20 @@ func lastTraceState(trace []*TLCStateInfo) *TLCStateMut {
 	return trace[len(trace)-1].State
 }
 
-func (mc *ModelChecker) stateInfoForState(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
+func (mc *ModelChecker) stateInfoForState(tool *Tool, state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
 	if state == nil {
 		return nil
 	}
-	if mc != nil && mc.Tool != nil {
+	if mc != nil && tool != nil {
 		var (
 			info *TLCStateInfo
 			err  error
 		)
 		fp := state.FingerPrint()
 		if predecessor == nil {
-			info, err = mc.Tool.GetState(fp)
+			info, err = tool.GetState(fp)
 		} else {
-			info, err = mc.Tool.GetState(fp, predecessor)
+			info, err = tool.GetState(fp, predecessor)
 		}
 		if err == nil && info != nil && info.State != nil {
 			info.State.WorkerID = state.WorkerID
@@ -2037,12 +2049,12 @@ func (mc *ModelChecker) stateInfoForState(state *TLCStateMut, predecessor *TLCSt
 	return info
 }
 
-func (mc *ModelChecker) stateInfoForTransition(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
+func (mc *ModelChecker) stateInfoForTransition(tool *Tool, state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
 	if state == nil {
 		return nil
 	}
-	if mc != nil && mc.Tool != nil && predecessor != nil {
-		info, err := mc.Tool.GetStateForTransition(state, predecessor)
+	if mc != nil && tool != nil && predecessor != nil {
+		info, err := tool.GetStateForTransition(state, predecessor)
 		if err == nil && info != nil && info.State != nil {
 			info.State.WorkerID = state.WorkerID
 			info.State.UID = state.UID

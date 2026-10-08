@@ -877,6 +877,12 @@ exclusion reasons, invariant and implied-action evaluation retain the executing
 worker's tool. No original method directly covers these boundaries; original
 completion counts remain unchanged.
 
+Three native worker error cases cover deadlock, invariant and implied-action
+failures after checker-tool replacement. Pairwise alias and counterexample
+postcondition evaluation use the worker tool; checker reporting remains under
+the same lock. Fixtures supply the initial trace and reconstructable transitions.
+No original method directly covers tool replacement; counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

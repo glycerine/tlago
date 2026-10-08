@@ -226,8 +226,14 @@ source's explicit access to the checker's current writer. Successor validity,
 state/action constraints and their exclusion reasons, invariants and implied
 actions use the executing worker's tool. Fingerprinting cannot borrow a missing
 worker tool. Incomplete-state diagnostic parameter selection retains the
-source's checker tool access. Error/postcondition tool ownership and remaining
-missing-owner guards still need audit.
+source's checker tool access. Worker error postconditions use the worker tool
+for final-state reconstruction, pairwise aliases and counterexample evaluation;
+coordinator trace-prefix recovery and error reporting retain their own owners.
+The reporting lock spans both diagnostics and postcondition evaluation.
+Remaining reconstruction fallbacks and missing-owner guards still need audit.
+The latest related model selection failed once with its assertion lost to output
+truncation, then passed unchanged with captured output. This failure is unresolved;
+do not claim it diagnosed. Preserve failing output to a file on future runs.
 
 Concurrent trace registration retains its fixed worker-owner list. Missing trace
 or worker references and out-of-range IDs fail before assignment; registration
