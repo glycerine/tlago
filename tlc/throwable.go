@@ -24,6 +24,9 @@ func javaThrowableDetailMessage(err error) *string {
 func javaString(value string) *string { return &value }
 
 func javaThrowableClassName(err error) string {
+	if diagnostic, ok := err.(interface{ diagnosticClassName() string }); ok {
+		return diagnostic.diagnosticClassName()
+	}
 	switch failure := err.(type) {
 	case *FrontEndException:
 		return "tla2sany.drivers.FrontEndException"
@@ -238,7 +241,10 @@ func javaBasicThrowableString(err error) string {
 type throwableTrace struct {
 	pcs         []uintptr
 	suppression *throwableSuppression
+	remoteStack string
 }
+
+func (trace throwableTrace) remoteThrowableStack() string { return trace.remoteStack }
 
 type throwableSuppression struct {
 	mu     sync.Mutex
@@ -300,6 +306,9 @@ func javaThrowableCause(err error) error {
 }
 
 func javaThrowableStackTrace(err error) string {
+	if remote, ok := err.(interface{ remoteThrowableStack() string }); ok && remote.remoteThrowableStack() != "" {
+		return remote.remoteThrowableStack()
+	}
 	var output strings.Builder
 	var seen []error
 	var write func(error, []uintptr, string, string)

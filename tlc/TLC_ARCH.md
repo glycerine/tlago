@@ -7864,8 +7864,20 @@ nodes separately, retaining repeated vector identities and null/empty arrays.
 All state partitions use a single state/value graph. Signed computation time
 and states-computed counters are preserved without recomputation. Vector nodes
 send active entries only; decoded capacity equals size, matching the source
-TLCStateVec/LongVec serialization contracts. Coordinator/worker network calls and payload integration/process
-wiring remain to be implemented.
+TLCStateVec/LongVec serialization contracts.
+
+NetworkWorkerEndpoint supplies the five worker calls over the same Go TCP host.
+Request states and NextStateResult payloads use the shared graph codecs. The
+host removes a named worker after successful exit; removal does not close other
+connections or cancel calls that already captured the endpoint. No worker call
+is implicitly retried. Native DistributedOperationError traits preserve the
+coordinator's worker-loss, null-failure, block-size retry and shutdown decisions.
+Failure nodes preserve shared/cyclic causes and suppression, nullable messages,
+sender diagnostic class/stack text, worker error states and KeepCallStack. Only
+the existing concrete WorkerException is reconstructed for the coordinator's
+error-state path; general remote causes remain native Go operation errors.
+Coordinator networking, remaining payload types and process/CLI wiring remain
+to be implemented.
 
 The Java reference implementation uses RMI:
 

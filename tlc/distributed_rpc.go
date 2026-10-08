@@ -28,6 +28,7 @@ type DistributedRPCServer struct {
 	listeners    map[net.Listener]struct{}
 	connections  map[net.Conn]struct{}
 	fingerprints map[string]DistributedFingerprintEndpoint
+	workers      map[string]DistributedWorkerEndpoint
 }
 
 func NewDistributedRPCServer() *DistributedRPCServer {
@@ -35,8 +36,12 @@ func NewDistributedRPCServer() *DistributedRPCServer {
 		rpc: rpc.NewServer(), listeners: make(map[net.Listener]struct{}),
 		connections:  make(map[net.Conn]struct{}),
 		fingerprints: make(map[string]DistributedFingerprintEndpoint),
+		workers:      make(map[string]DistributedWorkerEndpoint),
 	}
 	if err := s.rpc.RegisterName("Fingerprint", &distributedFingerprintService{server: s}); err != nil {
+		panic(err)
+	}
+	if err := s.rpc.RegisterName("Worker", &distributedWorkerService{server: s}); err != nil {
 		panic(err)
 	}
 	return s

@@ -17691,3 +17691,52 @@ original LongVec/GrowingLongVec classes passed in 0.014 seconds (terminal status
 transport prerequisites without changing original-method completion counts.
 Worker/coordinator calls, structured worker errors and process/CLI wiring still
 need implementation; distributed completion is not claimed.
+
+### 2026-10-08 — Native worker TCP calls and failure graphs
+
+Continued from 2a2d8ca. Reviewed the five TLCWorker endpoint calls,
+TLCServerThread's exact EOF/nested-worker-memory retry cases and worker shutdown.
+Added named worker endpoints to the native TCP host and NetworkWorkerEndpoint.
+All five calls use Go net/rpc; state request/result graph payloads are integrated.
+Calls are not implicitly retried. Successful exit removes the named worker,
+without closing other endpoints or cancelling an already-dispatched call.
+Transport close retains runtime ownership and does not exit workers.
+
+Added native DistributedOperationError and failure graph nodes. The coordinator
+consumes remote/null/recoverable traits without rebuilding Java RMI exceptions.
+Existing local exception carriers remain supported. Error states share one
+state/value graph, and WorkerException retains State1/State2, KeepCallStack and
+nullable messages. Cause/suppression aliases and cycles survive gob. Sender
+class/message/stack diagnostics are preserved as text; Go instruction addresses
+are not sent across processes. The source EOF-with-null-message and nested
+remote-memory cases retain block-size reduction behavior. Native TCP EOF and
+unexpected EOF are the abrupt reply equivalent; ordinary disconnects and
+application failures do not request a reduced block. Native unavailable-worker
+shutdown now enters the existing dead-worker warning path, while other operation
+errors still propagate. Remaining unsupported state/value payload types are
+still explicit errors and not a full distributed completion claim.
+
+No direct usable upstream transport/failure-serialization tests exist; the four
+remote model harnesses remain unconditionally assumption-disabled upstream and
+visible in TODO_TEST_PORT.md. Added six focused worker TCP checks and two failure
+graph checks. They exercise all calls, actual request/result ownership and
+sharing, null/empty arrays, high-bit fingerprints, signed counters, error-state
+and cause graphs, sender stacks, exact source failure classifications, panic
+containment, runtime/transport lifecycle independence, concurrent keepalive and
+the coordinator's real retry/loss queue behavior. Worker-loss cleanup is checked
+for idempotence. An intermediate new-test compile failed on an unavailable
+boolean formatting helper; corrected it to strconv.FormatBool.
+
+Initial TCP checks passed in 0.022 seconds; the final worker/fingerprint TCP,
+state/result/failure payload and original smart-proxy selection passed in 0.051
+seconds (89736 terminal status 0). The exact short concurrent worker/keepalive
+race check passed in 1.034 seconds (70809 terminal status 0); no long workloads
+were selected. Root original distributed model/init/app-boundary checks passed
+in 1.774 seconds before the final shutdown adjustment; final receipt follows.
+No full-suite run was repeated and original-method completion counts are
+unchanged. Coordinator network/bootstrap, remaining payload types, process/CLI
+wiring and real separate-process model execution still need implementation.
+
+Final root original distributed selection passes in 1.718 seconds (60091
+terminal status 0), including native shutdown classification changes. All test
+handles are retired; focused checks are green and the chunk is ready to commit.

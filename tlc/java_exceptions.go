@@ -127,6 +127,9 @@ func NewIOException(message ...string) *IOException {
 func (e *IOException) Error() string { return javaThrowableMessage(e) }
 
 func isJavaIOException(err error) bool {
+	if operation, ok := err.(*DistributedOperationError); ok {
+		return operation.IO
+	}
 	if endpoint, ok := err.(*DistributedEndpointError); ok {
 		return endpoint.IO
 	}

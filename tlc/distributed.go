@@ -412,10 +412,9 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		exitErr := func() error {
 			defer s.removeServerThreadOnly(thread)
 			if err := thread.Worker.Exit(); err != nil {
-				switch err.(type) {
-				case *NoSuchObjectException, *ConnectException, *ServerException:
+				if isIgnorableDistributedWorkerExit(err) {
 					PrintWarning(ECGeneral, "Ignoring attempt to exit dead worker")
-				default:
+				} else {
 					return err
 				}
 			}
@@ -1008,7 +1007,7 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 	if err == nil {
 		return res, true
 	}
-	if javaRemoteException(err) != nil {
+	if isDistributedRemoteFailure(err) {
 		if isRecoverableDistributedError(err) && len(t.currentStates()) > 1 {
 			PrintMessage(ECTLCDistributedExceedBlocksize, fmtInt(len(t.currentStates())/2))
 			if stateQueue != nil {
@@ -1023,7 +1022,7 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 		t.HandleRemoteWorkerLost(stateQueue)
 		return nil, false
 	}
-	if isJavaNullPointerException(err) {
+	if isDistributedNullFailure(err) {
 		PrintMessage(ECTLCDistributedWorkerLost, "\n"+javaThrowableStackTrace(err))
 		t.HandleRemoteWorkerLost(stateQueue)
 		return nil, false
@@ -1188,7 +1187,7 @@ func (t *TLCServerThread) readCacheRateRatio() {
 	}
 	ratio, err := t.Worker.GetCacheRateRatio()
 	if err != nil {
-		if javaRemoteException(err) == nil {
+		if !isDistributedRemoteFailure(err) {
 			panic(err)
 		}
 		PrintWarning(ECGeneral, "Failed to read remote worker cache statistic (Expect to see a negative chache hit rate. Does not invalidate model checking results)")
@@ -1219,7 +1218,7 @@ func (t *TLCTimerTask) Run() {
 	last := t.LastInvocation.Load()
 	if last == 0 || now-last > int64(time.Minute/time.Millisecond) {
 		alive, err := t.Thread.Worker.IsAlive()
-		if err != nil && javaRemoteException(err) == nil {
+		if err != nil && !isDistributedRemoteFailure(err) {
 			panic(err)
 		}
 		if err != nil || !alive {
@@ -1242,6 +1241,9 @@ func (t *TLCTimerTask) SetLastInvocation(when time.Time) {
 // Java TLCServerThread.isRecoverable inspects exactly one cause, then the
 // direct cause of a nested RemoteException. It does not search a cause chain.
 func isRecoverableDistributedError(err error) bool {
+	if failure, ok := err.(*DistributedOperationError); ok {
+		return failure.Remote && failure.Recoverable
+	}
 	remote := javaRemoteException(err)
 	if remote == nil {
 		return false

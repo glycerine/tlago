@@ -1839,9 +1839,17 @@ share one state/value graph. Null arrays and partitions remain distinct from
 empty arrays and vectors. Only active vector entries cross the wire, matching
 the source vector serialization contract. Focused gob round-trip checks and
 the related original vector/smart-proxy tests pass.
-Coordinator/worker network calls and process/CLI integration remain pending,
-and payload integration/remaining classes need implementation. These focused
-checks do not prove distributed completion.
+`NetworkWorkerEndpoint` now supplies all five worker calls over TCP. The shared
+RPC host publishes named workers and removes them on successful exit without
+closing other endpoints or cancelling in-flight computations. Worker request
+and result payloads are integrated. Native operation errors preserve the
+coordinator's connection, null-failure and block-size retry decisions. Worker
+failures retain both error states, their sharing, `KeepCallStack`, nullable
+messages, cause/suppression graphs and sender diagnostic stacks. Shutdown
+recognizes unavailable native workers. Focused TCP, retry/loss and codec checks
+pass, as does one short concurrent computation/keepalive race check.
+Coordinator network calls, remaining payload classes and process/CLI integration
+remain pending. These focused checks do not prove distributed completion.
 
 ## Testing and workflow
 
