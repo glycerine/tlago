@@ -367,16 +367,20 @@ its one-character SKIP wins ties with single-character identifiers. BAND/BOR
 prefixes follow CASE1b/c, CASE2b/c and CASE6b/c, excluding underscores, lone W/S
 and WF/SF prefixes. All 1,080 bounded stream rows match Java. SwitchTo rejects
 invalid states with source TokenMgrError reason 2 and unchanged current state;
-all 66 valid/invalid transition rows match. Full ReInit/constructor and general
-character-stream fidelity remain pending. A broader 10,392-row comparison
-now exposes 13 SPEC differences in malformed strings and incomplete operator
-prefixes. Do not patch the expected output or weaken assertions. The translated
-UTF-16 SimpleCharStream mechanics in `sany_char_stream.go` match 11,452 bounded
-observations, including buffer growth/reuse, backup, reinitialization, signed
-position wraparound and line adjustment. They are not yet used by token scanning.
-Next, translate the generated token-manager DFA/NFA and wire it to this stream,
-then resolve all 13 differences and retain the existing stream/corpus comparisons.
-Current candidate scanning and general reader/exception boundaries remain incomplete.
+all 66 valid/invalid transition rows match. The generated Java DFA/NFA is now
+translated in `sany_scanner_generated.go` and runs over the actual UTF-16
+SimpleCharStream in `sany_char_stream.go`. Candidate-based token selection is
+removed. All 10,392 character/operator rows match Java, resolving the 13 earlier
+SPEC malformed-string and incomplete-prefix differences. All 16,247 scanner
+state rows also agree on counters, raw image buffers and state-array hashes.
+The stream mechanics separately match 11,452 bounded observations, including
+buffer growth/reuse, backup, reinitialization, signed position wraparound and
+line adjustment. These bounded comparisons do not establish every constructor,
+byte decoder, arbitrary reader/exception boundary or concurrent interleaving.
+Another 300 ReInit/round-reset rows agree, including complete state arrays and
+invalid lexical-state handling. Continue the remaining parser and canonical
+semantic-graph audit. Preserve source error
+text; lexical diagnostics use E1200 rather than heuristic error categories.
 The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and
 `DefStep` leaves it for the definition parser as Java does. Twenty-one scratch

@@ -1,64 +1,151 @@
+// Copyright (c) 2003 Compaq Corporation. All rights reserved.
+// Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
 import (
 	"fmt"
-	"strings"
 	"sync/atomic"
-	"unicode/utf8"
 
 	"github.com/glycerine/tlago/tlc"
 )
 
 type SanyTokenManager struct {
-	file               string
-	input              string
-	offset             int
-	line               int
-	column             int
-	state              SanyLexState
-	lastEnd            Position
-	diags              Diagnostics
-	pendingSpecialHead *SanyToken
-	pendingSpecialTail *SanyToken
-	lexicalBegin       Position
+	file                                                string
+	stream                                              *sanyCharStream
+	state                                               SanyLexState
+	curChar                                             uint16
+	jjrounds                                            [269]int32
+	jjstateSet                                          [538]int32
+	jjnewStateCnt, jjround, jjmatchedPos, jjmatchedKind int32
+	image                                               []uint16
+	jjimageLen, lengthOfMatch                           int32
+	diags                                               Diagnostics
+	lexicalBegin, lastEnd                               Position
 }
 
-type sanyLexCandidate struct {
-	kind     SanyTokenKind
-	n        int
-	priority int
-	diagCode string
-	diagMsg  string
-}
+var sanyCommentBracketCount atomic.Int32
 
 func NewSanyTokenManager(file, input string) *SanyTokenManager {
-	return &SanyTokenManager{
-		file:   file,
-		input:  input,
-		line:   1,
-		column: 1,
-		state:  SanyLexDefault,
-	}
+	return &SanyTokenManager{file: file, stream: newSanyCharStream(newSanyStringCharReader(input), 1, 1, 4096)}
 }
-
 func (tm *SanyTokenManager) State() SanyLexState {
 	if tm == nil {
 		return SanyLexDefault
 	}
 	return tm.state
 }
-
 func (tm *SanyTokenManager) SwitchTo(state SanyLexState) {
 	if tm == nil {
 		panic(tlc.NewNullPointerException())
 	}
 	if state < 0 || state >= 6 {
 		message := fmt.Sprintf("Error: Ignoring invalid lexical state : %d. State unchanged.", state)
-		diagnostic := errorAt(tm.pos(), "E1204", "%s", message)
+		diagnostic := errorAt(tm.beginPosition(), "E1204", "%s", message)
 		diagnostic.SANYParseMessage = message
 		panic(&sanyTokenMgrError{diagnostic: diagnostic, message: message, errorCode: 2})
 	}
 	tm.state = state
+}
+func (tm *SanyTokenManager) beginPosition() Position {
+	return Position{File: tm.file, Line: int(tm.stream.getBeginLine()), Column: int(tm.stream.getBeginColumn())}
+}
+func (tm *SanyTokenManager) endPosition() Position {
+	return Position{File: tm.file, Line: int(tm.stream.getEndLine()), Column: int(tm.stream.getEndColumn())}
+}
+func (tm *SanyTokenManager) readScanChar() bool {
+	c, err := tm.stream.readChar()
+	if err != nil {
+		return false
+	}
+	tm.curChar = c
+	return true
+}
+func (tm *SanyTokenManager) beginScanToken() bool {
+	c, err := tm.stream.beginToken()
+	if err != nil {
+		return false
+	}
+	tm.curChar = c
+	return true
+}
+func (tm *SanyTokenManager) reInitRounds() {
+	tm.jjround = -2147483647
+	for i := len(tm.jjrounds) - 1; i >= 0; i-- {
+		tm.jjrounds[i] = -2147483648
+	}
+}
+func (tm *SanyTokenManager) reInit(stream *sanyCharStream, state ...SanyLexState) {
+	tm.jjmatchedPos = 0
+	tm.jjnewStateCnt = 0
+	tm.state = SanyLexDefault
+	tm.stream = stream
+	tm.reInitRounds()
+	if len(state) != 0 {
+		tm.SwitchTo(state[0])
+	}
+}
+func (tm *SanyTokenManager) jjCheckNAdd(state int32) {
+	if tm.jjrounds[state] != tm.jjround {
+		tm.jjstateSet[tm.jjnewStateCnt] = state
+		tm.jjnewStateCnt++
+		tm.jjrounds[state] = tm.jjround
+	}
+}
+func (tm *SanyTokenManager) jjAddStates(start, end int32) {
+	for {
+		tm.jjstateSet[tm.jjnewStateCnt] = sanyScannerNextStates[start]
+		tm.jjnewStateCnt++
+		old := start
+		start++
+		if old == end {
+			break
+		}
+	}
+}
+func (tm *SanyTokenManager) jjCheckNAddTwoStates(state1, state2 int32) {
+	tm.jjCheckNAdd(state1)
+	tm.jjCheckNAdd(state2)
+}
+func (tm *SanyTokenManager) jjCheckNAddStates(start int32, ends ...int32) {
+	if len(ends) == 0 {
+		tm.jjCheckNAdd(sanyScannerNextStates[start])
+		tm.jjCheckNAdd(sanyScannerNextStates[start+1])
+		return
+	}
+	end := ends[0]
+	for {
+		tm.jjCheckNAdd(sanyScannerNextStates[start])
+		old := start
+		start++
+		if old == end {
+			break
+		}
+	}
+}
+func (tm *SanyTokenManager) fillToken() *SanyToken {
+	image := tm.stream.getImage()
+	if literal := sanyScannerLiteralImages[tm.jjmatchedKind]; literal != nil {
+		image = *literal
+	}
+	return &SanyToken{Kind: SanyTokenKind(tm.jjmatchedKind), Image: image, Begin: tm.beginPosition(), End: tm.endPosition(), LexState: tm.state}
+}
+func (tm *SanyTokenManager) skipLexicalActions() {
+	switch tm.jjmatchedKind {
+	case 29, 31, 32:
+		if tm.image == nil {
+			tm.image = make([]uint16, 0)
+		}
+		tm.lengthOfMatch = tm.jjmatchedPos + 1
+		tm.image = append(tm.image, tm.stream.getSuffix(tm.jjimageLen+tm.lengthOfMatch)...)
+		switch tm.jjmatchedKind {
+		case 29, 32:
+			sanyCommentBracketCount.Add(1)
+		case 31:
+			if sanyCommentBracketCount.Add(-1) == 0 {
+				tm.SwitchTo(SanyLexInComment)
+			}
+		}
+	}
 }
 
 func SanyTokenize(file, input string) ([]*SanyToken, Diagnostics) {
@@ -91,658 +178,135 @@ func (tm *SanyTokenManager) LexAll() (tokens []*SanyToken, diags Diagnostics) {
 }
 
 func (tm *SanyTokenManager) NextToken() *SanyToken {
-	// Java getNextToken owns its special-token chain for one call only.
-	tm.pendingSpecialHead, tm.pendingSpecialTail = nil, nil
+	var specialToken *SanyToken
+	var curPos int32
+EOFLoop:
 	for {
-		if tm.eof() {
-			return tm.eofToken()
+		if !tm.beginScanToken() {
+			tm.jjmatchedKind = 0
+			token := tm.fillToken()
+			token.Special = specialToken
+			return token
 		}
-		switch tm.state {
-		case SanyLexDefault:
-			return tm.nextDefaultToken()
-		case SanyLexPragma:
-			return tm.nextPragmaToken()
-		case SanyLexInEOLComment:
-			tm.consumeStartedLineComment()
-		case SanyLexInComment, SanyLexEmbedded:
-			tm.consumeStartedBlockComment()
-		default:
-			return tm.nextSpecToken()
-		}
-	}
-}
-
-func (tm *SanyTokenManager) nextDefaultToken() *SanyToken {
-	for !tm.eof() {
-		if strings.HasPrefix(tm.rest(), "--->") {
-			return tm.consumeToken(SanyTokenBeginPragma, len("--->"), SanyLexPragma)
-		}
-		if n, ok := matchSanyBeginModule(tm.rest()); ok {
-			return tm.consumeToken(SanyTokenBm1, n, SanyLexSpec)
-		}
-		tm.advance()
-	}
-	return tm.eofToken()
-}
-
-func (tm *SanyTokenManager) nextPragmaToken() *SanyToken {
-	for !tm.eof() {
-		// PRAGMA's anonymous one-character SKIP has source kind 22. It wins
-		// ties with one-character IDENTIFIER (289), but loses to NUMBER (20).
-		_, size := utf8.DecodeRuneInString(tm.rest())
-		best := sanyLexCandidate{kind: 22, n: size, priority: 22}
-		candidates := []sanyLexCandidate{tm.identifierCandidate(), tm.junctionCandidate()}
-		if n := scanSanyDecimalNumber(tm.rest()); n > 0 {
-			candidates = append(candidates, sanyLexCandidate{kind: SanyTokenNumber, n: n, priority: int(SanyTokenNumber)})
-		}
-		if n, ok := matchSanyBeginModule(tm.rest()); ok {
-			candidates = append(candidates, sanyLexCandidate{kind: SanyTokenBm2, n: n, priority: int(SanyTokenBm2)})
-		}
-		for _, candidate := range candidates {
-			candidate.priority = int(candidate.kind)
-			if candidate.n > best.n || (candidate.n == best.n && candidate.priority < best.priority) {
-				best = candidate
-			}
-		}
-		if best.kind == 22 {
-			tm.consumeBytes(best.n)
-			continue
-		}
-		nextState := SanyLexPragma
-		if best.kind == SanyTokenBm2 {
-			nextState = SanyLexSpec
-		}
-		return tm.consumeToken(best.kind, best.n, nextState)
-	}
-	return tm.eofToken()
-}
-
-func (tm *SanyTokenManager) nextSpecToken() *SanyToken {
-	for tm.skipSpecWhitespaceOrSpecial() {
-	}
-	if tm.eof() {
-		return tm.eofToken()
-	}
-	if n, ok := matchSanyBeginModule(tm.rest()); ok {
-		return tm.consumeToken(SanyTokenBm0, n, SanyLexSpec)
-	}
-	if n := matchSanyRepeated(tm.rest(), "====", '='); n > 0 {
-		return tm.consumeToken(SanyTokenEndModule, n, SanyLexSpec)
-	}
-	if n := matchSanyRepeated(tm.rest(), "----", '-'); n > 0 {
-		return tm.consumeToken(SanyTokenSeparator, n, SanyLexSpec)
-	}
-
-	candidate := tm.bestSpecCandidate()
-	if candidate.n > 0 {
-		if candidate.diagCode != "" {
-			begin, start := tm.pos(), tm.offset
-			tm.consumeBytes(candidate.n)
-			position, after := tm.pos(), tm.input[start:tm.offset]
-			character := tm.peek()
-			if candidate.diagCode == "E1203" {
-				position = tm.lastEnd
-				_, size := utf8.DecodeLastRuneInString(after)
-				character, _ = utf8.DecodeLastRuneInString(after)
-				if character > 0xffff {
-					position.Column--
+		tm.image = nil
+		tm.jjimageLen = 0
+		for {
+			switch tm.state {
+			case SanyLexDefault:
+				tm.jjmatchedKind = 2147483647
+				tm.jjmatchedPos = 0
+				curPos = tm.jjMoveStringLiteralDfa0_0()
+				if tm.jjmatchedPos == 0 && tm.jjmatchedKind > 4 {
+					tm.jjmatchedKind = 4
 				}
-				if !tm.eof() || character > 0xffff {
-					after = after[:len(after)-size]
+			case SanyLexPragma:
+				tm.jjmatchedKind = 2147483647
+				tm.jjmatchedPos = 0
+				curPos = tm.jjMoveStringLiteralDfa0_1()
+				if tm.jjmatchedPos == 0 && tm.jjmatchedKind > 22 {
+					tm.jjmatchedKind = 22
+				}
+			case SanyLexSpec:
+				tm.stream.backup(0)
+				for tm.curChar <= 32 && (uint64(0x100002600)&(uint64(1)<<tm.curChar)) != 0 {
+					if !tm.beginScanToken() {
+						continue EOFLoop
+					}
+				}
+				tm.jjmatchedKind = 2147483647
+				tm.jjmatchedPos = 0
+				curPos = tm.jjMoveStringLiteralDfa0_2()
+			case SanyLexInComment:
+				tm.jjmatchedKind = 2147483647
+				tm.jjmatchedPos = 0
+				curPos = tm.jjMoveStringLiteralDfa0_3()
+				if tm.jjmatchedPos == 0 && tm.jjmatchedKind > 34 {
+					tm.jjmatchedKind = 34
+				}
+			case SanyLexEmbedded:
+				tm.jjmatchedKind = 2147483647
+				tm.jjmatchedPos = 0
+				curPos = tm.jjMoveStringLiteralDfa0_4()
+				if tm.jjmatchedPos == 0 && tm.jjmatchedKind > 34 {
+					tm.jjmatchedKind = 34
+				}
+			case SanyLexInEOLComment:
+				tm.jjmatchedKind = 2147483647
+				tm.jjmatchedPos = 0
+				curPos = tm.jjMoveStringLiteralDfa0_5()
+				if tm.jjmatchedPos == 0 && tm.jjmatchedKind > 34 {
+					tm.jjmatchedKind = 34
 				}
 			}
-			eof := tm.eof() && character <= 0xffff
-			if eof {
-				position = tm.lexicalEOFPosition()
-			}
-			tm.lexicalFailure(begin, candidate.diagCode, candidate.diagMsg, position, after, character, eof)
-		}
-		return tm.consumeToken(candidate.kind, candidate.n, SanyLexSpec)
-	}
-
-	begin := tm.pos()
-	character := tm.advance()
-	position := begin
-	// A supplementary rune still has a second Java code unit, even when
-	// its UTF-8 bytes end the native input.
-	eof := tm.eof() && character <= 0xffff
-	if eof {
-		position = tm.lexicalEOFPosition()
-	}
-	tm.lexicalFailure(begin, "E1200", "unexpected character in SANY token stream", position, "", character, eof)
-	return nil
-}
-
-func (tm *SanyTokenManager) skipSpecWhitespaceOrSpecial() bool {
-	if tm.eof() {
-		return false
-	}
-	if isHorizontalOrVerticalWhitespace(tm.peek()) {
-		tm.advance()
-		return true
-	}
-	if strings.HasPrefix(tm.rest(), "\\*") {
-		tm.consumeLineSpecial()
-		return true
-	}
-	if strings.HasPrefix(tm.rest(), "(*") {
-		tm.consumeBlockSpecial()
-		return true
-	}
-	return false
-}
-
-// Java's bracketCount is class-wide and is not reset by construction or ReInit.
-// Atomic updates retain that shared state without introducing a Go data race.
-var sanyCommentBracketCount atomic.Int32
-
-func (tm *SanyTokenManager) consumeLineSpecial() {
-	begin, start := tm.pos(), tm.offset
-	tm.lexicalBegin = begin
-	tm.state = SanyLexInEOLComment
-	tm.consumeBytes(2)
-	tm.consumeCommentSegment(begin, start, SanyLexInEOLComment, true)
-}
-func (tm *SanyTokenManager) consumeStartedLineComment() {
-	begin, start := tm.pos(), tm.offset
-	tm.lexicalBegin = begin
-	tm.consumeCommentSegment(begin, start, SanyLexInEOLComment, false)
-}
-func (tm *SanyTokenManager) consumeBlockSpecial() {
-	begin, start := tm.pos(), tm.offset
-	tm.lexicalBegin = begin
-	tm.state = SanyLexInComment
-	n := 2
-	if strings.HasPrefix(tm.rest(), "(*.") {
-		n = 3
-	}
-	tm.consumeBytes(n)
-	tm.consumeCommentSegment(begin, start, SanyLexInComment, true)
-}
-func (tm *SanyTokenManager) consumeStartedBlockComment() {
-	begin, start := tm.pos(), tm.offset
-	tm.lexicalBegin = begin
-	tm.consumeCommentSegment(begin, start, tm.state, false)
-}
-
-// Each Java SPECIAL_TOKEN completes the accumulated MORE image. The next
-// segment begins a fresh token, even while the manager remains in a comment.
-func (tm *SanyTokenManager) consumeCommentSegment(begin Position, start int, lexState SanyLexState, more bool) {
-	for {
-		if tm.eof() {
-			if more {
-				tm.lexicalFailure(begin, "E1201", "unterminated comment", tm.lexicalEOFPosition(), "", 0, true)
-			}
-			return
-		}
-		var kind SanyTokenKind
-		n := 0
-		switch tm.state {
-		case SanyLexInEOLComment:
-			if tm.peek() == '\n' || tm.peek() == '\r' {
-				kind = 33
-				n = 1
-				if strings.HasPrefix(tm.rest(), "\r\n") {
-					n = 2
+			if tm.jjmatchedKind != 2147483647 {
+				if tm.jjmatchedPos+1 < curPos {
+					tm.stream.backup(curPos - tm.jjmatchedPos - 1)
+				}
+				bit := uint64(1) << uint32(tm.jjmatchedKind&63)
+				word := tm.jjmatchedKind >> 6
+				if sanyScannerToToken[word]&bit != 0 {
+					token := tm.fillToken()
+					token.Special = specialToken
+					if next := sanyScannerNewLexState[tm.jjmatchedKind]; next != -1 {
+						tm.state = SanyLexState(next)
+					}
+					return token
+				} else if sanyScannerToSkip[word]&bit != 0 {
+					if sanyScannerToSpecial[word]&bit != 0 {
+						token := tm.fillToken()
+						if specialToken == nil {
+							specialToken = token
+						} else {
+							token.Special = specialToken
+							specialToken.Next = token
+							specialToken = token
+						}
+					}
+					tm.skipLexicalActions()
+					if next := sanyScannerNewLexState[tm.jjmatchedKind]; next != -1 {
+						tm.state = SanyLexState(next)
+					}
+					continue EOFLoop
+				}
+				tm.jjimageLen += tm.jjmatchedPos + 1
+				if next := sanyScannerNewLexState[tm.jjmatchedKind]; next != -1 {
+					tm.state = SanyLexState(next)
+				}
+				curPos = 0
+				tm.jjmatchedKind = 2147483647
+				if tm.readScanChar() {
+					continue
 				}
 			}
-		case SanyLexInComment, SanyLexEmbedded:
-			if strings.HasPrefix(tm.rest(), "(*") {
-				kind = 29
-				if tm.state == SanyLexEmbedded {
-					kind = 32
+			errorLine, errorColumn := tm.stream.getEndLine(), tm.stream.getEndColumn()
+			var after []uint16
+			eof := false
+			if _, err := tm.stream.readChar(); err == nil {
+				tm.stream.backup(1)
+			} else {
+				eof = true
+				if curPos > 1 {
+					after = tm.stream.getImageUnits()
 				}
-				n = 2
-				if strings.HasPrefix(tm.rest(), "(*.") {
-					n = 3
+				if tm.curChar == '\n' || tm.curChar == '\r' {
+					errorLine++
+					errorColumn = 0
+				} else {
+					errorColumn++
 				}
-			} else if strings.HasPrefix(tm.rest(), "*)") {
-				kind = 30
-				if tm.state == SanyLexEmbedded {
-					kind = 31
+			}
+			if !eof {
+				tm.stream.backup(1)
+				if curPos > 1 {
+					after = tm.stream.getImageUnits()
 				}
-				n = 2
 			}
-		}
-		if n == 0 {
-			tm.advance()
-			more = true
-			continue
-		}
-		tm.consumeBytes(n)
-		tm.appendSpecial(tm.emitDetachedToken(kind, begin, tm.lastEnd, tm.input[start:tm.offset], lexState))
-		switch kind {
-		case 29, 32:
-			sanyCommentBracketCount.Add(1)
-			tm.state = SanyLexEmbedded
-		case 31:
-			if sanyCommentBracketCount.Add(-1) == 0 {
-				tm.state = SanyLexInComment
-			}
-		case 30, 33:
-			tm.state = SanyLexSpec
-			return
-		}
-		begin, start, lexState, more = tm.pos(), tm.offset, tm.state, false
-		tm.lexicalBegin = begin
-	}
-}
-
-func (tm *SanyTokenManager) bestSpecCandidate() sanyLexCandidate {
-	best := sanyLexCandidate{}
-	for _, candidate := range []sanyLexCandidate{
-		tm.proofCandidate(),
-		tm.junctionCandidate(),
-		tm.literalCandidate(),
-		tm.stringCandidate(),
-		tm.numberLiteralCandidate(),
-		tm.identifierCandidate(),
-	} {
-		if candidate.n == 0 {
-			continue
-		}
-		if candidate.n > best.n || (candidate.n == best.n && candidate.priority < best.priority) {
-			best = candidate
+			tm.lexicalBegin = tm.beginPosition()
+			tm.lastEnd = tm.endPosition()
+			message := sanyLexicalErrorUnits(eof, int(errorLine), int(errorColumn), after, tm.curChar)
+			diagnostic := errorAt(tm.lexicalBegin, "E1200", "%s", message)
+			diagnostic.SANYParseMessage = message
+			panic(&sanyTokenMgrError{diagnostic: diagnostic, message: message, errorCode: 0})
 		}
 	}
-	return best
-}
-
-func (tm *SanyTokenManager) literalCandidate() sanyLexCandidate {
-	rest := tm.rest()
-	for _, lit := range SanyLiteralTokens {
-		if strings.HasPrefix(rest, lit.Literal) {
-			return sanyLexCandidate{kind: lit.Kind, n: len(lit.Literal), priority: 20}
-		}
-	}
-	return sanyLexCandidate{}
-}
-
-func (tm *SanyTokenManager) numberLiteralCandidate() sanyLexCandidate {
-	rest := tm.rest()
-	if len(rest) >= 3 && rest[0] == '\\' {
-		switch rest[1] {
-		case 'o', 'O':
-			if n := scanSanyRadixDigits(rest[2:], isSanyOctalDigit); n > 0 {
-				return sanyLexCandidate{kind: SanyTokenNumberLiteral, n: 2 + n, priority: 40}
-			}
-		case 'b', 'B':
-			if n := scanSanyRadixDigits(rest[2:], isSanyBinaryDigit); n > 0 {
-				return sanyLexCandidate{kind: SanyTokenNumberLiteral, n: 2 + n, priority: 40}
-			}
-		case 'h', 'H':
-			if n := scanSanyRadixDigits(rest[2:], isSanyHexDigit); n > 0 {
-				return sanyLexCandidate{kind: SanyTokenNumberLiteral, n: 2 + n, priority: 40}
-			}
-		}
-	}
-	if n := scanSanyDecimalNumber(rest); n > 0 {
-		return sanyLexCandidate{kind: SanyTokenNumberLiteral, n: n, priority: 40}
-	}
-	return sanyLexCandidate{}
-}
-
-func (tm *SanyTokenManager) stringCandidate() sanyLexCandidate {
-	rest := tm.rest()
-	if !strings.HasPrefix(rest, "\"") {
-		return sanyLexCandidate{}
-	}
-	for i := 1; i < len(rest); {
-		r, size := utf8.DecodeRuneInString(rest[i:])
-		if r == utf8.RuneError && size == 0 {
-			break
-		}
-		if r == '"' {
-			return sanyLexCandidate{kind: SanyTokenStringLiteral, n: i + size, priority: 30}
-		}
-		if r == '\n' || r == '\r' {
-			return sanyLexCandidate{kind: SanyTokenStringLiteral, n: i, priority: 30, diagCode: "E1202", diagMsg: "unterminated string literal"}
-		}
-		if r == '\\' {
-			i += size
-			if i >= len(rest) {
-				return sanyLexCandidate{kind: SanyTokenStringLiteral, n: len(rest), priority: 30, diagCode: "E1202", diagMsg: "unterminated string literal"}
-			}
-			esc, escSize := utf8.DecodeRuneInString(rest[i:])
-			if !isSanyStringEscape(esc) {
-				return sanyLexCandidate{kind: SanyTokenStringLiteral, n: i + escSize, priority: 30, diagCode: "E1203", diagMsg: "invalid string escape"}
-			}
-			i += escSize
-			continue
-		}
-		i += size
-	}
-	return sanyLexCandidate{kind: SanyTokenStringLiteral, n: len(rest), priority: 30, diagCode: "E1202", diagMsg: "unterminated string literal"}
-}
-
-func isSanyStringEscape(r rune) bool {
-	switch r {
-	case 'n', 't', 'r', 'f', '\\', '"':
-		return true
-	default:
-		return false
-	}
-}
-
-func (tm *SanyTokenManager) identifierCandidate() sanyLexCandidate {
-	rest := tm.rest()
-	if rest == "" {
-		return sanyLexCandidate{}
-	}
-	if strings.HasPrefix(rest, "@") {
-		return sanyLexCandidate{kind: SanyTokenIdentifier, n: 1, priority: 50}
-	}
-	if strings.HasPrefix(rest, "ℕ") || strings.HasPrefix(rest, "ℤ") || strings.HasPrefix(rest, "ℝ") {
-		_, size := utf8.DecodeRuneInString(rest)
-		return sanyLexCandidate{kind: SanyTokenIdentifier, n: size, priority: 50}
-	}
-	// Java's CASE2/CASE3 identifier productions exclude WF_ and SF_.
-	// The fairness token wins over the shorter WF/SF identifier, and the
-	// suffix is then lexed normally (it need not be an identifier).
-	if strings.HasPrefix(rest, "WF_") || strings.HasPrefix(rest, "SF_") {
-		return sanyLexCandidate{kind: SanyTokenIdentifier, n: 2, priority: 50}
-	}
-	i := 0
-	hasLetter := false
-	for i < len(rest) {
-		r, size := utf8.DecodeRuneInString(rest[i:])
-		if !isSanyIdentifierPart(r) {
-			break
-		}
-		if isSanyLetter(r) {
-			hasLetter = true
-		}
-		i += size
-	}
-	if i == 0 || !hasLetter {
-		return sanyLexCandidate{}
-	}
-	return sanyLexCandidate{kind: SanyTokenIdentifier, n: i, priority: 50}
-}
-
-// BAND/BOR use CASE1b/c, CASE2b/c and CASE6b/c, rather than the
-// general identifier grammar. Prefixes contain ASCII letters/digits only;
-// CASE2 excludes a lone W/S and WF/SF (there is no CASE3b/c).
-func (tm *SanyTokenManager) junctionCandidate() sanyLexCandidate {
-	rest := tm.rest()
-	if len(rest) == 0 {
-		return sanyLexCandidate{}
-	}
-	first := rune(rest[0])
-	if !isSanyLetter(first) && !isSanyDigit(first) {
-		return sanyLexCandidate{}
-	}
-	i := 1
-	if first == 'W' || first == 'S' {
-		if len(rest) < 2 || (!isSanyLetter(rune(rest[1])) && !isSanyDigit(rune(rest[1]))) || rest[1] == 'F' {
-			return sanyLexCandidate{}
-		}
-		i = 2
-	}
-	for i < len(rest) && (isSanyLetter(rune(rest[i])) || isSanyDigit(rune(rest[i]))) {
-		i++
-	}
-	switch {
-	case strings.HasPrefix(rest[i:], `./\`):
-		return sanyLexCandidate{kind: SanyTokenBand, n: i + 3, priority: 10}
-	case strings.HasPrefix(rest[i:], `.\/`):
-		return sanyLexCandidate{kind: SanyTokenBor, n: i + 3, priority: 10}
-	default:
-		return sanyLexCandidate{}
-	}
-}
-
-func (tm *SanyTokenManager) proofCandidate() sanyLexCandidate {
-	rest := tm.rest()
-	if !strings.HasPrefix(rest, "<") {
-		return sanyLexCandidate{}
-	}
-	i := 1
-	implicit := false
-	if i < len(rest) && (rest[i] == '+' || rest[i] == '*') {
-		i++
-		implicit = true
-	} else {
-		start := i
-		for i < len(rest) && rest[i] >= '0' && rest[i] <= '9' {
-			i++
-		}
-		if i == start {
-			return sanyLexCandidate{}
-		}
-	}
-	if i >= len(rest) || rest[i] != '>' {
-		return sanyLexCandidate{}
-	}
-	i++
-	nameStart := i
-	for i < len(rest) {
-		r, size := utf8.DecodeRuneInString(rest[i:])
-		if !(isSanyLetter(r) || isSanyDigit(r) || r == '_') {
-			break
-		}
-		i += size
-	}
-	if i > nameStart {
-		dotStart := i
-		for i < len(rest) && rest[i] == '.' {
-			i++
-		}
-		if i > dotStart {
-			return sanyLexCandidate{kind: SanyTokenProofstepdotlexeme, n: i, priority: 5}
-		}
-		if implicit {
-			return sanyLexCandidate{kind: SanyTokenProofimplicitsteplexeme, n: i, priority: 5}
-		}
-		return sanyLexCandidate{kind: SanyTokenProofsteplexeme, n: i, priority: 5}
-	}
-	if i < len(rest) && rest[i] == '*' {
-		i++
-		for i < len(rest) && rest[i] == '.' {
-			i++
-		}
-		return sanyLexCandidate{kind: SanyTokenUnnumberedsteplexeme, n: i, priority: 5}
-	}
-	if i < len(rest) && rest[i] == '-' {
-		i++
-		for i < len(rest) && rest[i] == '.' {
-			i++
-		}
-		return sanyLexCandidate{kind: SanyTokenUnnumberedsteplexeme, n: i, priority: 5}
-	}
-	dotStart := i
-	for i < len(rest) && rest[i] == '.' {
-		i++
-	}
-	if i > dotStart {
-		return sanyLexCandidate{kind: SanyTokenUnnumberedsteplexeme, n: i, priority: 5}
-	}
-	return sanyLexCandidate{kind: SanyTokenBarelevellexeme, n: i, priority: 5}
-}
-
-func (tm *SanyTokenManager) consumeToken(kind SanyTokenKind, n int, nextState SanyLexState) *SanyToken {
-	begin := tm.pos()
-	start := tm.offset
-	lexState := tm.state
-	tm.consumeBytes(n)
-	tm.state = nextState
-	return tm.emitToken(kind, begin, tm.lastEnd, tm.input[start:tm.offset], lexState)
-}
-
-func (tm *SanyTokenManager) emitToken(kind SanyTokenKind, begin, end Position, image string, lexState SanyLexState) *SanyToken {
-	tok := tm.emitDetachedToken(kind, begin, end, image, lexState)
-	if tm.pendingSpecialHead != nil {
-		tok.Special = tm.pendingSpecialTail
-		tm.pendingSpecialHead = nil
-		tm.pendingSpecialTail = nil
-	}
-	return tok
-}
-
-func (tm *SanyTokenManager) emitDetachedToken(kind SanyTokenKind, begin, end Position, image string, lexState SanyLexState) *SanyToken {
-	return &SanyToken{Kind: kind, Image: image, Begin: begin, End: end, LexState: lexState}
-}
-
-func (tm *SanyTokenManager) eofToken() *SanyToken {
-	// BeginToken's failed read leaves SimpleCharStream at the last character.
-	// Its position arrays remain zero for an empty input stream.
-	pos := tm.lastEnd
-	pos.File = tm.file
-	return tm.emitToken(SanyTokenEOF, pos, pos, "", tm.state)
-}
-
-func (tm *SanyTokenManager) appendSpecial(tok *SanyToken) {
-	if tok == nil {
-		return
-	}
-	if tm.pendingSpecialTail == nil {
-		tm.pendingSpecialHead = tok
-		tm.pendingSpecialTail = tok
-		return
-	}
-	tok.Special = tm.pendingSpecialTail
-	tm.pendingSpecialTail.Next = tok
-	tm.pendingSpecialTail = tok
-}
-
-func (tm *SanyTokenManager) consumeBytes(n int) {
-	target := tm.offset + n
-	for tm.offset < target && !tm.eof() {
-		tm.advance()
-	}
-}
-
-func (tm *SanyTokenManager) advance() rune {
-	if tm.eof() {
-		return 0
-	}
-	begin := tm.pos()
-	r, size := utf8.DecodeRuneInString(tm.rest())
-	if r == utf8.RuneError && size == 0 {
-		return 0
-	}
-	tm.offset += size
-	tm.lastEnd = begin
-	if r == '\r' {
-		if strings.HasPrefix(tm.rest(), "\n") {
-			tm.offset++
-			// Java consumes CR and LF separately, on the same physical line.
-			tm.lastEnd.Column++
-		}
-		tm.line++
-		tm.column = 1
-	} else if r == '\n' {
-		tm.line++
-		tm.column = 1
-	} else if r == '\t' {
-		tm.column = nextSanyTabColumn(tm.column)
-		tm.lastEnd.Column = tm.column - 1
-	} else {
-		tm.column++
-		if r > 0xffff {
-			// SimpleCharStream reads Java UTF-16 code units.
-			tm.column++
-			tm.lastEnd.Column++
-		}
-	}
-	return r
-}
-
-func (tm *SanyTokenManager) pos() Position {
-	return Position{File: tm.file, Line: tm.line, Column: tm.column}
-}
-
-func nextSanyTabColumn(column int) int {
-	if column <= 0 {
-		return 1
-	}
-	return column + (8 - ((column - 1) % 8))
-}
-
-func (tm *SanyTokenManager) eof() bool {
-	return tm.offset >= len(tm.input)
-}
-
-func (tm *SanyTokenManager) rest() string {
-	return tm.input[tm.offset:]
-}
-
-func (tm *SanyTokenManager) peek() rune {
-	if tm.eof() {
-		return 0
-	}
-	r, _ := utf8.DecodeRuneInString(tm.rest())
-	return r
-}
-
-func matchSanyBeginModule(rest string) (int, bool) {
-	if !strings.HasPrefix(rest, "----") {
-		return 0, false
-	}
-	i := len("----")
-	for i < len(rest) && rest[i] == '-' {
-		i++
-	}
-	for i < len(rest) && rest[i] == ' ' {
-		i++
-	}
-	if !strings.HasPrefix(rest[i:], "MODULE") {
-		return 0, false
-	}
-	return i + len("MODULE"), true
-}
-
-func matchSanyRepeated(rest, prefix string, repeated byte) int {
-	if !strings.HasPrefix(rest, prefix) {
-		return 0
-	}
-	i := len(prefix)
-	for i < len(rest) && rest[i] == repeated {
-		i++
-	}
-	return i
-}
-
-func scanSanyDecimalNumber(rest string) int {
-	i := 0
-	for i < len(rest) && rest[i] >= '0' && rest[i] <= '9' {
-		i++
-	}
-	return i
-}
-
-func scanSanyRadixDigits(rest string, ok func(byte) bool) int {
-	i := 0
-	for i < len(rest) && ok(rest[i]) {
-		i++
-	}
-	return i
-}
-
-func isSanyBinaryDigit(ch byte) bool {
-	return ch == '0' || ch == '1'
-}
-
-func isSanyOctalDigit(ch byte) bool {
-	return ch >= '0' && ch <= '7'
-}
-
-func isSanyHexDigit(ch byte) bool {
-	return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')
-}
-
-func isHorizontalOrVerticalWhitespace(r rune) bool {
-	return r == ' ' || r == '\t' || r == '\n' || r == '\r'
-}
-
-func isSanyIdentifierPart(r rune) bool {
-	return isSanyLetter(r) || isSanyDigit(r) || r == '_'
-}
-
-func isSanyLetter(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
-}
-
-func isSanyDigit(r rune) bool {
-	return r >= '0' && r <= '9'
 }

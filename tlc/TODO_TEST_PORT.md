@@ -23,6 +23,12 @@ Methods are counted **before parameter expansion**, and non-`@Ignore` does not i
 
 Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and CommunityModules (a separate project). SANY `semantic.TestLevelChecking.testAll` is **Port complete** with all 51 original rows and separate generation/level assertions; see [the SANY test-port notes](../sany_tests/README.md). SANY `semantic.NestedModuleInstanceTest.testTopLevelInstanceOfNestedModule` is also **Port complete**; its LET-instance sibling retains the original Java ignore. SANY `semantic.SemanticCorpusTests.test` is **Port complete** in [the root translation](../sany_semantic_corpus_java_test.go), retaining all 28 original parameter rows, the NegativeOpTest assumption, canonical reference/comment assertions and checked levels. The older AST facade checks remain supplementary. All three SANY `semantic.TestSubexpressionSelectors` methods are **Port complete** in [the root translation](../sany_subexpression_selectors_java_test.go), with the original generation-only helper and exact error-code/message/location assertions. All five methods of `semantic.IncrementalSemanticParseTests` are **Port complete** in [the root translation](../sany_incremental_semantic_java_test.go), including both standalone LET methods with actual dependency/module level checks, syntax identity, concrete graph classes and imported source-reference assertions. SANY `semantic.TestBuiltInOperatorInitialization.testInitAndReInit` is **Port complete** across all 72 properties and both global-context passes. SANY `xml.TestDecimalXMLExport.test` is **Port complete** with its original fixture/assertions and source numeric metadata. This adds no TLC inventory credit. The complete CommunityModules Ant test target already has its own Go translation in [community_modules_java_test.go](../community_modules_java_test.go). Email reporting and dependencies pursued for email remain excluded under the user’s scope directive.
 
+SANY lexer production reconciliation (2026-10-07): candidate scanning is replaced
+by the generated Java DFA/NFA over the actual UTF-16 stream. The existing original
+TokenizerTests remain translated and pass; this production correction adds no
+original-method credit. Bounded Java comparisons and their limits are recorded in
+`PORT_PROGRESS.md`.
+
 SANY parser reconciliation (2026-10-07): **Port complete** for
 `parser.BelchDefTests.runTestCase` (all five original rows) in
 [sany_belchdef_java_test.go](../sany_belchdef_java_test.go), and all three

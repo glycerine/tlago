@@ -10483,9 +10483,22 @@ methods, not a replacement stream model. They do not establish arbitrary reader
 I/O failures, malformed internal states, allocation-error messages or every
 encoding constructor.
 
-This stream is not yet wired into token scanning. A broader comparison of 3,464
-inputs across DEFAULT/PRAGMA/SPEC finds 13 differences in 10,392 rows, all in
-SPEC malformed strings or incomplete operator prefixes. Existing candidate
-scanning consumes characters differently from the generated DFA/NFA. Translate
-that scanner and integrate the actual stream before claiming these failures
-fixed. Corpus acceptance/AST results alone do not prove lexical error fidelity.
+The token manager now uses this stream directly. `sany_scanner_generated.go`
+translates the source DFA/NFA methods, Unicode bit vectors, next-state tables,
+nullable literal images and token/skip/special/more masks. Signed 32-bit scanner
+fields and explicit pre/postincrement helpers retain Java evaluation order.
+`sany_token_manager.go` follows the generated dispatch, backup, MORE accumulation,
+special-token linking and lexical-error probe. Candidate selection is removed.
+Source TokenMgrError text is retained; the Go diagnostic uses E1200 for lexical
+failures rather than the previous heuristic categories.
+
+All 10,392 character/operator rows across DEFAULT/PRAGMA/SPEC agree with Java,
+including the 13 previously failing malformed strings and incomplete prefixes.
+Another 16,247 observations compare scanner counters, raw UTF-16 image buffers
+and hashes of both state arrays. All 200 comment-stream rows and 28 sequential
+lexer/parser-output rows still agree. All 355 corpus translation results match
+Java without changing fixtures or AST assertions. Another 300 rows agree for
+ReInit across all six starting states, valid/invalid target states and round
+values around the reset boundary, including full state arrays. All 5,823 parser
+tree/error rows remain exact. General byte-reader/error constructors still need
+source reconciliation. These bounded receipts do not establish full parser parity.

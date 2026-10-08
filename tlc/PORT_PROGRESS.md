@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-07 Integrate the actual generated token scanner:
+Previous completed commit: 055b4d5. Replace candidate-based token selection with
+58 mechanically translated generated DFA/NFA and character-class methods in
+sany_scanner_generated.go. Retain source bit vectors, state tables, literal
+images, token masks and evaluation order, including int32 overflow and assignment
+side effects. Connect the six-state getNextToken dispatch to the actual UTF-16
+SimpleCharStream. Translate source fillToken, ReInitRounds, ReInit, MORE/SKIP
+image handling, backup, special links and lexical-error probe. Preserve source
+TokenMgrError text; native lexical diagnostics now use E1200 rather than heuristic
+categories. No expected-output changes, permanent invented tests or extra original
+method credit.
+
+All 10,392 character/operator observations now agree with pinned Java, resolving
+all 13 recorded SPEC differences. All 200 comment-stream rows and 28 sequential
+lexer/parser outputs remain exact. ScannerStateProbe adds 16,247 matching rows:
+actual source counters, raw UTF-16 image buffers and signed hash values of the
+269-entry round and 538-entry state arrays. Hash equality is not a full-array
+comparison. All 355 corpus AST/rejection/translation-error rows still match.
+External probes, overlays and logs remain under /mnt/oldrog/tmp; scanner results
+use scanner-go suffixes, with tlago-scanner-state logs for internal observations.
+
+Complete SANY passes in 2.224 seconds. Focused root original/parser/token/scaffold/
+selector/debugger gate 53151 passes in 9.658 seconds and is retired. Remaining
+all-package compilation and git diff check pass. All 5,823 parser tree/error rows
+remain exact. ScannerResetProbe adds 300 identical observations of ReInit across
+all six starting states and eight target states, plus four signed round values
+per state around reset/overflow; these compare full state arrays. Its external
+source/overlay/log prefix is tlago-scanner-reset. All handles are terminal and
+retired. Normal execution without race; unrelated long workloads are not repeated.
+General decoder/reader exception paths remain pending. Main TLC inventory and
+native XML failures remain unchanged; no whole-
+workspace green or full SANY/TLC completion claim.
+
+
 2026-10-07 Port the actual character-stream prerequisite:
 Previous completed commit: 8e3ee78. Broaden lexer comparison to 3,464 inputs across
 DEFAULT/PRAGMA/SPEC: all 10,392 rows are present, with 13 differences in SPEC

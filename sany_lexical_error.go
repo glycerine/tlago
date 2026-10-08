@@ -52,26 +52,11 @@ func sanyLexicalEscapeUnits(units []uint16) string {
 	return result.String()
 }
 
-func sanyLexicalError(eof bool, position Position, after string, character rune) string {
+// Raw code units preserve a half-surrogate consumed by the generated scanner.
+func sanyLexicalErrorUnits(eof bool, line, column int, after []uint16, character uint16) string {
 	encountered := "<EOF> "
 	if !eof {
-		ch := utf16.Encode([]rune{character})[0]
-		encountered = fmt.Sprintf("\"%s\" (%d), ", sanyLexicalEscapeUnits([]uint16{ch}), ch)
+		encountered = fmt.Sprintf("\"%s\" (%d), ", sanyLexicalEscapeUnits([]uint16{character}), character)
 	}
-	return fmt.Sprintf("Lexical error at line %d, column %d.  Encountered: %safter : \"%s\"", position.Line, position.Column, encountered, sanyLexicalEscapes(after))
-}
-
-func (tm *SanyTokenManager) lexicalFailure(begin Position, code, nativeMessage string, position Position, after string, character rune, eof bool) {
-	tm.lexicalBegin = begin
-	diagnostic := errorAt(begin, code, "%s", nativeMessage)
-	diagnostic.SANYParseMessage = sanyLexicalError(eof, position, after, character)
-	panic(&sanyTokenMgrError{diagnostic: diagnostic, message: diagnostic.SANYParseMessage})
-}
-
-func (tm *SanyTokenManager) lexicalEOFPosition() Position {
-	position := tm.pos()
-	if tm.column == 1 && tm.lastEnd.Line != 0 {
-		position.Column = 0
-	}
-	return position
+	return fmt.Sprintf("Lexical error at line %d, column %d.  Encountered: %safter : \"%s\"", line, column, encountered, sanyLexicalEscapeUnits(after))
 }
