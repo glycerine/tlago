@@ -222,6 +222,11 @@ Disk trace writers also require that existing owner. Missing owners cannot reope
 a file or publish records/state metadata; successor writes require the predecessor
 before owner access. Missing trace receivers fail rather than return success.
 Partial writes retain their attempted pointer and bytes as before.
+Disk predecessor/fingerprint/depth reads require the existing owner rather than
+returning zero. Public disk-depth queries propagate read failures and retain the
+consumed cursor, without falling back to mirror records. Reporting retains its
+previous maximum only after successful calculation. Enumeration cannot reopen a
+missing disk owner or return a memory snapshot in its place.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

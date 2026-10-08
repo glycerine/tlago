@@ -21682,3 +21682,29 @@ All processes are terminal. No original assertion changed. No full suite or race
 run was performed. Supplemental cases add no original-
 method credit. Construction/context and remaining trace operations still need
 audit; distributed parity is incomplete.
+
+### 2026-10-08: Disk trace read failure propagation and owner access
+
+Compared TLCTrace predecessor/fingerprint/depth helpers, getLevel and enumerator
+construction with pinned source. Missing disk owners now fail instead of returning
+zero. Public disk-depth queries propagate their read error rather than selecting
+the in-memory mirror, preserving consumed failure cursors. Reporting updates its
+previous maximum only after a successful calculation. Source disk enumeration
+uses its existing owner for length and cannot lazily reopen it or return a memory
+snapshot. Native in-memory trace adapter behavior remains separate.
+
+No original method directly covers missing read owners. Twenty-four supplemental
+cases cover six read paths with missing/closed owners and saved creation errors;
+one additional public-depth case covers a truncated predecessor. Fourteen cases
+initially failed (08f4e5, status 1, 0.017 seconds), returning zero/mirror depths,
+reopening an owner or masking I/O failure. Final focused trace, enumeration,
+checkpoint/recovery, worker/concurrent and original simulation trace checks pass
+(ebfb64, status 0, 1.121 seconds). The original LSBDiskFPset testFPSetRecovery
+method passes with its 99,999 limit, complete fingerprint assertions and default
+storage settings (e6a7b1, status 0, 1.851 seconds). Original checkpoint-on-violation/
+time-bound, error-trace and three-worker CodePlexBug08 archive recovery plus all
+four existing DieHard/TSnapShot native process storage variants pass (6d92bd,
+status 0, 57.926 seconds). All processes are terminal. Assertions and bounds are
+unchanged. No full suite or race run was performed. Supplemental cases add no
+original-method credit; construction/context and remaining trace audits are
+pending, and distributed parity is incomplete.

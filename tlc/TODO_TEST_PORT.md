@@ -830,6 +830,13 @@ before-owner failure order. Invalid writes retain owner identity and suppress
 record/state publication. No original method directly covers these boundaries;
 completion counts remain unchanged. Original partial-write assertions are intact.
 
+Twenty-four native read-owner cases cover predecessor/fingerprint/depth reads,
+public depth, reporting and enumeration with missing/closed owners and saved
+creation errors. One additional public-depth case retains the consumed cursor on
+a truncated predecessor read. Missing owners cannot yield zero or memory data;
+disk errors propagate. No original method directly covers these boundaries;
+completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

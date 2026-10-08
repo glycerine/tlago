@@ -643,7 +643,7 @@ func (t *TLCTrace) GetLevelForReportingWithError() (int, error) {
 	if t.closed {
 		return 0, NewIOException("File handle closed")
 	}
-	if t.raf != nil {
+	if t.rawPaths || t.raf != nil {
 		level, err := t.getLevelFromDiskLocked(t.lastPtr)
 		if err != nil {
 			return 0, err
@@ -657,16 +657,20 @@ func (t *TLCTrace) GetLevelForReportingWithError() (int, error) {
 }
 
 func (t *TLCTrace) GetLevel(startUID int64) int {
-	if t == nil || startUID < 0 {
-		return 0
+	if t == nil {
+		panic(NewNullPointerException())
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.raf != nil {
+	if t.rawPaths || t.raf != nil {
 		level, err := t.getLevelFromDiskLocked(startUID)
-		if err == nil {
-			return level
+		if err != nil {
+			panic(err)
 		}
+		return level
+	}
+	if startUID < 0 {
+		return 0
 	}
 	return t.getLevelLocked(startUID)
 }
@@ -707,7 +711,7 @@ func (t *TLCTrace) getLevelLocked(startUID int64) int {
 
 func (t *TLCTrace) getLevelFromDiskLocked(startLoc int64) (int, error) {
 	if t == nil || t.raf == nil {
-		return 0, nil
+		panic(NewNullPointerException())
 	}
 	current, err := t.raf.GetFilePointer()
 	if err != nil {
@@ -733,7 +737,7 @@ func (t *TLCTrace) getLevelFromDiskLocked(startLoc int64) (int, error) {
 
 func (t *TLCTrace) getPrevFromDiskLocked(loc int64) (int64, error) {
 	if t == nil || t.raf == nil {
-		return 0, nil
+		panic(NewNullPointerException())
 	}
 	if err := t.raf.Seek(loc); err != nil {
 		return 0, err
@@ -743,7 +747,7 @@ func (t *TLCTrace) getPrevFromDiskLocked(loc int64) (int64, error) {
 
 func (t *TLCTrace) getFPFromDiskLocked(loc int64) (uint64, error) {
 	if t == nil || t.raf == nil {
-		return 0, nil
+		panic(NewNullPointerException())
 	}
 	if err := t.raf.Seek(loc); err != nil {
 		return 0, err
@@ -769,15 +773,21 @@ func (t *TLCTrace) recordIndexByUIDLocked(uid int64) int {
 
 func (t *TLCTrace) Elements() (*TLCTraceEnumerator, error) {
 	if t == nil {
-		return &TLCTraceEnumerator{}, nil
+		panic(NewNullPointerException())
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.closed {
 		return nil, NewIOException("File handle closed")
 	}
-	if err := t.ensureTraceRAFLocked(); err != nil {
-		return nil, err
+	if t.rawPaths {
+		if t.raf == nil {
+			panic(NewNullPointerException())
+		}
+	} else {
+		if err := t.ensureTraceRAFLocked(); err != nil {
+			return nil, err
+		}
 	}
 	if t.raf != nil {
 		length, err := t.raf.Length()
