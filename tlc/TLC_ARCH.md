@@ -11500,3 +11500,17 @@ handler/finalizer failure to their caller. No extra model cleanup, worker count
 decrement or result mutation occurs. Five joined native child-process tests
 and focused local/TCP checks verify these boundaries; supplemental checks add
 no original-method completion credit. No Java runtime machinery is introduced.
+
+
+### Coordinator keepalive remote-failure forms
+
+TLCTimerTask normalizes returned and panicked IsAlive endpoint failures using
+the existing generic invocation boundary, then catches only the source remote
+failure category. False liveness and either remote failure form invoke
+HandleRemoteWorkerLost. Its one-time cleanup retains state identity/order and
+exactly one deregistration/count decrement across repeated task invocations.
+Unchecked local failures escape without ownership changes; recent or future
+last-invocation timestamps suppress status calls. Native TCP fatal handler
+failures retain the remote I/O category and invoke the same cleanup without
+stopping the worker host. Focused synchronous task and owned TCP checks pass;
+no source test methods exist for these boundaries and no method credit is added.

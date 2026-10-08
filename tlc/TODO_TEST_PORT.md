@@ -953,6 +953,12 @@ the process, recatching handler failures or executing later finally steps after
 a cache failure. Focused RPC/codec/checkpoint and original smart-proxy checks pass.
 No direct original finalizer methods exist; supplemental checks add no credit.
 
+Coordinator timer-task checks now cover returned/panicked remote failures, false
+liveness, unchecked local failures, activity suppression and native TCP fatal
+status payloads. Remote failures enter worker-loss cleanup once, preserving
+assigned work and deregistration-only diagnostics. Local unchecked failures
+retain ownership. No direct original timer-task methods exist; no credit is added.
+
 Returned fatal local endpoint errors now escape exactly like fatal panics;
 scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
 warning or availability mutation. Original Java manager translations and native

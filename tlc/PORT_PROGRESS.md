@@ -19965,3 +19965,32 @@ instrumentation was selected. Distributed completion remains unproven.
 
 Final strengthened queue-finish assertion also passes (21086, status 0,
 0.063 seconds). All test handles are terminal.
+
+
+## October 8, 2026: coordinator timer remote-failure catch parity
+
+Compared TLCTimerTask.run against the source RemoteException catch. Returned
+remote status failures already invoked worker-loss cleanup; panicked failures
+escaped to the timer's uncaught boundary, leaving assigned states and dead-worker
+ownership intact. The status invocation now uses the existing generic call
+boundary so both forms enter the same remote-only catch. Local unchecked
+failures still escape unchanged and do not invoke worker-loss cleanup.
+
+Added distributed_timer_task_test.go because no original method covers these
+status-failure boundaries. Synchronous task checks cover returned/panicked
+remote failures and false liveness, two repeated invocations, exact one-time
+deregistration/count decrement, identity/order of requeued states, timer cancel
+and assigned-state clearing. Diagnostics retain only one deregistration, with
+no worker-lost message or GENERAL. Local returned/panicked runtime/fatal cases
+verify unchanged ownership; recent and future activity suppress status calls.
+Native TCP returned/panicked fatal status failures enter the remote catch while
+the host remains callable. All listeners, connections and host jobs are owned
+and joined by the existing native RPC helpers.
+
+Initial verification reproduced the panicked remote failure escaping its catch
+(29616, status 1, 0.011 seconds). Corrected timer, finalizer and original nine
+smart-proxy contexts pass (4635, status 0, 0.074 seconds). Native TCP timer
+status failures, coordinator retry/loss and fatal endpoint boundary checks pass
+(0.029 seconds). Supplemental cases add no original-method completion credit.
+No timer delay, full suite, long workload or race instrumentation was selected.
+All handles are terminal; distributed completion remains unproven.

@@ -1262,7 +1262,7 @@ func (t *TLCTimerTask) Run() {
 	now := time.Now().UnixMilli()
 	last := t.LastInvocation.Load()
 	if last == 0 || now-last > int64(time.Minute/time.Millisecond) {
-		alive, err := t.Thread.Worker.IsAlive()
+		alive, err := invokeRegistryBoundary(t.Thread.Worker.IsAlive)
 		if err != nil && !isDistributedRemoteFailure(err) {
 			panic(err)
 		}

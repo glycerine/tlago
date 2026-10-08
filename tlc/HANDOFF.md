@@ -155,6 +155,13 @@ finally operations. Five joined native process checks and focused worker RPC,
 codec, checkpoint and original smart-proxy tests pass. Supplemental finalizer
 checks have no direct original methods and add no completion credit.
 
+Coordinator keepalive status calls now apply the same remote-failure catch to
+returned and panicked endpoint failures. Worker loss deregisters once, requeues
+the assigned block in order and decrements the worker count once. Unchecked
+local failures still escape without ownership changes; recent/future activity
+suppresses status calls. Focused local and native TCP checks pass. These timer
+boundaries have no direct original methods and add no completion credit.
+
 Fingerprint check tasks now catch I/O failures before executor completion
 wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for
 fingerprint distance, `false` for invariants). Unchecked task failures retain
