@@ -19399,3 +19399,28 @@ prior/new reader identities, source closed states and native snapshot agreement.
 No enabled original Java method directly covers these failure boundaries; no
 original-method completion is added. All handles are terminal and retired. No
 full suite, long workload or race run. Broader distributed parity remains pending.
+
+## October 8, 2026: MemFPSet1 backing-set recovery fidelity
+
+Audited source SetOfLong.recover/grow, used by MemFPSet1 file recovery. Go
+normalized the count, deferred header mutation, clamped empty/negative array
+lengths and used a special insertion method without growth. Source assigns each
+read field immediately, allocates the exact length and uses ordinary put.
+Its grow retains zero membership while resetting count and reinserting only
+nonzero entries. Restored these algorithms, including source count quirks,
+and removed the now-unused putWithoutGrow helper.
+
+New bounded checks expose the old behavior (20589, status 1, 0.012 seconds):
+complete count/growth cases, all 29 incomplete file lengths and negative array
+allocation after header mutation. Corrected checks plus existing duplicate,
+truncated memory checkpoint and null-block contracts pass (91307, status 0,
+0.253 seconds). Added actual native TCP MemFPSet1 file recovery for complete
+and partial records. Complete recovery retains source count four for two
+records; incomplete recovery retains count three and the first record, while
+the source manager catches the I/O failure and emits its storage diagnostic.
+These checks plus existing original dynamic manager constructor/index/
+reassignment/failover/block/order methods pass (54026, status 0, 0.077 seconds).
+Repository search finds no upstream SetOfLong test; supplemental checks add no
+original-method completion credit. All handles are terminal and retired. No
+full suite, long workload or race run. Constructor size handling remains a
+separate source audit item; distributed parity is still incomplete.

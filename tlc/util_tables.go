@@ -862,32 +862,28 @@ func (s *SetOfLong) Recover(in *ValueInputStream) error {
 	if err != nil {
 		return err
 	}
+	s.count = int(count)
 	length, err := in.ReadInt()
 	if err != nil {
 		return err
 	}
+	s.length = int(length)
 	thresh, err := in.ReadInt()
 	if err != nil {
 		return err
 	}
+	s.thresh = int(thresh)
 	hasZero, err := in.ReadBool()
 	if err != nil {
 		return err
 	}
-	if length <= 0 {
-		length = 1
+	s.hasZero = hasZero
+	if s.length < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(s.length)))
 	}
-	s.count = 0
-	s.length = int(length)
-	s.thresh = int(thresh)
 	s.table = make([]int64, s.length)
-	s.hasZero = false
-	if hasZero {
-		s.hasZero = true
-		s.count = 1
-	}
-	num := int(count)
-	if hasZero {
+	num := s.count
+	if s.hasZero {
 		num--
 	}
 	for i := 0; i < num; i++ {
@@ -895,48 +891,20 @@ func (s *SetOfLong) Recover(in *ValueInputStream) error {
 		if err != nil {
 			return err
 		}
-		s.putWithoutGrow(key)
+		s.Put(key)
 	}
 	return nil
 }
 
 func (s *SetOfLong) grow() {
 	old := s.table
-	oldHasZero := s.hasZero
 	s.count = 0
 	s.length = 2*s.length + 1
 	s.thresh = s.length / 2
 	s.table = make([]int64, s.length)
-	s.hasZero = false
-	if oldHasZero {
-		s.Put(0)
-	}
 	for _, key := range old {
 		if key != 0 {
 			s.Put(key)
 		}
-	}
-}
-
-func (s *SetOfLong) putWithoutGrow(key int64) {
-	if key == 0 {
-		if !s.hasZero {
-			s.hasZero = true
-			s.count++
-		}
-		return
-	}
-	loc := int(uint32(key)&0x7fffffff) % s.length
-	for {
-		elem := s.table[loc]
-		if elem == key {
-			return
-		}
-		if elem == 0 {
-			s.table[loc] = key
-			s.count++
-			return
-		}
-		loc = (loc + 1) % s.length
 	}
 }

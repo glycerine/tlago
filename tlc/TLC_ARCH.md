@@ -11330,3 +11330,17 @@ failure. File/index reconstruction still precedes reader reopening. Supplemental
 checks cover worker/pool close failures after earlier replacements, first reopen
 failure and success, including exact retained pointers, closed states, completed
 file/index/write counts and pool cursor. No original-method credit is added.
+
+MemFPSet1.recover(String) delegates to SetOfLong.recover. Source assigns count,
+length, threshold and zero flag immediately after each successful read, then
+allocates exactly that length and uses ordinary put for its fixed record count.
+Go previously delayed header mutation, clamped empty/negative lengths, rebuilt
+the count and bypassed growth. Those shortcuts are removed. Source grow resets
+count and rehashes nonzero entries while retaining hasZero without counting it
+again. The Go growth method now does the same. This intentionally retains Java
+quirks: two recovered records can yield count four, and growth can retain zero
+membership without counting zero. Tests check these observations, all 29 partial
+file lengths, negative allocation after header mutation and native TCP complete/
+partial file recovery with the manager's original I/O catch. Source constructor
+size handling remains a separate audit item; this does not claim SetOfLong or
+distributed parity complete. No upstream SetOfLong test exists.

@@ -73,6 +73,12 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+MemFPSet1 backing-set recovery now assigns each successfully read header field
+immediately and reconstructs with ordinary Put/grow, matching Java. Source
+count quirks, zero membership during growth, empty arrays, negative allocation
+and partial record mutation are retained. Native TCP checks cover complete and
+truncated checkpoint files; no original-method completion credit is added.
+
 Disk fingerprint file recovery now replaces worker and pool readers one slot
 at a time, retaining earlier replacements and untouched later slots on close
 or reopen failure. The pool cursor resets only after successful completion;

@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental MemFPSet1 checks retain source backing-set recovery counts, growth,
+zero membership and field-by-field mutation, including complete/truncated files
+through native TCP. No upstream SetOfLong test exists; no original-method credit
+is added for these checks.
+
 Supplemental disk file recovery checks retain sequential reader replacement,
 partial close/open failure state and completed file/index writes. Existing
 original buffered-file methods pass; these checks add no original-method credit.
