@@ -787,6 +787,11 @@ and actual-dequeue averages. Existing original smart-proxy methods and native
 TCP coordinator retry/loss pass. Upstream has no selector test methods; these
 supplemental checks add no original-method completion credit.
 
+A short native selector concurrency check reproduces and verifies removal of
+races in average publication and transfer-limit updates/reads. Atomic average
+operations retain the source lossy calculation and signed overflow; sequential
+zero/rounding/overflow and fixed-average checks pass. No original-method credit.
+
 Native value-array graph checks cover state, tuple, record, function, operator argument
 row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
 references and isolated receiver mutations across worker request/result TCP.

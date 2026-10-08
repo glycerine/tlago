@@ -144,6 +144,10 @@ and static selectors ignore transfer-limit updates; limiting and statistical
 selectors apply them. Focused queue-bound and actual-dequeue average checks,
 the original smart-proxy methods and native TCP retry/loss check pass. Upstream
 has no selector test methods; supplemental checks add no original-method credit.
+The average uses independent atomic reads/writes, retaining source lossy updates
+and signed overflow. Transfer-limit access is protected for concurrent worker
+retries. An exact short concurrency race check passes; long workloads remain
+separate from race instrumentation.
 
 The native EWD840 process harness now covers two standalone FP servers. Before
 starting its worker, it reads the coordinator's published manager reference

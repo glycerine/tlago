@@ -19648,3 +19648,26 @@ Upstream's selector test directory contains only DummyTLCWorker, used by the
 ported smart-proxy methods, and no selector test methods. Supplemental checks
 add no original-method completion credit. Broader distributed parity remains
 pending. No full suite, long workload or race instrumentation was selected.
+
+
+## October 8, 2026: shared block-selector statistics and limits
+
+Source BlockSelector publishes its lossy average through volatile reads/writes.
+The Go field used unsynchronized access while multiple coordinator worker
+threads could update it and progress reporting could read it. The focused
+four-goroutine, 1,000-iteration native check also exposed transfer-limit races
+between concurrent retry setters and block-selection readers (5511, status 1,
+0.056 seconds). The average now uses atomic.Int64, preserving each independent
+source read/write and allowing lost updates rather than making the calculation
+a CAS loop. Source rounding, signed overflow and reset after a nonpositive
+average remain intact. Transfer-limit accesses use a small RWMutex; initial
+configuration is set before publication, and each source read remains separate.
+
+The exact short race check passes (95478, status 0, 1.037 seconds). Normal
+selector/arithmetic/queue/average checks and all nine original smart-proxy
+contexts pass (98502, status 0, 0.011 seconds). The native TCP coordinator
+retry/loss check also passes normally (0.013 seconds). No upstream selector
+methods exist; supplemental checks earn no original-method completion credit.
+No full suite or long workload was selected, and race instrumentation covered
+only the exact short concurrency check. Broader distributed parity remains
+pending; all test handles are terminal.

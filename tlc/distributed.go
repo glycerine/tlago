@@ -1308,7 +1308,8 @@ type BlockSelector struct {
 	Maximum              int
 	StaticBlockSize      int
 	NetworkOverheadLimit float64
-	AverageBlockCnt      int64
+	averageBlockCnt      atomic.Int64
+	maximumMu            sync.RWMutex
 }
 
 func NewBlockSelector(server *TLCServer) *BlockSelector {
@@ -1364,7 +1365,7 @@ func NewStaticBlockSelector(server *TLCServer, blockSize ...int) *BlockSelector 
 	} else if value, ok := distributedIntProperty(distributedStaticBlockSizeProperty); ok {
 		selector.StaticBlockSize = value
 	}
-	selector.AverageBlockCnt = int64(selector.StaticBlockSize)
+	selector.averageBlockCnt.Store(int64(selector.StaticBlockSize))
 	return selector
 }
 
@@ -1406,15 +1407,23 @@ func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWork
 
 func (b *BlockSelector) SetMaxTXSize(maximum int) {
 	if b != nil && (b.Mode == BlockSelectorLimiting || b.Mode == BlockSelectorStatistical) {
+		b.maximumMu.Lock()
 		b.Maximum = maximum
+		b.maximumMu.Unlock()
 	}
+}
+
+func (b *BlockSelector) getMaximum() int {
+	b.maximumMu.RLock()
+	defer b.maximumMu.RUnlock()
+	return b.Maximum
 }
 
 func (b *BlockSelector) GetAverageBlockCnt() int64 {
 	if b == nil {
 		return 0
 	}
-	return b.AverageBlockCnt
+	return b.averageBlockCnt.Load()
 }
 
 func (b *BlockSelector) getBlockSize(size int64, worker *DistributedWorkerSmartProxy) int64 {
@@ -1431,14 +1440,14 @@ func (b *BlockSelector) getBlockSize(size int64, worker *DistributedWorkerSmartP
 				limit = blockSelectorDefaultNetworkOverheadLimit
 			}
 			blockSize := math.Abs(math.Ceil(float64(size) * (worker.GetNetworkOverhead() / limit)))
-			blockSize = math.Min(math.Max(blockSize, 1), float64(b.Maximum))
+			blockSize = math.Min(math.Max(blockSize, 1), float64(b.getMaximum()))
 			return int64(javaDoubleToInt(blockSize))
 		}
 		fallthrough
 	case BlockSelectorLimiting:
 		blockSize := b.proportionalBlockSize(size)
-		if blockSize > int64(b.Maximum) {
-			return int64(b.Maximum)
+		if blockSize > int64(b.getMaximum()) {
+			return int64(b.getMaximum())
 		}
 		return blockSize
 	default:
@@ -1458,10 +1467,12 @@ func (b *BlockSelector) setAverageBlockCnt(blockCnt int64) {
 	if b == nil || b.Mode == BlockSelectorStatic {
 		return
 	}
-	if b.AverageBlockCnt > 0 {
-		b.AverageBlockCnt = (blockCnt + b.AverageBlockCnt) / 2
+	// Source volatile reads/writes are individually visible; the whole update
+	// remains lossy, so do not make it a CAS loop or serialize the calculation.
+	if b.averageBlockCnt.Load() > 0 {
+		b.averageBlockCnt.Store((blockCnt + b.averageBlockCnt.Load()) / 2)
 	} else {
-		b.AverageBlockCnt = blockCnt
+		b.averageBlockCnt.Store(blockCnt)
 	}
 }
 
