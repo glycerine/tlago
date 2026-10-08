@@ -10320,3 +10320,23 @@ per path. Existing 641 direct-choice/saved-call rows, 341 expected-entry rows an
 5,823 syntax/message rows remain equal. These observations cover the reported
 EOF state behavior, not full token constructor/reference, syntax AST or evaluator
 parity.
+
+
+## Saved lookaheads retain the actual consumed-token reference
+
+Java jj_save stores token, the current consumed token, rather than token.next.
+Go scanLookahead now saves that same reference. A parser owns one stable initial
+dummy token, linked when the first input token is obtained; generated exceptions
+and initial lookaheads share it. Rescans locate the saved consumed token and
+begin scanning at its successor. This replaces the previous next-token reference
+and compensating starting offset without changing generated scanner decisions.
+
+External observations compare actual Java saved-call references for all 74 entry
+points with three budgets, three consumed positions and three input streams:
+1,998 rows agree on result, generation, saved generation, shared current-token
+reference, unchanged cursor and successor presence. Another 18 observations
+compare repeated generated exceptions' shared current token, cursor, successor,
+full message and short message. Existing 641 saved-call/direct-choice rows, 341
+expected-entry rows and 5,823 syntax/message rows also agree. This establishes
+these reference paths within the observed contexts, not full ReInit/constructor,
+syntax allocation, semantic graph or evaluator parity.

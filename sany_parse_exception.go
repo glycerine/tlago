@@ -90,12 +90,8 @@ func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessa
 	token := p.peek()
 	failure := &sanyParseException{
 		specialConstructor:     true,
-		currentToken:           p.previous(),
+		currentToken:           p.currentToken(),
 		expectedTokenSequences: expected,
-	}
-	if failure.currentToken == nil {
-		// JavaCC starts with an unconsumed dummy token linked to the input.
-		failure.currentToken = &SanyToken{Next: token}
 	}
 	failure.diagnostic = p.reportedParseException(failure.shortMessage(), token.Begin, "E1300", nativeMessage).diagnostic
 	panic(failure)

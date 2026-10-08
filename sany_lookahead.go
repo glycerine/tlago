@@ -202,7 +202,7 @@ func (s *sanyLookahead) run(production int) bool {
 
 func (p *SanyParser) scanLookahead(production, budget int) (matches bool) {
 	scanner := &sanyLookahead{parser: p, startAt: p.at, position: -1, lastPosition: -1, remaining: budget}
-	first := p.peek()
+	first := p.currentToken()
 	defer func() {
 		// JavaCC saves successful and failed calls, including calls ending in
 		// LookaheadSuccess. Expiration depends on how far scanning reached.
@@ -302,10 +302,14 @@ func (p *SanyParser) rescanLookaheads(expected [][]SanyTokenKind) [][]SanyTokenK
 					continue
 				}
 				start := -1
-				for i, token := range p.tokens {
-					if token == call.first {
-						start = i
-						break
+				if call.first == p.initialToken {
+					start = 0
+				} else {
+					for i, token := range p.tokens {
+						if token == call.first {
+							start = i + 1
+							break
+						}
 					}
 				}
 				if start < 0 {

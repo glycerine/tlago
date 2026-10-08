@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-07 Save actual JavaCC current-token references:
+Previous completed commit: 401cb79. Source jj_save retains token, the last
+consumed token; Go retained the next token and compensated during rescanning.
+Port the actual reference. Add one stable initial dummy token per parser, link
+it to the input, and share it between initial lookaheads and generated exceptions.
+Rescans begin after the saved consumed token, including the initial dummy.
+
+External SavedTokenReferenceProbe.java invokes every jj_2 entry point and reads
+actual saved references. Three streams, consumed positions 0/1/3 and budgets
+1/2/5 produce 1,998 rows, all equal for result, generations, reference identity,
+unchanged cursor and successor presence. Extend with 18 repeated generated
+exceptions comparing current-token/cursor/successor references and full/short
+messages; all match. Java returned 0. First Go observer 21282 returned 0; extension
+initially failed external Go setup due to a missing separator between loops;
+correct only observer syntax. Final observer 51857 returned 0 and is retired.
+BodyExpected observer 66681 returned 0 and is retired, preserving all 341
+expected-entry and 5,823 syntax/message rows. Direct-choice observer 92351 returned
+0 and is retired; all 641 state rows remain equal. External probes/overlays/logs
+remain under /mnt/oldrog/tmp with prefix tlago-saved-token-reference. No invented
+permanent tests, changed original assertions or original-method credit.
+
+Original frontend/model gate 66239 returned 0 in 9.624 seconds; complete SANY
+96639 returned 0 in 1.774 seconds; all-package compilation 73694 returned 0.
+All handles retired. Normal execution without race. Main inventory and known
+native XML failures are unchanged. No new full-workspace green claim. Full
+constructor/ReInit, parser AST, semantic graph and evaluator parity remain
+pending beyond these bounded source-reference observations.
+
 2026-10-07 Preserve source EOF consumption and token identity:
 Previous completed commit: 4751cda. Audit successful consumption and discover
 native EOF clamping: advance skipped generation/cleanup and returned the prior

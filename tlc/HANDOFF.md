@@ -801,14 +801,18 @@ formatters; ordinary exceptions return their supplied message. Full messages
 escape following tokens and list alternatives; short messages escape only the
 prior token. Both match Java across 2,400 external formatting observations.
 The 341 expected-entry and 5,823 syntax/message rows remain equal. Current
-original frontend/model checks pass in 9.545 seconds, complete SANY in 1.838
+original frontend/model checks pass in 9.624 seconds, complete SANY in 1.774
 seconds and compilation passes. Successful consumption now advances generation
 and cleanup for EOF too; subsequent token requests retain distinct EOF identities
 and linked tokens rather than clamping to the last token. Token-manager and
 pretokenized paths each match 330 Java consumption-state observations, including
 cleanup at token 101. All 641 existing direct-choice/saved-call state rows remain
 equal. EndModule uses the generated consumption path; unused native consuming
-helpers are removed. Exhaustive malformed rescan contexts,
+helpers are removed. Saved lookaheads now retain Java's actual current consumed
+token instead of the next token. A persistent initial dummy token is shared by
+lookaheads and generated exceptions; rescans start immediately after that saved
+token. All 1,998 saved-reference observations across 74 entry points and 18
+repeated-exception observations agree with Java. Exhaustive malformed rescan contexts,
 syntax AST parity and proof generation remain reconciliation work.
 These bounded observations do not establish every semantic-predicate context or
 full parser parity.

@@ -10,6 +10,7 @@ import (
 type SanyParser struct {
 	output                 SanyOutput
 	tokens                 []*SanyToken
+	initialToken           *SanyToken
 	tokenManager           *SanyTokenManager
 	at                     int
 	diags                  Diagnostics
@@ -3278,6 +3279,20 @@ func (p *SanyParser) advance() *SanyToken {
 	return token
 }
 
+// JavaCC's token starts as a stable dummy, then names the last consumed token.
+func (p *SanyParser) currentToken() *SanyToken {
+	if previous := p.previous(); previous != nil {
+		return previous
+	}
+	if p.initialToken == nil {
+		p.initialToken = &SanyToken{}
+	}
+	if len(p.tokens) != 0 {
+		p.initialToken.Next = p.tokens[0]
+	}
+	return p.initialToken
+}
+
 func (p *SanyParser) previous() *SanyToken {
 	if p.at == 0 {
 		return nil
@@ -3310,6 +3325,8 @@ func (p *SanyParser) tokenAt(offset int) *SanyToken {
 		}
 		if len(p.tokens) != 0 {
 			p.tokens[len(p.tokens)-1].Next = token
+		} else {
+			p.currentToken().Next = token
 		}
 		p.tokens = append(p.tokens, token)
 	}
