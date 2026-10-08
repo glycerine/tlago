@@ -920,6 +920,14 @@ call-stack replay ownership. Stuttering insertion and output retain source
 ordering; no replacement set or silent tail skip is allowed. No original method
 directly covers these owner boundaries; completion counts remain unchanged.
 
+Twelve native filename/checkpoint checks cover empty path components, preserved
+dot components, empty-directory configuration, required opening context and
+cached empty checkpoint filenames. Begin flushes before temporary creation,
+commit deletes before promotion, and recovery publishes metadata before owner
+access. Literal suffix I/O is isolated in temporary working directories; no
+filesystem-root filename is opened. No original method directly covers these
+boundaries; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

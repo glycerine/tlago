@@ -210,7 +210,11 @@ requires its checker and passed tool, derives the path from the checker's metada
 directory and that tool's root name, and opens the owner before registration.
 Trace registration precedes checker-list publication. Rejected registration closes
 the newly opened native file while retaining its creation and the original error.
-Empty-context/filename guards and remaining trace cleanup boundaries need audit.
+Filename construction preserves literal separator concatenation and empty
+components. Checkpoint begin/commit/recovery use the cached filename even when
+empty; recovery cannot rebuild it from changed checker context. Trace opening
+requires constructor context. Remaining native trace cleanup boundaries need
+audit.
 Workers capture deadlock/liveness settings and tool mode during construction.
 Later owner changes cannot alter deadlock checks, liveness set allocation or
 stuttering graph insertion. Error-stack replay captures the same run settings.
@@ -254,7 +258,7 @@ current state and preserve trace-owner results, including the initial prefix.
 Missing trace owners cannot create a fresh trace; an empty prefix fails at its
 last-state access, and a nil last entry fails before reconstruction. Silent
 context/parameterless-postcondition fallbacks and the unused trimming helper
-are removed. Remaining state-owner and constructor context guards need audit.
+are removed. Remaining state-owner and native trace cleanup guards need audit.
 An earlier related model selection failed once with its assertion lost to output
 truncation, then passed unchanged with captured output. This failure is unresolved;
 do not claim it diagnosed. Preserve failing output to a file on future runs.

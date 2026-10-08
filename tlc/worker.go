@@ -468,27 +468,15 @@ func (w *Worker) RecordOutDegree() {
 const tlcTraceExt = ".st"
 
 func (w *Worker) configureTrace() {
-	if w == nil || w.Checker == nil {
-		return
+	if w == nil || w.Checker == nil || w.Checker.AbstractChecker == nil || w.Tool == nil {
+		panic(NewNullPointerException())
 	}
 	metadir := w.Checker.Metadir
-	rootName := "Spec"
-	if w.Tool != nil {
-		rootName = w.Tool.GetRootName()
-	}
-	if metadir == "" {
-		return
-	}
+	rootName := w.Tool.GetRootName()
 	w.traceFileBase = workerTraceFileBase(metadir, rootName, w.ID)
 }
 
 func workerTraceFileBase(metadir string, rootName string, id int) string {
-	if metadir == "" {
-		return ""
-	}
-	if rootName == "" {
-		rootName = "Spec"
-	}
 	// Worker retains FileUtil separator concatenation, including dot components.
 	return metadir + string(os.PathSeparator) + fmt.Sprintf("%s-%d", rootName, id)
 }
@@ -528,9 +516,6 @@ func (w *Worker) ensureTraceRAF() error {
 	}
 	if w.traceFileBase == "" {
 		w.configureTrace()
-	}
-	if w.traceFileBase == "" {
-		return nil
 	}
 	raf, err := NewBufferedRandomAccessFile(w.traceFileBase+tlcTraceExt, "rw")
 	if err != nil {
@@ -653,9 +638,6 @@ func (w *Worker) BeginChkpt() error {
 	if w.traceRAF == nil {
 		panic(NewNullPointerException())
 	}
-	if w.traceFileBase == "" {
-		return nil
-	}
 	if err := w.traceRAF.Flush(); err != nil {
 		return err
 	}
@@ -683,9 +665,6 @@ func (w *Worker) BeginChkpt() error {
 func (w *Worker) CommitChkpt() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.traceFileBase == "" {
-		return nil
-	}
 	oldChkpt := w.traceFileBase + ".chkpt"
 	newChkpt := w.traceFileBase + ".tmp"
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -700,12 +679,6 @@ func (w *Worker) CommitChkpt() error {
 func (w *Worker) RecoverTrace() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.traceFileBase == "" {
-		w.configureTrace()
-	}
-	if w.traceFileBase == "" {
-		return nil
-	}
 	file, err := os.Open(w.traceFileBase + ".chkpt")
 	if err != nil {
 		return err

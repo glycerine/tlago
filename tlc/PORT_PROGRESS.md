@@ -22089,3 +22089,35 @@ terminal. The earlier truncated model failure remains unexplained. Original
 assertions and bounds are unchanged. No full suite or race run was performed.
 Nine supplemental cases add no original-method credit; distributed parity is
 incomplete and remaining constructor/state-owner audits are pending.
+
+### 2026-10-08: Literal worker filenames and cached checkpoint context
+
+Compared Worker construction and beginChkpt/commitChkpt/recover with pinned
+source. Worker filenames now retain literal separator concatenation with empty
+directory/spec components instead of dropping an empty directory or substituting
+Spec. Configuration/opening require their checker/tool context. Checkpoint begin
+flushes its existing owner before temporary creation even with an empty cached
+filename. Commit still deletes the old checkpoint before promotion. Recovery
+reads its cached filename, publishes metadata and then accesses its owner;
+it cannot rebuild context from a changed checker or return success without I/O.
+Remaining native cleanup and state-owner guards need separate audits.
+
+No original method directly covers these context boundaries. Twelve supplemental
+checks cover four filename formulas, empty-directory configuration, unconfigured
+opening and six begin/commit/recovery cases. The initial run exposed three wrong
+filename formulas, skipped configuration/opening and all six checkpoint failures
+(f6b646 log, terminal process 3c9c9b status 1, 0.014 seconds); the literal dot path
+already matched source. Filename formulas are checked without opening root paths.
+Literal suffix I/O uses temporary working directories and existing native owners.
+
+Focused worker/native RPC, concurrent trace, original simulation trace, short
+checker initial/successor, counterexample, reporting serialization, pairwise
+postcondition and distributed trace alias-failure checks pass (91c31e log,
+terminal process 76867c status 0, 17.029 seconds). Original checkpoint-on-violation/
+time-bound, error-trace, Github461, Github743, three-worker CodePlexBug08 archive
+recovery, AliasSafety and TLCExtTraceAlias tests plus four native DieHard/TSnapShot
+process variants pass (a049a5 log, terminal process 7e9fa4 status 0, 57.951 seconds).
+All output was captured and all processes are terminal. The earlier truncated
+model failure remains unexplained. Original assertions and bounds are unchanged.
+No full suite or race run was performed. Supplemental checks add no original-
+method credit; distributed parity remains incomplete.
