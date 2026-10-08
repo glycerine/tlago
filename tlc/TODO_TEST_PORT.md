@@ -940,6 +940,13 @@ Short native checks cover six queue success/failure cases, nine missing-owner
 cases and a joined real reporting wait. Upstream has no direct methods for
 these controls; no original test statuses or completion credit change.
 
+Distributed worker partition vectors now retain TLCStateVec’s unbounded
+growth, capacity-ten default and backing-array indexing, independent of the
+tool StateVec’s SetBound. Native result decoding restores the same collection
+policy while transferring active entries only. Supplemental local/gob/TCP and
+malformed-selection/publication checks pass; no direct upstream TLCStateVec
+test methods exist, so no original method status or credit changes.
+
 Distributed management queries now require the source-owned server and running
 components. Generated counts cannot silently omit the FP manager, remaining
 work cannot omit the queue and selector averages have no fabricated fallback.

@@ -1088,7 +1088,7 @@ func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*State
 			if newStates[i] == nil {
 				panic(NewNullPointerException())
 			}
-			if index >= len(newStates[i].states) {
+			if !newStates[i].distributed && index >= len(newStates[i].states) {
 				panic(NewArrayIndexOutOfBoundsException(index, len(newStates[i].states)))
 			}
 			state := newStates[i].At(index)
@@ -1707,8 +1707,8 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 	successors := make([]*StateVec, serverCount)
 	fingerprints := make([]*LongVec, serverCount)
 	for i := 0; i < serverCount; i++ {
-		predecessors[i] = NewStateVec(0)
-		successors[i] = NewStateVec(0)
+		predecessors[i] = newDistributedStateVec(10)
+		successors[i] = newDistributedStateVec(10)
 		fingerprints[i] = NewLongVec()
 	}
 	last := int64(math.MinInt64)
@@ -1733,7 +1733,7 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 	newStates := make([]*StateVec, serverCount)
 	newFingerprints := make([]*LongVec, serverCount)
 	for i := 0; i < serverCount; i++ {
-		newStates[i] = NewStateVec(0)
+		newStates[i] = newDistributedStateVec(10)
 		newFingerprints[i] = NewLongVec()
 	}
 	for i := 0; i < serverCount; i++ {

@@ -835,7 +835,18 @@ func (s *TLCStateMut) CopyState() TLCState     { return s.Copy() }
 func (s *TLCStateMut) DeepCopyState() TLCState { return s.DeepCopy() }
 
 type StateVec struct {
-	states []TLCState
+	states      []TLCState
+	distributed bool
+}
+
+// Worker partitions follow TLCStateVec rather than the tool's StateVec: their
+// growth has no SetBound limit and element access addresses backing capacity.
+// Native result decoding restores this collection policy with active capacity.
+func newDistributedStateVec(capacity int) *StateVec {
+	if capacity < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(capacity)))
+	}
+	return &StateVec{states: make([]TLCState, 0, capacity), distributed: true}
 }
 
 func NewStateVec(capacity int) *StateVec {
@@ -856,16 +867,25 @@ func NewStateVecFrom(states []*TLCStateMut) *StateVec {
 // NewStateVecFromStates retains Java StateVec(TLCState[])'s array ownership.
 func NewStateVecFromStates(states []TLCState) *StateVec { return &StateVec{states: states} }
 
-func (v *StateVec) ElementAt(i int) TLCState { return v.states[i] }
+func (v *StateVec) ElementAt(i int) TLCState {
+	if v.distributed {
+		if i < 0 || i >= cap(v.states) {
+			panic(NewArrayIndexOutOfBoundsException(i, cap(v.states)))
+		}
+		return v.states[:cap(v.states)][i]
+	}
+	return v.states[i]
+}
 
 func (v *StateVec) Empty() bool   { return len(v.states) == 0 }
 func (v *StateVec) IsEmpty() bool { return len(v.states) == 0 }
 func (v *StateVec) Size() int     { return len(v.states) }
 func (v *StateVec) At(i int) *TLCStateMut {
-	if v.states[i] == nil {
+	state := v.ElementAt(i)
+	if state == nil {
 		return nil
 	}
-	return v.states[i].(*TLCStateMut)
+	return state.(*TLCStateMut)
 }
 func (v *StateVec) First() *TLCStateMut { return v.At(0) }
 func (v *StateVec) Last() *TLCStateMut  { return v.At(v.Size() - 1) }
@@ -1026,6 +1046,16 @@ func (v *StateVec) ensureCanAdd(add int) {
 	}
 	needed := len(v.states) + add
 	if needed <= cap(v.states) {
+		return
+	}
+	if v.distributed {
+		newCapacity := int(int32(cap(v.states)) * 2)
+		if newCapacity < needed {
+			newCapacity = needed
+		}
+		next := make([]TLCState, len(v.states), newCapacity)
+		copy(next, v.states)
+		v.states = next
 		return
 	}
 	Globals.Lock()

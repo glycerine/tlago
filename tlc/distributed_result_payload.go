@@ -100,7 +100,10 @@ func DecodeDistributedResult(payload *DistributedResultPayload) (*NextStateResul
 		if length < 0 || length > len(states)-offset {
 			return nil, fmt.Errorf("state vector %d has invalid length %d", i, length)
 		}
-		vectors[i] = NewStateVecFrom(states[offset : offset+length])
+		vectors[i] = newDistributedStateVec(length)
+		for _, state := range states[offset : offset+length] {
+			vectors[i].Add(state)
+		}
 		offset += length
 	}
 	if offset != len(states) {

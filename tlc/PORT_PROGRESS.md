@@ -20178,3 +20178,37 @@ All handles are terminal. No full suite, long workload or race selection was
 run. No direct original management query methods exist; no original-method
 status or completion credit changes. Overall distributed completion remains
 unproven.
+
+### 2026-10-08: Distributed worker partition vector semantics
+
+Source comparison found that TLCWorker uses TLCStateVec, while the Go worker
+reused the bounded tool StateVec. TLCStateVec defaults to capacity ten, doubles
+without SetBound and indexes backing-array capacity. That reuse could reject
+valid distributed partitions and change malformed FP-selection failure context.
+Added an explicit native distributed collection policy to StateVec storage,
+used for worker predecessor/successor/result partitions and native result
+decoding. Decoded capacity remains active count; no spare vector slots cross
+the wire. Coordinator publication retains the same indexing policy for local
+partitions. This adds no Java serialization or remote/JVM machinery.
+
+Added supplemental actual-worker checks with eleven successors and SetBound one:
+local capacity grows to twenty, native/gob reception has capacity eleven, and
+receiver append grows to twenty-two without the tool limit. Successor UID/count
+semantics remain intact. FP selections nine and ten against an empty default
+partition retain null-slot CheckState and bounds-failure context respectively.
+A real FP insertion with a selected unused local result slot retains null failure
+before trace/queue writes. Upstream has no direct TLCStateVec test methods;
+no original-method credit is added.
+
+Initial test build required an int32 conversion for NewIntValue. Behavioral
+checks then exposed the actual bound and unused-slot failures (58673, status 1,
+0.014 seconds). Corrected worker checks pass (1157, status 0, 0.019 seconds).
+Focused ordinary bounded StateVec, worker/null FP, result graph, app metadata
+and original smart-proxy checks pass 0.017 seconds. Native TCP worker partition,
+result lifecycle, null FP, retry/loss and assigned checkpoint checks pass
+(43595, status 0, 0.047 seconds). After restoring local publication indexing,
+final local vector/publication/result/bounded-vector, original LongVec/Growing
+LongVec and smart-proxy checks pass (54501, status 0, 0.028 seconds). Final
+loopback TCP selection passes 0.057 seconds; original root distributed init
+methods pass (41855). All handles are terminal. No full suite, long workload or
+race selection was run. Overall distributed completion remains unproven.

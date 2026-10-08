@@ -11604,3 +11604,27 @@ sentinels. Distinct count additionally retains the explicit missing-FP-manager
 -1 result. Queue size, rates, worker count and selector average remain
 unconditional after completion. Supplemental native query checks add no
 original-method credit. No Java management or remote runtime is introduced.
+
+
+### Distributed worker vector collection policy
+
+Java’s TLCWorker uses TLCStateVec for predecessor, successor and result
+partitions, separately from its tool’s StateVec. The former starts at capacity
+10, doubles without consulting TLCGlobals.setBound and indexes backing-array
+capacity instead of active count. The Go StateVec storage now carries this
+distributed collection policy, selected by the worker partition constructor.
+Ordinary tool vectors retain their existing bound and active-slice behavior.
+Growth follows signed-int doubling with the required minimum capacity. Unused
+slots contain null; indexes beyond capacity raise the existing bounds category.
+
+Native result decoding selects this policy with capacity equal to the active
+count. Wire vectors still omit spare entries and preserve vector identity and
+shared state roots; no wire format changes or Java serialization are introduced.
+Coordinator publication honors backing-capacity indexing for in-process
+distributed partitions before checking the selected state. FP insertion still
+precedes null/bounds failures and trace/queue publication. Local/gob/TCP checks
+require eleven returned successors with tool SetBound one, capacity 20 locally,
+capacity 11 after transfer and capacity 22 after receiver growth. Malformed FP
+selections at indexes nine and ten retain their distinct null-slot/state-check
+and out-of-capacity failure contexts. Supplemental checks add no method credit;
+there are no direct upstream TLCStateVec tests.

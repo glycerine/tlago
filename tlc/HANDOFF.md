@@ -233,6 +233,16 @@ receiver ownership across gob and worker TCP. Further metadata/custom-data and
 process failure/recovery work remains pending.
 These short native checks add no original-method completion credit.
 
+Worker predecessor/successor/result partitions now retain the source’s separate
+unbounded vector behavior: default capacity 10, doubling on growth and indexing
+the backing array. They no longer inherit the tool `StateVec`’s `SetBound`
+limit. Native result decoding restores that policy with capacity equal to the
+active count; unused source slots are still omitted from the wire. Local/gob/TCP
+checks verify 11 successors with `SetBound = 1`, later receiver growth, malformed
+FP-selection failure context and FP-before-trace publication order. Ordinary
+bounded vector checks still pass. No direct original vector tests exist, so
+these supplemental checks add no original-method credit.
+
 Block selectors now retain the source null-server assertion and numeric
 conversion behavior, including zero workers, NaN and infinities. Proportional
 and static selectors ignore transfer-limit updates; limiting and statistical
