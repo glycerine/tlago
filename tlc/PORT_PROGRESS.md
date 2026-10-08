@@ -19784,3 +19784,40 @@ supplemental checks add no original-method credit. Locale-specific separators
 and digits remain a separate pending source-output contract; this chunk does
 not claim all-locale or complete distributed parity. No full suite, long
 workload or race instrumentation was selected; all handles are terminal.
+
+
+## October 8, 2026: localized distributed worker statistics
+
+Worker cache-ratio output now reuses the existing console locale/numbering
+selection. Extracted that initialization and selection without changing MP's
+explicit grouping pattern. Locale zero digits and grouping come from the
+existing OpenJDK-derived table; decimal separator pairs and ambiguous-space/
+apostrophe language exceptions are verified against the same source locale
+version. NaN, Infinity and n/a stay unlocalized, and the negative-zero sign
+remains ASCII as in the source formatter. No Java runtime is used by Go tests
+or the Go formatter.
+
+Generated source reference rows with local OpenJDK 21.0.12.1 for all 1,068
+existing locale keys and 792 Unicode numbering variants (12 languages times
+66 systems). Each row records zero/group/decimal symbols and the exact source
+format of 1234.125 and negative zero. Persistent vectors are in
+test_vectors/distributed/worker_cache_ratio_locales.tsv. Scratch source and
+input/output remain at /mnt/oldrog/tmp/DistributedLocaleRatioReference.java
+and distributed-ratio-locales.txt/tsv.
+
+The first locale check exposed the en-US-POSIX no-grouping pattern (12949,
+status 1, 0.015 seconds); Java Formatter obtains its grouping size from that
+locale pattern, whereas MP uses an explicit ###,###.### pattern. Worker
+statistics now suppress grouping for POSIX while retaining MP behavior.
+All 1,860 rows and the original four-method MP class pass (39406, status 0,
+0.016 seconds). Final checks also pass all 271 canonical numeric rows and
+12 fresh Go processes across German, French, Arabic, POSIX, Swiss and Thai
+configuration, in both initialization orders (64407, status 0, 0.140 seconds).
+Native TCP result/lifecycle and coordinator retry/loss checks pass (0.016
+seconds). Every child is joined; no source assertion was weakened.
+
+This closes the tracked locale output gap for the reference coverage above,
+not the broader distributed port. Upstream has no original worker-statistics
+formatting methods; supplemental checks add no method completion credit.
+No full suite, long workload or race instrumentation was selected. All handles
+are terminal.

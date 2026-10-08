@@ -10,6 +10,21 @@ import (
 // Round the shortest decimal representation, not the binary value multiplied
 // by 100; that multiplication can move decimal ties below the rounding point.
 func distributedWorkerCacheRatio(ratio float64) string {
+	mpNumberSymbolsOnce.Do(initializeMessageNumberSymbols)
+	return distributedWorkerCacheRatioForLocale(ratio, mpNumberSymbols, mpNumberLocaleKey)
+}
+
+func distributedWorkerCacheRatioForLocale(ratio float64, symbols mpDecimalSymbols, key string) string {
+	decimal := distributedCacheDecimalSeparator(symbols, key)
+	// Formatter takes its grouping size from the locale's number pattern.
+	// The POSIX pattern has zero grouping; MP's explicit pattern still groups.
+	if key == "en-US-POSIX" {
+		symbols.group = ""
+	}
+	return distributedWorkerCacheRatioWithSymbols(ratio, symbols, decimal)
+}
+
+func distributedWorkerCacheRatioWithSymbols(ratio float64, symbols mpDecimalSymbols, decimal string) string {
 	if ratio < 0 {
 		return "n/a"
 	}
@@ -31,5 +46,45 @@ func distributedWorkerCacheRatio(ratio float64) string {
 		digits = incrementDecimalBytes(digits)
 	}
 	text = string(digits[:len(digits)-2]) + "." + string(digits[len(digits)-2:])
-	return groupDecimalIntegerPart(text)
+	var output strings.Builder
+	if strings.HasPrefix(text, "-") {
+		output.WriteByte('-')
+		text = text[1:]
+	}
+	integerLength := len(text) - 3
+	for i, char := range text {
+		if char == '.' {
+			output.WriteString(decimal)
+			continue
+		}
+		if i > 0 && i < integerLength && (integerLength-i)%3 == 0 {
+			output.WriteString(symbols.group)
+		}
+		output.WriteRune(symbols.zero + char - '0')
+	}
+	return output.String()
+}
+
+// The existing console locale table supplies the zero digit and grouping.
+// These separator pairs and the ambiguous-space/apostrophe exceptions are
+// verified against the same OpenJDK locale data used by that table.
+func distributedCacheDecimalSeparator(symbols mpDecimalSymbols, locale string) string {
+	switch symbols.group {
+	case ".", "\u202f":
+		return ","
+	case "\u066c":
+		return "\u066b"
+	case "\u00a0":
+		language := strings.SplitN(locale, "-", 2)[0]
+		switch language {
+		case "dje", "khq", "mfe", "ses", "twq", "xh":
+			return "."
+		}
+		return ","
+	case "\u2019":
+		if strings.SplitN(locale, "-", 2)[0] == "wae" {
+			return ","
+		}
+	}
+	return "."
 }

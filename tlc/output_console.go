@@ -20,55 +20,12 @@ type mpDecimalSymbols struct {
 
 var mpNumberSymbolsOnce sync.Once
 var mpNumberSymbols mpDecimalSymbols
+var mpNumberLocaleKey string
 
 // Java's explicit ###,###.### DecimalFormat groups by three, independently of
 // the locale's usual grouping pattern. Formatting retains all signed long bits.
 func MessageNumberFormat(value int64) string {
-	mpNumberSymbolsOnce.Do(func() {
-		lang := tlcGetSystemProperty("user.language.format", tlcGetSystemProperty("user.language", "en"))
-		script := tlcGetSystemProperty("user.script.format", tlcGetSystemProperty("user.script", ""))
-		country := tlcGetSystemProperty("user.country.format", tlcGetSystemProperty("user.country", ""))
-		variant := tlcGetSystemProperty("user.variant.format", tlcGetSystemProperty("user.variant", ""))
-		extensions := tlcGetSystemProperty("user.extensions.format", tlcGetSystemProperty("user.extensions", ""))
-		switch lang {
-		case "iw":
-			lang = "he"
-		case "ji":
-			lang = "yi"
-		case "in":
-			lang = "id"
-		}
-		parts := []string{strings.ToLower(lang)}
-		if script != "" {
-			parts = append(parts, strings.ToUpper(script[:1])+strings.ToLower(script[1:]))
-		}
-		if country != "" {
-			parts = append(parts, strings.ToUpper(country))
-		}
-		if variant != "" {
-			parts = append(parts, variant)
-		}
-		// Locale's compatibility forms retain legacy Japanese/Thai variants.
-		if lang == "no" && country == "NO" && variant == "NY" {
-			parts = []string{"nn", "NO"}
-		}
-		if lang == "th" && country == "TH" && variant == "TH" && extensions == "" {
-			extensions = "u-nu-thai"
-		}
-		set := javaMPDecimalSymbolSets[javaMPDecimalSymbols["und"]]
-		for len(parts) > 0 {
-			if index, ok := javaMPDecimalSymbols[strings.Join(parts, "-")]; ok {
-				set = javaMPDecimalSymbolSets[index]
-				break
-			}
-			parts = parts[:len(parts)-1]
-		}
-		mpNumberSymbols = set["default"]
-		if symbols, ok := set[mpNumberingSystem(extensions)]; ok {
-			mpNumberSymbols = symbols
-		}
-
-	})
+	mpNumberSymbolsOnce.Do(initializeMessageNumberSymbols)
 	text := strconv.FormatInt(value, 10)
 	negative := value < 0
 	if negative {
@@ -88,6 +45,58 @@ func MessageNumberFormat(value int64) string {
 		out.WriteString(mpNumberSymbols.negativeSuffix)
 	}
 	return out.String()
+}
+
+func initializeMessageNumberSymbols() {
+	lang := tlcGetSystemProperty("user.language.format", tlcGetSystemProperty("user.language", "en"))
+	script := tlcGetSystemProperty("user.script.format", tlcGetSystemProperty("user.script", ""))
+	country := tlcGetSystemProperty("user.country.format", tlcGetSystemProperty("user.country", ""))
+	variant := tlcGetSystemProperty("user.variant.format", tlcGetSystemProperty("user.variant", ""))
+	extensions := tlcGetSystemProperty("user.extensions.format", tlcGetSystemProperty("user.extensions", ""))
+	switch lang {
+	case "iw":
+		lang = "he"
+	case "ji":
+		lang = "yi"
+	case "in":
+		lang = "id"
+	}
+	parts := []string{strings.ToLower(lang)}
+	if script != "" {
+		parts = append(parts, strings.ToUpper(script[:1])+strings.ToLower(script[1:]))
+	}
+	if country != "" {
+		parts = append(parts, strings.ToUpper(country))
+	}
+	if variant != "" {
+		parts = append(parts, variant)
+	}
+	// Locale's compatibility forms retain legacy Japanese/Thai variants.
+	if lang == "no" && country == "NO" && variant == "NY" {
+		parts = []string{"nn", "NO"}
+	}
+	if lang == "th" && country == "TH" && variant == "TH" && extensions == "" {
+		extensions = "u-nu-thai"
+	}
+	mpNumberSymbols, mpNumberLocaleKey = selectMessageNumberSymbols(parts, extensions)
+}
+
+func selectMessageNumberSymbols(parts []string, extensions string) (mpDecimalSymbols, string) {
+	set := javaMPDecimalSymbolSets[javaMPDecimalSymbols["und"]]
+	key := "und"
+	for len(parts) > 0 {
+		if index, ok := javaMPDecimalSymbols[strings.Join(parts, "-")]; ok {
+			key = strings.Join(parts, "-")
+			set = javaMPDecimalSymbolSets[index]
+			break
+		}
+		parts = parts[:len(parts)-1]
+	}
+	symbols := set["default"]
+	if selected, ok := set[mpNumberingSystem(extensions)]; ok {
+		symbols = selected
+	}
+	return symbols, key
 }
 
 // Only a valid Unicode nu keyword selects a numbering system. Private-use

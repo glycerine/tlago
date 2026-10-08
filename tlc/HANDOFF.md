@@ -136,8 +136,12 @@ arrays, empty-array distinctions and signed counter overflow remain intact.
 Focused payload/smart-proxy and worker TCP result/retry checks pass. Coordinator
 cache-ratio output now retains NaN/infinities, signed zero and decimal half-up
 rounding. All 271 canonical Java reference rows pass, including large values
-and deterministic bit patterns. Locale-specific separators/digits remain
-pending; this does not establish all-locale worker-statistics completion.
+and deterministic bit patterns. Locale-specific separators/digits now pass
+1,860 reference rows covering the 1,068 existing locale keys and 792 numbering
+system variants. Fresh-process checks verify configured locale selection and
+either initialization order with message formatting. POSIX worker statistics
+suppress grouping while MP's explicit grouping remains intact. These checks
+add no original-method credit or claim of complete distributed parity.
 
 Native state transfer now preserves shared backing value arrays for states, tuples,
 records, functions, configured operator argument rows, tuple products and record

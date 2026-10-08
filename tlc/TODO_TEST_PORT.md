@@ -810,8 +810,11 @@ original smart-proxy and TCP worker result/retry checks pass. No original getter
 test methods exist; supplemental checks add no original-method credit.
 Coordinator cache-ratio classification and canonical numeric output now match
 all 271 Java reference rows, including NaN/infinities, signed zero, decimal ties
-and deterministic bit patterns. Locale-specific separators/digits remain
-pending. No original test method exists; supplemental coverage adds no credit.
+and deterministic bit patterns. Locale-specific separators/digits pass 1,860
+reference rows (1,068 locale keys and 792 numbering variants) and fresh-process
+configuration/initialization checks. POSIX disables worker-statistics grouping
+without changing MP's explicit grouping. No original test method exists;
+supplemental coverage adds no credit.
 
 Native value-array graph checks cover state, tuple, record, function, operator argument
 row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
