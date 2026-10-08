@@ -70,18 +70,16 @@ func (t *ConcurrentTLCTrace) GetLevelForReporting() int {
 
 func (t *ConcurrentTLCTrace) GetLevel() int {
 	if t == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	maxLevel := 1
 	for _, worker := range t.Workers {
-		if worker != nil {
-			if level := worker.GetMaxLevel(); level > maxLevel {
-				maxLevel = level
-			}
+		if worker == nil {
+			panic(NewNullPointerException())
 		}
-	}
-	if maxLevel == 1 && t.TLCTrace != nil {
-		if level, err := t.TLCTrace.GetLevelForReportingWithError(); err == nil && level > maxLevel {
+		if level := worker.GetMaxLevel(); level > maxLevel {
 			maxLevel = level
 		}
 	}
@@ -259,13 +257,14 @@ func (t *ConcurrentTLCTrace) recoverTraceFromRecords(sinfo *TLCStateInfo, record
 
 func (t *ConcurrentTLCTrace) CommitChkpt() error {
 	if t == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	for _, worker := range t.Workers {
-		if worker != nil {
-			if err := worker.CommitChkpt(); err != nil {
-				return err
-			}
+		if worker == nil {
+			panic(NewNullPointerException())
+		}
+		if err := worker.CommitChkpt(); err != nil {
+			return err
 		}
 	}
 	if t.TLCTrace == nil || t.diskdir == "" {
@@ -283,13 +282,16 @@ func (t *ConcurrentTLCTrace) CommitChkpt() error {
 
 func (t *ConcurrentTLCTrace) BeginChkpt() error {
 	if t == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	for _, worker := range t.Workers {
-		if worker != nil {
-			if err := worker.BeginChkpt(); err != nil {
-				return err
-			}
+		if worker == nil {
+			panic(NewNullPointerException())
+		}
+		if err := worker.BeginChkpt(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -297,13 +299,14 @@ func (t *ConcurrentTLCTrace) BeginChkpt() error {
 
 func (t *ConcurrentTLCTrace) Recover() error {
 	if t == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	for _, worker := range t.Workers {
-		if worker != nil {
-			if err := worker.RecoverTrace(); err != nil {
-				return err
-			}
+		if worker == nil {
+			panic(NewNullPointerException())
+		}
+		if err := worker.RecoverTrace(); err != nil {
+			return err
 		}
 	}
 	return nil

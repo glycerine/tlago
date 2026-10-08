@@ -139,8 +139,12 @@ the selected worker slot and preserves index/null failures instead of substituti
 an in-memory trace. Collection rereads the end record under the trace monitor,
 follows the predecessor chain to the source initial/requested-fingerprint boundary,
 and retains the monitor through reconstruction. Initial/equal-state short paths
-do not require workers. Missing-tool and other concurrent trace lifecycle/
-enumerator boundaries still need audit.
+do not require workers. Checkpoint begin, commit and recovery require each
+worker in source order, preserving earlier mutations and stopping before later
+workers or marker publication on failure. Begin and level reporting hold the
+trace monitor. Level reporting uses worker maxima with a minimum of one; it
+does not substitute the base trace level. Missing-tool and concurrent enumerator
+boundaries still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

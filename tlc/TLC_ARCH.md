@@ -11932,6 +11932,9 @@ short paths do not access workers. Source record collection rereads the end reco
 under the trace monitor, stops at the initial or requested-fingerprint boundary
 and retains the monitor through state reconstruction. Predecessor access reads
 the selected record even when its pointer is the initial-state sentinel; the
-caller controls traversal termination. Missing-tool and remaining concurrent
-trace lifecycle/enumerator boundaries still need audit. No RMI or JVM machinery
-is introduced.
+caller controls traversal termination. Checkpoint begin, commit and recovery
+require every worker in source order; failure preserves earlier mutations and
+stops before later workers or marker publication. Begin holds the trace monitor,
+as does level reporting. Concurrent levels use worker maxima with a minimum of
+one and do not consult the base trace level. Missing-tool and concurrent
+enumerator boundaries still need audit. No RMI or JVM machinery is introduced.

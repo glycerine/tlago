@@ -21099,3 +21099,37 @@ parity remains incomplete. No RMI or JVM machinery was introduced.
 Both actual distributed DieHard fingerprint-storage variants pass unchanged
 original trace/event assertions (d74a1a, status 0, 24.382 seconds). All processes
 are terminal.
+
+### 2026-10-08: Concurrent trace checkpoint and level worker ownership
+
+Audited ConcurrentTLCTrace.beginChkpt, commitChkpt, recover and getLevel. Go
+skipped nil worker slots, so later workers and checkpoint marker creation could
+proceed after a required owner was missing. The four loops now require each
+worker in source order and stop at the missing slot. Earlier worker mutations
+remain. Begin and level reporting hold the source trace monitor with release on
+exception. Commit and recovery retain their source unsynchronized entry behavior.
+Removed concurrent level reporting's base-trace fallback: source reports only
+worker maxima, with a minimum of one even for an empty worker array.
+
+No original method directly covers an absent worker midway through these loops.
+Added four native cases with first/nil/last workers. Begin retains the first tmp
+file and omits the last; commit retains the first rename and later tmp file while
+omitting the last checkpoint and marker; recovery retains first metadata and
+leaves the last unchanged; level access fails at the absent owner. Checks also
+verify monitor release. Level cases retain zero/one/seven worker maxima, reporting
+agreement and empty-worker minimum, with a deliberately different base level.
+All four required-owner cases and the base-level fallback check initially failed
+(196624, status 1, 0.013 seconds).
+
+Final new/related concurrent reconstruction/ownership and shared trace metadata,
+sequence, cursor, depth/write failure, nested/disk recovery and original nine
+smart-proxy checks pass (f67939, status 0, 1.155 seconds). Original checkpoint-on-
+violation and time-bound models, Alias safety/liveness, TLCExtTrace alias, error-
+trace construction and three distributed initializer-continue, evaluator-error
+and TLCSet contexts pass (90c018, status 0, 8.184 seconds). The infinite-state
+checkpoint model retains its original five-second bound. Both actual distributed
+DieHard fingerprint-storage variants pass unchanged trace/event assertions
+(6c604d, status 0, 24.394 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit.
+Missing-tool and concurrent enumerator boundaries still need audit; distributed
+parity remains incomplete. No RMI or JVM machinery was introduced.

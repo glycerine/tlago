@@ -724,8 +724,11 @@ ordinary/fatal reconstruction error identity and stop before behavior/state
 printing. Required-worker checks preserve twelve public-entry index/null
 failures, predecessor lookup failures and initial/equal-state short paths. Native
 worker records verify full and requested predecessor ranges, while reconstruction
-checks verify the trace monitor is held and released on success/failure. No
-original-method credit is added.
+checks verify the trace monitor is held and released on success/failure. Native
+checkpoint/level checks require each worker in order, preserve earlier mutations
+and suppress later worker/marker operations after a missing slot. Level checks
+retain the source worker-only maximum and minimum of one. No original-method
+credit is added.
 
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed
