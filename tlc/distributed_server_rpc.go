@@ -327,7 +327,11 @@ func (e *NetworkServerEndpoint) RegisterFPSet(fp DistributedFingerprintEndpoint,
 	if !ok {
 		return fmt.Errorf("fingerprint registration requires a published TCP endpoint, got %T", fp)
 	}
-	_, err := e.call(DistributedServerRequest{Operation: "registerFP", Hostname: hostname, Endpoint: DistributedEndpointReference{network.Address, network.Object}})
+	return e.RegisterFPSetReference(DistributedEndpointReference{network.Address, network.Object}, hostname)
+}
+
+func (e *NetworkServerEndpoint) RegisterFPSetReference(reference DistributedEndpointReference, hostname string) error {
+	_, err := e.call(DistributedServerRequest{Operation: "registerFP", Hostname: hostname, Endpoint: reference})
 	return err
 }
 

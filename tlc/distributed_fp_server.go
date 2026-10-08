@@ -28,6 +28,7 @@ type DistributedFPServerEnvironment struct {
 	CurrentTimeMillis func() int64
 	LocalHostName     func() (string, error)
 	RegisterFPSet     func(DistributedServerEndpoint, DistributedFingerprintEndpoint, string) error
+	UnpublishFPSet    func(FPSet, bool)
 	Wait              func(FPSet, time.Duration) error
 }
 
@@ -111,9 +112,9 @@ func runDistributedFPServer(serverName string, env DistributedFPServerEnvironmen
 		return true, NewNullPointerException()
 	}
 	if err := invokeDistributedFPRegistration(env.RegisterFPSet, server, set, hostname); err != nil {
-		if failure, rejected := err.(*FPSetManagerException); rejected && failure != nil {
-			set.UnexportObject(false)
-			fmt.Fprintln(env.ToolOut, javaNullableString(javaThrowableDetailMessage(failure)))
+		if isDistributedFPRegistrationRejected(err) {
+			unpublishDistributedFPSet(set, false, env)
+			fmt.Fprintln(env.ToolOut, javaNullableString(javaThrowableDetailMessage(err)))
 			return false, nil
 		}
 		return true, err
@@ -150,9 +151,16 @@ func reportDistributedFPServer(set FPSet, hostname string, env DistributedFPServ
 			return err
 		}
 	}
-	set.UnexportObject(false)
+	unpublishDistributedFPSet(set, false, env)
 	fmt.Fprintln(env.ToolOut, "Exiting TLC Distributed FP Server")
 	return nil
+}
+
+func unpublishDistributedFPSet(set FPSet, force bool, env DistributedFPServerEnvironment) {
+	set.UnexportObject(force)
+	if env.UnpublishFPSet != nil {
+		env.UnpublishFPSet(set, force)
+	}
 }
 
 func fpSetClassName(set FPSet) string {

@@ -7911,8 +7911,21 @@ the same host publications. Unexport removes the supplied coordinator's aliases
 without closing the host or cancelling calls that already captured an endpoint.
 Process-owned Close releases the listener and connections, including the early
 initialization-error path where modelCheck deliberately skips normal unbinding.
-Repeated Close calls wait for the same shutdown result. Remaining payload types,
-FP role publication and process/CLI wiring still need
+Repeated Close calls wait for the same shutdown result.
+
+DistributedFPServerNetwork uses the same Go host as a worker network, allowing
+combined roles to share listener/discovery ownership. FPEnvironment publishes
+owned local storage before registering its native address/object reference.
+The command removes this publication at its original rejection and reporting
+shutdown points through an optional native hook. The source storage methods
+remain intact: upstream FPSet.unexportObject is itself a no-op, so this hook owns
+Go endpoint removal rather than changing generic storage or emulating RMI.
+FingerprintRejected is an explicit operation-error trait preserving the source
+FPSetManagerException catch and early no-flush return. Other failures propagate.
+Remote storage exit uses the existing running flag and monitor notification;
+the reporting loop retains its original five-minute wait. Removing FP endpoints
+leaves a worker on the same host available. Remaining payload types and
+process/CLI wiring still need
 implementation and separate-process model verification.
 
 The Java reference implementation uses RMI:

@@ -15,14 +15,16 @@ import (
 // evaluator/runtime lifetime, registration threads, keepalive and exit latch.
 // Close releases networking only; shut down the worker runtime separately.
 type DistributedWorkerNetwork struct {
-	Host          *DistributedRPCServer
-	Discovery     *DistributedNetworkDiscovery
-	Address       string
-	workerAddress DistributedWorkerAddress
-	sequence      atomic.Uint64
-	done          chan error
-	closeOnce     sync.Once
-	closeError    error
+	Host           *DistributedRPCServer
+	Discovery      *DistributedNetworkDiscovery
+	Address        string
+	workerAddress  DistributedWorkerAddress
+	sequence       atomic.Uint64
+	fingerprintsMu sync.Mutex
+	fingerprints   map[FPSet][]string
+	done           chan error
+	closeOnce      sync.Once
+	closeError     error
 }
 
 func NewDistributedWorkerNetwork(listenAddress, advertisedAddress string) (*DistributedWorkerNetwork, error) {

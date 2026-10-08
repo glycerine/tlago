@@ -17877,3 +17877,47 @@ Final native publication checks pass in 0.014 seconds (32753 terminal status 0)
 after the Close refinement. Final actual modelCheck init-path integration passes
 in 0.032 seconds (59169 terminal status 0). All handles are retired; focused
 checks are green and the lifecycle publication chunk is ready to commit.
+
+### 2026-10-08 — Native FP-server publication and rejection/shutdown
+
+Continued from 8f69c17. Reviewed DistributedFPSet.main's registration rejection,
+early no-flush return and reporting monitor/shutdown path. Upstream FPSet itself
+does not extend a remote exported object and its unexportObject is a no-op;
+MultiFPSet delegates that no-op to children. Preserve those storage methods and
+supply actual Go publication removal through an optional command-environment
+hook at the existing rejection and reporting completion points.
+
+Added DistributedFPServerNetwork sharing the native worker host/discovery
+implementation and FPEnvironment for combined or standalone roles. Owned local
+storage is published, then registered by native address/object reference without
+a self-dial. Publication names are tracked by storage identity and removed
+independently of worker endpoints and listener lifetime. NetworkServerEndpoint
+now accepts explicit FP references. Structured native failures carry an explicit
+FingerprintRejected trait, retaining the exact source registration-limit catch
+without reconstructing Java RMI exceptions or swallowing other failures.
+Source no-flush rejection and five-minute reporting wait remain unchanged.
+Remote exit reaches the existing running flag/monitor notification, allowing
+the reporting loop to complete and remove its publication.
+
+There is no direct enabled upstream role-publication test. Three new focused Go
+checks run the actual FP command with the supported MemFPSet implementation:
+accepted registration, full-bit/repeat insertion answers, shared storage,
+reporting progress, remote exit and endpoint removal; registration-limit
+rejection with no reporting/flush and a still-live worker sharing the host; and
+failure-trait preservation versus ordinary connection/runtime errors. The wait
+boundary asserts the original 300000 milliseconds and releases/reacquires the
+monitor around bounded remote operations, rather than changing production
+timing. Temporary paths and the class-wide running flag are restored. Existing
+original dynamic-manager and smart-proxy tests remain unchanged; no new original
+method completion credit is added.
+
+Initial FP-role/failure payload checks pass in 0.023 seconds (96539 terminal
+status 0). Final focused FP/publication/discovery/bootstrap, all TCP boundaries,
+failure payload and original dynamic-manager/smart-proxy selection passes in
+0.099 seconds. The exact short rejection/shared-worker-host race check passes
+in 1.043 seconds (62356 terminal status 0). Root actual modelCheck publication
+and original distributed model/init/app-boundary selection passes in 1.842
+seconds (98203 terminal status 0). No full suite or long race workload was run.
+All handles are retired; the tested chunk is ready to commit. Remaining payload
+types, CLI/process lifecycle and separate-process full model verification still
+need implementation; distributed completion is not claimed.

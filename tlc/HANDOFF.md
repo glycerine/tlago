@@ -1870,8 +1870,13 @@ now supplies the existing model-checking lifecycle with a listener opened at
 Unpublishing one coordinator leaves other hosted endpoints intact. Initialization
 failure retains the master binding and skips worker publication, as in the
 source; the process owner closes the retained listener. Actual model-checking
-init-error and focused publication checks pass. Remaining payload classes, FP
-role publication, process/CLI integration and separate-process full model execution
+init-error and focused publication checks pass. FP network environments now
+publish owned storage, register its TCP reference and remove its publication at
+the command's rejection or reporting-loop shutdown points. Native registration
+rejection retains the source early return without flush, and leaves a worker on
+the same host available. Reporting preserves the five-minute wait boundary;
+remote exit wakes it through the existing storage lifecycle. Remaining payload
+classes, process/CLI integration and separate-process full model execution
 remain pending. These focused checks do not prove distributed completion.
 
 ## Testing and workflow
