@@ -68,6 +68,14 @@ queue, with one smaller-block retry, one deregistration and only the exact sourc
 cache-statistic warning. This is native connection-loss coverage; general network
 partitions and the disabled original harnesses remain pending.
 
+Worker-loss cleanup requires its owning coordinator. It cancels keepalive and
+claims the one-time cleanup flag before coordinator removal; a missing owner
+fails there without requeueing, clearing assigned states or decrementing workers.
+The timer resolves the coordinator queue before entering cleanup, so missing
+ownership there leaves the flag and keepalive intact. Successful liveness checks
+do not access the coordinator. Native retry/concurrency fixtures now supply the
+required owner; their existing queue and count assertions are unchanged.
+
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production
 implementation. Fix implementation shortcuts before proceeding. Preserve the

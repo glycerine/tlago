@@ -12084,6 +12084,16 @@ handler joining precede replacement registration. The original N=7 distinct and
 queue assertions, one EOF smaller-block retry, one deregistration and exact final
 cache warning remain required. General network partition coverage is still open.
 
+Worker-loss cleanup no longer skips coordinator removal when its owner is absent.
+The source ordering is keepalive cancellation, one-time flag claim, coordinator
+removal, requeue, assigned-state clearing, queue wakeup and worker decrement.
+Missing ownership stops at removal and retains the earlier cancellation/claim;
+a later report cannot resume that partial cleanup. The coordinator timer accesses
+the owning server's queue before entering loss cleanup, so its missing-owner
+failure preserves both flag and keepalive. A successful status reply never reaches
+that access. Native fixtures must retain a coordinator even when no thread is
+registered; absence of a registry entry remains a supported idempotent case.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

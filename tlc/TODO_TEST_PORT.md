@@ -1413,6 +1413,12 @@ distinct states and an empty queue. One source smaller-block retry, one
 deregistration and the exact cache-statistic warning are required. This supplements
 connection-loss coverage without credit for the four disabled original methods;
 general network partitions remain missing.
+Four native missing-coordinator cases now distinguish direct loss cleanup from
+timer-triggered cleanup and successful status replies. They preserve assigned
+work and worker counts at the source failure boundary. The production fix rejects
+missing ownership instead of silently skipping deregistration. Existing native
+retry/concurrency fixtures now supply their required owner without changing
+assertions. There is no direct original method for this boundary; credit is unchanged.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
 distinction between null vectors, null words and initialized empty words.

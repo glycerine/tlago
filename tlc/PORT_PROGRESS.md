@@ -22373,3 +22373,33 @@ pass (full-worker-reply-loss-related.log, terminal process ac4b35 status 0;
 package time 0.042 seconds). Logs were inspected and all processes are terminal.
 No original assertions or bounds changed. No full suite or race run was performed.
 Distributed completion remains unproven.
+
+### 2026-10-08: Worker-loss coordinator ownership
+
+Pinned TLCServerThread requires its coordinator at deregistration. Go previously
+skipped missing ownership and continued requeueing, clearing the assigned block
+and decrementing workers. It now fails after keepalive cancellation and the
+one-time cleanup flag claim, preserving those earlier mutations without losing
+assigned work or changing worker counts. A repeated report cannot restart the
+partially failed cleanup. The timer now requires its coordinator before resolving
+the queue and entering cleanup; successful status replies never access that owner.
+
+Added four native cases for direct cleanup, timer false/error replies and an
+alive reply. Three initially failed because the missing owner was silently
+accepted; the alive control passed (worker-loss-owner-red.log, terminal process
+b89346 status 1; package time 0.012 seconds). The initial test draft had a missing
+closing brace; that compile error was corrected before this valid red run.
+Two existing native retry/concurrency fixtures now supply coordinator and
+keepalive ownership. Their queue, ordering, retry and count assertions are intact.
+No original Java method directly covers this boundary, so method credit is unchanged.
+
+Focused normal worker RPC/loss/timer checks and all original smart-proxy cases
+pass, including the unchanged ten-second real timer check (worker-loss-owner-
+focused.log, terminal process 083ce3 status 0; package time 10.044 seconds).
+Only the new owner checks and short duplicate-loss concurrency check ran under
+race; both pass (worker-loss-owner-short-race.log, terminal process 3aa8ed status
+0; package time 1.042 seconds). The full unchanged N=7 completed-reply-loss model
+passes with 114,942 distinct states and no queued states (worker-loss-owner-
+model.log, terminal process 9c0228 status 0; package time 60.008 seconds).
+Logs were inspected and all processes are terminal. No full suite was run and
+no long workload was run with race. Distributed completion remains unproven.

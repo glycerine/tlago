@@ -242,7 +242,7 @@ func TestWorkerRPCCoordinatorRetryAndLoss(t *testing.T) {
 			_, client := startWorkerRPC(t, &rpcTestWorker{next: func([]*TLCStateMut) (*NextStateResult, error) { return nil, failure }})
 			queue := NewMemStateQueue()
 			selector := &BlockSelector{Mode: BlockSelectorLimiting, Maximum: 100}
-			thread := &TLCServerThread{Worker: NewDistributedWorkerSmartProxy(client), Selector: selector, URI: "tcp://worker/primary"}
+			thread := &TLCServerThread{Server: &TLCServer{StateQueue: queue}, Worker: NewDistributedWorkerSmartProxy(client), Selector: selector, URI: "tcp://worker/primary", keepAliveDone: make(chan struct{})}
 			thread.cleanupGlobals.Store(true)
 			states := []*TLCStateMut{{values: []Value{NewIntValue(1)}}, {values: []Value{NewIntValue(2)}}}
 			thread.setStates(states)

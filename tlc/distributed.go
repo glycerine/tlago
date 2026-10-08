@@ -1156,9 +1156,10 @@ func (t *TLCServerThread) HandleRemoteWorkerLost(stateQueue StateQueue) {
 	if !t.cleanupGlobals.CompareAndSwap(true, false) {
 		return
 	}
-	if t.Server != nil {
-		t.Server.RemoveTLCServerThread(t)
+	if t.Server == nil {
+		panic(NewNullPointerException())
 	}
+	t.Server.RemoveTLCServerThread(t)
 	if stateQueue != nil {
 		stateQueue.SEnqueueAll(t.currentStates())
 	}
@@ -1261,11 +1262,10 @@ func (t *TLCTimerTask) Run() {
 			panic(err)
 		}
 		if err != nil || !alive {
-			queue := StateQueue(nil)
-			if t.Thread.Server != nil {
-				queue = t.Thread.Server.StateQueue
+			if t.Thread.Server == nil {
+				panic(NewNullPointerException())
 			}
-			t.Thread.HandleRemoteWorkerLost(queue)
+			t.Thread.HandleRemoteWorkerLost(t.Thread.Server.StateQueue)
 		}
 	}
 }
