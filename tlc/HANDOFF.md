@@ -73,6 +73,11 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Disk fingerprint file recovery now replaces worker and pool readers one slot
+at a time, retaining earlier replacements and untouched later slots on close
+or reopen failure. The pool cursor resets only after successful completion;
+native reader snapshots retain the same partial recovery state.
+
 Memory and parent MultiFPSet duplicate recovery now retains the source runtime
 assertion category rather than an evaluator failure. Native payload and TCP
 manager checks retain that category, stop at the duplicate and preserve earlier

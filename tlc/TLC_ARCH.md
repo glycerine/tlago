@@ -11318,3 +11318,15 @@ category, preserved size/membership and native payload category. A real TCP
 MemFPSet file recovery through DistributedFPSetManager requires the runtime
 failure to escape its I/O catch, retain the first insertion and stop before
 the next record. No original Java method completion credit is added.
+
+DiskFPSet.recover(String) reopens worker readers followed by pool readers,
+closing and replacing each individual slot before advancing. Go previously
+closed/cleared both complete arrays before recreating them, losing source
+partial mutation and resetting the pool cursor on failure. The native helper
+now retains source slot replacement order and resets poolIndex only after
+success. Recovery holds the table write lock; publication on helper exit makes
+the native atomic reader snapshot reflect the retained slots on success or
+failure. File/index reconstruction still precedes reader reopening. Supplemental
+checks cover worker/pool close failures after earlier replacements, first reopen
+failure and success, including exact retained pointers, closed states, completed
+file/index/write counts and pool cursor. No original-method credit is added.

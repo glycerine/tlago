@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental disk file recovery checks retain sequential reader replacement,
+partial close/open failure state and completed file/index writes. Existing
+original buffered-file methods pass; these checks add no original-method credit.
+
 Supplemental duplicate recovery checks now require the runtime assertion category
 for memory sets and parent MultiFPSet, including native failure payloads and
 real TCP manager recovery. These add no original Java method completion credit.

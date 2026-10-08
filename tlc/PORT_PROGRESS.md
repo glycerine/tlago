@@ -19377,3 +19377,25 @@ No enabled original Java test directly covers the new duplicate TCP boundary;
 no additional original-method completion is claimed. All handles are terminal
 and retired. No full suite, long workload or race run. Broader distributed
 parity remains incomplete.
+
+## October 8, 2026: disk recovery reader replacement order
+
+Audited DiskFPSet.recover(String), source lines 713–728. Go closed/cleared both
+reader arrays before reopening, while Java replaces each slot immediately after
+its close and resets poolIndex only after both loops. Added real named-file
+recovery checks with native descriptor close failures at worker/pool slot 1,
+plus success. Both failure rows expose the shortcut before the fix (74787,
+status 1, 0.023 seconds). Restored sequential per-slot close/open/replacement;
+native reader snapshot publication on exit retains partial state under the
+recovery table write lock. Added a first-open failure check requiring the closed
+old slot and untouched later worker/pool slots with unchanged pool cursor.
+
+Initial corrected recovery, original BufferedRandomAccessFile class, existing
+reader-selection and disk trace/duplicate checks pass (69662, status 0, 5.358
+seconds). Final expanded selection also includes open failure, nested recovery
+and memory duplicate category checks and passes (63294, status 0, 3.605 seconds).
+Tests require completed file/index reconstruction before reader failures, exact
+prior/new reader identities, source closed states and native snapshot agreement.
+No enabled original Java method directly covers these failure boundaries; no
+original-method completion is added. All handles are terminal and retired. No
+full suite, long workload or race run. Broader distributed parity remains pending.

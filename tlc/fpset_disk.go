@@ -1328,15 +1328,23 @@ func (s *DiskFPSet) closeBRAFReaders() error {
 }
 
 func (s *DiskFPSet) reopenBRAFReaders() error {
-	readerCnt := len(s.braf)
-	poolCnt := len(s.brafPool)
-	if poolCnt <= 0 {
-		poolCnt = diskFPSetBRAFPoolSize
+	// Recovery holds the table write lock. Retain each source slot until its
+	// replacement opens successfully, including partial mutation on failure.
+	defer s.publishBRAFReaders()
+	for _, readers := range [][]*BufferedRandomAccessFile{s.braf, s.brafPool} {
+		for i, old := range readers {
+			if err := old.Close(); err != nil {
+				return err
+			}
+			next, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
+			if err != nil {
+				return err
+			}
+			readers[i] = next
+		}
 	}
-	if err := s.closeBRAFReaders(); err != nil {
-		return err
-	}
-	return s.openBRAFReaders(readerCnt, poolCnt)
+	s.poolIndex = 0
+	return nil
 }
 
 func (s *DiskFPSet) openDiskReader() (*BufferedRandomAccessFile, bool, error) {
