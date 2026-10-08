@@ -739,8 +739,12 @@ is added.
 
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed
-successor and shared single-process successor writers. Upstream has no direct
-methods for these failure boundaries; completion counts are unchanged.
+successor and shared single-process successor writers. Six additional native
+worker cases preserve attempted pointer, partial predecessor/worker/fingerprint
+bytes and earlier depth updates before write failure. Successful worker/mirror
+cases retain generated actions and the source predecessor metadata policy.
+Upstream has no direct methods for these failure boundaries; completion counts
+are unchanged.
 
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of

@@ -21212,3 +21212,40 @@ DieHard fingerprint-storage variants pass unchanged trace/event assertions
 race run was performed. Supplemental checks add no original-method credit.
 Trace cleanup and remaining worker read/write boundaries still need audit;
 distributed parity remains incomplete. No RMI or JVM machinery was introduced.
+
+### 2026-10-08: Worker partial record writes and generated metadata
+
+Compared both Worker.writeState overloads with native worker writers. Source
+assigns lastPtr from the RAF cursor before predecessor, worker and fingerprint
+writes. Go assigned it only after successful writing. Both writers now retain
+the attempted record pointer on partial failure. The source successor depth
+update already precedes record writing; state UID/worker/predecessor changes and
+unseen-successor count still follow successful writes.
+
+Successful successor writes also overwrote the generated action with the writer
+argument, and the native mirror forcibly reattached predecessor/action metadata
+regardless of the source metadata policy. Removed the extra action write and
+mirror state mutations. The mirror retains its native record/reporting role;
+the worker performs source state metadata updates once.
+
+No original method directly tests these boundaries. Added six native initial/
+successor cases that fail during predecessor, worker or fingerprint bytes by
+crossing a buffer boundary after closing the underlying descriptor. Assertions
+preserve attempted pointer, consumed cursor/bytes, earlier depth update and
+unchanged state/action/predecessor/count/mirror publication. Four successful
+combinations cover metadata preservation enabled/disabled and mirroring enabled/
+disabled. All six partial-write cases and the mirrored metadata case initially
+failed (72a416, status 1, 0.012 seconds).
+
+Final new/related worker writes, tool ownership, concurrent trace reconstruction/
+lifecycle/ownership/enumeration, shared sequence/metadata/cursor/depth failures,
+nested/disk recovery and original nine smart-proxy checks pass (fe2ebc, status 0,
+1.771 seconds). Original checkpoint-on-violation/time-bound, Alias safety/liveness,
+TLCExtTrace alias, error-trace construction and three distributed initializer-
+continue, evaluator-error and TLCSet model contexts pass (1ce425, status 0,
+8.305 seconds). The time-bound model retains five seconds. Both actual distributed
+DieHard fingerprint-storage variants pass unchanged trace/event assertions
+(fb3659, status 0, 24.376 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit.
+Worker owner/recovery/depth-overflow and trace cleanup boundaries still need
+audit; distributed parity remains incomplete. No RMI or JVM machinery was added.

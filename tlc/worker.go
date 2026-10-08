@@ -525,6 +525,7 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 			return err
 		}
 		ptr = filePtr
+		w.lastPtr = ptr
 		if err := w.traceRAF.WriteLongNat(1); err != nil {
 			return err
 		}
@@ -571,6 +572,7 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 			return err
 		}
 		ptr = filePtr
+		w.lastPtr = ptr
 		if err := w.traceRAF.WriteLongNat(prevUID); err != nil {
 			return err
 		}
@@ -587,7 +589,6 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 	succState.WorkerID = int16(w.ID)
 	succState.UID = ptr
 	succState.SetPredecessor(curState)
-	succState.SetAction(action)
 	w.UnseenSuccessorStates++
 	if !w.DisableTraceMirror && w.Checker != nil && w.Checker.Trace != nil {
 		w.Checker.Trace.MirrorNextStateForWorker(w.ID, curState, succFP, succState, action, ptr)

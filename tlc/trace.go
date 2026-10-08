@@ -273,10 +273,6 @@ func (t *TLCTrace) MirrorNextStateForWorker(workerID int, curState *TLCStateMut,
 		prevUID = curState.UID
 		predecessorWorkerID = curState.WorkerID
 	}
-	generatedWorkerID := int16(workerID)
-	if workerID < 0 || workerID > int(TLCStateInitWorkerID) {
-		generatedWorkerID = TLCStateInitWorkerID
-	}
 	t.records = append(t.records, TraceRecord{
 		PreviousUID: prevUID,
 		WorkerID:    predecessorWorkerID,
@@ -284,9 +280,6 @@ func (t *TLCTrace) MirrorNextStateForWorker(workerID int, curState *TLCStateMut,
 		State:       succState,
 		Action:      action,
 	})
-	succState.WorkerID = generatedWorkerID
-	succState.UID = uid
-	succState.attachTraceMetadata(curState, action)
 	if succState.Level() > t.level {
 		t.level = succState.Level()
 	}

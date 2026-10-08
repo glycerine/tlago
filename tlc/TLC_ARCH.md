@@ -11951,5 +11951,11 @@ reset and do not restore the snapshot on failure. Printing requires its lookup/
 alias tool, and a returned nil alias reaches the printer rather than producing
 an unaliased substitute. Disk recovery no longer selects the in-memory path
 simply because its tool is absent. Initial-only printing still omits tool access.
-Trace cleanup and remaining worker read/write boundaries still need audit. No RMI
-or JVM machinery is introduced.
+Worker record writers update lastPtr before writing predecessor, worker and
+fingerprint bytes. Partial failure retains this attempted pointer and earlier
+depth update while state metadata, unseen-successor count and mirror publication
+wait for successful writes. Successor writes preserve the generated action and
+source predecessor policy. The native mirror appends the published state record
+and updates its reporting level without mutating the state again. Worker owner/
+recovery/depth-overflow and trace cleanup boundaries still need audit. No RMI or
+JVM machinery is introduced.

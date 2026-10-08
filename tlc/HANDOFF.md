@@ -154,8 +154,13 @@ initial paths retain normal randomness restoration and returned info metadata.
 Printing requires its lookup/alias tool and preserves a returned nil alias instead
 of displaying an unaliased substitute. Disk reconstruction cannot select an
 in-memory fallback merely because the tool is absent. Initial-only printing
-still requires no tool. Trace cleanup and remaining worker read/write boundaries
-still need audit.
+still requires no tool. Worker record writers assign their last pointer before
+writing predecessor, worker and fingerprint bytes. Partial failures retain the
+attempted pointer, consumed bytes and earlier depth update, without state/counter/
+mirror publication. Successful successor writes preserve the generated action
+and predecessor metadata policy; the native mirror records the published state
+without modifying it. Worker owner/recovery/depth-overflow and trace cleanup
+boundaries still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes
