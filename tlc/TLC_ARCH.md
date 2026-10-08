@@ -11186,3 +11186,16 @@ are not represented as Java array objects. Invalid/conflicting references fail
 graph decoding. All communicating roles need the same native payload build.
 ValueVec identity/full capacity and shared UniqueString name arrays remain pending.
 This is a native Go graph representation, without Java serialization or RMI.
+
+Native state payloads now include ValueVectors with a backing-array reference and
+active count. Enum values reference vector IDs, preserving shared vector objects
+as well as distinct vectors over shared storage. Encoding visits the entire
+capacity, including inactive slots retained after sorting/deduplication. Vector
+IDs are reserved before walking their arrays. Decoding resolves arrays against
+allocated Value objects, validates each count against backing length, constructs
+vectors, then populates Value owners. This supports cycles through inactive
+storage. Appending within capacity changes shared storage; shared vector owners
+also observe the updated active count. Receiver storage remains isolated from
+the sender. Existing inline enum fixtures remain accepted. Communicating roles
+need the same build. Shared name-array transfer remains pending; no Java runtime
+or transport machinery is introduced.

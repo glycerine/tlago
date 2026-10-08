@@ -19077,3 +19077,32 @@ The native DTO layout changes; communicating roles use the same build. ValueVec
 object identity, full backing capacity and shared name arrays remain pending.
 No Java serialization, RMI transport or arbitrary opaque-data codec was added.
 Broader distributed parity remains incomplete.
+
+## October 8, 2026: native ValueVec identity and complete backing storage
+
+Audited source ValueVec and SetEnumValue: their default transfer retains vector
+object identity, elementCount and the entire elementData array. The native graph
+instead copied only active entries into a fresh vector for each enum value,
+losing shared vector count updates, capacity and inactive array entries. Added
+ValueVectors nodes with backing-array IDs/counts and enum vector references.
+Reserve IDs before traversal; allocate all values, resolve backing arrays,
+construct vectors and then populate owners. Count/reference validation rejects
+malformed graphs. Existing inline enum fixtures remain accepted.
+
+The new gob graph check first fails at shared vector identity in 0.011 seconds
+(3428 terminal status 1). It preserves separate enum objects sharing one vector,
+distinct vectors with different counts over one backing array, tuple/vector
+storage sharing and a recursive owner reference in an inactive slot. An append
+must update shared-vector owners and other array views while leaving sender
+storage unchanged. Nil/empty vectors remain distinct. The TCP check requires
+capacity and vector identity on both request and result partitions.
+
+Initial related graph/worker checks pass in 0.036 seconds (21947 terminal status
+0). Final vector/array/state/result/worker and existing ValueVec checks pass in
+0.037 seconds (48876 terminal status 0), including malformed counts and conflicting
+references. Only the short worker vector TCP case runs under -race, passing in
+1.037 seconds (69516 terminal status 0). All handles are retired. No enabled
+original Java method directly covers this transfer boundary, so no original-method
+completion credit is added. No full suite or long workload was selected.
+Shared name arrays and broader distributed parity remain pending. The native
+payload layout changes; communicating roles use the same build.

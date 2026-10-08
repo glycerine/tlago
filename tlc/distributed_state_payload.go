@@ -11,13 +11,19 @@ import (
 // remain shared after decoding; receiver objects do not alias sender objects.
 // State levels use the in-memory int32 range, not the short disk-queue format.
 type DistributedStatePayload struct {
-	Nil         bool
-	Roots       []int
-	States      []DistributedStateNode
-	Values      []DistributedValueNode
-	Strings     []DistributedStringNode
-	ByteArrays  [][]byte
-	ValueArrays [][]int
+	Nil          bool
+	Roots        []int
+	States       []DistributedStateNode
+	Values       []DistributedValueNode
+	Strings      []DistributedStringNode
+	ByteArrays   [][]byte
+	ValueArrays  [][]int
+	ValueVectors []DistributedValueVectorNode
+}
+
+type DistributedValueVectorNode struct {
+	Array int
+	Count int
 }
 
 type DistributedStateNode struct {
@@ -66,6 +72,7 @@ type DistributedValueNode struct {
 	ModelIndex        int
 	ModelType         rune
 	CollectionPresent bool
+	Vector            int
 	DataKind          string
 	DataString        string
 	DataInteger       int64
@@ -83,6 +90,7 @@ type distributedPayloadEncoder struct {
 	bytes      map[distributedByteArrayKey]int
 	arrays     map[distributedByteArrayKey]int
 	arrayRoots [][]Value // Keep address-keyed backing storage alive while encoding.
+	vectors    map[*ValueVec]int
 }
 
 type distributedByteArrayKey struct {
@@ -98,7 +106,7 @@ func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePa
 		}
 	}()
 	payload = &DistributedStatePayload{Nil: states == nil}
-	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int), arrays: make(map[distributedByteArrayKey]int)}
+	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int), arrays: make(map[distributedByteArrayKey]int), vectors: make(map[*ValueVec]int)}
 	payload.Roots = make([]int, len(states))
 	for i, state := range states {
 		id, failure := encoder.state(state)
@@ -196,6 +204,24 @@ func (e *distributedPayloadEncoder) names(names []*UniqueString) []int {
 	return refs
 }
 
+func (e *distributedPayloadEncoder) vector(vector *ValueVec) (int, error) {
+	if vector == nil {
+		return 0, nil
+	}
+	if id := e.vectors[vector]; id != 0 {
+		return id, nil
+	}
+	id := len(e.payload.ValueVectors) + 1
+	e.vectors[vector] = id
+	e.payload.ValueVectors = append(e.payload.ValueVectors, DistributedValueVectorNode{})
+	array, err := e.array(vector.data[:cap(vector.data)])
+	if err != nil {
+		return 0, err
+	}
+	e.payload.ValueVectors[id-1] = DistributedValueVectorNode{Array: array, Count: len(vector.data)}
+	return id, nil
+}
+
 func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 	if value == nil || reflect.ValueOf(value).Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil() {
 		return 0, nil
@@ -233,9 +259,11 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 		sharedChildren = true
 	case *SetEnumValue:
 		node.Kind, node.Flag, node.CollectionPresent = "enum", v.IsNorm, v.Elems != nil
-		if v.Elems != nil {
-			children = v.Elems.data
+		vector, err := e.vector(v.Elems)
+		if err != nil {
+			return 0, err
 		}
+		node.Vector = vector
 	case *FcnRcdValue:
 		node.Kind, children, domain, node.Flag = "function", v.Values, v.Domain, v.IsNorm
 		cache = v.Intv
@@ -403,6 +431,7 @@ type distributedPayloadDecoder struct {
 	strings []*UniqueString
 	bytes   [][]byte
 	arrays  [][]Value
+	vectors []*ValueVec
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -440,6 +469,17 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, fmt.Errorf("value array %d: %w", i+1, err)
 		}
 		decoder.arrays[i] = values
+	}
+	decoder.vectors = make([]*ValueVec, len(payload.ValueVectors))
+	for i, node := range payload.ValueVectors {
+		array, err := decoder.arrayRefs(nil, false, node.Array)
+		if err != nil {
+			return nil, fmt.Errorf("value vector %d: %w", i+1, err)
+		}
+		if node.Count < 0 || node.Count > len(array) {
+			return nil, fmt.Errorf("value vector %d: count outside backing array", i+1)
+		}
+		decoder.vectors[i] = &ValueVec{data: array[:node.Count]}
 	}
 	for i, node := range payload.Values {
 		if err := decoder.populate(decoder.values[i], node); err != nil {
@@ -682,7 +722,15 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 		}
 		v.Names, v.Values = names, refs
 	case *SetEnumValue:
-		if node.CollectionPresent {
+		if node.Vector != 0 {
+			if node.Vector < 0 || node.Vector > len(d.vectors) {
+				return fmt.Errorf("invalid value vector reference %d", node.Vector)
+			}
+			if !node.CollectionPresent || len(refs) != 0 || node.ReferencesArray != 0 {
+				return fmt.Errorf("value vector reference conflicts with inline/null collection")
+			}
+			v.Elems = d.vectors[node.Vector-1]
+		} else if node.CollectionPresent {
 			v.Elems = &ValueVec{data: refs}
 		} else if len(refs) != 0 {
 			return fmt.Errorf("null value vector contains elements")
