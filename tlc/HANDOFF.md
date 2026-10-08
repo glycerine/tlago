@@ -1900,6 +1900,22 @@ check, not full MC06 model verification. A three-process DieHard run with one
 standalone FP server also matches all seven trace states and exits all roles
 normally. Full remote test translation remains pending.
 
+Native EWD840/MC06 separate-process coverage now runs both coordinator-owned
+and standalone remote fingerprint storage in `tlc_distributed_process_test.go`.
+It preserves the unchanged N=7 model and configuration, checks actual TLC event
+codes, requires exactly 114,942 distinct states and zero queued states, and
+rejects GENERAL. The helper isolates each role's process globals and logs role
+output under `go test -v`; all child processes are joined on failure or normal
+completion. Fixtures are byte-identical to pinned upstream. The remote row
+explicitly uses the supported MemFPSet implementation and one worker thread.
+Both full workloads pass normally, without race instrumentation. This is native
+transport coverage using the original assertion bodies, not completion credit
+for the source's unconditionally disabled in-JVM harness. A dropped fingerprint
+Exit reply can still print `unexpected EOF` after FINISHED; original close ignores
+UnmarshalException on process exit, and equivalent native failure classification
+needs reconciliation before declaring complete shutdown parity.
+
+
 These focused checks do not prove distributed completion.
 
 ## Testing and workflow

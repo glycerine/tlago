@@ -18031,3 +18031,52 @@ broader remote model coverage and original remote harness translation remain
 pending; the distributed goal is not complete.
 The exact short signal registration/disposal race check passes in 1.040 seconds
 (63495 terminal status 0). All run handles are retired.
+
+## Full native EWD840 process coverage (October 8, 2026)
+
+Ran upstream EWD840/MC06 unchanged to completion using separate coordinator and
+worker processes. The full N=7 workload reaches 114,942 distinct states, zero
+queued states and graph depth 20; both processes exit 0 (13649 terminal status
+0). Generated count is 3,096,149 and model checking takes 32 seconds. These exact
+distinct/queue counts and FINISHED/no GENERAL agree with the original distributed
+EWD840 assertions. Source checkpoint defaults are retained; no model cutoff or
+race instrumentation is applied. Log `.codex-gotmp/distributed-ewd840-server.log`.
+
+Added repeatable `TestNativeDistributedEWD840ProcessRoles`, exercising both local
+coordinator fingerprint storage and a standalone remote FP server. Child roles
+run in the Go test executable via an isolated helper, use ephemeral loopback
+ports, retain one worker thread and join all processes on error or success.
+The remote row explicitly chooses supported MemFPSet; the original assumption-
+disabled OffHeap/JVM harness remains a separate translation backlog. Mirrored
+MC06.tla and MC06.cfg are byte-identical to pinned upstream; their EWD840 import
+was already identical. Actual tool-mode TLC event envelopes are checked for
+FINISHED, STATS exactly 114942 distinct/0 queued and absence of GENERAL, keeping
+all original method assertions without treating plain process exit as success.
+Each role logs its output under go test -v, including discovery, parsing,
+registration, progress and termination. The watchdog is ten minutes per row;
+it does not alter exploration bounds. The helper now also performs the same
+resolver temporary-file cleanup as cmd/tlago on normal return.
+
+Both full process rows pass normally in 105.809 seconds: coordinator storage
+45.80 seconds and standalone storage 59.99 seconds (13535 terminal status 0).
+Log `.codex-gotmp/distributed-ewd840-process-test.log`. This verifies the initial
+helper before its final normal-return cleanup addition; final helper verification
+uses the standalone row below. No original-harness completion credit is added:
+upstream setup still unconditionally skips these methods. No full workspace
+suite or long race workload was run.
+
+The standalone row observed a possible `unexpected EOF` diagnostic after
+FINISHED when the FP process ends before its Exit reply reaches the coordinator.
+The source manager suppresses UnmarshalException for this shutdown situation;
+the native fingerprint failure classification currently records only IO. Keep
+this reconciliation visible rather than confusing a passing GENERAL assertion
+with complete shutdown parity. Extended/custom payloads, checkpoint/recovery
+across processes, worker loss and remaining original harness coverage still
+need work. The distributed goal remains active.
+
+Final helper standalone-FP workload passes in 60.464 seconds (58624 terminal
+status 0), retaining 114942 distinct/0 queued and all event assertions. Log:
+`.codex-gotmp/distributed-ewd840-final-process-test.log`. Focused current helper,
+CLI and signal checks plus original dynamic-manager/nested-partition/smart-proxy
+methods pass: root 0.016 seconds and TLC 0.049 seconds (15428 terminal status 0).
+All handles are retired. No additional full-workspace verification is claimed.
