@@ -9,18 +9,15 @@ import (
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/RecursiveDefDeclMismatchTest.java.
-// Each test starts skipped until its Java assertions are ported and made green.
+// Preserve the void SANYmain output contract without an added exit assertion.
 func TestRecursiveDefDeclMismatchTest_test(t *testing.T) {
-	var stdout, stderr bytes.Buffer
-	code := tlago.RunCLI(
+	var output bytes.Buffer
+	tlago.RunCLI(
 		[]string{"check", sanyTestVectorPath("test-model", "sany", "RecursiveDefDeclMismatch.tla")},
-		&stdout,
-		&stderr,
+		&output,
+		&output,
 	)
-	if code == tlago.ExitOK {
-		t.Fatalf("check exit = %d, want failure", code)
-	}
-	got := stdout.String() + stderr.String()
+	got := output.String()
 	for _, want := range []string{
 		"Definition of CountDown has different arity than its RECURSIVE declaration.",
 		"The operator CountDown requires 2 arguments.",

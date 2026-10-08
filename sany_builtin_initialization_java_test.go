@@ -12,6 +12,9 @@ func TestTestBuiltInOperatorInitialization_testInitAndReInit(t *testing.T) {
 		context := sanyGlobalInitialContext(false)
 		for _, expected := range sanyBuiltinOperators {
 			name := expected.name
+			if !context.occurSymbol(name) {
+				t.Fatalf("%s: occurSymbol = false", name)
+			}
 			node := context.getSymbol(name)
 			if node == nil {
 				t.Fatalf("%s: missing symbol", name)

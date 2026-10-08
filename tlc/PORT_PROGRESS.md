@@ -1,5 +1,18 @@
 # TLC Port Progress
 
+2026-10-08 Restore precedence/membership/void CLI contracts (F20–F21/F25):
+Previous chunk committed as 173f270. Replace recursive operator-token search
+with the source fixed wrapper child/heir[1] navigation and use N_GeneralId to
+choose the infix child. Preserve all 98 rows, fixity combinations, synonyms
+and #893 skip. Add actual Context map membership independent of retrieval;
+the original builtin test asserts it for every expected symbol on both passes.
+Github723 and RecursiveDefDeclMismatch now capture the shared stream and retain
+only source diagnostic substring assertions, removing the added nonzero exit
+requirement. All four original methods pass (7709 retired); final dedicated
+SANY passes in 2.444 seconds (28717 retired), and related original root
+builtin/context/corpus/incremental methods pass in 0.267 seconds. No vectors
+changed. Only F20–F21/F25 marked complete; XML findings remain pending.
+
 2026-10-08 Restore SANY phase/comparator/bounds contracts (F07–F09):
 Previous chunk committed as 97e71fc. Move Github429 to root to initialize the
 actual frontend and call its parsing and generation-only semantic phases. No

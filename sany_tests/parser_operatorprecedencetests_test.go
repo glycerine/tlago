@@ -103,26 +103,14 @@ func sanyHigherPrecOperator(lowerPrecOp *tlago.SanySyntaxNode) *tlago.SanySyntax
 	case "N_PrefixExpr":
 		return heirs[1]
 	case "N_InfixExpr":
-		if sanyIsOperatorExpression(heirs[0]) {
-			return heirs[0]
+		if heirs[0].Kind.JavaName() == "N_GeneralId" {
+			return heirs[2]
 		}
-		return heirs[2]
+		return heirs[0]
 	case "N_PostfixExpr":
 		return heirs[0]
 	default:
 		return nil
-	}
-}
-
-func sanyIsOperatorExpression(node *tlago.SanySyntaxNode) bool {
-	if node == nil {
-		return false
-	}
-	switch node.Kind.JavaName() {
-	case "N_PrefixExpr", "N_InfixExpr", "N_PostfixExpr":
-		return true
-	default:
-		return false
 	}
 }
 
@@ -133,27 +121,12 @@ func sanyOperatorImage(op *tlago.SanySyntaxNode) string {
 	heirs := op.GetHeirs()
 	switch op.Kind.JavaName() {
 	case "N_PrefixExpr":
-		return sanyOperatorTokenImage(heirs[0])
+		return heirs[0].GetHeirs()[1].Image
 	case "N_InfixExpr":
-		return sanyOperatorTokenImage(heirs[1])
+		return heirs[1].GetHeirs()[1].Image
 	case "N_PostfixExpr":
-		return sanyOperatorTokenImage(heirs[1])
+		return heirs[1].GetHeirs()[1].Image
 	default:
 		return ""
 	}
-}
-
-func sanyOperatorTokenImage(node *tlago.SanySyntaxNode) string {
-	if node == nil {
-		return ""
-	}
-	if node.Token != nil {
-		return node.Image
-	}
-	for _, child := range node.GetHeirs() {
-		if image := sanyOperatorTokenImage(child); image != "" {
-			return image
-		}
-	}
-	return ""
 }

@@ -37,7 +37,13 @@ track the current repairs.
   nested coordinate comparisons independently of Compare. Vector checks the
   actual ArrayIndexOutOfBoundsException, and production now throws that type.
   All original inputs and bounds remain unchanged; source selections pass.
-- **F10–F25: pending.** A green run of their current counterparts does not resolve
+- **F20–F21 and F25: port complete for all four affected original methods.**
+  Precedence uses fixed wrapper heir navigation and the original GeneralId
+  predicate over the full source matrix. Builtin initialization calls the actual
+  context membership operation before retrieval on both passes. The two CLI
+  diagnostic methods retain shared capture and source substrings without added
+  exit assertions. The dedicated SANY suite and related root methods pass.
+- **F10–F19 and F22–F24: pending.** A green run of their current counterparts does not resolve
   their recorded test-contract defects. Final verification of the fully restored
   96-method inventory has not yet occurred.
 
@@ -306,7 +312,7 @@ Reviewed: Original fixture and complete arity diagnostic substring retained. Bot
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`test`](sany_tests/github723test_test.go:13) | Fix | F25 |
+| [`test`](sany_tests/github723test_test.go:13) | port complete | F25 |
 
 ### RecursiveDefDeclMismatchTest
 
@@ -316,7 +322,7 @@ Reviewed: Both original complete diagnostic substrings and fixture retained. Bot
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`test`](sany_tests/recursivedefdeclmismatchtest_test.go:13) | Fix | F25 |
+| [`test`](sany_tests/recursivedefdeclmismatchtest_test.go:13) | port complete | F25 |
 
 ### Bug156TEStackOverflowTest
 
@@ -431,7 +437,7 @@ Reviewed: All 98 rows, synonym pairs, eight constructible fixity combinations, c
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testOperatorCombination`](sany_tests/parser_operatorprecedencetests_test.go:11) | Fix | F20 |
+| [`testOperatorCombination`](sany_tests/parser_operatorprecedencetests_test.go:11) | port complete | F20 |
 
 ### ParseErrorTests
 
@@ -527,7 +533,7 @@ Reviewed: Before/after actual global-context reinitialization, all original symb
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testInitAndReInit`](sany_builtin_initialization_java_test.go:10) | Fix | F21 |
+| [`testInitAndReInit`](sany_builtin_initialization_java_test.go:10) | port complete | F21 |
 
 ### TestContext
 

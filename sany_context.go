@@ -171,6 +171,12 @@ func (c *sanyContext) duplicate() *sanyContext {
 	return dup
 }
 
+// occurSymbol follows Context.table.containsKey independently of getSymbol.
+func (c *sanyContext) occurSymbol(name string) bool {
+	_, present := c.table[sanyContextKey{name: name}]
+	return present
+}
+
 func (c *sanyContext) getSymbol(name string) sanySemSymbol {
 	if c == nil {
 		return nil

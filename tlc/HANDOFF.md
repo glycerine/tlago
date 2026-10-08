@@ -54,11 +54,12 @@ SANY audit progress: F01–F09 are repaired. The nine logger/formatting methods,
 all twelve WarningControl methods and IllegalOperator pass. Settings tests call
 the production driver and record WARNING/ERROR output; CLI tests retain original
 arguments, combined streams and exact diagnostic substrings. The remaining
-SANY package and selected original root methods pass, but F10–F25 remain
+SANY package and selected original root methods pass, but the XML findings F10–F19 and F22–F24 remain
 uncorrected. Github429 now runs generation without levels or linting, Location
 uses independent coordinate assertions, and Vector checks the typed bounds
-exception. Continue with precedence navigation, builtin membership and the two
-CLI diagnostic exit assertions (F20–F21 and F25), then XML repair. Do not credit
+exception. Precedence navigation, builtin membership and the two CLI diagnostic contracts
+(F20–F21 and F25) are now repaired. Continue with XML schema validation,
+library/CLI error contracts, then individual XML assertions. Do not credit
 green counterparts until their source contracts are restored.
 
 ## Current verified state
