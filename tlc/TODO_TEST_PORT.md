@@ -703,6 +703,12 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+FP reference registration now preserves source capacity/latch behavior without
+an early network probe. Native checks accept a stopped-store reference, reject
+an extra unreachable reference with the exact capacity category/detail and
+reject incomplete references without consuming slots. Existing original dynamic
+manager tests pass; these supplemental checks add no original-method credit.
+
 Fingerprint snapshots now defer connection setup until an operation, matching
 source endpoint-reference behavior. Native checks receive a snapshot with a
 stopped store, require operation-time partition failover and isolated coordinator

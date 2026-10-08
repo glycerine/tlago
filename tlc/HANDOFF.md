@@ -73,6 +73,14 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Native fingerprint registration now stores the endpoint reference without an
+extra connection probe. This retains the dynamic manager's source capacity
+check and registration-latch order even when the referenced store is stopped.
+Short TCP checks require one acceptance/countdown, the exact capacity rejection
+for an extra unreachable reference, and no consumed slot for incomplete native
+references. Original dynamic-manager and native FP lifecycle checks pass.
+Worker registration retains its required URI calls.
+
 Worker fingerprint-manager snapshots now create native endpoint references
 without dialing every store. A stopped fingerprint host no longer prevents
 snapshot receipt; the first operation reaches TLC's existing failover logic.

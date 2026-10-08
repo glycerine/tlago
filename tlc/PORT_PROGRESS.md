@@ -18997,3 +18997,30 @@ Final coordinator/fingerprint RPC and worker bootstrap selection passes in
 cases run under -race, passing in 1.049 seconds (34566 terminal status 0).
 All handles are retired; no full suite or long workload was run. Broader
 distributed parity remains incomplete.
+
+## October 8, 2026: FP reference registration without an early dial
+
+Continued the endpoint-reference audit against DynamicFPSetManager.register and
+DistributedFPSetTLCServer.registerFPSet. The source checks capacity, appends the
+registration wrapper, counts down the latch and prints acceptance without any
+FP aliveness call. Native registerFP eagerly dialed the store first, so a stopped
+store prevented registration and an unreachable extra store lost the intended
+capacity rejection. It now validates address/object completeness, creates a
+deferred native reference, registers connection ownership and calls the source
+manager/latch path. Worker registration retains its required URI calls.
+
+The new stopped-store case reproduces premature connection refusal in 0.015
+seconds (30277 terminal status 1). After the fix, registration/snapshot/native FP
+lifecycle selection passes in 0.029 seconds (91427 terminal status 0). The native
+test requires one accepted wrapper, unchanged availability/hostname, released
+latch, exact one acceptance event with 1/1 parameters and the original extra
+registration category/detail for the same unreachable endpoint. Rejection must
+not alter manager state or emit another acceptance/GENERAL. Incomplete references
+must fail without consuming a registration slot. No enabled direct original
+method covers these native boundaries; checks add no original-method credit.
+
+Final original dynamic-manager, coordinator RPC and native FP lifecycle/category
+selection passes in 0.074 seconds (terminal status 0). Only the two new short
+reference registration cases run under -race, passing in 1.052 seconds (46670
+terminal status 0). All handles are retired. No full suite or long workload was
+run. Broader distributed parity remains incomplete.

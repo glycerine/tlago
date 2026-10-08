@@ -194,11 +194,14 @@ func (service *distributedServerService) Call(request DistributedServerRequest, 
 			failure = endpoint.RegisterWorker(worker)
 		}
 	case "registerFP":
-		var fp *NetworkFingerprintEndpoint
-		fp, failure = DialFingerprintEndpoint(request.Endpoint.Address, request.Endpoint.Object)
-		if failure == nil {
-			failure = service.server.outbound.add(fp.client)
+		if request.Endpoint.Address == "" || request.Endpoint.Object == "" {
+			failure = workerConnectionFailure(errors.New("incomplete fingerprint endpoint reference"))
+			return nil
 		}
+		// Registration stores a reference and checks capacity without an
+		// aliveness call. The manager contacts it only during an operation.
+		fp := &NetworkFingerprintEndpoint{Address: request.Endpoint.Address, Object: request.Endpoint.Object}
+		failure = service.server.outbound.add(distributedConnectionCloser(fp.CloseConnection))
 		if failure == nil {
 			failure = endpoint.RegisterFPSet(fp, request.Hostname)
 		}

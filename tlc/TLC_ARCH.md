@@ -11153,3 +11153,13 @@ that finish after closure. Established failed clients are not redialed and no
 operation is replayed. This moves unavailable-store detection into the existing
 manager operation/failover path rather than incorrectly failing worker bootstrap.
 Direct DialFingerprintEndpoint still explicitly connects at the caller's request.
+
+Fingerprint registration follows the same endpoint-reference boundary:
+DynamicFPSetManager.register only checks capacity and appends an FPSets wrapper;
+DistributedFPSetTLCServer.registerFPSet then counts down and prints acceptance.
+Native registerFP no longer dials before these calls. It validates complete
+address/object references, registers ownership of their CloseConnection adapter
+and passes the reference to the manager. A stopped store can register, and an
+extra unreachable store reaches the source capacity rejection. The first FP
+operation performs connection setup. Worker registration still executes its
+source URI calls and therefore legitimately contacts the worker during registration.
