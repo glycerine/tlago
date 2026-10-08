@@ -113,7 +113,8 @@ func (m *DistributedFPSetManager) snapshotForWorker() *DistributedFPSetManager {
 	return snapshot
 }
 
-func (m *DistributedFPSetManager) entry(index int) *distributedFPSets {
+// registrationAt permits an empty slot during checkpoint and shutdown traversal.
+func (m *DistributedFPSetManager) registrationAt(index int) *distributedFPSets {
 	if m == nil {
 		panic(NewNullPointerException())
 	}
@@ -122,7 +123,11 @@ func (m *DistributedFPSetManager) entry(index int) *distributedFPSets {
 	if index < 0 || index >= len(m.fpSets) {
 		panic(NewIndexOutOfBoundsException(index, len(m.fpSets)))
 	}
-	entry := m.fpSets[index]
+	return m.fpSets[index]
+}
+
+func (m *DistributedFPSetManager) entry(index int) *distributedFPSets {
+	entry := m.registrationAt(index)
 	if entry == nil {
 		panic(NewNullPointerException())
 	}
@@ -581,31 +586,36 @@ func (m *DistributedFPSetManager) CheckInvariant(expectFPs ...uint64) bool {
 	return true
 }
 
-// close/chkptInner coalesce adjacent shared wrappers and trim trailing copies
-// of the first wrapper. They do not globally deduplicate remote FPSet objects.
-func (m *DistributedFPSetManager) groupedEntries() []*distributedFPSets {
-	entries := m.entries()
-	first := 0
-	for first < len(entries) && entries[first] == nil {
-		first++
-	}
-	if first == len(entries) {
-		return nil
-	}
-	current := entries[first]
-	last := len(entries) - 1
-	for last > first && (entries[last] == nil || entries[last] == current) {
-		last--
-	}
-	out := []*distributedFPSets{current}
-	for index := first + 1; index <= last; index++ {
-		next := entries[index]
-		if next != nil && next != current {
-			out = append(out, next)
-			current = next
+// firstRegistration and lastRegistration retain wrapper identity and read live
+// registrations. Callers fix the traversal length before invoking endpoints.
+func (m *DistributedFPSetManager) firstRegistration(length int) (int, *distributedFPSets) {
+	for index := 0; index < length; index++ {
+		if entry := m.registrationAt(index); entry != nil {
+			return index, entry
 		}
 	}
-	return out
+	return length, nil
+}
+
+func (m *DistributedFPSetManager) lastRegistration(length, first int, current *distributedFPSets) int {
+	last := length - 1
+	for ; last > first; last-- {
+		if entry := m.registrationAt(last); entry != nil && entry != current {
+			break
+		}
+	}
+	return last
+}
+
+func exitFingerprintRegistration(entry *distributedFPSets, cleanup bool) {
+	_, failure := invokeFingerprintEndpoint(func() (struct{}, error) {
+		return struct{}{}, entry.set.Exit(cleanup)
+	})
+	if failure != nil {
+		if _, ignored := failure.(*UnmarshalException); !ignored {
+			fmt.Fprint(os.Stderr, javaThrowableStackTrace(failure))
+		}
+	}
 }
 
 func (m *DistributedFPSetManager) Close(cleanup bool) error {
@@ -615,16 +625,21 @@ func (m *DistributedFPSetManager) Close(cleanup bool) error {
 		}
 		return m.entry(0).set.Exit(cleanup)
 	}
-	for _, entry := range m.groupedEntries() {
-		_, failure := invokeFingerprintEndpoint(func() (struct{}, error) {
-			return struct{}{}, entry.set.Exit(cleanup)
-		})
-		if failure != nil {
-			if _, ignored := failure.(*UnmarshalException); !ignored {
-				fmt.Fprint(os.Stderr, javaThrowableStackTrace(failure))
-			}
+	length := m.NumOfServers()
+	first, current := m.firstRegistration(length)
+	if current == nil {
+		return nil
+	}
+	last := m.lastRegistration(length, first, current)
+	for index := first + 1; index <= last; index++ {
+		next := m.registrationAt(index)
+		if next != nil && next != current {
+			// Capture next before exit: exit can change later registrations.
+			exitFingerprintRegistration(current, cleanup)
+			current = next
 		}
 	}
+	exitFingerprintRegistration(current, cleanup)
 	return nil
 }
 
@@ -650,23 +665,45 @@ func (m *DistributedFPSetManager) Recover(filename string) error {
 }
 
 func (m *DistributedFPSetManager) checkpointInner(filename string, checkpoint bool) error {
-	for _, entry := range m.groupedEntries() {
-		// Java calls Thread.run directly, so checkpoint work remains sequential.
-		_, err := invokeFingerprintEndpoint(func() (struct{}, error) {
-			if checkpoint {
-				if err := entry.set.BeginChkptFile(filename); err != nil {
-					return struct{}{}, err
-				}
-				return struct{}{}, entry.set.CommitChkptFile(filename)
-			}
-			return struct{}{}, entry.set.RecoverFile(filename)
-		})
-		if err != nil {
-			if !isJavaIOException(err) {
+	length := m.NumOfServers()
+	first, current := m.firstRegistration(length)
+	if current == nil {
+		return nil
+	}
+	// The source runs the first checkpoint before selecting the trailing boundary.
+	if err := m.checkpointRegistration(first, filename, checkpoint); err != nil {
+		return err
+	}
+	last := m.lastRegistration(length, first, current)
+	for index := first + 1; index <= last; index++ {
+		next := m.registrationAt(index)
+		if next != nil && next != current {
+			current = next
+			if err := m.checkpointRegistration(index, filename, checkpoint); err != nil {
 				return err
 			}
-			ToolIOPrintln(fmt.Sprintf("Error: Failed to checkpoint the fingerprint server at %s. This server might be down.", entry.hostname))
 		}
+	}
+	return nil
+}
+
+func (m *DistributedFPSetManager) checkpointRegistration(index int, filename string, checkpoint bool) error {
+	// Each phase resolves its registration separately, including error reporting.
+	// Source checkpoint work is synchronous; no extra goroutine is needed.
+	_, err := invokeFingerprintEndpoint(func() (struct{}, error) {
+		if checkpoint {
+			if err := m.entry(index).set.BeginChkptFile(filename); err != nil {
+				return struct{}{}, err
+			}
+			return struct{}{}, m.entry(index).set.CommitChkptFile(filename)
+		}
+		return struct{}{}, m.entry(index).set.RecoverFile(filename)
+	})
+	if err != nil {
+		if !isJavaIOException(err) {
+			return err
+		}
+		ToolIOPrintln(fmt.Sprintf("Error: Failed to checkpoint the fingerprint server at %s. This server might be down.", m.entry(index).hostname))
 	}
 	return nil
 }

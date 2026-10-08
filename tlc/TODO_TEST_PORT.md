@@ -703,6 +703,12 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental live-registration checks cover checkpoint phase replacement,
+post-first-call tail selection, current failure hostnames, fixed initial counts,
+shutdown's captured-next ordering and wrapper identity. Existing original dynamic
+manager methods and short native TCP checkpoint checks pass. No upstream method
+covers these registration changes; original-method completion counts are unchanged.
+
 Full native EWD840 recovery now passes between the two nested FP commits.
 Parent checks require first-child promotion and changed contents, a byte-identical
 old second-child checkpoint and its retained temporary file. Fresh recovery

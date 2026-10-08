@@ -233,6 +233,13 @@ receiver ownership across gob and worker TCP. Further metadata/custom-data and
 process failure/recovery work remains pending.
 These short native checks add no original-method completion credit.
 
+Fingerprint checkpoint/recovery and shutdown now traverse live registrations
+with a fixed initial count, preserving wrapper identity and source call order.
+Checkpoint phases and caught-I/O hostnames resolve the current slot separately;
+shutdown captures the next wrapper before exiting the current one. Focused
+manager, failure-boundary and native TCP checkpoint checks pass. Supplemental
+registration-change checks add no original-method credit.
+
 Record-backed printable states now retain their record through the native value
 graph, including sharing with caches, ordinary state values and other printable
 states. Gob/TCP request/result/failure checks preserve default display, extra

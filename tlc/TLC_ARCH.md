@@ -8406,6 +8406,11 @@ quirk. Statistics failures reassign without retrying that slot, and size/seen
 totals count every partition, including shared wrappers. Close and checkpoint
 coalesce adjacent wrappers and trailing copies of the first wrapper, rather
 than globally deduplicating underlying FPSet objects.
+Traversal fixes the initial registration count but reads slots live. Checkpoint
+runs its first operation before trimming trailing first-wrapper copies; each
+begin, commit and caught-I/O hostname lookup resolves the slot separately.
+Shutdown trims before exit and captures the next wrapper before exiting the
+current one. Neither path holds the manager lock during endpoint calls.
 
 Concurrent block calls submit one callable per partition and collect results
 by their saved index, regardless of completion order. Submission retries retain

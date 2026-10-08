@@ -20306,3 +20306,29 @@ The original root Alias safety model, retaining its exact four-state trace and
 statistics, passes (53406, status 0, 0.240 seconds). All handles are terminal.
 No full suite, long workload or race selection was run. Other evaluator/custom
 metadata and broader distributed completion remain separately tracked.
+
+### 2026-10-08: Live fingerprint registration traversal
+
+Audited FPSetManager.close, chkptInner and Checkpoint.run against pinned Java.
+Removed the precomputed grouped-registration snapshot. Both paths retain the
+initial count, skip null selection slots and compare wrapper identity. Checkpoint
+runs its first operation before trimming the tail, then reads later slots live.
+Each begin/commit/recover call resolves its index separately, and caught I/O
+reports the current hostname. Shutdown trims first, captures next before exit,
+and reads subsequent slots after prior calls. Endpoint calls occur outside the
+manager lock. Existing unchecked/fatal and I/O catch boundaries are preserved.
+This is native Go behavior; no RMI or Java serialization is introduced.
+
+No upstream manager method tests registration changes during these calls.
+Added focused native checks for replacement between begin/commit, changes to
+later/trailing slots, current I/O hostnames for returned and panicked failures,
+fixed initial count under append, shutdown captured-next order, null slots,
+adjacent/trailing sharing and distinct wrappers sharing one endpoint. These
+checks add no original-method completion credit.
+
+Focused registration, checkpoint I/O/fatal, local endpoint fatal and all original
+DynamicFPSetManager checks pass (session 2283, status 0, 0.060 seconds). The three
+short native TCP assigned-block checkpoint, inflight checkpoint connection-loss
+and healthy-partition continuation checks pass (status 0, 0.051 seconds).
+All handles are terminal. No full suite, long workload or race run was performed.
+Broader distributed parity and disabled original model harnesses remain pending.
