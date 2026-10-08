@@ -161,7 +161,7 @@ func TestWorkerRPCFailureClassification(t *testing.T) {
 	}{
 		{"truncated", NewRemoteException(javaString("decode"), NewEOFException()), true, true, false},
 		{"eof detail", NewRemoteException(javaString("decode"), NewEOFException("detail")), true, false, false},
-		{"worker memory", localWorkerRemoteException(NewRemoteException(javaString("memory"), NewOutOfMemoryError())), true, true, false},
+		{"worker memory", workerComputationFailure("memory", NewOutOfMemoryError(), true), true, true, false},
 		{"direct memory", NewRemoteException(nil, NewOutOfMemoryError()), true, false, false},
 		{"connection", NewConnectException("lost", nil), true, false, false},
 		{"null", NewNullPointerException(), false, false, true},

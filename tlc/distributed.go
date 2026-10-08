@@ -1669,11 +1669,11 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 				return
 			}
 			if isJavaOutOfMemoryError(err) {
-				err = NewRemoteException(javaString("OutOfMemoryError occurred at worker: "+w.GetASCIIURI()), err)
+				err = workerComputationFailure("OutOfMemoryError occurred at worker: "+w.GetASCIIURI(), err, true)
 				return
 			}
 			if failure, ok := err.(*RejectedExecutionException); ok && failure != nil {
-				err = NewRemoteException(javaString("Executor rejected task at worker: "+w.GetASCIIURI()), err)
+				err = workerComputationFailure("Executor rejected task at worker: "+w.GetASCIIURI(), err, false)
 				return
 			}
 			err = newWorkerExceptionFromThrowable(err, state1, state2, true)

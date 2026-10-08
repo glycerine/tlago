@@ -52,7 +52,7 @@ func TestDistributedThreadMissingSelectorRunsErrorHandlerAndFinally(t *testing.T
 
 func TestDistributedThreadRetryRequiresSelectorAfterRequeue(t *testing.T) {
 	captureFailoverToolIO(t, ToolIOTool)
-	failure := localWorkerRemoteException(NewRemoteException(javaString("memory"), NewOutOfMemoryError()))
+	failure := workerComputationFailure("memory", NewOutOfMemoryError(), true)
 	thread := &TLCServerThread{Worker: NewDistributedWorkerSmartProxy(&rpcTestWorker{
 		next: func([]*TLCStateMut) (*NextStateResult, error) { return nil, failure },
 	})}

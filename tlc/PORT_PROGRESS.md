@@ -21310,3 +21310,32 @@ The user reiterated that Go must not pretend to be Java. Current networking is
 native TCP/net/rpc, but Java-named remote exception wrappers remain in some retry
 paths. Their replacement with Go failure categories is explicitly pending;
 preserve algorithmic recovery decisions without expanding RMI compatibility.
+
+### 2026-10-08: Native worker computation failure categories
+
+Removed the local endpoint's fabricated ServerException envelope and its
+localWorkerRemoteException helper. Worker memory exhaustion and executor
+rejection now return DistributedOperationError with native operation traits and
+the original cause. Memory exhaustion is recoverable with a smaller batch;
+executor rejection is not. The operation retains its worker URI diagnostic and
+I/O/exit category without claiming a Java transport class. Ordinary application
+failures continue to carry WorkerException state context. Updated supplemental
+URI and retry fixtures to assert the new Go boundary, retaining their diagnostic,
+ordering and failure assertions. No original Java test assertion was changed.
+
+No original method directly covers worker resource failures. Eight supplemental
+cases cross local/TCP, memory/rejection and returned/panicked failures. They
+verify native category, cause details, URI, computing cleanup, invocation time,
+unchanged counters and liveness. All four local cases initially exposed the
+fabricated envelope (8c1ba0, status 1, 0.012 seconds). Memory cases also invoke
+the actual coordinator computeBlock path, preserving both assigned states in
+FIFO order and reducing the limiting selector after requeueing.
+
+Final focused checks pass (650baa, status 0, 0.046 seconds): all eight new cases,
+the nine original smart-proxy methods, native worker lifecycle/payload/error/
+retry checks, queue and selector ordering, manager ownership and URI diagnostics.
+Both actual distributed DieHard storage variants pass their existing trace and
+event assertions (4fba4b, status 0, 24.402 seconds). All processes are terminal;
+no full suite or race run was performed. Supplemental checks add no original
+method credit. Other legacy remote exception classification and endpoint
+lifecycle adapters remain pending; distributed parity remains incomplete.

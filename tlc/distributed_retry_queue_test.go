@@ -22,7 +22,7 @@ func TestDistributedRetryRequiresQueueBeforeLimitUpdate(t *testing.T) {
 			AddMessageRecorder(recorder)
 			defer RemoveMessageRecorder(recorder)
 			selector := NewLimitingBlockSelector(&TLCServer{}, 100)
-			remote := localWorkerRemoteException(NewRemoteException(javaString("memory"), NewOutOfMemoryError()))
+			remote := workerComputationFailure("memory", NewOutOfMemoryError(), true)
 			thread := &TLCServerThread{Selector: selector, Worker: NewDistributedWorkerSmartProxy(&rpcTestWorker{
 				next: func([]*TLCStateMut) (*NextStateResult, error) { return nil, remote },
 			})}

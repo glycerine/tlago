@@ -34,8 +34,7 @@ func (r *LocalWorkerEndpoint) GetNextStates(states []*TLCStateMut) (*NextStateRe
 	if err := r.endpointError(); err != nil {
 		return nil, err
 	}
-	result, err := r.Worker.GetNextStates(states)
-	return result, localWorkerRemoteException(err)
+	return r.Worker.GetNextStates(states)
 }
 
 func (r *LocalWorkerEndpoint) IsAlive() (bool, error) {
@@ -49,7 +48,7 @@ func (r *LocalWorkerEndpoint) Exit() error {
 	if err := r.endpointError(); err != nil {
 		return err
 	}
-	return localWorkerRemoteException(r.Worker.Exit())
+	return r.Worker.Exit()
 }
 
 func (r *LocalWorkerEndpoint) GetURI() (string, error) {
@@ -64,13 +63,6 @@ func (r *LocalWorkerEndpoint) GetCacheRateRatio() (float64, error) {
 		return 0, err
 	}
 	return r.Worker.GetCacheRateRatio(), nil
-}
-
-func localWorkerRemoteException(err error) error {
-	if javaRemoteException(err) != nil {
-		return NewServerException(javaString("RemoteException occurred in server thread"), err)
-	}
-	return err
 }
 
 var _ DistributedWorkerEndpoint = (*LocalWorkerEndpoint)(nil)

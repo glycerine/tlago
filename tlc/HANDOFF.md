@@ -15,7 +15,11 @@ User clarification (October 8): distributed TLC uses native Go networking and
 concurrency. Do not implement RMI or pretend to provide a Java runtime. Existing
 Java-named remote exception wrappers are a migration concern: translate their
 retry and worker-loss decisions into Go error categories, preserving algorithmic
-behavior rather than Java transport details.
+behavior rather than Java transport details. Worker memory exhaustion and
+executor rejection now use `DistributedOperationError` directly across local
+and TCP calls; the fabricated local `ServerException` envelope is removed.
+Memory exhaustion permits smaller-batch retry, rejection does not. Other legacy
+remote exception classification and endpoint lifecycle adapters still need audit.
 
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production

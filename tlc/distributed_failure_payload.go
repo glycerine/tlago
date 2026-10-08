@@ -39,6 +39,17 @@ func (e *DistributedOperationError) GetSuppressed() []error {
 func (e *DistributedOperationError) diagnosticClassName() string  { return e.Class }
 func (e *DistributedOperationError) remoteThrowableStack() string { return e.Stack }
 
+// Worker resource failures carry coordinator decisions directly. Exhausting
+// worker memory can be retried with a smaller batch; rejected execution cannot.
+// The original cause remains available without a fabricated transport envelope.
+func workerComputationFailure(message string, cause error, recoverable bool) *DistributedOperationError {
+	return &DistributedOperationError{
+		Message: javaString(message), Class: "tlc.DistributedWorkerFailure",
+		Cause: cause, Remote: true, IO: true, Recoverable: recoverable,
+		ExitIgnorable: true,
+	}
+}
+
 // Failure references are one-based and can contain shared or cyclic causes.
 // Worker failure states share one state/value graph across the entire failure.
 type DistributedFailurePayload struct {

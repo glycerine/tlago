@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native worker resource-failure checks cover local/TCP calls, returned/panicked
+memory exhaustion and executor rejection. Memory exhaustion requeues both
+assigned states in order and reduces the block limit; rejection remains
+non-recoverable. Cause details, URI diagnostics, computing cleanup, counters and
+worker liveness are retained without a Java remote-exception envelope. Upstream
+has no direct methods for these cases; no original-method credit is added.
+
 Supplemental trace-evaluation checks preserve returned reconstruction/alias
 failure identity, partial output and coordinator ordinary/fatal catch boundaries.
 Original Alias safety and distributed initializer/model checks remain green;

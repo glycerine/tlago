@@ -83,18 +83,14 @@ func TestDistributedWorkerURIDiagnosticsAndRegistration(t *testing.T) {
 	worker.Runtime.executor.Shutdown()
 	proxy := NewDistributedWorkerSmartProxy(NewLocalWorkerEndpoint(worker))
 	_, err := proxy.GetNextStates([]*TLCStateMut{})
-	server, ok := err.(*ServerException)
+	remote, ok := err.(*DistributedOperationError)
 	if !ok {
-		t.Fatalf("proxy error = %T, want ServerException", err)
-	}
-	remote, ok := server.GetCause().(*RemoteException)
-	if !ok {
-		t.Fatalf("worker error = %T, want RemoteException", server.GetCause())
+		t.Fatalf("proxy error = %T, want DistributedOperationError", err)
 	}
 	if got, want := *remote.Message, "Executor rejected task at worker: tcp://%C3%A9.example:10997/7"; got != want {
 		t.Fatalf("worker message = %q, want %q", got, want)
 	}
-	if _, ok := remote.GetCause().(*RejectedExecutionException); !ok {
-		t.Fatalf("cause = %T", remote.GetCause())
+	if _, ok := remote.Cause.(*RejectedExecutionException); !ok {
+		t.Fatalf("cause = %T", remote.Cause)
 	}
 }
