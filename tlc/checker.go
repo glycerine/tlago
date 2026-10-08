@@ -1965,14 +1965,7 @@ func (mc *ModelChecker) checkPostConditionWithErrorTrace(curState *TLCStateMut, 
 }
 
 func (mc *ModelChecker) checkPostConditionWithErrorTraceTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, isConsole bool) {
-	if mc == nil || tool == nil {
-		return
-	}
 	trace := mc.errorTraceInfo(tool, curState, succState)
-	if len(trace) == 0 {
-		tool.CheckPostCondition()
-		return
-	}
 	trace = aliasTraceWithToolPairs(tool, trace)
 	tool.CheckPostConditionWithCounterExample(NewCounterExample(trace, UnknownAction, 0, isConsole))
 }
@@ -1987,11 +1980,7 @@ func (mc *ModelChecker) printBehaviorTrace(curState *TLCStateMut, succState *TLC
 
 func (mc *ModelChecker) errorTraceInfo(tool *Tool, curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
 	if curState == nil {
-		if succState == nil {
-			return nil
-		}
-		trace := mc.traceInfoPrefix(succState)
-		return append(trace, mc.stateInfoForState(tool, succState, nil))
+		panic(NewNullPointerException())
 	}
 	if succState == nil {
 		if curState.IsInitial() {
@@ -2016,8 +2005,11 @@ func (mc *ModelChecker) errorTraceInfo(tool *Tool, curState *TLCStateMut, succSt
 }
 
 func lastTraceState(trace []*TLCStateInfo) *TLCStateMut {
-	if len(trace) == 0 || trace[len(trace)-1] == nil {
-		return nil
+	if len(trace) == 0 {
+		panic(NewNoSuchElementException())
+	}
+	if trace[len(trace)-1] == nil {
+		panic(NewNullPointerException())
 	}
 	return trace[len(trace)-1].State
 }
@@ -2053,17 +2045,6 @@ func (mc *ModelChecker) stateInfoForTransition(tool *Tool, state *TLCStateMut, p
 	return info
 }
 
-func trimTraceState(trace []*TLCStateInfo, state *TLCStateMut) []*TLCStateInfo {
-	if len(trace) == 0 || state == nil {
-		return trace
-	}
-	last := trace[len(trace)-1]
-	if last != nil && last.State != nil && (last.State == state || last.State.Equal(state)) {
-		return trace[:len(trace)-1]
-	}
-	return trace
-}
-
 func appendTraceStateIfMissing(trace []*TLCStateInfo, state *TLCStateMut) []*TLCStateInfo {
 	if state == nil {
 		return trace
@@ -2081,18 +2062,16 @@ func appendTraceStateIfMissing(trace []*TLCStateInfo, state *TLCStateMut) []*TLC
 }
 
 func (mc *ModelChecker) traceInfoPrefix(state *TLCStateMut) []*TLCStateInfo {
-	if state == nil || state.IsInitial() {
-		return nil
+	if mc == nil {
+		panic(NewNullPointerException())
 	}
-	if mc != nil && mc.ConcurrentTrace != nil {
-		if trace := mc.ConcurrentTrace.GetTraceFromState(state); len(trace) > 0 {
-			return trimTraceState(trace, state)
-		}
+	if mc.ConcurrentTrace != nil {
+		return mc.ConcurrentTrace.GetTraceFromState(state)
 	}
-	if mc != nil && mc.Trace != nil {
-		return trimTraceState(mc.Trace.GetTrace(state), state)
+	if mc.Trace != nil {
+		return mc.Trace.GetTrace(state)
 	}
-	return trimTraceState(NewTLCTrace().GetTrace(state), state)
+	panic(NewNullPointerException())
 }
 
 func aliasTraceWithTool(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo {

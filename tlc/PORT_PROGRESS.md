@@ -22024,3 +22024,33 @@ TSnapShot process variants pass (0f6ba7 log, terminal process a249fa status 0,
 earlier truncated model failure remains unexplained. No original assertions or
 bounds changed. No full suite or race run was performed. Supplemental cases add
 no original-method credit; distributed parity remains incomplete.
+
+### 2026-10-08: Postcondition entry and trace-prefix ownership
+
+Compared Worker.doPostCondition's first current-state access, checker trace
+retrieval and last-prefix access with pinned source. Missing current state now
+fails before postcondition evaluation, rather than using a successor-only or
+parameterless fallback. Missing tools fail at recovery instead of silently
+returning. Trace-prefix recovery uses its existing owner and retains initial
+prefixes. It cannot substitute another owner because a prefix is empty, create
+a fresh trace, or trim the owner's result. Empty prefixes fail at last-state
+access; nil final entries fail before state reconstruction. The unused trimming
+helper is removed. Remaining state-owner and constructor context guards need
+separate audits; full distributed parity is not claimed.
+
+No original method directly covers these guards. Eight supplemental native cases
+cover missing current/tool context, retained initial prefix, missing owners and
+empty/nil-last prefixes. All eight initially failed (cd3257 log, terminal process
+26b7e0 status 1, 4.954 seconds). Focused worker/native RPC, concurrent trace,
+original simulation trace, short checker initial/successor, counterexample,
+reporting serialization, pairwise postcondition and distributed trace alias-
+failure checks pass (b396c6 log, terminal process 328694 status 0, 15.749 seconds).
+After removing the unused helper, the eight context checks pass again (c49a7b
+log, terminal process aef603 status 0, 6.152 seconds). Original checkpoint-on-
+violation/time-bound, error-trace, Github461, Github743, three-worker CodePlexBug08
+archive recovery, AliasSafety and TLCExtTraceAlias tests plus four native DieHard/
+TSnapShot process variants pass (c5af1b log, terminal process 4e48d0 status 0,
+58.261 seconds). All output was captured and all processes are terminal. The
+earlier truncated model failure remains unexplained. No original assertions or
+bounds changed. No full suite or race run was performed. Supplemental cases add
+no original-method credit; distributed parity remains incomplete.

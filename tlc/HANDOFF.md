@@ -243,8 +243,12 @@ worker ID or trace pointer. Missing reconstruction results remain nil for source
 consumption; no raw state is substituted. Pairwise aliases publish nil results,
 and counterexample construction fails on a missing state-info entry instead of
 synthesizing an empty record. The alias loop reads its selected next state before
-evaluation, preserving source failure ordering. Remaining state-owner, empty-
-context and trace-prefix guards still need audit.
+evaluation, preserving source failure ordering. Postconditions require their
+current state and preserve trace-owner results, including the initial prefix.
+Missing trace owners cannot create a fresh trace; an empty prefix fails at its
+last-state access, and a nil last entry fails before reconstruction. Silent
+context/parameterless-postcondition fallbacks and the unused trimming helper
+are removed. Remaining state-owner and constructor context guards need audit.
 An earlier related model selection failed once with its assertion lost to output
 truncation, then passed unchanged with captured output. This failure is unresolved;
 do not claim it diagnosed. Preserve failing output to a file on future runs.

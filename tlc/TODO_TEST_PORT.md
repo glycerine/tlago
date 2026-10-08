@@ -908,6 +908,12 @@ ordering. Existing native alias/deadlock fixtures now supply valid reconstructio
 setup without changing assertions. No original method directly covers these
 boundaries; completion counts remain unchanged.
 
+Eight native postcondition context cases cover missing current state/tool,
+retained initial prefix, missing trace owners and empty/nil-last prefixes.
+Failure precedes postcondition evaluation; no fresh trace or initial-state
+recovery is substituted for a missing owner or last prefix state. No original
+method directly covers these boundaries; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly
