@@ -18541,3 +18541,30 @@ status 0). Only TestFingerprintRPCPreservesFailureGraph runs under -race,
 passing in 1.055 seconds (13116 terminal status 0). Both handles are retired.
 No full suite or long model workload was run. Broader distributed failure and
 recovery coverage remains pending; the distributed goal is incomplete.
+
+## October 8, 2026: assigned-block checkpoint with native TCP fingerprints
+
+Extended TestDistributedCheckpointWaitsForAssignedBlock to retain its complete
+local-store assertions and run the same boundary against a native TCP FP store.
+The production server thread, worker endpoint, disk queue/trace and checkpoint
+methods are unchanged. Recovery opens a new empty MemFPSet behind a new native
+listener/client, requiring zero fingerprints before Recover. It then requires
+the committed frontier, both fingerprints, successor UID/level and exact trace
+positions. Old in-memory FP storage cannot supply the recovered table.
+
+The pinned FPSetManager.chkptInner performs sequential remote begin/commit or
+recover calls; the port retains that behavior. TLCServer.modelCheck invokes
+recover before coordinator publication and waitForFPSetManager, while the
+DistributedFPSetTLCServer constructor creates an empty dynamic manager. Thus
+this test proves registered-endpoint remote recovery, not a fresh-process remote
+FP CLI startup recovery feature. That source limitation remains explicit.
+No enabled original direct Java test covers this boundary, so no original-method
+completion credit is added. No production change was needed.
+
+The final assigned-block and checkpoint failure selection passes normally in
+0.051 seconds (67735 terminal status 0). Existing native FP checkpoint/recovery
+passes in 0.017 seconds (terminal status 0). Only the exact short assigned-block
+check runs under -race, passing both local and TCP rows in 1.077 seconds (20325
+terminal status 0). All handles are retired. No full suite or long model
+workload was run. Fresh-process mid-run recovery, checkpoint interruption and
+broader network failures remain pending; the distributed goal is incomplete.

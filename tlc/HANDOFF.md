@@ -1946,8 +1946,8 @@ coordinator uses the real `-recover` CLI, must report those exact recovered
 fingerprint/queue counts without regenerating initialization, and must finish
 with 114,942 distinct states and zero queued states. The producer and recovery
 roles retain process-global isolation. This covers a quiescent initial frontier,
-not a checkpoint while worker blocks are outstanding or remote-FP recovery;
-those broader boundaries remain pending.
+not fresh-process recovery after an assigned-block checkpoint or remote-FP
+CLI recovery; those broader boundaries remain pending.
 
 The native MC06 `worker_loss` row now kills an owned worker after a real block
 arrives and successor evaluation is paused. A second worker remains registered,
@@ -1980,12 +1980,12 @@ full unchanged coordinator-FP MC06 process run pass.
 
 The assigned-block checkpoint barrier now has a focused native TCP check.
 A real server thread completes and publishes its held block before the disk
-frontier, trace and local fingerprints are checkpointed. The worker resumes,
+frontier, trace and local or native TCP fingerprints are checkpointed. The worker resumes,
 and reopening storage recovers the selected frontier's exact UID and trace FP
 positions. Normal and exact short race checks pass; no production fix was needed.
 This is same-process storage reopening, not full-model recovery in fresh
 processes after a mid-run checkpoint or failure during the checkpoint. Those
-broader cases and remote-FP recovery remain pending.
+broader cases and fresh-process remote-FP CLI recovery remain pending.
 
 The shared bit-vector iterator now rejects null input and uninitialized words,
 matching Java rather than treating missing FP answers as empty results. This
@@ -2078,3 +2078,9 @@ sharing and sender Go stacks survive the boundary. Fatal returned or panicked
 storage failures receive the remote I/O category with the original failure as
 cause; ordinary failures retain their existing catch traits. This is TLC
 behavioral parity over Go transport, with no RMI or Java serialization support.
+
+Assigned-block checkpoint verification now also reopens a native TCP FP store
+from its committed file, starting with an empty new table. Queue, trace and both
+fingerprints recover consistently. The Java CLI recovers before coordinator
+publication/FP registration; fresh-process remote-FP CLI recovery remains a
+source limitation to audit, not a feature proved by this method-level check.

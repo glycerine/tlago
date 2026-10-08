@@ -18,9 +18,20 @@ func (q *activeCheckpointQueue) BeginChkpt() error {
 }
 
 // No enabled direct Java test covers this boundary. Use the production server
-// thread, TCP worker endpoint, disk queue, trace and local FP recovery. Only
+// thread, TCP worker endpoint, disk queue, trace and local/remote FP recovery. Only
 // remote evaluation is gated to make the assigned-block ordering observable.
 func TestDistributedCheckpointWaitsForAssignedBlock(t *testing.T) {
+	for _, remote := range []bool{false, true} {
+		name := "local_fingerprints"
+		if remote {
+			name = "tcp_fingerprints"
+		}
+		t.Run(name, func(t *testing.T) { checkDistributedCheckpointWithAssignedBlock(t, remote) })
+	}
+}
+
+func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remote bool) {
+	t.Helper()
 	oldWorkers, oldVariables, oldVarCount, oldEmpty := NumWorkers(), stateVariables, UniqueStringVariableCount(), EmptyState
 	t.Cleanup(func() {
 		SetNumWorkers(oldWorkers)
@@ -38,6 +49,10 @@ func TestDistributedCheckpointWaitsForAssignedBlock(t *testing.T) {
 	set := NewMemFPSet()
 	set.Init(1, metadir, "Spec")
 	manager := NewNonDistributedFPSetManager(set, "local", trace)
+	if remote {
+		_, endpoint := startFingerprintRPC(t, NewLocalFingerprintEndpoint(set))
+		manager = NewDistributedFPSetManager(endpoint)
+	}
 	server := NewTLCServer("Spec", "Spec", metadir, manager, queue, trace)
 	initial := &TLCStateMut{UID: TLCStateInitUID, level: 1}
 	if err := trace.WriteInitState(initial, 61); err != nil {
@@ -152,6 +167,15 @@ func TestDistributedCheckpointWaitsForAssignedBlock(t *testing.T) {
 	recoveredSet := NewMemFPSet()
 	recoveredSet.Init(1, metadir, "Spec")
 	recoveredManager := NewNonDistributedFPSetManager(recoveredSet, "local", recoveredTrace)
+	if remote {
+		// Reopen owned storage behind a new host/client: recovery must use the
+		// committed remote checkpoint file, not the old in-memory table.
+		_, endpoint := startFingerprintRPC(t, NewLocalFingerprintEndpoint(recoveredSet))
+		recoveredManager = NewDistributedFPSetManager(endpoint)
+	}
+	if recoveredManager.Size() != 0 {
+		t.Fatal("recovery must start with newly opened empty fingerprint storage")
+	}
 	recovered := NewTLCServer("Spec", "Spec", metadir, recoveredManager, recoveredQueue, recoveredTrace)
 	if err := recovered.Recover(); err != nil {
 		t.Fatal(err)

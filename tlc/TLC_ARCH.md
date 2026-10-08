@@ -11003,3 +11003,13 @@ sharing and sender Go stacks survive the boundary. Fatal returned or panicked
 storage failures receive the remote I/O category with the original failure as
 cause; ordinary failures retain their existing catch traits. This is TLC
 behavioral parity over Go transport, with no RMI or Java serialization support.
+
+The assigned-block checkpoint check covers local FP storage and a registered
+native TCP fingerprint store. Recovery reopens empty storage behind a new
+listener/client, then restores the remote checkpoint file together with the
+committed queue and trace. This proves the existing checkpoint/recovery methods
+with registered endpoints, not fresh-process distributed CLI recovery. In the
+pinned Java source, TLCServer.modelCheck calls recover before coordinator
+publication and waitForFPSetManager; DistributedFPSetTLCServer constructs an
+empty dynamic manager. Keep that startup limitation explicit rather than
+claiming this boundary test proves a remote recovery startup flow.
