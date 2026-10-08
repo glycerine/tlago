@@ -423,56 +423,46 @@ func traceRecoveryExit(branch string, state *TLCStateMut) {
 }
 
 func (t *TLCTrace) aliasTraceState(info *TLCStateInfo, successor *TLCStateMut, prefix []*TLCStateInfo, suffix ...*TLCStateInfo) *TLCStateInfo {
-	if t.Tool != nil {
-		alias, err := t.Tool.EvalAliasInfoPrefixSuffix(info, successor, prefix, suffix...)
-		if err != nil {
-			panic(err)
-		}
-		if alias != nil {
-			return alias
-		}
+	if t == nil || t.Tool == nil {
+		panic(NewNullPointerException())
 	}
-	return info
+	alias, err := t.Tool.EvalAliasInfoPrefixSuffix(info, successor, prefix, suffix...)
+	if err != nil {
+		panic(err)
+	}
+	return alias
 }
 
 func (t *TLCTrace) stateInfoForState(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
-	if state == nil {
-		return nil
+	if t == nil || state == nil {
+		panic(NewNullPointerException())
 	}
-	if t != nil && t.Tool != nil {
-		var (
-			info *TLCStateInfo
-			err  error
-		)
-		fp := state.FingerPrint()
-		if predecessor == nil {
-			info, err = t.Tool.GetState(fp)
-		} else {
-			info, err = t.Tool.GetState(fp, predecessor)
-		}
-		if err != nil {
-			panic(err)
-		}
-		return info
-	}
-	info := NewTLCStateInfo(state)
 	fp := state.FingerPrint()
-	info.FP = &fp
+	if t.Tool == nil {
+		panic(NewNullPointerException())
+	}
+	var info *TLCStateInfo
+	var err error
+	if predecessor == nil {
+		info, err = t.Tool.GetState(fp)
+	} else {
+		info, err = t.Tool.GetState(fp, predecessor)
+	}
+	if err != nil {
+		panic(err)
+	}
 	return info
 }
 
 func (t *TLCTrace) stateInfoForTransition(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
-	if state == nil {
-		return nil
+	if t == nil || t.Tool == nil {
+		panic(NewNullPointerException())
 	}
-	if t != nil && t.Tool != nil && predecessor != nil {
-		info, err := t.Tool.GetStateForTransition(state, predecessor)
-		if err != nil {
-			panic(err)
-		}
-		return info
+	info, err := t.Tool.GetStateForTransition(state, predecessor)
+	if err != nil {
+		panic(err)
 	}
-	return NewTLCStateInfo(state)
+	return info
 }
 
 func (t *TLCTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {
@@ -530,7 +520,7 @@ func (t *TLCTrace) GetTraceAt(pos int64, included bool) []*TLCStateInfo {
 }
 
 func (t *TLCTrace) getTraceAtFromDisk(pos int64, included bool) ([]*TLCStateInfo, bool, error) {
-	if t == nil || t.Tool == nil {
+	if t == nil {
 		return nil, false, nil
 	}
 	fps, err := t.traceFPsFromDisk(pos, included)
@@ -587,13 +577,16 @@ func (t *TLCTrace) traceFPsFromDisk(pos int64, included bool) ([]uint64, error) 
 }
 
 func (t *TLCTrace) recoverTraceFromFPs(sinfo *TLCStateInfo, fps []uint64) ([]*TLCStateInfo, error) {
-	if t == nil || t.Tool == nil {
-		return nil, nil
+	if t == nil {
+		panic(NewNullPointerException())
 	}
 	snapshot := ResetRandomEnumerableValues()
 	out := make([]*TLCStateInfo, 0, len(fps))
 	if len(fps) > 0 {
 		if sinfo == nil {
+			if t.Tool == nil {
+				panic(NewNullPointerException())
+			}
 			info, err := t.Tool.GetState(fps[len(fps)-1])
 			if err != nil {
 				return nil, err
@@ -608,6 +601,9 @@ func (t *TLCTrace) recoverTraceFromFPs(sinfo *TLCStateInfo, fps []uint64) ([]*TL
 			}
 			// Source passes the predecessor state, not the info overload that
 			// raises an evaluation error for a missing match.
+			if t.Tool == nil {
+				panic(NewNullPointerException())
+			}
 			info, err := t.Tool.GetState(fp, sinfo.State)
 			if err != nil {
 				return nil, err

@@ -11945,5 +11945,11 @@ exhausted fingerprint access returns an index failure instead of fabricated zero
 Close stops on its first failure and retains the reader owner, so subsequent
 access still observes the closed resource. Position lookup checks only the next
 neighbor; reset changes only the selector, preserving child-reader positions.
-Missing-tool and remaining trace cleanup boundaries still need audit. No RMI or
-JVM machinery is introduced.
+Reconstruction requires a tool only when performing a lookup; empty and supplied-
+initial paths remain available without one. Missing-tool failures follow random
+reset and do not restore the snapshot on failure. Printing requires its lookup/
+alias tool, and a returned nil alias reaches the printer rather than producing
+an unaliased substitute. Disk recovery no longer selects the in-memory path
+simply because its tool is absent. Initial-only printing still omits tool access.
+Trace cleanup and remaining worker read/write boundaries still need audit. No RMI
+or JVM machinery is introduced.

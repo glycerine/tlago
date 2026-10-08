@@ -211,8 +211,8 @@ func (t *ConcurrentTLCTrace) predecessorRecord(record ConcurrentTraceRecord) (Co
 }
 
 func (t *ConcurrentTLCTrace) recoverTraceFromRecords(sinfo *TLCStateInfo, records []ConcurrentTraceRecord) ([]*TLCStateInfo, error) {
-	if t == nil || t.Tool == nil {
-		return nil, nil
+	if t == nil {
+		panic(NewNullPointerException())
 	}
 	snapshot := ResetRandomEnumerableValues()
 	end := len(records) - 1
@@ -222,6 +222,9 @@ func (t *ConcurrentTLCTrace) recoverTraceFromRecords(sinfo *TLCStateInfo, record
 	out := make([]*TLCStateInfo, 0, end)
 	if end > 0 {
 		if sinfo == nil {
+			if t.Tool == nil {
+				panic(NewNullPointerException())
+			}
 			info, err := t.Tool.GetState(records[end].FP)
 			if err != nil {
 				return nil, err
@@ -237,6 +240,9 @@ func (t *ConcurrentTLCTrace) recoverTraceFromRecords(sinfo *TLCStateInfo, record
 		out = append(out, sinfo)
 		for i := end - 2; i >= 0; i-- {
 			record := records[i+1]
+			if t.Tool == nil {
+				panic(NewNullPointerException())
+			}
 			info, err := t.Tool.GetState(record.FP, sinfo.State)
 			if err != nil {
 				return nil, err

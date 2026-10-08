@@ -731,7 +731,11 @@ retain the source worker-only maximum and minimum of one. Native enumerator
 checks preserve exhausted-index and closed-cursor failures, first-failure close
 ordering, required worker/writer/file access, unflushed reader construction,
 neighbor-only advancement, genuine zero fingerprints and selector-only reset.
-No original-method credit is added.
+Native tool-ownership checks preserve empty/provided-initial short paths,
+lookup-time failures and random-generator lifetime in both trace implementations.
+Printing/disk checks omit tool access only on source short paths and preserve
+missing alias results rather than fabricate output. No original-method credit
+is added.
 
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed

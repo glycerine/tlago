@@ -21171,3 +21171,44 @@ DieHard fingerprint-storage variants pass unchanged trace/event assertions
 race run was performed. Supplemental checks add no original-method credit.
 Missing-tool and remaining trace cleanup boundaries still need audit;
 distributed parity remains incomplete. No RMI or JVM machinery was introduced.
+
+### 2026-10-08: Reconstruction tools and returned alias ownership
+
+Audited remaining missing-tool guards against TLCTrace/ConcurrentTLCTrace
+reconstruction. Go returned nil before resetting randomness or retaining a
+supplied initial result. Both helpers now require a tool only at actual lookup
+calls, after source random reset; empty and supplied-initial-only paths return
+normally without tool access and restore the snapshot. A required missing tool
+raises the ordinary null-pointer failure without restoring randomness or changing
+provided info metadata.
+
+Trace printing also substituted reconstructed states when its tool was absent,
+and skipped alias evaluation. Removed these substitutes; lookup/alias calls now
+require their tool. Initial-only printing still omits tool access. Disk trace
+recovery no longer selects the in-memory path just because its tool is missing;
+empty disk prefixes remain tool-free. Aliasing now returns the tool's result
+unchanged, including nil, so the source printer boundary fails rather than
+printing an unaliased replacement.
+
+No original method directly tests these absent-owner boundaries. Eight native
+single/concurrent recovery cases cover empty/provided-initial/initial-lookup/
+successor-lookup paths and random/info lifetime. Three printing cases retain
+initial-only output and missing-tool partial output; a real disk record checks
+required reconstruction and the empty prefix. All eight recovery cases, two
+printing failure cases and disk reconstruction initially failed (07260e, status 1,
+0.014 seconds). Corrected focused new/related checks pass (4494d5, status 0,
+2.062 seconds). An additional nil-alias-result check initially exposed unwanted
+unaliased printing (4f3fa5, status 1, 0.014 seconds).
+
+Final new/related trace tool, concurrent reconstruction/lifecycle/ownership/
+enumeration, shared metadata/sequence/cursor/depth/write failures, nested/disk
+recovery and original nine smart-proxy checks pass (c01713, status 0, 1.888
+seconds). Original checkpoint-on-violation/time-bound, Alias safety/liveness,
+TLCExtTrace alias, error-trace construction and three distributed initializer-
+continue, evaluator-error and TLCSet model contexts pass (30ade9, status 0,
+7.783 seconds). The time-bound model retains five seconds. Both actual distributed
+DieHard fingerprint-storage variants pass unchanged trace/event assertions
+(835cbd, status 0, 24.374 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit.
+Trace cleanup and remaining worker read/write boundaries still need audit;
+distributed parity remains incomplete. No RMI or JVM machinery was introduced.

@@ -149,7 +149,13 @@ writer cursor without flushing or reopening the writer. Cursor failures propagat
 before selector advancement; exhausted fingerprint access fails instead of
 returning zero. Closing stops at the first failure and retains the closed reader
 owner. Neighbor-only advancement and selector-only reset preserve source behavior.
-Missing-tool and remaining trace cleanup boundaries still need audit.
+Reconstruction requires the tool only at actual lookup calls; empty and supplied-
+initial paths retain normal randomness restoration and returned info metadata.
+Printing requires its lookup/alias tool and preserves a returned nil alias instead
+of displaying an unaliased substitute. Disk reconstruction cannot select an
+in-memory fallback merely because the tool is absent. Initial-only printing
+still requires no tool. Trace cleanup and remaining worker read/write boundaries
+still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes
