@@ -18900,3 +18900,31 @@ worker bootstrap/callback selection passes in 0.036 seconds (terminal status 0).
 Only the exact short malformed-location keepalive case runs under -race, passing
 in 1.031 seconds (35443 terminal status 0). All handles are retired. No full suite
 or long workload was run. Broader distributed parity remains incomplete.
+
+## October 8, 2026: native worker file resolver naming and cache verification
+
+The worker resolver already used local/Go TCP coordinator interfaces, but its
+exported Go type/constructor still carried the source RMI name. Renamed them
+to DistributedFilenameToStreamResolver and NewDistributedFilenameToStreamResolver
+throughout production worker commands, root bootstrap, unit tests and native
+process helpers. No RMI-named compatibility alias remains in Go. The source
+class remains a behavioral reference; no transport or cache algorithm changed.
+
+No direct upstream resolver test exists in the pinned test trees. Added a short
+native TCP check using real TLCServer.GetFile and coordinator-owned files.
+Require basename keys despite different input directories, identical cached
+file object across isModule flags, unchanged cached contents after coordinator
+updates, refetch after deleting the cached file, exact binary/empty file data,
+separate resolver temporary directories, false standard-module classification
+and exact five coordinator fetches. Test cleanup isolates process-exit file
+registrations and restores previous ownership. This adds no original-method
+completion credit.
+
+Focused resolver/coordinator files/bootstrap/polynomial failure selection passes
+in 0.025 seconds (29805 terminal status 0). The root endpoint failure-order case
+passes in 0.018 seconds (15898 terminal status 0), compiling the renamed root and
+native process helper callers without executing long models. Only the exact
+short resolver TCP/cache case runs under -race, passing in 1.035 seconds (88134
+terminal status 0). All handles are retired. No full suite or long workload was
+run. This changes the exported Go API names, not the wire protocol. Broader
+distributed parity remains incomplete.

@@ -19,7 +19,7 @@ type DistributedWorkerEnvironment struct {
 	ToolOut                io.Writer
 	SystemErr              io.Writer
 	AvailableProcessors    func() int
-	LoadApp                func(DistributedServerEndpoint, *RMIFilenameToStreamResolver) (*TLCApp, error)
+	LoadApp                func(DistributedServerEndpoint, *DistributedFilenameToStreamResolver) (*TLCApp, error)
 	StartThread            func(string, func())
 	LocalCanonicalHostName func() (string, error)
 	RegisterWorker         func(DistributedServerEndpoint, *DistributedWorker) error
@@ -35,7 +35,7 @@ type DistributedWorkerEnvironment struct {
 // Invoke its setup/main/shutdown methods serially, as process lifecycle calls.
 type DistributedWorkerProcess struct {
 	Runtime  *DistributedWorkerRuntime
-	Resolver *RMIFilenameToStreamResolver
+	Resolver *DistributedFilenameToStreamResolver
 	Group    *DistributedWorkerGroup
 	intern   *InternTable
 }
@@ -117,7 +117,7 @@ func (p *DistributedWorkerProcess) start(serverName string, count int, env Distr
 	initBuiltInOPs()
 	initCounterExampleUniqueStrings()
 	if p.Resolver == nil {
-		p.Resolver = NewRMIFilenameToStreamResolver()
+		p.Resolver = NewDistributedFilenameToStreamResolver()
 	}
 	p.Resolver.SetTLCServer(server)
 	if env.LoadApp == nil {
@@ -160,7 +160,7 @@ func (p *DistributedWorkerProcess) start(serverName string, count int, env Distr
 	return nil
 }
 
-func (p *DistributedWorkerProcess) SetFilenameToStreamResolver(resolver *RMIFilenameToStreamResolver) {
+func (p *DistributedWorkerProcess) SetFilenameToStreamResolver(resolver *DistributedFilenameToStreamResolver) {
 	p.Resolver = resolver
 }
 

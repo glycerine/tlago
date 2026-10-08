@@ -13,34 +13,37 @@ import (
 	"unicode/utf16"
 )
 
-// DistributedFileServer is the getFile portion of TLCServerRMI. The local
-// TLCServer implements the same contract used by a future network client.
+// DistributedFileServer supplies coordinator files to workers through either
+// a local coordinator or the native Go network endpoint.
 type DistributedFileServer interface {
 	GetFile(string) ([]byte, error)
 }
 
-// RMIFilenameToStreamResolver mirrors the worker's resolver, including its
-// cache of files rather than bytes. Neither constructor library paths nor the
-// resolve isModule flag affect this particular Java resolver.
-type RMIFilenameToStreamResolver struct {
+// DistributedFilenameToStreamResolver fetches coordinator files into a private
+// directory and caches the local files. It preserves the upstream worker
+// resolver's behavior independently of transport. Constructor library paths
+// and the resolve isModule flag do not affect this resolver.
+type DistributedFilenameToStreamResolver struct {
 	server    DistributedFileServer
 	fileCache *InsMap[string, *TLAFile]
 	tmpDir    string
 }
 
-func NewRMIFilenameToStreamResolver(libraryPaths ...[]string) *RMIFilenameToStreamResolver {
+func NewDistributedFilenameToStreamResolver(libraryPaths ...[]string) *DistributedFilenameToStreamResolver {
 	dir, err := os.MkdirTemp("", "tlc-")
 	if err != nil {
 		printDistributedFileException(NewIOException(distributedIOMessage(err)))
 		panic(NewNullPointerException()) // newExclusiveTemporaryDirectory dereferences null.
 	}
 	registerDistributedDeleteOnExit(dir)
-	return &RMIFilenameToStreamResolver{fileCache: NewInsMap[string, *TLAFile](), tmpDir: dir}
+	return &DistributedFilenameToStreamResolver{fileCache: NewInsMap[string, *TLAFile](), tmpDir: dir}
 }
 
-func (r *RMIFilenameToStreamResolver) SetTLCServer(server DistributedFileServer) { r.server = server }
+func (r *DistributedFilenameToStreamResolver) SetTLCServer(server DistributedFileServer) {
+	r.server = server
+}
 
-func (r *RMIFilenameToStreamResolver) Resolve(filename string, isModule bool) *TLAFile {
+func (r *DistributedFilenameToStreamResolver) Resolve(filename string, isModule bool) *TLAFile {
 	name := distributedJavaFileName(filename)
 	file, found := r.fileCache.Get2(name)
 	if !found || !file.Exists() {
@@ -51,7 +54,7 @@ func (r *RMIFilenameToStreamResolver) Resolve(filename string, isModule bool) *T
 	return file
 }
 
-func (r *RMIFilenameToStreamResolver) fetch(name string) (bs []byte) {
+func (r *DistributedFilenameToStreamResolver) fetch(name string) (bs []byte) {
 	bs = []byte{} // Java's initial byte[0] is not null.
 	defer func() {
 		if failure := recover(); failure != nil {
@@ -72,7 +75,7 @@ func (r *RMIFilenameToStreamResolver) fetch(name string) (bs []byte) {
 	return data
 }
 
-func (r *RMIFilenameToStreamResolver) writeToNewTempFile(name string, bs []byte) *TLAFile {
+func (r *DistributedFilenameToStreamResolver) writeToNewTempFile(name string, bs []byte) *TLAFile {
 	file := NewTLAFile(filenamePathResolve(r.tmpDir, name), false, r)
 	registerDistributedDeleteOnExit(file.GetPath())
 	out, err := os.Create(file.GetPath())
@@ -95,9 +98,9 @@ func (r *RMIFilenameToStreamResolver) writeToNewTempFile(name string, bs []byte)
 	return file
 }
 
-func (r *RMIFilenameToStreamResolver) IsStandardModule(moduleName string) bool { return false }
+func (r *DistributedFilenameToStreamResolver) IsStandardModule(moduleName string) bool { return false }
 
-func (r *RMIFilenameToStreamResolver) GetFullPath() string {
+func (r *DistributedFilenameToStreamResolver) GetFullPath() string {
 	var buf strings.Builder
 	i := 0
 	for name := range r.fileCache.All() {

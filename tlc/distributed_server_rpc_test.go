@@ -120,7 +120,7 @@ func TestCoordinatorRPCSettingsFilesAndInterning(t *testing.T) {
 	}
 	// The existing resolver catches coordinator connection failures and retains
 	// its initial empty byte array, rather than propagating or returning null.
-	resolver := &RMIFilenameToStreamResolver{server: client}
+	resolver := &DistributedFilenameToStreamResolver{server: client}
 	if data := resolver.fetch("error"); data == nil || len(data) != 0 {
 		t.Fatal("resolver failed to catch native coordinator failure")
 	}

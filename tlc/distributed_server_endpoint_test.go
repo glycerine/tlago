@@ -36,7 +36,7 @@ func TestDistributedWorkerBootstrapPolynomialFailure(t *testing.T) {
 		Lookup: func(string) (DistributedServerEndpoint, error) {
 			return endpoint, nil
 		},
-		LoadApp: func(DistributedServerEndpoint, *RMIFilenameToStreamResolver) (*TLCApp, error) {
+		LoadApp: func(DistributedServerEndpoint, *DistributedFilenameToStreamResolver) (*TLCApp, error) {
 			loaded = true
 			return nil, nil
 		},

@@ -124,7 +124,7 @@ func TestNativeWorkerBootstrapAndCallback(t *testing.T) {
 	loaded := false
 	env := network.Environment(DistributedWorkerEnvironment{
 		ToolOut: &output, AvailableProcessors: func() int { return 1 }, ReadyDate: func() string { return "now" },
-		LoadApp: func(server DistributedServerEndpoint, resolver *RMIFilenameToStreamResolver) (*TLCApp, error) {
+		LoadApp: func(server DistributedServerEndpoint, resolver *DistributedFilenameToStreamResolver) (*TLCApp, error) {
 			if FP64IrredPoly() != ^uint64(0) || internTable != process.intern || resolver.server != server {
 				return nil, errors.New("bootstrap initialized app before polynomial/intern/resolver")
 			}

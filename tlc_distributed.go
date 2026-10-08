@@ -13,10 +13,10 @@ import (
 // LoadDistributedWorkerTool performs the file-loading portion of TLCWorker's
 // TLCApp construction using the production parser and TLC bridge. It installs
 // a fresh worker interning context before configuration or semantic values are
-// created. FP64 is initialized first like Java. Registry discovery and endpoint
-// export remain in the transport port. Construct one Tool per worker JVM,
-// shared by that JVM's threads.
-func LoadDistributedWorkerTool(server tlc.DistributedServerEndpoint, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics, error) {
+// created. FP64 is initialized first like Java. Discovery and endpoint
+// publication are supplied by native transport. Construct one Tool per worker
+// process, shared by that process's threads.
+func LoadDistributedWorkerTool(server tlc.DistributedServerEndpoint, resolver *tlc.DistributedFilenameToStreamResolver, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics, error) {
 	if server == nil {
 		panic(tlc.NewNullPointerException())
 	}
@@ -27,7 +27,7 @@ func LoadDistributedWorkerTool(server tlc.DistributedServerEndpoint, resolver *t
 	tlc.FP64InitPoly(poly)
 	tlc.UniqueStringInitializeWithSource(server)
 	if resolver == nil {
-		resolver = tlc.NewRMIFilenameToStreamResolver()
+		resolver = tlc.NewDistributedFilenameToStreamResolver()
 	}
 	resolver.SetTLCServer(server)
 	app, diags, err := loadDistributedEndpointApp(server, resolver, runtime)
@@ -40,11 +40,11 @@ func LoadDistributedWorkerTool(server tlc.DistributedServerEndpoint, resolver *t
 // StartDistributedWorkerGroup is the local post-registry-lookup bootstrap.
 // Configuration and Tool construction complete before registration threads
 // start; those threads then register asynchronously with the supplied server.
-func StartDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
+func StartDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc.DistributedFilenameToStreamResolver, runtime tlc.RuntimeParameters, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
 	return startDistributedWorkerGroup(tlc.NewLocalServerEndpoint(server), count, resolver, runtime, "", nil, address...)
 }
 
-func startDistributedWorkerGroup(server tlc.DistributedServerEndpoint, count int, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, serverURL string, lookup tlc.TLCServerLookup, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
+func startDistributedWorkerGroup(server tlc.DistributedServerEndpoint, count int, resolver *tlc.DistributedFilenameToStreamResolver, runtime tlc.RuntimeParameters, serverURL string, lookup tlc.TLCServerLookup, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
 	count = int(int32(count))
 	if count < 0 {
 		panic(tlc.NewIllegalArgumentException("count < 0"))
@@ -67,7 +67,7 @@ func startDistributedWorkerGroup(server tlc.DistributedServerEndpoint, count int
 // StartDistributedWorkerGroupWithLookup connects the source discovery loop to
 // the existing production config/parser/tool bootstrap. lookup supplies the
 // Naming.lookup boundary; registry/RPC transport and command main are separate.
-func StartDistributedWorkerGroupWithLookup(serverName string, count int, lookup tlc.TLCServerLookup, sleep tlc.DistributedLookupSleep, output io.Writer, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
+func StartDistributedWorkerGroupWithLookup(serverName string, count int, lookup tlc.TLCServerLookup, sleep tlc.DistributedLookupSleep, output io.Writer, resolver *tlc.DistributedFilenameToStreamResolver, runtime tlc.RuntimeParameters, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
 	count = int(int32(count))
 	if count < 0 {
 		// Java constructs CountDownLatch before entering the lookup try/catch.
@@ -404,7 +404,7 @@ func CreateTLCApp(args []string, runtime tlc.RuntimeParameters, classpath ...[]t
 func RunDistributedWorker(process *tlc.DistributedWorkerProcess, args []string, env tlc.DistributedWorkerEnvironment, runtime tlc.RuntimeParameters) (Diagnostics, error) {
 	var diags Diagnostics
 	if env.LoadApp == nil {
-		env.LoadApp = func(server tlc.DistributedServerEndpoint, resolver *tlc.RMIFilenameToStreamResolver) (*tlc.TLCApp, error) {
+		env.LoadApp = func(server tlc.DistributedServerEndpoint, resolver *tlc.DistributedFilenameToStreamResolver) (*tlc.TLCApp, error) {
 			app, loaded, err := loadDistributedEndpointApp(server, resolver, runtime)
 			diags = append(diags, loaded...)
 			if err == nil && loaded.HasErrors() {

@@ -11122,3 +11122,12 @@ terminate the timer. The task now recognizes this Go category alongside the
 existing source exception supplied by local adapters, logs at the finest-level
 boundary and continues without worker exit or timer cancellation. Validation
 rules are unchanged, and no Java transport type is used for native discovery.
+
+The worker file resolver API is DistributedFilenameToStreamResolver, constructed
+with NewDistributedFilenameToStreamResolver. It uses DistributedFileServer for
+local or native TCP coordinator calls. The former RMI-named Go API is removed
+from worker commands, root bootstrap, tests and process helpers. The upstream
+RMIFilenameToStreamResolver is retained only as a behavior reference: basename
+cache keys, actual file-existence checks before reuse, refetch after deletion,
+ignored library paths/isModule flag, binary/empty writes and private temporary
+directories remain intact. This is a Go API rename, not a wire-format change.

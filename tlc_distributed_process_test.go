@@ -263,7 +263,7 @@ func nativeDistributedBlockedWorker(args []string) error {
 	}
 	defer network.Close()
 	process := tlc.NewDistributedWorkerProcess()
-	env := network.Environment(tlc.DistributedWorkerEnvironment{LoadApp: func(server tlc.DistributedServerEndpoint, resolver *tlc.RMIFilenameToStreamResolver) (*tlc.TLCApp, error) {
+	env := network.Environment(tlc.DistributedWorkerEnvironment{LoadApp: func(server tlc.DistributedServerEndpoint, resolver *tlc.DistributedFilenameToStreamResolver) (*tlc.TLCApp, error) {
 		app, diagnostics, err := loadDistributedEndpointApp(server, resolver, tlc.RuntimeParameters{})
 		if err != nil {
 			return nil, err

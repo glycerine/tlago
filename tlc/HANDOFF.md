@@ -73,6 +73,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+The worker file resolver is now named `DistributedFilenameToStreamResolver`,
+with constructor `NewDistributedFilenameToStreamResolver`; the misleading RMI
+Go API name is removed. Worker bootstrap, root integration and process helpers
+use the native name. TCP checks retain basename file caching, deletion/refetch,
+binary/empty files and separate temporary-directory ownership. The Java class
+remains a behavior reference, not a transport compatibility target.
+
 Native discovery now classifies malformed coordinator locations with
 `DistributedLocationError`, retaining the location and parser/validation cause.
 Keepalive logs this category and continues, matching the source catch rather

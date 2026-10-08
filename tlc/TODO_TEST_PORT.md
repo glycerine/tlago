@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+The native worker resolver API is `DistributedFilenameToStreamResolver`.
+Coordinator TCP file/cache checks retain basename keys, flag-independent fetches,
+binary/empty data, deletion/refetch and independent temporary directories.
+No direct upstream resolver test exists; this adds no original-method credit.
+
 Malformed native coordinator locations now retain a distinct Go error category.
 Short discovery/keepalive checks require the source log-and-continue handling
 without exit, cancellation or latch release, across existing validation cases.
