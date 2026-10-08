@@ -31,9 +31,11 @@ SANY parser reconciliation (2026-10-07): **Port complete** for
 The original token-boundary and standalone parser assertions are now retained;
 the earlier module-wrapper checks remain supplementary. No change to the main
 TLC method/class totals. All 74 generated-lookahead entry points now have source
-production callers. Complete expected-token/bookkeeping fidelity and corpus AST
-comparison remain separate implementation requirements; caller integration adds
-no original-method credit.
+production callers, and all 130 direct-choice sites have translated paths.
+Native failure-span estimation is removed. Ordered expected-token entries match
+Java on 341 external cases (14,741 sequences across 117 nonempty results).
+Exhaustive malformed rescan contexts and corpus AST comparison remain separate
+implementation requirements; these observations add no original-method credit.
 
 ## Topic totals for the main suite
 

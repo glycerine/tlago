@@ -20,7 +20,6 @@ type SanyParser struct {
 	internalModules        []string
 	messageStack           []sanyParseFrame
 	expecting              string
-	failedLookaheadSizes   map[*SanyToken]int
 	fairnessHook           *SanySyntaxNode
 	lastOperator           *SanyOperatorInfo
 	lookaheadOperatorStack *SanyOperatorStack
@@ -791,12 +790,6 @@ func (p *SanyParser) ProofOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNod
 	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in operator definition"))
 	p.belchDEF()
 	p.expecting = "Expression"
-	if lhs.Kind.JavaName() == "N_IdentLHS" {
-		p.expecting = "Expression or Instance"
-		if !p.startsExpressionLookahead() {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenInstance}}, "expected expression or instance in definition")
-		}
-	}
 	heirs = append(heirs, p.ExpressionUntilProofBoundary())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
 }
@@ -1406,12 +1399,6 @@ func (p *SanyParser) OperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in operator definition"))
 	p.belchDEF()
 	p.expecting = "Expression"
-	if lhs.Kind.JavaName() == "N_IdentLHS" {
-		p.expecting = "Expression or Instance"
-		if !p.startsExpressionLookahead() {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenInstance}}, "expected expression or instance in definition")
-		}
-	}
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(nil))
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
 }
@@ -1422,12 +1409,6 @@ func (p *SanyParser) LetOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode 
 	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in LET definition"))
 	p.belchDEF()
 	p.expecting = "Expression"
-	if lhs.Kind.JavaName() == "N_IdentLHS" {
-		p.expecting = "Expression or Instance"
-		if !p.startsExpressionLookahead() {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenInstance}}, "expected expression or instance in definition")
-		}
-	}
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenLetin
 	}))
@@ -1500,18 +1481,15 @@ func (p *SanyParser) startsDefinitionPrefixAt(offset int) bool {
 	}
 }
 
-func (p *SanyParser) IdentDeclOrSomeFixDecl(site ...int) *SanySyntaxNode {
+func (p *SanyParser) IdentDeclOrSomeFixDecl(site int) *SanySyntaxNode {
 	if p.check(SanyTokenIdentifier) {
 		return p.IdentDecl()
 	}
 	if p.check(SanyTokenUs) || p.startsDefinitionPrefix() {
 		return p.SomeFixDecl()
 	}
-	if len(site) != 0 {
-		p.recordDirectChoice(site[0])
-		p.throwParseException(nil, "expected formal declaration")
-	}
-	p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenUs}, {SanyTokenOp76}}, "expected formal declaration")
+	p.recordDirectChoice(site)
+	p.throwParseException(nil, "expected formal declaration")
 	return nil
 }
 
@@ -1901,7 +1879,7 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	} else if p.scanLookahead(53, 2147483647) {
 		listKind, itemKind = "N_ConjList", "N_ConjItem"
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenOR}, {SanyTokenAND}}, "expected junction bullet")
+		p.throwParseException(nil, "expected junction bullet")
 	}
 	items := []*SanySyntaxNode{p.junctionItem(stop, itemKind)}
 	for p.junctionListContext.isNewBullet(p.peek().Begin.Column, p.peek().Kind) {
@@ -2526,30 +2504,6 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 	}
 	heirs = append(heirs, close)
 	return NewSanyNode(SanySyntaxNodeKindByName[kind], heirs...)
-}
-
-// Preview expression eligibility at an arbitrary token offset.
-func (p *SanyParser) startsExpressionFirstAt(offset int) bool {
-	kind := p.tokenAt(offset).Kind
-	starts := kind >= SanyTokenOp57 && kind <= SanyTokenProofimplicitsteplexeme
-	if !starts {
-		switch kind {
-		case SanyTokenCase, SanyTokenChoose, SanyTokenExists, SanyTokenForall,
-			SanyTokenIf, SanyTokenLet, SanyTokenSF, SanyTokenTExists,
-			SanyTokenTForall, SanyTokenWF, SanyTokenLbr, SanyTokenLsb,
-			SanyTokenLbc, SanyTokenLab, SanyTokenNumberLiteral, SanyTokenStringLiteral:
-			starts = true
-		}
-	}
-	return starts && p.junctionListContext.isAboveCurrent(p.tokenAt(offset).Begin.Column)
-}
-
-func (p *SanyParser) startsExpressionLookahead() bool {
-	if p.startsExpressionFirstAt(0) {
-		return true
-	}
-	p.rememberFailedLookahead(1)
-	return false
 }
 
 func (p *SanyParser) TupleOrAction() *SanySyntaxNode {

@@ -10260,3 +10260,24 @@ External observations of the five token productions agree with Java for every
 sequences. Existing 5,823 production rows over 341 cases still agree. These
 observations do not establish exhaustive malformed rescan behavior, allocation
 identity, native error-span fidelity or complete parser/AST and evaluator parity.
+
+
+## Generated expected entries replace native span estimation
+
+The obsolete startsExpressionLookahead branch existed only in operator-definition
+helpers whose production callers select postfix, infix or prefix LHS. Identifier
+LHS already follows Java's separate lookahead-7 Expression/INSTANCE branch.
+Remove the duplicate native preview, its token-span map and the short-message
+fallback. Short-message length now derives solely from the generated direct-mask
+and saved-rescan entries. Junctions' failed choice calls the equivalent of
+consume(-1), without adding invented AND/OR singleton expectations. Formal
+declaration parsing requires the actual caller's site, removing its fallback.
+
+Generated exceptions retain the consumed current token and ordered expected
+sequences. Before first consumption, they retain a dummy token linked to the
+input, matching JavaCC initialization. Ordinary message exceptions retain no
+expected-token metadata. An external observer reads Java's actual jj_expentries
+and Go's exception entries on the same 341 production cases. All entries agree,
+including 14,741 sequences over 117 nonempty results; the 5,823 syntax/message
+rows also remain identical. This is bounded evidence, not exhaustive parser,
+syntax allocation, constructor API or evaluator parity.

@@ -585,8 +585,8 @@ generation and application failure boundaries still need reconciliation,
 including compound selectors and LET instances. Preserve original assertions
 and diagnose implementation shortcuts before installing more original tests.
 
-General JavaCC lookahead-derived expected-token sequences, remaining production
-states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root
+JavaCC expected-token entries now agree on the bounded observations documented
+below; exhaustive production states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root
 `sany_parse_error_java_test.go` and uses the shared actual parsing phase. It
 asserts recorded parser output with the original input and assertion text,
 replacing the semantic-diagnostic surrogate. The original percent-error output
@@ -789,10 +789,16 @@ parser rows across 341 cases agree. Operator-token productions and OpenStart
 also match Java on 1,475 observations over all 295 token kinds, including
 acceptance, consumption and expected-token lists. Prefix operands preserve the
 Infix Op frame for unary minus. Prelude, set continuations and proof lexemes
-retain their guarded source failures. Current original frontend/model checks
-pass in 9.668 seconds, complete SANY in 1.791 seconds and compilation passes.
-Native error-span estimates, full expected-token bookkeeping, syntax AST parity
-and proof generation remain reconciliation work.
+retain their guarded source failures.
+The obsolete identifier-definition expression preview and its manual span map
+are removed. Generated exceptions retain the actual consumed token and expected
+sequences; short messages use only the longest generated sequence. Junction
+failure contributes no invented bullet tokens, and formal declarations require
+their actual caller site. All 341 external cases also match Java's ordered
+expected-token entries, including 14,741 sequences in 117 nonempty results.
+Current original frontend/model checks pass in 9.738 seconds, complete SANY in
+1.914 seconds and compilation passes. Exhaustive malformed rescan contexts,
+syntax AST parity and proof generation remain reconciliation work.
 These bounded observations do not establish every semantic-predicate context or
 full parser parity.
 

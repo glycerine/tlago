@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-07 Remove native failure-span estimates and observe expected entries:
+Previous completed commit: 3357bd7. Trace the last manual span estimator to three
+obsolete identifier-LHS branches in ordinary/proof/LET operator helpers. Actual
+Definition dispatch calls these helpers only for postfix/infix/prefix LHS; its
+Identifier branch already uses source lookahead 7 and INSTANCE site 21. Remove
+the duplicate preview, span map and message-length override. Junctions failure
+uses no invented bullet expectations; formal declarations require the actual
+caller site. Generated exceptions retain currentToken and expected sequences;
+ordinary message exceptions retain no generated metadata. The initial generated
+failure retains the source dummy token. Full exception API and AST parity remain
+separate audit requirements.
+
+Extend external BodyDefinition observer to read Java's actual jj_expentries and
+Go's captured exception entries on the existing 341 cases. Initial textual
+comparison differed because Java arrays print commas and Go fmt.Sprint slices
+do not; correct only the observer's array formatting. All 341 rows then agree:
+117 nonempty entries contain 14,741 ordered sequences. The original 5,823
+syntax/message rows remain equal. Java returned 0. Go observer 89258 returned 0;
+format-corrected observer 42000 returned 0; final observer 31126 returned 0.
+All handles are retired. External probes BodyExpectedProbe.java and
+tlago-body-expected-manual_test.go, overlay and logs remain under /mnt/oldrog/tmp.
+No permanent tests, original-method credit, fixture changes or weakened bounds.
+
+Final existing original frontend/model gate 35812 returned 0 in 9.738 seconds;
+complete SANY 9333 returned 0 in 1.914 seconds; all-package compile 94443 returned
+0. All handles are retired. Final logs use tlago-source-expectations-* under
+/mnt/oldrog/tmp. Normal execution without race. No new full-workspace green
+baseline; native XML fixture failures remain unchanged. Main inventory counts
+are unchanged, and broader parser/semantic/evaluator fidelity remains pending.
+
 2026-10-07 Final direct-choice sites and operator token productions:
 Previous completed commit: a951193. Connect source sites 0–3, 6, 91, 97, 119,
 121, 122 and 129, completing translated paths for all 130 direct-choice sites.

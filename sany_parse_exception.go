@@ -10,7 +10,11 @@ type sanyParseFrame struct {
 	token *SanyToken
 }
 
-type sanyParseException struct{ diagnostic Diagnostic }
+type sanyParseException struct {
+	diagnostic             Diagnostic
+	currentToken           *SanyToken
+	expectedTokenSequences [][]SanyTokenKind
+}
 
 // beginProduction/endProduction port the message state in Java's bpa/epa.
 // A thrown exception snapshots that state before the Go stack unwinds.
@@ -29,23 +33,6 @@ func (p *SanyParser) endProduction() {
 	p.messageStack = p.messageStack[:len(p.messageStack)-1]
 	p.log(SanyLogTrace, "Ending %s", name)
 	p.expecting = ""
-}
-
-// JavaCC rescans saved failed lookaheads when constructing ParseException.
-// Its short message uses only the longest resulting expected-token sequence.
-// Retain each scanned token's remaining length so a later failure renders the
-// same amount of following input, without consuming it during lookahead.
-func (p *SanyParser) rememberFailedLookahead(length int) {
-	if p.failedLookaheadSizes == nil {
-		p.failedLookaheadSizes = make(map[*SanyToken]int)
-	}
-	for i := 0; i < length; i++ {
-		token := p.tokenAt(i)
-		remaining := length - i
-		if remaining > p.failedLookaheadSizes[token] {
-			p.failedLookaheadSizes[token] = remaining
-		}
-	}
 }
 
 // recordDirectChoice retains JavaCC jj_la1's generation at a failed switch.
@@ -96,9 +83,6 @@ func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessa
 			maxSize = len(sequence)
 		}
 	}
-	if lookaheadSize := p.failedLookaheadSizes[p.peek()]; lookaheadSize > maxSize {
-		maxSize = lookaheadSize
-	}
 	message.WriteString("Encountered \"")
 	for i := 0; i < maxSize; i++ {
 		if i > 0 {
@@ -117,12 +101,23 @@ func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessa
 		prior = sanyLexicalEscapes(previous.Image)
 	}
 	fmt.Fprintf(&message, "\" at line %d, column %d and token \"%s\" ", token.Begin.Line, token.Begin.Column, prior)
-	p.throwReportedParseException(message.String(), token.Begin, "E1300", nativeMessage)
+	failure := p.reportedParseException(message.String(), token.Begin, "E1300", nativeMessage)
+	failure.currentToken = p.previous()
+	if failure.currentToken == nil {
+		// JavaCC starts with an unconsumed dummy token linked to the input.
+		failure.currentToken = &SanyToken{Next: token}
+	}
+	failure.expectedTokenSequences = expected
+	panic(failure)
 }
 
 // A source ParseException created with a message uses getShortMessage's ordinary
 // constructor branch, without generated expected tokens or an Encountered line.
 func (p *SanyParser) throwReportedParseException(shortMessage string, position Position, code, nativeMessage string) {
+	panic(p.reportedParseException(shortMessage, position, code, nativeMessage))
+}
+
+func (p *SanyParser) reportedParseException(shortMessage string, position Position, code, nativeMessage string) *sanyParseException {
 	var message strings.Builder
 	message.WriteString("***Parse Error***\n")
 	if p.expecting != "" {
@@ -140,7 +135,7 @@ func (p *SanyParser) throwReportedParseException(shortMessage string, position P
 	}
 	diagnostic := errorAt(position, code, "%s", nativeMessage)
 	diagnostic.SANYParseMessage = message.String()
-	panic(&sanyParseException{diagnostic})
+	return &sanyParseException{diagnostic: diagnostic}
 }
 
 func (p *SanyParser) throwOperatorStackFailure(failure error, position Position) {
