@@ -149,6 +149,13 @@ and signed overflow. Transfer-limit access is protected for concurrent worker
 retries. An exact short concurrency race check passes; long workloads remain
 separate from race instrumentation.
 
+Coordinator keepalive now reports uncaught failures and stops only its timer
+rather than terminating the Go process. It retains the ten-second first call
+and sixty-second scheduling from actual invocation start, matching the worker
+timer. A normal real-timer check verifies runtime/fatal failures, diagnostics,
+unchanged assigned work and joined timer owners. Native TCP keepalive/loss and
+original smart-proxy checks pass; no original-method credit is added.
+
 The native EWD840 process harness now covers two standalone FP servers. Before
 starting its worker, it reads the coordinator's published manager reference
 graph and checks two distinct nonempty stores totaling the complete 16,384-state

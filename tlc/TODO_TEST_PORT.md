@@ -792,6 +792,12 @@ races in average publication and transfer-limit updates/reads. Atomic average
 operations retain the source lossy calculation and signed overflow; sequential
 zero/rounding/overflow and fixed-average checks pass. No original-method credit.
 
+A native coordinator keepalive check runs the unchanged ten-second initial
+delay and verifies uncaught runtime/fatal failures terminate only the timer,
+retain diagnostics and leave coordinator/assigned work unchanged. Timer owners
+are joined. TCP worker-loss/keepalive and original smart-proxy checks pass.
+Upstream has no enabled method for this boundary; no original-method credit.
+
 Native value-array graph checks cover state, tuple, record, function, operator argument
 row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
 references and isolated receiver mutations across worker request/result TCP.

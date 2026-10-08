@@ -904,19 +904,34 @@ func (t *TLCServerThread) startKeepAlive() {
 	if t == nil || t.TimerTask == nil || t.keepAliveDone == nil {
 		return
 	}
-	go func() {
-		timer := time.NewTimer(10 * time.Second)
-		defer timer.Stop()
-		for {
-			select {
-			case <-timer.C:
-				t.TimerTask.Run()
-				timer.Reset(60 * time.Second)
-			case <-t.keepAliveDone:
-				return
-			}
+	go t.runKeepAlive()
+}
+
+func (t *TLCServerThread) runKeepAlive() {
+	// An uncaught source timer failure stops its thread, not model checking.
+	defer func() {
+		if failure := recover(); failure != nil {
+			fmt.Fprint(os.Stderr, javaThrowableStackTrace(panicValueAsError(failure)))
 		}
 	}()
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case <-timer.C:
+			started := time.Now()
+			t.TimerTask.Run()
+			select {
+			case <-t.keepAliveDone:
+				return
+			default:
+			}
+			// Timer.schedule measures from the preceding actual execution start.
+			timer.Reset(time.Until(started.Add(60 * time.Second)))
+		case <-t.keepAliveDone:
+			return
+		}
+	}
 }
 
 func (t *TLCServerThread) Run() {

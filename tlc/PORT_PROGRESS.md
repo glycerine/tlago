@@ -19671,3 +19671,31 @@ methods exist; supplemental checks earn no original-method completion credit.
 No full suite or long workload was selected, and race instrumentation covered
 only the exact short concurrency check. Broader distributed parity remains
 pending; all test handles are terminal.
+
+
+## October 8, 2026: coordinator keepalive failure boundary
+
+The coordinator keepalive goroutine let uncaught timer exceptions escape and
+terminate the Go process, unlike source Timer's thread-only termination. Its
+rescheduling also started a fresh minute after task completion instead of using
+the preceding actual execution start. Extracted the production loop into
+runKeepAlive, added thread-boundary failure diagnostics/recovery and matched the
+worker timer's scheduling calculation and cancellation check. No transport or
+JVM machinery was added.
+
+The new native check reproduced the process-ending runtime panic with the
+original ten-second initial delay (21203, status 1, 10.025 seconds). After the
+fix, both returned RuntimeException and panicked AssertionError checks pass in
+concurrent independent timer loops (51113, status 0, 10.022 seconds). Diagnostics
+contain both failures; coordinator completion, assigned state, queue, cleanup
+flag and cancellation state remain unchanged. Each timer owner is joined and
+stderr is restored only after both are terminal. Final normal timer check,
+concurrent loss check and all nine original smart-proxy contexts pass (46791,
+status 0, 10.014 seconds). Focused TCP worker-loss and worker keepalive lifecycle
+checks pass normally too (0.032 seconds).
+
+The sixty-second rescheduling calculation is established by source comparison;
+the check does not claim a second real interval. Upstream has no enabled direct
+method for this boundary; native checks add no original-method completion credit.
+No full suite, reduced timer delay or race instrumentation was selected.
+Broader distributed parity remains pending; all test handles are terminal.
