@@ -211,6 +211,9 @@ directory and that tool's root name, and opens the owner before registration.
 Trace registration precedes checker-list publication. Rejected registration closes
 the newly opened native file while retaining its creation and the original error.
 Empty-context/filename guards and remaining trace cleanup boundaries need audit.
+Workers capture deadlock/liveness settings and tool mode during construction.
+Later owner changes cannot alter deadlock checks, liveness set allocation or
+stuttering graph insertion. Error-stack replay captures the same run settings.
 
 Concurrent trace registration retains its fixed worker-owner list. Missing trace
 or worker references and out-of-range IDs fail before assignment; registration

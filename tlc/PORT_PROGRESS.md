@@ -21782,3 +21782,26 @@ and workload bounds are unchanged. No full suite or race run was performed.
 Supplemental cases add no original-method credit. Empty-context/filename guards,
 remaining trace cleanup and other source audits remain pending; distributed
 parity is incomplete.
+
+### 2026-10-08: Worker run settings captured during construction
+
+Compared Worker's final checkDeadlock/checkLiveness/mode fields and run-loop
+decisions with pinned source. Go workers now capture those settings during
+construction instead of rereading mutable checker/tool owners at each iteration.
+Deadlock diagnostics, liveness/debugger set allocation and stuttering graph
+insertion use the captured settings. Error-stack replay captures the same values
+when constructing its unregistered worker. Other source owner snapshots remain
+separate audit work; this change does not claim full Worker constructor parity.
+
+No original method directly covers post-construction mutation. Six supplemental
+cases change enabled/disabled deadlock, liveness or debugger mode after production
+worker construction, then check actual diagnostics, set allocation and stuttering
+state insertion. All six initially failed (4c05de, status 1, 5.648 seconds). Final
+focused constructor/worker, trace/concurrent and original simulation trace checks
+pass (2ab74d, status 0, 6.119 seconds). Original checkpoint-on-violation/time-bound,
+error-trace, Github461 assertion/call-stack and three-worker CodePlexBug08 archive
+recovery plus all four existing DieHard/TSnapShot native process storage variants
+pass (670c0a, status 0, 58.310 seconds). All processes are terminal. Source
+assertions and bounds remain unchanged. No full suite or race run was performed.
+Supplemental cases add no original-method credit; remaining source audits are
+pending and distributed parity is incomplete.

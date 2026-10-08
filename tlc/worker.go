@@ -29,6 +29,9 @@ type Worker struct {
 	lastPtr               int64
 	traceErr              error
 	DisableTraceMirror    bool
+	checkDeadlock         bool
+	checkLiveness         bool
+	mode                  ToolMode
 }
 
 type WorkerWrappingRuntimeException struct {
@@ -71,6 +74,7 @@ func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
 	worker := NewWorker(id)
 	worker.Checker = checker
 	worker.Tool = tool
+	worker.captureRunSettings()
 	worker.configureTrace()
 	if err := worker.ensureTraceRAF(); err != nil {
 		panic(err)
@@ -89,6 +93,12 @@ func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
 	checker.Workers[id] = worker
 	registered = true
 	return worker
+}
+
+func (w *Worker) captureRunSettings() {
+	w.checkDeadlock = w.Checker.CheckDeadlock
+	w.checkLiveness = w.Checker.CheckLiveness
+	w.mode = w.Tool.GetMode()
 }
 
 func (w *Worker) MyGetID() int {
@@ -201,7 +211,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	if w.Checker == nil {
 		return true, newTLCError(ECGeneral, "worker has no model checker")
 	}
-	if w.Checker.CheckLiveness || w.Tool.GetMode() == ModeDebugger {
+	if w.checkLiveness || w.mode == ModeDebugger {
 		w.SetOfStates = w.CreateSetOfStates()
 	}
 	restoreWorkerID := PushCurrentWorkerID(w.ID)
@@ -242,11 +252,11 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	// iteration, records them through doNextFailed/doNextSetErr, and still
 	// executes the deadlock/liveness/out-degree tail before the next dequeue
 	// observes finishAll().
-	if w.Checker.CheckDeadlock && preNext == w.GetStatesGenerated() {
+	if w.checkDeadlock && preNext == w.GetStatesGenerated() {
 		w.Checker.doNextSetErrWithPostCondition(curState, nil, false, ECTLCDeadlockReached, "")
 		recordedOutcome = true
 	}
-	if w.Checker.CheckLiveness {
+	if w.checkLiveness {
 		if err := w.CheckLiveness(curState); err != nil {
 			if IsInvariantViolatedException(err) {
 				if w.Checker.StateQueue != nil {

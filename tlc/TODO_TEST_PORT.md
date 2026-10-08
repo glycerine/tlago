@@ -854,6 +854,11 @@ creation precedes trace registration; trace acceptance precedes checker-list
 publication. Rejected native registration releases its file handle. No original
 method directly covers these boundaries; completion counts remain unchanged.
 
+Six native post-construction mutation cases cover enabled/disabled deadlock,
+liveness and debugger-mode settings. Deadlock diagnostics, set allocation and
+stuttering graph insertion use captured settings. No original method directly
+covers this boundary; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly
