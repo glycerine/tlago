@@ -20355,3 +20355,29 @@ I/O and failover warning tests pass (92288, status 0, 0.021 seconds).
 No direct upstream test covers these null boundaries; supplemental tests add
 no original-method completion credit. All handles are terminal. No full suite,
 long workload or race run was performed; distributed completion remains pending.
+
+### 2026-10-08: Required queue wakeup before worker registration
+
+Audited TLCServer.registerWorker against pinned source. Go silently skipped
+resumeAllStuck when the coordinator queue was missing, then contacted the worker
+and could construct/register/start a server thread. Removed that shortcut:
+missing queues fail before worker contact, preserving the source order through
+the Go error-return endpoint contract. Real queue wakeup still precedes the
+null-worker check and both URI calls. Wakeup panics retain the original failure
+and release the monitor via the existing defer, without creating threads/timers.
+
+No original registration test covers these missing-owner/wakeup failures. Added
+focused local checks for no URI call or partial registration on missing queue,
+wakeup-before-null-worker and original wakeup failure plus lock release. The
+missing-queue check first failed with the worker's deliberately configured URI
+error (1166, status 1, 0.012 seconds), demonstrating the wrong operation order.
+After fixing production, registration/ownership/fatal boundary and the original
+nine smart-proxy contexts pass (74470, status 0, 0.025 seconds).
+
+Added a native TCP check through the real LocalServerEndpoint: missing queue
+returns the null category, invokes no remote worker URI method, registers no
+thread and leaves IsDone usable/false. This plus existing manager snapshot and
+registration, missing-name/failure and worker retry/loss checks passes (5528,
+status 0, 0.025 seconds). All handles are terminal. No full suite, long workload
+or race run was performed. These supplemental checks add no original-method
+credit; broader distributed completion remains pending.

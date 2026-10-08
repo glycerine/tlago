@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental local/TCP worker-registration checks preserve required queue wakeup
+before worker contact, null-worker ordering and monitor release after wakeup
+failure. Existing registration and original smart-proxy checks pass. No upstream
+method covers these failure boundaries; original-method counts are unchanged.
+
 Supplemental fingerprint-check boundaries preserve null-endpoint failed task
 completions, healthy results and null-registration submission failures. Original
 manager methods and native TCP I/O checks pass; no original-method credit is added.

@@ -6,6 +6,7 @@ import (
 	"math"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -270,4 +271,32 @@ func TestCoordinatorRPCConcurrentSnapshotAndInterning(t *testing.T) {
 		}()
 	}
 	group.Wait()
+}
+
+type registrationContactWorker struct {
+	rpcTestWorker
+	contacts atomic.Int32
+}
+
+func (w *registrationContactWorker) GetURI() (string, error) {
+	w.contacts.Add(1)
+	return "tcp://worker:1234/registration", nil
+}
+
+func TestCoordinatorRPCRegistrationRequiresQueue(t *testing.T) {
+	server := &TLCServer{}
+	_, coordinator := startCoordinatorRPC(t, NewLocalServerEndpoint(server))
+	worker := &registrationContactWorker{}
+	_, endpoint := startWorkerRPC(t, worker)
+	err := coordinator.RegisterWorker(endpoint)
+	if !isDistributedNullFailure(err) {
+		t.Fatalf("remote registration failure %T/%v, want missing queue failure", err, err)
+	}
+	if worker.contacts.Load() != 0 || len(server.GetServerThreads()) != 0 {
+		t.Fatal("missing coordinator queue contacted or registered remote worker")
+	}
+	// Failure must leave the hosting coordinator usable.
+	if done, err := coordinator.IsDone(); err != nil || done {
+		t.Fatalf("coordinator status after rejected registration %v/%v", done, err)
+	}
 }

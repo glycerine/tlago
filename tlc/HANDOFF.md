@@ -314,6 +314,9 @@ check and registration-latch order even when the referenced store is stopped.
 Short TCP checks require one acceptance/countdown, the exact capacity rejection
 for an extra unreachable reference, and no consumed slot for incomplete native
 references. Original dynamic-manager and native FP lifecycle checks pass.
+Worker registration requires the queue wakeup before either URI call or thread
+creation. Missing queues and wakeup failures cannot create partial registrations;
+focused local/TCP checks preserve failure categories and monitor release.
 Worker registration retains its required URI calls.
 
 Worker fingerprint-manager snapshots now create native endpoint references

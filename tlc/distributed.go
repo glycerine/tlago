@@ -540,9 +540,10 @@ func (s *TLCServer) RegisterWorker(worker DistributedWorkerEndpoint) error {
 	// Java serializes registration, including both remote getURI calls.
 	s.monitor.Lock()
 	defer s.monitor.Unlock()
-	if s.StateQueue != nil {
-		s.StateQueue.ResumeAllStuck()
+	if s.StateQueue == nil {
+		return NewNullPointerException()
 	}
+	s.StateQueue.ResumeAllStuck()
 	if worker == nil {
 		return NewNullPointerException()
 	}

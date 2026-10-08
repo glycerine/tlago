@@ -8130,6 +8130,13 @@ source raw init enqueue also assumes its startup phase. Process/runtime class
 isolation, transport, concrete FP process exit/completion messages and full
 standalone distributed command/process integration remains unfinished.
 
+Worker registration first requires and resumes the coordinator queue, before
+contacting the worker or constructing a server thread. A missing queue returns
+the source null failure through the Go endpoint contract. A wakeup panic escapes
+with its original failure and releases the coordinator monitor; neither path
+creates threads or keepalive timers. Native TCP preserves the failure category
+and leaves the coordinator host usable.
+
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration
 has its own assigned block, statistics, keepalive, and removal. Go keeps one

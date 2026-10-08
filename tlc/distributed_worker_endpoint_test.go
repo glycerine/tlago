@@ -1,6 +1,9 @@
 package tlc
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // Java has no direct registerWorker failure-order test. Exercise the remote
 // boundary so an IOException cannot silently turn into successful registration.
@@ -68,4 +71,66 @@ func (w *registrationRemoteWorker) GetURI() (string, error) {
 
 func (w *registrationRemoteWorker) GetCacheRateRatio() (float64, error) {
 	return 0, nil
+}
+
+// Source registerWorker resumes the queue before either URI call or thread
+// creation. A missing queue must not turn into a partially started registration.
+func TestTLCServerRegistrationRequiresQueueBeforeWorkerContact(t *testing.T) {
+	server := &TLCServer{}
+	failure := NewRemoteException(javaString("worker must not be contacted"), nil)
+	worker := &registrationRemoteWorker{server: server, failAt: 1, failure: failure}
+	err := server.RegisterWorker(worker)
+	if _, ok := err.(*NullPointerException); !ok {
+		t.Fatalf("registration error %T/%v, want missing queue failure", err, err)
+	}
+	if worker.calls != 0 || len(server.GetServerThreads()) != 0 {
+		t.Fatal("missing queue reached worker contact or thread registration")
+	}
+}
+
+type registrationWakeQueue struct {
+	*MemStateQueue
+	calls   int
+	failure error
+}
+
+func (q *registrationWakeQueue) ResumeAllStuck() {
+	q.calls++
+	if q.failure != nil {
+		panic(q.failure)
+	}
+}
+
+func TestTLCServerRegistrationWakePrecedesNullWorker(t *testing.T) {
+	queue := &registrationWakeQueue{MemStateQueue: NewMemStateQueue()}
+	server := &TLCServer{StateQueue: queue}
+	err := server.RegisterWorker(nil)
+	if _, ok := err.(*NullPointerException); !ok || queue.calls != 1 || len(server.GetServerThreads()) != 0 {
+		t.Fatalf("error %T/%v, wake calls %d, threads %d", err, err, queue.calls, len(server.GetServerThreads()))
+	}
+}
+
+func TestTLCServerRegistrationWakeFailureReleasesMonitor(t *testing.T) {
+	failure := NewIllegalStateException("queue wake failed")
+	queue := &registrationWakeQueue{MemStateQueue: NewMemStateQueue(), failure: failure}
+	server := &TLCServer{StateQueue: queue}
+	worker := &registrationRemoteWorker{server: server, failAt: 1, failure: NewRemoteException(javaString("unexpected URI call"), nil)}
+	func() {
+		defer func() {
+			if got := recover(); got != failure {
+				t.Fatalf("wake failure %v, want original %v", got, failure)
+			}
+		}()
+		_ = server.RegisterWorker(worker)
+	}()
+	if worker.calls != 0 || queue.calls != 1 || len(server.GetServerThreads()) != 0 {
+		t.Fatal("wake failure contacted or registered worker")
+	}
+	done := make(chan struct{})
+	go func() { server.monitor.Lock(); server.monitor.Unlock(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("registration failure retained coordinator monitor")
+	}
 }
