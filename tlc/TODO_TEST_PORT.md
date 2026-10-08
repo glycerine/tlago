@@ -889,6 +889,12 @@ and the postcondition is not evaluated. Tool-level displayable alias errors keep
 their source handling. No original method directly covers this boundary;
 original completion counts remain unchanged.
 
+Four native postcondition reconstruction checks cover escaping native/fatal
+errors from initial and transition state recovery. Original failure identity is
+retained; alias and postcondition evaluation cannot proceed after failed recovery.
+No original method directly covers these returned-error boundaries; completion
+counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

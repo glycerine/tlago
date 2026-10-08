@@ -2037,7 +2037,10 @@ func (mc *ModelChecker) stateInfoForState(tool *Tool, state *TLCStateMut, predec
 		} else {
 			info, err = tool.GetState(fp, predecessor)
 		}
-		if err == nil && info != nil && info.State != nil {
+		if err != nil {
+			panic(err)
+		}
+		if info != nil && info.State != nil {
 			info.State.WorkerID = state.WorkerID
 			info.State.UID = state.UID
 			return info
@@ -2055,7 +2058,10 @@ func (mc *ModelChecker) stateInfoForTransition(tool *Tool, state *TLCStateMut, p
 	}
 	if mc != nil && tool != nil && predecessor != nil {
 		info, err := tool.GetStateForTransition(state, predecessor)
-		if err == nil && info != nil && info.State != nil {
+		if err != nil {
+			panic(err)
+		}
+		if info != nil && info.State != nil {
 			info.State.WorkerID = state.WorkerID
 			info.State.UID = state.UID
 			return info

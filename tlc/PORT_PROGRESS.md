@@ -21937,3 +21937,28 @@ The preceding chunk's truncated model failure remains unexplained; this passing
 run does not diagnose it. Original assertions and bounds are unchanged. No full
 suite or race run was performed. Supplemental cases add no original-method
 credit; distributed parity is incomplete.
+
+### 2026-10-08: Returned postcondition state-reconstruction failures
+
+Compared Worker.doPostCondition and Tool's initial/transition recovery with
+pinned source. The Go final-state helpers discarded returned recovery errors
+and substituted the supplied state. Both helpers now propagate the original
+error before pairwise aliases or postcondition evaluation. Nil recovery results,
+the noninitial reconstruction overload and remaining missing-owner guards are
+separate pending audits; this chunk does not claim those fallbacks corrected.
+
+No original method directly covers these returned-error boundaries. Four native
+cases inject native/fatal errors during initial or transition recovery and check
+failure identity with zero subsequent alias/postcondition calls. All four
+initially failed (8e7b58 log, status 1, 5.481 seconds), exposing continued alias
+and postcondition evaluation. Focused worker/native RPC, concurrent trace,
+original simulation trace, reporting serialization, pairwise postcondition and
+distributed trace alias-failure checks pass (771e91 log, terminal process 86b700
+status 0, 10.990 seconds). Original checkpoint-on-violation/time-bound, error-
+trace, Github461, three-worker CodePlexBug08 archive recovery, AliasSafety and
+TLCExtTraceAlias tests plus four native DieHard/TSnapShot process variants pass
+(4ea00d log, terminal process a4e16a status 0, 58.527 seconds). All output was
+captured. The earlier truncated model failure remains unexplained; passing runs
+do not diagnose it. All processes are terminal. Original assertions and bounds
+are unchanged. No full suite or race run was performed. Supplemental cases add
+no original-method credit; distributed parity remains incomplete.
