@@ -140,6 +140,16 @@ notification, and the monitor is released on failure. Focused ordering, actual
 report-wait wakeup and checkpoint checks pass. Upstream has no direct management
 control methods, so supplemental checks add no original-method credit.
 
+Management queries now retain missing-owner failures instead of fabricating
+zero, `"N/A"` or a partial generated-state count. Running depth requires its
+trace, generated count requires the fingerprint manager, and remaining-work
+count requires the queue. Average block count comes only from the selector;
+the unused fallback field is removed. The source’s explicit inactive sentinels
+and missing-manager distinct-count sentinel remain. Focused checks verify
+queued plus assigned work, signed count overflow, unchanged rates, non-consuming
+current-state reads and empty-queue `"N/A"`. These checks add no original-method
+credit; broader distributed completion remains unproven.
+
 Periodic coordinator progress and final tool progress now use the existing
 locale-aware message integer formatter, matching Java's `MP.format` calls.
 Nine fresh native locale processes verify grouping, digits, negative affixes,

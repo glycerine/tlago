@@ -20148,3 +20148,33 @@ missing owners/assigned blocks and the original nine smart-proxy contexts pass
 (status 0, 0.056 seconds). All handles are terminal. No full suite or long
 workload was selected. No original-method completion credit is added; broader
 distributed completion remains unproven.
+
+### 2026-10-08: Distributed management query ownership
+
+Compared distributed management query bodies and coordinator aggregate getters
+with pinned TLCServer/TLCServerMXWrapper. Removed nil-owner success shortcuts: a
+missing server no longer becomes an inactive sentinel or zero; running depth
+requires its trace, generated totals require the FP manager and remaining work
+requires the queue. Selector average no longer uses an invented fallback field;
+removed that unused field. Source inactive sentinels, empty current-state N/A,
+distinct-count missing-manager -1 and unconditional completed-counter access
+remain intact. No remote runtime or JMX implementation is introduced.
+
+Added supplemental query checks for 22 missing wrapper/server accesses, five
+missing running components and three missing unconditional components after
+completion. Counter checks retain signed long overflow, queued plus assigned
+work, unchanged completed rates/counts, non-consuming current-state reads,
+active names and the empty-queue sentinel. The initial test build used an
+incorrect state constructor name; corrected it and supplied a real endpoint
+reference for thread registration. Initial behavioral checks exposed missing
+failures (62082, status 1, 0.015 seconds). Corrected queries pass (30839, status
+0, 0.015 seconds). Expanded final focused normal management, trace reporting,
+progress locale, original dynamic-manager and nine smart-proxy checks pass
+(48619, status 0, 0.223 seconds). Earlier focused selection passed 0.244 seconds.
+Original root distributed init exception and invariant-continue methods pass
+(34708, status 0, 0.171 seconds). Short loopback TCP assigned-block checkpoint,
+coordinator settings and publication lifecycle checks pass 0.040 seconds.
+All handles are terminal. No full suite, long workload or race selection was
+run. No direct original management query methods exist; no original-method
+status or completion credit changes. Overall distributed completion remains
+unproven.

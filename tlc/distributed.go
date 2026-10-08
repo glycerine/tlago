@@ -109,7 +109,6 @@ type TLCServer struct {
 	WorkerStatesGenerated       atomic.Int64
 	StatesPerMinute             int64
 	DistinctStatesPerMinute     int64
-	AverageBlockCnt             int64
 	monitor                     distributedServerMonitor
 	completionWaiter            chan struct{}
 	threadsMu                   sync.Mutex
@@ -728,18 +727,18 @@ func (s *TLCServer) AddStatesGeneratedDelta(delta int64) {
 
 func (s *TLCServer) GetStatesGenerated() int64 {
 	if s == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
 	total := s.WorkerStatesGenerated.Load()
-	if s.FPSetManager != nil {
-		total += int64(s.FPSetManager.GetStatesSeen())
+	if s.FPSetManager == nil {
+		panic(NewNullPointerException())
 	}
-	return total
+	return total + int64(s.FPSetManager.GetStatesSeen())
 }
 
 func (s *TLCServer) GetNewStates() int64 {
 	if s == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
 	s.monitor.Lock()
 	defer s.monitor.Unlock()
@@ -747,10 +746,10 @@ func (s *TLCServer) GetNewStates() int64 {
 }
 
 func (s *TLCServer) getNewStatesLocked() int64 {
-	var size int64
-	if s.StateQueue != nil {
-		size = s.StateQueue.Size()
+	if s.StateQueue == nil {
+		panic(NewNullPointerException())
 	}
+	size := s.StateQueue.Size()
 	for _, thread := range s.GetServerThreads() {
 		size += int64(thread.GetCurrentSize())
 	}
@@ -776,13 +775,10 @@ func (s *TLCServer) GetDistinctStatesGeneratedPerMinute() int64 {
 }
 
 func (s *TLCServer) GetAverageBlockCnt() int64 {
-	if s == nil {
-		return 0
+	if s == nil || s.BlockSelector == nil {
+		panic(NewNullPointerException())
 	}
-	if s.BlockSelector != nil {
-		return s.BlockSelector.GetAverageBlockCnt()
-	}
-	return s.AverageBlockCnt
+	return s.BlockSelector.GetAverageBlockCnt()
 }
 
 func (s *TLCServer) GetWorkerCount() int {

@@ -940,6 +940,13 @@ Short native checks cover six queue success/failure cases, nine missing-owner
 cases and a joined real reporting wait. Upstream has no direct methods for
 these controls; no original test statuses or completion credit change.
 
+Distributed management queries now require the source-owned server and running
+components. Generated counts cannot silently omit the FP manager, remaining
+work cannot omit the queue and selector averages have no fabricated fallback.
+Supplemental checks preserve explicit inactive/empty sentinels, signed counter
+overflow and queued plus assigned work. No direct upstream query methods exist,
+so no original test status or method credit changes.
+
 Periodic/final coordinator progress now uses the existing message locale
 formatter instead of fixed comma grouping. Supplemental native process checks
 verify nine source locale reference rows, signed limits, rates, plain final

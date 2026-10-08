@@ -11586,3 +11586,21 @@ implementation is added. Six queue success/failure cases, nine missing-owner
 cases and an actual joined zero-timeout report wait verify these boundaries.
 Upstream has no direct management control tests; no original-method credit is
 added. Broader management query parity remains separate.
+
+
+### Distributed management query ownership
+
+Management queries require their coordinator before testing IsRunning or
+delegating. Missing ownership must not look like an inactive coordinator or a
+zero-valued statistic. GetStatesGenerated reads the worker delta, then requires
+the FP manager and adds GetStatesSeen with signed-long overflow. GetNewStates
+requires queue size before adding each registered thread’s assigned block under
+the coordinator monitor. GetAverageBlockCnt requires the selector; the earlier
+extra AverageBlockCnt fallback field is removed. Running GetProgress requires
+the trace; its existing I/O catch still prints the failure and returns -1.
+Current-state queries require the queue and return N/A only for a null peek.
+Inactive generated/distinct/progress and spec/model queries retain their source
+sentinels. Distinct count additionally retains the explicit missing-FP-manager
+-1 result. Queue size, rates, worker count and selector average remain
+unconditional after completion. Supplemental native query checks add no
+original-method credit. No Java management or remote runtime is introduced.

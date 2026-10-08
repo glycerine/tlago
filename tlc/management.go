@@ -231,15 +231,22 @@ func NewTLCServerMXWrapper(server *TLCServer) *TLCServerMXWrapper {
 	return wrapper
 }
 
+func (w *TLCServerMXWrapper) requireServer() *TLCServer {
+	if w == nil || w.Server == nil {
+		panic(NewNullPointerException())
+	}
+	return w.Server
+}
+
 func (w *TLCServerMXWrapper) GetStatesGenerated() int64 {
-	if w == nil || w.Server == nil || !w.Server.IsRunning() {
+	if !w.requireServer().IsRunning() {
 		return -1
 	}
 	return w.Server.GetStatesGenerated()
 }
 
 func (w *TLCServerMXWrapper) GetDistinctStatesGenerated() int64 {
-	if w == nil || w.Server == nil || !w.Server.IsRunning() {
+	if !w.requireServer().IsRunning() {
 		return -1
 	}
 	if manager := w.Server.GetFPSetManager(); manager != nil {
@@ -249,29 +256,23 @@ func (w *TLCServerMXWrapper) GetDistinctStatesGenerated() int64 {
 }
 
 func (w *TLCServerMXWrapper) GetStateQueueSize() int64 {
-	if w == nil || w.Server == nil {
-		return 0
-	}
-	return w.Server.GetNewStates()
+	return w.requireServer().GetNewStates()
 }
 
 func (w *TLCServerMXWrapper) GetStatesGeneratedPerMinute() int64 {
-	if w == nil || w.Server == nil {
-		return 0
-	}
-	return w.Server.GetStatesGeneratedPerMinute()
+	return w.requireServer().GetStatesGeneratedPerMinute()
 }
 
 func (w *TLCServerMXWrapper) GetDistinctStatesGeneratedPerMinute() int64 {
-	if w == nil || w.Server == nil {
-		return 0
-	}
-	return w.Server.GetDistinctStatesGeneratedPerMinute()
+	return w.requireServer().GetDistinctStatesGeneratedPerMinute()
 }
 
 func (w *TLCServerMXWrapper) GetProgress() int {
-	if w == nil || w.Server == nil || !w.Server.IsRunning() || w.Server.Trace == nil {
+	if !w.requireServer().IsRunning() {
 		return -1
+	}
+	if w.Server.Trace == nil {
+		panic(NewNullPointerException())
 	}
 	level, err := w.Server.Trace.GetLevelForReportingWithError()
 	if err != nil {
@@ -285,10 +286,7 @@ func (w *TLCServerMXWrapper) GetProgress() int {
 }
 
 func (w *TLCServerMXWrapper) GetWorkerCount() int {
-	if w == nil || w.Server == nil {
-		return 0
-	}
-	return w.Server.GetWorkerCount()
+	return w.requireServer().GetWorkerCount()
 }
 
 func (w *TLCServerMXWrapper) Checkpoint() {
@@ -296,10 +294,7 @@ func (w *TLCServerMXWrapper) Checkpoint() {
 }
 
 func (w *TLCServerMXWrapper) GetAverageBlockCnt() int64 {
-	if w == nil || w.Server == nil {
-		return 0
-	}
-	return w.Server.GetAverageBlockCnt()
+	return w.requireServer().GetAverageBlockCnt()
 }
 
 func (w *TLCServerMXWrapper) GetRuntimeRatio() float64 {
@@ -309,8 +304,8 @@ func (w *TLCServerMXWrapper) GetRuntimeRatio() float64 {
 func (w *TLCServerMXWrapper) LiveCheck() {}
 
 func (w *TLCServerMXWrapper) GetCurrentState() string {
-	if w == nil || w.Server == nil || w.Server.StateQueue == nil {
-		return "N/A"
+	if w.requireServer().StateQueue == nil {
+		panic(NewNullPointerException())
 	}
 	state := w.Server.StateQueue.SPeek()
 	if state == nil {
@@ -320,14 +315,14 @@ func (w *TLCServerMXWrapper) GetCurrentState() string {
 }
 
 func (w *TLCServerMXWrapper) GetSpecName() string {
-	if w == nil || w.Server == nil || !w.Server.IsRunning() {
+	if !w.requireServer().IsRunning() {
 		return "N/A"
 	}
 	return w.Server.GetSpecFileName()
 }
 
 func (w *TLCServerMXWrapper) GetModelName() string {
-	if w == nil || w.Server == nil || !w.Server.IsRunning() {
+	if !w.requireServer().IsRunning() {
 		return "N/A"
 	}
 	return w.Server.GetConfigFileName()
