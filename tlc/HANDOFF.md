@@ -175,10 +175,12 @@ including zero-denominator infinity/NaN and signed zero. Missing cache ownership
 fails instead of reporting zero. All 271 source counter reference rows and
 native TCP edge values pass. The RPC reply carries raw IEEE bits because gob's
 float-field omission lost negative zero; all roles need the current build.
-The worker exit-message DecimalFormat equivalent
-still needs implementation: locale digits/affixes, nonfinite labels and legacy
-locale/numbering variants remain pending. Do not confuse that formatter with
-the already verified two-decimal coordinator worker statistics formatter.
+The worker exit-message compact formatter now uses native Go arithmetic and
+locale symbols: at most three fractional digits, grouping, negative affixes,
+signed zero, infinity/NaN labels and legacy/numbering variants. It passes the
+271 counter rows, 6,610 additional numeric rows, 1,860 locale rows and six fresh
+locale processes. This differs from the coordinator’s two-decimal worker
+statistics formatter. These supplemental checks add no original-method credit.
 
 Fingerprint check tasks now catch I/O failures before executor completion
 wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for

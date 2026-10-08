@@ -79,6 +79,7 @@ func initializeMessageNumberSymbols() {
 		extensions = "u-nu-thai"
 	}
 	mpNumberSymbols, mpNumberLocaleKey = selectMessageNumberSymbols(parts, extensions)
+	cacheNumberSpecialSymbols = selectCacheDecimalSymbols(parts, extensions)
 }
 
 func selectMessageNumberSymbols(parts []string, extensions string) (mpDecimalSymbols, string) {

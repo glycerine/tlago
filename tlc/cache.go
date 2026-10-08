@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"strconv"
 	"strings"
 	"sync/atomic"
 )
@@ -58,13 +57,8 @@ func (c *SimpleCache) GetHitRatio() float64 {
 }
 
 func (c *SimpleCache) GetHitRatioAsString() string {
-	text := strconv.FormatFloat(c.GetHitRatio(), 'f', 3, 64)
-	text = strings.TrimRight(text, "0")
-	text = strings.TrimRight(text, ".")
-	if text == "" {
-		return "0"
-	}
-	return groupDecimalIntegerPart(text)
+	mpNumberSymbolsOnce.Do(initializeMessageNumberSymbols)
+	return compactCacheRatio(c.GetHitRatio(), mpNumberSymbols, cacheNumberSpecialSymbols)
 }
 
 func (c *SimpleCache) GetHitRate() int64 {

@@ -20079,3 +20079,43 @@ math.Float64bits/Float64frombits. Cache ratios now retain all IEEE bits, includi
 NaN payload, over the native wire. All roles need the current reply build.
 Corrected TCP extremes, worker lifecycle and fatal boundary checks pass (85038,
 status 0, 0.027 seconds). All test handles are terminal.
+
+### 2026-10-08: Native compact worker cache formatting
+
+Implemented SimpleCache.GetHitRatioAsString’s source ###,###.### contract
+using native Go numeric operations and saved locale data. The existing locale
+initializer now selects DecimalFormat special symbols alongside message symbols.
+Compact formatting retains grouping, up to three fraction digits, localized
+digits/separators/negative affixes, signed zero and NaN/infinity labels. Unlike
+the coordinator Formatter, compact grouping remains enabled for POSIX. Legacy
+Japanese/Thai variants and explicit numbering replacements select distinct
+source NaN labels. No RMI, Java serialization or JVM runtime is introduced.
+
+Generated 1,860 locale rows and 71,556 special-symbol observations with OpenJDK
+21.0.12.1; observations collapse to 49 native symbol sets for 1,068 locale keys
+and 67 default/numbering selections. Saved locale vectors live under
+test_vectors/distributed. The initial legacy selector mistook country JP/TH
+for an already appended variant, and an Arabic Latin-label test expectation
+was incorrect; exact source observations corrected both (36803 failed).
+The corrected initial reference selection passed (69027, 0.425 seconds).
+
+An added 512-value large-integer reference check exposed a real formatting
+shortcut (9649 failed): Go shortest-decimal strings differ from source
+FloatingDecimal integral conversion. Implemented the source exponent-based
+insignificant-decimal rounding with native integer arithmetic; all 512 passed
+(32100, 0.092 seconds). Expanded the saved numeric fixture to 6,610 rows:
+512 seeded signed-long values, 2,048 signed-long/power-of-two ratios, 4,002
+rounding-tie inputs and 48 extreme-counter ratios. Seed is 20261008. Scratch
+generator: /mnt/oldrog/tmp/CacheLargeNumberReference.java. Intermediate 2,608
+rows passed (7139, 0.083 seconds); all 6,610 passed (98960, 0.087 seconds).
+Numeric rule reference: OpenJDK jdk21u FloatingDecimal.developLongDigits/dtoa,
+https://github.com/openjdk/jdk21u/blob/master/src/java.base/share/classes/jdk/internal/math/FloatingDecimal.java
+
+Final focused normal checks pass (75702, 0.438 seconds): compact numeric/locale
+references, six fresh locale initialization processes, raw counter/missing-owner
+checks, existing SimpleCache checks, coordinator ratio/progress formatting,
+original four MP and nine smart-proxy contexts, and final cache-failure handling.
+All handles are terminal. The checks run without Java. No full suite, long
+workload or race instrumentation was selected. Upstream has no original direct
+SimpleCache formatter tests, so no original-method credit is added. Broader
+distributed completion remains unproven.

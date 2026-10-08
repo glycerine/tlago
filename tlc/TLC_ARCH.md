@@ -11551,11 +11551,19 @@ classified independently of architecture-specific arithmetic sign/payload.
 Native TCP checks require exact sender/receiver bits. No original SimpleCache
 methods exist and supplemental tests add no method credit.
 
-GetHitRatioAsString remains a separate pending source DecimalFormat contract
-for worker exit messages. It is distinct from the coordinator's two-decimal
-worker statistics Formatter. Source labels/grouping/digits/negative affixes,
-nonfinite output and numbering/legacy-locale variations need faithful native
-implementation; raw-ratio verification does not prove that formatter complete.
+GetHitRatioAsString uses a native compact formatter for worker exit messages,
+separate from the coordinator's two-decimal statistics formatter. It groups
+digits and emits at most three fractional digits with source rounding, localized
+digits/decimal separators/negative affixes and locale-specific NaN/infinity
+labels. Integral conversion follows FloatingDecimal.developLongDigits: discard
+decimal places implied by the binary exponent, then round the retained integer.
+Go shortest-decimal conversion alone disagrees on large integer values.
+Special-symbol tables include numbering replacements and legacy Japanese/Thai
+variants. The formatter shares the existing one-time locale initialization.
+Saved Java reference vectors cover 271 counter ratios, 6,610 additional numeric
+values (large integers, power-of-two divisors, rounding ties and counter edges),
+1,860 locale/numbering rows and six fresh initialization processes. These native
+checks require no Java runtime and add no original-method credit.
 
 The native worker cache reply stores CacheRateBits as uint64 and decodes it
 with math.Float64frombits. Gob's default float-field omission otherwise turns

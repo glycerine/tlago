@@ -971,8 +971,11 @@ SimpleCache raw ratio arithmetic now passes 271 source counter rows and native
 TCP nonfinite/signed-zero/extreme checks. Missing cache owners retain source
 failure behavior. Native worker cache replies carry IEEE bits to preserve
 negative zero through gob. No original SimpleCache methods exist; no method credit is
-added. Its worker exit-message formatter remains pending, including locale and
-special-value symbols; this is distinct from coordinator worker statistics.
+added. Its worker exit-message compact formatter now passes 271 counter rows,
+6,610 additional numeric rows, 1,860 locale rows and six fresh locale processes.
+Native Go formatting preserves locale/special symbols and source integer
+rounding; this is distinct from coordinator worker statistics. No original
+method status changes, since upstream has no direct tests for this formatter.
 
 Returned fatal local endpoint errors now escape exactly like fatal panics;
 scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
