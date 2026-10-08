@@ -10956,3 +10956,19 @@ Serializable; `MethodValue` holds reflection objects and method handles.
 `Context` do not. These evaluator objects are not a reason to introduce JVM
 emulation or Java serialization. Extended metadata and custom data still require
 a source-behavior audit; supported transferable data must not be discarded.
+
+## Distributed successor publication failure boundary
+
+TLCServerThread inserts result fingerprints before accessing selected successor
+partitions. The original implementation dereferences each visited vector and,
+for each selected bit, reads the state and fingerprint, writes its trace record,
+then enqueues it. Missing/nil selected data fails through the outer Throwable
+handler; it is not skipped or treated as an empty result. The native port now
+retains that ordering with typed null/array failures. Arrays with no selected
+bits are not eagerly validated, matching the source dereferences.
+
+Trace-write errors propagate from publication to Run, which records the failure,
+finishes the queue, notifies the coordinator and returns. Previously publication
+handled the error internally and returned to the run loop, allowing another
+dequeue after failure. Neither publication failure path undoes FP insertion;
+adding rollback or retry would change the original distributed algorithm.

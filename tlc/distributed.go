@@ -965,7 +965,10 @@ func (t *TLCServerThread) Run() {
 		}
 		newStates := res.GetNextStates()
 		newFps := res.GetNextFingerprints()
-		t.publishBlock(stateQueue, newStates, newFps)
+		if err := t.publishBlock(stateQueue, newStates, newFps); err != nil {
+			t.handleRunError(err, stateQueue)
+			return
+		}
 	}
 }
 
@@ -1044,14 +1047,14 @@ func invokeDistributedWorker(worker *DistributedWorkerSmartProxy, states []*TLCS
 	return worker.GetNextStates(states)
 }
 
-func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*StateVec, newFps []*LongVec) {
+func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*StateVec, newFps []*LongVec) error {
 	if t == nil || t.Server == nil || t.Server.FPSetManager == nil {
-		return
+		panic(NewNullPointerException())
 	}
 	visited := t.Server.FPSetManager.PutBlock(newFps, &t.Server.executor)
 	for i, vector := range visited {
-		if i >= len(newStates) || i >= len(newFps) || newStates[i] == nil || newFps[i] == nil {
-			continue
+		if vector == nil {
+			panic(NewNullPointerException())
 		}
 		iter := NewBitVectorIter(vector)
 		for {
@@ -1059,22 +1062,42 @@ func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*State
 			if index == -1 {
 				break
 			}
+			// Java dereferences the selected partition and state after FP
+			// insertion. A malformed result must reach the outer failure
+			// catch; skipping it silently loses work behind a visited FP.
+			if newStates == nil {
+				panic(NewNullPointerException())
+			}
+			if i >= len(newStates) {
+				panic(NewArrayIndexOutOfBoundsException(i, len(newStates)))
+			}
+			if newStates[i] == nil {
+				panic(NewNullPointerException())
+			}
+			if index >= len(newStates[i].states) {
+				panic(NewArrayIndexOutOfBoundsException(index, len(newStates[i].states)))
+			}
 			state := newStates[i].At(index)
-			fp := uint64(newFps[i].ElementAt(index))
-			if t.Server.Trace != nil {
-				// TLCWorker returns a successor whose UID still identifies its
-				// predecessor. Java writes that UID, then replaces it with the
-				// new trace location; it does not transfer predecessor objects.
-				if _, err := t.Server.Trace.WriteStateRecord(state, fp, state); err != nil {
-					t.handleRunError(err, stateQueue)
-					return
-				}
+			fingerprints := fpBlockAt(newFps, i)
+			if fingerprints == nil {
+				panic(NewNullPointerException())
 			}
-			if stateQueue != nil {
-				stateQueue.SEnqueue(state)
+			fp := uint64(fingerprints.ElementAt(index))
+			if state == nil || t.Server.Trace == nil {
+				panic(NewNullPointerException())
 			}
+			// TLCWorker returns a successor whose UID still identifies its
+			// predecessor. Write that UID before replacing the trace location.
+			if _, err := t.Server.Trace.WriteStateRecord(state, fp, state); err != nil {
+				return err
+			}
+			if stateQueue == nil {
+				panic(NewNullPointerException())
+			}
+			stateQueue.SEnqueue(state)
 		}
 	}
+	return nil
 }
 
 func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {

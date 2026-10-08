@@ -18309,3 +18309,39 @@ This is native transport/command coverage using the original model assertions,
 not completion credit for the unconditional assumption-disabled Java harness.
 All handles are retired. Remaining failure/recovery and payload audit work
 keeps the distributed goal incomplete.
+
+## October 8, 2026: source publication failure semantics
+
+Inspection of active-worker checkpoints led to TLCServerThread publication.
+Found two production shortcuts against pinned Java: selected missing/nil result
+partitions were silently skipped after FP insertion, and a trace-write failure
+was handled inside publishBlock before returning to the dequeue loop. Java's
+selected-state/trace/queue operations instead reach its outer Throwable catch
+and terminate the thread. Corrected both before continuing checkpoint work.
+
+Publication now rejects null visited vectors, dereferences only selected
+partitions with typed null/array failures, requires selected states and the
+trace/queue, and propagates trace I/O errors to Run's failure handler and return.
+No selected bits still means no state-array dereference, preserving Java's
+ordering instead of adding eager validation. FP insertion is not rolled back;
+no insertion retry or transaction redesign is introduced.
+
+No enabled direct upstream test covers this publication-failure boundary.
+Added short checks for null/missing arrays, partitions and states, null visited
+vectors, unchanged FP-before-publication ordering, and a trace I/O failure that
+must stop the server thread after exactly one dequeue. The valid predecessor
+UID test now uses a real queue and checks that the published state is enqueued.
+The assertion bodies were not weakened. These checks add no original Java
+method completion credit.
+
+Focused publication/app source-contract tests pass normally in 0.025 seconds
+(80623 terminal status 0; earlier selection 6989 also passed in 0.020 seconds).
+Adjacent native retry/loss, original smart-proxy and state/result/failure payload
+checks pass normally in 0.020 seconds. The unchanged full coordinator-owned-FP
+MC06/N=7 process row passes in 45.543 seconds (67876 terminal status 0), requiring
+FINISHED, exactly 114942 distinct states, zero queued states, no GENERAL and
+normal worker/coordinator exits. Log:
+.codex-gotmp/distributed-publication-process-test.log. No full workspace suite
+or race workload was run. All handles are retired. Outstanding-worker
+checkpoint/recovery, remote-FP recovery and broader failure coverage remain
+pending; the distributed goal is incomplete.

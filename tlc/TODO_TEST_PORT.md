@@ -712,6 +712,11 @@ exploration in a single worker/FP process with a separate coordinator. Both
 processes finish normally with 114942 distinct states, zero queued states and
 no GENERAL event. This adds native command-lifetime coverage, not completion
 credit for the disabled original harness.
+Coordinator publication failure checks now preserve source failure after FP
+insertion: selected missing/null partitions and null visited vectors fail,
+and trace write failures terminate the server thread without another dequeue.
+These native checks have no enabled direct Java counterpart and add no original
+method credit. Full unchanged coordinator-FP MC06 verification remains green.
 
 Remote server/worker integration, init failures, fingerprint-manager failover, and smart-proxy calculations. Native Go fingerprint, worker and coordinator TCP calls, ordinary state/value/result payloads, structured worker failures, manager snapshots, discovery and worker/coordinator/FP lifecycle publication are implemented and unit-verified. Native CLI entry points are wired with focused help/property/address checks. Native coordinator signal shutdown and separate-process DieHard execution with local and standalone remote fingerprint storage are verified. The native process harness also checkpoints and recovers the full MC06 initial frontier through the real `-recover` CLI in fresh coordinator/worker processes. It requires 16384 recovered fingerprints/queued states, no repeated initialization, and the original final 114942 distinct/0 queued result. This is additional native coverage, not original disabled-harness completion credit. A native worker-loss row also verifies requeueing after killing a worker with an assigned block, survivor/replacement completion, exact one-time deregistration and the original cache-warning behavior. Outstanding-block checkpoints, remote-FP recovery, loss of all workers, extended/custom values and broader network failure coverage remain pending. The new Go boundary tests add no original-method completion credit.
 

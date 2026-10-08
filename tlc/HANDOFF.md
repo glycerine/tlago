@@ -1960,6 +1960,16 @@ count only once. This covers one interrupted worker with a survivor/replacement,
 not loss of every worker or arbitrary network partitions. No production shortcut
 or warning suppression was needed for this case.
 
+Coordinator publication now preserves the source failure boundary after FP
+insertion. Missing/nil selected state partitions, null states and null visited
+vectors fail instead of silently dropping successors. Trace write errors return
+to the server thread's outer failure handler and terminate that thread; it does
+not perform another dequeue after marking the run failed. Partitions with no
+selected bits retain Java's lazy dereference behavior. Focused checks and one
+full unchanged coordinator-FP MC06 process run pass. Active-worker checkpoints
+and recovery remain pending; their inspection exposed this publication shortcut
+and was paused to fix it first.
+
 
 
 These focused checks do not prove distributed completion.
