@@ -25,6 +25,9 @@ type SanyParser struct {
 	lastOperator           *SanyOperatorInfo
 	lookaheadOperatorStack *SanyOperatorStack
 	lookaheadCalls         [74]sanyLookaheadCall
+	lookaheadGC            int
+	directChoiceGeneration [130]int
+	directChoiceRecorded   [130]bool
 	numberFlag             bool
 	decimalFlag            bool
 }
@@ -1637,8 +1640,9 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 		case SanyTokenLbr, SanyTokenLbc, SanyTokenLab, SanyTokenLsb:
 			stack.Push(p.PrimitiveExpression(), nil)
 		default:
+			p.recordDirectChoice(120)
 			if !p.scanLookahead(57, 1) {
-				p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected expression")
+				p.throwParseException(nil, "expected expression")
 			}
 			stack.Push(p.PrimitiveExp(), nil)
 		}
@@ -1723,10 +1727,15 @@ func (p *SanyParser) PrimitiveExp() *SanySyntaxNode {
 		if p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) {
 			return p.primitiveSelectorExpr(p.BangOperatorSelector())
 		}
-		if p.isNEPrefixOperator(p.peek()) && p.scanLookahead(67, 2147483647) {
-			return p.primitiveSelectorExpr(p.BangOperatorSelector())
+		if p.isNEPrefixOperator(p.peek()) {
+			p.recordDirectChoice(123)
+			if p.scanLookahead(67, 2147483647) {
+				return p.primitiveSelectorExpr(p.BangOperatorSelector())
+			}
+			p.throwParseException(nil, "expected operator selector")
 		}
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenNumberLiteral}, {SanyTokenStringLiteral}}, "expected expression")
+		p.recordDirectChoice(125)
+		p.throwParseException(nil, "expected expression")
 		return nil
 	}
 }
@@ -2673,6 +2682,7 @@ func (p *SanyParser) primitiveSelectorExpr(selector *SanySyntaxNode) *SanySyntax
 		}
 		selector, args = next, nextArgs
 	}
+	p.recordDirectChoice(124)
 	genID := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"],
 		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"], prefix...), selector)
 	if args != nil {
@@ -2691,6 +2701,7 @@ func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
 		} else if p.isNEPrefixOperator(p.peek()) || p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) {
 			selector = p.BangOperatorSelector()
 		} else {
+			p.recordDirectChoice(126)
 			p.throwParseException(nil, "expected identifier or operator selector")
 		}
 		if p.startsOpArgs(72) {
@@ -2698,10 +2709,13 @@ func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
 		}
 	} else if p.check(SanyTokenLbr) {
 		selector = p.OpArgs()
-	} else if p.scanLookahead(74, 1) {
-		selector = p.StructOp()
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenLbr}}, "expected argument or structural selector")
+		p.recordDirectChoice(127)
+		if p.scanLookahead(74, 1) {
+			selector = p.StructOp()
+		} else {
+			p.throwParseException(nil, "expected argument or structural selector")
+		}
 	}
 	return bang, selector, args
 }
@@ -2817,10 +2831,11 @@ func (p *SanyParser) StructOp() *SanySyntaxNode {
 	case SanyTokenNumberLiteral:
 		child = p.Number()
 	default:
+		p.recordDirectChoice(128)
 		if p.peek().Image == "@" {
 			child = p.consumeParseToken(SanyTokenIdentifier, "expected @")
 		} else {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenLab}, {SanyTokenRab}, {SanyTokenColon}, {SanyTokenNumberLiteral}}, "expected structural operator")
+			p.throwParseException(nil, "expected structural operator")
 		}
 	}
 	p.endProduction()
@@ -3123,6 +3138,17 @@ func (p *SanyParser) check(kind SanyTokenKind) bool {
 func (p *SanyParser) advance() *SanyToken {
 	if !p.check(SanyTokenEOF) {
 		p.at++
+		p.lookaheadGC++
+		if p.lookaheadGC > 100 {
+			p.lookaheadGC = 0
+			for i := range p.lookaheadCalls {
+				for call := &p.lookaheadCalls[i]; call != nil; call = call.next {
+					if call.generation < p.at {
+						call.first = nil
+					}
+				}
+			}
+		}
 	}
 	return p.previous()
 }

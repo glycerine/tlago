@@ -760,11 +760,16 @@ nonexpressive-prefix preview 67 (all Integer.MAX_VALUE). BangExtension uses 73
 (budget 1), then identifier preview 71 (Integer.MAX_VALUE) with the `@` exclusion,
 operator alternatives and argument preview 72 (budget 2). Its other branch keeps
 direct OpArgs before structural preview 74 (budget 1).
-All 74 source lookahead entry points now have production callers. All 3,663
-external rows agree across 211 valid/malformed cases. Current original
-frontend/model checks pass in 9.687 seconds, complete SANY in 1.954 seconds and
-compilation passes. Complete grammar expectations, general rescan bookkeeping,
-syntax AST parity and proof generation remain reconciliation work. These bounded
+All 74 source lookahead entry points now have production callers. JavaCC's 130
+direct-choice expectation masks are now generated from upstream; source sites
+120, 123–128 are connected. Expectations expire by token generation, are ordered
+by token kind, and precede saved-call rescans and their duplicate checks. Successful
+consumption now performs Java's 101-token cleanup of expired lookahead references.
+All 636 external mask/expiration/cleanup state rows agree with Java; the existing
+3,663 parser rows across 211 cases still agree. Current original frontend/model
+checks pass in 9.619 seconds, complete SANY in 2.037 seconds and compilation passes.
+Remaining direct-choice sites, native error-span estimates, full expected-token
+bookkeeping, syntax AST parity and proof generation remain reconciliation work. These bounded
 observations do not establish every semantic-predicate context or full parser
 parity.
 

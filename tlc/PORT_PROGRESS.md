@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-07 JavaCC direct-choice masks, expectation order and call cleanup:
+Previous completed commit: bcb3cbc. Extend the existing scanner generator to
+mechanically extract all ten upstream jj_la1 mask arrays, retaining all 130 sites
+and 295 token choices in sanyDirectChoiceMasks. Regeneration reproduces the
+checked-in file byte-for-byte. Add generation-stamped direct-choice recording
+without treating an unrecorded zero-value site as active. Connect source sites
+120 and 123–128 in initial operands, primitive selectors, bang repetition,
+BangExtension and StructOp. Converted failures use the actual site masks rather
+than native expected-token estimates. Other sites remain unconverted.
+
+Direct expectations now use ascending token-kind order before rescan sequences.
+Seed the rescan accumulator with these expectations so duplicate checks include
+them, matching generateParseException. Successful consumption increments the
+source cleanup clock; every 101 tokens clear saved call.first where the saved
+generation is less than the current generation. Do not clear equal-generation
+calls or rewrite source expiration bounds.
+
+External DirectChoiceProbe.java reflects Java's actual parser fields and
+expectedTokenSequences. Compare every individual mask and no-site state, all
+130 stale-generation cases, and cleanup clocks plus cleared/retained call counts
+across modules with 1, 20, 40, 60 and 100 definitions. All 636 state rows match
+Go. Source observer returns 0; Go state observer 24699 passes. Existing production
+observer also retains all 3,663 matching rows across 211 valid/malformed cases.
+Final Go observer 35449 passes. Artifacts external under /mnt/oldrog/tmp:
+DirectChoiceProbe.java, tlago-direct-choice-manual_test.go, its overlay,
+tlago-direct-choice-{java,go}-state.log and tlago-direct-choice-bookkeeping-*.
+These are bounded manual observations, not permanent tests or original-method
+credit. No fixture/assertion weakening, race or optional corpus sweeps.
+
+Initial original frontend/model gate 44740 passes 9.607s; complete SANY 97083
+passes 1.913s; compile 70985 passes. After removing the converted operand's native
+Identifier estimate, final original gate 4949 passes 9.619s, complete SANY 32274
+passes 2.037s and compile 29497 passes. All handles retired; diff check green.
+Update handoff and architecture. Remaining grammar-site wiring, native error-span
+estimates, full parser/AST fidelity, canonical/runtime sharing and other TLC
+requirements keep the overall goal incomplete. Focused passes do not replace
+the qualified earlier failing full-workspace snapshot.
+
 2026-10-07 Remaining selector lookahead callers connected:
 Previous completed commit: 246c14e. PrimitiveExp now runs String preview 69 and
 Number preview 70 (Integer.MAX_VALUE) before their column predicates. Preserve

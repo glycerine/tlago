@@ -10097,3 +10097,27 @@ separate requirements. External production observations match 3,663 rows across
 complete messages with outer log whitespace excluded. These observations do not
 establish exhaustive predicate states, allocation sharing or whole parser and
 canonical/evaluator parity, and add no original test-method credit.
+
+
+## Direct-choice expectations and saved-call lifetime
+
+The existing generator now also translates JavaCC's ten direct-choice mask arrays
+for all 130 sites. Runtime sites record their consumed-token generation; unrecorded
+sites are inactive even at generation zero. Source sites 120 and 123–128 are
+connected; other grammar sites and remaining native failure-span estimates are
+still pending. Direct expected tokens are emitted in ascending token-kind order
+before saved-call rescan entries. The rescan accumulator starts with those direct
+entries so Java's duplicate checks apply across both sources of expectations.
+
+Successful consumption advances the cleanup clock. Every 101 tokens clear each
+saved call's token reference only when its generation is strictly less than the
+current generation. Equal-generation calls retain their token reference. This
+ports the generated parser's reference lifetime without changing scan budgets
+or expiration behavior.
+
+External source observers match 636 mask, stale-generation, cleanup-clock and
+saved-call retention rows, including all 130 individual sites and five module
+sizes. Existing production observations retain all 3,663 matching rows across
+211 cases. These checks do not prove all grammar-site wiring, combined-site
+expectations, malformed rescan contexts, allocation identity or whole parser and
+evaluator fidelity. No original test-method credit follows from these probes.

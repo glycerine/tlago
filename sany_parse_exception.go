@@ -48,11 +48,47 @@ func (p *SanyParser) rememberFailedLookahead(length int) {
 	}
 }
 
+// recordDirectChoice retains JavaCC jj_la1's generation at a failed switch.
+func (p *SanyParser) recordDirectChoice(site int) {
+	p.directChoiceGeneration[site] = p.at
+	p.directChoiceRecorded[site] = true
+}
+
+// Direct expected tokens precede rescan entries in ascending source token order.
+func (p *SanyParser) directExpectedSequences(expected [][]SanyTokenKind) [][]SanyTokenKind {
+	var tokens [295]bool
+	var longer [][]SanyTokenKind
+	for _, sequence := range expected {
+		if len(sequence) == 1 {
+			tokens[sequence[0]] = true
+		} else {
+			longer = append(longer, sequence)
+		}
+	}
+	for site, masks := range sanyDirectChoiceMasks {
+		if !p.directChoiceRecorded[site] || p.directChoiceGeneration[site] != p.at {
+			continue
+		}
+		for kind := range tokens {
+			if masks[kind/32]&(uint32(1)<<uint(kind%32)) != 0 {
+				tokens[kind] = true
+			}
+		}
+	}
+	var result [][]SanyTokenKind
+	for kind, present := range tokens {
+		if present {
+			result = append(result, []SanyTokenKind{SanyTokenKind(kind)})
+		}
+	}
+	return append(result, longer...)
+}
+
 // throwParseException uses the actual expected token sequences, as JavaCC's
 // special ParseException constructor does. getShortMessage uses their maximum
 // length when rendering the following input, and escapes only the prior token.
 func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessage string) {
-	expected = append(expected, p.rescanLookaheads()...)
+	expected = p.rescanLookaheads(p.directExpectedSequences(expected))
 	var message strings.Builder
 	maxSize := 0
 	for _, sequence := range expected {

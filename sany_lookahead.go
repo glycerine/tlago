@@ -284,8 +284,8 @@ func (r *sanyLookaheadRescan) addErrorToken(kind SanyTokenKind, position int) {
 	}
 }
 
-func (p *SanyParser) rescanLookaheads() [][]SanyTokenKind {
-	rescan := &sanyLookaheadRescan{}
+func (p *SanyParser) rescanLookaheads(expected [][]SanyTokenKind) [][]SanyTokenKind {
+	rescan := &sanyLookaheadRescan{entries: expected}
 	// JavaCC iterates entry points in production-index order, and catches
 	// LookaheadSuccess outside each entry point's entire linked call list.
 	for index := range p.lookaheadCalls {

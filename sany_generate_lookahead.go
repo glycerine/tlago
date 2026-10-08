@@ -137,6 +137,35 @@ func main() {
 		fmt.Fprintf(&out, "func (s *sanyLookahead) %s() bool {%s}\n\n", name, body)
 		count++
 	}
+	// JavaCC's direct-choice expectations are ten 32-bit masks for each site.
+	maskRE := regexp.MustCompile(`jj_la1_(\d+) = new int\[\] \{([^}]+)\}`)
+	var masks [130][10]uint32
+	rows := maskRE.FindAllStringSubmatch(text, -1)
+	if len(rows) != 10 {
+		panic("Expected ten JavaCC direct-choice mask arrays")
+	}
+	for _, row := range rows {
+		word, err := strconv.Atoi(row[1])
+		must(err)
+		items := strings.Split(strings.TrimSuffix(strings.TrimSpace(row[2]), ","), ",")
+		if len(items) != 130 {
+			panic("Expected 130 JavaCC direct-choice sites")
+		}
+		for site, item := range items {
+			value, err := strconv.ParseUint(strings.TrimSpace(item), 0, 32)
+			must(err)
+			masks[site][word] = uint32(value)
+		}
+	}
+	fmt.Fprintln(&out, "var sanyDirectChoiceMasks = [130][10]uint32{")
+	for _, words := range masks {
+		fmt.Fprint(&out, "{")
+		for _, word := range words {
+			fmt.Fprintf(&out, "0x%x,", word)
+		}
+		fmt.Fprintln(&out, "},")
+	}
+	fmt.Fprintln(&out, "}")
 	formatted, err := format.Source(out.Bytes())
 	must(err)
 	must(os.WriteFile(target, formatted, 0644))
