@@ -76,6 +76,12 @@ ownership there leaves the flag and keepalive intact. Successful liveness checks
 do not access the coordinator. Native retry/concurrency fixtures now supply the
 required owner; their existing queue and count assertions are unchanged.
 
+Local fingerprint-manager adaptation retains one endpoint for the supplied
+`MultiFPSet`, matching the source constructor. Its nested tables remain owned by
+the storage's high-bit routing; they are not separate distributed servers.
+Memory/MSB/LSB checks verify scalar and block membership through both the manager
+and original storage, along with server identity and per-child counts.
+
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production
 implementation. Fix implementation shortcuts before proceeding. Preserve the

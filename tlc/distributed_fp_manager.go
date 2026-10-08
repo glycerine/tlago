@@ -64,13 +64,9 @@ func NewDynamicDistributedFPSetManager(expectedNumOfServers int) *DistributedFPS
 }
 
 func NewDistributedFPSetManagerFromFPSet(set FPSet) *DistributedFPSetManager {
-	if multi, ok := set.(*MultiFPSet); ok && multi != nil {
-		endpoints := make([]DistributedFingerprintEndpoint, len(multi.Sets))
-		for i, nested := range multi.Sets {
-			endpoints[i] = NewLocalFingerprintEndpoint(nested)
-		}
-		return NewDistributedFPSetManager(endpoints...)
-	}
+	// FPSetManager(FPSetRMI) retains one server reference. A MultiFPSet owns
+	// its high-bit child routing; exposing those children as servers would
+	// replace it with the manager's low-bit routing and bypass the owner.
 	return NewDistributedFPSetManager(NewLocalFingerprintEndpoint(set))
 }
 

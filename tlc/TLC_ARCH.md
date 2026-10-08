@@ -12094,6 +12094,16 @@ failure preserves both flag and keepalive. A successful status reply never reach
 that access. Native fixtures must retain a coordinator even when no thread is
 registered; absence of a registry entry remains a supported idempotent case.
 
+`NewDistributedFPSetManagerFromFPSet` preserves the source single-reference
+constructor for local storage, including `MultiFPSet`. Previously it unwrapped
+nested tables into manager servers, substituting low-bit server selection for
+the storage's high-bit child selection. Scalar insertion could then be invisible
+through the original storage and repeated insertion through that storage doubled
+membership. The adapter now retains one endpoint to the original owner. Native
+memory/MSB/LSB checks preserve identity, server counts, scalar/block insertion
+and contains answers, and both high-bit child counts. Dynamic managers with
+explicitly registered servers retain their independent low-bit routing.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

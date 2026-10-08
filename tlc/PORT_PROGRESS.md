@@ -22403,3 +22403,30 @@ passes with 114,942 distinct states and no queued states (worker-loss-owner-
 model.log, terminal process 9c0228 status 0; package time 60.008 seconds).
 Logs were inspected and all processes are terminal. No full suite was run and
 no long workload was run with race. Distributed completion remains unproven.
+
+### 2026-10-08: Local nested fingerprint-storage ownership
+
+Compared FPSetManager(FPSetRMI) with the Go local-storage adapter. Java retains
+one reference to the supplied storage. Go unwrapped MultiFPSet child tables into
+separate distributed servers, replacing high-bit child routing with low-bit server
+routing. New memory/MSB/LSB cases reproduced missing membership through the original
+storage and duplicated membership when inserting through that owner afterward.
+All three cases initially failed (local-multi-manager-red.log, terminal process
+e49435 status 1; package time 0.018 seconds).
+
+The adapter now retains one endpoint to the supplied MultiFPSet. Internal routing
+remains storage-owned; explicitly registered dynamic servers keep their separate
+manager routing. Native checks require server count/identity, scalar insertion and
+contains answers, repeated insertion, block answers and original storage/child
+counts. No direct original Java method covers this Go adapter, so these three
+supplemental cases add no original-method completion credit.
+
+Original MultiFPSet high-bit selection/put methods, original nested manager
+partition methods and native nested trace recovery checks pass (local-multi-
+manager-focused.log, terminal process a3eb95 status 0; package time 5.758 seconds).
+After extending the new cases to block operations, final related checks pass,
+including all original dynamic-manager cases, initialization/publication and
+worker partition/capacity/TCP checks (local-multi-manager-related.log, terminal
+process 47bf3f status 0; package time 0.068 seconds). Logs were inspected and all
+processes are terminal. No original assertions or bounds changed; no full suite
+or race run was performed. Distributed completion remains unproven.

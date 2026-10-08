@@ -1419,6 +1419,11 @@ work and worker counts at the source failure boundary. The production fix reject
 missing ownership instead of silently skipping deregistration. Existing native
 retry/concurrency fixtures now supply their required owner without changing
 assertions. There is no direct original method for this boundary; credit is unchanged.
+Three native local `MultiFPSet` adapter cases now retain one storage endpoint
+instead of exposing nested children as distributed servers. They verify original
+storage membership and identity, scalar/block answers and internal high-bit
+routing for memory/MSB/LSB storage. Existing original nested storage/manager tests
+remain separate; these supplemental cases add no original-method credit.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
 distinction between null vectors, null words and initialized empty words.
