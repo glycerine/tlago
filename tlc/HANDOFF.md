@@ -754,12 +754,19 @@ postfix, record-field and function-argument calls 59–61 (Integer.MAX_VALUE)
 before their column predicates. Continuation preview 66 (budget 1) precedes
 infix/label calls 64/65 (Integer.MAX_VALUE). Predicate-failure branches retain
 Java's empty expected-token list rather than estimating a following identifier.
-Connected entry points are now 1–66, 68 and 72. All 3,125 external rows agree
-across 181 valid/malformed cases. Current original frontend/model checks pass in
-9.637 seconds, complete SANY in 1.884 seconds and compilation passes.
-Remaining call-site integration, grammar expectations, general rescan integration
-and proof generation remain reconciliation work. These bounded observations do
-not establish every semantic-predicate context or full parser parity.
+PrimitiveExp now previews String and Number with source calls 69/70 and their
+column predicates, then preserves direct identifier/infix/postfix choices before
+nonexpressive-prefix preview 67 (all Integer.MAX_VALUE). BangExtension uses 73
+(budget 1), then identifier preview 71 (Integer.MAX_VALUE) with the `@` exclusion,
+operator alternatives and argument preview 72 (budget 2). Its other branch keeps
+direct OpArgs before structural preview 74 (budget 1).
+All 74 source lookahead entry points now have production callers. All 3,663
+external rows agree across 211 valid/malformed cases. Current original
+frontend/model checks pass in 9.687 seconds, complete SANY in 1.954 seconds and
+compilation passes. Complete grammar expectations, general rescan bookkeeping,
+syntax AST parity and proof generation remain reconciliation work. These bounded
+observations do not establish every semantic-predicate context or full parser
+parity.
 
 Semantic symbols now embed TLC's `SemanticNodeBase` and use its shared
 `NewSemanticNodeBase` constructor. This corrects the separate SANY counter added

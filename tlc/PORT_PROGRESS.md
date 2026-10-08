@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-07 Remaining selector lookahead callers connected:
+Previous completed commit: 246c14e. PrimitiveExp now runs String preview 69 and
+Number preview 70 (Integer.MAX_VALUE) before their column predicates. Preserve
+direct identifier/infix/postfix alternatives before nonexpressive-prefix preview
+67 (Integer.MAX_VALUE). BangExtension uses source outer preview 73 (budget 1),
+identifier preview 71 (Integer.MAX_VALUE) followed by the @ exclusion, direct
+operator choices and optional arguments 72 (budget 2). The other branch keeps
+direct OpArgs before structural preview 74 (budget 1). Structural/argument
+selectors do not run the identifier/operator optional-argument preview. Remove
+unused native BangSelector, structural/operator eligibility and OpOrExpr helpers.
+All 74 generated entry points now have production callers; this closes caller
+integration, not complete grammar expectations, rescan bookkeeping or syntax AST
+parity.
+
+Extend existing external observations by 30 valid/malformed identifiers,
+operators, argument and structural selectors, selector chains and literal forms.
+All 3,663 rows across 211 cases match Java, comparing parse results, actual syntax
+kinds/images/four coordinates and complete parse messages/residual stack text,
+excluding outer log whitespace. Java returns 0; Go observer 41334 passes.
+Existing BodyDefinitionProbe.java, tlago-body-definition-manual_test.go and overlay
+remain external under /mnt/oldrog/tmp; receipts tlago-selector-lookahead-*. No
+permanent invented tests, weakened assertions/fixtures, original-method credit,
+race or optional sweeps.
+
+Existing original frontend/model gate 61154 passes 9.687s; complete SANY 90088
+passes 1.954s; all-package compilation 77261 passes. All handles retired; diff
+check green. Update handoff, architecture and inventory's implementation note;
+method/class counts remain unchanged. The earlier failing full-workspace snapshot
+remains qualified evidence. Complete parser bookkeeping/AST, canonical/runtime
+sharing, trace reconciliation and other documented TLC requirements still keep
+the overall goal active and incomplete.
+
 2026-10-07 Source expression-extension and continuation decisions:
 Previous completed commit: 9ded18d. ExtendableExpr's extension loop now uses
 source preview 58 with budget 1, then postfix 59, record field 60 and function

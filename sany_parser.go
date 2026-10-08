@@ -1711,15 +1711,19 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 func (p *SanyParser) PrimitiveExp() *SanySyntaxNode {
 	p.beginProduction("Primitive expression")
 	defer p.endProduction()
-	switch p.peek().Kind {
-	case SanyTokenNumberLiteral:
-		return p.Number()
-	case SanyTokenStringLiteral:
+	if p.scanLookahead(69, 2147483647) && p.aboveCurrentJunction() {
 		return p.String()
+	} else if p.scanLookahead(70, 2147483647) && p.aboveCurrentJunction() {
+		return p.Number()
+	}
+	switch p.peek().Kind {
 	case SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
 		return p.primitiveSelectorExpr(p.NoOpExtensionBase())
 	default:
-		if _, ok := GetSanyOperator(p.peek().Image); ok && (p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) || p.check(SanyTokenOp76)) {
+		if p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) {
+			return p.primitiveSelectorExpr(p.BangOperatorSelector())
+		}
+		if p.isNEPrefixOperator(p.peek()) && p.scanLookahead(67, 2147483647) {
 			return p.primitiveSelectorExpr(p.BangOperatorSelector())
 		}
 		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenNumberLiteral}, {SanyTokenStringLiteral}}, "expected expression")
@@ -2616,30 +2620,6 @@ func (p *SanyParser) startsNoOpExtensionBaseAt(offset int) bool {
 	}
 }
 
-func (p *SanyParser) startsStructOp() bool {
-	return p.startsStructOpAt(0)
-}
-
-func (p *SanyParser) startsStructOpAt(offset int) bool {
-	switch p.tokenAt(offset).Kind {
-	case SanyTokenLab, SanyTokenRab, SanyTokenColon, SanyTokenNumberLiteral:
-		return true
-	case SanyTokenIdentifier:
-		return p.tokenAt(offset).Image == "@"
-	default:
-		return false
-	}
-}
-
-func (p *SanyParser) startsBangOperatorSelector() bool {
-	return p.isOperatorTokenAt(0)
-}
-
-func (p *SanyParser) isOperatorTokenAt(offset int) bool {
-	_, ok := GetSanyOperator(p.tokenAt(offset).Image)
-	return ok
-}
-
 func (p *SanyParser) startsOpApplication() bool {
 	return p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenLbr
 }
@@ -2679,23 +2659,6 @@ func (p *SanyParser) startsOpArgs(production int) bool {
 	return p.scanLookahead(production, 2)
 }
 
-func (p *SanyParser) startsOpOrExprAt(offset int) bool {
-	kind := p.tokenAt(offset).Kind
-	if kind >= SanyTokenOp57 && kind <= SanyTokenOp119 {
-		return true
-	}
-	switch kind {
-	case SanyTokenCase, SanyTokenChoose, SanyTokenExists, SanyTokenForall,
-		SanyTokenIf, SanyTokenLet, SanyTokenSF, SanyTokenTExists, SanyTokenTForall,
-		SanyTokenLambda, SanyTokenWF, SanyTokenLbr, SanyTokenLsb, SanyTokenLbc,
-		SanyTokenLab, SanyTokenNumberLiteral, SanyTokenStringLiteral,
-		SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
-		return true
-	default:
-		return false
-	}
-}
-
 // PrimitiveExp allows the full BangExt selector production; the restricted
 // NoOpExtension used by action subscripts is a separate source production.
 func (p *SanyParser) primitiveSelectorExpr(selector *SanySyntaxNode) *SanySyntaxNode {
@@ -2722,8 +2685,24 @@ func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
 	p.beginProduction("Bang Extension")
 	defer p.endProduction()
 	bang = p.consumeParseToken(SanyTokenBang, "expected ! in selector")
-	selector = p.BangSelector()
-	args = p.OptionalSelectorOpArgs(selector, 72)
+	if p.scanLookahead(73, 1) {
+		if p.scanLookahead(71, 2147483647) && p.peek().Image != "@" {
+			selector = p.Identifier()
+		} else if p.isNEPrefixOperator(p.peek()) || p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) {
+			selector = p.BangOperatorSelector()
+		} else {
+			p.throwParseException(nil, "expected identifier or operator selector")
+		}
+		if p.startsOpArgs(72) {
+			args = p.OpArgs()
+		}
+	} else if p.check(SanyTokenLbr) {
+		selector = p.OpArgs()
+	} else if p.scanLookahead(74, 1) {
+		selector = p.StructOp()
+	} else {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenLbr}}, "expected argument or structural selector")
+	}
 	return bang, selector, args
 }
 
@@ -2797,19 +2776,6 @@ func (p *SanyParser) selectorAllowsOpArgs(selector *SanySyntaxNode) bool {
 	default:
 		return false
 	}
-}
-
-func (p *SanyParser) BangSelector() *SanySyntaxNode {
-	if p.check(SanyTokenLbr) {
-		return p.OpArgs()
-	}
-	if p.startsStructOp() {
-		return p.StructOp()
-	}
-	if p.startsBangOperatorSelector() {
-		return p.BangOperatorSelector()
-	}
-	return p.Identifier()
 }
 
 func (p *SanyParser) BangOperatorSelector() *SanySyntaxNode {

@@ -10077,3 +10077,23 @@ production observations match 3,125 rows across 181 cases, comparing actual synt
 kinds/images/four coordinates and complete messages with outer log whitespace
 excluded. They do not establish exhaustive predicate contexts or whole parser,
 canonical graph or evaluator-sharing completion.
+
+
+## Selector decisions complete the generated caller integration
+
+PrimitiveExp runs source String/Number calls 69/70 (Integer.MAX_VALUE) before
+the source column predicates. Identifier/proof-step, infix and postfix alternatives
+retain direct source selection; the nonexpressive-prefix alternative uses call
+67 (Integer.MAX_VALUE). BangExtension uses outer preview 73 (budget 1), then
+identifier preview 71 (Integer.MAX_VALUE) followed by the source @ exclusion.
+Direct operator choices precede optional OpArgs call 72 (budget 2). The other
+branch selects direct OpArgs before structural preview 74 (budget 1); it does
+not run the identifier/operator optional-argument preview.
+
+All 74 generated entry points now have connected production callers. Complete
+expected-token/bookkeeping fidelity and corpus syntax AST comparison remain
+separate requirements. External production observations match 3,663 rows across
+211 cases, comparing actual results, syntax kinds/images/four coordinates and
+complete messages with outer log whitespace excluded. These observations do not
+establish exhaustive predicate states, allocation sharing or whole parser and
+canonical/evaluator parity, and add no original test-method credit.
