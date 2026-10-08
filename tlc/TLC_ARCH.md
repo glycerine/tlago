@@ -11786,3 +11786,17 @@ skipped. Failures raised inside this catch escape to the enclosing model-error
 handler rather than being classified again as worker loss. Focused checks cover
 missing queues, partial I/O/runtime/fatal failures and healthy retry; short TCP
 checks and actual DieHard distributed trace execution remain green.
+
+
+### Distributed block-selector startup settings
+
+Selector mode is captured once on the first factory call, before constructing
+a selector. Static takes precedence over unlimiting, which takes precedence over
+limiting; otherwise the statistical selector is used. Static batch size has a
+separate one-time capture on first static construction, before checking its
+server argument. Using other selector modes does not initialize static size.
+Later process-property changes cannot alter either captured setting. This is
+implemented with native sync.Once fields, without Java class loading or runtime
+machinery. Existing explicit Go constructor size arguments override the captured
+default per instance. Fresh-process setting-lifetime checks and existing original
+smart-proxy/distributed model and short TCP checks pass.

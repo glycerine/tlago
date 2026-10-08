@@ -43,6 +43,10 @@ Focused selector, error-handler, original smart-proxy and short TCP checks pass.
 Recoverable-batch retries also require a queue: they cannot lower the transfer
 limit or report continuation after skipping requeueing. Requeue failures retain
 preceding queue mutations and escape the inner worker-failure catch.
+Block-selector mode settings are captured once for the process, with static,
+unlimiting and limiting precedence. The static batch size is captured separately
+when first constructing a static selector, including a failed construction.
+Later setting changes cannot silently replace the process's selection policy.
 
 The original checkpoint-on-violation and time-bound model tests are now complete.
 Both pass normally with their full assertions; the time-bound test retains the

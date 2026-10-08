@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental fresh-process selector checks preserve startup setting capture,
+flag precedence, boolean parsing, deferred static-size initialization and failed
+constructor timing. Upstream has no direct methods for these boundaries;
+original-method completion counts remain unchanged.
+
 Supplemental retry-queue checks preserve required requeueing before limit
 updates, partial mutation and failure identity for I/O/runtime/fatal failures,
 assigned work and the inner catch boundary. These add no original-method credit.

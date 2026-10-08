@@ -1325,13 +1325,35 @@ func NewBlockSelector(server *TLCServer) *BlockSelector {
 	return NewBlockSelectorFromProperties(server)
 }
 
+var distributedSelectorStartup struct {
+	sync.Once
+	mode BlockSelectorMode
+}
+
+var distributedStaticSelectorStartup struct {
+	sync.Once
+	size int
+}
+
 func NewBlockSelectorFromProperties(server *TLCServer) *BlockSelector {
-	switch {
-	case distributedBooleanProperty(distributedSelectorStaticProperty):
+	distributedSelectorStartup.Do(func() {
+		switch {
+		case distributedBooleanProperty(distributedSelectorStaticProperty):
+			distributedSelectorStartup.mode = BlockSelectorStatic
+		case distributedBooleanProperty(distributedSelectorUnlimitingProperty):
+			distributedSelectorStartup.mode = BlockSelectorProportional
+		case distributedBooleanProperty(distributedSelectorLimitingProperty):
+			distributedSelectorStartup.mode = BlockSelectorLimiting
+		default:
+			distributedSelectorStartup.mode = BlockSelectorStatistical
+		}
+	})
+	switch distributedSelectorStartup.mode {
+	case BlockSelectorStatic:
 		return NewStaticBlockSelector(server)
-	case distributedBooleanProperty(distributedSelectorUnlimitingProperty):
+	case BlockSelectorProportional:
 		return NewProportionalBlockSelector(server)
-	case distributedBooleanProperty(distributedSelectorLimitingProperty):
+	case BlockSelectorLimiting:
 		return NewLimitingBlockSelector(server)
 	default:
 		return NewStatisticalBlockSelector(server)
@@ -1367,12 +1389,19 @@ func NewStatisticalBlockSelector(server *TLCServer) *BlockSelector {
 }
 
 func NewStaticBlockSelector(server *TLCServer, blockSize ...int) *BlockSelector {
+	// Capture this setting independently of factory selection, before the
+	// required-server assertion. Non-static selectors do not initialize it.
+	distributedStaticSelectorStartup.Do(func() {
+		distributedStaticSelectorStartup.size = blockSelectorDefaultStaticSize
+		if value, ok := distributedIntProperty(distributedStaticBlockSizeProperty); ok {
+			distributedStaticSelectorStartup.size = value
+		}
+	})
 	selector := NewProportionalBlockSelector(server)
 	selector.Mode = BlockSelectorStatic
+	selector.StaticBlockSize = distributedStaticSelectorStartup.size
 	if len(blockSize) > 0 {
 		selector.StaticBlockSize = blockSize[0]
-	} else if value, ok := distributedIntProperty(distributedStaticBlockSizeProperty); ok {
-		selector.StaticBlockSize = value
 	}
 	selector.averageBlockCnt.Store(int64(selector.StaticBlockSize))
 	return selector

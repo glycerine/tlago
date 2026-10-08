@@ -20637,3 +20637,33 @@ execution passes both fingerprint-storage variants with the original seven-state
 trace and event assertions (34706, status 0, 23.369 seconds). All processes are
 terminal. No full-suite or race run was performed. Supplemental checks add no
 original-method completion credit; broader distributed parity remains incomplete.
+
+### 2026-10-08: Distributed selector startup setting lifetime
+
+Audited BlockSelectorFactory and StaticBlockSelector against pinned source. Their
+mode properties and static batch size are captured once, independently. Go read
+them at every constructor, allowing later setting changes to silently alter the
+selection policy. Added separate native sync.Once captures: the factory freezes
+mode/precedence on first use; static size freezes on first static construction,
+before its required-server assertion. Constructing another selector mode does
+not initialize static size. Existing explicit native constructor size arguments
+still override the captured default for that instance. No class loader, JVM
+runtime or Java reflection support is introduced.
+
+Upstream has no direct selector-startup test methods. Added eight fresh-process
+cases for default/statistical, static, unlimiting, limiting, invalid booleans,
+deferred static-size capture, failed factory construction and failed static
+construction. Cases retain mixed-case true parsing, no whitespace trimming,
+static/unlimiting/limiting precedence, hexadecimal integer parsing and initial
+average size. After correcting the draft's runtime-error type name, all eight
+initially failed (59bcf8, status 1, 0.099 seconds). They pass after the production
+fix with existing selector, thread/finalizer/retry and nine original smart-proxy
+contexts (2125cf, status 0, 0.160 seconds).
+
+Native startup properties and short TCP bootstrap/callback, assigned-block
+checkpoint and coordinator retry/loss checks pass (f00428, status 0, 0.048
+seconds). The three original distributed initializer-continue, evaluator-error
+and TLCSet model contexts pass (30681, status 0, 2.042 seconds). All processes
+are terminal. No full-suite, long workload or race run was performed.
+Supplemental startup checks add no original-method completion credit; broader
+distributed parity remains incomplete.
