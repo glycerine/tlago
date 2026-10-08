@@ -1876,13 +1876,13 @@ the command's rejection or reporting-loop shutdown points. Native registration
 rejection retains the source early return without flush, and leaves a worker on
 the same host available. Reporting preserves the five-minute wait boundary;
 remote exit wakes it through the existing storage lifecycle. Remaining payload
-classes, signal-driven process shutdown and separate-process full model execution
-remain pending. Native CLI entry points now expose `server`, `worker`,
+classes and separate-process full model coverage remain pending. Native CLI entry points now expose `server`, `worker`,
 `fpserver` and `worker-fpserver`, with dedicated help and startup property
 consumption before role initialization. Worker command lifetime follows its
 exit latch; the combined command waits for both roles. Callback publication
 accepts a reachable host with the OS-selected port. These entry points still
-need separate-process model verification and native signal shutdown handling. A separate-process native coordinator/worker run of the unchanged DieHard
+need broader separate-process model coverage. Native coordinator signal shutdown
+is now implemented at the original shutdown-hook registration boundary. A separate-process native coordinator/worker run of the unchanged DieHard
 model now completes normally and matches all seven upstream expected trace
 states. It exposed and repaired two source deviations: TLCApp injected
 predecessor/action objects that Java does not attach, and coordinator publication
@@ -1892,7 +1892,13 @@ without adding evaluator metadata. Focused source-contract and native-boundary
 checks pass. The probe ran from the model directory with one worker and no
 checkpoints; it is supplemental evidence, not original remote-harness port
 completion (that harness remains unconditionally assumption-disabled upstream).
-Signal shutdown and full remote test translation remain pending.
+Native coordinator SIGINT/SIGTERM handling now runs the existing worker
+shutdown hook before process exit, and unregisters signal handling on normal
+return. A separate-process MC06 startup probe confirms SIGTERM exits the
+coordinator with 143 and its registered worker with 0. This is an interruption
+check, not full MC06 model verification. A three-process DieHard run with one
+standalone FP server also matches all seven trace states and exits all roles
+normally. Full remote test translation remains pending.
 
 These focused checks do not prove distributed completion.
 

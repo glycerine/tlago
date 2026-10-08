@@ -17990,3 +17990,44 @@ bootstrap/callback, coordinator publication and focused worker boundaries pass
 in 0.028 seconds. No full suite or race workload was run. Native signal shutdown,
 remaining extended/custom payloads and original remote harness translation
 remain pending. The goal is not complete.
+
+## Native coordinator signal shutdown (October 8, 2026)
+
+Connected TLCServer.main's existing InstallShutdownHook boundary to native Go
+SIGINT/SIGTERM handling. Registration still occurs after server construction,
+where Java installs WorkerShutdownHook. The adapter calls the existing guarded
+worker exit loop before terminating with 128 plus the signal number. Hook
+errors are printed but do not suppress process termination. Distributed resolver
+temporary files are cleaned before os.Exit; normal return unregisters signal
+handling and joins its goroutine. No JVM machinery or new coordinator algorithm
+is introduced. Worker/FP process signals retain the OS's ordinary termination
+behavior; the original coordinator hook targets workers only.
+
+There is no enabled original direct native-signal test. Added focused Go checks
+for hook-before-exit ordering on both signals, failure reporting, normal-return
+behavior and actual registration/disposal. Initial checks pass in 0.015 seconds
+(83599 terminal status 0). Final signal/CLI plus original distributed model/init
+selection passes in 1.066 seconds (95859 terminal status 0).
+
+Separate-process SIGTERM probe starts the unchanged upstream EWD840/MC06 model,
+waits for a real worker registration, then interrupts the coordinator. It exits
+143; the worker receives the remote Exit callback, prints work completion and
+exits 0 (92621 terminal status 0). The model's original 16,384 initial states are
+retained. This deliberately tests interruption, not completed MC06 exploration.
+Logs: `.codex-gotmp/distributed-signal-server.log` and
+`distributed-signal-worker.log`. No fixture was modified.
+
+Also ran unchanged DieHard using separate coordinator, standalone FP server and
+worker processes. Coordinator waits for one FP server; its supported MemFPSet
+implementation is selected explicitly for this native transport probe. All
+three processes exit 0 (22231 terminal status 0); remote FP reporting preserves
+its production five-minute wait and normal Exit notification. All seven trace
+states agree with the upstream DieHard expectedTrace strings and GENERAL is
+absent. Logs: `.codex-gotmp/distributed-fp-{server,fpserver,worker}.log`.
+This is supplemental evidence, not original disabled-harness completion credit.
+Only the exact short signal disposal check is race-instrumented; long model
+probes run normally. Full suite was not repeated. Extended/custom payloads,
+broader remote model coverage and original remote harness translation remain
+pending; the distributed goal is not complete.
+The exact short signal registration/disposal race check passes in 1.040 seconds
+(63495 terminal status 0). All run handles are retired.

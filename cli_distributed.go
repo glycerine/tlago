@@ -36,6 +36,12 @@ func runDistributedCLI(role string, args []string, stdout, stderr io.Writer) int
 		network := tlc.NewDistributedCoordinatorNetwork(bindHost, advertiseHost)
 		defer network.Close()
 		process := tlc.NewDistributedServerProcess()
+		var stopSignals func()
+		defer func() {
+			if stopSignals != nil {
+				stopSignals()
+			}
+		}()
 		env := tlc.DistributedServerEnvironment{CreateServer: func(app *tlc.TLCApp, count int) (*tlc.TLCServer, error) {
 			var server *tlc.TLCServer
 			var err error
@@ -48,6 +54,9 @@ func runDistributedCLI(role string, args []string, stdout, stderr io.Writer) int
 				server.ConfigurePublication(network.Publication())
 			}
 			return server, err
+		}, InstallShutdownHook: func(hook func() error) error {
+			stopSignals = installDistributedSignalHook(hook, stderr)
+			return nil
 		}}
 		_, err = RunDistributedServer(process, args, env, tlc.RuntimeParameters{})
 	} else {
