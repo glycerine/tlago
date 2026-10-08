@@ -138,7 +138,7 @@ func (t *TLCTrace) WriteStateRecord(predecessor *TLCStateMut, fp uint64, state *
 
 func (t *TLCTrace) writeState(predecessor *TLCStateMut, fp uint64, state *TLCStateMut, action *Action, attachMetadata bool) (int64, error) {
 	if t == nil {
-		return TLCStateInitUID, nil
+		panic(NewNullPointerException())
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -147,8 +147,14 @@ func (t *TLCTrace) writeState(predecessor *TLCStateMut, fp uint64, state *TLCSta
 	if predecessor != nil {
 		prevUID = predecessor.UID
 	}
-	if err := t.ensureTraceRAFLocked(); err != nil {
-		return TLCStateInitUID, err
+	if t.rawPaths {
+		if t.raf == nil {
+			panic(NewNullPointerException())
+		}
+	} else {
+		if err := t.ensureTraceRAFLocked(); err != nil {
+			return TLCStateInitUID, err
+		}
 	}
 	if t.raf != nil {
 		ptr, err := t.raf.GetFilePointer()
@@ -213,19 +219,24 @@ func (t *TLCTrace) WriteNextState(curState *TLCStateMut, succFP uint64, succStat
 
 func (t *TLCTrace) WriteNextStateForWorker(workerID int, curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action) error {
 	if t == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	uid := int64(len(t.records))
-	prevUID := TLCStateInitUID
-	predecessorWorkerID := int16(0)
-	if curState != nil {
-		prevUID = curState.UID
-		predecessorWorkerID = curState.WorkerID
+	if curState == nil {
+		panic(NewNullPointerException())
 	}
-	if err := t.ensureTraceRAFLocked(); err != nil {
-		return err
+	uid := int64(len(t.records))
+	prevUID := curState.UID
+	predecessorWorkerID := curState.WorkerID
+	if t.rawPaths {
+		if t.raf == nil {
+			panic(NewNullPointerException())
+		}
+	} else {
+		if err := t.ensureTraceRAFLocked(); err != nil {
+			return err
+		}
 	}
 	if t.raf != nil {
 		ptr, err := t.raf.GetFilePointer()

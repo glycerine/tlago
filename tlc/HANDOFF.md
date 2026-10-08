@@ -218,6 +218,10 @@ Begin flushes before temporary metadata creation; missing/closed owners leave
 prior temporary bytes untouched. Recovery reads and publishes the saved last
 pointer before requiring that owner for seek. Neither operation reopens a file
 or consults a saved creation error. Close retains the closed disk owner.
+Disk trace writers also require that existing owner. Missing owners cannot reopen
+a file or publish records/state metadata; successor writes require the predecessor
+before owner access. Missing trace receivers fail rather than return success.
+Partial writes retain their attempted pointer and bytes as before.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

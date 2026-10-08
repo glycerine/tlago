@@ -824,6 +824,12 @@ flush-before-temporary-creation and read-before-seek mutation ordering, exact
 metadata bytes and lock release. No original method directly covers this
 boundary; completion counts remain unchanged.
 
+Eighteen native disk-writer cases cover initial/record/successor writes with
+missing/closed owners and saved errors, missing trace receivers and predecessor-
+before-owner failure order. Invalid writes retain owner identity and suppress
+record/state publication. No original method directly covers these boundaries;
+completion counts remain unchanged. Original partial-write assertions are intact.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

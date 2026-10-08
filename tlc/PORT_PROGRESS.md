@@ -21654,3 +21654,31 @@ status 0, 0.636 seconds). Original assertions and workload bounds remain intact.
 All processes are terminal. No full suite or race run was performed. Supplemental
 cases add no original-method credit. Construction/context and remaining trace
 operations still need audit; distributed parity is incomplete.
+
+### 2026-10-08: Source disk-trace write owner requirements
+
+Compared TLCTrace writeState overloads with pinned source and distributed initial/
+successor publication call sites. Removed lazy owner opening for source-constructor
+disk traces. Missing owners cannot reopen files, consult saved creation errors or
+fall back to a memory record offset. Missing successor predecessors fail before
+owner access instead of substituting an initial-state pointer. Missing trace
+receivers fail rather than report success. Existing pointer-before-byte ordering
+and partial-write mutations remain unchanged.
+
+No original method directly covers these absent owners. Eighteen supplemental
+cases cover initial/record/successor writes across missing/closed owners and saved
+errors, missing predecessors with healthy/missing/closed owners, and missing trace
+receivers. Checks retain owner identity, state metadata, records, last pointer,
+level, cursor and lock release. Nine of the first fifteen cases initially failed
+(37df3f, status 1, 0.015 seconds). Final focused state/worker/concurrent/distributed
+trace, checkpoint/recovery and original simulation trace checks pass (fd1a3f,
+status 0, 1.104 seconds), including existing partial-write assertions. Original
+checkpoint-on-violation/time-bound, error-trace and three-worker CodePlexBug08
+archive recovery plus all four DieHard/TSnapShot native process storage variants
+pass (00ba21, status 0, 58.044 seconds). Three original inherited LSBDiskFPset
+recovery methods pass at their unchanged ranges, including the 99,999 limit and
+default storage settings (0c9a80, 56.524 seconds; terminal af11c6, status 0).
+All processes are terminal. No original assertion changed. No full suite or race
+run was performed. Supplemental cases add no original-
+method credit. Construction/context and remaining trace operations still need
+audit; distributed parity is incomplete.
