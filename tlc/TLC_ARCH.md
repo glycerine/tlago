@@ -12021,3 +12021,12 @@ worker wraps that failure with its predecessor, cause and call-stack flag before
 publishing generation totals. A present state with unassigned values retains the
 ordinary incomplete-successor WorkerException without a cause or call-stack flag.
 Native TCP preserves both outcomes without adopting Java transport machinery.
+
+Fingerprint connection loss and process loss have separate coverage. The native
+process check terminates an independent fingerprint host after committing a
+MemFPSet checkpoint and adding a volatile fingerprint. Manager failover preserves
+the source partition reassignment and new-membership answers on surviving storage;
+it does not copy the dead store. A fresh host starts empty and recovers committed
+membership through its endpoint. Recovery neither reconnects the dead client nor
+replaces the manager's registrations. Full-model server crash/recovery, disk-store
+process failures and network partitions remain separate pending requirements.

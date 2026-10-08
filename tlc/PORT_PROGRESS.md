@@ -22144,3 +22144,27 @@ terminal process 8844c2 status 0; package time 49.413 seconds). All output was
 captured and inspected. Original assertions and bounds are unchanged. No full
 suite or race run was performed. Supplemental cases add no original-method
 credit; the distributed port remains incomplete.
+
+### 2026-10-08: Fingerprint-server process loss and fresh-process recovery
+
+Reviewed distributed worker post-filter checks and fingerprint manager failover
+against pinned source; no production mismatch was found in the reviewed paths.
+Existing in-flight failure checks close transport while allowing owned storage
+handlers to finish. Added a distinct native process check using independent
+fingerprint host processes and their actual endpoints. It commits MemFPSet
+membership, inserts one later volatile fingerprint, kills and joins the host,
+then checks source manager reassignment without copied membership. First/repeated
+insertion on the survivor retains new/known bit answers and exact one-time warning.
+A fresh empty host recovers only committed membership. Dead client shutdown cause
+and existing manager registrations are preserved. Both child lifetimes have
+watchdogs and cleanup; progress is logged under go test -v.
+
+The new process check passes (fp-process-crash-focused.log, terminal process
+ab3a61 status 0; package time 0.046 seconds). All original dynamic manager and
+nested-partition methods and short native fingerprint RPC checks also pass
+(fp-process-crash-regression.log, terminal process 108341 status 0; package time
+0.155 seconds). Logs were inspected and all processes are terminal. No original
+assertions or workload bounds changed; no full suite or race run was performed.
+No enabled original method covers this native process boundary, so this is
+supplemental coverage with no original-method credit. Full-model fingerprint
+server failures, disk-store process failures and network partitions remain open.

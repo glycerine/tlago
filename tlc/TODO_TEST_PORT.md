@@ -1383,7 +1383,13 @@ Loss of the last worker is now exercised by the full native MC06
 coordinator is not done before replacement registration, then requires the
 original final model counts and exact one-time loss/cache-warning behavior.
 This adds native failure coverage, not original disabled-harness completion
-credit. Network partitions and fingerprint-server failure/recovery remain open.
+credit. A short native fingerprint-server process check now covers abrupt kill,
+manager reassignment, insertion on surviving storage and fresh-process recovery
+of committed MemFPSet membership. It distinguishes committed fingerprints from
+a later volatile insertion and preserves the dead client's shutdown cause and
+existing manager registrations. This has no direct original method counterpart
+and adds no credit. Full-model fingerprint-server failure/recovery and network
+partitions remain open.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
 distinction between null vectors, null words and initialized empty words.
