@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental disk checkpoint checks retain lock/flag ownership after I/O or
+runtime flush/copy failures, release on success and native manager continuation
+to healthy partitions without reassignment. No original-method credit is added.
+
 Supplemental memory queue recovery checks cover untouched storage/cursor,
 partial state publication, fixed-capacity overflow and coordinator stop ordering.
 Original short memory queue methods pass; no original-method credit is added.

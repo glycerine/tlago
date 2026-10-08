@@ -11373,5 +11373,16 @@ earlier records and len mutation; storage is not grown. Native input ownership
 is released once on success or failure without replacing the failed read cause.
 Checks cover missing UID/level, completed reconstruction, the fixed 4096-entry
 capacity boundary and real coordinator recovery before fingerprints/publication.
-DiskFPSet begin-checkpoint failure lock/flag ownership still differs from source
-and requires further audit; no distributed completion claim follows this chunk.
+The subsequent DiskFPSet checkpoint ownership fix retains the source success-only
+lock release and flag reset. No distributed completion claim follows this chunk.
+
+DiskFPSet.beginChkpt(String) sets the flusher flag, acquires all table write
+locks, flushes, copies and advances the checkpoint marker before releasing
+locks and resetting the flag. The Go defer that released ownership on failure
+is removed. Short native checks use TryLock to verify retained stripes without
+starting blocked calls, covering flush I/O, runtime duplicate merge, copy I/O
+and success. Owned fixture cleanup releases retained locks only after assertions.
+A two-partition native TCP manager check requires completed failed-store flush,
+unchanged marker/registrations, the source diagnostic and healthy-store commit.
+Storage operations needing retained locks remain blocked after the source
+failure; native transport does not retry or reset that storage ownership.

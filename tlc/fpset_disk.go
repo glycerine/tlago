@@ -517,12 +517,9 @@ func (s *DiskFPSet) BeginChkptFile(fname string) error {
 	if !s.checkpoint {
 		return nil
 	}
+	// Source releases ownership only after a successful checkpoint copy.
 	s.flusherChosen.Store(true)
 	s.acquireTblWriteLock()
-	defer func() {
-		s.releaseTblWriteLock()
-		s.flusherChosen.Store(false)
-	}()
 	if err := s.flushTable(); err != nil {
 		return err
 	}
@@ -530,6 +527,8 @@ func (s *DiskFPSet) BeginChkptFile(fname string) error {
 		return err
 	}
 	s.checkPointMark++
+	s.releaseTblWriteLock()
+	s.flusherChosen.Store(false)
 	return nil
 }
 

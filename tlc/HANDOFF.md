@@ -73,9 +73,11 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
-Next failure audit: DiskFPSet begin-checkpoint ownership. Java reaches lock
-release and flusher flag reset only on success; Go currently defers both.
-Resolve that source/native ownership difference before claiming parity.
+DiskFPSet named checkpoint creation now retains table locks and the flusher
+flag after flush/copy failure, matching source release order. Success alone
+advances the marker and releases ownership. Native TCP checks retain completed
+flush state and manager continuation to a healthy partition without reassignment.
+These supplemental checks add no original-method completion credit.
 
 Memory queue recovery now retains its cursor and untouched array slots,
 publishes each new empty state before reading, and preserves partial state

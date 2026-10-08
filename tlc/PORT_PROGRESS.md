@@ -19492,3 +19492,32 @@ failures; all pass in 0.075 seconds. No enabled original method covers these
 added boundaries, so no original-method completion credit is added. All handles
 are terminal and retired. No full suite, long workload or race run. Distributed
 parity remains incomplete.
+
+## October 8, 2026: disk checkpoint failure ownership
+
+Resolved the previous explicit DiskFPSet begin-checkpoint audit item. Source
+sets the flusher flag/acquires all write stripes, flushes/copies/advances its
+marker, then releases stripes and clears the flag. Go used a defer that released
+ownership after failures. Removed that defer and restored success-only release.
+Short checks inspect stripes with TryLock instead of launching blocked calls;
+fixture cleanup releases retained ownership after assertions so native resources
+and test jobs are retired.
+
+Initial I/O flush/copy and two-partition native TCP manager cases expose the
+old flag reset (75052, status 1, 0.027 seconds). The initial runtime fixture used
+memInsert, which recognizes the marked flushed entry; corrected that setup to
+restore an unflushed duplicate in the table, as the existing duplicate-merge
+check does. Corrected four failure/success rows, TCP manager continuation,
+checkpoint catch/fatal, existing duplicate-merge and native checkpoint success
+checks pass (87898, status 0, 1.568 seconds). Final focused ownership, native
+assigned-block/connection-loss checkpoint and original dynamic manager methods
+pass (88882, status 0, 0.085 seconds).
+
+Failure assertions retain source stripes/flag and unchanged marker; copy failure
+retains its completed flush. Success requires exact checkpoint data and release.
+Native manager catches I/O failure, preserves partition registration/availability,
+prints the source diagnostic and completes the healthy partition. It does not
+reset failed storage ownership. No enabled original method covers these failure
+boundaries; supplemental checks add no original-method credit. All handles are
+terminal and retired. No full suite, long workload or race run. Distributed
+parity remains incomplete.
