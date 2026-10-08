@@ -29,6 +29,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		name                                       string
 		remoteFP, recovering, workerLoss, combined bool
 		allWorkersLost                             bool
+		fingerprintLoss                            bool
 		fingerprintServers                         int
 		midRunCheckpoint                           bool
 		checkpointInterrupted                      bool
@@ -39,6 +40,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "coordinator_fingerprints"},
 		{name: "standalone_fingerprints", remoteFP: true},
 		{name: "partitioned_fingerprints", remoteFP: true, fingerprintServers: 2},
+		{name: "fingerprint_server_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true},
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
 		{name: "mid_run_checkpoint_recovery", recovering: true, midRunCheckpoint: true},
@@ -68,6 +70,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			defer cancel()
 			common := []string{fmt.Sprintf("-Dtlc2.tool.distributed.TLCServer.port=%d", port), "-Dtlago.distributed.bindHost=127.0.0.1", "-Dtlago.distributed.advertiseHost=127.0.0.1"}
 			var roles []*nativeDistributedTestProcess
+			var failedFingerprint *nativeDistributedTestProcess
+			var survivingFingerprint tlc.DistributedEndpointReference
+			releaseWorker := filepath.Join(t.TempDir(), "resume-worker")
 			roleCounts := make(map[string]int)
 			start := func(role string, args ...string) *nativeDistributedTestProcess {
 				commandArgs := []string{"-test.run=^TestNativeDistributedProcessHelper$", "--", role}
@@ -76,6 +81,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
 				command.Dir = model
 				command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
+				if role == "worker-fingerprint-loss" {
+					command.Env = append(command.Env, "TLAGO_NATIVE_WORKER_RELEASE="+releaseWorker)
+				}
 				if scenario.fingerprintServers > 1 && role == "fpserver" {
 					// These roles represent separate hosts. Give each private
 					// temporary storage even when they start in the same millisecond.
@@ -333,8 +341,25 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			} else if scenario.remoteFP {
 				// A supported native implementation avoids inheriting the
 				// upstream harness's known OffHeap assumption failure.
-				for range max(1, scenario.fingerprintServers) {
-					start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+				for index := range max(1, scenario.fingerprintServers) {
+					fingerprint := start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+					if scenario.fingerprintLoss && index == 0 {
+						failedFingerprint = fingerprint
+						// Register partition zero first: source reassign uses a
+						// forward assignment loop, without wrapping its writes.
+						ticker := time.NewTicker(10 * time.Millisecond)
+						for len(nativeDistributedMessages(server.output.String(), tlc.ECTLCDistributedServerFPSetRegistered)) == 0 {
+							select {
+							case err := <-server.done:
+								server.joined = true
+								t.Fatalf("coordinator exited before first FP registration: %v", err)
+							case <-ctx.Done():
+								t.Fatal("first FP registration watchdog expired")
+							case <-ticker.C:
+							}
+						}
+						ticker.Stop()
+					}
 				}
 			}
 			if scenario.fingerprintServers > 1 {
@@ -366,6 +391,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if manager == nil || len(manager.Nodes) != 2 || len(manager.Partitions) != 2 || manager.Partitions[0] == manager.Partitions[1] {
 					t.Fatal("coordinator did not retain two FP partitions")
 				}
+				if scenario.fingerprintLoss {
+					survivingFingerprint = manager.Nodes[manager.Partitions[1]-1].Endpoint
+				}
 				var initial uint64
 				for i, node := range manager.Nodes {
 					endpoint, err := tlc.DialFingerprintEndpoint(node.Endpoint.Address, node.Endpoint.Object)
@@ -384,8 +412,66 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					t.Fatalf("initial fingerprint partitions total %d, want 16384", initial)
 				}
 			}
-			if !scenario.combined && !scenario.allWorkersLost {
+			if !scenario.combined && !scenario.allWorkersLost && !scenario.fingerprintLoss {
 				start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+			}
+			if scenario.fingerprintLoss {
+				worker := start("worker-fingerprint-loss", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				ticker := time.NewTicker(10 * time.Millisecond)
+				for !strings.Contains(worker.output.String(), "NATIVE_WORKER_BLOCK_ASSIGNED") {
+					select {
+					case err := <-server.done:
+						server.joined = true
+						t.Fatalf("coordinator exited before fingerprint loss: %v", err)
+					case err := <-worker.done:
+						worker.joined = true
+						t.Fatalf("worker exited before fingerprint loss: %v", err)
+					case <-ctx.Done():
+						t.Fatal("fingerprint-loss worker assignment watchdog expired")
+					case <-ticker.C:
+					}
+				}
+				ticker.Stop()
+				if err := failedFingerprint.command.Process.Kill(); err != nil {
+					t.Fatal(err)
+				}
+				if err := <-failedFingerprint.done; err == nil {
+					t.Fatal("killed fingerprint host unexpectedly exited successfully")
+				}
+				failedFingerprint.joined = true
+				t.Log("killed first fingerprint host with a worker block assigned; resuming actual successor evaluation")
+				if err := os.WriteFile(releaseWorker, nil, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				coordinator, err := rpc.Dial("tcp", net.JoinHostPort("127.0.0.1", fmt.Sprint(port)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer coordinator.Close()
+				ticker = time.NewTicker(10 * time.Millisecond)
+				for {
+					var reply tlc.DistributedServerReply
+					if err := coordinator.Call("Coordinator.Call", tlc.DistributedServerRequest{Object: tlc.TLCServerName, Operation: "manager"}, &reply); err != nil || reply.Failure != nil {
+						t.Fatalf("failover manager inspection: %v/%v", err, reply.Failure)
+					}
+					manager := reply.Manager
+					if manager != nil && len(manager.Nodes) == 1 && len(manager.Partitions) == 2 && manager.Partitions[0] == 1 && manager.Partitions[1] == 1 {
+						if manager.Broken || !manager.Nodes[0].Available || manager.Nodes[0].Endpoint != survivingFingerprint {
+							t.Fatal("failover did not retain the surviving fingerprint registration")
+						}
+						break
+					}
+					select {
+					case err := <-server.done:
+						server.joined = true
+						t.Fatalf("coordinator exited before failover inspection: %v", err)
+					case <-ctx.Done():
+						t.Fatal("fingerprint reassignment inspection watchdog expired")
+					case <-ticker.C:
+					}
+				}
+				ticker.Stop()
+				t.Log("coordinator retains two partitions sharing the surviving fingerprint registration")
 			}
 			if scenario.workerLoss {
 				failed := start("worker-failpoint", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
@@ -499,7 +585,18 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				t.Fatal("TLC_FINISHED absent")
 			}
 			stats := regexp.MustCompile(fmt.Sprintf(`(?s)@!@!@STARTMSG %d:\d+ @!@!@\n(.*?)\n@!@!@ENDMSG %d @!@!@`, tlc.ECTLCStats, tlc.ECTLCStats)).FindStringSubmatch(output)
-			if len(stats) != 2 || !regexp.MustCompile(`^\d+ states generated, 114942 distinct states found, 0 states left on queue\.$`).MatchString(stats[1]) {
+			distinct := 114942
+			if scenario.fingerprintLoss {
+				// Java size() sums both slots after they alias the survivor.
+				// Ordinary original model assertions remain unchanged.
+				distinct *= 2
+				for _, process := range []*nativeDistributedTestProcess{server, roles[len(roles)-1]} {
+					if strings.Count(process.output.String(), "Warning: Failed to connect from ") != 1 || strings.Contains(process.output.String(), "Warning: there is no fp server available.") {
+						t.Fatalf("%s did not report fingerprint reassignment to surviving storage", process.output.role)
+					}
+				}
+			}
+			if len(stats) != 2 || !regexp.MustCompile(fmt.Sprintf(`^\d+ states generated, %d distinct states found, 0 states left on queue\.$`, distinct)).MatchString(stats[1]) {
 				t.Fatal("TLC_STATS lacks original distinct/queue assertions")
 			}
 			if scenario.workerLoss {
@@ -569,6 +666,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				} else {
 					status = ExitOK
 				}
+			} else if len(args) > 0 && args[0] == "worker-fingerprint-loss" {
+				if err := nativeDistributedPausedWorker(args[1:], os.Getenv("TLAGO_NATIVE_WORKER_RELEASE")); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
 			} else {
 				status = RunCLI(args, os.Stdout, os.Stderr)
 			}
@@ -583,6 +686,10 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 // paused, after a coordinator block has actually arrived, until this owned
 // test process is killed. No successor response or fingerprint put is faked.
 func nativeDistributedBlockedWorker(args []string) error {
+	return nativeDistributedPausedWorker(args, "")
+}
+
+func nativeDistributedPausedWorker(args []string, releasePath string) error {
 	args, err := tlc.ExtractDistributedStartupProperties(args)
 	if err != nil {
 		return err
@@ -601,10 +708,21 @@ func nativeDistributedBlockedWorker(args []string) error {
 		if app == nil || diagnostics.HasErrors() {
 			return nil, fmt.Errorf("worker model failed to load: %v", diagnostics)
 		}
-		app.Tool.GetNextStatesFunc = func(*tlc.Tool, *tlc.Action, *tlc.TLCStateMut) (*tlc.StateVec, error) {
-			fmt.Println("NATIVE_WORKER_BLOCK_ASSIGNED")
-			<-make(chan struct{})
-			return nil, fmt.Errorf("unreachable paused worker evaluation")
+		var pause sync.Once
+		app.Tool.GetNextStatesFunc = func(tool *tlc.Tool, action *tlc.Action, state *tlc.TLCStateMut) (*tlc.StateVec, error) {
+			pause.Do(func() {
+				fmt.Println("NATIVE_WORKER_BLOCK_ASSIGNED")
+				if releasePath == "" {
+					<-make(chan struct{})
+				}
+				for {
+					if _, err := os.Stat(releasePath); err == nil {
+						return
+					}
+					time.Sleep(10 * time.Millisecond)
+				}
+			})
+			return tool.GetNextStatesImpl(action, state)
 		}
 		return app, nil
 	}})

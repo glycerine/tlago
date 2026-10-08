@@ -12031,6 +12031,17 @@ promoted. Manager failover preserves
 the source partition reassignment and new-membership answers on surviving storage;
 it does not copy the dead store. A fresh host starts empty and recovers committed
 membership through its endpoint. Recovery neither reconnects the dead client nor
-replaces the manager's registrations. Full-model server crash/recovery and network
+replaces the manager's registrations. Full-model server restart/recovery and network
 partitions remain separate pending requirements. This short storage matrix does
 not establish all disk-store process failure phases or full-model recovery.
+
+Full native MC06 coverage now kills the first of two fingerprint hosts with a
+worker block assigned. A test-owned pause precedes real successor evaluation;
+resumption calls the production evaluator without fabricating states, fingerprints
+or replies. Worker and coordinator retain their independent manager failover.
+Source size() sums registration slots rather than unique endpoint identities,
+so the surviving store is counted twice after both slots alias it. The separate
+failure model row requires 229,884 reported states and queue zero; ordinary model
+rows retain 114,942. This preserves source statistics rather than introducing
+deduplication. Full-model server restart/recovery and other failure phases remain
+pending; this native row adds no disabled Java harness completion credit.

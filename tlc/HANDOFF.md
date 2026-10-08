@@ -41,7 +41,14 @@ The committed checkpoint remains byte-identical and the pending one is not
 promoted. The manager reassigns without copying lost membership; a fresh server
 recovers only committed fingerprints. The dead client remains closed and restart
 does not replace registrations. This supplements the original manager tests.
-Full-model fingerprint-server crash/recovery and network partitions remain pending.
+The full native MC06 model also covers killing the first of two fingerprint hosts
+after a real worker block is assigned, then resuming normal successor evaluation.
+Worker and coordinator fail over independently. Source size statistics count the
+survivor twice through aliased partition slots: the failure row requires 229,884,
+while all ordinary original model rows retain 114,942. Queue completion and
+absence of GENERAL remain required. This adds no disabled-harness completion
+credit. Full-model server restart/recovery, other failure phases and network
+partitions remain pending.
 
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production

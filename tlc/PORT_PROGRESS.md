@@ -22194,3 +22194,35 @@ seconds). All logs were captured and inspected; processes are terminal. No full
 suite or race run was performed. These supplemental rows add no original-method
 credit. Full-model fingerprint server failure/recovery, other disk failure phases
 and network partitions remain open.
+
+### 2026-10-08: Full MC06 model with fingerprint-host loss
+
+Added a native failure row using unchanged EWD840/MC06 N=7 fixtures and complete
+initial frontier. Two production fingerprint hosts register in explicit order;
+the first is killed and joined only after a real worker block is assigned. A
+test-owned evaluator pause resumes into GetNextStatesImpl without fabricated
+states, fingerprint answers or batches. Worker and coordinator independently
+fail over. A live manager snapshot must retain two partitions sharing the
+original surviving endpoint, which remains available and unbroken. Both managers
+must emit exactly one failover warning and no all-servers-lost warning. Remaining
+roles exit normally, FINISHED is present, queue is zero and no GENERAL is allowed.
+
+Pinned FPSetManager.size sums each registration slot, including duplicate wrapper
+references produced by reassign. The separate failure row therefore requires
+229,884 reported states after the surviving store receives the complete 114,942
+membership. Existing normal model rows retain their original 114,942 assertions.
+This source statistics behavior is preserved, not fixed by deduplicating slots.
+The upstream harness remains assumption-disabled and receives no method credit.
+
+The first complete failure run passed (fp-loss-model.log, terminal process 978fba
+status 0; package time 70.599 seconds). After strengthening live registration and
+exact warning checks, full partitioned_fingerprints, fingerprint_server_loss and
+all_workers_lost rows pass (fp-loss-model-related.log, terminal process 9a371b
+status 0; package time 170.381 seconds; rows 51.14, 70.54 and 48.68 seconds).
+The shared pause helper retains the existing killed-worker behavior, verified by
+the last-worker-loss row. All logs were captured and inspected and all processes
+are terminal. No source model bound or original assertion was weakened. No full
+suite or race run was performed. No production change was needed. Full-model
+fingerprint server restart/recovery, other failure phases and network partitions
+remain pending, along with isolated trace-commit interruption and other source
+audits documented in the handoff.

@@ -1391,7 +1391,13 @@ rows also verify flushed live membership, byte-identical committed checkpoints
 and no promotion of pending snapshots after process loss. It preserves the dead
 client's shutdown cause and existing manager registrations. No original method
 directly covers this native process boundary, so it adds no credit.
-Full-model fingerprint-server failure/recovery and network
+The full native MC06 fingerprint_server_loss row also kills the first of two
+fingerprint hosts with real worker work assigned, resumes unchanged evaluation
+and requires completion without GENERAL. Source size() sums aliased partition
+slots after failover, so this separate failure row requires 229,884 reported
+states; existing ordinary model rows keep their 114,942 assertions. This adds
+native failure coverage, not completion credit for the disabled Java harness.
+Full-model fingerprint-server restart/recovery, other failure phases and network
 partitions remain open.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
