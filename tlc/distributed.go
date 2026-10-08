@@ -400,10 +400,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 			continue
 		}
 		thread.Join()
-		cacheRatio := "n/a"
-		if thread.GetCacheRateRatio() >= 0 {
-			cacheRatio = groupDecimalIntegerPart(fmt.Sprintf("%.2f", thread.GetCacheRateRatio()))
-		}
+		cacheRatio := distributedWorkerCacheRatio(thread.GetCacheRateRatio())
 		PrintMessage(ECTLCDistributedWorkerStats,
 			thread.GetURI(),
 			fmtInt(thread.GetSentStates()),

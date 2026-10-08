@@ -134,8 +134,10 @@ methods pass; supplemental failure checks add no original-method credit.
 default values; the delta also rejects a null state-partition array. Direct
 arrays, empty-array distinctions and signed counter overflow remain intact.
 Focused payload/smart-proxy and worker TCP result/retry checks pass. Coordinator
-cache-ratio formatting remains pending: Java formats NaN rather than treating
-it as unavailable, and finite rounding needs a separate source comparison.
+cache-ratio output now retains NaN/infinities, signed zero and decimal half-up
+rounding. All 271 canonical Java reference rows pass, including large values
+and deterministic bit patterns. Locale-specific separators/digits remain
+pending; this does not establish all-locale worker-statistics completion.
 
 Native state transfer now preserves shared backing value arrays for states, tuples,
 records, functions, configured operator argument rows, tuple products and record

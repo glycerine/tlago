@@ -19754,3 +19754,33 @@ Java, whereas Go's >= 0 availability test also excludes NaN. Correcting its
 formatting needs a separate source numeric rounding/formatting pass, not a
 claim that Go fmt implements String.format. Broader distributed parity remains
 pending; all test handles are terminal.
+
+
+## October 8, 2026: canonical distributed worker cache-ratio output
+
+Coordinator summaries used a nonnegative availability check, excluding NaN,
+and Go fmt's binary/ties-to-even rounding. The source uses ratio < 0 for n/a
+and two-place decimal half-up formatting. Added a native Go formatter using
+the shortest decimal representation, decimal carry and existing three-digit
+grouping. It preserves negative zero, NaN and positive Infinity; negative
+ratios, including negative Infinity, remain n/a. Coordinator summaries now
+call this formatter once for the collected cache ratio.
+
+Generated 271 reference rows from the source ternary and
+String.format(Locale.ROOT, "%1$,.2f", ratio) with local OpenJDK 21.0.12.1:
+15 edge values and 256 deterministic positive bit patterns (seed 20261008).
+They cover 0.005/0.125/0.375/1.005/2.675 decimal rounding, extrema, smallest
+subnormal, signed zero, NaN/infinities and 1e23. The persistent vectors are
+in test_vectors/distributed/worker_cache_ratios.tsv; Go tests read these directly
+and require no Java runtime. Scratch reference command/input/output remain at
+/mnt/oldrog/tmp/DistributedRatioReference.java and distributed-ratio-*.txt/tsv.
+No RMI, Java serialization or JVM emulation was implemented.
+
+All 271 rows pass (20977, status 0, 0.012 seconds). Focused result getter/payload,
+cache-ratio and all nine original smart-proxy contexts pass (0.013 seconds).
+Native TCP worker result/lifecycle and coordinator retry/loss checks pass
+(0.017 seconds). Upstream has no original worker-summary formatting methods;
+supplemental checks add no original-method credit. Locale-specific separators
+and digits remain a separate pending source-output contract; this chunk does
+not claim all-locale or complete distributed parity. No full suite, long
+workload or race instrumentation was selected; all handles are terminal.
