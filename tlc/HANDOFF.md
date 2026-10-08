@@ -1966,9 +1966,16 @@ vectors fail instead of silently dropping successors. Trace write errors return
 to the server thread's outer failure handler and terminate that thread; it does
 not perform another dequeue after marking the run failed. Partitions with no
 selected bits retain Java's lazy dereference behavior. Focused checks and one
-full unchanged coordinator-FP MC06 process run pass. Active-worker checkpoints
-and recovery remain pending; their inspection exposed this publication shortcut
-and was paused to fix it first.
+full unchanged coordinator-FP MC06 process run pass.
+
+The assigned-block checkpoint barrier now has a focused native TCP check.
+A real server thread completes and publishes its held block before the disk
+frontier, trace and local fingerprints are checkpointed. The worker resumes,
+and reopening storage recovers the selected frontier's exact UID and trace FP
+positions. Normal and exact short race checks pass; no production fix was needed.
+This is same-process storage reopening, not full-model recovery in fresh
+processes after a mid-run checkpoint or failure during the checkpoint. Those
+broader cases and remote-FP recovery remain pending.
 
 
 

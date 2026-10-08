@@ -717,6 +717,12 @@ insertion: selected missing/null partitions and null visited vectors fail,
 and trace write failures terminate the server thread without another dequeue.
 These native checks have no enabled direct Java counterpart and add no original
 method credit. Full unchanged coordinator-FP MC06 verification remains green.
+The assigned-block checkpoint barrier is now covered by a short native TCP
+test with real disk queue/trace and local FP storage. It checks suspension,
+publication before checkpoint, worker continuation and storage reopening with
+the exact recovered frontier/trace identities. This is additional boundary
+coverage without original-method credit; fresh-process mid-run recovery,
+checkpoint interruption and remote-FP recovery remain pending.
 
 Remote server/worker integration, init failures, fingerprint-manager failover, and smart-proxy calculations. Native Go fingerprint, worker and coordinator TCP calls, ordinary state/value/result payloads, structured worker failures, manager snapshots, discovery and worker/coordinator/FP lifecycle publication are implemented and unit-verified. Native CLI entry points are wired with focused help/property/address checks. Native coordinator signal shutdown and separate-process DieHard execution with local and standalone remote fingerprint storage are verified. The native process harness also checkpoints and recovers the full MC06 initial frontier through the real `-recover` CLI in fresh coordinator/worker processes. It requires 16384 recovered fingerprints/queued states, no repeated initialization, and the original final 114942 distinct/0 queued result. This is additional native coverage, not original disabled-harness completion credit. A native worker-loss row also verifies requeueing after killing a worker with an assigned block, survivor/replacement completion, exact one-time deregistration and the original cache-warning behavior. Outstanding-block checkpoints, remote-FP recovery, loss of all workers, extended/custom values and broader network failure coverage remain pending. The new Go boundary tests add no original-method completion credit.
 

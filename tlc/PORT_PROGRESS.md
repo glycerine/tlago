@@ -18345,3 +18345,38 @@ normal worker/coordinator exits. Log:
 or race workload was run. All handles are retired. Outstanding-worker
 checkpoint/recovery, remote-FP recovery and broader failure coverage remain
 pending; the distributed goal is incomplete.
+
+## October 8, 2026: checkpoint barrier with an assigned TCP block
+
+Added TestDistributedCheckpointWaitsForAssignedBlock. Upstream has no enabled
+direct test of this boundary. It uses the production TLCServerThread and TCP
+worker adapter, real DiskStateQueue/TLCTrace, non-distributed local MemFPSet
+manager and production Checkpoint/Recover methods. Only the worker's successor
+evaluation is gated so assignment and publication order can be observed.
+
+The test waits for an actual assigned request, starts the checkpoint and observes
+the queue's real stop flag. No snapshot may begin while that block is held.
+After releasing the first computation, the successor must be published to queue,
+trace and FP set before BeginChkpt. The worker must resume after suspension.
+All goroutines/listeners are owned and joined or closed in cleanup, including
+failure paths; zero-variable class state and worker globals are restored.
+
+Reopening queue/trace/local FP storage via Recover must produce one frontier
+state, both original and successor fingerprints, the successor's exact UID and
+level, and two disk trace entries at the exact initial/successor UID positions
+with fingerprints 61/71. A second held request prevents unrelated evaluation
+from changing the observed boundary; its release returns an empty result and
+the finished queue terminates the server thread normally. This is a short
+native synchronization/storage test, not an original model test translation or
+fresh-process full-model mid-run recovery. No production change was needed.
+
+Initial compilation caught an incorrect test call to NewLongVec(0); corrected
+it to the existing zero-argument constructor. Initial normal and exact short
+race runs passed in 0.018/1.049 seconds (60783/99501 terminal status 0).
+Final normal check including worker-continuation and persisted trace assertions
+passes in 0.020 seconds (28912 terminal status 0). The exact final short race
+check passes in 1.056 seconds (77157 terminal status 0). All handles are retired.
+No long model or full workspace suite was run. Original
+disabled-harness methods receive no completion credit. Fresh-process mid-run
+checkpoint recovery, checkpoint interruption and remote-FP recovery remain
+pending; the distributed goal is incomplete.
