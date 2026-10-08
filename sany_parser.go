@@ -644,11 +644,14 @@ func (p *SanyParser) Step() *SanySyntaxNode {
 	case p.check(SanyTokenCase):
 		body = p.CaseStep()
 		mayHaveProof = true
-	case p.scanLookahead(32, 1):
-		body = p.AssertStep()
-		mayHaveProof = true
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected proof step")
+		p.recordDirectChoice(67)
+		if p.scanLookahead(32, 1) {
+			body = p.AssertStep()
+			mayHaveProof = true
+		} else {
+			p.throwParseException(nil, "expected proof step")
+		}
 	}
 	heirs = append(heirs, body)
 	if p.beginsProofAt(0) {
@@ -671,50 +674,61 @@ func (p *SanyParser) UseOrHideOrBy() *SanySyntaxNode {
 	case SanyTokenProof, SanyTokenBy:
 		if p.match(SanyTokenProof) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(55)
 		}
 		heirs = append(heirs, p.consumeParseToken(SanyTokenBy, "expected BY"))
 		kind = SanySyntaxNodeKindByName["N_TerminalProof"]
 		if p.match(SanyTokenOnly) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(56)
 		}
 	case SanyTokenUse:
 		heirs = append(heirs, NewSanyTokenNode(p.advance()))
 		if p.match(SanyTokenOnly) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(57)
 		}
 	case SanyTokenHide:
 		heirs = append(heirs, NewSanyTokenNode(p.advance()))
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenBy}, {SanyTokenProof}, {SanyTokenUse}, {SanyTokenHide}}, "expected BY, USE or HIDE")
+		p.recordDirectChoice(58)
+		p.throwParseException(nil, "expected BY, USE or HIDE")
 	}
 	p.expecting = "an expression, `MODULE' or `DEF'"
 	if p.scanLookahead(29, 1) {
-		p.proofCommandItem(&heirs, 27)
+		p.proofCommandItem(&heirs, 27, 59)
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			p.expecting = "MODULE or expression"
-			p.proofCommandItem(&heirs, 28)
+			p.proofCommandItem(&heirs, 28, 61)
 			if kind.JavaName() == "N_TerminalProof" {
 				p.expecting = "comma, DEF, or [.]"
 			} else {
 				p.expecting = "comma, DEF, or proof step"
 			}
 		}
+		p.recordDirectChoice(60)
 	}
 	if p.match(SanyTokenDF) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		p.expecting = "MODULE or expression"
-		p.proofCommandItem(&heirs, 30)
+		p.proofCommandItem(&heirs, 30, 62)
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			p.expecting = "MODULE or expression"
-			p.proofCommandItem(&heirs, 31)
+			p.proofCommandItem(&heirs, 31, 64)
 			if kind.JavaName() == "N_TerminalProof" {
 				p.expecting = "comma or [.]"
 			} else {
 				p.expecting = "comma or proof step"
 			}
 		}
+		p.recordDirectChoice(63)
+	} else {
+		p.recordDirectChoice(65)
 	}
 	if kind.JavaName() == "N_TerminalProof" {
 		p.expecting = "[.]"
@@ -722,17 +736,20 @@ func (p *SanyParser) UseOrHideOrBy() *SanySyntaxNode {
 	return NewSanyNode(kind, heirs...)
 }
 
-func (p *SanyParser) proofCommandItem(heirs *[]*SanySyntaxNode, lookahead int) {
+func (p *SanyParser) proofCommandItem(heirs *[]*SanySyntaxNode, lookahead, site int) {
 	if p.match(SanyTokenModule) {
 		*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
 		p.expecting = "identifier"
 		*heirs = append(*heirs, p.Identifier())
-	} else if p.scanLookahead(lookahead, 1) {
-		*heirs = append(*heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenDF
-		}))
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenModule}}, "expected MODULE or expression")
+		p.recordDirectChoice(site)
+		if p.scanLookahead(lookahead, 1) {
+			*heirs = append(*heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenDF
+			}))
+		} else {
+			p.throwParseException(nil, "expected MODULE or expression")
+		}
 	}
 }
 
@@ -742,6 +759,8 @@ func (p *SanyParser) DefStep() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenDefine) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	} else {
+		p.recordDirectChoice(68)
 	}
 	heirs = append(heirs, p.ProofOperatorOrFunctionDefinition())
 	for p.scanLookahead(33, 2) {
@@ -797,6 +816,7 @@ func (p *SanyParser) TakeStep() *SanySyntaxNode {
 			heirs = append(heirs, p.QuantBound())
 			p.expecting = "comma or proof step"
 		}
+		p.recordDirectChoice(69)
 	} else if p.check(SanyTokenIdentifier) {
 		heirs = append(heirs, p.Identifier())
 		p.expecting = "comma or proof step"
@@ -806,8 +826,10 @@ func (p *SanyParser) TakeStep() *SanySyntaxNode {
 			heirs = append(heirs, p.Identifier())
 			p.expecting = "comma or proof step"
 		}
+		p.recordDirectChoice(70)
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected TAKE identifier")
+		p.recordDirectChoice(71)
+		p.throwParseException(nil, "expected TAKE identifier")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_TakeStep"], heirs...)
 }
@@ -824,6 +846,7 @@ func (p *SanyParser) WitnessStep() *SanySyntaxNode {
 		heirs = append(heirs, p.ExpressionUntilCommaOrProofBoundary())
 		p.expecting = "comma or colon"
 	}
+	p.recordDirectChoice(72)
 	return NewSanyNode(SanySyntaxNodeKindByName["N_WitnessStep"], heirs...)
 }
 
@@ -841,6 +864,7 @@ func (p *SanyParser) PickStep() *SanySyntaxNode {
 			heirs = append(heirs, p.Identifier())
 			p.expecting = "comma or colon"
 		}
+		p.recordDirectChoice(73)
 	} else if p.check(SanyTokenLab) || p.check(SanyTokenIdentifier) {
 		heirs = append(heirs, p.QuantBound())
 		p.expecting = "comma or colon"
@@ -850,8 +874,10 @@ func (p *SanyParser) PickStep() *SanySyntaxNode {
 			heirs = append(heirs, p.QuantBound())
 			p.expecting = "comma or colon"
 		}
+		p.recordDirectChoice(74)
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenLab}, {SanyTokenIdentifier}}, "expected PICK identifier or tuple")
+		p.recordDirectChoice(75)
+		p.throwParseException(nil, "expected PICK identifier or tuple")
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in PICK step"))
 	p.expecting = "expression"
@@ -875,13 +901,15 @@ func (p *SanyParser) AssertStep() *SanySyntaxNode {
 	if p.match(SanyTokenSuffices) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		p.expecting = "expression or ASSUME/PROVE"
+	} else {
+		p.recordDirectChoice(76)
 	}
 	if p.scanLookahead(36, 1) {
 		heirs = append(heirs, p.ExpressionUntilProofBoundary())
 	} else if p.startsAssumeProveAt(0) {
 		heirs = append(heirs, p.AssumeProve())
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected assertion")
+		p.throwParseException(nil, "expected assertion")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_AssertStep"], heirs...)
 }
@@ -1030,7 +1058,8 @@ func (p *SanyParser) StepStartToken() *SanySyntaxNode {
 	if p.startsProofStepAt(0) {
 		return NewSanyTokenNode(p.advance())
 	}
-	p.throwParseException([][]SanyTokenKind{{SanyTokenProofsteplexeme}, {SanyTokenProofimplicitsteplexeme}, {SanyTokenProofstepdotlexeme}, {SanyTokenBarelevellexeme}, {SanyTokenUnnumberedsteplexeme}}, "expected proof step")
+	p.recordDirectChoice(66)
+	p.throwParseException(nil, "expected proof step")
 	return nil
 }
 

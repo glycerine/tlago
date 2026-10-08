@@ -10182,3 +10182,22 @@ Converted failures retain actual source mask and saved-rescan expectations.
 Connected direct-choice sites are 4, 5, 7–54, 120 and 123–128. External production
 observations match 4,559 rows across 273 cases; remaining grammar sites and full
 expected-token, parser/AST and canonical/evaluator fidelity remain requirements.
+
+
+## Fact commands and proof steps retain direct-choice identity
+
+UseOrHideOrBy records source sites 55–65 for optional PROOF/ONLY, command keyword
+failure, first/subsequent fact expressions and comma exits, first/subsequent DEF
+expressions and comma exits, and absent DEF. The shared item helper receives
+its direct-choice site and scanner index explicitly: pairs 59/27, 61/28, 62/30
+and 64/31. Recording only scanner decisions loses the direct MODULE expectation.
+
+StepStartToken failure uses 66, Step's assertion alternative 67 and absent DEFINE
+68. TAKE bound/identifier exits use 69/70 and failure 71; WITNESS exit 72; PICK
+identifier/bound exits 73/74 and failure 75; absent SUFFICES 76. Converted failure
+branches retain source mask/rescan expectations without native input estimates.
+
+Connected direct-choice sites are 4, 5, 7–76, 120 and 123–128. External production
+observations match 5,001 rows across 295 cases. Remaining grammar sites, native
+error-span estimates and complete parser/AST and canonical/evaluator fidelity
+remain requirements beyond these bounded observations.

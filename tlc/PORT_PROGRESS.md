@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 Fact-command and proof-step direct choices:
+Previous completed commit: 102cc8c. Connect source sites 55–76. UseOrHideOrBy
+records absent PROOF 55, separate absent ONLY sites 56/57, command keyword
+failure 58, fact-expression alternatives 59/61, fact comma exit 60, DEF-expression
+alternatives 62/64, DEF comma exit 63 and absent DEF 65. Shared proofCommandItem
+receives both scanner and direct-choice site from its caller; it does not infer
+or merge first/subsequent/DEF identities. Converted failures retain mask/rescan
+expectations rather than native MODULE estimates.
+
+StepStartToken failure records 66; Step records 67 before its assertion preview;
+DefStep absent DEFINE records 68. TAKE records bound/identifier comma exits
+69/70 and alternative failure 71; WITNESS exit 72; PICK identifier/bound exits
+73/74 and failure 75; AssertStep absent SUFFICES 76. Source choices remain in
+original order with actual generation stamps. Connected direct-choice sites:
+4, 5, 7–76, 120 and 123–128. Remaining grammar and full bookkeeping stay pending.
+
+All previous 4,559 production rows remain equal. Extend external observer by 22
+valid/malformed USE/HIDE/BY, ordinary/DEF lists, bounds and proof-step cases.
+All 5,001 rows across 295 cases match actual Java syntax kinds/images/four
+coordinates and complete parse messages/residual stack text, with outer log
+whitespace excluded. Java returns 0; Go observer 71543 passes. Existing external
+BodyDefinitionProbe.java, Go observer and overlay remain under /mnt/oldrog/tmp;
+receipts tlago-proof-command-choice-*. No permanent invented tests, method credit,
+weakened fixtures/assertions, race or optional corpus sweeps.
+
+Existing original frontend/model gate 83610 passes 9.584s; complete SANY 44929
+passes 1.962s; compile 97046 passes. All handles retired; diff check green. Update
+handoff and architecture; inventory totals unchanged. The qualified earlier
+failing full-workspace snapshot remains unchanged evidence. Remaining parser/AST,
+canonical/runtime sharing and documented TLC requirements keep the goal active.
+
 2026-10-07 ASSUME/PROVE and new-symbol expectation recording:
 Previous completed commit: e266310. Connect source direct-choice sites 38–54.
 AssumeProve records absent label 38, ASSUME failure 39, first/subsequent expression

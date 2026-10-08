@@ -762,7 +762,7 @@ operator alternatives and argument preview 72 (budget 2). Its other branch keeps
 direct OpArgs before structural preview 74 (budget 1).
 All 74 source lookahead entry points now have production callers. JavaCC's 130
 direct-choice expectation masks are now generated from upstream; source sites
-4, 5, 7–54, 120 and 123–128 are connected. Expectations expire by token generation
+4, 5, 7–76, 120 and 123–128 are connected. Expectations expire by token generation
 and are ordered
 by token kind, and precede saved-call rescans and their duplicate checks. Successful
 consumption now performs Java's 101-token cleanup of expired lookahead references.
@@ -775,10 +775,13 @@ retain distinct expectation sites 25/27 in the shared helper. These converted
 failure branches use source masks rather than native estimates. ASSUME/PROVE,
 new-symbol declarations, optional bounds, theorem keywords and terminal proofs
 now also record source sites 38–54. First/subsequent clauses retain sites 40/42;
-state/action/temporal formal choices use their separate site 50. The earlier 641
-mask/expiration/cleanup/lexer-state observations remain qualified evidence; all
-4,559 current parser rows across 273 cases agree. Current original frontend/model
-checks pass in 9.391 seconds, complete SANY in 2.009 seconds and compilation passes.
+state/action/temporal formal choices use their separate site 50. USE/HIDE/BY,
+fact and DEF lists, proof-step choices and TAKE/WITNESS/PICK/SUFFICES now record
+source sites 55–76. Shared fact parsing receives each actual source site rather
+than merging ordinary and DEF-item expectations. The earlier 641 state
+observations remain qualified evidence; all 5,001 current parser rows across
+295 cases agree. Current original frontend/model checks pass in 9.584 seconds,
+complete SANY in 1.962 seconds and compilation passes.
 Remaining direct-choice sites, native error-span estimates, full expected-token
 bookkeeping, syntax AST parity and proof generation remain reconciliation work.
 These bounded observations do not establish every semantic-predicate context or
