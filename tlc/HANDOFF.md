@@ -73,6 +73,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Native model-value data now supports `int8`, `int16` and `float32` as well as
+the existing scalar types. Floating-point data uses integer IEEE bit patterns:
+gob's omitted zero struct fields otherwise lose negative zero, including on
+the old `float64` path. Integer ranges and float32 bit widths are checked.
+Gob and worker TCP checks retain types, extrema, signed zero, subnormals,
+infinities and NaN. The native payload layout changed; peers use the same build.
+
 Native TCP connection loss during accepted fingerprint checkpoint begin,
 commit and recovery calls is now verified. The source I/O catch emits one
 warning and continues to the healthy store without partition reassignment or

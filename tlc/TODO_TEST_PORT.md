@@ -703,6 +703,12 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Model-value scalar transfer now retains `int8`, `int16` and `float32`, with
+checked integer/bit ranges. Gob and worker TCP cases cover both float widths,
+signed zero, extrema, subnormals, infinities and NaN. Integer IEEE payload bits
+fix negative-zero loss in the former float64 field. No enabled upstream method
+directly tests this boundary; these checks add no original-method credit.
+
 Accepted native checkpoint calls now have connection-loss coverage for begin,
 commit and recovery. The source I/O catch must warn once, continue to the healthy
 store and leave partition registrations/availability unchanged. Queue/trace

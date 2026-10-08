@@ -18346,6 +18346,37 @@ or race workload was run. All handles are retired. Outstanding-worker
 checkpoint/recovery, remote-FP recovery and broader failure coverage remain
 pending; the distributed goal is incomplete.
 
+## October 8, 2026: model scalar types and floating-point bit preservation
+
+Audited worker next-state processing and model payloads against pinned Java.
+ModelValue.data is an ordinary non-transient Object, so source boxed Byte,
+Short and Float are transferable. The native codec rejected the corresponding
+int8, int16 and float32 values. Added those explicit scalar kinds and narrow
+integer decode bounds. New gob cases reproduce the rejection before the fix
+(7885 terminal status 1, 0.011 seconds).
+
+The first fix exposed negative-zero loss: gob omits struct float fields that
+compare equal to zero. Both the new float32 and existing float64 path therefore
+need integer IEEE bit patterns rather than a DTO float64 field. Initial scalar
+selection fails at negative zero in 0.016 seconds (29508 terminal status 1);
+initial TCP/graph selection confirms the same failure at both boundaries in
+0.023 seconds (terminal status 1). Replaced DataFloat with DataFloatBits for
+both float widths and validate float32's uint32 representation before decoding.
+
+New checks retain exact native types, integer extrema and floating-point bits
+for positive/negative zero, ordinary fractions, maxima, smallest subnormals,
+infinities and NaN. The TCP worker checks request values before echoing them,
+then the caller checks every result value. Narrow out-of-range integer and
+float32 bit payloads must fail. No enabled direct upstream method covers this
+native boundary; supplemental checks add no original-method completion credit.
+
+Final scalar, existing state graph/model data/byte data and worker lifecycle
+selection passes in 0.023 seconds (82222 terminal status 0). Only the exact new
+short scalar TCP case runs under -race, passing in 1.034 seconds (55093 terminal
+status 0). All handles are retired; no full suite or long workload was run.
+The native DTO changed, so peers use the same build. Custom opaque data and
+broader distributed recovery/failure work remain pending.
+
 ## October 8, 2026: loss of the last registered worker
 
 Added all_workers_lost to the native EWD840/MC06 process matrix. It starts only

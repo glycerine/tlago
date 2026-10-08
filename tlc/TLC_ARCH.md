@@ -11104,3 +11104,13 @@ transport does not cancel the accepted storage operation. A failed begin has no
 follow-up commit; an ambiguously completed commit may still commit at the old
 store after the caller proceeds. These source semantics provide neither an
 atomic cross-store checkpoint nor process-crash recovery.
+
+ModelValue's non-transient data Object accepts ordinary boxed scalar objects in
+the source. Native payload model data now additionally supports Go int8, int16
+and float32, retaining their types. Decode rejects out-of-range narrow integers.
+Floating-point data uses DataFloatBits instead of a float64 DTO field: gob omits
+a zero-valued struct field, which includes negative zero when compared to zero.
+Integer bit patterns retain both float widths exactly, including signed zero,
+subnormals, infinities and NaN; float32 decode rejects bits beyond uint32. This
+changes the native payload layout, so communicating roles use the same build.
+It adds no Java serialization and no arbitrary opaque-data registration.

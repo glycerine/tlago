@@ -65,7 +65,7 @@ type DistributedValueNode struct {
 	DataKind          string
 	DataString        string
 	DataInteger       int64
-	DataFloat         float64
+	DataFloatBits     uint64
 	DataBool          bool
 	DataBytes         int
 	DataValue         int
@@ -311,12 +311,18 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		node.DataKind, node.DataBool = "bool", v
 	case int:
 		node.DataKind, node.DataInteger = "int", int64(v)
+	case int8:
+		node.DataKind, node.DataInteger = "int8", int64(v)
+	case int16:
+		node.DataKind, node.DataInteger = "int16", int64(v)
 	case int32:
 		node.DataKind, node.DataInteger = "int32", int64(v)
 	case int64:
 		node.DataKind, node.DataInteger = "int64", v
 	case float64:
-		node.DataKind, node.DataFloat = "float64", v
+		node.DataKind, node.DataFloatBits = "float64", math.Float64bits(v)
+	case float32:
+		node.DataKind, node.DataFloatBits = "float32", uint64(math.Float32bits(v))
 	case []byte:
 		node.DataKind = "bytes"
 		if v != nil {
@@ -688,10 +694,25 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return nil, fmt.Errorf("model data outside int32 range")
 		}
 		return int32(node.DataInteger), nil
+	case "int8":
+		if node.DataInteger < math.MinInt8 || node.DataInteger > math.MaxInt8 {
+			return nil, fmt.Errorf("model data outside int8 range")
+		}
+		return int8(node.DataInteger), nil
+	case "int16":
+		if node.DataInteger < math.MinInt16 || node.DataInteger > math.MaxInt16 {
+			return nil, fmt.Errorf("model data outside int16 range")
+		}
+		return int16(node.DataInteger), nil
 	case "int64":
 		return node.DataInteger, nil
 	case "float64":
-		return node.DataFloat, nil
+		return math.Float64frombits(node.DataFloatBits), nil
+	case "float32":
+		if node.DataFloatBits > math.MaxUint32 {
+			return nil, fmt.Errorf("model float32 data outside 32-bit representation")
+		}
+		return math.Float32frombits(uint32(node.DataFloatBits)), nil
 	case "bytes":
 		if node.DataBytes < 0 || node.DataBytes > len(d.bytes) {
 			return nil, fmt.Errorf("invalid model byte data reference %d", node.DataBytes)
