@@ -10461,3 +10461,31 @@ The nil receiver retains NullPointerException. Lexical failures retain default
 reason 0. All 66 valid/invalid transition observations agree, including signed
 32-bit endpoint values. These observations do not establish full ReInit,
 constructor, Unicode decoding or character-stream parity.
+
+
+## Character-stream prerequisite for generated token scanning
+
+`sany_char_stream.go` translates SimpleCharStream's actual circular buffering,
+2048-unit expansion, refill/reuse choices, token beginning, saved line/column
+arrays, backup, image/suffix extraction, Done, ReInit and adjustBeginLineColumn.
+Characters are UTF-16 units; CR and LF remain separate reads, and rereading a
+backed-up unit does not update position metadata again. Source integer fields
+and stored positions use signed 32-bit values, retaining overflow. Reader EOF
+closes the reader and follows the source buffer-position correction; other
+reader errors follow that correction without treating them as EOF. String
+reader adaptation supplies decoded UTF-16 units; byte decoding is separate.
+
+External comparisons of 75 stream/size/chunk configurations produce 10,905
+identical state/read/image/suffix/reinitialization/adjustment rows. Another 547
+rows agree for multiple long tokens, buffer reuse, Done and signed endpoint
+line/column values with three tab sizes. These compare actual Java fields and
+methods, not a replacement stream model. They do not establish arbitrary reader
+I/O failures, malformed internal states, allocation-error messages or every
+encoding constructor.
+
+This stream is not yet wired into token scanning. A broader comparison of 3,464
+inputs across DEFAULT/PRAGMA/SPEC finds 13 differences in 10,392 rows, all in
+SPEC malformed strings or incomplete operator prefixes. Existing candidate
+scanning consumes characters differently from the generated DFA/NFA. Translate
+that scanner and integrate the actual stream before claiming these failures
+fixed. Corpus acceptance/AST results alone do not prove lexical error fidelity.

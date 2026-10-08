@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-07 Port the actual character-stream prerequisite:
+Previous completed commit: 8e3ee78. Broaden lexer comparison to 3,464 inputs across
+DEFAULT/PRAGMA/SPEC: all 10,392 rows are present, with 13 differences in SPEC
+malformed strings and incomplete operator prefixes. Preserve this failing evidence.
+Differences come from candidate scanning's consumed-character/lookahead behavior;
+port the generated DFA/NFA and its real stream rather than weakening assertions.
+
+Translate SimpleCharStream buffering and position algorithms into
+sany_char_stream.go: UTF-16 code-unit reader, circular arrays, actual 2048-unit
+expansion/refill/reuse paths, BeginToken, ReadChar, backup, image/suffix, Done,
+ReInit and adjustBeginLineColumn. Use signed 32-bit fields and coordinate arrays,
+not native machine-width arithmetic. Preserve separate CR/LF reads and position
+metadata on rereads. This prerequisite is not yet wired into token scanning;
+all 13 existing lexer differences remain pending integration. Byte-decoder and
+arbitrary reader/allocation/internal-state error boundaries are not claimed complete.
+
+External CharStreamProbe invokes actual Java methods and reads original fields
+across five source strings, five buffer sizes and three reader chunk sizes:
+all 10,905 complete rows agree, including EOF, raw UTF-16 image/suffix units,
+backup and ReInit/adjust state. CharStreamExtraProbe adds 547 exact rows for
+multiple long tokens, reuse, Done and signed line/column endpoint values with
+three tab sizes. Initial scratch Go observer had a misplaced brace and then
+omitted post-EOF observations; fix its source-control-flow translation. Java's
+row-key postincrement occurs before a caught read failure; retain that evaluation
+order in the observer. Final comparison matches all keys and values. Initial
+int32 conversion also required the actual buffer-length cast before compilation.
+No failed compilation or mismatched observer earns success credit. All commands
+are terminal; no active handles. Probes, input vectors, overlays and logs remain
+under /mnt/oldrog/tmp with prefixes tlago-character-token and tlago-char-stream.
+No invented permanent tests or additional original-method credit.
+
+Complete SANY package passes in 2.297 seconds; all-package compilation passes.
+Current production scanning is unchanged, so unrelated root/long workloads are
+not repeated. Documentation retains the unresolved 13 scanner mismatches and
+names generated DFA/NFA integration as the next action. Main TLC totals and native
+XML failures remain unchanged. No full stream/scanner or workspace-green claim.
+
+
 2026-10-07 Correct PRAGMA matching, junction prefixes and state validation:
 Previous completed commit: e388bff. Source audit confirms SPEC whitespace already
 matches its exact four-character set. PRAGMA instead had early number selection,
