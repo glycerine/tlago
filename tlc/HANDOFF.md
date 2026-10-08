@@ -38,6 +38,9 @@ Commit each tested chunk, aiming for every 10–15 minutes.
 Distributed role usage errors name the native `tlago server`, `tlago worker`
 and `tlago fpserver` commands. Explicit Java counterpart descriptions in help
 remain reference information; error usage does not require a Java installation.
+Coordinator worker labels retain the source `TLCWorkerThread-` statistics
+prefix, minimum three-digit counter formatting and ASCII URI rendering.
+Formatting reuses the existing URI formatter and leaves endpoint metadata intact.
 
 Coordinator threads retain their supplied block selector. They do not borrow
 the server's selector or construct a replacement when it is absent. Missing

@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental coordinator-label checks preserve the statistics prefix, counter
+padding, ASCII URI rendering and unchanged endpoint metadata. No original
+method directly covers these labels; completion counts remain unchanged.
+
 Supplemental role-usage checks preserve invalid-argument early returns and
 banner/error/usage order while naming native Go commands. Server usage checks
 cover both ToolIO output modes. These add no original-method completion credit.

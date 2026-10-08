@@ -20776,3 +20776,22 @@ pass (64375, status 0, 0.016 seconds). All processes are terminal. No full suite
 TCP workload or race run was needed for this output-only change. Supplemental
 usage checks add no original-method completion credit; distributed parity
 remains incomplete.
+
+### 2026-10-08: Coordinator worker statistics labels
+
+Audited TLCServerThread constructor naming against pinned source. TLCServer's
+THREAD_NAME_PREFIX is TLCWorkerThread-, explicitly consumed by external Munin
+statistics tools. Go used TLCServerThread- instead, and rendered the raw URI
+where source uses toASCIIString. Corrected the coordinator label prefix and
+reused the existing native URI ASCII formatter for label rendering. Endpoint
+metadata remains unchanged. This does not introduce JVM thread machinery.
+
+No upstream method directly tests coordinator labels. Added nine native cases
+for zero/padded/three-digit/larger/negative counters, composed/decomposed Unicode,
+supplementary characters and existing percent escapes. Initial verification
+failed at the first prefix assertion (66a1c8, status 1, 0.012 seconds). Final
+nine label cases pass with existing worker URI observations/registration,
+thread handler/finalizer checks and original nine smart-proxy contexts (e7d7c3,
+status 0, 0.081 seconds). All processes are terminal. No full suite, TCP workload
+or race run was required for this diagnostic-label change. Supplemental checks
+add no original-method credit; distributed parity remains incomplete.

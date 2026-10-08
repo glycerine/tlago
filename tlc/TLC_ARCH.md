@@ -11849,3 +11849,14 @@ lines name the corresponding native tlago commands. They do not direct Go users
 to execute Java classes. Explicit Java counterpart descriptions in CLI help are
 reference documentation. Exact output checks cover worker/FP zero and extra
 arguments, skipped discovery and both server ToolIO output destinations.
+
+
+### Coordinator worker statistics labels
+
+Coordinator thread labels retain TLCWorkerThread-, the source prefix consumed
+by external statistics tooling, followed by a minimum three-digit worker
+counter and the endpoint URI in brackets. URI rendering uses the existing
+native ASCII formatter, preserving normalization and escaping without modifying
+the URI metadata used for calls or deregistration output. These are diagnostic
+labels for Go goroutines, without JVM thread emulation. Focused label, URI and
+thread failure/finalizer checks pass.

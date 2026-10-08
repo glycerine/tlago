@@ -13,8 +13,8 @@ import (
 const (
 	TLCServerName             = "TLCServer"
 	TLCServerWorkerName       = TLCServerName + "WORKER"
-	TLCServerThreadNamePrefix = "TLCServerThread-"
 	TLCWorkerThreadNamePrefix = "TLCWorkerThread-"
+	TLCServerThreadNamePrefix = TLCWorkerThreadNamePrefix
 	TLCServerDefaultPort      = 10997
 	tlcServerVetoCleanup      = "tlc2.tool.distributed.TLCServer.vetoCleanup"
 )
@@ -869,7 +869,8 @@ func (t *TLCServerThread) Name() string {
 	if t == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s%03d-[%s]", TLCServerThreadNamePrefix, t.ID, t.URI)
+	uri := &distributedWorkerURIValue{raw: t.URI}
+	return fmt.Sprintf("%s%03d-[%s]", TLCServerThreadNamePrefix, t.ID, uri.asciiString())
 }
 
 func (t *TLCServerThread) Start() {
