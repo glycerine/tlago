@@ -743,7 +743,9 @@ successor and shared single-process successor writers. Six additional native
 worker cases preserve attempted pointer, partial predecessor/worker/fingerprint
 bytes and earlier depth updates before write failure. Successful worker/mirror
 cases retain generated actions and the source predecessor metadata policy.
-Upstream has no direct methods for these failure boundaries; completion counts
+Eight depth-limit cases preserve signed 32-bit maximum selection, completed
+record/UID/worker updates, extended predecessor assignment and failure-time
+counter/mirror behavior. Upstream has no direct methods for these failure boundaries; completion counts
 are unchanged.
 
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/

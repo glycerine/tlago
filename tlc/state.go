@@ -605,13 +605,16 @@ func (s *TLCStateMut) TracePredecessor() TLCPredecessorState {
 
 func (s *TLCStateMut) SetTracePredecessor(pred TLCPredecessorState) {
 	if pred != nil {
+		// Extended source states store the predecessor before the base level
+		// check, including when that check raises a trace-depth failure.
+		if statePreserveMetadata {
+			s.pred = pred
+		}
 		if pred.Level() >= math.MaxInt32 {
 			panic(newTLCError(ECTLCTraceTooLong, "%s", s.String()))
 		}
 		s.level = pred.Level() + 1
-		if statePreserveMetadata {
-			s.pred = pred
-		} else {
+		if !statePreserveMetadata {
 			s.pred = nil
 		}
 	}

@@ -561,7 +561,7 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 	if curState != nil {
 		prevUID = curState.UID
 		prevWorker = curState.WorkerID
-		if level := curState.Level() + 1; level > w.GetMaxLevel() {
+		if level := int(int32(curState.Level()) + int32(1)); level > w.GetMaxLevel() {
 			w.SetLevel(level)
 		}
 	}

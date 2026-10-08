@@ -159,8 +159,11 @@ writing predecessor, worker and fingerprint bytes. Partial failures retain the
 attempted pointer, consumed bytes and earlier depth update, without state/counter/
 mirror publication. Successful successor writes preserve the generated action
 and predecessor metadata policy; the native mirror records the published state
-without modifying it. Worker owner/recovery/depth-overflow and trace cleanup
-boundaries still need audit.
+without modifying it. Worker depth comparison uses signed 32-bit next-level
+arithmetic, preserving the previous maximum when addition wraps. At the depth
+limit, completed record and UID/worker updates survive the later predecessor
+failure; extended states retain the predecessor assigned before that failure.
+Worker owner/recovery and trace cleanup boundaries still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

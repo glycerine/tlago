@@ -11956,6 +11956,11 @@ fingerprint bytes. Partial failure retains this attempted pointer and earlier
 depth update while state metadata, unseen-successor count and mirror publication
 wait for successful writes. Successor writes preserve the generated action and
 source predecessor policy. The native mirror appends the published state record
-and updates its reporting level without mutating the state again. Worker owner/
-recovery/depth-overflow and trace cleanup boundaries still need audit. No RMI or
-JVM machinery is introduced.
+and updates its reporting level without mutating the state again. Worker next-
+level comparison uses signed 32-bit arithmetic before selecting the maximum.
+Overflow preserves the prior maximum rather than storing a negative depth.
+Record and state UID/worker updates precede the later trace-depth failure, while
+count and mirror publication do not occur. Extended state predecessor assignment
+also precedes the base depth check, retaining that assignment on failure. Worker
+owner/recovery and trace cleanup boundaries still need audit. No RMI or JVM
+machinery is introduced.

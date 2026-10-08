@@ -21249,3 +21249,38 @@ DieHard fingerprint-storage variants pass unchanged trace/event assertions
 race run was performed. Supplemental checks add no original-method credit.
 Worker owner/recovery/depth-overflow and trace cleanup boundaries still need
 audit; distributed parity remains incomplete. No RMI or JVM machinery was added.
+
+### 2026-10-08: Worker depth arithmetic and extended predecessor failure order
+
+Compared Worker.writeState successor depth selection and TLCStateMutExt's
+setPredecessor override with Go. Source next-level addition is signed 32-bit
+before Math.max. Go added in native int width, selected 2147483648 as the maximum
+and then stored it as negative int32. Next-level comparison now wraps at source
+width before selecting the maximum, preserving the prior maximum at overflow.
+
+Source extended states assign their predecessor before calling the base setter,
+which then raises TRACE_TOO_LONG at the maximum level. Go checked depth before
+storing the extended predecessor. Moved that assignment before the depth check.
+Completed record and UID/worker updates remain before this later failure; state
+level, generated action and unseen count/mirror publication retain source order.
+
+No original method directly covers the worker depth overflow boundary. Eight
+native cases cross plain/extended modes with normal depth, largest successful
+depth, metadata failure after record completion and cursor failure before record
+writing. Four maximum-depth cases initially reported a negative maximum (5c68cd,
+status 1, 0.013 seconds). Assertions retain record bytes, state/worker mutation
+order, extended predecessor assignment, action identity, count/mirror behavior
+and monitor release.
+
+Final new/related worker/trace/concurrent checks and all seven original simulation
+worker trace methods pass (852d42, status 0, 1.976 seconds). State copy/metadata,
+state-info/alias and native predecessor payload checks pass (453348, status 0,
+0.014 seconds). Original checkpoint-on-violation/time-bound, Alias safety/liveness,
+TLCExtTrace alias, error-trace construction and three distributed initializer-
+continue, evaluator-error and TLCSet contexts pass (77e2f5, status 0, 8.137
+seconds). The time-bound model retains five seconds. Both actual distributed
+DieHard fingerprint-storage variants pass unchanged trace/event assertions
+(ca1bad, status 0, 23.372 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit.
+Worker owner/recovery and trace cleanup boundaries still need audit; distributed
+parity remains incomplete. No RMI or JVM machinery was introduced.
