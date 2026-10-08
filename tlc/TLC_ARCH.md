@@ -11142,3 +11142,14 @@ materialization retain their application category. In particular, LazyValue's
 write contract raises the exact runtime diagnostic "Error(TLC): Attempted to
 serialize lazy value." for null/undefined cached values, with source context
 when present. Native payload rejection now retains that contract too.
+
+Manager snapshots contain source FPSets registration wrappers and endpoint
+references; receiving those references must not depend on remote aliveness.
+GetFPSetManager now decodes native references without dialing stores and commits
+their ownership only after complete graph validation. NetworkFingerprintEndpoint
+connects on its first operation. Concurrent initial dials publish one client and
+discard extras; closure disables unused references and discards successful dials
+that finish after closure. Established failed clients are not redialed and no
+operation is replayed. This moves unavailable-store detection into the existing
+manager operation/failover path rather than incorrectly failing worker bootstrap.
+Direct DialFingerprintEndpoint still explicitly connects at the caller's request.

@@ -266,9 +266,11 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 }
 
 type NetworkFingerprintEndpoint struct {
-	client  *rpc.Client
-	Address string
-	Object  string
+	connectionMu     sync.Mutex
+	connectionClosed bool
+	client           *rpc.Client
+	Address          string
+	Object           string
 }
 
 func DialFingerprintEndpoint(address, object string) (*NetworkFingerprintEndpoint, error) {
@@ -281,12 +283,64 @@ func DialFingerprintEndpoint(address, object string) (*NetworkFingerprintEndpoin
 
 // CloseConnection closes only this client's connection, independently of the
 // remote storage Close/Exit lifecycle. No call is retried after a disconnect.
-func (e *NetworkFingerprintEndpoint) CloseConnection() error { return e.client.Close() }
+func (e *NetworkFingerprintEndpoint) CloseConnection() error {
+	e.connectionMu.Lock()
+	if e.connectionClosed {
+		e.connectionMu.Unlock()
+		return nil
+	}
+	e.connectionClosed = true
+	client := e.client
+	e.connectionMu.Unlock()
+	if client != nil {
+		return client.Close()
+	}
+	return nil
+}
+
+// Snapshot references connect on first operation. Dial is outside the lock so
+// owner closure can proceed; a late successful dial is discarded after closure.
+// A failed call is never replayed and an established failed client is not redialed.
+func (e *NetworkFingerprintEndpoint) clientForCall() (*rpc.Client, error) {
+	e.connectionMu.Lock()
+	client, closed := e.client, e.connectionClosed
+	e.connectionMu.Unlock()
+	if closed {
+		return nil, rpc.ErrShutdown
+	}
+	if client != nil {
+		return client, nil
+	}
+	candidate, err := rpc.Dial("tcp", e.Address)
+	if err != nil {
+		return nil, err
+	}
+	e.connectionMu.Lock()
+	if e.connectionClosed {
+		e.connectionMu.Unlock()
+		_ = candidate.Close()
+		return nil, rpc.ErrShutdown
+	}
+	client = e.client
+	if client == nil {
+		e.client = candidate
+		client = candidate
+	}
+	e.connectionMu.Unlock()
+	if client != candidate {
+		_ = candidate.Close()
+	}
+	return client, nil
+}
 
 func (e *NetworkFingerprintEndpoint) call(request DistributedFingerprintRequest) (DistributedFingerprintReply, error) {
 	request.Object = e.Object
 	var reply DistributedFingerprintReply
-	if err := e.client.Call("Fingerprint.Call", request, &reply); err != nil {
+	client, err := e.clientForCall()
+	if err != nil {
+		return reply, &DistributedEndpointError{Message: err.Error(), IO: true}
+	}
+	if err := client.Call("Fingerprint.Call", request, &reply); err != nil {
 		return reply, &DistributedEndpointError{Message: err.Error(), IO: true}
 	}
 	if reply.Failure != nil {

@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Fingerprint snapshots now defer connection setup until an operation, matching
+source endpoint-reference behavior. Native checks receive a snapshot with a
+stopped store, require operation-time partition failover and isolated coordinator
+registrations, verify concurrent first calls and close both used/unused owned
+references. No enabled original method directly covers this native boundary;
+supplemental checks add no original-method completion credit.
+
 Native worker graph codec failures now enter the remote I/O worker-loss catch,
 with their causes preserved. Short TCP/coordinator checks require exact assigned
 state requeue, one deregistration, no GENERAL and continued unfinished work.

@@ -18965,3 +18965,35 @@ passes in 0.028 seconds (3599 terminal status 0). Only the exact new short codec
 and lazy TCP cases run under -race, passing in 1.044 seconds (77351 terminal
 status 0). All handles are retired. No full suite or long workload was run.
 Broader distributed parity remains incomplete.
+
+## October 8, 2026: snapshot references and operation-time FP connections
+
+Worker manager snapshot decoding eagerly dialed each FP store. This incorrectly
+made a stopped store prevent snapshot receipt, before the source manager could
+perform operation-time failover. Source FPSets snapshots carry registration
+wrappers and endpoint references without an aliveness probe. Native decoding
+now creates NetworkFingerprintEndpoint references without dialing and commits
+their owned CloseConnection adapters only after complete graph validation.
+
+The endpoint connects on first operation. Dial occurs outside its lock; owner
+closure disables unused references and discards a late successful connection.
+Concurrent first calls safely publish one client and close unused candidates.
+Established failed clients are not redialed, and no operation is replayed.
+Direct DialFingerprintEndpoint still explicitly connects when requested.
+
+The new stopped-host case reproduces failed snapshot receipt in 0.015 seconds
+(46043 terminal status 1). After the fix, snapshot/registration/concurrent
+snapshot selection passes in 0.032 seconds (60350 terminal status 0). The test
+receives unchanged availability/partition metadata, then requires putBlock to
+fail over both partitions to the survivor with one source warning and no
+coordinator registration mutation. A second snapshot must still retain the
+coordinator's unchanged references. Owner closure rejects both unused references
+and established child calls. A separate eight-call concurrent first-use case
+requires all unique insertions and rejection after owner closure. These native
+checks add no original-method completion credit.
+
+Final coordinator/fingerprint RPC and worker bootstrap selection passes in
+0.105 seconds (83907 terminal status 0). Only the two new short snapshot/first-use
+cases run under -race, passing in 1.049 seconds (34566 terminal status 0).
+All handles are retired; no full suite or long workload was run. Broader
+distributed parity remains incomplete.

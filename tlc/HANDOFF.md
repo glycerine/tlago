@@ -73,6 +73,14 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Worker fingerprint-manager snapshots now create native endpoint references
+without dialing every store. A stopped fingerprint host no longer prevents
+snapshot receipt; the first operation reaches TLC's existing failover logic.
+Reference ownership is committed after complete graph decoding. Closing the
+coordinator client closes established child connections and disables unused
+references too. Concurrent first calls safely share a published client; no
+operation is replayed and failed established connections are not redialed.
+
 Worker request/result graph validation and representation failures now retain
 the remote I/O category used by the coordinator's worker-loss catch. Focused
 TCP checks require codec causes, no automatic retry or unintended dispatch,

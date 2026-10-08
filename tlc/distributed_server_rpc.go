@@ -20,6 +20,10 @@ type distributedConnections struct {
 	clients []io.Closer
 }
 
+type distributedConnectionCloser func() error
+
+func (close distributedConnectionCloser) Close() error { return close() }
+
 func (c *distributedConnections) add(client io.Closer) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -281,15 +285,14 @@ func (e *NetworkServerEndpoint) GetFPSetManager() (*DistributedFPSetManager, err
 	if err != nil {
 		return nil, err
 	}
-	// Commit child connections only after the entire snapshot decodes. A failed
-	// dial must not leak connections to previously resolved fingerprint nodes.
+	// Receiving references must not require every store to be alive. TLC's
+	// manager owns availability/failover when an operation contacts a store.
+	// Commit ownership only after the entire reference graph decodes.
 	var acquired []*NetworkFingerprintEndpoint
 	manager, err := decodeDistributedManager(r.Manager, func(ref DistributedEndpointReference) (DistributedFingerprintEndpoint, error) {
-		fp, err := DialFingerprintEndpoint(ref.Address, ref.Object)
-		if err == nil {
-			acquired = append(acquired, fp)
-		}
-		return fp, err
+		fp := &NetworkFingerprintEndpoint{Address: ref.Address, Object: ref.Object}
+		acquired = append(acquired, fp)
+		return fp, nil
 	})
 	if err != nil {
 		for _, fp := range acquired {
@@ -298,7 +301,7 @@ func (e *NetworkServerEndpoint) GetFPSetManager() (*DistributedFPSetManager, err
 		return nil, err
 	}
 	for _, fp := range acquired {
-		if err := e.children.add(fp.client); err != nil {
+		if err := e.children.add(distributedConnectionCloser(fp.CloseConnection)); err != nil {
 			for _, other := range acquired {
 				_ = other.CloseConnection()
 			}
