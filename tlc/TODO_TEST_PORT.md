@@ -709,7 +709,10 @@ references and isolated receiver mutations across worker request/result TCP.
 No enabled original Java method directly covers this boundary; no original-method
 credit is added. Native ValueVec checks also cover vector identity, active count,
 full capacity, shared backing arrays, unused cyclic slots and malformed references
-across gob and worker TCP. Shared name arrays remain pending.
+across gob and worker TCP. Native record/record-set name-array checks now retain
+array sharing, separate equal-content arrays, shared name objects, nil/empty
+arrays and receiver isolation, with malformed-reference rejection. These cases
+add no original-method completion credit.
 
 The full native MC06 process matrix now includes `partitioned_fingerprints`
 with two standalone FP processes and private temporary storage. Their two

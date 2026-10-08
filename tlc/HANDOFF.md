@@ -79,7 +79,9 @@ sets. Receiver mutations remain visible through shared arrays without touching
 sender storage; recursive arrays and nil/empty distinctions survive gob and TCP.
 This is native Go graph transfer. ValueVec identity, active count and full backing
 capacity are also preserved, including shared storage and unused recursive slots.
-Shared name arrays remain pending.
+Record and record-set name arrays also retain shared storage and isolated
+receiver ownership across gob and worker TCP. Further metadata/custom-data and
+process failure/recovery work remains pending.
 These short native checks add no original-method completion credit.
 
 The native EWD840 process harness now covers two standalone FP servers. Before

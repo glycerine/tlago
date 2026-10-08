@@ -19106,3 +19106,27 @@ original Java method directly covers this transfer boundary, so no original-meth
 completion credit is added. No full suite or long workload was selected.
 Shared name arrays and broader distributed parity remain pending. The native
 payload layout changes; communicating roles use the same build.
+
+## October 8, 2026: shared record name arrays in native state transfer
+
+RecordValue and SetOfRcdsValue source constructors retain their UniqueString
+name arrays; default transfer preserves array sharing independently of string
+object sharing. Native payloads copied each name array separately. Added a
+NameArrays table with record/record-set array references, pointer/length identity
+keys and retained encoder roots. Decoder string allocation precedes name-array
+resolution and Value population. Existing inline fixtures remain accepted.
+
+The new graph case first fails at array identity in 0.012 seconds (23732 terminal
+status 1). After the fix, final name/value-array/vector/state/result/worker checks
+pass in 0.036 seconds (78712 terminal status 0). They retain shared record and
+record-set storage, separate equal-content arrays, shared name objects across
+arrays/StringValue, receiver mutation isolation, nil/empty distinction and
+malformed/conflicting reference rejection. Worker TCP request/result partitions
+must also preserve sharing. Only that short TCP case runs under -race, passing
+in 1.034 seconds (95342 terminal status 0). All handles are retired. No full suite
+or long workload was selected. No enabled original method directly covers this
+boundary, so these native checks add no original-method completion credit.
+
+The native DTO layout changes; communicating roles use the same build. No Java
+transport or runtime emulation was added. Broader distributed parity, metadata
+and process failure/recovery requirements remain incomplete.

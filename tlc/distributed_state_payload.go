@@ -19,6 +19,7 @@ type DistributedStatePayload struct {
 	ByteArrays   [][]byte
 	ValueArrays  [][]int
 	ValueVectors []DistributedValueVectorNode
+	NameArrays   [][]int
 }
 
 type DistributedValueVectorNode struct {
@@ -61,6 +62,7 @@ type DistributedValueNode struct {
 	DomainArray       int
 	DomainNil         bool
 	Names             []int
+	NamesArray        int
 	NamesNil          bool
 	Flag              bool
 	Cache             int
@@ -91,6 +93,8 @@ type distributedPayloadEncoder struct {
 	arrays     map[distributedByteArrayKey]int
 	arrayRoots [][]Value // Keep address-keyed backing storage alive while encoding.
 	vectors    map[*ValueVec]int
+	nameArrays map[distributedByteArrayKey]int
+	nameRoots  [][]*UniqueString
 }
 
 type distributedByteArrayKey struct {
@@ -106,7 +110,7 @@ func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePa
 		}
 	}()
 	payload = &DistributedStatePayload{Nil: states == nil}
-	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int), arrays: make(map[distributedByteArrayKey]int), vectors: make(map[*ValueVec]int)}
+	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int), arrays: make(map[distributedByteArrayKey]int), vectors: make(map[*ValueVec]int), nameArrays: make(map[distributedByteArrayKey]int)}
 	payload.Roots = make([]int, len(states))
 	for i, state := range states {
 		id, failure := encoder.state(state)
@@ -202,6 +206,21 @@ func (e *distributedPayloadEncoder) names(names []*UniqueString) []int {
 		refs[i] = e.string(name)
 	}
 	return refs
+}
+
+func (e *distributedPayloadEncoder) nameArray(names []*UniqueString) int {
+	if names == nil {
+		return 0
+	}
+	key := distributedByteArrayKey{reflect.ValueOf(names).Pointer(), len(names)}
+	if id := e.nameArrays[key]; id != 0 && len(names) != 0 {
+		return id
+	}
+	id := len(e.payload.NameArrays) + 1
+	e.nameArrays[key] = id
+	e.nameRoots = append(e.nameRoots, names)
+	e.payload.NameArrays = append(e.payload.NameArrays, e.names(names))
+	return id
 }
 
 func (e *distributedPayloadEncoder) vector(vector *ValueVec) (int, error) {
@@ -362,7 +381,11 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	node.Names = e.names(names)
+	if node.Kind == "record" || node.Kind == "recordSet" {
+		node.NamesArray = e.nameArray(names)
+	} else {
+		node.Names = e.names(names)
+	}
 	node.Cache, err = e.value(cache)
 	if err != nil {
 		return 0, err
@@ -427,11 +450,12 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 }
 
 type distributedPayloadDecoder struct {
-	values  []Value
-	strings []*UniqueString
-	bytes   [][]byte
-	arrays  [][]Value
-	vectors []*ValueVec
+	values     []Value
+	strings    []*UniqueString
+	bytes      [][]byte
+	arrays     [][]Value
+	vectors    []*ValueVec
+	nameArrays [][]*UniqueString
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -454,6 +478,14 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 	}
 	for i, name := range payload.Strings {
 		decoder.strings[i] = &UniqueString{s: name.Text, tok: name.Token, loc: name.Location, unregistered: name.Unregistered}
+	}
+	decoder.nameArrays = make([][]*UniqueString, len(payload.NameArrays))
+	for i, refs := range payload.NameArrays {
+		names, err := decoder.names(refs, false)
+		if err != nil {
+			return nil, fmt.Errorf("name array %d: %w", i+1, err)
+		}
+		decoder.nameArrays[i] = names
 	}
 	for i, node := range payload.Values {
 		value, err := allocateDistributedValue(node)
@@ -656,6 +688,19 @@ func (d *distributedPayloadDecoder) names(ids []int, isNil bool) ([]*UniqueStrin
 	return names, nil
 }
 
+func (d *distributedPayloadDecoder) nameArrayRefs(ids []int, isNil bool, array int) ([]*UniqueString, error) {
+	if array == 0 {
+		return d.names(ids, isNil)
+	}
+	if array < 0 || array > len(d.nameArrays) {
+		return nil, fmt.Errorf("invalid name array reference %d", array)
+	}
+	if isNil || len(ids) != 0 {
+		return nil, fmt.Errorf("name array reference conflicts with inline/null names")
+	}
+	return d.nameArrays[array-1], nil
+}
+
 func distributedValueCast[T Value](value Value) (T, error) {
 	var zero T
 	if value == nil {
@@ -677,7 +722,7 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 	if err != nil {
 		return err
 	}
-	names, err := d.names(node.Names, node.NamesNil)
+	names, err := d.nameArrayRefs(node.Names, node.NamesNil, node.NamesArray)
 	if err != nil {
 		return err
 	}

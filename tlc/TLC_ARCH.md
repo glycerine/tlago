@@ -11199,3 +11199,15 @@ also observe the updated active count. Receiver storage remains isolated from
 the sender. Existing inline enum fixtures remain accepted. Communicating roles
 need the same build. Shared name-array transfer remains pending; no Java runtime
 or transport machinery is introduced.
+
+Record and record-set names now reference a native NameArrays table independently
+of the UniqueString object table. Exact nonempty backing pointer/length keys
+retain one shared receiver array while distinct equal-content arrays stay
+separate; name objects can still be shared across those arrays and StringValue.
+Encoder roots keep pointer-keyed storage alive. Decoding resolves name arrays
+after allocating strings and before populating Value owners. Null/initialized
+empty arrays remain distinct; conflicting inline/null representations and
+out-of-range array/string references are rejected. Existing inline fixtures
+remain accepted. As with the value-array table, arbitrary overlapping Go slice
+views and empty-array object identity are outside the source array representation.
+All communicating native roles use the same build; this adds no Java machinery.
