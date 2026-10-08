@@ -848,6 +848,12 @@ with missing current state, trace or both. Failures precede behavior-header and
 state output. No original method directly covers these boundaries; completion
 counts remain unchanged.
 
+Six native worker-construction cases cover the passed tool/checker directory,
+missing checker/tool/trace, rejected trace index and file-open failure. Owner
+creation precedes trace registration; trace acceptance precedes checker-list
+publication. Rejected native registration releases its file handle. No original
+method directly covers these boundaries; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

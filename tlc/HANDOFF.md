@@ -205,8 +205,12 @@ successor targets fail after the complete record; earlier depth/last-pointer/byt
 updates remain, while state/count/mirror publication does not occur. Writes use
 their existing file owner, ignore saved creation errors and cannot reopen a file
 or substitute an in-memory offset. Error-stack replay opens its unregistered
-worker's trace before evaluation and closes it afterward. Worker construction,
-filename/context guards and trace cleanup boundaries still need audit.
+worker's trace before evaluation and closes it afterward. Worker construction
+requires its checker and passed tool, derives the path from the checker's metadata
+directory and that tool's root name, and opens the owner before registration.
+Trace registration precedes checker-list publication. Rejected registration closes
+the newly opened native file while retaining its creation and the original error.
+Empty-context/filename guards and remaining trace cleanup boundaries need audit.
 
 Concurrent trace registration retains its fixed worker-owner list. Missing trace
 or worker references and out-of-range IDs fail before assignment; registration

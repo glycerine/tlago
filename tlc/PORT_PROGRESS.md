@@ -21758,3 +21758,27 @@ process storage variants pass (3f139d, status 0, 49.490 seconds). All processes 
 terminal. No full suite or race run was performed. Supplemental cases add no
 original-method credit; construction/context and remaining source audits are
 pending, and distributed parity is incomplete.
+
+### 2026-10-08: Worker constructor context and registration ownership
+
+Compared Worker construction and ModelChecker's trace.addWorker assignment with
+pinned source. Workers now require their checker and passed tool; they no longer
+borrow a missing tool. Trace filenames use the checker's metadata directory and
+the passed tool's root name instead of another trace's directory or checker tool.
+The file opens before registration, and trace acceptance precedes checker-list
+publication. Missing trace or invalid trace index preserves the original checker
+list and earlier file creation. Failed native registration closes its new handle
+without replacing the original failure or emulating source resource leaks.
+
+No original method directly covers these constructor boundaries. Six supplemental
+cases cover explicit context, missing checker/tool/trace, an out-of-range trace
+index and file-open failure. Five initially failed (39d30d, status 1, 0.014 seconds).
+Final focused constructor/worker, disk/concurrent/distributed trace and original
+simulation trace checks pass (52d1a5, status 0, 4.700 seconds). Original checkpoint-
+on-violation/time-bound, error-trace and three-worker CodePlexBug08 archive recovery
+plus all four existing DieHard/TSnapShot native process storage variants pass
+(58a072, status 0, 58.128 seconds). All processes are terminal. Original assertions
+and workload bounds are unchanged. No full suite or race run was performed.
+Supplemental cases add no original-method credit. Empty-context/filename guards,
+remaining trace cleanup and other source audits remain pending; distributed
+parity is incomplete.

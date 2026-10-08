@@ -65,8 +65,8 @@ func (w *Worker) SetLevel(level int) {
 }
 
 func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
-	if tool == nil && checker != nil {
-		tool = checker.Tool
+	if checker == nil || checker.AbstractChecker == nil || tool == nil {
+		panic(NewNullPointerException())
 	}
 	worker := NewWorker(id)
 	worker.Checker = checker
@@ -75,15 +75,19 @@ func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
 	if err := worker.ensureTraceRAF(); err != nil {
 		panic(err)
 	}
-	if checker != nil {
-		for len(checker.Workers) <= id {
-			checker.Workers = append(checker.Workers, nil)
+	registered := false
+	defer func() {
+		if !registered {
+			// A rejected native registration must not leak its newly opened file.
+			_ = worker.CloseTrace()
 		}
-		checker.Workers[id] = worker
-		if checker.ConcurrentTrace != nil {
-			checker.ConcurrentTrace.AddWorker(worker)
-		}
+	}()
+	checker.ConcurrentTrace.AddWorker(worker)
+	for len(checker.Workers) <= id {
+		checker.Workers = append(checker.Workers, nil)
 	}
+	checker.Workers[id] = worker
+	registered = true
 	return worker
 }
 
@@ -433,16 +437,8 @@ func (w *Worker) configureTrace() {
 	}
 	metadir := w.Checker.Metadir
 	rootName := "Spec"
-	if w.Checker.Trace != nil {
-		if w.Checker.Trace.diskdir != "" {
-			metadir = w.Checker.Trace.diskdir
-		}
-		if w.Checker.Trace.rootName != "" {
-			rootName = w.Checker.Trace.rootName
-		}
-	}
-	if w.Checker.Tool != nil && w.Checker.Tool.GetRootName() != "" {
-		rootName = w.Checker.Tool.GetRootName()
+	if w.Tool != nil {
+		rootName = w.Tool.GetRootName()
 	}
 	if metadir == "" {
 		return
