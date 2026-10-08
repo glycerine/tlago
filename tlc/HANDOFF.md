@@ -1926,8 +1926,16 @@ retain their Java commit IOException category. MemFPSet and MemFPSet2 now distin
 clean EOF from a truncated eight-byte record, preserving their respective coded
 runtime failure and IOException. Valid checkpoint recovery and corrupt-file
 rejection are verified through the native TCP boundary, alongside existing
-original manager methods. End-to-end coordinator queue/trace/intern recovery
-still needs process coverage; these checks do not establish that broader parity.
+original manager methods. Native MC06 initial-frontier checkpoint recovery is now exercised in fresh
+processes by the `checkpoint_recovery` row of the existing process test. The
+producer commits queue, trace, local MemFPSet and intern-table files through
+TLCServer.Checkpoint with all 16,384 original initial states queued. The fresh
+coordinator uses the real `-recover` CLI, must report those exact recovered
+fingerprint/queue counts without regenerating initialization, and must finish
+with 114,942 distinct states and zero queued states. The producer and recovery
+roles retain process-global isolation. This covers a quiescent initial frontier,
+not a checkpoint while worker blocks are outstanding or remote-FP recovery;
+those broader boundaries remain pending.
 
 
 These focused checks do not prove distributed completion.

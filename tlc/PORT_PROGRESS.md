@@ -18161,3 +18161,45 @@ status 0). Final storage/source-manager/native checkpoint gate passes in 0.101
 seconds with status 0. No full suite or race instrumentation was used. No original
 method completion credit is added. Coordinator queue/trace/intern recovery and
 process interruption/checkpoint coverage remain pending; the goal is not complete.
+
+## Fresh-process coordinator frontier recovery (October 8, 2026)
+
+Added a checkpoint_recovery row to the existing native EWD840 process test.
+The checkpoint producer uses the unchanged MC06 model/configuration, completes
+all 16,384 source initial states before workers start, and invokes the actual
+TLCServer.Checkpoint to commit queue, trace, local MemFPSet and intern-table
+files. It closes the producer without cleanup and publishes the committed
+metadata directory to the parent harness. A fresh coordinator loads that same
+model through the real -recover CLI, with early intern-table recovery before
+parser/tool construction; a separate fresh worker then explores its restored
+frontier. All child processes remain isolated and are joined on every exit path.
+The one-worker/native MemFPSet settings are explicit; N=7 and full exploration
+bounds are unchanged. Neither the production runner nor checkpoint sequencing
+needed a change for this quiescent frontier case.
+
+The new row requires actual RECOVER_END with exactly 16384 examined/queued
+states, absence of COMPUTING_INIT (no regenerated initial states), and all
+unchanged original EWD840 FINISHED/STATS 114942 distinct/0 queued/no GENERAL
+assertions. The native no-lost-reply assertion also remains. This is native
+coverage for existing Go process boundaries, not completion credit for an
+original disabled in-JVM/RMI harness. It does not cover checkpointing while
+worker blocks are outstanding, remote-FP recovery or arbitrary crash points.
+
+The initial model run completed correctly, but its test failed because the
+recovery-message expectation used wording absent from the source template.
+Corrected that expectation against output_mp_generated.go's exact original
+message: `Recovery completed. 16384 states examined. 16384 states on queue.`
+No model, bound or count assertion was relaxed. The initial 58.398-second
+failure receipt (97916 terminal status 1) is retained in
+`.codex-gotmp/distributed-checkpoint-process-test.log`; its role output confirms
+successful recovery and completion. The final corrected row is recorded below.
+Focused current helper/CLI and original distributed model/init checks plus
+checkpoint failure/EOF checks pass: root 1.750 seconds and TLC 0.034 seconds
+(61503 terminal status 0). No full suite or race workload was run.
+
+Final corrected fresh-process checkpoint row passes in 58.720 seconds (31911
+terminal status 0). Producer, recovered coordinator and worker exit normally;
+all recovery, original model-result and native reply assertions pass. Log:
+`.codex-gotmp/distributed-checkpoint-final-process-test.log`. All handles are
+retired. No full-workspace baseline or complete distributed recovery claim is
+made; outstanding-block/crash and remote-FP boundaries remain pending.

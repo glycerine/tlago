@@ -21,12 +21,11 @@ import (
 // it does not claim translation of the disabled in-JVM/RMI harness. Each role
 // needs its own process because FP64 and the tool's interning are process-wide.
 func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
-	for _, remoteFP := range []bool{false, true} {
-		name := "coordinator_fingerprints"
-		if remoteFP {
-			name = "standalone_fingerprints"
-		}
-		t.Run(name, func(t *testing.T) {
+	for _, scenario := range []struct {
+		name                 string
+		remoteFP, recovering bool
+	}{{"coordinator_fingerprints", false, false}, {"standalone_fingerprints", true, false}, {"checkpoint_recovery", false, true}} {
+		t.Run(scenario.name, func(t *testing.T) {
 			model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 			if err != nil {
 				t.Fatal(err)
@@ -73,17 +72,33 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				}
 			}()
 			serverArgs := []string{"-tool", "-deadlock", "-metadir", t.TempDir(), "MC06"}
-			if remoteFP {
+			if scenario.recovering {
+				snapshot := start("checkpoint-frontier", append([]string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet"}, serverArgs...)...)
+				err := <-snapshot.done
+				snapshot.joined = true
+				if err != nil {
+					t.Fatalf("checkpoint producer: %v\n%s", err, snapshot.output.String())
+				}
+				path := regexp.MustCompile(`(?m)^NATIVE_CHECKPOINT_PATH=(.+)$`).FindStringSubmatch(snapshot.output.String())
+				if len(path) != 2 {
+					t.Fatal("checkpoint producer did not publish its committed directory")
+				}
+				serverArgs = []string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "-tool", "-deadlock", "-recover", path[1], "MC06"}
+			}
+			if scenario.remoteFP {
 				serverArgs = append([]string{"-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=1"}, serverArgs...)
 			}
 			server := start("server", serverArgs...)
-			if remoteFP {
+			if scenario.remoteFP {
 				// A supported native implementation avoids inheriting the
 				// upstream harness's known OffHeap assumption failure.
 				start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 			}
 			start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 			for _, process := range roles {
+				if process.joined {
+					continue
+				}
 				err := <-process.done
 				process.joined = true
 				if err != nil {
@@ -94,6 +109,14 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			// Mechanical EWD840Distributed{WithFPSet}TLCTest assertions:
 			// FINISHED, STATS distinct=114942 and queue=0, no GENERAL.
 			output := server.output.String()
+			if scenario.recovering {
+				if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd)) || !strings.Contains(output, "Recovery completed. 16384 states examined. 16384 states on queue.") {
+					t.Fatalf("initial frontier recovery counts absent:\n%s", output)
+				}
+				if strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCComputingInit)) {
+					t.Fatal("recovered coordinator regenerated initial states")
+				}
+			}
 			if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCFinished)) {
 				t.Fatal("TLC_FINISHED absent")
 			}
@@ -117,12 +140,55 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 	}
 	for i, arg := range os.Args {
 		if arg == "--" {
-			status := RunCLI(os.Args[i+1:], os.Stdout, os.Stderr)
+			args := os.Args[i+1:]
+			status := ExitToolFailure
+			if len(args) > 0 && args[0] == "checkpoint-frontier" {
+				if err := nativeDistributedCheckpointFrontier(args[1:]); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
+			} else {
+				status = RunCLI(args, os.Stdout, os.Stderr)
+			}
 			tlc.CleanupDistributedFiles()
 			os.Exit(status)
 		}
 	}
 	t.Fatal("helper role arguments missing")
+}
+
+// Checkpoint an unchanged model's complete initial frontier before any worker
+// starts. A fresh coordinator process must restore it via the production CLI.
+func nativeDistributedCheckpointFrontier(args []string) error {
+	args, err := tlc.ExtractDistributedStartupProperties(args)
+	if err != nil {
+		return err
+	}
+	tlc.SetNumWorkers(0)
+	app, diagnostics, err := CreateTLCApp(args, tlc.RuntimeParameters{})
+	if err != nil {
+		return err
+	}
+	if app == nil || diagnostics.HasErrors() {
+		return fmt.Errorf("checkpoint model did not load: %v", diagnostics)
+	}
+	server, err := tlc.NewTLCServerFromApp(app)
+	if err != nil {
+		return err
+	}
+	defer server.Close(false)
+	if code, err := server.DoInit(); err != nil || code != tlc.NoError {
+		return fmt.Errorf("initial frontier: code %d, error %v", code, err)
+	}
+	if server.StateQueue.Size() != 16384 || server.FPSetManager.Size() != 16384 {
+		return fmt.Errorf("incomplete original initial frontier")
+	}
+	if err := server.Checkpoint(); err != nil {
+		return err
+	}
+	fmt.Println("NATIVE_CHECKPOINT_PATH=" + app.GetMetadir())
+	return nil
 }
 
 type nativeDistributedTestProcess struct {
