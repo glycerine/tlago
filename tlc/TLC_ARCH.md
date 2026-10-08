@@ -11910,5 +11910,11 @@ after normal completion and preserves returned info metadata. Fingerprint-only
 and predecessor-state lookups return nil for no match; predecessor-info lookup
 returns EvalException with FAILED_TO_RECOVER_NEXT. A sole missing initial result
 remains a nil array element; with more fingerprints, dereferencing it fails before
-another lookup. Initial-transition nil handling and successful printing metadata
-remain separate parity work. No RMI or JVM machinery is introduced.
+another lookup. Printing now copies UID/worker metadata only in the source
+nonempty-prefix current-state and noninitial successor branches, before alias
+evaluation. Empty-prefix and initial-transition reconstructions retain their own
+metadata. A missing initial transition reaches the state printer and raises a
+null-pointer failure before another state event, allowing the ordinary coordinator
+catch to report the printing failure and finish/notify the queue. The state printer
+requires a nonnil info/state instead of rendering an empty substitute. Disk cursor
+restoration remains a separate audit item. No RMI or JVM machinery is introduced.

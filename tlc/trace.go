@@ -385,6 +385,8 @@ func (t *TLCTrace) printTraceWithPrefix(curState *TLCStateMut, succState *TLCSta
 		if info == nil {
 			traceRecoveryExit("4", curState)
 		}
+		info.State.UID = curState.UID
+		info.State.WorkerID = curState.WorkerID
 	}
 	successor := succState
 	if successor == nil {
@@ -400,6 +402,8 @@ func (t *TLCTrace) printTraceWithPrefix(curState *TLCStateMut, succState *TLCSta
 		if info == nil {
 			traceRecoveryExit("5", succState)
 		}
+		info.State.UID = succState.UID
+		info.State.WorkerID = succState.WorkerID
 		info = t.aliasTraceState(info, succState, prefix, previous, info)
 		idx++
 		PrintInvariantViolationStateTraceState(info, (*TLCStateMut)(nil), idx, true)
@@ -449,11 +453,6 @@ func (t *TLCTrace) stateInfoForState(state *TLCStateMut, predecessor *TLCStateMu
 		if err != nil {
 			panic(err)
 		}
-		if info != nil && info.State != nil {
-			info.State.WorkerID = state.WorkerID
-			info.State.UID = state.UID
-			return info
-		}
 		return info
 	}
 	info := NewTLCStateInfo(state)
@@ -470,11 +469,6 @@ func (t *TLCTrace) stateInfoForTransition(state *TLCStateMut, predecessor *TLCSt
 		info, err := t.Tool.GetStateForTransition(state, predecessor)
 		if err != nil {
 			panic(err)
-		}
-		if info != nil && info.State != nil {
-			info.State.WorkerID = state.WorkerID
-			info.State.UID = state.UID
-			return info
 		}
 		return info
 	}

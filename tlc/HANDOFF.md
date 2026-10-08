@@ -120,8 +120,13 @@ restores the random generator only on normal completion and retains returned
 info metadata. Missing initial reconstruction remains a nil array element when
 it is the sole fingerprint, or fails on dereference before another lookup.
 `Tool.GetState` returns no match for fingerprint-only/predecessor-state forms;
-the predecessor-info form returns the source evaluation error. Initial-transition
-nil handling and successful printing metadata still need audit.
+the predecessor-info form returns the source evaluation error. Printing copies
+UID/worker metadata only for a current state reconstructed after a prefix and
+a successor reconstructed in the noninitial branch. Empty-prefix current and
+initial-transition reconstruction retain their own metadata before alias evaluation.
+A missing initial transition fails at the state printer after printing the initial
+state; the ordinary coordinator catch reports it and completes/notifies the queue.
+Disk trace cursor restoration on failure remains a separate audit item.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

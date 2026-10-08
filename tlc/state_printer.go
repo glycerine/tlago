@@ -26,6 +26,9 @@ func PrintStandaloneErrorState(currentState *TLCStateMut) {
 }
 
 func PrintInvariantViolationStateTraceState(currentStateInfo *TLCStateInfo, args ...any) {
+	if currentStateInfo == nil || currentStateInfo.State == nil {
+		panic(NewNullPointerException())
+	}
 	var previousState *TLCStateMut
 	num := 0
 	isFinal := false

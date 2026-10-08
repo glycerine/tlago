@@ -20955,3 +20955,40 @@ original trace/event assertions (7c7754, status 0, 24.375 seconds). All processe
 are terminal. No full suite or race run was performed. Supplemental checks add
 no original-method credit. Initial-transition nil handling and successful
 printing metadata still need audit; distributed parity remains incomplete.
+
+### 2026-10-08: Error-trace printing metadata and missing initial transition
+
+Compared pinned TLCTrace.printTrace branches with Go reconstruction helpers.
+The helpers copied UID/worker metadata for every successful reconstruction;
+source copies it only after reconstructing a current state following a nonempty
+prefix and a successor in the noninitial branch. Moved those writes into their
+source branches before alias evaluation. Empty-prefix current and initial-
+transition results retain regenerated metadata. Original input UID/worker values
+remain intact.
+
+Source has no fatal nil check in the initial-transition branch. A missing result
+reaches StatePrinter and fails before another state event. Go instead rendered
+an empty state. The invariant-trace printer now requires nonnil info/state and
+raises the ordinary null-pointer failure. The coordinator printing catch reports
+that failure and still completes/notifies the queue, retaining its original
+worker error/state.
+
+No original method directly covers these boundaries. Initial four native metadata
+cases and missing-transition output check exposed three incorrect copies and the
+empty-state substitute (7b2116, status 1, 0.012 seconds). After correction, new
+and related trace checks pass (9f3e45, status 0, 1.753 seconds). Added a fifth
+prefix-plus-successor case and disk-backed coordinator integration. Corrected
+those test expectations to cover the combined metadata branch and the existing
+formatted GENERAL recorder contract; no production assertions were relaxed.
+Final focused trace/recovery/metadata, smart-proxy and original MP output checks
+pass (8a28c9, status 0, 1.946 seconds).
+
+Prior root/TCP verification handles were no longer available on continuation;
+their outcomes could not be claimed. Fresh original Alias safety/liveness,
+TLCExtTrace alias and three distributed initializer-continue, evaluator-error and
+TLCSet model contexts pass (78deab, status 0, 2.691 seconds). No full suite or
+race run was performed. Supplemental checks add no original-method credit.
+Both actual distributed DieHard fingerprint-storage variants also pass unchanged
+original trace/event assertions (8b9f6f, status 0, 24.342 seconds). All processes
+are terminal. Disk trace cursor restoration on failure remains to audit;
+distributed parity is incomplete.

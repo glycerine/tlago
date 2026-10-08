@@ -711,8 +711,10 @@ diagnostics and fatal exit in child processes. Fingerprint-sequence recovery
 branch `2` also preserves fatal exit and signed fingerprint diagnostics through
 real tool lookups. Supplemental sequence checks cover normal-only random
 restoration, missing initial behavior and returned info metadata. Tool lookup
-overloads preserve source missing-match distinctions. No original-method credit
-is added.
+overloads preserve source missing-match distinctions. Five native printing
+metadata cases cover branch-specific UID/worker writes before alias evaluation.
+Missing initial-transition checks preserve partial output and ordinary coordinator
+catch/completion. No original-method credit is added.
 
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed
