@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-07 ASSUME/PROVE and new-symbol expectation recording:
+Previous completed commit: e266310. Connect source direct-choice sites 38–54.
+AssumeProve records absent label 38, ASSUME failure 39, first/subsequent expression
+choices 40/42, comma-loop exit 41 and PROVE failure 43. Preserve direct nested
+AssumeProve/new-symbol alternatives before those expression choices. NewSymb
+uses source sites 44–50 for keyword failure, absent constant-domain binding,
+constant formal-choice failure, absent NEW before VARIABLE or STATE/ACTION/
+TEMPORAL, type keyword failure and that branch's formal-choice failure. Pass
+site 50 to the shared formal helper rather than reusing definition sites 25/27.
+MaybeBound absence records 51; Theorem keyword failure 52; terminal Proof absent
+PROOF 53 and OBVIOUS/OMITTED failure 54. Converted branches and source scanner-only
+fallbacks retain actual mask/rescan expectations rather than native estimates.
+Connected direct-choice sites: 4, 5, 7–54, 120 and 123–128; remaining sites and
+full expected-token/parser fidelity stay pending.
+
+Extend the existing external observer by 22 valid/malformed ASSUME/PROVE clauses,
+NEW/CONSTANT/VARIABLE/STATE/ACTION/TEMPORAL declarations, optional bounds and
+terminal proofs. All 4,559 rows across 273 cases match Java's actual syntax
+kinds/images/four coordinates and complete parse messages/residual stack text,
+with outer log whitespace excluded. Java returns 0; Go observer 59041 passes.
+Existing BodyDefinitionProbe.java, Go manual observer and overlay remain external
+under /mnt/oldrog/tmp; receipts tlago-ap-choice-bookkeeping-*. No invented
+permanent tests, original-method credit, weakened assertions/fixtures, race or
+optional corpus sweeps.
+
+Existing original frontend/model gate 98157 passes 9.391s; complete SANY 98014
+passes 2.009s; compile 1453 passes. All handles retired; diff check green. Update
+handoff and architecture; inventory counts unchanged. The qualified earlier
+failing full-workspace snapshot remains unchanged evidence. Remaining grammar
+bookkeeping, full parser/AST, canonical/runtime sharing and documented TLC
+requirements keep the overall goal active and incomplete.
+
 2026-10-07 Definition, formal declaration and instance expectations:
 Previous completed commit: 23144b1. Connect source direct-choice sites 19–37.
 Definition records absent LOCAL 19, function-bound comma exit 20, failed

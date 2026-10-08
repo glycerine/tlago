@@ -531,7 +531,8 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 	defer p.endProduction()
 	p.expecting = "THEOREM, PROPOSITION"
 	if !p.check(SanyTokenTheorem) && !p.check(SanyTokenProposition) {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenTheorem}, {SanyTokenProposition}}, "expected THEOREM or PROPOSITION")
+		p.recordDirectChoice(52)
+		p.throwParseException(nil, "expected THEOREM or PROPOSITION")
 	}
 	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
 	p.expecting = "Identifier, Assume-Prove or Expression"
@@ -548,7 +549,7 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 			return beginsSanyProof(tok)
 		}))
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected theorem statement")
+		p.throwParseException(nil, "expected theorem statement")
 	}
 	if beginsSanyProof(p.peek()) {
 		heirs = append(heirs, p.Proof())
@@ -573,11 +574,14 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 	if p.scanLookahead(25, 2) {
 		if p.match(SanyTokenProof) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(53)
 		}
 		if p.match(SanyTokenObvious) || p.match(SanyTokenOmitted) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		} else {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenObvious}, {SanyTokenOmitted}}, "expected OBVIOUS or OMITTED")
+			p.recordDirectChoice(54)
+			p.throwParseException(nil, "expected OBVIOUS or OMITTED")
 		}
 		return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
 	}
@@ -594,7 +598,7 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 		node.ProofLevel = p.currentProofLevel()
 		return node
 	}
-	p.throwParseException([][]SanyTokenKind{{SanyTokenProof}}, "expected proof")
+	p.throwParseException(nil, "expected proof")
 	return nil
 }
 
@@ -907,10 +911,12 @@ func (p *SanyParser) assumeProveUntil(proveStop func(*SanyToken) bool) *SanySynt
 		colon := p.consumeParseToken(SanyTokenColoncolon, "expected :: in Assume-Prove label")
 		return NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, p.assumeProveUntil(proveStop))
 	}
+	p.recordDirectChoice(38)
 	if p.match(SanyTokenAssume) || p.match(SanyTokenBoxassume) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenAssume}, {SanyTokenBoxassume}}, "expected ASSUME")
+		p.recordDirectChoice(39)
+		p.throwParseException(nil, "expected ASSUME")
 	}
 	p.expecting = "Expression, Declaration, or AssumeProve"
 	heirs = append(heirs, p.AssumeProveItem(14))
@@ -921,10 +927,12 @@ func (p *SanyParser) assumeProveUntil(proveStop func(*SanyToken) bool) *SanySynt
 		heirs = append(heirs, p.AssumeProveItem(15))
 		p.expecting = "PROVE or `,'"
 	}
+	p.recordDirectChoice(41)
 	if p.match(SanyTokenProve) || p.match(SanyTokenBoxprove) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenProve}, {SanyTokenBoxprove}}, "expected PROVE")
+		p.recordDirectChoice(43)
+		p.throwParseException(nil, "expected PROVE")
 	}
 	p.expecting = "Expression"
 	heirs = append(heirs, p.ExpressionUntil(proveStop))
@@ -942,10 +950,15 @@ func (p *SanyParser) AssumeProveItem(lookahead ...int) *SanySyntaxNode {
 	if p.startsNewSymbAt(0) {
 		return p.NewSymb()
 	}
+	if production == 14 {
+		p.recordDirectChoice(40)
+	} else {
+		p.recordDirectChoice(42)
+	}
 	if p.scanLookahead(production, 1) {
 		return p.ExpressionUntilAssumeProveBoundary()
 	}
-	p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected expression, declaration or Assume-Prove")
+	p.throwParseException(nil, "expected expression, declaration or Assume-Prove")
 	return nil
 }
 
@@ -961,7 +974,8 @@ func (p *SanyParser) NewSymb() *SanySyntaxNode {
 		} else if p.check(SanyTokenNew) || p.check(SanyTokenConstant) {
 			heirs = append(heirs, NewSanyTokenNode(p.advance()))
 		} else {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenNew}, {SanyTokenConstant}}, "expected NEW or CONSTANT")
+			p.recordDirectChoice(44)
+			p.throwParseException(nil, "expected NEW or CONSTANT")
 		}
 		p.expecting = "Constant declaration"
 		if p.scanLookahead(17, 2) {
@@ -975,15 +989,20 @@ func (p *SanyParser) NewSymb() *SanySyntaxNode {
 				heirs = append(heirs, NewSanyTokenNode(p.previous()))
 				p.expecting = "Expression"
 				heirs = append(heirs, p.ExpressionUntilAssumeProveBoundary())
+			} else {
+				p.recordDirectChoice(45)
 			}
 		} else if p.check(SanyTokenUs) || p.startsDefinitionPrefix() {
 			heirs = append(heirs, p.SomeFixDecl())
 		} else {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenUs}, {SanyTokenOp76}}, "expected constant declaration")
+			p.recordDirectChoice(46)
+			p.throwParseException(nil, "expected constant declaration")
 		}
 	case p.scanLookahead(19, 2):
 		if p.match(SanyTokenNew) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(47)
 		}
 		heirs = append(heirs, p.consumeParseToken(SanyTokenVariable, "expected VARIABLE"))
 		p.expecting = "Identifier"
@@ -991,15 +1010,18 @@ func (p *SanyParser) NewSymb() *SanySyntaxNode {
 	case p.scanLookahead(20, 2):
 		if p.match(SanyTokenNew) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(48)
 		}
 		if !isSanyStateActionTemporal(p.peek().Kind) {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenState}, {SanyTokenAction}, {SanyTokenTemporal}}, "expected STATE, ACTION or TEMPORAL")
+			p.recordDirectChoice(49)
+			p.throwParseException(nil, "expected STATE, ACTION or TEMPORAL")
 		}
 		heirs = append(heirs, NewSanyTokenNode(p.advance()))
 		p.expecting = "Declaration"
-		heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
+		heirs = append(heirs, p.IdentDeclOrSomeFixDecl(50))
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenNew}}, "expected NEW symbol declaration")
+		p.throwParseException(nil, "expected NEW symbol declaration")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_NewSymb"], heirs...)
 }
@@ -2163,6 +2185,7 @@ func (p *SanyParser) MaybeBound() *SanySyntaxNode {
 	p.beginProduction("Domain binding")
 	defer p.endProduction()
 	if !p.match(SanyTokenIN) {
+		p.recordDirectChoice(51)
 		return NewSanyNode(SanySyntaxNodeKindByName["N_MaybeBound"])
 	}
 	in := NewSanyTokenNode(p.previous())

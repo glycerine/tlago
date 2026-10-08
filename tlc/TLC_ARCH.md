@@ -10163,3 +10163,22 @@ Connected direct-choice sites are 4, 5, 7–37, 120 and 123–128. External prod
 observations match 4,142 rows across 251 cases. Complete expected-token sets,
 remaining grammar choices, native error-span estimates and whole parser/AST and
 evaluator fidelity remain requirements beyond this bounded evidence.
+
+
+## ASSUME/PROVE and NEW retain distinct expectation choices
+
+AssumeProve records source label absence 38, ASSUME failure 39, first/subsequent
+expression-choice sites 40/42, comma exit 41 and PROVE failure 43. Nested
+AssumeProve and new-symbol declarations retain their direct choices before
+expression preview and its direct-choice recording.
+
+NewSymb records source sites 44–50 for constant keyword/formal failures, absent
+constant domain, optional NEW before variable/state/action/temporal declarations,
+type keyword failure and typed formal failure. Typed declarations use site 50
+in the shared formal helper, separate from definition sites 25/27. MaybeBound's
+absence uses 51, Theorem keyword failure 52 and terminal Proof choices 53/54.
+Converted failures retain actual source mask and saved-rescan expectations.
+
+Connected direct-choice sites are 4, 5, 7–54, 120 and 123–128. External production
+observations match 4,559 rows across 273 cases; remaining grammar sites and full
+expected-token, parser/AST and canonical/evaluator fidelity remain requirements.
