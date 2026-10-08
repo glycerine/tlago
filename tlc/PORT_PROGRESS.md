@@ -20443,3 +20443,34 @@ status 0, 0.029 seconds). All handles are terminal. No full suite or long
 workload was run; race selection contained only the three short new checks.
 Supplemental checks add no original-method credit; distributed parity remains
 incomplete.
+
+### 2026-10-08: Separate distributed application successor arrays
+
+Audited TLCApp.getNextStates against pinned source. Tool successor vectors are
+mutable accumulators and addElements chooses the larger receiver, but Java
+allocates a separate TLCState[] before validating/copying states. Go returned
+the accumulator itself, allowing vector storage replacement/clear to alter the
+worker-facing result and losing fixed array length under validation callbacks.
+
+The Go application now allocates result storage before validation, copies each
+captured state after its complete-assignment check, and returns the existing
+StateVec adapter over that array. State objects remain shared. The loop still
+reads accumulator size live: shrinking retains the original result length and
+null tail; growing validates the added state before its out-of-bounds array write.
+No extra metadata, deep copies, reordered checks or SetBound growth is introduced.
+
+No original method directly exercises this application array boundary. Added
+checks for larger-vector merge order, captured validation order, isolated tool/
+result storage, shared state objects and validation-time replacement/shrink/grow.
+All four initially failed (42433, status 1, 0.012 seconds). After production fix,
+focused new and existing successor metadata, worker vector/selection and original
+nine smart-proxy contexts pass (89519, status 0, 0.016 seconds). Final updated
+storage assertion plus native TCP worker partition, result/lifecycle and failure
+contexts pass (90821, status 0, 0.021 seconds).
+
+Both unchanged DieHard native process variants (coordinator fingerprints and
+standalone fingerprints), retaining the original exact seven-state trace and
+required events/no-GENERAL assertions, pass (36700, status 0, 24.396 seconds).
+These native harnesses add no completion credit to the assumption-disabled
+Java harnesses. All handles are terminal. No full suite or race run was performed;
+broader distributed completion remains pending.

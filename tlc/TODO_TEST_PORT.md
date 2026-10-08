@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental application successor-array checks preserve container isolation,
+shared state objects, larger-vector order and validation-time replacement/shrink/
+growth behavior. Existing worker/TCP checks pass; no original-method credit is
+added because upstream has no direct successor-array methods.
+
 Supplemental shutdown traversal checks preserve late startup publication,
 earlier exits/latch mutations before a nil runnable failure, lifecycle lock
 release and source unpublished-worker skips. Three short checks pass with race

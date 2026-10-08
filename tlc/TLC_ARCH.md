@@ -7973,7 +7973,13 @@ tool later replaces its arrays. Worker-group members share one application.
 Successor generation calls the vector overload separately for each captured
 action. `StateVec.addElements` chooses the larger vector as receiver, so a
 later action producing more states can move its successors before earlier
-ones. Deadlock and complete-assignment checks follow that combined order,
+ones. The application allocates a separate fixed-size successor array before
+validation and copies each captured state after its complete-assignment check.
+Returned storage is isolated from tool-vector replacement/clear/growth, while
+state objects remain shared. Validation still reevaluates the accumulator size:
+shrink retains the result array’s null tail, and growth beyond its original
+length fails at the array write after validating the added state.
+Deadlock and complete-assignment checks follow that combined order,
 before worker fingerprinting. Property checks use captured action arrays and
 the current tool's name arrays; state/alias reconstruction and call-stack
 replacement delegate to the application tool. Server initialization uses the

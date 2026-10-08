@@ -323,6 +323,13 @@ creation. Missing queues and wakeup failures cannot create partial registrations
 focused local/TCP checks preserve failure categories and monitor release.
 Worker registration retains its required URI calls.
 
+Distributed application successor results now have separate fixed-size array
+storage, preserving shared state objects and larger-vector merge order. Tool
+accumulator mutations cannot rewrite returned slots; validation-time shrink/grow
+retains source result length and failure ordering. Focused worker/TCP checks and
+both unchanged DieHard native process variants pass with the original trace.
+These supplemental checks add no original-method completion credit.
+
 Worker-process shutdown reads each runnable’s worker at its turn, so later
 startup publication during an earlier exit is observed. A later nil runnable
 retains earlier exit/latch mutations and releases the lifecycle lock; unpublished

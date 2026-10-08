@@ -122,13 +122,20 @@ func (a *TLCApp) GetNextStates(state *TLCStateMut) (*StateVec, error) {
 	if out.Size() == 0 && a.checkDeadlock {
 		return nil, NewWorkerException("Error: deadlock reached.", state, nil, false)
 	}
+	// Source returns a separate array, allocated before state validation.
+	// Keep the state objects shared, but not the mutable accumulator storage.
+	states := make([]TLCState, out.Size())
 	for i := 0; i < out.Size(); i++ {
 		successor := out.At(i)
 		if !a.requireTool().IsGoodState(successor) {
 			return nil, NewWorkerException("Error: Successor state is not completely specified by the next-state action.", state, successor, false)
 		}
+		if i >= len(states) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(states)))
+		}
+		states[i] = successor
 	}
-	return out, nil
+	return NewStateVecFromStates(states), nil
 }
 
 func (a *TLCApp) CheckState(predecessor, successor *TLCStateMut) error {
