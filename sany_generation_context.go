@@ -183,11 +183,11 @@ func checkDefinitionFunctionDomains(definition Definition, context map[string]Po
 		return nil
 	}
 	var diags Diagnostics
+	g := sanyExpressionGenerator(generators)
+	closeContext := g.pushFormalContext(len(function.Bounds) + 1)
 	for _, domain := range sanyFunctionDomainExpressions(function) {
 		diags = append(diags, checkExpr(domain, context, locals, generators...)...)
 	}
-	g := sanyExpressionGenerator(generators)
-	defer g.pushFormalContext(len(function.Bounds) + 1)()
 	boundLocals := copyBoolMap(locals)
 	function.formalNodes = nil
 	for _, bound := range function.Bounds {
@@ -216,6 +216,7 @@ func checkDefinitionFunctionDomains(definition Definition, context map[string]Po
 	function.definitionContext = g.formalSymbolTable().topContext()
 	function.functionApplication = nil
 	function.semanticGraph = nil
+	closeContext()
 	return diags
 }
 
@@ -230,30 +231,33 @@ func checkDefinitionFunctionBody(definition Definition, context map[string]Posit
 	if function.definitionFormalContext != nil {
 		g.formals = function.definitionFormalContext
 	}
-	defer func() { g.formals = previous }()
 	if function.definitionContext != nil {
 		g.formalSymbolTable().pushContext(function.definitionContext)
-		defer g.formalSymbolTable().popContext()
 	}
 	if function.functionApplication != nil {
 		g.functions = append(g.functions, sanyFunctionGeneration{definition.Name, function.functionApplication})
-		defer func() { g.functions = g.functions[:len(g.functions)-1] }()
 	}
 	finishLabels := g.pushLabelScope()
-	defer func() {
-		labels := finishLabels()
-		if definition.semanticNode != nil {
-			definition.semanticNode.labels = labels
-		}
-	}()
-	defer g.pushLabelFormals(function.formalNodes)()
+	popLabelFormals := g.pushLabelFormals(function.formalNodes)
 	bodyLocals := copyBoolMap(locals)
 	for _, bound := range function.Bounds {
 		bodyLocals[bound.Name] = true
 	}
 	bodyLocals[definition.Name] = true
 	diags = append(diags, g.checkExpr(function.Body, context, bodyLocals)...)
+	popLabelFormals()
+	labels := finishLabels()
+	if definition.semanticNode != nil {
+		definition.semanticNode.labels = labels
+	}
+	if function.functionApplication != nil {
+		g.functions = g.functions[:len(g.functions)-1]
+	}
 	g.finishNamedFunction(function)
+	if function.definitionContext != nil {
+		g.formalSymbolTable().popContext()
+	}
+	g.formals = previous
 	return diags
 }
 

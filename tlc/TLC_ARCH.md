@@ -10544,3 +10544,28 @@ prefixes, non-ASCII/supplementary values, BOM, missing extraction and CR/LF/CRLF
 Comparisons include source text, parser success/output and stream names. Original
 MonolithSpecExtractorTest's five methods and the Go extractor/model checks pass.
 This does not establish all filesystem failures or every default charset.
+
+
+## Retained generation scopes after expression failures
+
+Java Generator's LET, operator/function body, quantifier, CHOOSE and bound-
+expression paths pop their contexts after normal body generation. They do not
+use finally to erase the scope when a body or domain throws. The Go port now
+uses explicit successful-path cleanup for these scopes, label sets/formal
+parameter groups and named-function stacks. Domain generation starts after
+pushing the new empty context and before introducing quantified parameters.
+
+LET raises curLevel only below the source limit, retains its INTERNAL_ERROR
+AbortException otherwise, and preserves the actual unresolved-count array
+boundary. Consequently ordinary nesting at level 100 still throws the same
+array-bounds family as Java; the port does not replace that source behavior.
+The source clamp after decrement is also retained. Graph construction on normal
+completion still uses the retained LET context before popping it.
+
+All 4,256 external observations agree across 23 cases, including depths 98–101,
+bound-variable bodies/domains, named function/operator bodies and supplied level
+boundaries. Comparisons include context binding order, level, exception family,
+label stacks/parameter groups, function-stack size and diagnostic messages.
+The prior 247 normal LET graph rows remain exact. These are bounded body/domain
+failure receipts, not constructor-abort or complete runtime canonical-sharing
+verification. No invented permanent tests or extra original-method credit.

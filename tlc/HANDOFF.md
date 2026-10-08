@@ -390,6 +390,17 @@ Another 300 ReInit/round-reset rows agree, including complete state arrays and
 invalid lexical-state handling. Continue the remaining parser and canonical
 semantic-graph audit. Preserve source error
 text; lexical diagnostics use E1200 rather than heuristic error categories.
+
+LET, operator/function-body and bound-expression generation now preserve source
+context, label-parameter and function stacks when a body or domain throws.
+Successful generation pops them explicitly; domains are generated inside the
+new empty context, before quantified formals are introduced. LET also retains
+the source level guard, array-bounds boundary and lower-level clamp. All 4,256
+bounded state/diagnostic observations across 23 cases agree with Java, and the
+247 earlier LET graph rows remain exact. These receipts cover the observed body/
+domain failures; constructor-abort paths and runtime LET context sharing still
+need source reconciliation.
+
 The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and
 `DefStep` leaves it for the definition parser as Java does. Twenty-one scratch

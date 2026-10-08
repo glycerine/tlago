@@ -99,7 +99,7 @@ func sanyUndefinedRecursiveDiagnostic(binding *sanyRecursiveBinding) Diagnostic 
 func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Position, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
 	expr.instanceDefinitions = nil
-	defer g.pushFormalContext(0)()
+	closeContext := g.pushFormalContext(0)
 	letContext := g.formalSymbolTable().topContext()
 	definitions := make([]sanySemSymbol, 0, len(expr.Definitions))
 	completeGraph := true
@@ -115,8 +115,14 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 	}()
 	// processLetIn raises the level for the definitions, then lowers it before
 	// generating IN while keeping the same symbol context on the stack.
-	g.level++
-	if g.level >= len(g.module.counts) {
+	if g.level < 100 {
+		g.level++
+	} else {
+		diagnostic := sanyRegistrationDiagnostic(sanyNodePosition(expr.Syntax), "E4003", "LETs nested more than %d deep.", 100)
+		diags = appendSanyDiagnostics(diags, diagnostic)
+		panic(newSanySemanticAbort(diagnostic, diags, nil))
+	}
+	if g.level < 0 || g.level >= len(g.module.counts) {
 		panic(tlc.NewArrayIndexOutOfBoundsException(g.level, len(g.module.counts)))
 	}
 	g.module.counts[g.level] = 0
@@ -215,10 +221,14 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 		g.module.sum -= g.module.counts[g.level]
 	}
 	g.level--
+	if g.level < 0 {
+		g.level = 0
+	}
 	diags = append(diags, g.checkExpr(expr.Body, positions, letLocals)...)
 	if body := sanyGeneratedExpressionNode(expr.Body); completeGraph && body != nil {
 		expr.semanticGraph = newSanySemLetInNode(expr.Syntax, definitions, instances, body, letContext)
 	}
+	closeContext()
 	return diags
 }
 
@@ -330,7 +340,7 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 }
 
 func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
-	defer g.pushFormalContext(len(definition.Params))()
+	closeContext := g.pushFormalContext(len(definition.Params))
 	var diags Diagnostics
 	parameters := make([]*sanyFormalParamNode, 0, len(definition.Params))
 	for index, parameter := range sanyDefinitionParams(&definition) {
@@ -379,13 +389,13 @@ func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, co
 		binding.node.formalNodes = parameters
 	}
 	finishLabels := g.pushLabelScope()
-	defer func() {
-		labels := finishLabels()
-		if source := sanyGenerationSource(definition.Expr); source != nil {
-			source.definitionLabels = labels
-		}
-	}()
-	return append(diags, g.checkExpr(definition.Expr, context, locals)...)
+	diags = append(diags, g.checkExpr(definition.Expr, context, locals)...)
+	closeContext()
+	labels := finishLabels()
+	if source := sanyGenerationSource(definition.Expr); source != nil {
+		source.definitionLabels = labels
+	}
+	return diags
 }
 
 func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]Position) (localSymbol, bool) {
@@ -623,6 +633,7 @@ func (g *sanyExpressionGeneration) generateApplicationOperands(call *CallExpr, i
 // explicitly nested quantifier remains a separate scope.
 func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context map[string]Position, locals map[string]bool) Diagnostics {
 	parameters, body := sanyQuantifierGroup(root)
+	restore := g.pushFormalContext(len(parameters))
 	var diags Diagnostics
 	seenDomains := map[Expr]bool{}
 	for _, parameter := range parameters {
@@ -631,12 +642,6 @@ func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context
 			seenDomains[parameter.Set] = true
 		}
 	}
-	restore := g.pushFormalContext(len(parameters))
-	defer func() {
-		if restore != nil {
-			restore()
-		}
-	}()
 	bodyLocals := copyBoolMap(locals)
 	root.quantifierFormals = nil
 	for _, parameter := range parameters {
@@ -654,7 +659,6 @@ func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context
 	diags = append(diags, g.checkExpr(body, context, bodyLocals)...)
 	popLabelFormals()
 	restore()
-	restore = nil
 	operand := sanyGeneratedExpressionNode(body)
 	if operand != nil {
 		if root.Set == nil {
@@ -685,9 +689,9 @@ func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context
 
 func (g *sanyExpressionGeneration) checkChoose(expr *ChooseExpr, context map[string]Position, locals map[string]bool) Diagnostics {
 	// processChoose generates the domain before allocating its formals.
-	diags := g.checkExpr(expr.Set, context, locals)
 	bounds := expr.boundVars()
-	defer g.pushFormalContext(len(bounds))()
+	closeContext := g.pushFormalContext(len(bounds))
+	diags := g.checkExpr(expr.Set, context, locals)
 	bodyLocals := copyBoolMap(locals)
 	expr.formalNodes = nil
 	for _, bound := range bounds {
@@ -719,6 +723,7 @@ func (g *sanyExpressionGeneration) checkChoose(expr *ChooseExpr, context map[str
 			}
 		}
 	}
+	closeContext()
 	return diags
 }
 
@@ -726,6 +731,7 @@ func (g *sanyExpressionGeneration) checkChoose(expr *ChooseExpr, context map[str
 // allocating formals, then generate the body in the resulting symbol context.
 // generateLambda uses the same scope and constructor order without domains.
 func (g *sanyExpressionGeneration) checkBoundExpression(bounds []BoundVar, syntax *SanySyntaxNode, context map[string]Position, locals map[string]bool, body Expr) ([]*sanyFormalParamNode, Diagnostics) {
+	closeContext := g.pushFormalContext(len(bounds))
 	var diags Diagnostics
 	seenDomains := map[Expr]bool{}
 	for _, bound := range bounds {
@@ -734,7 +740,6 @@ func (g *sanyExpressionGeneration) checkBoundExpression(bounds []BoundVar, synta
 			seenDomains[bound.Set] = true
 		}
 	}
-	defer g.pushFormalContext(len(bounds))()
 	bodyLocals := copyBoolMap(locals)
 	nodes := make([]*sanyFormalParamNode, 0, len(bounds))
 	for _, bound := range bounds {
@@ -743,8 +748,11 @@ func (g *sanyExpressionGeneration) checkBoundExpression(bounds []BoundVar, synta
 		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
 		bodyLocals[bound.Name] = true
 	}
-	defer g.pushLabelFormals(nodes)()
-	return nodes, append(diags, g.checkExpr(body, context, bodyLocals)...)
+	popLabelFormals := g.pushLabelFormals(nodes)
+	diags = append(diags, g.checkExpr(body, context, bodyLocals)...)
+	popLabelFormals()
+	closeContext()
+	return nodes, diags
 }
 
 // processRcdForms creates the field string before checking each earlier label,

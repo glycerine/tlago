@@ -106,17 +106,18 @@ func (g *sanyExpressionGeneration) checkRejectedNamedFunctionBody(definition Def
 	}
 	if function.functionApplication != nil {
 		g.functions = append(g.functions, sanyFunctionGeneration{definition.Name, function.functionApplication})
-		defer func() { g.functions = g.functions[:len(g.functions)-1] }()
 	}
 	finishLabels := g.pushLabelScope()
-	defer func() {
-		labels := finishLabels()
-		if definition.semanticNode != nil {
-			definition.semanticNode.labels = labels
-		}
-	}()
-	defer g.pushLabelFormals(function.formalNodes)()
+	popLabelFormals := g.pushLabelFormals(function.formalNodes)
 	diagnostics := g.checkExpr(function.Body, context, locals)
+	popLabelFormals()
+	labels := finishLabels()
+	if definition.semanticNode != nil {
+		definition.semanticNode.labels = labels
+	}
+	if function.functionApplication != nil {
+		g.functions = g.functions[:len(g.functions)-1]
+	}
 	g.finishNamedFunction(function)
 	return diagnostics
 }

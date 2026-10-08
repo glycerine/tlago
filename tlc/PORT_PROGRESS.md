@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-07 Retain Java generation scopes when expressions throw:
+Previous completed commit: d1c0424. Begin runtime LET context audit. Source
+processLetIn retains its generated Context for walkGraph; runtime reconstruction
+remains pending. Prerequisite audit finds a real canonical generation shortcut:
+deferred Go cleanup pops contexts/labels/functions on thrown bodies or domains,
+where source Generator has successful-path pop calls and no finally cleanup.
+
+Replace deferred cleanup with explicit normal completion in LET, operator body,
+quantifier, CHOOSE, bound expressions and accepted/rejected named-function bodies.
+Push the empty context before domain generation, retaining formal allocation
+order. Function domain preparation retains its context through failures too.
+Translate LET's prior-level limit guard and AbortException, lower-level clamp
+and typed negative/out-of-range array access. Preserve source's ordinary level-
+100 array-bounds failure rather than replacing it with a different behavior.
+
+External AbortScopeProbe invokes actual Generator.generateExpression over 23
+cases: normal/deep LET RHS nesting, bound bodies and domains, named operator/
+function bodies, and supplied initial levels -1 and 98–101. Initial Go produces
+46 observations versus Java's 2,847 due to erased scopes. The first correction
+still has five named-function mismatches and a cleanup WrongInvocationException;
+fix that remaining deferred cleanup. Final 2,847 rows agree. Expanded observation
+adds label formal-group lengths and function stacks: all 4,256 rows now match.
+Initial Java observer compilation needed the actual Context enumeration API,
+ErrorCode getter and source Vector class; failed compilations earn no credit.
+External probes/vectors/overlays/logs use tlago-abort-scope under /mnt/oldrog/tmp.
+No new permanent tests, fixture/assertion weakening or original-method credit.
+
+The prior 247 normal LET graph/identity rows remain exact (95587 retired).
+Complete SANY passes normally in 2.337 seconds (95855 retired). Focused root
+original/parser/selector/scoped/debugger gate passes in 10.621 seconds (38859
+retired). Original Test212/Test213 pass in 0.410 seconds. All-package compilation
+and git diff check pass. Initial observer 12057, intermediate 32138, final 32405
+and expanded 38993 are terminal and retired; remaining commands complete inline.
+No race or unrelated long workload rerun. Constructor-abort paths and runtime
+LET/canonical-evaluator sharing remain incomplete. Main TLC inventory and known
+native XML failures remain unchanged; no whole-workspace green claim.
+
+
 2026-10-07 Integrate the actual monolith extractor with SANY loading:
 Previous completed commit: b56c0f7. Source FileUtil.createNamedInputStream falls
 back to MonolithSpecExtractor.module, which performs default-charset FileReader/
