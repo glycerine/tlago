@@ -221,7 +221,15 @@ func (p *SanyParser) CompilationUnit() *SanySyntaxNode {
 func (p *SanyParser) Prelude() {
 	p.consumeParseToken(SanyTokenBeginPragma, "expected pragma prelude")
 	for p.check(SanyTokenNumber) || p.check(SanyTokenIdentifier) {
-		p.advance()
+		switch p.peek().Kind {
+		case SanyTokenNumber:
+			p.consumeParseToken(SanyTokenNumber, "expected prelude number")
+		case SanyTokenIdentifier:
+			p.consumeParseToken(SanyTokenIdentifier, "expected prelude identifier")
+		default:
+			p.recordDirectChoice(6)
+			p.throwParseException(nil, "expected prelude token")
+		}
 	}
 	p.recordDirectChoice(5)
 }
@@ -1454,7 +1462,7 @@ func (p *SanyParser) IdentLHS() *SanySyntaxNode {
 func (p *SanyParser) PrefixLHS() *SanySyntaxNode {
 	p.beginProduction("Prefix LHS")
 	defer p.endProduction()
-	op := p.consumeOperator("expected prefix operator in definition")
+	op := NewSanyTokenNode(p.nonExpPrefixOpToken())
 	p.expecting = "Identifier"
 	id := p.Identifier()
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixLHS"], op, id)
@@ -1464,7 +1472,7 @@ func (p *SanyParser) InfixLHS() *SanySyntaxNode {
 	p.beginProduction("Infix LHS")
 	defer p.endProduction()
 	left := p.Identifier()
-	op := p.consumeOperator("expected infix operator in definition")
+	op := NewSanyTokenNode(p.sourceOperatorToken(2, "expected infix operator"))
 	right := p.Identifier()
 	return NewSanyNode(SanySyntaxNodeKindByName["N_InfixLHS"], left, op, right)
 }
@@ -1473,7 +1481,7 @@ func (p *SanyParser) PostfixLHS() *SanySyntaxNode {
 	p.beginProduction("Postfix LHS")
 	defer p.endProduction()
 	left := p.Identifier()
-	op := p.consumeOperator("expected postfix operator in definition")
+	op := NewSanyTokenNode(p.postfixOpToken())
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PostfixLHS"], left, op)
 }
 
@@ -1721,7 +1729,19 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 // Initial expressions use calls 54/55; infix right operands use calls 62/63.
 func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*SanyToken) bool, prefixCall, openCall int) {
 	for p.scanLookahead(prefixCall, 2147483647) && p.aboveCurrentJunction() {
-		tok := p.advance()
+		var tok *SanyToken
+		if sanyDirectChoiceAccepts(0, p.peek().Kind) {
+			tok = p.prefixOpToken()
+		} else if p.check(SanyTokenOp77) {
+			tok = p.infixOpToken()
+		} else {
+			site := 119
+			if prefixCall == 62 {
+				site = 121
+			}
+			p.recordDirectChoice(site)
+			p.throwParseException(nil, "expected expression prefix")
+		}
 		op, _ := GetSanyOperator(tok.Image)
 		stack.Push(p.genericOperatorNode(tok, op), &op)
 		if err := stack.ReduceStack(); err != nil {
@@ -1733,7 +1753,7 @@ func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*Sany
 		return
 	}
 	if !p.aboveCurrentJunction() {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected properly indented expression")
+		p.throwParseException(nil, "expected properly indented expression")
 	}
 	p.ExtendableExpr(stack, stop)
 }
@@ -1767,7 +1787,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 	for p.scanLookahead(58, 1) {
 		switch {
 		case p.scanLookahead(59, 2147483647) && p.aboveCurrentJunction():
-			tok := p.advance()
+			tok := p.postfixOpToken()
 			op, _ := GetSanyOperator(tok.Image)
 			stack.Push(p.genericOperatorNode(tok, op), &op)
 		case p.scanLookahead(60, 2147483647) && p.aboveCurrentJunction():
@@ -2015,6 +2035,14 @@ func (p *SanyParser) OpenExpression(stop func(*SanyToken) bool) *SanySyntaxNode 
 		p.throwParseException(nil, "expected open expression")
 		return nil
 	}
+}
+
+func (p *SanyParser) OpenStart() {
+	if !sanyDirectChoiceAccepts(129, p.peek().Kind) {
+		p.recordDirectChoice(129)
+		p.throwParseException(nil, "expected open expression start")
+	}
+	p.advance()
 }
 
 func (p *SanyParser) FairnessExpr() *SanySyntaxNode {
@@ -2341,15 +2369,6 @@ func (p *SanyParser) SomeTQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 	return NewSanyNode(SanySyntaxNodeKindByName["N_UnboundQuant"], heirs...)
 }
 
-func (p *SanyParser) startsPrimitiveExpression() bool {
-	switch p.peek().Kind {
-	case SanyTokenNumberLiteral, SanyTokenStringLiteral, SanyTokenLbr, SanyTokenLbc, SanyTokenLab, SanyTokenLsb:
-		return true
-	default:
-		return false
-	}
-}
-
 func (p *SanyParser) PrimitiveExpression() *SanySyntaxNode {
 	switch p.peek().Kind {
 	case SanyTokenLbr:
@@ -2446,12 +2465,19 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 			identifier := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), intro)
 			operator := NewSanyNode(SanySyntaxNodeKindByName["N_GenInfixOp"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), in)
 			held = NewSanyNode(SanySyntaxNodeKindByName["N_InfixExpr"], identifier, operator, domain)
-			if p.match(SanyTokenColon) {
-				held = nil
-				kind = "N_SubsetOf"
-				heirs = append(heirs, intro, in, domain, NewSanyTokenNode(p.previous()), readExpression())
-			} else if p.check(SanyTokenComma) {
-				readElements(90)
+			if p.check(SanyTokenColon) || p.check(SanyTokenComma) {
+				switch p.peek().Kind {
+				case SanyTokenColon:
+					p.advance()
+					held = nil
+					kind = "N_SubsetOf"
+					heirs = append(heirs, intro, in, domain, NewSanyTokenNode(p.previous()), readExpression())
+				case SanyTokenComma:
+					readElements(90)
+				default:
+					p.recordDirectChoice(91)
+					p.throwParseException(nil, "expected set continuation")
+				}
 			} else {
 				p.recordDirectChoice(92)
 			}
@@ -2465,21 +2491,28 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 		} else if p.scanLookahead(44, 1) {
 			expression := readExpression()
 			heirs = append(heirs, expression)
-			if p.match(SanyTokenColon) {
-				colon := p.previous()
-				kind = "N_SetOfAll"
-				children := expression.GetHeirs()
-				if expression.Kind.JavaName() == "N_InfixExpr" && len(children) > 1 {
-					operator := children[1].GetHeirs()
-					if len(operator) > 1 && operator[1].Image == "\\in" {
-						message := "Form {a \\in b : c \\in d }, at line " + strconv.Itoa(colon.Begin.Line) + ", is not allowed"
-						p.throwReportedParseException(message, colon.Begin, "E1300", message)
+			if p.check(SanyTokenColon) || p.check(SanyTokenComma) {
+				switch p.peek().Kind {
+				case SanyTokenColon:
+					p.advance()
+					colon := p.previous()
+					kind = "N_SetOfAll"
+					children := expression.GetHeirs()
+					if expression.Kind.JavaName() == "N_InfixExpr" && len(children) > 1 {
+						operator := children[1].GetHeirs()
+						if len(operator) > 1 && operator[1].Image == "\\in" {
+							message := "Form {a \\in b : c \\in d }, at line " + strconv.Itoa(colon.Begin.Line) + ", is not allowed"
+							p.throwReportedParseException(message, colon.Begin, "E1300", message)
+						}
 					}
+					heirs = append(heirs, NewSanyTokenNode(colon))
+					readBounds(95)
+				case SanyTokenComma:
+					readElements(96)
+				default:
+					p.recordDirectChoice(97)
+					p.throwParseException(nil, "expected set continuation")
 				}
-				heirs = append(heirs, NewSanyTokenNode(colon))
-				readBounds(95)
-			} else if p.check(SanyTokenComma) {
-				readElements(96)
 			} else {
 				p.recordDirectChoice(98)
 			}
@@ -2912,6 +2945,10 @@ func (p *SanyParser) NoOpExtensionBase() *SanySyntaxNode {
 	case SanyTokenIdentifier:
 		return p.Identifier()
 	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		if !p.check(SanyTokenProofsteplexeme) && !p.check(SanyTokenProofimplicitsteplexeme) {
+			p.recordDirectChoice(122)
+			p.throwParseException(nil, "expected proof expression token")
+		}
 		tok := p.advance()
 		node := NewSanyTokenNode(tok)
 		if p.currentProofLevel() < 0 && len(p.proofLevelStack) <= 1 {
@@ -2969,7 +3006,10 @@ func (p *SanyParser) BangOperatorSelector() *SanySyntaxNode {
 	if kindName == "N_InfixOp" {
 		return sanyOperatorTokenNode(kindName, p.infixOpToken())
 	}
-	return sanyOperatorTokenNode(kindName, p.advance())
+	if kindName == "N_PostfixOp" {
+		return sanyOperatorTokenNode(kindName, p.postfixOpToken())
+	}
+	return sanyOperatorTokenNode(kindName, p.nonExpPrefixOpToken())
 }
 
 func (p *SanyParser) StructOp() *SanySyntaxNode {
@@ -3160,14 +3200,6 @@ func (p *SanyParser) isNEPrefixOperator(tok *SanyToken) bool {
 	return ok && op.IsPrefix()
 }
 
-func (p *SanyParser) consumeOperator(msg string) *SanySyntaxNode {
-	if _, ok := GetSanyOperator(p.peek().Image); ok {
-		return NewSanyTokenNode(p.advance())
-	}
-	p.add(p.peek().Begin, "E1300", msg)
-	return nil
-}
-
 func (p *SanyParser) parseErrorMessage(expected string, tok *SanyToken) string {
 	image := "<EOF>"
 	pos := Position{}
@@ -3348,11 +3380,34 @@ func (p *SanyParser) add(pos Position, code, msg string) {
 	p.diags = append(p.diags, errorAt(pos, code, "%s", msg))
 }
 
+func (p *SanyParser) sourceOperatorToken(site int, nativeMessage string) *SanyToken {
+	kind := p.peek().Kind
+	if !sanyDirectChoiceAccepts(site, kind) {
+		p.recordDirectChoice(site)
+		p.throwParseException(nil, nativeMessage)
+	}
+	return p.advance()
+}
+
+func sanyDirectChoiceAccepts(site int, kind SanyTokenKind) bool {
+	return kind >= 0 && int(kind) < 295 && sanyDirectChoiceMasks[site][int(kind)/32]&(uint32(1)<<uint(int(kind)%32)) != 0
+}
+
+func (p *SanyParser) prefixOpToken() *SanyToken {
+	return p.sourceOperatorToken(0, "expected prefix operator")
+}
+func (p *SanyParser) nonExpPrefixOpToken() *SanyToken {
+	return p.sourceOperatorToken(1, "expected nonexpressive prefix operator")
+}
+func (p *SanyParser) postfixOpToken() *SanyToken {
+	return p.sourceOperatorToken(3, "expected postfix operator")
+}
+
 // InfixOp alone, unlike the source prefix and postfix productions, owns a frame.
 func (p *SanyParser) infixOpToken() *SanyToken {
 	p.beginProduction("Infix Op")
 	defer p.endProduction()
-	token := p.advance()
+	token := p.sourceOperatorToken(2, "expected infix operator")
 	if op, ok := GetSanyOperator(token.Image); ok {
 		p.lastOperator = &op
 	}

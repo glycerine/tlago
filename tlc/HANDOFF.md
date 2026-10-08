@@ -761,10 +761,10 @@ nonexpressive-prefix preview 67 (all Integer.MAX_VALUE). BangExtension uses 73
 operator alternatives and argument preview 72 (budget 2). Its other branch keeps
 direct OpArgs before structural preview 74 (budget 1).
 All 74 source lookahead entry points now have production callers. JavaCC's 130
-direct-choice expectation masks are now generated from upstream; source sites
-4, 5, 7–90, 92–96, 98–118, 120 and 123–128 are connected. Expectations expire by token generation
-and are ordered
-by token kind, and precede saved-call rescans and their duplicate checks. Successful
+direct-choice expectation masks are now generated from upstream, and all 130
+source sites have translated paths, including the guarded switch failures.
+Expectations expire by token generation, are ordered by token kind, and precede
+saved-call rescans and their duplicate checks. Successful
 consumption now performs Java's 101-token cleanup of expired lookahead references.
 CompilationUnit now parses the source Prelude's identifier/number sequence and
 resets the tokenizer to DEFAULT only after successful module parsing. Module body
@@ -785,12 +785,14 @@ outside their Java productions. Brackets, EXCEPT components, tuples, restricted
 expressions, fairness, LET, junction items, CHOOSE and lambda now record source
 sites 99–118. Identifier and keyword record fields retain distinct sites 100/101.
 The earlier 641 state observations remain qualified evidence; all 5,823 current
-parser rows across 341 cases agree. Current original frontend/model checks pass
-in 9.948 seconds, complete SANY in 1.907 seconds and compilation passes.
-Unconnected direct-choice sites are 0–3, 6, 91, 97, 119, 121, 122 and 129, including
-redundant/unreachable source switch failures.
-Remaining direct-choice sites, native error-span estimates, full expected-token
-bookkeeping, syntax AST parity and proof generation remain reconciliation work.
+parser rows across 341 cases agree. Operator-token productions and OpenStart
+also match Java on 1,475 observations over all 295 token kinds, including
+acceptance, consumption and expected-token lists. Prefix operands preserve the
+Infix Op frame for unary minus. Prelude, set continuations and proof lexemes
+retain their guarded source failures. Current original frontend/model checks
+pass in 9.668 seconds, complete SANY in 1.791 seconds and compilation passes.
+Native error-span estimates, full expected-token bookkeeping, syntax AST parity
+and proof generation remain reconciliation work.
 These bounded observations do not establish every semantic-predicate context or
 full parser parity.
 

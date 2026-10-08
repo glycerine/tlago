@@ -1,5 +1,32 @@
 # TLC Port Progress
 
+2026-10-07 Final direct-choice sites and operator token productions:
+Previous completed commit: a951193. Connect source sites 0–3, 6, 91, 97, 119,
+121, 122 and 129, completing translated paths for all 130 direct-choice sites.
+Operator token alternatives use the mechanically generated Java masks; LHS,
+prefix operands, postfix extensions and bang selectors call the appropriate
+source token productions. Unary minus retains the Infix Op frame; InfixLHS
+uses the bare token production. Preserve guarded inner failures in Prelude,
+BraceCases and proof lexemes, and distinct initial/right operand failures.
+OpenStart is translated. Remove unused native consumeOperator and primitive
+preview helpers. Native error-span estimates and full parser/AST parity remain
+pending; this batch does not close the broader TLC port.
+
+External BodyDefinition observer session 72846 returned 0 and is retired;
+all 5,823 rows across 341 cases remain identical to Java. External token-production
+observer covers PrefixOpToken, NEPrefixOpToken, InfixOpToken, PostfixOpToken and
+OpenStart across all 295 token kinds. All 1,475 rows agree on acceptance,
+consumption and expected sequences. Java returned 0; Go session 91859 returned 0
+and is retired. Probe, overlay and logs remain under /mnt/oldrog/tmp with prefix
+tlago-operator-choice; no permanent tests or original-method credit were added.
+
+Existing original frontend/model gate session 49356 returned 0 in 9.668 seconds;
+complete SANY session 63682 returned 0 in 1.791 seconds; all-package compilation
+session 63965 returned 0. All handles are retired. Normal execution, no race,
+changed fixtures or weakened assertions. Logs: tlago-remaining-choice-originals,
+-sany and -compile under /mnt/oldrog/tmp. Main inventory counts and known native
+XML fixture failures remain unchanged. No new full-workspace green claim.
+
 2026-10-07 Bracket, EXCEPT and control-form expectation sites:
 Previous completed commit: f02d0b4. Connect source sites 99–118. SBracketCases
 records function-bound comma exit 99, separate identifier/keyword record field

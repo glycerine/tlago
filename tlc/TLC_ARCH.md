@@ -10242,3 +10242,21 @@ source switch failures. Full expected-token bookkeeping, native error-span
 estimates and parser/AST fidelity remain separate requirements. External
 production observations match 5,823 rows across 341 cases, providing bounded
 syntax/message evidence rather than whole parser or evaluator completion.
+
+
+## Operator-token choices complete the direct-choice site translation
+
+PrefixOpToken, NEPrefixOpToken, InfixOpToken and PostfixOpToken accept the exact
+token alternatives from generated source masks 0–3. Their callers validate the
+source token production before constructing syntax nodes. Unary minus retains
+the Infix Op production frame; InfixLHS calls the bare token production instead.
+OpenStart uses site 129, including its source failure path. Prelude retains inner
+failure 6; BraceCases keeps guarded switch failures 91/97; expression prefix
+choices retain distinct initial/right-operand failures 119/121; proof lexemes
+retain guarded failure 122. All 130 direct-choice sites now have translated paths.
+
+External observations of the five token productions agree with Java for every
+295 token kind: 1,475 rows compare acceptance, consumed-token count and expected
+sequences. Existing 5,823 production rows over 341 cases still agree. These
+observations do not establish exhaustive malformed rescan behavior, allocation
+identity, native error-span fidelity or complete parser/AST and evaluator parity.
