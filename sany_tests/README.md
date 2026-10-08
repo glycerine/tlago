@@ -16,20 +16,22 @@ Keep translated assertions faithful to the Java source, and add any copied
 fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
 locations.
 
-`parser.TlaPlusSyntaxCorpusTests.testAllTlaPlusNodesUsed` is **port complete**
-with all 355 original parameter contexts. It checks unused AST DSL kinds after
-loading every expected corpus tree, excludes PlusCal kinds and FAIR, and retains
-the exact zero-unused assertion. The earlier native SANY-kind surrogate is removed.
-The corpus loader retains source bytes, multiline names, ERROR/SKIP attributes and
-expected DSL trees; 356 external metadata/AST rows (355 cases plus unused count)
-match the unchanged Java helpers. `testAll` remains **reconcile**: its current
-parser-status checks are supplementary until `TlaPlusParserOutputTranslator` and
-the original canonical AST equality/known-failure runner are translated. The
-translator's identifier/operator conversions and strict reparser cursor/consume,
-comma-separated identifier and tuple helpers are now translated. They match Java
-on 552 operator-literal and 470 identifier/kind/list/tuple observations; recursive
-`translate`/`flatTranslate` and expression-dependent helper paths remain pending. No main
-TLC inventory credit is added by this SANY work.
+Both original `parser.TlaPlusSyntaxCorpusTests` methods are **port complete**,
+retaining all 355 parameter contexts each. `testAll` uses the full source
+SANY-to-DSL translator and recursive AST equality assertions. The runner retains
+SKIP attributes, case-insensitive known-failure names, inverted acceptance for
+known failures, and the distinction between checked translation errors and
+structural assertion failures. No expected tree, source input or assertion is
+weakened. `testAllTlaPlusNodesUsed` checks unused AST DSL kinds after loading every
+expected tree, excludes PlusCal kinds and FAIR, and retains the zero-unused
+assertion. The earlier native SANY-kind surrogate is removed.
+
+The corpus loader retains source bytes, multiline names, ERROR/SKIP attributes
+and expected DSL trees. All 356 external metadata/expected-tree rows and all 355
+actual translated-output rows match Java. The original Java class passes all 710
+test contexts. Helper comparisons also retain the 552 operator-literal and 470
+identifier/kind/list/tuple observations. This establishes the original corpus
+methods, not exhaustive parser/semantic graph parity. Main TLC totals are unchanged.
 
 `parser.BelchDefTests.runTestCase` is **port complete** in root
 `sany_belchdef_java_test.go`, retaining all five original parameter rows. It

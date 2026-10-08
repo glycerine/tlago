@@ -1511,18 +1511,16 @@ Keep each scope distinct. Whole-module canonical AST assertions, general source 
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.
 Numeric/general-Object driver formatting, PrintStream error-state queries and remaining production-frame
 coverage still require reconciliation. Do not claim full SanyOutput or parser
-parity. The syntax corpus now retains all 355 expected DSL trees, source bytes
-and attributes. Its original DSL-kind usage method is port complete across all
-355 parameter contexts; the native SANY-kind surrogate is removed. Metadata and
-AST serialization match Java on 356 rows including the unused count. The current
-`testAll` still checks parser status without the original canonical AST comparison.
-The translator's identifier/operator conversions and strict reparser/list/tuple
-helpers are translated; 552 operator-literal and 470 identifier/kind/list/tuple
-observations match Java. Next, port recursive `translate`/`flatTranslate` and the
-expression-dependent bound/use helpers, then the source known-failure runner.
-Install its AST equality assertions and fix actual parser differences.
-These are remaining translation gaps, not full-suite fidelity receipts. Preserve the source harness's known-failure inversion: Java accepts
-the unchanged LOCAL-in-LET error fixture, and the original expects that success.
+parity. Both original syntax corpus methods are now port complete across all
+355 parameter contexts each. The full recursive SANY-to-DSL translator, source
+known-failure runner and AST equality assertions are installed. Source bytes,
+expected trees and ERROR/SKIP attributes are unchanged. All 355 actual translated
+outputs match Java, including rejection and checked translation errors; the
+original Java class passes all 710 test contexts. The earlier 356 metadata/expected
+AST rows and 552 operator/470 reparser helper rows remain separate receipts.
+Preserve the source known-failure inversion and distinguish checked translation
+errors from structural assertion failures. These corpus results do not establish
+all malformed production states, canonical integration or evaluator sharing.
 
 Missing modules and filename/module-name mismatches now abort loading with source E4220/E4221 details and null or
 actual importing-module locations. The existing front-end exception boundary

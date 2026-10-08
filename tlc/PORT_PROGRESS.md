@@ -1,5 +1,32 @@
 # TLC Port Progress
 
+2026-10-07 Complete original syntax corpus AST assertions:
+Previous completed commit: 4dbe598. Port full recursive translate/flatTranslate
+switches and expression-dependent quantifier-bound/use-body helpers from
+TlaPlusParserOutputTranslator. Preserve source LET-definition fallthrough,
+partial lookahead children on checked failure, numeric kind values, aliasing
+and structural assertions. Replace supplementary parse-status checks with the
+original SyntaxCorpusRunner acceptance/AST equality behavior. Preserve all
+355 inputs/expected trees, SKIP attributes, case-insensitive known failures and
+source failure inversion. Checked translation errors remain distinct from
+structural assertion failures. Correct the previously mistyped #888 name to
+its original spelling; no expected failure is added or assertion weakened.
+
+Original Java TlaPlusSyntaxCorpusTests passes all 710 test contexts (0.224s).
+External CorpusTranslationProbe invokes the actual source frontend/translator;
+all 355 sorted actual-output rows match Go, including AST serialization,
+parser rejection and checked translation error message/offset. Observer code,
+overlay and logs remain under /mnt/oldrog/tmp with prefix tlago-corpus-translation;
+source JUnit log is tlago-corpus-original-java.log. No invented permanent tests.
+
+Focused full AST corpus gate passes (0.169s); complete SANY package passes
+(2.399s); all-package compilation and git diff check pass. All commands returned
+0 and no handles remain active. No production parser code changed, so unrelated
+long workloads were not repeated. Both original corpus methods are port complete,
+355 parameter contexts each; main TLC totals and known native XML failures remain
+unchanged. No whole-workspace green or complete parser/semantic parity claim.
+
+
 2026-10-07 Port syntax corpus translator foundational helpers:
 Previous completed commit: b3d78df. Translate source SanyReparser cursor,
 lookahead/merge, previous/advance, kind checks, variadic matching and strict

@@ -10378,9 +10378,9 @@ the Java static usage set. PlusCal and FAIR are excluded from the TLA+ usage che
 
 All 355 unchanged corpus metadata and expected-tree serialization rows agree
 with Java, plus the zero-unused row. The original DSL-kind usage test now retains
-all 355 parameter contexts. The SANY-to-DSL translator, full known-failure runner
-and testAll AST equality assertions remain pending; parser-status checks are
-supplementary. These helper observations do not establish every malformed DSL,
+all 355 parameter contexts. The full SANY-to-DSL translator, known-failure
+runner and testAll AST equality assertions are now installed, with all 355
+actual translated-output rows matching Java. Both original methods are port complete. These helper observations do not establish every malformed DSL,
 constructor, Unicode-version edge or production AST fidelity.
 
 
@@ -10399,6 +10399,10 @@ observations across all three fixities, including aliases and unsupported
 conversion errors. Another 470 rows match all 446 kind-name mappings, twelve
 identifier images, and twelve valid/malformed list/tuple conversions and offsets.
 These observations do not establish all string-reference identity contexts or
-recursive translator, AST equality, proof or production parser parity. The
-source recursive translate/flatTranslate and expression-dependent helpers remain
-pending; no permissive fallback or placeholder AST translation is installed.
+exhaustive production parser parity. The recursive translate/flatTranslate
+switches and expression-dependent bound/use helpers are now translated faithfully,
+including source fallthrough and lookahead failure behavior. The corpus runner
+preserves checked translation errors separately from structural assertion failures;
+known failures invert acceptance and do not compare ASTs, as in Java. All 355
+actual outputs agree, and the original Java class passes 710 test contexts.
+No permissive fallback or placeholder AST translation is installed.

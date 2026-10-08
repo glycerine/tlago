@@ -37,12 +37,12 @@ Java on 341 external cases (14,741 sequences across 117 nonempty results).
 Exhaustive malformed rescan contexts and corpus AST comparison remain separate
 implementation requirements; these observations add no original-method credit.
 
-SANY syntax corpus: `TlaPlusSyntaxCorpusTests.testAllTlaPlusNodesUsed` is
-**Port complete**, retaining 355 original parameter contexts and the AST DSL
-unused-kind assertion. `testAll` remains **reconcile** until the original
-SANY-to-DSL translator and AST equality/known-failure runner are ported. The
-current parser-status checks remain supplementary. Source metadata/expected
-ASTs match Java across all 355 unchanged cases; main TLC totals are unchanged.
+SANY syntax corpus: both `TlaPlusSyntaxCorpusTests.testAll` and
+`testAllTlaPlusNodesUsed` are **Port complete**, retaining 355 original parameter
+contexts each. Full recursive SANY-to-DSL translation, AST equality and source
+known-failure/error handling are installed. All 355 actual translated-output rows
+match Java; the original Java class passes all 710 contexts. Source metadata and
+expected trees also match across all unchanged cases. Main TLC totals are unchanged.
 
 ## Topic totals for the main suite
 

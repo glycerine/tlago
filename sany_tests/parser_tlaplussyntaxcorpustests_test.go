@@ -11,27 +11,72 @@ import (
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/TlaPlusSyntaxCorpusTests.java.
-// testAll remains a supplementary status check until the original AST translator
-// and equality assertions are ported. The DSL-kind usage assertion is translated.
 func TestTlaPlusSyntaxCorpusTests_testAll(t *testing.T) {
 	for _, file := range sanySyntaxCorpusFiles(t) {
 		for _, tc := range readSanySyntaxCorpusCases(t, file) {
-			tc := tc
 			t.Run(filepath.Base(file)+"/"+tc.Title, func(t *testing.T) {
 				if tc.Skip {
 					t.Skip("source corpus SKIP attribute")
 				}
-				_, diags := tlago.ParseSanySyntax("Test.tla", tc.Source)
-				if isExpectedSanySyntaxParseFailure(tc) {
-					if !diags.HasErrors() {
-						t.Fatalf("syntax corpus case %q parsed successfully, want parse failure", tc.Title)
+				defer func() {
+					if r := recover(); r != nil {
+						if failure, ok := r.(*syntaxCorpusAssertionFailure); ok {
+							t.Fatalf("translator assertion: %s", failure.message)
+						}
+						panic(r)
+					}
+				}()
+				actual, err := syntaxCorpusParseTarget(tc.Source)
+				if isExpectedSyntaxCorpusFailure(tc.Title) {
+					t.Log("Expecting failure.")
+					// Java catches checked translation ParseException, but not AssertionError.
+					if err != nil {
+						return
+					}
+					if tc.ExpectError == (actual == nil) {
+						t.Fatalf("%s: expected known failure to invert parser acceptance", tc.Title)
 					}
 					return
 				}
-				requireNoSANYDiagnostics(t, "parse", diags)
+				if err != nil {
+					t.Fatalf("translation: %v", err)
+				}
+				if tc.ExpectError {
+					t.Log("Expecting parser rejection.")
+					if actual != nil {
+						t.Fatalf("%s: expected parser rejection; actual %s", tc.Title, actual)
+					}
+				} else {
+					if actual == nil {
+						t.Fatalf("%s: expected parser acceptance", tc.Title)
+					}
+					t.Logf("Expect: %s", tc.ExpectedAST)
+					t.Logf("Actual: %s", actual)
+					tc.ExpectedAST.testEquality(t, actual)
+				}
 			})
 		}
 	}
+}
+
+// Java's target returns null only for parser/lexer rejection; the translator's
+// checked ParseException remains distinct from its JUnit assertion failures.
+func syntaxCorpusParseTarget(input string) (actual *syntaxCorpusAST, err *syntaxCorpusDSLError) {
+	defer func() {
+		if r := recover(); r != nil {
+			if failure, ok := r.(*syntaxCorpusDSLError); ok {
+				actual = nil
+				err = failure
+			} else {
+				panic(r)
+			}
+		}
+	}()
+	root, diags := tlago.ParseSanySyntax("Test.tla", input)
+	if diags.HasErrors() {
+		return nil, nil
+	}
+	return syntaxCorpusToAST(root), nil
 }
 
 func TestTlaPlusSyntaxCorpusTests_testAllTlaPlusNodesUsed(t *testing.T) {
@@ -111,41 +156,19 @@ func readSanySyntaxCorpusCases(t *testing.T, file string) []sanySyntaxCorpusCase
 }
 
 func isExpectedSyntaxCorpusFailure(title string) bool {
-	switch title {
-	case "Cartesian Product as Parameter",
-		"Invalid Use of LOCAL in LET/IN",
-		"Invalid Use of LOCAL in Proof",
-		"Step Expression Requiring Lookahead",
-		"String with comment start",
-		"Nonfix Minus (GH tlaplus/tlaplus #GH884)",
-		"Nonfix Submodule Excl (GH tlaplus/tlaplus #GH884)",
-		"Nonfix Double Exclamation Operator (GH TSTLA #GH97, GH tlaplus/tlaplus #884)",
-		"Label with Subexpression Prefix (GH tlaplus/tlaplus #885)",
-		"Empty Tuple Quantification (GH tlaplus/tlaplus #GH888)",
-		"Negative Prefix Op on RHS of Infix (GH tlaplus/tlaplus #893)",
-		"Mistaken Set Filter Tuples Test":
-		return true
-	default:
-		return false
-	}
-}
-
-func isExpectedSanySyntaxParseFailure(tc sanySyntaxCorpusCase) bool {
-	if isSanySyntaxCorpusJavaParseSuccess(tc.Title) {
-		return false
-	}
-	return tc.ExpectError || isExpectedSyntaxCorpusFailure(tc.Title)
-}
-
-func isSanySyntaxCorpusJavaParseSuccess(title string) bool {
-	switch title {
-	case "Empty Tuple Quantification (GH tlaplus/tlaplus #888)",
-		// Source expectFailures inverts this :error fixture: Java accepts
-		// LOCAL in LET despite issue 616, so the original expects success.
-		"Invalid Use of LOCAL in LET/IN",
-		"Invalid Use of LOCAL in Proof",
-		"Label with Subexpression Prefix (GH tlaplus/tlaplus #885)",
-		"Mistaken Set Filter Tuples Test":
+	switch strings.ToLower(title) {
+	case "cartesian product as parameter",
+		"invalid use of local in let/in",
+		"invalid use of local in proof",
+		"step expression requiring lookahead",
+		"string with comment start",
+		"nonfix minus (gh tlaplus/tlaplus #gh884)",
+		"nonfix submodule excl (gh tlaplus/tlaplus #gh884)",
+		"nonfix double exclamation operator (gh tstla #gh97, gh tlaplus/tlaplus #884)",
+		"label with subexpression prefix (gh tlaplus/tlaplus #885)",
+		"empty tuple quantification (gh tlaplus/tlaplus #888)",
+		"negative prefix op on rhs of infix (gh tlaplus/tlaplus #893)",
+		"mistaken set filter tuples test":
 		return true
 	default:
 		return false
