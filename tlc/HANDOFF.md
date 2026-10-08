@@ -415,6 +415,14 @@ retained registration and labels when recursion-field assignment throws. The
 247 normal LET graph rows and 4,256 body/domain failure rows remain exact.
 This does not complete canonical evaluator integration or all constructor paths.
 
+Recursive declarations now update the actual node and unresolved counters inside
+`endRecursiveDefinition`, before label-scope completion. Canonical named functions
+also complete there rather than during native preregistration. Thirty direct Java
+`processOperator` observations agree on normal completion, counter underflow and
+invalid-level failures. The earlier LET, named-function and body/domain graph/
+state observations still agree. Native paths without actual declaration nodes
+remain explicitly incomplete; broader generation and runtime sharing need work.
+
 The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and
 `DefStep` leaves it for the definition parser as Java does. Twenty-one scratch

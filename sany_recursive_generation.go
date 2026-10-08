@@ -55,14 +55,31 @@ func (g *sanyExpressionGeneration) setDefinitionRecursionFields(node *sanySemOpD
 	}
 }
 
-// endOpDefNode changes body/syntax/defined on the declaration's own identity.
-// Existing native completion owns the shared unresolved counters until full
-// module graph generation replaces that bookkeeping.
+// endOpDefNode changes the declaration before decrementing its unresolved
+// counters. A failure retains those changes and the caller's active scopes.
 func (g *sanyExpressionGeneration) endRecursiveDefinition(node *sanySemOpDefNode, body sanySemanticGraphNode, syntax *SanySyntaxNode) {
 	node.defined, node.body, node.TreeNode = true, body, syntax
 	if syntax != nil {
 		node.pos = sanyNodePosition(syntax)
 		bridge := tlcBridge{convertingModule: node.originalModuleName}
 		node.Location = bridge.sourceLocationForPosition(node.pos)
+	}
+	if binding := g.bindings[node.semName()]; binding != nil && binding.node == node {
+		binding.defined = true
+		binding.position = node.semPosition()
+	}
+	if node.inRecursive {
+		if g.level < 0 || g.level >= len(g.module.counts) {
+			panic(tlc.NewArrayIndexOutOfBoundsException(g.level, len(g.module.counts)))
+		}
+		if g.level == 0 {
+			g.module.count--
+		} else {
+			g.module.counts[g.level]--
+		}
+		g.module.sum--
+		if g.module.sum < 0 {
+			panic(tlc.NewWrongInvocationException("Defined more recursive operators than were declared in RECURSIVE statements."))
+		}
 	}
 }

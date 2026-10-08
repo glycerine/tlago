@@ -10614,3 +10614,22 @@ unresolved sums, actual source registration, recursion fields and label tables.
 The previous normal LET graph and body/domain failure observations remain exact.
 These supplied-state probes do not establish all constructor failures or runtime
 canonical graph sharing. No permanent tests or inventory credit added.
+
+## Recursive definition completion owns its counters
+
+`endRecursiveDefinition` now follows actual Java `endOpDefNode`: set defined,
+body and syntax first, then decrement the current unresolved count and sum if
+the actual node is recursive. Preserve typed array-bound failures and the source
+WrongInvocationException after a negative sum. The node and native binding view
+retain their already-completed state when counting fails. Ordinary operator
+labels remain active until this call returns normally.
+
+Canonical LET/module callers no longer count again after completion; canonical
+named functions complete at specification construction, before body generation,
+rather than during native preregistration. Existing native paths without actual
+canonical declarations retain separate bookkeeping, without creating substitute
+nodes. Thirty exact external processOperator observations cover levels -1, 0,
+99, 100 and 101, unresolved sums 0/1/2 and counts 0/2. Compare actual registration,
+returned identity, node/body/labels, contexts, active label sets and retained
+counters. Earlier 247 LET, 500 named-function and 4,256 body/domain rows remain
+exact. Other constructor boundaries and canonical evaluator sharing remain work.

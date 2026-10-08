@@ -835,7 +835,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			if !def.FunctionDef && binding.node == nil {
 				binding.arity = len(def.Params)
 			}
-			if def.FunctionDef && binding.arity == 0 && !completedRecursive[def.Name] {
+			if def.FunctionDef && binding.arity == 0 && binding.node == nil && !completedRecursive[def.Name] {
 				checks.recursiveGeneration.complete()
 				completedRecursive[def.Name] = true
 				binding.defined = true

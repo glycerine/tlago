@@ -278,7 +278,7 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 			}
 			diags = append(diags, sanyRecursiveDefinitionDiagnostic(*definition, "E4292", message))
 		}
-		if definition.FunctionDef && binding.arity == 0 {
+		if definition.FunctionDef && binding.arity == 0 && binding.node == nil {
 			g.complete(binding, definition.SourcePosition())
 		}
 		if !definition.FunctionDef && binding.node == nil {
@@ -317,10 +317,10 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 		if !symbolExists || previousSymbol.opDefNode != nil {
 			diags = append(diags, g.constructOrdinaryDefinition(definition, finishLabels)...)
 		} else {
+			if recursive && !wrongLevel && binding.node == nil {
+				g.complete(binding, definition.SourcePosition())
+			}
 			finishLabels()
-		}
-		if recursive && !wrongLevel {
-			g.complete(binding, definition.SourcePosition())
 		}
 		if wrongLevel && definition.semanticNode == nil {
 			// The newly constructed OpDefNode calls SymbolTable.addSymbol; the
@@ -825,6 +825,8 @@ func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Defin
 			// the actual declaration without fabricating a body node.
 			g.endRecursiveDefinition(binding.node, nil, definition.Syntax)
 			definition.semanticNode = binding.node
+		} else if binding := g.bindings[definition.Name]; binding != nil && binding.node == nil && !binding.defined && binding.level == g.level {
+			g.complete(binding, definition.SourcePosition())
 		}
 		labels := finishLabels()
 		if definition.semanticNode != nil {

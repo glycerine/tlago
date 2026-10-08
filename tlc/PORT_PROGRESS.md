@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-07 Complete recursive counters at the actual node boundary:
+Previous completed commit: fa21bfe. Follow-up source audit finds endOpDefNode
+updates unresolved counters before processOperator pops labels; Go retained
+later native completion. Move canonical node/counter completion into
+endRecursiveDefinition, preserving node/body/syntax first, source typed array
+bounds and post-decrement WrongInvocationException. Synchronize native binding
+metadata with the actual node before possible counter failure. Remove later
+canonical counting from LET and module callers; canonical named functions now
+complete at specification construction, not native preregistration. Keep native
+paths without canonical declarations explicitly incomplete.
+
+External RecursiveCompletionProbe invokes actual Java processOperator using
+real recursive declarations with supplied counters. Thirty exact observations
+cover levels -1, 0, 99, 100 and 101, sums 0/1/2, counts 0/2, actual registration,
+returned identity, node/body/labels, contexts, active label scopes and counters.
+Both array failures and counter underflow retain source mutation order. External
+files use tlago-recursive-completion under /mnt/oldrog/tmp (11016 retired).
+Earlier 247 LET graph rows match (32345 retired), 500 named-function rows match
+(13466 retired) and 4,256 body/domain state rows match (77069 retired). Original
+Test212/Test213/selectors pass in 0.371 seconds (80092 retired). Full SANY passes
+in 2.411 seconds (91529 retired); focused original semantic/selector/scoped/
+debugger gate passes in 10.002 seconds (30410 retired). All-package compilation
+passes. After the binding-metadata correction, all 30 source completion rows
+still match (90148 retired) and original Test212/Test213/selectors pass in
+0.363 seconds (67350 retired). All handles are terminal and retired.
+No invented permanent tests, fixture/assertion weakening or inventory credit.
+No race or long workload selected. Main inventory and recorded native XML
+failures remain unchanged; no full workspace-green claim. Canonical runtime LET
+context/evaluator integration and further constructor boundaries remain work.
+
 2026-10-07 Ordinary operator label scope survives construction failures:
 Previous completed commit: eb6cec4. Audit actual Generator.processOperator.
 Go popped the label scope after body generation, before OpDef construction and
