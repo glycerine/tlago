@@ -804,6 +804,13 @@ and unchecked execution-failure path. Both returned and panicked I/O failures
 pass locally and over TCP; host availability remains intact. Original manager
 methods pass. No upstream methods cover this catch; no completion credit added.
 
+Native NextStateResult getter checks retain null receiver/partition failures,
+array references, null/empty distinctions and signed counter overflow. Payload,
+original smart-proxy and TCP worker result/retry checks pass. No original getter
+test methods exist; supplemental checks add no original-method credit.
+Coordinator cache-ratio formatting remains pending, including NaN availability
+classification and source finite formatting/rounding behavior.
+
 Native value-array graph checks cover state, tuple, record, function, operator argument
 row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
 references and isolated receiver mutations across worker request/result TCP.

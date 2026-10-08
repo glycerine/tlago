@@ -36,29 +36,29 @@ func NewNextStateResult(nextStates []*StateVec, nextFingerprints []*LongVec, com
 }
 
 func (r *NextStateResult) GetStatesComputedDelta() int64 {
-	if r == nil {
-		return 0
+	if r == nil || r.NextStates == nil {
+		panic(NewNullPointerException())
 	}
 	return r.StatesComputed - int64(len(r.NextStates))
 }
 
 func (r *NextStateResult) GetComputationTime() int64 {
 	if r == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
 	return r.ComputationTime
 }
 
 func (r *NextStateResult) GetNextFingerprints() []*LongVec {
 	if r == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	return r.NextFingerprints
 }
 
 func (r *NextStateResult) GetNextStates() []*StateVec {
 	if r == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	return r.NextStates
 }

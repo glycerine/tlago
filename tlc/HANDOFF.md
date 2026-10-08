@@ -130,6 +130,13 @@ fingerprint distance, `false` for invariants). Unchecked task failures retain
 the source execution-failure path. Focused local/TCP checks and original manager
 methods pass; supplemental failure checks add no original-method credit.
 
+`NextStateResult` getters retain source null failures rather than fabricated
+default values; the delta also rejects a null state-partition array. Direct
+arrays, empty-array distinctions and signed counter overflow remain intact.
+Focused payload/smart-proxy and worker TCP result/retry checks pass. Coordinator
+cache-ratio formatting remains pending: Java formats NaN rather than treating
+it as unavailable, and finite rounding needs a separate source comparison.
+
 Native state transfer now preserves shared backing value arrays for states, tuples,
 records, functions, configured operator argument rows, tuple products and record
 sets. Receiver mutations remain visible through shared arrays without touching

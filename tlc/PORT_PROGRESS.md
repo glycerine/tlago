@@ -19727,3 +19727,30 @@ was needed. Upstream has no direct check-callable failure methods, so supplement
 coverage adds no original-method completion credit. No full suite, long workload
 or race instrumentation was selected. Broader distributed parity remains pending;
 all test handles are terminal.
+
+
+## October 8, 2026: distributed result getter contracts
+
+The source NextStateResult getters dereference their receiver, and its delta
+also dereferences nextStates.length. Go returned zero/nil for a nil receiver
+and subtracted len(nil) for a null partition array. Restored NullPointerException
+failure traits at these native boundaries; the source delta remains computed
+from partition count, with signed long overflow, rather than state count.
+Array getters still return the original arrays and allow null fields on a
+nonnull result. No transport or JVM machinery was added.
+
+The native null getter check reproduces the fabricated default (45102, status
+1, 0.011 seconds). After the fix, all null/empty/reference/counter checks,
+existing result payload checks and all nine original smart-proxy contexts pass
+(69475, status 0, 0.013 seconds). Native TCP result/lifecycle and coordinator
+retry/loss checks pass (0.015 seconds). Upstream has no direct getter methods;
+supplemental checks add no original-method completion credit. No full suite,
+long workload or race instrumentation was selected.
+
+Batch failover source comparison found no new deviation in the inspected
+reassignment, returned-bit and Exception/Error catch paths. A separate pending
+coordinator summary defect remains: cacheHitRatio < 0 selects unavailable in
+Java, whereas Go's >= 0 availability test also excludes NaN. Correcting its
+formatting needs a separate source numeric rounding/formatting pass, not a
+claim that Go fmt implements String.format. Broader distributed parity remains
+pending; all test handles are terminal.
