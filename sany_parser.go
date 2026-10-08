@@ -206,12 +206,24 @@ func SanyModuleName(root *SanySyntaxNode) string {
 
 func (p *SanyParser) CompilationUnit() *SanySyntaxNode {
 	p.belchDEF()
-	if p.match(SanyTokenBeginPragma) {
-		for !p.check(SanyTokenEOF) && !p.check(SanyTokenBm2) {
-			p.advance()
-		}
+	if p.check(SanyTokenBeginPragma) {
+		p.Prelude()
+	} else {
+		p.recordDirectChoice(4)
 	}
-	return p.Module()
+	module := p.Module()
+	if p.tokenManager != nil {
+		p.tokenManager.SwitchTo(SanyLexDefault)
+	}
+	return module
+}
+
+func (p *SanyParser) Prelude() {
+	p.consumeParseToken(SanyTokenBeginPragma, "expected pragma prelude")
+	for p.check(SanyTokenNumber) || p.check(SanyTokenIdentifier) {
+		p.advance()
+	}
+	p.recordDirectChoice(5)
 }
 
 func (p *SanyParser) atModuleStart() bool {
@@ -240,7 +252,8 @@ func (p *SanyParser) BeginModule() *SanySyntaxNode {
 	defer p.endProduction()
 	p.expecting = "---- MODULE (beginning of module)"
 	if !p.atModuleStart() {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenBm0}, {SanyTokenBm1}, {SanyTokenBm2}}, "expected ---- MODULE")
+		p.recordDirectChoice(7)
+		p.throwParseException(nil, "expected ---- MODULE")
 	}
 	begin := NewSanyTokenNode(p.advance())
 	p.expecting = "Identifier"
@@ -282,6 +295,9 @@ func (p *SanyParser) Extends() *SanySyntaxNode {
 			p.addDependency(name.Image)
 			heirs = append(heirs, name)
 		}
+		p.recordDirectChoice(8)
+	} else {
+		p.recordDirectChoice(9)
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Extends"], heirs...)
 }
@@ -292,30 +308,39 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 	p.expecting = "LOCAL, INSTANCE, PROOF, ASSUMPTION, THEOREM, RECURSIVE, declaration, or definition"
 	var heirs []*SanySyntaxNode
 	for p.scanLookahead(1, 1) {
-		switch {
-		case p.check(SanyTokenSeparator):
+		switch p.peek().Kind {
+		case SanyTokenSeparator:
 			heirs = append(heirs, NewSanyTokenNode(p.advance()))
-		case p.check(SanyTokenVariable):
+		case SanyTokenVariable:
 			heirs = append(heirs, p.VariableDeclaration())
-		case p.check(SanyTokenConstant):
+		case SanyTokenConstant:
 			heirs = append(heirs, p.ParamDeclaration())
-		case p.scanLookahead(2, 2):
-			heirs = append(heirs, p.OperatorOrFunctionDefinition())
-		case p.check(SanyTokenRecursive):
-			heirs = append(heirs, p.Recursive())
-		case p.scanLookahead(3, 2):
-			heirs = append(heirs, p.Instance())
-		case p.scanLookahead(4, 2):
-			heirs = append(heirs, p.Assumption())
-		case p.scanLookahead(5, 2):
-			heirs = append(heirs, p.Theorem())
-		case p.check(SanyTokenBm0) || p.check(SanyTokenBm1) || p.check(SanyTokenBm2):
-			heirs = append(heirs, p.Module())
-			p.belchDEF()
-		case p.check(SanyTokenHide) || (p.check(SanyTokenUse) && p.tokenAt(1).Kind != SanyTokenOnly):
-			heirs = append(heirs, p.UseOrHideOrBy())
 		default:
-			p.throwParseException([][]SanyTokenKind{{SanyTokenDefbreak}}, "expected module body unit")
+			p.recordDirectChoice(10)
+			if p.scanLookahead(2, 2) {
+				heirs = append(heirs, p.OperatorOrFunctionDefinition())
+			} else if p.check(SanyTokenRecursive) {
+				heirs = append(heirs, p.Recursive())
+			} else {
+				p.recordDirectChoice(11)
+				if p.scanLookahead(3, 2) {
+					heirs = append(heirs, p.Instance())
+				} else if p.scanLookahead(4, 2) {
+					heirs = append(heirs, p.Assumption())
+				} else if p.scanLookahead(5, 2) {
+					heirs = append(heirs, p.Theorem())
+				} else if p.atModuleStart() {
+					heirs = append(heirs, p.Module())
+					p.belchDEF()
+				} else {
+					p.recordDirectChoice(12)
+					if p.check(SanyTokenHide) || (p.check(SanyTokenUse) && p.tokenAt(1).Kind != SanyTokenOnly) {
+						heirs = append(heirs, p.UseOrHideOrBy())
+					} else {
+						p.throwParseException(nil, "expected module body unit")
+					}
+				}
+			}
 		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Body"], heirs...)
@@ -334,6 +359,7 @@ func (p *SanyParser) VariableDeclaration() *SanySyntaxNode {
 		p.expecting = "Identifier"
 		one = append(one, p.Identifier())
 	}
+	p.recordDirectChoice(13)
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_VariableDeclaration"], []*SanySyntaxNode{keyword}, one)
 }
 
@@ -350,6 +376,7 @@ func (p *SanyParser) ParamDeclaration() *SanySyntaxNode {
 		p.expecting = "Identifier, operator or _"
 		heirs = append(heirs, p.ConstantDeclarationItem())
 	}
+	p.recordDirectChoice(14)
 	return NewSanyNode(SanySyntaxNodeKindByName["N_ParamDeclaration"], heirs...)
 }
 
@@ -380,6 +407,7 @@ func (p *SanyParser) ConstantDeclarationItem() *SanySyntaxNode {
 			heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in constant declaration"))
 			p.expecting = "comma or )"
 		}
+		p.recordDirectChoice(16)
 		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in constant declaration"))
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentDecl"], heirs...)
@@ -399,6 +427,7 @@ func (p *SanyParser) Recursive() *SanySyntaxNode {
 		heirs = append(heirs, p.ConstantDeclarationItem())
 		p.expecting = "`,' or `)'"
 	}
+	p.recordDirectChoice(15)
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Recursive"], heirs...)
 }
 
@@ -1445,6 +1474,10 @@ func (p *SanyParser) fixDeclaration(constant bool) *SanySyntaxNode {
 		return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixDecl"], op, us)
 	}
 	if !p.check(SanyTokenUs) {
+		if constant {
+			p.recordDirectChoice(18)
+			p.throwParseException(nil, "expected operator declaration")
+		}
 		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected operator declaration")
 	}
 	left := NewSanyTokenNode(p.advance())
@@ -1459,6 +1492,10 @@ func (p *SanyParser) fixDeclaration(constant bool) *SanySyntaxNode {
 		return NewSanyNode(SanySyntaxNodeKindByName["N_InfixDecl"], left, op, right)
 	}
 	if !p.isGrammarPostfixOperator(p.peek()) {
+		if constant {
+			p.recordDirectChoice(17)
+			p.throwParseException(nil, "expected infix or postfix operator declaration")
+		}
 		p.throwParseException([][]SanyTokenKind{{SanyTokenOp57}}, "expected infix or postfix operator declaration")
 	}
 	op := sanyOperatorTokenNode("N_PostfixOp", p.advance())

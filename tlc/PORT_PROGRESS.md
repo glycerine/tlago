@@ -1,5 +1,38 @@
 # TLC Port Progress
 
+2026-10-07 Module and declaration direct-choice recording:
+Previous completed commit: cb0b029. Connect source direct-choice sites 4, 5 and
+7–18: optional prelude, its repetition exit, module-header failure, EXTENDS
+repetition/absence, nested module-body alternatives, declaration repetition exits
+and constant operator-declaration failures. Body retains nested source recording
+order 10 then 11 then 12 before the corresponding scanner/direct alternatives.
+Constant declaration failures use their source masks; formal-declaration choices
+remain separate pending work. Connected sites now 4, 5, 7–18, 120 and 123–128.
+
+Replace CompilationUnit's permissive prelude loop with the source Prelude
+identifier/number sequence. Preserve source token-manager SwitchTo(DEFAULT)
+after successful Module only. The prelude's unreachable inner-switch failure
+site 6 and remaining direct-choice sites are not claimed connected. Do not add
+a failure-time reset or otherwise change the source failure state.
+
+Existing 3,663 production rows remain equal. Extend external observer by 18
+module/declaration/prelude cases, including six raw sources rather than module
+body wrappers. Final 3,801 rows across 229 cases match actual Java syntax
+kinds/images/four coordinates and complete parse messages/residual stack text,
+excluding outer log whitespace. Java returns 0; Go 29720 passes. Extend state
+observer by successful lexical reset across its five module sizes; all 641 state
+rows match Java, Go 71982 passes. External probes/overlays remain under
+/mnt/oldrog/tmp; receipts tlago-module-choice-bookkeeping-*,
+tlago-module-choice-{java,go}-state.log. No permanent invented tests,
+original-method credit, fixture/assertion weakening, race or optional sweeps.
+
+Existing original frontend/model gate 20078 passes 9.692s; complete SANY 87479
+passes 1.923s; all-package compile 38283 passes. All handles retired; diff check
+green. Update handoff and architecture; inventory totals unchanged. Remaining
+grammar expectations, native error-span estimates, complete parser/AST,
+canonical/runtime sharing and documented TLC requirements keep the goal active.
+The qualified earlier failing full-workspace snapshot remains unchanged evidence.
+
 2026-10-07 JavaCC direct-choice masks, expectation order and call cleanup:
 Previous completed commit: bcb3cbc. Extend the existing scanner generator to
 mechanically extract all ten upstream jj_la1 mask arrays, retaining all 130 sites

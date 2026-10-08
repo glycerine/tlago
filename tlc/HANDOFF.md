@@ -762,16 +762,20 @@ operator alternatives and argument preview 72 (budget 2). Its other branch keeps
 direct OpArgs before structural preview 74 (budget 1).
 All 74 source lookahead entry points now have production callers. JavaCC's 130
 direct-choice expectation masks are now generated from upstream; source sites
-120, 123–128 are connected. Expectations expire by token generation, are ordered
+4, 5, 7–18, 120 and 123–128 are connected. Expectations expire by token generation
+and are ordered
 by token kind, and precede saved-call rescans and their duplicate checks. Successful
 consumption now performs Java's 101-token cleanup of expired lookahead references.
-All 636 external mask/expiration/cleanup state rows agree with Java; the existing
-3,663 parser rows across 211 cases still agree. Current original frontend/model
-checks pass in 9.619 seconds, complete SANY in 2.037 seconds and compilation passes.
+CompilationUnit now parses the source Prelude's identifier/number sequence and
+resets the tokenizer to DEFAULT only after successful module parsing. Module body
+choices retain Java's nested direct-choice recording order before saved previews.
+All 641 external mask/expiration/cleanup/lexer-state rows agree with Java; all
+3,801 parser rows across 229 cases also agree. Current original frontend/model
+checks pass in 9.692 seconds, complete SANY in 1.923 seconds and compilation passes.
 Remaining direct-choice sites, native error-span estimates, full expected-token
-bookkeeping, syntax AST parity and proof generation remain reconciliation work. These bounded
-observations do not establish every semantic-predicate context or full parser
-parity.
+bookkeeping, syntax AST parity and proof generation remain reconciliation work.
+These bounded observations do not establish every semantic-predicate context or
+full parser parity.
 
 Semantic symbols now embed TLC's `SemanticNodeBase` and use its shared
 `NewSemanticNodeBase` constructor. This corrects the separate SANY counter added

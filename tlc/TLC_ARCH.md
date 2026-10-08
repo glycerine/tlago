@@ -10121,3 +10121,24 @@ sizes. Existing production observations retain all 3,663 matching rows across
 211 cases. These checks do not prove all grammar-site wiring, combined-site
 expectations, malformed rescan contexts, allocation identity or whole parser and
 evaluator fidelity. No original test-method credit follows from these probes.
+
+
+## Module and declaration choice recording follows nested source order
+
+CompilationUnit records site 4 when Prelude is absent. Prelude consumes only the
+source identifier/number sequence and records repetition exit 5. After successful
+Module, CompilationUnit resets the token manager to DEFAULT; failure paths retain
+their source lexical state. BeginModule uses site 7. Extends records comma-loop
+exit 8 or absent-EXTENDS site 9, at the actual consumed-token generation.
+
+Body retains nested Java selection: record 10 before definition preview, then
+11 before instance/assumption/theorem previews when RECURSIVE is absent, then 12
+before the USE/HIDE predicate when no nested module is selected. Declaration
+loops record sites 13–16; constant operator-declaration failures use sites 17/18.
+The shared formal-declaration helper retains its separate pending sites.
+
+Connected direct-choice sites are 4, 5, 7–18, 120 and 123–128. Source prelude's
+unreachable inner switch site 6 and other grammar choices remain pending.
+External production observations agree on 3,801 rows across 229 cases, including
+raw prelude/module inputs, and 641 bookkeeping/lexical-reset rows. Evidence is
+bounded and does not establish whole grammar expectation or parser/AST parity.
