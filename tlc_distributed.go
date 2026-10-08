@@ -16,17 +16,21 @@ import (
 // created. FP64 is initialized first like Java. Registry discovery and endpoint
 // export remain in the transport port. Construct one Tool per worker JVM,
 // shared by that JVM's threads.
-func LoadDistributedWorkerTool(server *tlc.TLCServer, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics, error) {
+func LoadDistributedWorkerTool(server tlc.DistributedServerEndpoint, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics, error) {
 	if server == nil {
 		panic(tlc.NewNullPointerException())
 	}
-	tlc.FP64InitPoly(server.GetIrredPolyForFP())
-	tlc.UniqueStringInitializeWithSource(tlc.NewLocalWorkerInternSource(server))
+	poly, err := server.GetIrredPolyForFP()
+	if err != nil {
+		return nil, nil, err
+	}
+	tlc.FP64InitPoly(poly)
+	tlc.UniqueStringInitializeWithSource(server)
 	if resolver == nil {
 		resolver = tlc.NewRMIFilenameToStreamResolver()
 	}
 	resolver.SetTLCServer(server)
-	app, diags, err := LoadTLCApp(server.GetSpecFileName(), server.GetConfigFileName(), server.GetCheckDeadlock(), resolver, runtime)
+	app, diags, err := loadDistributedEndpointApp(server, resolver, runtime)
 	if app == nil {
 		return nil, diags, err
 	}
@@ -37,10 +41,10 @@ func LoadDistributedWorkerTool(server *tlc.TLCServer, resolver *tlc.RMIFilenameT
 // Configuration and Tool construction complete before registration threads
 // start; those threads then register asynchronously with the supplied server.
 func StartDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
-	return startDistributedWorkerGroup(server, count, resolver, runtime, "", nil, address...)
+	return startDistributedWorkerGroup(tlc.NewLocalServerEndpoint(server), count, resolver, runtime, "", nil, address...)
 }
 
-func startDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, serverURL string, lookup tlc.TLCServerLookup, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
+func startDistributedWorkerGroup(server tlc.DistributedServerEndpoint, count int, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, serverURL string, lookup tlc.TLCServerLookup, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
 	count = int(int32(count))
 	if count < 0 {
 		panic(tlc.NewIllegalArgumentException("count < 0"))
@@ -49,7 +53,10 @@ func startDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
-	group := tlc.NewDistributedWorkerGroup(count, server, tool, address...)
+	group, err := tlc.NewDistributedWorkerGroup(count, server, tool, address...)
+	if err != nil {
+		return nil, diags, err
+	}
 	if lookup != nil {
 		group.Runtime.ConfigureKeepAliveLookup(serverURL, tlc.NewTLCServerStatusLookup(lookup), nil)
 	}
@@ -83,6 +90,24 @@ func LoadTLCApp(specFile, configFile string, deadlock bool, resolver tlc.Filenam
 		return nil, diags, err
 	}
 	return tlc.NewTLCApp(tool, deadlock), diags, err
+}
+
+// Read coordinator settings in the constructor argument order of TLCWorker.
+// A failed call must stop bootstrap before later calls or application loading.
+func loadDistributedEndpointApp(server tlc.DistributedServerEndpoint, resolver tlc.FilenameToStream, runtime tlc.RuntimeParameters) (*tlc.TLCApp, Diagnostics, error) {
+	spec, err := server.GetSpecFileName()
+	if err != nil {
+		return nil, nil, err
+	}
+	config, err := server.GetConfigFileName()
+	if err != nil {
+		return nil, nil, err
+	}
+	deadlock, err := server.GetCheckDeadlock()
+	if err != nil {
+		return nil, nil, err
+	}
+	return LoadTLCApp(spec, config, deadlock, resolver, runtime)
 }
 
 func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics, error) {
@@ -379,8 +404,8 @@ func CreateTLCApp(args []string, runtime tlc.RuntimeParameters, classpath ...[]t
 func RunDistributedWorker(process *tlc.DistributedWorkerProcess, args []string, env tlc.DistributedWorkerEnvironment, runtime tlc.RuntimeParameters) (Diagnostics, error) {
 	var diags Diagnostics
 	if env.LoadApp == nil {
-		env.LoadApp = func(server *tlc.TLCServer, resolver *tlc.RMIFilenameToStreamResolver) (*tlc.TLCApp, error) {
-			app, loaded, err := LoadTLCApp(server.GetSpecFileName(), server.GetConfigFileName(), server.GetCheckDeadlock(), resolver, runtime)
+		env.LoadApp = func(server tlc.DistributedServerEndpoint, resolver *tlc.RMIFilenameToStreamResolver) (*tlc.TLCApp, error) {
+			app, loaded, err := loadDistributedEndpointApp(server, resolver, runtime)
 			diags = append(diags, loaded...)
 			if err == nil && loaded.HasErrors() {
 				params := make([]string, 0, len(loaded))

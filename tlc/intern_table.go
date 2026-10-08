@@ -202,24 +202,3 @@ func (s *TLCServer) serverInternTable() *InternTable {
 	}
 	return s.InternTable
 }
-
-// LocalWorkerInternSource models Java serialization between separate JVMs.
-// It retains the master's table while the worker installs its own global table,
-// and copies raw token/location fields instead of re-interning the reply.
-type LocalWorkerInternSource struct{ server *TLCServer }
-
-func NewLocalWorkerInternSource(server *TLCServer) *LocalWorkerInternSource {
-	if server == nil {
-		panic(NewNullPointerException())
-	}
-	server.serverInternTable()
-	return &LocalWorkerInternSource{server: server}
-}
-
-func (s *LocalWorkerInternSource) Intern(str string) (*UniqueString, error) {
-	value, err := s.server.Intern(str)
-	if err != nil || value == nil {
-		return value, err
-	}
-	return &UniqueString{s: value.s, tok: value.tok, loc: value.loc}, nil
-}

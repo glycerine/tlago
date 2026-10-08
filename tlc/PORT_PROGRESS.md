@@ -17442,3 +17442,38 @@ Final focused root receipt: original TLCSet/distributed initialization checks
 pass in 1.816 seconds; handle 46409 is terminal with status 0. Endpoint/proxy/
 URI handle 1621 is terminal with status 0. Earlier corresponding handles
 2220, 88377 and 31684 also completed successfully. No live test handles remain.
+
+
+### 2026-10-08 — Coordinator endpoint bootstrap and keepalive
+
+Continued from d7c029b, with a clean worktree and no live processes. Introduced
+DistributedServerEndpoint for coordinator settings, files, interning, worker/FP
+registration and completion status. Discovery returns that endpoint rather than
+a concrete TLCServer. Worker process/group, root parser bootstrap, FP startup
+and keepalive now use these calls and preserve returned failures. There is no
+Java RMI protocol, JVM implementation or rpc25519 integration in this change.
+
+LocalServerEndpoint pins the coordinator intern table before worker global
+initialization and owns the previous local interning-copy behavior. Removed the
+superseded LocalWorkerInternSource instead of retaining an unused parallel path.
+Remote polynomial failure stops bootstrap before FP64/global interning changes,
+file resolver construction, app loading and registration. Root app loading reads
+spec/config/deadlock arguments in the original left-to-right order and stops
+at the failed call. Keepalive propagates an IsDone failure instead of assuming
+that successful discovery makes subsequent calls infallible. NewDistributedWorkerGroup
+returns endpoint-call errors; registration callbacks receive the endpoint.
+
+No original direct Java tests cover these individual remote-call failures.
+Following the latest user instruction, added focused Go unit tests for failed
+status/polynomial calls, all three constructor-argument failure positions and
+worker-owned intern metadata. The existing original smart-proxy cases and
+TLCSet/init source tests remain unchanged and green. No fixture or source test
+assertion was weakened, and no missing original transport test earns completion
+credit from these unit checks.
+
+Normal focused TLC checks pass in 0.021 seconds (15173 terminal status 0).
+Normal focused root checks pass in 1.865 seconds (59986 terminal status 0).
+The earlier endpoint/URI/proxy check also passed in 0.020 seconds (95537
+terminal status 0). All handles are retired. No full suite or race workload
+was run. Goal remains active: fingerprint endpoints, real network transport,
+serialization and distributed CLI/model integration are still pending.

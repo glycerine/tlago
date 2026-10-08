@@ -7839,7 +7839,12 @@ boundaries and termination behavior independently of transport.
 `DistributedWorkerEndpoint` supplies the five worker operations used by the
 coordinator. Server registration, server threads, smart-proxy measurements and
 shutdown use this interface. `LocalWorkerEndpoint` supplies the existing
-in-process behavior. Network endpoints remain to be implemented.
+in-process behavior. `DistributedServerEndpoint` supplies the coordinator's
+settings, file, interning, registration and status operations to discovery,
+worker bootstrap and fingerprint-server startup. The local coordinator adapter
+pins the interning table before worker context initialization and returns owned
+copies of string metadata. Network transport and fingerprint endpoint boundaries
+remain to be implemented.
 
 The Java reference implementation uses RMI:
 

@@ -13,7 +13,7 @@ import (
 // worker JVM. All registration runnables share the Tool, executor, and latch.
 type DistributedWorkerGroup struct {
 	Runtime   *DistributedWorkerRuntime
-	server    *TLCServer
+	server    DistributedServerEndpoint
 	runnables []*DistributedWorkerRunnable
 	started   atomic.Bool
 }
@@ -25,7 +25,7 @@ func DistributedWorkerThreadCount() int {
 	return runtime.NumCPU()
 }
 
-func NewDistributedWorkerGroup(count int, server *TLCServer, tool *Tool, address ...DistributedWorkerAddress) *DistributedWorkerGroup {
+func NewDistributedWorkerGroup(count int, server DistributedServerEndpoint, tool *Tool, address ...DistributedWorkerAddress) (*DistributedWorkerGroup, error) {
 	count = int(int32(count))
 	if count < 0 {
 		panic(NewIllegalArgumentException("count < 0"))
@@ -36,10 +36,17 @@ func NewDistributedWorkerGroup(count int, server *TLCServer, tool *Tool, address
 	r := NewDistributedWorkerRuntime(make([]*DistributedWorker, count)...)
 	r.launchKeepAlive = true
 	group := &DistributedWorkerGroup{Runtime: r, server: server, runnables: make([]*DistributedWorkerRunnable, count)}
-	manager := server.GetFPSetManager()
+	manager, err := server.GetFPSetManager()
+	if err != nil {
+		return nil, err
+	}
 	var app *TLCApp
 	if tool != nil {
-		app = NewTLCApp(tool, server.GetCheckDeadlock())
+		deadlock, err := server.GetCheckDeadlock()
+		if err != nil {
+			return nil, err
+		}
+		app = NewTLCApp(tool, deadlock)
 	}
 	for i := range group.runnables {
 		group.runnables[i] = &DistributedWorkerRunnable{threadID: i, server: server, app: app, manager: manager, runtime: r, done: make(chan struct{})}
@@ -49,7 +56,7 @@ func NewDistributedWorkerGroup(count int, server *TLCServer, tool *Tool, address
 		}
 	}
 	r.runnables = group.runnables
-	return group
+	return group, nil
 }
 
 // Start starts each registration thread before scheduling the timer and
@@ -92,13 +99,13 @@ func (g *DistributedWorkerGroup) Workers() []*DistributedWorker {
 
 type DistributedWorkerRunnable struct {
 	threadID     int
-	server       *TLCServer
+	server       DistributedServerEndpoint
 	app          *TLCApp
 	manager      *DistributedFPSetManager
 	runtime      *DistributedWorkerRuntime
 	address      *DistributedWorkerAddress
 	localHost    func() (string, error)
-	register     func(*TLCServer, *DistributedWorker) error
+	register     func(DistributedServerEndpoint, *DistributedWorker) error
 	worker       atomic.Pointer[DistributedWorker]
 	done         chan struct{}
 	completeOnce sync.Once

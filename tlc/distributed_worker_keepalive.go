@@ -70,6 +70,6 @@ func NewTLCServerStatusLookup(lookup TLCServerLookup) TLCServerStatusLookup {
 		if server == nil {
 			return false, NewNullPointerException()
 		}
-		return server.IsDone(), nil
+		return server.IsDone()
 	}
 }

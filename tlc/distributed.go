@@ -566,7 +566,7 @@ func (s *TLCServer) RegisterWorker(worker DistributedWorkerEndpoint) error {
 	if local, ok := worker.(*LocalWorkerEndpoint); ok && local.Worker != nil {
 		runtime := local.Worker.Runtime
 		if runtime != nil && !runtime.launchKeepAlive {
-			runtime.StartKeepAlive(s)
+			runtime.StartKeepAlive(NewLocalServerEndpoint(s))
 		}
 	}
 	return nil

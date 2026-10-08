@@ -19,10 +19,10 @@ type DistributedWorkerEnvironment struct {
 	ToolOut                io.Writer
 	SystemErr              io.Writer
 	AvailableProcessors    func() int
-	LoadApp                func(*TLCServer, *RMIFilenameToStreamResolver) (*TLCApp, error)
+	LoadApp                func(DistributedServerEndpoint, *RMIFilenameToStreamResolver) (*TLCApp, error)
 	StartThread            func(string, func())
 	LocalCanonicalHostName func() (string, error)
-	RegisterWorker         func(*TLCServer, *DistributedWorker) error
+	RegisterWorker         func(DistributedServerEndpoint, *DistributedWorker) error
 	ReadyDate              func() string
 }
 
@@ -101,15 +101,17 @@ func (p *DistributedWorkerProcess) start(serverName string, count int, env Distr
 	if err != nil {
 		return err
 	}
-	FP64InitPoly(server.GetIrredPolyForFP())
-	// Pin the server's local table before switching the package-level worker
-	// context. Like UniqueString.setSource, later main calls retain this
-	// worker JVM's existing strings and only replace their interning source.
-	source := NewLocalWorkerInternSource(server)
+	poly, err := server.GetIrredPolyForFP()
+	if err != nil {
+		return err
+	}
+	FP64InitPoly(poly)
+	// Later invocations retain this worker process's existing strings and
+	// replace only the coordinator supplying new string identities.
 	if p.intern == nil {
 		p.intern = NewInternTable(1024)
 	}
-	p.intern.SetSource(source)
+	p.intern.SetSource(server)
 	internTable = p.intern
 	initBuiltInOPs()
 	initCounterExampleUniqueStrings()
@@ -124,7 +126,10 @@ func (p *DistributedWorkerProcess) start(serverName string, count int, env Distr
 	if err != nil {
 		return err
 	}
-	manager := server.GetFPSetManager()
+	manager, err := server.GetFPSetManager()
+	if err != nil {
+		return err
+	}
 	group := &DistributedWorkerGroup{Runtime: p.Runtime, server: server, runnables: make([]*DistributedWorkerRunnable, count)}
 	p.Group = group
 	p.Runtime.keepAliveMu.Lock()

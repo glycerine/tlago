@@ -37,7 +37,7 @@ func NewDistributedWorkerRuntime(workers ...*DistributedWorker) *DistributedWork
 
 // StartKeepAlive captures the configured Naming.lookup/isDone boundary. Local
 // groups retain a direct-server adapter; discovery groups configure relookup.
-func (r *DistributedWorkerRuntime) StartKeepAlive(server *TLCServer) {
+func (r *DistributedWorkerRuntime) StartKeepAlive(server DistributedServerEndpoint) {
 	r.keepAliveMu.Lock()
 	defer r.keepAliveMu.Unlock()
 	if r.keepAlive != nil {
@@ -48,20 +48,20 @@ func (r *DistributedWorkerRuntime) StartKeepAlive(server *TLCServer) {
 
 // main replaces the static timer without canceling a preceding invocation's
 // timer. Worker.exit still cancels the currently published static timer.
-func (r *DistributedWorkerRuntime) replaceKeepAlive(server *TLCServer) {
+func (r *DistributedWorkerRuntime) replaceKeepAlive(server DistributedServerEndpoint) {
 	r.keepAliveMu.Lock()
 	defer r.keepAliveMu.Unlock()
 	r.startKeepAliveLocked(server)
 }
 
-func (r *DistributedWorkerRuntime) startKeepAliveLocked(server *TLCServer) {
+func (r *DistributedWorkerRuntime) startKeepAliveLocked(server DistributedServerEndpoint) {
 	lookup := r.statusLookup
 	if lookup == nil {
 		lookup = func(string) (bool, error) {
 			if server == nil {
 				return false, NewNullPointerException()
 			}
-			return server.IsDone(), nil
+			return server.IsDone()
 		}
 	}
 	// The Java constructor retains its supplied runnable array. Shutdown's

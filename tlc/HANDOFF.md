@@ -1,6 +1,8 @@
 # TLC Port Handoff
 
-Updated: October 8, 2026. Full-workspace verification baseline: `23f046e` (subsequent changes are documentation only).
+Updated: October 8, 2026. Full-workspace verification baseline: `23f046e`.
+The user subsequently supplied a green full-suite baseline. Current distributed
+changes have focused verification; do not rerun the full suite.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -65,8 +67,8 @@ Full normal `go test ./... -count=1 -timeout=60m` has passed with status 0 and
 zero failures: root 1,552.199 seconds, TLC 771.039 seconds, SANY 2.419 seconds.
 Handle 53216 is retired. All original workload bounds are retained, with no
 race instrumentation. Local-interface tests require the unrestricted environment.
-The run verifies implementation and test sources at `23f046e`; later commits
-only refine documentation. Detailed receipts are in PORT_PROGRESS.md.
+The run verifies implementation and test sources at `23f046e`. Distributed
+changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
@@ -1808,8 +1810,14 @@ rpc25519 alternative and Java RMI implementation are outside this work.
 smart proxy and shutdown. Registration preserves both source URI calls and
 propagates failures, including failures after the thread starts. The nine
 original smart-proxy cases now use the public method with the source dummy
-worker rather than bypassing the endpoint call. Network transport is still
-unimplemented; this chunk establishes the worker boundary only.
+worker rather than bypassing the endpoint call. `DistributedServerEndpoint` now also supplies discovery, worker bootstrap,
+file loading, coordinator interning, fingerprint-server registration and
+keepalive calls. All remote settings/status calls return errors. The local
+adapter pins coordinator interning identity before worker initialization and
+copies mutable metadata for workers. The root worker loader reads specification,
+configuration and deadlock arguments in source order and stops on failure.
+Network transport remains unimplemented. Next: fingerprint endpoint integration
+and network messages; do not treat the local adapters as distributed completion.
 
 ## Testing and workflow
 
