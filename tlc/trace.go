@@ -888,15 +888,19 @@ func (t *TLCTrace) Recover() error {
 	if t.diskdir == "" {
 		return nil
 	}
-	if err := t.ensureTraceRAFLocked(); err != nil {
-		return err
+	// A closed source RAF is not reopened by recovery. Metadata reads still
+	// precede the seek failure, including publication of the saved last pointer.
+	if !t.closed {
+		if err := t.ensureTraceRAFLocked(); err != nil {
+			return err
+		}
 	}
 	file, err := os.Open(t.chkptName("chkpt"))
 	if err != nil {
 		return err
 	}
 	in := NewValueInputStream(file)
-	if t.raf != nil {
+	if t.raf != nil || t.closed {
 		filePos, err := in.ReadLong()
 		if err != nil {
 			_ = in.Close()
@@ -907,10 +911,10 @@ func (t *TLCTrace) Recover() error {
 			_ = in.Close()
 			return err
 		}
+		t.lastPtr = lastPtr
 		if err := in.Close(); err != nil {
 			return err
 		}
-		t.lastPtr = lastPtr
 		return t.raf.Seek(filePos)
 	}
 	length, err := in.ReadInt()

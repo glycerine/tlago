@@ -19243,3 +19243,33 @@ That full run precedes the closed-owner guard/direct fixture refinements; final
 short checks cover those branches without repeating the unchanged long workload.
 All handles are retired. No race instrumentation or full suite was selected.
 Between-commit interruption and broader distributed parity remain incomplete.
+
+## October 8, 2026: closed trace recovery and pre-publication metadata failures
+
+Continued recovery auditing against TLCTrace.recover and TLCServer.modelCheck.
+Found a native lifecycle shortcut: TLCTrace.Close clears the RAF pointer, and
+Recover then called its normal opening helper, silently reopening a closed
+owner. Source recovery reads checkpoint cursor/lastPtr, assigns lastPtr, closes
+the input and seeks on its existing RAF; a closed RAF therefore fails after
+metadata reads. Recover now skips reopening a closed owner and assigns lastPtr
+immediately after reading it, before close/seek. Native seek returns its I/O
+failure. No transport or Java runtime emulation was added.
+
+The new closed-owner test first fails with nil error in 0.012 seconds (93325
+terminal status 1). After the fix, the new recovery/metadata and existing trace
+error/reset selection passes in 0.031 seconds (18606 terminal status 0). Added
+18 coordinator metadata cases: missing checkpoint, all 0–15 byte truncations
+and a complete header with negative cursor. They require I/O failure with the
+source saved-pointer update for complete metadata, no queue recovery, no hostname
+lookup/publication, no initial-state work, no recovery-end/GENERAL output from
+ModelCheck and no Done mutation. The recovery exception escapes before the init
+catch; the outer command catch owns reporting. No enabled direct original method
+covers these boundaries, so supplemental checks add no original-method credit.
+
+Expanded trace/recovery checks pass in 1.757 seconds (94973 terminal status 0).
+Final exact short selection also includes assigned-block native TCP recovery,
+original checkpoint I/O catch categories and existing trace behavior, passing
+in 1.689 seconds (63281 terminal status 0). All handles are retired. No full
+suite, long model or race instrumentation was run; unchanged valid recovery
+retains the prior full-model receipt. Later recovery phases, between-commit
+interruption and broader distributed parity remain incomplete.

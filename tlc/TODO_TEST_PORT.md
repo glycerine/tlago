@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native coordinator recovery checks now cover missing trace checkpoint metadata,
+all 0–15 byte truncations and a complete negative cursor. They require I/O
+propagation before queue recovery/publication/initialization and the source
+saved-pointer update before failed seek. Closed-owner recovery must retain the
+same read-before-seek order without reopening the handle. No enabled original
+method covers these boundaries; supplemental checks add no original-method credit.
+
 Native trace recovery now propagates enumerator creation/cursor/read/reset I/O
 failures. Short checks cover truncated predecessor/fingerprint fields, missing
 files, closed handles, valid zero fingerprints and reset after trace growth.

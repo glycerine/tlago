@@ -11270,3 +11270,14 @@ The full native interrupted-checkpoint recovery still finishes the unchanged
 MC06 model after restoring old queue/full-trace fingerprints. This repairs the
 previously documented error-propagation gap; it does not establish atomicity
 across checkpoint file commits or broader distributed completion.
+
+TLCTrace.Recover now retains a closed owner instead of calling the helper that
+would reopen its RAF. The disk checkpoint fields are still read first; lastPtr
+is assigned immediately after its field read, before input close and seek,
+matching the source mutation order. A seek on the nil/closed native owner returns
+its I/O error. This is a trace-recovery lifecycle correction; it adds no transport
+compatibility behavior. Short TLCServer.ModelCheck checks require missing or
+truncated metadata and a negative cursor to escape before queue recovery,
+hostname resolution, registry creation, initial-state work or recovery-end output.
+The method does not mark Done or emit GENERAL in that path; the outer command
+catch owns reporting. Further failure phases and broader parity remain pending.

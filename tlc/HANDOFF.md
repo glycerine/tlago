@@ -73,6 +73,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Closed trace recovery now preserves the source lifecycle: read checkpoint
+metadata and update the saved pointer, then fail the seek on a closed owner
+without reopening it. Short coordinator checks cover missing metadata, all
+truncation lengths and a negative saved cursor. Failures escape recovery before
+queue recovery, hostname resolution, publication or initialization; reporting
+belongs to the outer command catch. Further recovery phases remain under audit.
+
 Trace enumeration now propagates creation, cursor, read and reset errors through
 native Go return values. MultiFPSet, disk and off-heap trace recovery and CheckImpl
 retain those failures instead of inserting zero or treating them as end-of-trace.
