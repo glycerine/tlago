@@ -19273,3 +19273,38 @@ in 1.689 seconds (63281 terminal status 0). All handles are retired. No full
 suite, long model or race instrumentation was run; unchanged valid recovery
 retains the prior full-model receipt. Later recovery phases, between-commit
 interruption and broader distributed parity remain incomplete.
+
+## October 8, 2026: partial queue/state mutation during failed recovery
+
+Audited DiskStateQueue.recover and TLCState/TLCStateMut.read. Go cleared both
+entire buffers and read each state into a temporary before storing it; source
+leaves unvisited slots unchanged and assigns each new empty state before reading.
+Go also delayed WorkerID/UID mutation until the complete header was read, while
+source assigns each successful field immediately. Restored those mutation orders.
+Queue recovery now checks normal input close before reader restart and loFile
+update, with native failure cleanup closing the input only once.
+
+The new enqueue/dequeue cases first fail at cleared untouched slots in 0.017
+seconds (78792 terminal status 1). Initial fixture compilation needed the local
+FPSet rather than endpoint interface; that build correction earns no failure
+credit. After production fixes, initial cases pass in 0.017 seconds (9391 terminal
+status 0). Expanded to four cases: enqueue/dequeue failure before UID or level.
+All run through real TLCServer.ModelCheck after valid trace checkpoint metadata.
+Require source queue-header mutations, preserved inactive/unreached buffer slots,
+completed enqueue state, published failed slot with its already-read worker/UID
+fields, and no FP recovery, hostname lookup, publication or Done mutation.
+No enabled original Java method directly covers these failure boundaries;
+supplemental checks add no original-method completion credit.
+
+Expanded native checks, existing original value-stream methods and nine original
+MemStateQueue methods pass in 0.034 seconds (84010 terminal status 0). The nine
+original short DiskStateQueue inherited methods also pass in 0.017 seconds
+(terminal status 0); the unchanged 2,147,483,648-state growth method was excluded
+from this focused run, with no workload alteration. The first assigned-block
+selection caught a double-close introduced by explicit normal close plus the
+old unconditional defer (0.023 seconds, terminal status 1). Corrected native
+cleanup to close once. Final queue/trace mutation, checkpoint category and
+local/single/partitioned TCP assigned-block recovery selection passes in 0.060
+seconds (17104 terminal status 0). All handles are retired. No full suite, long
+model or race instrumentation was selected. Later recovery phases and broader
+distributed parity remain incomplete.

@@ -11281,3 +11281,16 @@ truncated metadata and a negative cursor to escape before queue recovery,
 hostname resolution, registry creation, initial-state work or recovery-end output.
 The method does not mark Done or emit GENERAL in that path; the outer command
 catch owns reporting. Further failure phases and broader parity remain pending.
+
+DiskStateQueue.Recover now follows source mutation order for partial state reads.
+It retains untouched buffer entries, stores each NewEmptyState into its selected
+slot before calling Read, and leaves completed state/header mutations visible if
+a later read fails. TLCStateMut.Read publishes WorkerID and UID immediately after
+each successful field read, rather than waiting for all three header fields.
+Normal input close happens once before pool-reader restart and loFile update;
+native failure cleanup does not double-close the stream. Four native corrupt
+queue cases run through TLCServer.ModelCheck after valid trace metadata recovery.
+They require retained inactive/unreached slots, completed enqueue records,
+partial worker/UID fields, the original queue-header updates and failure before
+fingerprint recovery, hostname lookup or publication. These checks add no
+original-method credit. Later recovery phases and broader parity remain pending.

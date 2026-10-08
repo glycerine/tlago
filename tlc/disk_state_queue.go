@@ -336,7 +336,12 @@ func (q *DiskStateQueue) Recover() error {
 		_ = file.Close()
 		return err
 	}
-	defer in.Close()
+	closed := false
+	defer func() {
+		if !closed {
+			_ = in.Close()
+		}
+	}()
 	length32, err := in.ReadInt()
 	if err != nil {
 		return err
@@ -351,28 +356,24 @@ func (q *DiskStateQueue) Recover() error {
 		*ptr = int(value)
 	}
 	q.lastLoPool = q.loPool - 1
-	for i := range q.enqBuf {
-		q.enqBuf[i] = nil
-	}
-	for i := range q.deqBuf {
-		q.deqBuf[i] = nil
-	}
 	for i := 0; i < q.enqIndex; i++ {
-		state := NewEmptyState()
-		if err := state.Read(in); err != nil {
+		q.enqBuf[i] = NewEmptyState()
+		if err := q.enqBuf[i].Read(in); err != nil {
 			return err
 		}
-		q.enqBuf[i] = state
 	}
 	for i := q.deqIndex; i < len(q.deqBuf); i++ {
-		state := NewEmptyState()
-		if err := state.Read(in); err != nil {
+		q.deqBuf[i] = NewEmptyState()
+		if err := q.deqBuf[i].Read(in); err != nil {
 			if errors.Is(err, io.EOF) {
 				return io.ErrUnexpectedEOF
 			}
 			return err
 		}
-		q.deqBuf[i] = state
+	}
+	closed = true
+	if err := in.Close(); err != nil {
+		return err
 	}
 	if q.reader != nil {
 		q.reader.Restart(q.poolName(q.lastLoPool), q.lastLoPool < q.hiPool)

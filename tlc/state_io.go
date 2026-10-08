@@ -34,16 +34,16 @@ func (s *TLCStateMut) Read(in *ValueInputStream) error {
 	if err != nil {
 		return err
 	}
+	s.WorkerID = workerID
 	uid, err := in.ReadLongNat()
 	if err != nil {
 		return err
 	}
+	s.UID = uid
 	level, err := in.ReadShortNat()
 	if err != nil {
 		return err
 	}
-	s.WorkerID = workerID
-	s.UID = uid
 	s.level = int(level)
 	if len(s.values) != len(stateVariables) {
 		s.values = make([]Value, len(stateVariables))

@@ -73,6 +73,14 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Disk queue recovery now retains source partial mutation on failed state reads.
+Untouched buffer slots survive; each visited slot receives its empty state before
+reading, and completed worker/UID fields survive a later read failure. The input
+closes once before reader restart on success. Four short enqueue/dequeue failure
+cases verify trace-first recovery and no later fingerprint recovery/publication.
+Existing original short queue/value-stream translations and assigned-block
+recovery pass. Later failure phases and broader parity remain under audit.
+
 Closed trace recovery now preserves the source lifecycle: read checkpoint
 metadata and update the saved pointer, then fail the seek on a closed owner
 without reopening it. Short coordinator checks cover missing metadata, all

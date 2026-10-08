@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native queue recovery failure checks cover enqueue/dequeue records truncated
+before UID or level. They require untouched slots, publication of the new empty
+state before reading, completed header-field mutations and failure before FP
+recovery/publication after successful trace recovery. Original short queue and
+value-stream translations remain green. No enabled original method covers these
+failure boundaries; supplemental checks add no original-method credit.
+
 Native coordinator recovery checks now cover missing trace checkpoint metadata,
 all 0–15 byte truncations and a complete negative cursor. They require I/O
 propagation before queue recovery/publication/initialization and the source
