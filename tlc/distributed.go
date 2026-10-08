@@ -1062,7 +1062,10 @@ func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*State
 			state := newStates[i].At(index)
 			fp := uint64(newFps[i].ElementAt(index))
 			if t.Server.Trace != nil {
-				if _, err := t.Server.Trace.WriteState(state.Predecessor(), fp, state, state.GetAction()); err != nil {
+				// TLCWorker returns a successor whose UID still identifies its
+				// predecessor. Java writes that UID, then replaces it with the
+				// new trace location; it does not transfer predecessor objects.
+				if _, err := t.Server.Trace.WriteStateRecord(state, fp, state); err != nil {
 					t.handleRunError(err, stateQueue)
 					return
 				}

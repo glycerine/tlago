@@ -115,11 +115,6 @@ func (a *TLCApp) GetNextStates(state *TLCStateMut) (*StateVec, error) {
 		if next == nil {
 			panic(NewNullPointerException())
 		}
-		for i := 0; i < next.Size(); i++ {
-			if successor := next.At(i); successor != nil {
-				successor.attachTraceMetadata(state, action)
-			}
-		}
 		// Java addElements chooses the larger vector as the receiver. This
 		// changes order when a later action generates more states.
 		out = out.AddElements(next)

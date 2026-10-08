@@ -1882,7 +1882,19 @@ remain pending. Native CLI entry points now expose `server`, `worker`,
 consumption before role initialization. Worker command lifetime follows its
 exit latch; the combined command waits for both roles. Callback publication
 accepts a reachable host with the OS-selected port. These entry points still
-need separate-process model verification and native signal shutdown handling. These focused checks do not prove distributed completion.
+need separate-process model verification and native signal shutdown handling. A separate-process native coordinator/worker run of the unchanged DieHard
+model now completes normally and matches all seven upstream expected trace
+states. It exposed and repaired two source deviations: TLCApp injected
+predecessor/action objects that Java does not attach, and coordinator publication
+used those objects instead of the incoming successor UID as the predecessor
+trace location. Publication now writes the incoming UID before replacing it,
+without adding evaluator metadata. Focused source-contract and native-boundary
+checks pass. The probe ran from the model directory with one worker and no
+checkpoints; it is supplemental evidence, not original remote-harness port
+completion (that harness remains unconditionally assumption-disabled upstream).
+Signal shutdown and full remote test translation remain pending.
+
+These focused checks do not prove distributed completion.
 
 ## Testing and workflow
 

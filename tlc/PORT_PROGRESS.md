@@ -17950,3 +17950,43 @@ address/bootstrap and coordinator publication checks pass in 0.025 seconds
 (18820 terminal status 0). No full suite or race workload was run. Signal-driven
 shutdown, separate-process model execution and remaining extended/custom
 payloads are still pending; this chunk does not establish distributed completion.
+
+## Distributed successor and trace fidelity (October 8, 2026)
+
+Ran the native coordinator and worker as separate owned Go processes against
+the unchanged DieHard model/configuration. Initial probing from the repository
+root failed source lookup; the distributed resolver expects its model search
+path to be configured, so subsequent probes run from the model directory.
+That failed probe's worker was explicitly terminated, and all probe handles
+are retired. No fixture or source resolver behavior was altered.
+
+The first connected run failed with `network state contains extended evaluator
+metadata`. TLCApp.getNextStates in Go unconditionally attached predecessor and
+action objects; Java's method simply collects tool successors. Removed this
+extra mutation rather than weakening the codec's rejection. The next run
+completed but printed only the last two states: coordinator publication used
+an object predecessor rather than Java TLCServerThread's incoming successor
+UID. The worker intentionally places its predecessor UID in each returned
+successor. Publication now calls WriteStateRecord with that incoming state as
+the predecessor-location carrier, capturing the UID before replacement and
+retaining its source level without injecting graph metadata.
+
+The final separate-process probe exits 0 for coordinator and worker (98996
+terminal status 0). All seven state strings extracted from its output compare
+exactly to the unchanged DieHardDistributedTLCTest expectedTrace entries;
+behavior and completion messages are present and GENERAL is absent. Generated
+counts are scheduling-dependent, as upstream notes. Logs are
+`.codex-gotmp/distributed-server.log` and `distributed-worker.log`. This probe
+uses one worker thread and zero checkpoint interval; it does not claim port
+credit for the upstream assumption-disabled remote harness.
+
+There are no enabled original direct tests of these native/source boundaries.
+Added focused Go checks for TLCApp preserving tool metadata and coordinator
+trace publication retaining incoming predecessor UID, level and payload
+encodability. Those checks pass in 0.014 seconds (19171 terminal status 0).
+Final payload/source-contract plus original distributed model/init checks pass:
+root 1.855 seconds, TLC 0.017 seconds (75960 terminal status 0). Native worker
+bootstrap/callback, coordinator publication and focused worker boundaries pass
+in 0.028 seconds. No full suite or race workload was run. Native signal shutdown,
+remaining extended/custom payloads and original remote harness translation
+remain pending. The goal is not complete.
