@@ -18249,3 +18249,34 @@ remain pending; the distributed goal is not complete.
 Final helper compilation/CLI/signal focused gate after adding early producer-exit
 handling passes in 0.016 seconds (88968 terminal status 0). No unchanged full
 model workload was repeated for that failure-only harness branch.
+
+## October 8, 2026: finite constant operators in native distributed payloads
+
+The payload audit identified a real omitted data representation: upstream
+`OpRcdValue` contains finite argument rows and results, with Serializable Value
+and Vect bases. Added explicit native graph rows and the existing Go operator
+constructor on decode. Shared arguments/results and recursive references retain
+identity; nil/empty rows and arrays remain distinct. Operator application and
+printing retain their original implementation rather than converting operators
+to ordinary functions. Malformed row references fail decoding.
+
+No direct upstream OpRcdValue transfer test exists. Added a short native payload
+check using the source-documented two-row constant-operator example, application,
+identity, receiver ownership, null/empty rows, cycles and invalid references.
+The existing worker TCP lifecycle test now sends and returns a constant operator,
+and applies it at the remote endpoint. These checks do not claim completion of
+an original Java test method or replace the disabled remote model harness.
+
+The audit also distinguishes Serializable declarations from transferable object
+graphs: Action declares Serializable but retains ordinary non-Serializable
+SemanticNode/Context objects. OpLambdaValue retains Context, and MethodValue
+retains reflection/method handles. No Java serialization or JVM machinery is
+introduced. Extended metadata and opaque custom data remain explicitly pending.
+
+Focused state/result/failure payload selection passes normally in 0.014 seconds
+(61437 terminal status 0). The exact worker RPC lifecycle check passes normally
+in 0.013 seconds (95784 terminal status 0), using an owned loopback listener.
+An initial compile check caught the new test's incorrect GetKind spelling;
+corrected it to the existing Kind method before both green checks. No full
+suite or race workload was run. HANDOFF, architecture and test inventory are
+updated; the broader distributed goal remains incomplete.

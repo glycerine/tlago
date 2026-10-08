@@ -33,11 +33,18 @@ type DistributedStringNode struct {
 	Unregistered bool
 }
 
+type DistributedValueReferences struct {
+	Nil        bool
+	References []int
+}
+
 // Value nodes retain representation and caches for symbolic set constructors.
 // Function/predicate/lazy wrappers use the same materialization contracts as
 // their source network serialization, without serializing evaluator machinery.
 type DistributedValueNode struct {
 	Kind              string
+	OperatorDomain    []DistributedValueReferences
+	OperatorDomainNil bool
 	References        []int
 	ReferencesNil     bool
 	Domain            []int
@@ -196,6 +203,19 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 	case *FcnRcdValue:
 		node.Kind, children, domain, node.Flag = "function", v.Values, v.Domain, v.IsNorm
 		cache = v.Intv
+	case *OpRcdValue:
+		// Unlike evaluator-backed operators, a configured constant operator
+		// contains only finite argument rows and result values. Keep it an
+		// operator; converting it to a function would change application rules.
+		node.Kind, children, node.OperatorDomainNil = "operatorRecord", v.Values, v.Domain == nil
+		node.OperatorDomain = make([]DistributedValueReferences, len(v.Domain))
+		for i, row := range v.Domain {
+			refs, err := e.refs(row)
+			if err != nil {
+				return 0, err
+			}
+			node.OperatorDomain[i] = DistributedValueReferences{Nil: row == nil, References: refs}
+		}
 	case *FcnLambdaValue:
 		node.Kind, children = "lambda", []Value{v.ToFcnRcd()}
 	case *LazySupplierValue:
@@ -390,6 +410,8 @@ func allocateDistributedValue(node DistributedValueNode) (Value, error) {
 		return &SetEnumValue{BaseValue: base, IsNorm: node.Flag}, nil
 	case "function":
 		return &FcnRcdValue{BaseValue: base, IsNorm: node.Flag}, nil
+	case "operatorRecord":
+		return NewOpRcdValue(), nil
 	case "lambda":
 		return &FcnLambdaValue{BaseValue: base}, nil
 	case "lazy":
@@ -575,6 +597,21 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 			return fmt.Errorf("function has unequal domain and values")
 		}
 		v.Domain, v.Values = domain, refs
+	case *OpRcdValue:
+		if node.OperatorDomainNil {
+			if len(node.OperatorDomain) != 0 {
+				return fmt.Errorf("null operator domain contains rows")
+			}
+		} else {
+			v.Domain = make([][]Value, len(node.OperatorDomain))
+			for i, row := range node.OperatorDomain {
+				v.Domain[i], err = d.refs(row.References, row.Nil)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		v.Values = refs
 	case *FcnLambdaValue:
 		v.FcnRcd, err = distributedValueCast[*FcnRcdValue](refs[0])
 	case *LazyValue:

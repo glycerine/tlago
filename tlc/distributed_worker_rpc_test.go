@@ -56,6 +56,8 @@ func startWorkerRPC(t *testing.T, endpoint DistributedWorkerEndpoint) (*Distribu
 
 func TestWorkerRPCStateResultAndLifecycle(t *testing.T) {
 	state := &TLCStateMut{WorkerID: 7, UID: -1, level: 40000, values: []Value{NewIntValue(42)}}
+	op := NewOpRcdValueFrom([][]Value{{state.values[0]}}, []Value{NewStringValue("answer")})
+	state.values = append(state.values, op)
 	var calls atomic.Int64
 	worker := &rpcTestWorker{next: func(states []*TLCStateMut) (*NextStateResult, error) {
 		calls.Add(1)
@@ -67,6 +69,13 @@ func TestWorkerRPCStateResultAndLifecycle(t *testing.T) {
 		}
 		if len(states) != 3 || states[0] == state || states[0] != states[1] || states[2] != nil || states[0].level != 40000 || states[0].UID != -1 {
 			return nil, errors.New("request graph changed")
+		}
+		operator, ok := states[0].values[1].(*OpRcdValue)
+		if !ok || operator == op || operator.Domain[0][0] != states[0].values[0] {
+			return nil, errors.New("request constant operator changed")
+		}
+		if result, err := operator.Eval([]Value{NewIntValue(42)}, 0); err != nil || result.String() != `"answer"` {
+			return nil, errors.New("request constant operator cannot be applied")
 		}
 		vector := NewStateVecFrom(states)
 		fps := NewLongVecFrom([]int64{math.MinInt64, -1, math.MaxInt64})
@@ -82,6 +91,10 @@ func TestWorkerRPCStateResultAndLifecycle(t *testing.T) {
 	}
 	if got.NextFingerprints[0] != got.NextFingerprints[2] || got.NextFingerprints[0].At(0) != math.MinInt64 || got.ComputationTime != math.MaxInt64 || got.StatesComputed != -1 {
 		t.Fatal("result fingerprints/counters changed")
+	}
+	returned := got.NextStates[0].At(0)
+	if operator := returned.values[1].(*OpRcdValue); operator == op || operator.Domain[0][0] != returned.values[0] {
+		t.Fatal("result constant operator changed")
 	}
 	if got, err := client.GetNextStates(nil); err != nil || got != nil {
 		t.Fatalf("null request/result: %v/%v", got, err)

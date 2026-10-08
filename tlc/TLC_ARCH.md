@@ -10937,3 +10937,22 @@ worker exit latch, reporting/checkpoint bounds and coordinator batching remain
 owned by the original TLC port. These Go transport lifecycle rules do not imply
 Java RMI compatibility or a JVM runtime. Process/model coverage still needs the
 remaining failure, checkpoint/recovery and extended-payload cases.
+
+## Native finite constant-operator payload
+
+Configured constant operators are finite `OpRcdValue` argument-row/result maps,
+not evaluator closures. Java's `Value` base and its `Vect` containers declare
+Serializable; the rows and results contain ordinary values. The Go graph now
+represents these rows explicitly and allocates the operator before filling its
+references, preserving shared values and cycles. Nil/empty arrays and rows stay
+distinct through gob. Decoding uses the existing Go operator constructor to
+retain application, printing and unsupported-operation behavior; it does not
+convert the operator into a function. Invalid row references are rejected.
+
+Java serializability declarations alone do not define required native payloads.
+`OpLambdaValue` holds a non-transient `Context` that does not implement
+Serializable; `MethodValue` holds reflection objects and method handles.
+`Action` declares Serializable, but its ordinary `SemanticNode` predicate and
+`Context` do not. These evaluator objects are not a reason to introduce JVM
+emulation or Java serialization. Extended metadata and custom data still require
+a source-behavior audit; supported transferable data must not be discarded.

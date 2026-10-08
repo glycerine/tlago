@@ -196,3 +196,54 @@ func TestDistributedStatePayloadModelData(t *testing.T) {
 		t.Fatal("opaque model data was silently discarded")
 	}
 }
+
+func TestDistributedStatePayloadConstantOperator(t *testing.T) {
+	// The finite CONSTANT op(1, 1) = "a", op(1, 2) = "b" example
+	// documented by upstream OpRcdValue must retain operator application.
+	one, two := NewIntValue(1), NewIntValue(2)
+	a, b := NewStringValue("a"), NewStringValue("b")
+	op := NewOpRcdValueFrom([][]Value{{one, one}, {one, two}}, []Value{a, b})
+	got := distributedPayloadRoundTrip(t, []*TLCStateMut{{level: 1, values: []Value{op, op, one, a}}})[0].values
+	copied := got[0].(*OpRcdValue)
+	if copied == op || got[1] != copied || copied.Domain[0][0] != got[2] || copied.Domain[0][1] != got[2] || copied.Domain[1][0] != got[2] || copied.Values[0] != got[3] {
+		t.Fatal("operator or argument/result identity was lost")
+	}
+	for i, args := range [][]Value{{NewIntValue(1), NewIntValue(1)}, {NewIntValue(1), NewIntValue(2)}} {
+		result, err := copied.Eval(args, 0)
+		if err != nil || result != copied.Values[i] {
+			t.Fatalf("operator application %d = %v, %v", i, result, err)
+		}
+	}
+	if copied.String() != op.String() || copied.Kind() != OpRcdValueKind {
+		t.Fatal("operator representation changed")
+	}
+	copied.Domain[0][0] = two
+	if op.Domain[0][0] != one {
+		t.Fatal("receiver operator aliases sender argument rows")
+	}
+
+	// Native graphs retain null/empty rows and recursive references without
+	// evaluating the operator or applying function-normalization rules.
+	cycle := NewOpRcdValueFrom([][]Value{nil, {}}, make([]Value, 2))
+	cycle.Values[0], cycle.Values[1] = cycle, cycle
+	cloned := distributedPayloadRoundTrip(t, []*TLCStateMut{{level: 1, values: []Value{cycle, NewOpRcdValue(), NewOpRcdValueFrom([][]Value{}, []Value{})}}})[0].values
+	cyclic := cloned[0].(*OpRcdValue)
+	if cyclic.Values[0] != cyclic || cyclic.Values[1] != cyclic || cyclic.Domain[0] != nil || cyclic.Domain[1] == nil {
+		t.Fatal("operator cycles or null/empty argument rows were lost")
+	}
+	if empty := cloned[1].(*OpRcdValue); empty.Domain != nil || empty.Values != nil {
+		t.Fatal("null operator arrays became empty")
+	}
+	if empty := cloned[2].(*OpRcdValue); empty.Domain == nil || empty.Values == nil {
+		t.Fatal("empty operator arrays became null")
+	}
+	for _, node := range []DistributedValueNode{
+		{Kind: "operatorRecord", OperatorDomainNil: true, OperatorDomain: []DistributedValueReferences{{}}},
+		{Kind: "operatorRecord", OperatorDomain: []DistributedValueReferences{{Nil: true, References: []int{0}}}},
+		{Kind: "operatorRecord", OperatorDomain: []DistributedValueReferences{{References: []int{2}}}},
+	} {
+		if _, err := DecodeDistributedStates(&DistributedStatePayload{Values: []DistributedValueNode{node}}); err == nil {
+			t.Fatalf("malformed operator domain accepted: %#v", node)
+		}
+	}
+}

@@ -1830,9 +1830,16 @@ filenames cross the wire. Null batches now fail across all six native storage
 backends, matching the source dereference rather than being treated as empty.
 Trace recovery stays coordinator-local. A native state/value graph payload now preserves full int32 levels, signed
 UIDs, state/value/string object sharing, symbolic set representations and caches,
-with the source function/predicate/lazy materialization rules. Gob round-trip
-unit tests pass. It currently rejects extended evaluator state metadata, opaque
-custom user values/data and operator values; those are not silently discarded.
+with the source function/predicate/lazy materialization rules. Finite configured
+constant operators (`OpRcdValue`) retain their argument rows, results and operator
+application behavior through native payloads. Gob round-trip and worker TCP
+request/result checks pass. The codec still rejects extended evaluator state
+metadata, opaque custom user values/data and evaluator-backed operators; those
+are not silently discarded. Continue auditing actual transferable data rather
+than implementing Java object serialization: source `OpLambdaValue` retains a
+non-serializable `Context`, while `MethodValue` retains reflection/method handles.
+`Action` declares Serializable, but its ordinary predicate/context objects do
+not; that declaration alone does not establish transferable extended states.
 `DistributedResultPayload` now carries worker result partitions and signed
 counters. Repeated state/fingerprint vectors retain identity, and all partitions
 share one state/value graph. Null arrays and partitions remain distinct from
