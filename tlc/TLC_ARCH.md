@@ -10004,3 +10004,27 @@ module/definition/declaration/fact cases and valid/malformed proof and number
 forms. Compare syntax kinds/images/four coordinates and complete parse messages,
 with outer log whitespace excluded. This does not establish every proof state,
 node allocation, expected-token set or evaluator graph-sharing requirement.
+
+
+## Expression forms retain generated preview order
+
+OpOrExpr uses source calls 38 (budget 2) and 39 (Integer.MAX_VALUE), each followed
+by the source junction-column predicate, then 40 (budget 1). SomeQuant uses 41
+(Integer.MAX_VALUE). BraceCases runs expression preview 45 (budget 1) before the
+function-head predicate; its other alternatives use 42/43 (Integer.MAX_VALUE)
+and 44 (budget 1). Eagerly running the function-head predicate changes source
+scan order and is not equivalent to this decision sequence.
+
+SBracketCases preserves function-head selection, then record preview 46,
+keyword-field reclassification, record-set preview 47 and expression preview 48.
+Calls 46/47 use Integer.MAX_VALUE and 48 uses budget 1. TupleOrAction's optional
+expression uses 49 (budget 1). These sites save actual generated calls rather
+than retaining separate native estimates of failed-input spans. Source production
+entry points 1–50, 68 and 72 are now connected; remaining expression/selector
+callers and full diagnostic bookkeeping remain pending.
+
+External production observations agree on 1,828 rows across 114 valid/malformed
+cases, comparing parse results, syntax kinds/images/four coordinates and complete
+parse messages with outer log whitespace excluded. They do not establish every
+junction/operator-stack predicate context, expected-token alternative, allocation
+identity or evaluator graph-sharing requirement.

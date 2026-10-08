@@ -738,9 +738,14 @@ assertion expressions and decimal preview now use source calls 24–37 with Java
 budgets and saved-call order. Proof consumes PROOF only on its source preview;
 failed terminal/structured alternatives retain the actual source token position.
 Obsolete proof-bound/identifier scanners and decimal failure-span estimates are
-removed. Connected entry points are now 1–37, 50, 68 and 72. All 1,301 external
-rows agree across 83 valid/malformed cases. Current original frontend/model checks
-pass in 9.755 seconds, complete SANY in 1.800 seconds and compilation passes.
+removed. Operator arguments, quantifiers, sets, brackets and tuples now also use
+source calls 38–49 with Java's budgets, predicate order and saved-call indices.
+Set parsing previews its expression before the function-head predicate; bracket
+parsing preserves the keyword-field reclassification choice after record preview.
+Unused native previews and their manual error-span estimates are removed.
+Connected entry points are now 1–50, 68 and 72. All 1,828 external rows agree
+across 114 valid/malformed cases. Current original frontend/model checks pass in
+9.112 seconds, complete SANY in 1.864 seconds and compilation passes.
 Remaining call-site integration, grammar expectations, general rescan integration
 and proof generation remain reconciliation work. These bounded observations do
 not establish every semantic-predicate context or full parser parity.

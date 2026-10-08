@@ -1747,16 +1747,15 @@ func (p *SanyParser) PrimitiveExp() *SanySyntaxNode {
 
 // OpOrExpr is used only for operator arguments and substitution values.
 func (p *SanyParser) OpOrExpr(stop func(*SanyToken) bool) *SanySyntaxNode {
-	if !p.startsOpOrExprAt(0) {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected operator or expression")
-	}
-	if p.check(SanyTokenLambda) {
-		return p.Lambda(stop)
-	}
-	if p.startsOperatorReference(stop) && p.peekNext().Kind != SanyTokenLbr {
+	if p.scanLookahead(38, 2) && p.junctionListContext.isAboveCurrent(p.peek().Begin.Column) {
 		return p.OperatorReference()
+	} else if p.scanLookahead(39, 2147483647) && p.junctionListContext.isAboveCurrent(p.peek().Begin.Column) {
+		return p.Lambda(stop)
+	} else if p.scanLookahead(40, 1) {
+		return p.ExpressionUntil(stop)
 	}
-	return p.ExpressionUntil(stop)
+	p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected operator or expression")
+	return nil
 }
 
 func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
@@ -1828,24 +1827,6 @@ func (p *SanyParser) checkJunctionIndentation(node, item *SanySyntaxNode) {
 func (p *SanyParser) junctionLocation(location SanyRange) string {
 	return "line " + strconv.Itoa(location.Begin.Line) + ", col " + strconv.Itoa(location.Begin.Column) +
 		" to line " + strconv.Itoa(location.End.Line) + ", col " + strconv.Itoa(location.End.Column) + " of module " + p.moduleName
-}
-
-func (p *SanyParser) startsOperatorReference(stop func(*SanyToken) bool) bool {
-	if !p.aboveCurrentJunction() {
-		return false
-	}
-	if !p.startsExpressionPrefix() && !p.check(SanyTokenOp76) && !p.isGrammarInfixOperator(p.peek()) && !p.isGrammarPostfixOperator(p.peek()) {
-		return false
-	}
-	switch p.peekNext().Kind {
-	case SanyTokenComma, SanyTokenRbr, SanyTokenDefbreak, SanyTokenLocal,
-		SanyTokenInstance, SanyTokenTheorem, SanyTokenAssume, SanyTokenEndModule,
-		SanyTokenSeparator, SanyTokenBm0, SanyTokenAssumption, SanyTokenConstant,
-		SanyTokenVariable, SanyTokenRecursive:
-		return true
-	default:
-		return false
-	}
 }
 
 func (p *SanyParser) isGrammarInfixOperator(token *SanyToken) bool {
@@ -2184,26 +2165,6 @@ func (p *SanyParser) IfThenElse(stop func(*SanyToken) bool) *SanySyntaxNode {
 }
 
 // Java jj_2_41(MAX_VALUE) accepts Identifier (',' Identifier)* ':'.
-func (p *SanyParser) startsUnboundQuantifier() bool {
-	if p.tokenAt(0).Kind != SanyTokenIdentifier {
-		p.rememberFailedLookahead(1)
-		return false
-	}
-	at := 1
-	for p.tokenAt(at).Kind == SanyTokenComma {
-		if p.tokenAt(at+1).Kind != SanyTokenIdentifier {
-			p.rememberFailedLookahead(at + 2)
-			return false
-		}
-		at += 2
-	}
-	if p.tokenAt(at).Kind != SanyTokenColon {
-		p.rememberFailedLookahead(at + 1)
-		return false
-	}
-	return true
-}
-
 func (p *SanyParser) SomeQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 	p.beginProduction("Quantified form")
 	defer p.endProduction()
@@ -2214,7 +2175,7 @@ func (p *SanyParser) SomeQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
 		p.throwParseException([][]SanyTokenKind{{SanyTokenExists}, {SanyTokenForall}}, "expected quantified expression")
 	}
 	kind := SanySyntaxNodeKindByName["N_UnboundQuant"]
-	if p.startsUnboundQuantifier() {
+	if p.scanLookahead(41, 2147483647) {
 		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected quantified identifier"))
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
@@ -2352,9 +2313,8 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.QuantBound())
 		}
 	}
-	matchedFunctionHead := p.matchFcnConst()
-	if matchedFunctionHead || p.startsExpressionLookahead() {
-		if matchedFunctionHead {
+	if p.scanLookahead(45, 1) {
+		if p.matchFcnConst() {
 			var intro *SanySyntaxNode
 			if p.check(SanyTokenLab) {
 				intro = p.IdentifierTuple()
@@ -2376,14 +2336,14 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 			} else {
 				readElements()
 			}
-		} else if p.braceSimpleHead(SanyTokenComma) {
+		} else if p.scanLookahead(42, 2147483647) {
 			heirs = append(heirs, readExpression())
 			readElements()
-		} else if p.braceSimpleHead(SanyTokenColon) {
+		} else if p.scanLookahead(43, 2147483647) {
 			kind = "N_SetOfAll"
 			heirs = append(heirs, readExpression(), p.consumeParseToken(SanyTokenColon, "expected : in set comprehension"))
 			readBounds()
-		} else if p.startsExpressionLookahead() {
+		} else if p.scanLookahead(44, 1) {
 			expression := readExpression()
 			heirs = append(heirs, expression)
 			if p.match(SanyTokenColon) {
@@ -2414,43 +2374,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 	return NewSanyNode(SanySyntaxNodeKindByName[kind], heirs...)
 }
 
-// Java jj_2_42/43 scan IdentifierTuple or Identifier followed immediately by
-// COMMA/COLON. Failed previews retain their furthest following-input position.
-func (p *SanyParser) braceSimpleHead(separator SanyTokenKind) bool {
-	offset := 0
-	if p.tokenAt(offset).Kind == SanyTokenLab {
-		offset++
-		if p.tokenAt(offset).Kind == SanyTokenIdentifier {
-			offset++
-			for p.tokenAt(offset).Kind == SanyTokenComma {
-				offset++
-				if p.tokenAt(offset).Kind != SanyTokenIdentifier {
-					p.rememberFailedLookahead(offset + 1)
-					return false
-				}
-				offset++
-			}
-		}
-		if p.tokenAt(offset).Kind != SanyTokenRab {
-			p.rememberFailedLookahead(offset + 1)
-			return false
-		}
-		offset++
-	} else if p.tokenAt(offset).Kind == SanyTokenIdentifier {
-		offset++
-	} else {
-		p.rememberFailedLookahead(1)
-		return false
-	}
-	if p.tokenAt(offset).Kind == separator {
-		return true
-	}
-	p.rememberFailedLookahead(offset + 1)
-	return false
-}
-
-// Java jj_2_49(1) checks Expression's first token, including its junction
-// indentation predicate. All operator tokens and proof-step lexemes can start it.
+// Preview expression eligibility at an arbitrary token offset.
 func (p *SanyParser) startsExpressionFirstAt(offset int) bool {
 	kind := p.tokenAt(offset).Kind
 	starts := kind >= SanyTokenOp57 && kind <= SanyTokenProofimplicitsteplexeme
@@ -2478,7 +2402,7 @@ func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 	p.beginProduction("Some << -- >> or >>_ Form")
 	defer p.endProduction()
 	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLab, "expected <<")}
-	if p.startsExpressionLookahead() {
+	if p.scanLookahead(49, 1) {
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRab || tok.Kind == SanyTokenArab || tok.Kind == SanyTokenEOF
 		}))
@@ -2518,7 +2442,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 		}))
-	} else if (p.check(SanyTokenIdentifier) || isSanyFieldNameToken(p.peek().Kind)) && p.peekNext().Kind == SanyTokenMapto {
+	} else if p.scanLookahead(46, 2147483647) || (p.peekNext().Kind == SanyTokenMapto && isSanyFieldNameToken(p.peek().Kind)) {
 		// Java first tries Identifier MAPTO, then reclassifies keyword fields.
 		p.reclassifyFieldName()
 		kind = "N_RcdConstructor"
@@ -2526,18 +2450,14 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldVal())
 		}
-	} else if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenColon {
+	} else if p.scanLookahead(47, 2147483647) {
 		kind = "N_SetOfRcds"
 		heirs = append(heirs, p.FieldSet())
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldSet())
 		}
 	} else {
-		// Both failed field lookaheads scan a second token after Identifier.
-		if p.check(SanyTokenIdentifier) {
-			p.rememberFailedLookahead(2)
-		}
-		if !p.startsExpressionLookahead() {
+		if !p.scanLookahead(48, 1) {
 			p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected bracket expression")
 		}
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {

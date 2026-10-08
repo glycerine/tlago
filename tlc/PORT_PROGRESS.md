@@ -1,5 +1,38 @@
 # TLC Port Progress
 
+2026-10-07 Actual expression-form lookahead integration:
+Previous completed commit: 3b9dd6e. Connect source calls 38–49. OpOrExpr retains
+source operator-reference preview 38 (budget 2), Lambda preview 39
+(Integer.MAX_VALUE), their junction-column predicates, then Expression preview
+40 (budget 1). SomeQuant uses 41 (Integer.MAX_VALUE). BraceCases first uses 45
+(budget 1), then the function-head predicate and alternatives 42/43
+(Integer.MAX_VALUE) and 44 (budget 1), in source order. SBracketCases preserves
+function-head selection, record preview 46, keyword-field reclassification,
+record-set preview 47 (both Integer.MAX_VALUE), then expression preview 48
+(budget 1). TupleOrAction uses 49 (budget 1). Remove unused native operator,
+quantifier and set-head previews and manual failed-span estimates. Connected
+source entry points: 1–50, 68 and 72. Remaining callers and full JavaCC
+bookkeeping are pending.
+
+Extend the existing external observer with 31 valid/malformed operator argument,
+quantifier, set, bracket, tuple and indented junction cases. All 1,828 rows across
+114 cases match Java: parse results, observed syntax kinds/images/four coordinates
+and complete parse messages/residual stack text, excluding outer log whitespace.
+Source run and Go observer return 0. Artifacts remain external under
+/mnt/oldrog/tmp/BodyDefinitionProbe.java,
+/mnt/oldrog/tmp/tlago-body-definition-manual_test.go and the existing overlay;
+logs /mnt/oldrog/tmp/tlago-expression-form-lookahead-{java,go}.log. No permanent
+new tests, original-method credit, assertion/fixture changes, race or optional
+corpus sweep.
+
+After unused helper removal, original frontend/model gate 79161 passes in
+9.112s; complete SANY 58708 passes in 1.864s; all-package compile 34860 passes.
+All handles retired; diff check green. Update current handoff and architecture.
+The earlier failing full-workspace snapshot remains the qualified baseline;
+these focused checks do not establish a green full workspace or completion.
+Remaining parser/canonical integration, runtime LET sharing, trace reconciliation
+and other documented TLC requirements keep the overall goal active.
+
 2026-10-07 Actual proof and numeric lookahead integration:
 Previous completed commit: 627be3b. Translate source production callers 24–37.
 Proof preserves direct BY selection, then terminal 25 (budget 2), structured 26
