@@ -50,13 +50,15 @@ packaged properties, networking primitives, OpenJDK notices, and `x/text`.
 The current user request authorizes the SANY XML repairs listed in the audit.
 ApalacheIR corpus sweeps remain deferred.
 
-SANY audit progress: F01–F06 are repaired. The nine logger/formatting methods,
+SANY audit progress: F01–F09 are repaired. The nine logger/formatting methods,
 all twelve WarningControl methods and IllegalOperator pass. Settings tests call
 the production driver and record WARNING/ERROR output; CLI tests retain original
 arguments, combined streams and exact diagnostic substrings. The remaining
-SANY package and selected original root methods pass, but F07–F25 remain
-uncorrected. Continue with generation-only setup, Location ordering and Vector
-exception identity (F07–F09), then the audit's remaining findings. Do not credit
+SANY package and selected original root methods pass, but F10–F25 remain
+uncorrected. Github429 now runs generation without levels or linting, Location
+uses independent coordinate assertions, and Vector checks the typed bounds
+exception. Continue with precedence navigation, builtin membership and the two
+CLI diagnostic exit assertions (F20–F21 and F25), then XML repair. Do not credit
 green counterparts until their source contracts are restored.
 
 ## Current verified state

@@ -1,5 +1,7 @@
 package tlago
 
+import "github.com/glycerine/tlago/tlc"
+
 type SanyVector[T comparable] struct {
 	items []T
 }
@@ -23,7 +25,7 @@ func (v *SanyVector[T]) Contains(item T) bool {
 
 func (v *SanyVector[T]) InsertElementAt(item T, index int) {
 	if index < 0 || index >= len(v.items) {
-		panic("SanyVector.InsertElementAt index out of bounds")
+		panic(tlc.NewArrayIndexOutOfBoundsExceptionNoMessage())
 	}
 	var zero T
 	v.items = append(v.items, zero)

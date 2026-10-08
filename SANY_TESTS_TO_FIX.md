@@ -31,7 +31,13 @@ track the current repairs.
   exact substrings; IllegalOperator uses its extensionless path. The driver now
   renders SANY summaries and ErrorDetails and propagates warning elevation to its
   named exit status. This covers these contracts, not every SanySettings option.
-- **F07–F25: pending.** A green run of their current counterparts does not resolve
+- **F07–F09: port complete for all three affected original methods.** Github429
+  initializes the real frontend and runs parsing plus generation without levels
+  or linting, preserving its nonthrowing contract. Location checks the source
+  nested coordinate comparisons independently of Compare. Vector checks the
+  actual ArrayIndexOutOfBoundsException, and production now throws that type.
+  All original inputs and bounds remain unchanged; source selections pass.
+- **F10–F25: pending.** A green run of their current counterparts does not resolve
   their recorded test-contract defects. Final verification of the fully restored
   96-method inventory has not yet occurred.
 
@@ -326,11 +332,11 @@ Reviewed: Java test body is commented out. Go preserves the empty body, but does
 
 Java: [drivers/Github429Test.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/drivers/Github429Test.java).
 
-Reviewed: Original fixture retained; semantic phase selection and success requirements differ (F07).
+Repaired: Original fixture and initialized frontend retained; parsing and generation-only semantic analysis preserve the nonthrowing contract (F07).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testForFailedParse`](sany_tests/drivers_github429test_test.go:11) | Fix | F07 |
+| [`testForFailedParse`](sany_github429_java_test.go) | port complete | F07 |
 
 ### IllegalOperatorTest
 
@@ -596,24 +602,24 @@ Reviewed: All three inputs retained; generation without level checking, specific
 
 Java: [st/LocationTest.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/st/LocationTest.java).
 
-Reviewed: All includes examples and original 16 parsed comparator inputs retained; 14 unique locations retained. Independent comparator oracle omitted (F08).
+Reviewed: All includes examples and original 16 parsed comparator inputs retained; 14 unique locations retained. Independent nested coordinate oracle restored (F08).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
 | [`testContains`](sany_tests/st_locationtest_test.go:12) | Reviewed | — |
 | [`testContains2`](sany_tests/st_locationtest_test.go:59) | Reviewed | — |
-| [`testComparator`](sany_tests/st_locationtest_test.go:91) | Fix | F08 |
+| [`testComparator`](sany_tests/st_locationtest_test.go:91) | port complete | F08 |
 
 ### VectorTest
 
 Java: [utilities/VectorTest.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/utilities/VectorTest.java).
 
-Reviewed: Pointer boxes preserve Java object identity in contains/append assertions; order, size and snapshot contents retained. Go slice snapshot is an idiomatic representation change. Insert exception class is not preserved (F09).
+Reviewed: Pointer boxes preserve Java object identity in contains/append assertions; order, size and snapshot contents retained. Go slice snapshot is an idiomatic representation change. Insert now requires the original bounds exception class (F09).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
 | [`containsUsesIdentityComparison`](sany_tests/utilities_vectortest_test.go:12) | Reviewed | — |
-| [`insertElementAtRejectsAppendPosition`](sany_tests/utilities_vectortest_test.go:25) | Fix | F09 |
+| [`insertElementAtRejectsAppendPosition`](sany_tests/utilities_vectortest_test.go:25) | port complete | F09 |
 | [`elementsReturnsSnapshot`](sany_tests/utilities_vectortest_test.go:38) | Reviewed | — |
 | [`appendNoRepeatsUsesIdentity`](sany_tests/utilities_vectortest_test.go:51) | Reviewed | — |
 

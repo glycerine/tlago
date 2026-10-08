@@ -1,5 +1,22 @@
 # TLC Port Progress
 
+2026-10-08 Restore SANY phase/comparator/bounds contracts (F07–F09):
+Previous chunk committed as 97e71fc. Move Github429 to root to initialize the
+actual frontend and call its parsing and generation-only semantic phases. No
+levels/linting or added empty-log requirement. Preserve all 16 Location inputs
+and 14 unique values; independently check the source nested begin line/column
+and end line/strict end column predicates after sorting. Vector insertion at
+index 2 into size 2 now requires ArrayIndexOutOfBoundsException specifically.
+Production previously threw a string; replace it with the original no-message
+typed exception. No extra input or weakened source assertion.
+
+All affected classes pass (22149 retired). Final selected original root SANY
+methods pass in 0.252 seconds; dedicated SANY passes in 2.541 seconds (21422
+retired). All-package compilation passes. No changed vectors, race workload,
+full repaired-suite or full-workspace completion claim. Audit marks F07–F09
+complete; F10–F25 remain pending. Next: F20–F21/F25, then XML schema/entry-point
+and exact diagnostic repairs.
+
 2026-10-08 Restore SANY settings and CLI test contracts (F04–F06):
 Previous chunk committed as 688fb7c. Move the three original WarningControl
 settings methods to root and call the production settings-controlled driver,

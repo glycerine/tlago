@@ -22,6 +22,10 @@ The three `drivers.WarningControlTest` settings methods live in root
 the production settings-controlled driver and observing WARNING/ERROR output.
 Its nine CLI methods and IllegalOperator retain combined streams, original
 arguments and exact rendered diagnostics in this directory.
+`drivers.Github429Test` lives in root
+[sany_github429_java_test.go](../sany_github429_java_test.go), using the initialized
+frontend, actual parsing and generation-only semantic driver with silent output.
+Its source contract is nonthrowing phases, without added diagnostic-success checks.
 The remaining fidelity repairs are tracked in
 [SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md); current green tests alone do not
 resolve that audit.

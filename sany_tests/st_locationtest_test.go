@@ -124,8 +124,21 @@ func TestLocationTest_testComparator(t *testing.T) {
 
 	for i := 1; i < len(locations); i++ {
 		prev, next := locations[i-1], locations[i]
-		if prev.Compare(next) >= 0 {
-			t.Fatalf("locations out of order at %d: %#v >= %#v", i, prev, next)
+		if prev.Line > next.Line {
+			t.Fatalf("begin line order at %d: %+v, %+v", i, prev, next)
+		}
+		if prev.Line == next.Line {
+			if prev.Column > next.Column {
+				t.Fatalf("begin column order at %d: %+v, %+v", i, prev, next)
+			}
+			if prev.Column == next.Column {
+				if prev.EndLine > next.EndLine {
+					t.Fatalf("end line order at %d: %+v, %+v", i, prev, next)
+				}
+				if prev.EndLine == next.EndLine && prev.EndColumn >= next.EndColumn {
+					t.Fatalf("strict end column order at %d: %+v, %+v", i, prev, next)
+				}
+			}
 		}
 	}
 }

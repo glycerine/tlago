@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/glycerine/tlago"
+	"github.com/glycerine/tlago/tlc"
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/utilities/VectorTest.java.
@@ -28,8 +29,9 @@ func TestVectorTest_insertElementAtRejectsAppendPosition(t *testing.T) {
 	vector.AddElement("b")
 
 	defer func() {
-		if recover() == nil {
-			t.Fatal("expected append-position insert to panic")
+		failure := recover()
+		if _, ok := failure.(*tlc.ArrayIndexOutOfBoundsException); !ok {
+			t.Fatalf("append-position insert threw %T (%v), want ArrayIndexOutOfBoundsException", failure, failure)
 		}
 	}()
 	vector.InsertElementAt("c", 2)
