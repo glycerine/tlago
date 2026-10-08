@@ -17,7 +17,7 @@ func (p *SpecProcessor) ProcessConstants(node SemanticNode, definitions *Defns) 
 	switch n := node.(type) {
 	case *ModuleNode:
 		for _, op := range n.GetOpDefs() {
-			if replacement, ok := op.GetToolObject().(*OpDefNode); ok {
+			if replacement, ok := op.GetToolObjectAt(p.ToolID).(*OpDefNode); ok {
 				p.ProcessedDefs.Set(replacement, struct{}{})
 				process(replacement.Body)
 			}
@@ -31,7 +31,11 @@ func (p *SpecProcessor) ProcessConstants(node SemanticNode, definitions *Defns) 
 		}
 	case *OpApplNode:
 		if value := definitions.Get(n.Operator.Name); value != nil {
-			n.Operator.Data = value
+			if n.Operator.SemanticBase != nil {
+				n.Operator.SetToolObjectAt(p.ToolID, value)
+			} else {
+				n.Operator.Data = value
+			}
 		} else {
 			for _, argument := range n.Args {
 				process(argument)
@@ -59,11 +63,11 @@ func (p *SpecProcessor) ProcessConstants(node SemanticNode, definitions *Defns) 
 		if n.BigValue != nil {
 			panic(NewTLCRuntimeException(ECTLCIntegerTooBig, SemanticString(n)))
 		}
-		n.SetToolObject(n.Value)
+		n.SetToolObjectAt(p.ToolID, n.Value)
 	case *DecimalNode:
 		panic(NewTLCRuntimeException(ECTLCCantHandleRealNumbers, SemanticString(n)))
 	case *StringNode:
-		n.SetToolObject(n.Value)
+		n.SetToolObjectAt(p.ToolID, n.Value)
 	case *AssumeNode:
 		process(n.Assume)
 	case *OpArgNode:

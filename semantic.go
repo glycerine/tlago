@@ -3479,6 +3479,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			return Diagnostics{diagnostic}
 		}
 		name := ""
+		opDefArityFound := 0
 		for i, step := range source.Selector.Steps {
 			if i == len(source.Selector.Steps)-1 || step.Kind != SanySelectorName {
 				break
@@ -3493,15 +3494,20 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				continue
 			}
 			symbol, exists := generation.lookupSymbol(name, defined)
+			nodeArity := opDefArityFound + symbol.arity
 			if actual := generation.formalSymbolTable().resolveSymbol(name); actual != nil && actual.semKind() == sanyModuleInstanceKind {
 				symbol.kind, symbol.arity, exists = InstanceDecl, actual.semArity(), true
+				nodeArity = actual.semArity()
 			}
 			if exists && symbol.kind == InstanceDecl && symbol.arity >= 0 {
+				// Imported INSTANCE signatures include earlier name components'
+				// parameters. Java checks only the remaining arity here.
+				remaining := nodeArity - opDefArityFound
 				count := 0
 				if step.Arguments != nil {
 					count = len(expressionChildren(step.Arguments))
 				}
-				if count != symbol.arity {
+				if count != remaining {
 					position := expr.Position()
 					location := SanyRange{Begin: position, End: position.SourceEnd()}
 					if source.Syntax != nil {
@@ -3510,12 +3516,13 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 					if step.Arguments != nil {
 						location = step.Arguments.Range
 					}
-					diagnostic := sanyDiagnosticParameters(errorAt(position, "E4204", "The operator %s requires %d arguments.", name, symbol.arity), name, symbol.arity)
+					diagnostic := sanyDiagnosticParameters(errorAt(position, "E4204", "The operator %s requires %d arguments.", name, remaining), name, remaining)
 					diagnostic.SANYMessage = diagnostic.Message
 					diagnostic.SANYRange = location
 					setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 					return Diagnostics{diagnostic}
 				}
+				opDefArityFound = nodeArity
 			}
 		}
 	}

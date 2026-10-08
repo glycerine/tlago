@@ -640,7 +640,7 @@ func (p *SpecProcessor) processModuleConstantDefinitions(tool *Tool, module *Mod
 		if err != nil || value == nil {
 			continue // Java catches Throwable for ordinary constant definitions.
 		}
-		opDef.SetToolObject(value)
+		opDef.SetToolObjectAt(p.ToolID, value)
 		// Only replace the global entry when it still denotes this exact node.
 		// Hidden/imported definitions retain their values on the semantic node.
 		if p.Defns.Get(opDef.Name) == opDef {
@@ -677,6 +677,9 @@ func specProcessorVetoedConstantOperators() map[string]bool {
 func (p *SpecProcessor) processDeclaredConstantDefinitions(tool *Tool, module *ModuleNode) {
 	for _, declaration := range module.GetConstantDecls() {
 		value := declaration.Data
+		if declaration.SemanticBase != nil {
+			value = declaration.GetToolObjectAt(p.ToolID)
+		}
 		if constant, ok := value.(Value); ok {
 			InitializeValue(constant)
 			p.recordConstantDefinition(module, declaration, constant)
@@ -703,9 +706,13 @@ func (p *SpecProcessor) processDeclaredConstantDefinitions(tool *Tool, module *M
 			}
 			continue
 		}
-		opDef.SetToolObject(result)
+		opDef.SetToolObjectAt(p.ToolID, result)
 		if property, _ := tlcLookupSystemProperty("tlc2.tool.impl.SpecProcessor.aggressiveConstantCaching"); javaBooleanProperty(property) {
-			declaration.Data = result
+			if declaration.SemanticBase != nil {
+				declaration.SetToolObjectAt(p.ToolID, result)
+			} else {
+				declaration.Data = result
+			}
 		}
 		p.recordConstantDefinition(module, opDef, result)
 	}
@@ -763,7 +770,7 @@ func (p *SpecProcessor) ProcessConfigConstantsAndOverrides(tool *Tool) {
 		// registering those aliases must not undo the configured replacement.
 		if p.RootDefinitions != nil {
 			if definition := p.RootDefinitions.Get(name); definition != nil {
-				definition.SetToolObject(value)
+				definition.SetToolObjectAt(p.ToolID, value)
 			}
 		}
 		p.putConfigDefinition(name, value, tool)
@@ -895,7 +902,7 @@ func (p *SpecProcessor) applyConfigOverrides(tool *Tool) {
 					continue
 				}
 			}
-			lhsDef.SetToolObject(rhsVal)
+			lhsDef.SetToolObjectAt(p.ToolID, rhsVal)
 		}
 		p.putConfigDefinition(lhs, rhsVal, tool)
 	}
@@ -963,9 +970,7 @@ func (p *SpecProcessor) applyConfigModuleOverrides(tool *Tool) {
 					p.addConfigError(ECTLCConfigWrongSubstitutionNumberOfArgs, lhs, rhs)
 					continue
 				}
-				if body, ok := lhsDef.Body.(interface{ SetToolObject(any) }); ok {
-					body.SetToolObject(rhsVal)
-				}
+				SetSemanticToolObjectForToolID(p.ToolID, lhsDef.Body, rhsVal)
 			}
 			p.putConfigDefinition(qualified, rhsVal, tool)
 		}
@@ -1001,7 +1006,11 @@ func (p *SpecProcessor) putConfigDefinition(name string, value any, tool *Tool) 
 		}
 	}
 	if sym.Kind == SymbolConstantDecl {
-		sym.Data = value
+		if sym.SemanticBase != nil {
+			sym.SetToolObjectAt(p.ToolID, value)
+		} else {
+			sym.Data = value
+		}
 	}
 	tool.Define(sym, value)
 }
@@ -1124,7 +1133,7 @@ func (p *SpecProcessor) processConfigPossible() {
 			continue
 		}
 		track := NewPossibleTrackNode(def.Body, name)
-		setSemanticToolObject(track, def)
+		SetSemanticToolObjectForToolID(p.ToolID, track, def)
 		if tool.GetLevelBound(def.Body, EmptyContext) <= TLCLevelState {
 			p.ModelConstraints = append(p.ModelConstraints, track)
 		} else {
@@ -1373,6 +1382,7 @@ func (p *SpecProcessor) processMissingInitNextConfig() {
 
 func (p *SpecProcessor) configProcessingTool() *Tool {
 	tool := NewTool()
+	tool.ID = p.ToolID
 	p.applyDefinitionsToTool(tool)
 	return tool
 }

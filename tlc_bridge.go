@@ -619,7 +619,7 @@ func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, de
 	opDef := b.convertSourceDefinitionAs(module+"!"+member, def)
 	if opDef != nil {
 		value = tlc.WithEvaluatingOpDef(value, opDef)
-		opDef.Body.(interface{ SetToolObject(any) }).SetToolObject(value)
+		tlc.SetSemanticToolObjectForTool(b.tool, opDef.Body, value)
 	}
 	b.rememberNativeStandardDefinition(module, member, name, opDef)
 	b.defineAlias(name, value)
@@ -958,7 +958,11 @@ func (b *tlcBridge) defineRuntimeStringConstant(name string, value string) {
 	for _, module := range b.processor.ModuleTbl.GetModuleNodes() {
 		for _, declaration := range module.GetConstantDecls() {
 			if declaration.GetName() == tlc.UniqueStringOf(name) {
-				declaration.Data = constant
+				if declaration.SemanticBase != nil {
+					declaration.SetToolObjectAt(b.tool.ID, constant)
+				} else {
+					declaration.Data = constant
+				}
 				b.define(declaration, constant)
 			}
 		}
@@ -1200,9 +1204,7 @@ func (b *tlcBridge) nodeForDefinition(name string) tlc.SemanticNode {
 	if opDef == nil {
 		return nil
 	}
-	if setter, ok := opDef.Body.(interface{ SetToolObject(any) }); ok {
-		setter.SetToolObject(opDef)
-	}
+	tlc.SetSemanticToolObjectForTool(b.tool, opDef.Body, opDef)
 	return opDef.Body
 }
 
@@ -1482,11 +1484,17 @@ func (b *tlcBridge) instanceTargets(mod *Module, visiting map[string]bool) []tlc
 }
 
 func (b *tlcBridge) declarationSymbol(mod *Module, name string) *tlc.SymbolNode {
+	attach := func(symbol *tlc.SymbolNode) *tlc.SymbolNode {
+		if source, _ := tlcBridgeOwnedDeclaration(mod, name); source != nil {
+			symbol.SemanticBase = source.SemanticNodeBase
+		}
+		return symbol
+	}
 	if node := b.moduleNodes[mod]; node != nil {
 		if declaration, ok := node.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(name)}).(*tlc.SymbolNode); ok {
 			// A dependency compiled as a temporary root keeps its original
 			// declaration identity when later instantiated by debugger expressions.
-			return declaration
+			return attach(declaration)
 		}
 	}
 	// EXTENDS shares declaration identity with the root. An INSTANCE retains
@@ -1510,11 +1518,11 @@ func (b *tlcBridge) declarationSymbol(mod *Module, name string) *tlc.SymbolNode 
 	if extends(b.spec.Root, map[string]bool{}) {
 		symbol := b.symbol(name)
 		symbol.DeclarationName = tlc.UniqueStringOf(name)
-		return symbol
+		return attach(symbol)
 	}
 	symbol := b.symbol(mod.Name + "!" + name)
 	symbol.DeclarationName = tlc.UniqueStringOf(name)
-	return symbol
+	return attach(symbol)
 }
 
 func (b *tlcBridge) pushConvertBoundNames(names ...string) func() {

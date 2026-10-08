@@ -93,8 +93,8 @@ func (p *SpecProcessor) ProcessModuleOverrides(tool *Tool, loader *NativeClassLo
 					}
 					value := NewEvaluatingValue(method.Signature, annotation.MinLevel, annotation.Priority, def, method.Evaluate)
 					var native Value = value
-					if body, ok := def.Body.(interface{ GetToolObject() any }); ok {
-						switch previous := body.GetToolObject().(type) {
+					if body, ok := def.Body.(interface{ GetToolObjectAt(int32) any }); ok {
+						switch previous := body.GetToolObjectAt(p.ToolID).(type) {
 						case *EvaluatingValue:
 							native = NewPriorityEvaluatingValue(value, previous)
 						case *PriorityEvaluatingValue:
@@ -164,9 +164,7 @@ func (p *SpecProcessor) ProcessModuleOverrides(tool *Tool, loader *NativeClassLo
 }
 
 func (p *SpecProcessor) installNativeDefinition(tool *Tool, def *OpDefNode, value Value) {
-	if body, ok := def.Body.(interface{ SetToolObject(any) }); ok {
-		body.SetToolObject(value)
-	}
+	SetSemanticToolObjectForToolID(p.ToolID, def.Body, value)
 	p.Defns.Put(def.Name, value)
 	tool.Define(def.Symbol, value)
 	tool.DefnsByName[def.Name] = value

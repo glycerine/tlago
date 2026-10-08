@@ -10664,15 +10664,17 @@ Replaying filtered getLets or Pair insertion order is insufficient for contexts
 whose duplicate operation rebuilt lookup bindings in a different order.
 
 Runtime conversion therefore needs a canonical node adapter with an identity
-cache before it can transfer the actual context. The bridge now retains original local AST Definition pointers and caches actual
-LET adapters; it still constructs runtime OpDefs after converting bodies
-and separately reconstructs INSTANCE exports. These are not canonical-context
-identity mappings. Canonical formal adapters now retain their actual SemanticNode base; other
-symbol facades, imported ThmOrAssumpDef bodies and module-instance kind/parameters
-still require complete integration with their canonical counterparts. Preserve cycles by publishing adapter shells
-before traversing their children, and use the retained context rather than a
-name-matching substitute. The complete context integration remains unimplemented. The source
-completion fixes above do not earn runtime LET parity credit.
+cache before it can transfer the actual context. The bridge retains original
+local AST Definition pointers and caches actual LET adapters; it still constructs
+runtime OpDefs after converting bodies and separately reconstructs INSTANCE
+exports. These are not canonical-context identity mappings. Canonical formal
+adapters retain their actual SemanticNode base; other symbol facades, imported
+ThmOrAssumpDef bodies and module-instance kind/parameters still require complete
+integration with their canonical counterparts. Preserve cycles by publishing
+adapter shells before traversing their children, and use the retained context
+rather than a name-matching substitute. Complete context integration remains
+unimplemented. The source completion fixes above do not earn runtime LET parity
+credit.
 
 ## First canonical LET and formal adapters
 
@@ -10714,9 +10716,15 @@ can still lack an actual semantic owner and cannot store indexed tool objects.
 
 Symbol indexed-slot operations delegate to this owner. Tool lookup checks the
 context first, then the active tool's indexed symbol object. Definition body
-lookup also checks the active indexed slot before its existing generic body
-cache. Legacy Data, generic ToolObject and definition-table paths remain until
-all producers and consumers are translated; full lookup parity is not claimed.
+lookup checks the active indexed body slot, including substitution wrappers.
+Generic definition/body cache fallbacks are removed. Config constants, constant
+pre-evaluation and native/module overrides now write indexed slots with the
+processor's tool ID; config-processing tools retain that ID. Canonical declared
+constants retain the actual parser base, so their slots belong to the source
+node. Base-less native aliases still use Data and definition-table compatibility
+paths. Literal evaluation still reads its immutable Value field directly rather
+than Java's WorkerValue.mux of the indexed slot. Full lookup/evaluator parity is
+not claimed.
 The current declaration facade's copied location/tree fields and other node
 adapters also remain separate from the canonical semantic-base integration.
 
@@ -10724,8 +10732,40 @@ Canonical paths no longer allocate a temporary runtime formal before replacing
 it with the actual adapter. Selector parameter conversion likewise resolves
 actual formals before constructing a native fallback list. Two Java/Go rows
 verify retained base/UID identity, writes visible in both directions and exactly
-one UID allocation for the following declaration. Sixty-four lookup observations
-match actual SymbolNodeValueLookupProvider across formal/definition symbols,
-empty/bound contexts, tool IDs -1/0/1/4, indexed symbol values and indexed tuple-
-body values. These bounded cases do not verify the remaining generic caches or
-all symbol classes. Existing original methods and coverage checks remain intact.
+one UID allocation for the following declaration. The expanded 192-case lookup
+comparison matches actual SymbolNodeValueLookupProvider across formal/definition
+symbols, empty/bound contexts, tool IDs -1/0/1/4, indexed symbol values and tuple,
+numeral and string bodies. Numeral/string cases exposed the removed generic body
+fallback. These bounded cases do not verify all symbol classes or the remaining
+native alias paths. Existing original methods and coverage checks remain intact.
+
+## Remaining indexed literal evaluation boundary
+
+Java Tool.evalImpl handles NumeralKind, DecimalKind and StringKind together:
+cast WorkerValue.mux of the expression's active indexed slot to Value. It can
+return null for an unprocessed node and throws ClassCastException for a cached
+object of the wrong type. Real-number rejection occurs earlier in source
+SpecProcessor.processConstants, rather than in this evaluation branch.
+Current Go EvalImpl still reads numeral/string Value fields directly and rejects
+decimals here. A 45-case external actual FastTool comparison exposes all of
+these mismatches across absent/active/other slots and five cache value classes.
+This audit establishes remaining work, not parity. Keep constant initialization
+and native-generated expression paths faithful when translating this branch;
+do not fill constructor slots merely to preserve the old direct-value behavior.
+
+Java Spec's toolId is static final and obtained once from semantic.FrontEnd's
+allocator. Current specToolID uses sync.Once for the same ownership. The tool
+ID is shared by subclasses; allocating a new ID for each ordinary Tool would
+change source behavior.
+
+## Nested INSTANCE prefix arity
+
+Generator.selectorToNode retains opDefArityFound across resolved name components.
+An imported module-instance node's arity includes earlier prefix parameters, so
+its current argument list must match nodeArity minus opDefArityFound. Go's early
+selector check formerly compared against the whole imported signature, rejecting
+valid I(55)!Inst and I(55)!Inst2(...) references in original Test219. The check now
+retains Java's counter and reports the remaining signature. Native metadata that
+lacks the actual cumulative source signature retains its local-arity accounting;
+this compatibility path does not complete canonical selector generation.
+The whole original Test219 passes with its unchanged fixture and assertions.

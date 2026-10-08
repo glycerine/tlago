@@ -429,9 +429,21 @@ Canonical formal adapters now retain the actual `SemanticNodeBase` pointer,
 including UID and indexed tool objects. Standalone runtime formals allocate
 their own base; adapter paths do not allocate throwaway formal nodes. Runtime
 OpDef symbols retain their definition's base, and lookup checks indexed symbol/
-body objects for the active tool. All 64 bounded Java/Go lookup observations and
-two shared-base observations agree. Legacy generic caches and the other canonical
-node adapters still require integration; this is not full lookup/graph parity.
+body objects for the active tool. Config constants, constant pre-evaluation and
+native/module overrides now store values in the active tool's indexed slots.
+Actual declared constants retain their canonical semantic base. Symbol lookup no
+longer falls back to generic definition/body caches; 192 bounded Java/Go lookup
+observations agree across tuple, numeral and string bodies. The config/native
+and coverage gates pass. The broader run exposed original Test219's nested
+INSTANCE prefix failure: the check double-charged earlier parameters. Java's
+remaining-arity counter is now translated and Test219 passes unchanged. Across
+the two original-model runs, all 601 selected top-level Go methods are accounted
+for: 596 pass and five retain source ignores/assumptions. Full SANY and all 33
+related selector/scoped/legacy executions pass. This composite receipt does not
+establish a green full workspace; the known native XML failures remain.
+Base-less native aliases still use Data/definition-table compatibility paths,
+and literal evaluation still reads its immutable value directly. Other canonical
+node adapters require integration; this is not full lookup/graph parity.
 
 Recursive declarations now update the actual node and unresolved counters inside
 `endRecursiveDefinition`, before label-scope completion. Canonical named functions

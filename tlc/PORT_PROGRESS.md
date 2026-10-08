@@ -1,5 +1,135 @@
 # TLC Port Progress
 
+2026-10-07 Migrate constant/config/native cache producers to indexed slots:
+Previous completed commit: 099b68e. Source SpecProcessor uses per-tool slots for
+constant processing, configured replacements and native overrides. Translate
+those producers and active-tool reads. Canonical declared constants retain their
+actual parser base. Config-processing tools preserve the processor's tool ID.
+Remove generic definition/body cache fallbacks from symbol lookup, and read
+record selector strings through the active tool's slot.
+
+Expand the external actual SymbolNodeValueLookupProvider comparison to 192 cases
+with tuple, numeral and string bodies. All final identical-input rows agree;
+initial numeral/string differences exposed the generic cache fallback, which is
+removed in production. Observer files use tlago-indexed-cache-lookup under
+/mnt/oldrog/tmp; no permanent test or inventory credit is added.
+
+Final 12 config/native-override methods pass (50165 retired); 19 original coverage
+methods pass (18026 retired). Full SANY passes in 2.252 seconds (52947 retired).
+All-package compilation passes (87563 retired). Expanded lookup observer passes
+(76080 retired). Existing ModelConfig, Java Context and symbol-name-clash lookup
+methods pass in 0.017 seconds. Broad original root TestJava model verification
+runs normally with unchanged bounds, excluding only the CommunityModules Ant
+build integration. Initial handle 39258 hits Go's default 10-minute package
+timeout after 192 of the 601 selected top-level methods and is retired with exit
+1; five debugger failures are recorded below. This is not a passing broad gate.
+Log: /mnt/oldrog/tmp/tlago-indexed-cache-original-models.json. Restart the complete
+601-method selection on corrected code with a two-hour package timeout; original
+model bounds, seeds and assertions are unchanged. Final log:
+/mnt/oldrog/tmp/tlago-indexed-cache-original-models-final.json. Handle 42285
+returns exit 1 after 1,258.417 seconds and is retired: 429 top-level methods pass
+or retain their source skips; original Test219 rejects nested INSTANCE prefixes
+and then its graph-retention helper panics because no checker was constructed.
+No full broad-gate success is claimed. Correct this production SANY mismatch
+before committing; preserve the original method, model and helper assertions.
+
+The broad run initially fails five existing debugger methods: Debug02, Echo,
+EWD840 model checking/simulation and EWD998Chan. Exact Debug02 confirmation also
+fails (exit 1). Each failure omits one module from the constants view. Inspecting
+actual source constant discovery exposes one missed producer: runtime strings
+still write Data on a canonical declaration. Translate that producer to the
+active indexed slot, retaining Data only for native aliases without a base.
+Debug02 then passes unchanged (61078 retired). All nine related original
+debugger methods pass in 35.771 seconds (94565 retired); final all-package
+compilation also passes (91050 retired). The broad run uses the earlier compiled snapshot, so its failures are
+recorded rather than credited as passing after this correction.
+
+While final model verification runs, audit the next evaluator boundary against
+actual Java FastTool.eval. External IndexedLiteralProbe generates numeral,
+decimal and string nodes, then varies absent/active/other tool slots with null,
+IntValue, StringValue, WorkerValue and a wrong object type. All 45 Java rows are
+observed; the corresponding current Go EvalImpl rows differ in every case. Java
+returns the active slot after WorkerValue.mux, including null and ClassCastException.
+Go still returns the immutable numeral/string value and rejects decimal nodes at
+evaluation instead of the source constant-processing boundary. This is a concrete
+remaining production gap, not passing parity evidence. Both observer executions
+are terminal (51578 retired); files use tlago-indexed-literal under /mnt/oldrog/tmp.
+No permanent test is invented and no existing source assertions are altered.
+Keep this follow-up separate from the producer patch under final verification.
+
+Prepare the faithful literal branch as an external production overlay, leaving
+the current worktree and compiled broad gate unchanged. The candidate reads the
+active slot, applies existing worker muxing, returns null and throws the typed
+ClassCastException for wrong cached types. Initial 45 rows all match (64738
+retired); 52 selected original model/subtest executions pass in 12.880 seconds
+(12176 retired), and 19 coverage methods pass in 5.508 seconds (49156 retired).
+A short existing native Tool gate initially has one failure (17174 retired):
+its hand-built missing-field EXCEPT expression bypasses source constant
+initialization. The candidate test setup now runs actual ProcessConstants before
+Eval, retaining every original warning, result and skipped-replacement assertion.
+All 35 short Tool checks then pass in 0.021 seconds (54586 retired). No new test
+is invented or assertion weakened.
+
+Extend actual Java literal observations with 12 IdThread worker selections,
+including negative and past-end worker IDs; all 57 evaluation rows match the
+candidate (75963 retired). Invoke actual private Java processConstants twice
+for seven literal inputs, retaining the unrelated tool slot. Four repeated-
+initialization observations initially differ (70253 retired): Java creates
+fresh StringValues and IntValues outside its 0..9 pool, whereas Go retains the
+literal's value pointer. The external candidate constant processor now uses
+NewIntValue and NewStringValueFromUnique at the source write boundary. All
+64 final evaluation/initialization rows match (7768 retired). Source fixtures,
+observers, logs, candidate files and overlays are under /mnt/oldrog/tmp using
+the tlago-indexed-literal prefix. Production worktree remains the producer patch.
+Final candidate model/coverage selection passes all 71 test/subtest executions
+in 17.178 seconds (28794 retired); all 35 short Tool checks pass in 0.023 seconds
+(72581 retired). All candidate observer/check handles are terminal. Apply the
+candidate after the failed producer gate's source mismatch is corrected,
+remaining original methods finish and the producer patch is committed.
+The candidate is not yet production worktree evidence or a full-suite receipt.
+
+Extend initialization observations with five source-rejected literals: two
+oversized integers and three decimals, including an oversized decimal mantissa.
+Invoke actual Java processConstants with existing active/other slots and compare
+exception family, error code, diagnostic parameters and retained slot values.
+All five rows agree, yielding 69 exact candidate Java/Go rows (68984 retired).
+Rejection remains at constant processing before either slot is replaced.
+The producer gate passes the original SpanTreeRandom workload before later
+stopping at Test219. No source workload is shortened or mixed with race checking.
+
+Confirm Test219 unchanged (25397 retired, exit 1). Inspect actual Generator.java
+selectorToNode: module-instance arity includes earlier name components' formal
+parameters; the source compares nodeArity minus opDefArityFound against this
+component's argument count. Go's early selector check compares the current
+argument count against the whole imported signature and double-charges earlier
+parameters. Translate the source remaining-arity counter in semantic.go. Native
+metadata without an actual node retains its local-arity accounting; canonical
+signatures use the actual node's cumulative arity. Original Test219 then passes
+in 1.177 seconds (3891 retired), without changing test/helpers/fixtures.
+Full SANY passes in 2.595 seconds (37858 retired). All 33 related original
+selector/scoped/legacy test/subtest executions pass in 3.076 seconds (12420
+retired). All 172 remaining selected top-level methods finish in 247.493
+seconds (1961 retired): 170 pass and two retain the original assumption skips.
+Exact remaining list and JSON log use
+/mnt/oldrog/tmp/tlago-indexed-cache-models-remaining*. Combined with the earlier
+426 passing methods and three upstream ignores, all 601 selected top-level Go
+methods are accounted for: 596 pass and five retain source ignores/assumptions.
+This is a composite suite receipt, not a single successful full run. Full
+SANY, related selectors, all-package compilation and Git diff checks pass.
+All producer gate handles are terminal; ready for the forward commit. No full
+workspace-green claim, fixture modification, weakened assertion or new inventory
+credit. The known native XML failures and other canonical/runtime gaps remain.
+
+Source Tool ID ownership is also checked: Spec.toolId is static final and
+allocated once through semantic.FrontEnd.getToolId. Current specToolID sync.Once
+matches that ownership; per-tool subclasses do not allocate independent IDs.
+This resolves the pending ownership question without changing production.
+
+Native base-less aliases, immutable literal evaluation, canonical Context
+transfer and remaining semantic-node adapters are still incomplete. No race,
+fixture change, assertion weakening or full workspace-green claim. The main
+inventory and previously recorded native XML failures remain unchanged.
+
 2026-10-07 Retain formal semantic bases and indexed lookup objects:
 Previous completed commit: ce96a6d; clean tree confirmed. The new formal identity
 cache still recreated a SymbolNode with copied metadata and no canonical base.

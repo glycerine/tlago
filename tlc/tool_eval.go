@@ -99,9 +99,6 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 		}
 	}
 	if sym.Definition != nil {
-		if value := SemanticToolObject(sym.Definition); value != nil {
-			return muxToolObject(value)
-		}
 		// SymbolNodeValueLookupProvider looks through INSTANCE substitution
 		// wrappers for the original definition body's native/config override.
 		body := sym.Definition.Body
@@ -109,11 +106,6 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 			if _, ok := body.(interface{ GetToolObjectAt(int32) any }); ok {
 				if value := SemanticToolObjectForTool(t, body); value != nil {
 					return muxToolObject(value)
-				}
-			}
-			if node, ok := body.(interface{ GetToolObject() any }); ok {
-				if value := node.GetToolObject(); value != nil {
-					return value
 				}
 			}
 			subst, ok := body.(*SubstInNode)
@@ -1412,7 +1404,7 @@ func (t *Tool) evalRecordSelect(expr *OpApplNode, c *Context, s0 *TLCStateMut, s
 	if err != nil {
 		return nil, err
 	}
-	sval, ok := SemanticToolObject(expr.Args[1]).(Value)
+	sval, ok := SemanticToolObjectForTool(t, expr.Args[1]).(Value)
 	if !ok {
 		sval, err = t.Eval(expr.Args[1], c, s0, s1, control, cm)
 		if err != nil {
