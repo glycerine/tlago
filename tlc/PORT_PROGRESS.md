@@ -19599,3 +19599,26 @@ receipt table; detailed history stays here. Original assumption-disabled remote
 harnesses remain Missing and receive no completion credit. Isolated trace-commit
 interruption and broader distributed parity remain pending. All handles are
 terminal and retired. No full suite, reduced workload or race instrumentation.
+
+
+## October 8, 2026: native state backing-array ownership
+
+Ordinary TLCStateMut stores a non-transient value array. The native payload
+previously copied each state's reference list independently, even when that
+storage was shared with another state or composite value. State encoding now
+uses the existing value-array graph table; decoding uses the same validated
+array references as composite values. Inline nodes remain decodable. Peers
+must use the same build for the updated payload. No RMI, Java serialization
+implementation or evaluator machinery was added.
+
+The new graph check reproduced the lost identity before the fix (31535, status
+1). Focused state payload/state-array/value-array graph checks pass (35688,
+status 0, 0.013 seconds), covering cycles, separate equal-content arrays,
+receiver mutation isolation, nil/empty arrays and invalid/conflicting state
+references. Both state-array and value-array worker RPC checks pass over owned
+loopback listeners (0.014 seconds), retaining sharing through requests and
+results without aliasing sender storage. No upstream method directly covers
+this boundary; these supplemental checks add no original-method completion
+credit. Value source and cost-model fields are transient in the Java reference;
+this change does not claim extended evaluator/custom-data graph completion.
+No full suite, long workload or race instrumentation was selected.

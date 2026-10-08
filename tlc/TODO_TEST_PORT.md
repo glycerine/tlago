@@ -780,9 +780,12 @@ inserting zero. Existing short original MultiFPSet translations and full native
 pre-commit interruption recovery pass. No enabled original method covers these
 error boundaries; supplemental checks add no original-method completion credit.
 
-Native value-array graph checks cover tuple, record, function, operator argument
+Native value-array graph checks cover state, tuple, record, function, operator argument
 row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
 references and isolated receiver mutations across worker request/result TCP.
+State checks retain backing arrays shared between distinct states and composite
+values, recursive state/value arrays, separate equal-content arrays, nil/empty
+storage and malformed-reference rejection.
 No enabled original Java method directly covers this boundary; no original-method
 credit is added. Native ValueVec checks also cover vector identity, active count,
 full capacity, shared backing arrays, unused cyclic slots and malformed references

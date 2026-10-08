@@ -124,10 +124,13 @@ Focused recovery contracts are also verified:
 Unused RMI-specific error carriers are removed. Native Go failure traits drive
 retry/shutdown decisions; Java remote machinery is outside the port.
 
-Native state transfer now preserves shared backing value arrays for tuples,
+Native state transfer now preserves shared backing value arrays for states, tuples,
 records, functions, configured operator argument rows, tuple products and record
 sets. Receiver mutations remain visible through shared arrays without touching
 sender storage; recursive arrays and nil/empty distinctions survive gob and TCP.
+State arrays use the same graph table as composite values, including arrays
+shared between distinct states and tuples. Invalid or conflicting state-array
+references fail decoding. Peers use the same build for the updated payload.
 This is native Go graph transfer. ValueVec identity, active count and full backing
 capacity are also preserved, including shared storage and unused recursive slots.
 Record and record-set name arrays also retain shared storage and isolated

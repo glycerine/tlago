@@ -28,11 +28,12 @@ type DistributedValueVectorNode struct {
 }
 
 type DistributedStateNode struct {
-	WorkerID  int16
-	UID       int64
-	Level     int32
-	Values    []int
-	ValuesNil bool
+	WorkerID    int16
+	UID         int64
+	Level       int32
+	Values      []int
+	ValuesArray int
+	ValuesNil   bool
 }
 
 type DistributedStringNode struct {
@@ -140,11 +141,11 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 	id := len(e.payload.States) + 1
 	e.states[state] = id
 	e.payload.States = append(e.payload.States, DistributedStateNode{})
-	values, err := e.refs(state.values)
+	array, err := e.array(state.values)
 	if err != nil {
 		return 0, err
 	}
-	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), Values: values, ValuesNil: state.values == nil}
+	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil}
 	return id, nil
 }
 
@@ -523,7 +524,7 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 		if node.Level < 0 {
 			return nil, fmt.Errorf("negative distributed state level")
 		}
-		values, err := decoder.refs(node.Values, node.ValuesNil)
+		values, err := decoder.arrayRefs(node.Values, node.ValuesNil, node.ValuesArray)
 		if err != nil {
 			return nil, err
 		}
