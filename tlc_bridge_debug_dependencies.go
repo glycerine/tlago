@@ -130,6 +130,7 @@ func (b *tlcBridge) debuggerBridge(spec *Spec) *tlcBridge {
 	convert.sourceDefinitions = maps.Clone(b.sourceDefinitions)
 	convert.canonicalLets = maps.Clone(b.canonicalLets)
 	convert.canonicalFormals = maps.Clone(b.canonicalFormals)
+	convert.canonicalTheorems = maps.Clone(b.canonicalTheorems)
 	convert.conversionContexts = maps.Clone(b.conversionContexts)
 	convert.instanceDefinitions = maps.Clone(b.instanceDefinitions)
 	convert.moduleNodes = maps.Clone(b.moduleNodes)
@@ -137,6 +138,7 @@ func (b *tlcBridge) debuggerBridge(spec *Spec) *tlcBridge {
 	convert.builtinDefinitions = maps.Clone(b.builtinDefinitions)
 	convert.indexedModules = maps.Clone(b.indexedModules)
 	convert.assumptionModules = maps.Clone(b.assumptionModules)
+	convert.theoremModules = maps.Clone(b.theoremModules)
 	convert.moduleDefinitionNames = moduleDefinitionNameIndex(spec)
 	convert.convertBoundNames = map[string]int{}
 	convert.diags = nil

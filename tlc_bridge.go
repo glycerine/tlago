@@ -30,6 +30,7 @@ type tlcBridge struct {
 	sourceDefinitions      map[*Definition]*tlc.OpDefNode
 	canonicalLets          map[*sanySemLetInNode]*tlc.LetInNode
 	canonicalFormals       map[*sanyFormalParamNode]*tlc.SymbolNode
+	canonicalTheorems      map[*sanySemTheoremNode]*tlc.TheoremNode
 	instanceDefinitions    map[string]*tlcBridgeInstance
 	instanceBindings       map[tlcBridgeInstanceKey]*tlcBridgeInstance
 	nativeDefinitions      map[*tlc.UniqueString]any
@@ -39,6 +40,7 @@ type tlcBridge struct {
 	theoremDefinitions     map[string]*tlc.ThmOrAssumpDefNode
 	indexedModules         map[*Module]bool
 	assumptionModules      map[*Module]bool
+	theoremModules         map[*Module]bool
 }
 
 type tlcBridgeInstance struct {
@@ -885,6 +887,65 @@ func (b *tlcBridge) installModuleAssumptions(checkingRoot bool) {
 			visit(module, false)
 		}
 	}
+	b.installModuleTheorems()
+}
+
+// EXTENDS retains the original theorem statements, including repeated paths.
+// INSTANCE contributes definitions to Context, but does not copy statements.
+func (b *tlcBridge) installModuleTheorems() {
+	if b.canonicalTheorems == nil {
+		b.canonicalTheorems = map[*sanySemTheoremNode]*tlc.TheoremNode{}
+	}
+	if b.theoremModules == nil {
+		b.theoremModules = map[*Module]bool{}
+	}
+	type ownedTheorem struct {
+		module *Module
+		expr   *NamedExpr
+	}
+	owned := map[*sanySemTheoremNode]ownedTheorem{}
+	for module := range b.moduleNodes {
+		for i := range module.Theorems {
+			expr := &module.Theorems[i]
+			if source, ok := expr.semanticNode.(*sanySemTheoremNode); ok {
+				owned[source] = ownedTheorem{module, expr}
+			}
+		}
+	}
+	for module, target := range b.moduleNodes {
+		if b.theoremModules[module] || module.semanticNode == nil {
+			continue
+		}
+		for _, source := range module.semanticNode.getTheorems() {
+			node := b.canonicalTheorems[source]
+			if node == nil {
+				owner, ok := owned[source]
+				if !ok {
+					panic("retained SANY theorem has no owning AST statement")
+				}
+				node = &tlc.TheoremNode{SemanticNodeBase: source.SemanticNodeBase,
+					Module: b.moduleNodes[owner.module], Proof: source.proof, Suffices: source.suffices}
+				b.canonicalTheorems[source] = node
+				if source.def != nil {
+					node.Def, _ = node.Module.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(source.def.semName())}).(*tlc.ThmOrAssumpDefNode)
+				}
+				if _, ap := source.getTheorem().(*sanySemAssumeProveNode); ap {
+					// processConstants has no ASSUME/PROVE branch in Java. Retain
+					// the statement instead of treating its goal as its body.
+					node.Theorem = source.getTheorem()
+				} else if node.Def != nil {
+					node.Theorem = node.Def.Body
+				} else {
+					previous := b.convertingModule
+					b.convertingModule = owner.module.Name
+					node.Theorem = b.convertExpr(owner.expr.Expr)
+					b.convertingModule = previous
+				}
+			}
+			target.AddTheoremStatement(node)
+		}
+		b.theoremModules[module] = true
+	}
 }
 
 func (b *tlcBridge) installModelTargets() {
@@ -1659,27 +1720,39 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 		node = b.builtinNode(tlc.OpSE, args...)
 	case *RecordExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Fields))
-		for _, field := range e.Fields {
+		for i, field := range e.Fields {
 			fieldPos := field.Source
 			if positionIsZero(fieldPos) {
 				fieldPos = field.Pos
 			}
-			name := b.withPositionLocation(fieldPos, tlc.NewStringNode(field.Name))
+			name := tlcBridgeCanonicalStringOperand(e, i, 0)
+			if name == nil {
+				name = tlc.NewStringNode(field.Name)
+				b.withPositionLocation(fieldPos, name)
+			}
 			pair := b.builtinNode(tlc.OpPair, name, b.convertExpr(field.Value))
 			args = append(args, b.withPositionLocation(fieldPos, pair))
 		}
 		node = b.builtinNode(tlc.OpRC, args...)
 	case *RecordComponentExpr:
-		field := b.withPositionLocation(e.FieldPos, tlc.NewStringNode(e.Field))
+		field := tlcBridgeCanonicalStringOperand(e, 1)
+		if field == nil {
+			field = tlc.NewStringNode(e.Field)
+			b.withPositionLocation(e.FieldPos, field)
+		}
 		node = b.builtinNode(tlc.OpRS, b.convertExpr(e.Record), field)
 	case *RecordSetExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Fields))
-		for _, field := range e.Fields {
+		for i, field := range e.Fields {
 			fieldPos := field.Source
 			if positionIsZero(fieldPos) {
 				fieldPos = field.Pos
 			}
-			name := b.withPositionLocation(fieldPos, tlc.NewStringNode(field.Name))
+			name := tlcBridgeCanonicalStringOperand(e, i, 0)
+			if name == nil {
+				name = tlc.NewStringNode(field.Name)
+				b.withPositionLocation(fieldPos, name)
+			}
 			pair := b.builtinNode(tlc.OpPair, name, b.convertExpr(field.Set))
 			args = append(args, b.withPositionLocation(fieldPos, pair))
 		}
@@ -1781,6 +1854,21 @@ func (b *tlcBridge) sourceLocationForPosition(pos Position) tlc.SourceLocation {
 
 func positionIsZero(pos Position) bool {
 	return pos.Line == 0 && pos.Column == 0 && pos.File == "" && pos.EndLine == 0 && pos.EndColumn == 0
+}
+
+// SANY already constructed these scalar operands. Reuse them so selectors and
+// constant processing observe the same node and indexed tool slots.
+func tlcBridgeCanonicalStringOperand(expr Expr, indices ...int) *tlc.StringNode {
+	node := sanyGeneratedExpressionNode(expr)
+	for _, index := range indices {
+		application, ok := node.(*sanySemOpApplNode)
+		if !ok || index < 0 || index >= len(application.operands) {
+			return nil
+		}
+		node = application.operands[index]
+	}
+	literal, _ := node.(*tlc.StringNode)
+	return literal
 }
 
 func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
@@ -2141,11 +2229,16 @@ func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {
 
 func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
 	args := []tlc.SemanticNode{b.convertExpr(e.Base)}
-	for _, spec := range e.Specs {
+	for i, spec := range e.Specs {
 		pathElems := make([]tlc.SemanticNode, 0)
-		for _, component := range spec.Components {
+		for j, component := range spec.Components {
 			if component.Field != "" {
-				pathElems = append(pathElems, b.withPositionLocation(component.FieldPos, tlc.NewStringNode(component.Field)))
+				field := tlcBridgeCanonicalStringOperand(e, i+1, 0, j)
+				if field == nil {
+					field = tlc.NewStringNode(component.Field)
+					b.withPositionLocation(component.FieldPos, field)
+				}
+				pathElems = append(pathElems, field)
 			}
 			if len(component.Indices) > 0 {
 				// One bracket component is one function argument; multiple

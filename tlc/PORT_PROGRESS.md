@@ -1,5 +1,69 @@
 # TLC Port Progress
 
+2026-10-07 Integrate indexed literal evaluation and shared scalar adapters:
+Previous completed commit: 57274fb; clean tree confirmed before integration.
+Apply the prepared candidate to production: Numeral/Decimal/String evaluation
+reads the active indexed slot through WorkerValue muxing, preserving null and
+typed class-cast behavior. Constant processing creates fresh strings and fresh
+integers outside the 0..9 pool; oversized integer/decimal rejection still occurs
+before slot replacement. The existing native EXCEPT test now performs actual
+source constant initialization; every result/warning assertion is unchanged.
+
+Initial integrated gates: 35 short Tool checks pass in 0.021 seconds; nine
+Specs/Defns/AST checks pass in 0.012 seconds. All 69 external source comparisons
+match production (89277 retired), and compilation passes (53613 retired).
+The expanded original model/coverage gate passes the earlier 71 executions but
+fails newly included Test219 (63269 retired, exit 1). Its semantic check passes;
+runtime reaches an uninitialized scalar. Do not restore direct-value fallback.
+
+External diagnostic overlays locate the uncached string at test219a:160 (Def7
+== 3.a). The bridge reconstructs record/record-set/EXCEPT field literals, and
+native selector AST views synthesize another string. First retain actual source
+string operands through canonical graph paths; Test219 still fails (85955
+retired). Trace creation versus constant-processing UIDs with external overlays:
+UID 8874 is allocated by selectorNode -> convertLiteral, while the actual source
+field UID 2171 is initialized. Preserve selected scalar bodies through the
+source LAMBDA/Nop, LET and substitution wrappers when adapting the native view.
+Original Test219 then passes unchanged in 1.223 seconds (59678 retired).
+Diagnostic handles 96013, 84096 and 42899 all fail as expected and are retired;
+no diagnostic instrumentation enters the worktree or earns success credit.
+
+Final 72 original model/coverage test/subtest executions pass in 19.031 seconds
+(21041 retired). Full SANY passes in 2.326 seconds (82719 retired); all-package
+compilation passes (43662 retired). Scalar field/selection changes preserve
+actual parser-owned nodes and slots, without claiming complete canonical Context
+or wrapper integration. No new permanent tests, fixture changes or inventory
+credit. The broader 601-method composite receipt belongs to the preceding
+producer/arity commit and does not establish this literal patch's full-suite
+status.
+
+Additional source review identifies missing theorem constant initialization.
+Run existing original lifecycle models: Test216 fails (exit 151), while Test220,
+Test99 and Test999 pass (97859 retired, exit 1). Runtime ModuleNode lacks the
+source theorem vector/TheoremNode traversal; Java processConstants visits every
+module's actual theorem statements after assumptions. Implement that source
+path before committing or proceeding to another feature. Do not substitute a
+walk of all named/imported theorem definitions for the actual statement vector,
+and do not weaken Test216.
+
+Retain a separate runtime theorem statement vector from the actual canonical
+ModuleNode.getTheorems array. Views share each original statement's semantic
+base, proof and suffices metadata; EXTENDS copies reuse the view, while INSTANCE
+definitions do not become statements. Plain named statements share the runtime
+definition body; ASSUME/PROVE retains the actual source statement, which Java's
+constant traversal does not descend into. Full runtime named ASSUME/PROVE
+definition-body adaptation and ordered top-level graph transfer remain pending.
+Debugger bridges retain the statement caches. Test216 now passes unchanged in
+0.368 seconds (55187 retired). The expanded original model/coverage selection,
+including Test216, Test219, Test220, Test99 and Test999, passes in 20.212 seconds
+(81859 retired). Original SANY package passes in 2.603 seconds (72935 retired);
+all-package compilation and the short Tool/Specs/Defns/AST selection pass
+(86282 and 13170 retired). Native root TestSany checks still expose the three
+known invalid XML fixtures (5824 retired, exit 1); no full-workspace green claim.
+Selected root original SANY context, semantic corpus, subexpression selector,
+incremental semantic and builtin initialization translations also pass in
+0.278 seconds. No new permanent tests or inventory credit. The goal remains active.
+
 2026-10-07 Migrate constant/config/native cache producers to indexed slots:
 Previous completed commit: 099b68e. Source SpecProcessor uses per-tool slots for
 constant processing, configured replacements and native overrides. Translate

@@ -441,9 +441,18 @@ the two original-model runs, all 601 selected top-level Go methods are accounted
 for: 596 pass and five retain source ignores/assumptions. Full SANY and all 33
 related selector/scoped/legacy executions pass. This composite receipt does not
 establish a green full workspace; the known native XML failures remain.
-Base-less native aliases still use Data/definition-table compatibility paths,
-and literal evaluation still reads its immutable value directly. Other canonical
-node adapters require integration; this is not full lookup/graph parity.
+The producer/arity changes are committed as `57274fb`. The current
+literal patch reads indexed slots through worker muxing and preserves fresh
+constant-value identity. Record/EXCEPT fields and selected scalar bodies retain
+actual source nodes. All 69 bounded Java observations and 72 selected original
+model/coverage executions pass; full SANY and compilation pass. Additional
+original Test216 exposed missing module theorem initialization. The bridge now
+retains the actual theorem statement vector and shared statement bases, and
+constant processing visits it after assumptions. Test216 and the expanded
+original model/coverage selection pass unchanged, as does the original SANY
+package. The native XML fixture failures remain. Base-less aliases, complete
+runtime ASSUME/PROVE definition bodies and remaining canonical Context/wrapper
+adapters are still incomplete; this is not full lookup/graph parity.
 
 Recursive declarations now update the actual node and unresolved counters inside
 `endRecursiveDefinition`, before label-scope completion. Canonical named functions

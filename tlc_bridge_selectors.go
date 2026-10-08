@@ -84,6 +84,18 @@ func (b *tlcBridge) selectorNode(expr Expr, selected *sanySelectorSelection) tlc
 	b.convertingModule = selected.definition.module.Name
 	restore := b.pushFormalParameters(params)
 	bodyExpr := selected.body
+	if literal, ok := bodyExpr.(*LiteralExpr); ok {
+		copy := *literal
+		switch node := tlcBridgeSelectedScalar(expr).(type) {
+		case *tlc.NumeralNode:
+			copy.numeralNode = node
+		case *tlc.DecimalNode:
+			copy.decimalNode = node
+		case *tlc.StringNode:
+			copy.stringNode = node
+		}
+		bodyExpr = &copy
+	}
 	seen := map[*LetExpr]bool{}
 	for i := len(selected.lets) - 1; i >= 0; i-- {
 		original := selected.lets[i]
@@ -128,4 +140,42 @@ func (b *tlcBridge) selectorNode(expr Expr, selected *sanySelectorSelection) tlc
 		args[i] = b.convertExpr(arg)
 	}
 	return tlc.NewOpApplNode(symbol, args...)
+}
+
+// The source selection retains its scalar body through lifted LAMBDA, LET and
+// substitution wrappers. Native AST views must not allocate another literal.
+func tlcBridgeSelectedScalar(expr Expr) sanySemanticGraphNode {
+	node := sanyGeneratedExpressionNode(expr)
+	switch result := node.(type) {
+	case *sanySemOpApplNode:
+		if definition, ok := result.operator.(*sanySemOpDefNode); ok && definition.semName() == "LAMBDA" {
+			node = definition.body
+		} else if result.operator != nil && result.operator.semName() == "$Nop" && len(result.operands) == 1 {
+			node = result.operands[0]
+		} else {
+			return nil
+		}
+	case *sanySemOpArgNode:
+		definition, ok := result.operator.(*sanySemOpDefNode)
+		if !ok {
+			return nil
+		}
+		node = definition.body
+	default:
+		return nil
+	}
+	for {
+		switch current := node.(type) {
+		case *sanySemSubstInNode:
+			node = current.body
+		case *sanySemAPSubstInNode:
+			node = current.body
+		case *sanySemLetInNode:
+			node = current.body
+		case *tlc.NumeralNode, *tlc.DecimalNode, *tlc.StringNode:
+			return node
+		default:
+			return nil
+		}
+	}
 }

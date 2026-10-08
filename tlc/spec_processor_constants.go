@@ -29,6 +29,9 @@ func (p *SpecProcessor) ProcessConstants(node SemanticNode, definitions *Defns) 
 		for _, top := range n.TopLevel {
 			process(top)
 		}
+		for _, theorem := range n.GetTheorems() {
+			process(theorem)
+		}
 	case *OpApplNode:
 		if value := definitions.Get(n.Operator.Name); value != nil {
 			if n.Operator.SemanticBase != nil {
@@ -60,16 +63,19 @@ func (p *SpecProcessor) ProcessConstants(node SemanticNode, definitions *Defns) 
 		}
 		process(n.Body)
 	case *NumeralNode:
+		value := NewIntValue(n.Value.Val)
 		if n.BigValue != nil {
 			panic(NewTLCRuntimeException(ECTLCIntegerTooBig, SemanticString(n)))
 		}
-		n.SetToolObjectAt(p.ToolID, n.Value)
+		n.SetToolObjectAt(p.ToolID, value)
 	case *DecimalNode:
 		panic(NewTLCRuntimeException(ECTLCCantHandleRealNumbers, SemanticString(n)))
 	case *StringNode:
-		n.SetToolObjectAt(p.ToolID, n.Value)
+		n.SetToolObjectAt(p.ToolID, NewStringValueFromUnique(n.GetRep()))
 	case *AssumeNode:
 		process(n.Assume)
+	case *TheoremNode:
+		process(n.GetTheorem())
 	case *OpArgNode:
 		if op := n.Op.Definition; op != nil && n.Op.IsUserDefinedOp() {
 			if _, processed := p.ProcessedDefs.Get2(op); !processed {

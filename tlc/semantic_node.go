@@ -37,6 +37,7 @@ const (
 	SemanticOpApplKind         SemanticKind = 9
 	SemanticLetInKind          SemanticKind = 10
 	SemanticFormalParamKind    SemanticKind = 11
+	SemanticTheoremKind        SemanticKind = 12
 	SemanticAssumeKind         SemanticKind = 20
 	SemanticSubstInKind        SemanticKind = 13
 	SemanticNumeralKind        SemanticKind = 16

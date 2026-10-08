@@ -242,6 +242,8 @@ type ModuleNode struct {
 	opDefs             []*OpDefNode
 	thmOrAssDefs       []*ThmOrAssumpDefNode
 	innerModules       []*ModuleNode
+	theoremVec         []*TheoremNode
+	theorems           []*TheoremNode
 	extendedModuleSets map[bool]*InsMap[*ModuleNode, struct{}]
 }
 
@@ -264,6 +266,20 @@ func (m *ModuleNode) IsParameterFree() bool {
 	return len(m.GetConstantDecls()) == 0 && len(m.GetVariableDecls()) == 0
 }
 func (m *ModuleNode) ProcessConstantDefns() bool { return !m.IsInstantiated() || m.IsParameterFree() }
+
+// The bridge appends views of the actual retained theorem statements, including
+// EXTENDS copies. Named definition enumeration has a different membership.
+func (m *ModuleNode) AddTheoremStatement(node *TheoremNode) {
+	m.theoremVec = append(m.theoremVec, node)
+}
+
+func (m *ModuleNode) GetTheorems() []*TheoremNode {
+	if m.theorems == nil {
+		m.theorems = make([]*TheoremNode, len(m.theoremVec))
+		copy(m.theorems, m.theoremVec)
+	}
+	return m.theorems
+}
 
 func (m *ModuleNode) CreateExtendeeArray(extendees []*ModuleNode) {
 	m.Extendees = append([]*ModuleNode(nil), extendees...)

@@ -10722,9 +10722,9 @@ pre-evaluation and native/module overrides now write indexed slots with the
 processor's tool ID; config-processing tools retain that ID. Canonical declared
 constants retain the actual parser base, so their slots belong to the source
 node. Base-less native aliases still use Data and definition-table compatibility
-paths. Literal evaluation still reads its immutable Value field directly rather
-than Java's WorkerValue.mux of the indexed slot. Full lookup/evaluator parity is
-not claimed.
+paths. Literal evaluation now uses Java's active indexed slot and worker muxing;
+full lookup/evaluator parity is not claimed, including the missing theorem
+initialization path exposed by original Test216.
 The current declaration facade's copied location/tree fields and other node
 adapters also remain separate from the canonical semantic-base integration.
 
@@ -10746,12 +10746,27 @@ cast WorkerValue.mux of the expression's active indexed slot to Value. It can
 return null for an unprocessed node and throws ClassCastException for a cached
 object of the wrong type. Real-number rejection occurs earlier in source
 SpecProcessor.processConstants, rather than in this evaluation branch.
-Current Go EvalImpl still reads numeral/string Value fields directly and rejects
-decimals here. A 45-case external actual FastTool comparison exposes all of
-these mismatches across absent/active/other slots and five cache value classes.
-This audit establishes remaining work, not parity. Keep constant initialization
-and native-generated expression paths faithful when translating this branch;
-do not fill constructor slots merely to preserve the old direct-value behavior.
+Go EvalImpl now follows this indexed branch. The external comparison retains
+45 cache cases, 12 worker selections, seven repeated initializations and five
+rejected literal inputs; all 69 rows match actual Java. Constant processing
+creates fresh StringValues and IntValues outside the 0..9 pool, while preserving
+unrelated slots and source rejection timing. Constructors do not fill indexed
+slots to preserve the old direct-value shortcut.
+
+The bridge reuses actual generated string operands for records, record sets,
+record selection and EXCEPT paths. Native selector views retain the actual scalar
+body through source LAMBDA/Nop, LET and substitution wrappers, so constant
+processing and selectors share its slots. Original Test219 exposed both old
+reconstructions and now passes. This does not complete wrapper/Context adapters.
+Original Test216 exposed missing module theorem initialization. Runtime modules
+now retain the canonical theorem statement vector through shared TLC views, and
+processConstants visits those statements after assumptions. Views retain the
+actual semantic base, proof and suffices flag. Repeated EXTENDS paths share
+views; INSTANCE imports definitions without adding statements. Plain named
+theorems share their runtime definition body. ASSUME/PROVE statements retain
+the actual source graph, without initializing their goal as a substitute for
+the whole statement. Complete runtime ASSUME/PROVE definition-body adaptation
+and ordered top-level graph transfer remain pending. Test216 passes unchanged.
 
 Java Spec's toolId is static final and obtained once from semantic.FrontEnd's
 allocator. Current specToolID uses sync.Once for the same ownership. The tool

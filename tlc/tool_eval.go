@@ -222,12 +222,15 @@ func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 		return t.evalImplSubstInKind(expr, c, s0, s1, control, cm)
 	case *APSubstInNode:
 		return t.evalImplAPSubstInKind(expr, c, s0, s1, control, cm)
-	case *NumeralNode:
-		return expr.Value, nil
-	case *DecimalNode:
-		return nil, newTLCErrorCode(ECTLCCantHandleRealNumbers, SemanticString(expr))
-	case *StringNode:
-		return expr.Value, nil
+	case *NumeralNode, *DecimalNode, *StringNode:
+		value := muxToolObject(SemanticToolObjectForTool(t, expr))
+		if value == nil {
+			return nil, nil
+		}
+		if result, ok := value.(Value); ok {
+			return result, nil
+		}
+		panic(NewClassCastException("literal tool object is not a Value"))
 	case *AtNode:
 		if value, ok := c.LookupFunc(func(sym *SymbolNode) bool { return sym != nil && sym.Name != nil && sym.Name.String() == "@" }).(Value); ok {
 			return value, nil

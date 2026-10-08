@@ -69,6 +69,9 @@ func TestToolExceptWarnsForMissingFieldsWithoutEvaluatingReplacement(t *testing.
 	rhs := NewOpApplNode(NewSymbolNode("UndefinedReplacement"))
 	pair := NewBuiltinOpApplNode(OpPair, path, rhs)
 	expr := NewBuiltinOpApplNode(OpExc, base, pair, pair)
+	processor := NewSpecProcessor("", NewDefns(), nil)
+	processor.ToolID = tool.ID
+	processor.ProcessConstants(expr, NewDefns())
 	result, err := tool.Eval(expr)
 	if err != nil || result != record {
 		t.Fatalf("EXCEPT = %v, %v; want original record", result, err)
