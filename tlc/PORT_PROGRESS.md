@@ -20731,3 +20731,27 @@ model contexts pass (88623, status 0, 1.168 seconds). All processes are terminal
 No full suite was run.
 Supplemental wakeup checks add no original-method completion credit; broader
 distributed parity remains incomplete.
+
+### 2026-10-08: Base coordinator fingerprint registration boundary
+
+Compared TLCServer.registerFPSet with DistributedFPSetTLCServer.registerFPSet
+against pinned source. Only the distributed subclass calls the manager and
+counts down startup registration. The Go base server delegated to its manager,
+accepting a registration if supplied a dynamic manager and exposing a different
+manager-level error for local storage. An absent manager produced a raw Go nil
+failure. Base coordinators now raise the source server-level unsupported-operation
+failure before accessing their manager. Distributed registration is unchanged.
+
+Upstream has no direct test of this base/subclass boundary. Added local cases
+with local, dynamic and absent managers, plus native TCP rejection through an
+actual coordinator endpoint. Checks preserve exact server error, manager state,
+absence of acceptance output, failure category and continued endpoint usability.
+All three local cases initially failed (b5102d, status 1, 0.017 seconds).
+After the fix, these and original DynamicFPSetManager/FPSetManager contexts pass
+(fe0230, status 0, 0.051 seconds). Short TCP base rejection, existing reference
+registration/no-probe/capacity/malformed-reference checks and native worker
+bootstrap/callback pass (51410c, status 0, 0.029 seconds). The three original
+distributed initializer-continue, evaluator-error and TLCSet model contexts pass
+(3338, status 0, 1.526 seconds). All processes are terminal. No full suite, long
+workload or race run was performed. Supplemental checks add no original-method credit;
+broader distributed parity remains incomplete.

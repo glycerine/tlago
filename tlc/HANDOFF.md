@@ -57,6 +57,10 @@ clearing assigned work, before decrementing the worker count. It uses native
 `WakeAllWaiters`, preserving suspension; registration still uses the distinct
 `ResumeAllStuck` operation. All four queue implementations and short concurrency
 checks cover this boundary.
+Fingerprint-server registration belongs to distributed coordinators. Base
+coordinators reject it before accessing the manager, preserving the source
+server-level error even with a dynamic or absent manager. Local and native TCP
+checks cover rejection without registration mutations or acceptance messages.
 
 The original checkpoint-on-violation and time-bound model tests are now complete.
 Both pass normally with their full assertions; the time-bound test retains the

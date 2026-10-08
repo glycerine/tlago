@@ -11827,3 +11827,15 @@ it changes neither suspension nor completion. ResumeAllStuck is a different
 operation, including checkpoint-barrier recovery, and remains the registration
 wakeup. Joined suspended-consumer tests, cleanup-order checks and exact short
 race checks cover the corrected boundary.
+
+
+### Coordinator fingerprint registration mode
+
+Base TLCServer rejects fingerprint-server registration at the coordinator
+boundary before reading its manager, using the source server-level unsupported
+operation. A dynamic manager supplied to a base server does not grant distributed
+registration capability. Distributed coordinators carry startup registration
+state; they register the supplied endpoint, then count down the latch and print
+acceptance. Local and native TCP checks preserve base rejection without manager
+mutation, probing or acceptance output. Existing distributed registration and
+original fingerprint-manager tests remain green.

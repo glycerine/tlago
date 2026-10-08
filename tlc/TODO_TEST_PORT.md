@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental coordinator-mode checks preserve base-server registration rejection
+before manager access, locally and over native TCP. Distributed registration and
+original manager tests remain green. No original method directly covers this
+boundary; completion counts remain unchanged.
+
 Supplemental worker-loss checks cover unconditional suspended-consumer wakeup
 for all four queues, cleanup/requeue-before-wakeup, wake-before-decrement and
 duplicate loss reports. Focused concurrency checks pass with race detection;

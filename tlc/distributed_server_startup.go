@@ -170,7 +170,7 @@ func (s *TLCServer) RegisterFPSet(set DistributedFingerprintEndpoint, hostname s
 	defer s.monitor.Unlock()
 	registration := s.fpRegistration
 	if registration == nil {
-		return s.FPSetManager.RegisterFPSet(set, hostname)
+		panic(NewUnsupportedOperationException("Not applicable for non-distributed TLCServer"))
 	}
 	registration.mu.Lock()
 	defer registration.mu.Unlock()
