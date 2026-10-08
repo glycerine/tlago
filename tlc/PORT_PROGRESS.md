@@ -20119,3 +20119,32 @@ All handles are terminal. The checks run without Java. No full suite, long
 workload or race instrumentation was selected. Upstream has no original direct
 SimpleCache formatter tests, so no original-method credit is added. Broader
 distributed completion remains unproven.
+
+### 2026-10-08: Distributed management controls
+
+Compared TLCServerMXWrapper stop/suspend/resume with the pinned Java source.
+The Go controls had omitted synchronized ownership and stop’s notifyAll; a
+coordinator reporting wait could remain asleep after stop. Restored native
+monitor ownership around queue controls and stop’s done -> FinishAll -> notify
+order. Missing wrapper/server/queue ownership now raises the existing null
+failure category at the corresponding access. Queue failures propagate, skip
+later notification and release the monitor. No JMX, RMI or JVM implementation
+is introduced. Source search found no direct upstream control test methods.
+
+Added supplemental native checks for six success/failure queue controls, nine
+missing-owner cases and one actual zero-timeout reporting wait. The real wait
+is released and joined even on test failure; a reentrant stop invocation checks
+existing monitor behavior. An initial test build had an undefined boolString
+helper; corrected it to strconv.FormatBool before behavioral verification.
+The checks then exposed all six synchronization gaps and the missing wakeup
+(35412, status 1, 1.013 seconds). Corrected controls pass (92898, status 0,
+0.013 seconds); expanded owner checks pass (60420, status 0, 0.011 seconds).
+
+Exact short new-control race selection passes (91628, status 0, 1.029 seconds).
+No long tests were selected under race. Broader focused normal checks initially
+could not open local TCP sockets in the sandbox; reran the same selection with
+loopback access. Management controls, trace reporting I/O, checkpoint catches/
+missing owners/assigned blocks and the original nine smart-proxy contexts pass
+(status 0, 0.056 seconds). All handles are terminal. No full suite or long
+workload was selected. No original-method completion credit is added; broader
+distributed completion remains unproven.

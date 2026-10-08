@@ -934,6 +934,12 @@ suspension still bypasses later owners. Focused checkpoint/TCP checks pass.
 Upstream has no direct methods for missing coordinator components; these native
 checks add no original-method completion credit or changes to Missing entries.
 
+Coordinator management stop/suspend/resume controls now preserve source
+synchronization, queue failure order and stop’s reporting-wait notification.
+Short native checks cover six queue success/failure cases, nine missing-owner
+cases and a joined real reporting wait. Upstream has no direct methods for
+these controls; no original test statuses or completion credit change.
+
 Periodic/final coordinator progress now uses the existing message locale
 formatter instead of fixed comma grouping. Supplemental native process checks
 verify nine source locale reference rows, signed limits, rates, plain final

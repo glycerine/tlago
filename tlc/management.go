@@ -335,24 +335,40 @@ func (w *TLCServerMXWrapper) GetModelName() string {
 
 func (w *TLCServerMXWrapper) Stop() {
 	if w == nil || w.Server == nil {
-		return
+		panic(NewNullPointerException())
 	}
+	w.Server.monitor.Lock()
+	defer w.Server.monitor.Unlock()
 	w.Server.SetDone()
-	if w.Server.StateQueue != nil {
-		w.Server.StateQueue.FinishAll()
+	if w.Server.StateQueue == nil {
+		panic(NewNullPointerException())
 	}
+	w.Server.StateQueue.FinishAll()
+	w.Server.notifyCompletionLocked()
 }
 
 func (w *TLCServerMXWrapper) Suspend() {
-	if w != nil && w.Server != nil && w.Server.StateQueue != nil {
-		w.Server.StateQueue.SuspendAll()
+	if w == nil || w.Server == nil {
+		panic(NewNullPointerException())
 	}
+	w.Server.monitor.Lock()
+	defer w.Server.monitor.Unlock()
+	if w.Server.StateQueue == nil {
+		panic(NewNullPointerException())
+	}
+	w.Server.StateQueue.SuspendAll()
 }
 
 func (w *TLCServerMXWrapper) Resume() {
-	if w != nil && w.Server != nil && w.Server.StateQueue != nil {
-		w.Server.StateQueue.ResumeAll()
+	if w == nil || w.Server == nil {
+		panic(NewNullPointerException())
 	}
+	w.Server.monitor.Lock()
+	defer w.Server.monitor.Unlock()
+	if w.Server.StateQueue == nil {
+		panic(NewNullPointerException())
+	}
+	w.Server.StateQueue.ResumeAll()
 }
 
 type DiskFPSetMXWrapper struct {

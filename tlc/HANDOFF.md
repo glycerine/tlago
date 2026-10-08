@@ -132,6 +132,14 @@ still returns without accessing later owners. Focused native ordering and TCP
 checkpoint checks pass; there are no direct original methods for these missing
 component cases, so they add no original-method completion credit.
 
+Coordinator management controls now retain the source monitor and operation
+order. `Stop` marks done, finishes the queue, then wakes the reporting wait;
+`Suspend` and `Resume` hold the same monitor around their queue calls. Missing
+owners and queue failures escape without a fabricated success or premature
+notification, and the monitor is released on failure. Focused ordering, actual
+report-wait wakeup and checkpoint checks pass. Upstream has no direct management
+control methods, so supplemental checks add no original-method credit.
+
 Periodic coordinator progress and final tool progress now use the existing
 locale-aware message integer formatter, matching Java's `MP.format` calls.
 Nine fresh native locale processes verify grouping, digits, negative affixes,

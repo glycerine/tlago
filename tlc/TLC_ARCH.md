@@ -11571,3 +11571,18 @@ negative zero into positive zero. Nonzero sign bits remain explicit with this
 representation; finite/nonfinite values and NaN payloads retain exact sender
 bits. Communicating roles need the current native reply build. Focused TCP
 extreme/lifecycle/fatal-boundary checks pass.
+
+
+### Distributed management control synchronization
+
+TLCServerMXWrapper.Stop, Suspend and Resume now acquire the coordinator monitor
+and release it with defer, matching the source synchronized blocks. Stop sets
+the done flag before FinishAll, then notifies the existing reporting waiter.
+Queue failure leaves done set but does not notify; missing queue ownership
+fails at that same point. Suspend/Resume neither change done nor notify and
+retain queue failures. Missing wrapper/server ownership fails before locking.
+The existing native monitor permits reentrant control callbacks. No JMX or RMI
+implementation is added. Six queue success/failure cases, nine missing-owner
+cases and an actual joined zero-timeout report wait verify these boundaries.
+Upstream has no direct management control tests; no original-method credit is
+added. Broader management query parity remains separate.
