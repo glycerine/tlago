@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental retry-queue checks preserve required requeueing before limit
+updates, partial mutation and failure identity for I/O/runtime/fatal failures,
+assigned work and the inner catch boundary. These add no original-method credit.
+
 Supplemental selector-ownership checks cover constructor retention, missing
 selector error handling/finally cleanup and requeue-before-selector-failure
 ordering. No upstream test directly covers these boundaries, so original-method

@@ -20613,3 +20613,27 @@ attempt was denied loopback listeners by the sandbox; the same selection passed
 with the required execution permission. All processes are terminal. No full
 suite, long workload or race run was performed. These supplemental checks add
 no original-method credit; distributed parity remains incomplete.
+
+### 2026-10-08: Required recoverable-batch requeueing
+
+Compared TLCServerThread's recoverable worker-failure catch with pinned source.
+The Go catch skipped requeueing for a missing queue but still reduced the
+selector's transfer limit and reported continuation. The source requires the
+queue operation before the limit update. Removed the optional operation and
+added an explicit missing-queue failure at that point. Exceptions raised while
+requeueing escape the inner catch without entering worker-loss cleanup.
+
+Upstream has no direct retry-queue test methods. Added five supplemental cases:
+missing queue, partial requeue followed by I/O/runtime/fatal failure, and healthy
+retry. They preserve the preceding exceed-blocksize diagnostic, assigned work,
+partial queue mutations, failure identity and unchanged transfer limit on
+failure. The missing-queue case initially failed (5b1b86, status 1, 0.014 seconds);
+the other cases already matched source. After the production fix, these and
+existing thread/error-handler/finalizer/selector/concurrent worker-loss checks
+plus nine original smart-proxy contexts pass (af9f5b, status 0, 0.071 seconds).
+Short native TCP retry/loss, worker failure context and assigned-block checkpoint
+checks pass (529aab, status 0, 0.063 seconds). Actual native distributed DieHard
+execution passes both fingerprint-storage variants with the original seven-state
+trace and event assertions (34706, status 0, 23.369 seconds). All processes are
+terminal. No full-suite or race run was performed. Supplemental checks add no
+original-method completion credit; broader distributed parity remains incomplete.

@@ -1021,9 +1021,10 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 	if isDistributedRemoteFailure(err) {
 		if isRecoverableDistributedError(err) && len(t.currentStates()) > 1 {
 			PrintMessage(ECTLCDistributedExceedBlocksize, fmtInt(len(t.currentStates())/2))
-			if stateQueue != nil {
-				stateQueue.SEnqueueAll(t.currentStates())
+			if stateQueue == nil {
+				panic(NewNullPointerException())
 			}
+			stateQueue.SEnqueueAll(t.currentStates())
 			t.Selector.SetMaxTXSize(len(t.currentStates()) / 2)
 			return nil, true
 		}

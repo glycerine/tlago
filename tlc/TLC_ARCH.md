@@ -11773,3 +11773,16 @@ and propagates its failure. Concrete static/proportional selector limit updates
 remain no-ops. Focused native checks and existing original smart-proxy/short TCP
 checks pass. Upstream has no direct selector-ownership test methods, so these
 supplemental checks do not change original-method completion counts.
+
+
+### Required requeueing before recoverable-batch limit updates
+
+The coordinator's recoverable worker-failure catch requires the supplied queue
+before reducing the transfer limit. It prints the exceed-blocksize diagnostic,
+requeues the assigned block, updates the selector and then resumes selection.
+A missing queue fails at the requeue operation. A failed enqueue retains its
+preceding mutations and original failure; the limit update and continuation are
+skipped. Failures raised inside this catch escape to the enclosing model-error
+handler rather than being classified again as worker loss. Focused checks cover
+missing queues, partial I/O/runtime/fatal failures and healthy retry; short TCP
+checks and actual DieHard distributed trace execution remain green.

@@ -40,6 +40,9 @@ the server's selector or construct a replacement when it is absent. Missing
 selectors enter the model-error handler and thread cleanup; during a recoverable
 batch failure, requeueing precedes the selector failure, preserving pending work.
 Focused selector, error-handler, original smart-proxy and short TCP checks pass.
+Recoverable-batch retries also require a queue: they cannot lower the transfer
+limit or report continuation after skipping requeueing. Requeue failures retain
+preceding queue mutations and escape the inner worker-failure catch.
 
 The original checkpoint-on-violation and time-bound model tests are now complete.
 Both pass normally with their full assertions; the time-bound test retains the
