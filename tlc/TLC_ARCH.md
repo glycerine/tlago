@@ -10768,6 +10768,17 @@ the actual source graph, without initializing their goal as a substitute for
 the whole statement. Complete runtime ASSUME/PROVE definition-body adaptation
 and ordered top-level graph transfer remain pending. Test216 passes unchanged.
 
+Record constructors and record sets now read their field names by casting the
+active indexed tool slot directly to StringValue. They do not mux worker values,
+matching the distinct source branches. Record selection does mux its field
+slot to Value and never evaluates an absent slot. It preserves detailed failure
+messages and expression/context identity, and treats CounterExample as Java's
+RecordValue subclass. RecordValue.select retains the source null-argument
+failure and runtime exception metadata. The 102 bounded source observations
+cover these cache branches and worker choices, with independently built graph
+locations normalized; they do not establish complete evaluator exception or
+malformed-graph parity.
+
 Java Spec's toolId is static final and obtained once from semantic.FrontEnd's
 allocator. Current specToolID uses sync.Once for the same ownership. The tool
 ID is shared by subclasses; allocating a new ID for each ordinary Tool would

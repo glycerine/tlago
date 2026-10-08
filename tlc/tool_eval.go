@@ -1384,10 +1384,7 @@ func (t *Tool) evalRecordConstructor(expr *OpApplNode, c *Context, s0 *TLCStateM
 		if !ok || len(pair.Args) < 2 {
 			return nil, newTLCError(ECGeneral, "malformed record constructor")
 		}
-		name, err := stringUniqueFromNode(pair.Args[0])
-		if err != nil {
-			return nil, err
-		}
+		name := t.cachedRecordFieldName(pair.Args[0])
 		pairCM := cm
 		if CoverageEnabled() {
 			pairCM = cm.Get(pair)
@@ -1407,30 +1404,45 @@ func (t *Tool) evalRecordSelect(expr *OpApplNode, c *Context, s0 *TLCStateMut, s
 	if err != nil {
 		return nil, err
 	}
-	sval, ok := SemanticToolObjectForTool(t, expr.Args[1]).(Value)
-	if !ok {
-		sval, err = t.Eval(expr.Args[1], c, s0, s1, control, cm)
-		if err != nil {
-			return nil, err
+	object := muxToolObject(SemanticToolObjectForTool(t, expr.Args[1]))
+	var sval Value
+	if object != nil {
+		var ok bool
+		sval, ok = object.(Value)
+		if !ok {
+			panic(NewClassCastException("record selector tool object is not a Value"))
 		}
 	}
-	if record, ok := rval.(*RecordValue); ok {
+	// CounterExample extends RecordValue in Java. Do not use asRecordValue
+	// here: converting functions to records changes the source dispatch.
+	var record *RecordValue
+	switch value := rval.(type) {
+	case *RecordValue:
+		record = value
+	case *CounterExample:
+		record = value.RecordValue
+	}
+	if record != nil {
 		result, err := record.Select(sval)
 		if err != nil {
 			return nil, err
 		}
 		if result == nil {
-			return nil, newTLCError(ECGeneral, "attempted to select nonexistent field %s from record %s", sval, record)
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to select nonexistent field "+sval.String()+" from the record\n"+ValuesPPR(rval)+"\n"+semanticNodeJavaString(expr), expr, c)
 		}
 		return result, nil
-	}
-	if fcn, ok := rval.(*FcnRcdValue); ok {
-		return fcn.Apply(sval)
 	}
 	if fcn := asFcnRcdValue(rval); fcn != nil {
 		return fcn.Apply(sval)
 	}
-	return nil, newTLCError(ECGeneral, "attempted to select field %s from non-record value %s", sval, rval)
+	if rval == nil {
+		panic(NewNullPointerException())
+	}
+	field := "null"
+	if sval != nil {
+		field = sval.String()
+	}
+	return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to select field "+field+" from a non-record value "+ValuesPPR(rval)+"\n"+semanticNodeJavaString(expr), expr, c)
 }
 
 func (t *Tool) evalSetOfAll(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -1460,10 +1472,7 @@ func (t *Tool) evalSetOfRecords(expr *OpApplNode, c *Context, s0 *TLCStateMut, s
 		if !ok || len(pair.Args) < 2 {
 			return nil, newTLCError(ECGeneral, "malformed set-of-records field")
 		}
-		name, err := stringUniqueFromNode(pair.Args[0])
-		if err != nil {
-			return nil, err
-		}
+		name := t.cachedRecordFieldName(pair.Args[0])
 		pairCM := cm
 		if CoverageEnabled() {
 			pairCM = cm.Get(pair)
@@ -1733,21 +1742,21 @@ func selectRecordValue(v *RecordValue, arg Value) (Value, error) {
 	return v.Select(arg)
 }
 
-func stringUniqueFromNode(node SemanticNode) (*UniqueString, error) {
-	switch n := node.(type) {
-	case *StringNode:
-		return n.Value.Val, nil
-	case *ValueNode:
-		if value, ok := n.Value.(*StringValue); ok {
-			return value.Val, nil
-		}
-	case *StringValue:
-		return n.Val, nil
+// Record and record-set construction cast the active slot directly to
+// StringValue; unlike record selection, these branches do not mux WorkerValue.
+func (t *Tool) cachedRecordFieldName(node SemanticNode) *UniqueString {
+	object := SemanticToolObjectForTool(t, node)
+	if object == nil {
+		panic(NewNullPointerException())
 	}
-	if value, ok := SemanticToolObject(node).(*StringValue); ok {
-		return value.Val, nil
+	value, ok := object.(*StringValue)
+	if !ok {
+		panic(NewClassCastException("record field tool object is not a StringValue"))
 	}
-	return nil, newTLCError(ECGeneral, "record field name is not a string: %s", SemanticString(node))
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	return value.Val
 }
 
 func domainValue(expr SemanticNode, value Value) (Value, error) {

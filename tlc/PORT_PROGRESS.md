@@ -1,5 +1,51 @@
 # TLC Port Progress
 
+2026-10-07 Restore record-field cache consumers:
+Previous completed commit: 5428acc; clean tree confirmed before this slice.
+Java Tool's record and record-set constructors cast the active indexed field
+slot directly to StringValue. Replace the native literal/generic-cache helper
+with that cast, including null and wrong-type failures. Record selection now
+muxes the active indexed Value without evaluating an absent field slot. Restore
+the exact nonexistent-field/non-record reason, error code, expression and
+context. CounterExample extends RecordValue in Java, so its Go embedding follows
+the record branch rather than function conversion. Native malformed-pair guards
+and other evaluator branches still need separate source audits.
+
+External Java/Go observers cover 90 constructor/record-set/record-selection
+cache cases, eight actual IdThread worker selections and four CounterExample
+field selections. The first 98-row comparison exposed RecordValue.select(null):
+Java throws NullPointerException while Go returned a formatted non-string error.
+Fix Select's actual source null formatting boundary and runtime exception
+metadata, including source expression/context ownership. All final 102 rows
+match (61148 retired). Failure comparison preserves the exact reason/code;
+only the final expression-location line is normalized because these observers
+construct their native graphs separately. Both observers independently check
+detailed expression/context identity and null runtime parameter metadata.
+Files and logs use tlago-record-cache under /mnt/oldrog/tmp; no observer or new
+test enters the repository or earns test-port inventory credit.
+
+The existing native constructor coverage check now performs source constant
+initialization, preserving all result and coverage assertions. Short Tool and
+original RecordValue selections pass in 0.021 seconds (85312 retired). Original
+SetOfRcrdValue and ValueInputOutputStream selections pass in 60.481 seconds
+(42881 retired), with original bounds and no race instrumentation. The first
+affected original model/coverage selection passes in 21.919 seconds (47888
+retired). All-package compilation passes (77516 retired). The expanded final
+model/coverage/trace-expression selection passes in 23.444 seconds (11195
+retired), including the CounterExample dispatch correction. Known native XML
+failures and canonical Context/wrapper gaps remain; no full-workspace or goal
+completion claim.
+
+Final all-package compilation passes again (42211 retired). The combined short
+Tool/RecordValue/CounterExample/value-stream selection initially fails two
+native reducible-set union rows (69637 retired). A preceding CounterExample test
+resets the intern table; the case table captures the old class-static builtins,
+then its first NewBuiltinOpApplNode refreshes them. Later tc.op == OpCup setup
+checks therefore fail and construct the wrong right operand. Initialize the
+actual built-in class before capturing the table; every input/expected-value
+and assertion remains unchanged. The same combined selection then passes
+(79124 retired). This is native setup reconciliation, not new Java method credit.
+
 2026-10-07 Integrate indexed literal evaluation and shared scalar adapters:
 Previous completed commit: 57274fb; clean tree confirmed before integration.
 Apply the prepared candidate to production: Numeral/Decimal/String evaluation

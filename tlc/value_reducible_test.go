@@ -6,6 +6,9 @@ import (
 )
 
 func TestToolReducibleSetOperationsPreserveRawElements(t *testing.T) {
+	// Capture this interning context's class-static operators before building
+	// the case table; a preceding checker test may have reset the intern table.
+	ensureBuiltInOPs()
 	for _, tc := range []struct {
 		name     string
 		op       *UniqueString

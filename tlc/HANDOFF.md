@@ -454,6 +454,16 @@ package. The native XML fixture failures remain. Base-less aliases, complete
 runtime ASSUME/PROVE definition bodies and remaining canonical Context/wrapper
 adapters are still incomplete; this is not full lookup/graph parity.
 
+The literal/theorem changes are committed as `5428acc`. The next record-field
+slice removes direct literal/generic-cache reads from record constructors and
+record sets, and removes field re-evaluation from record selection. These now
+follow Java's indexed-slot casts and worker muxing. Record selection preserves
+the detailed failure reason and expression/context; CounterExample retains
+Java's RecordValue subclass dispatch. All 102 bounded source comparisons agree.
+The original RecordValue, SetOfRcrdValue and value-stream checks pass. Current
+run details and remaining gates belong in PORT_PROGRESS.md. Canonical runtime
+Context transfer and ASSUME/PROVE definition bodies remain next bridge gaps.
+
 Recursive declarations now update the actual node and unresolved counters inside
 `endRecursiveDefinition`, before label-scope completion. Canonical named functions
 also complete there rather than during native preregistration. Thirty direct Java

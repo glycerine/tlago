@@ -166,6 +166,9 @@ func TestToolRecordConstructorsUseFieldPairCoverage(t *testing.T) {
 		}
 		pair := NewBuiltinOpApplNode(OpPair, NewStringNode("a"), fieldExpr)
 		expr := NewBuiltinOpApplNode(op, pair)
+		processor := NewSpecProcessor("", NewDefns(), nil)
+		processor.ToolID = tool.ID
+		processor.ProcessConstants(expr, NewDefns())
 		cm := NewCostModel(expr)
 		fieldCM := cm.AddChild(pair).AddChild(fieldExpr)
 		if recordSet {

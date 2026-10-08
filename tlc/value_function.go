@@ -688,9 +688,22 @@ func (v *RecordValue) Apply(arg Value) (resultValue Value, err error) {
 
 func (v *RecordValue) Select(arg Value) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if arg == nil {
+		// Java formats arg.toString() before Assert.fail for a non-string.
+		panic(NewNullPointerException())
+	}
 	sv, ok := arg.(*StringValue)
 	if !ok {
-		return nil, v.unsupported("Attempted to access record by a non-string argument: %s", ValuesPPR(arg))
+		message := "Attempted to access record by a non-string argument: " + ValuesPPR(arg)
+		if source := v.GetSource(); source != nil {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+		}
+		failure := newTLCError(ECGeneral, "%s", message)
+		failure.Runtime = true
+		return nil, failure
+	}
+	if sv == nil {
+		panic(NewNullPointerException())
 	}
 	for i, name := range v.Names {
 		if sv.Val.Equal(name) {
