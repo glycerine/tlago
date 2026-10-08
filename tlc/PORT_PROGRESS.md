@@ -19574,3 +19574,28 @@ model harnesses remain Missing; this native coverage adds no original-method
 credit. Isolated trace-commit and nested FP-commit interruption plus broader
 distributed parity remain pending. All handles are terminal and retired.
 No full suite, reduced workload or race instrumentation was selected.
+
+## October 8, 2026: recovery between nested fingerprint commits
+
+Extended the native EWD840 harness with interruption after the first nested
+MemFPSet commit and before the second. The same configured production factory
+now receives a test-only child-zero wrapper that delegates actual CommitChkpt
+before abrupt exit. Parent inspection saves the older complete FP files and
+requires first-child promotion/changed contents, byte-identical old second-child
+contents with retained temporary, and earlier queue/trace/intern commits. The
+pre-FP-commit row also now checks both old FP checkpoints against the baseline.
+
+Both full unchanged N=7 MC06 rows pass normally (10281, status 0, 119.149
+seconds total; after-intern 59.31 seconds, after-first-FP 59.82 seconds). Both
+recover 20,480 fingerprints and 12,288 queued states through fresh CLI
+coordinator/worker processes and reach original 114,942 distinct/zero queued.
+All existing recovery/init/error/normal-exit assertions remain; every owned
+child is joined. Receipt:
+/mnt/oldrog/tmp/tlago-checkpoint-partial-fingerprint-commit.log.
+
+No production fix or checkpoint hook was needed. Consolidated overlapping
+checkpoint/recovery paragraphs in HANDOFF into one current summary and process
+receipt table; detailed history stays here. Original assumption-disabled remote
+harnesses remain Missing and receive no completion credit. Isolated trace-commit
+interruption and broader distributed parity remain pending. All handles are
+terminal and retired. No full suite, reduced workload or race instrumentation.

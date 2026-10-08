@@ -34,6 +34,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		checkpointInterrupted                      bool
 		checkpointInterruptedAfterQueue            bool
 		checkpointInterruptedAfterIntern           bool
+		checkpointInterruptedAfterFirstFP          bool
 	}{
 		{name: "coordinator_fingerprints"},
 		{name: "standalone_fingerprints", remoteFP: true},
@@ -44,6 +45,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "checkpoint_interruption_before_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true},
 		{name: "checkpoint_interruption_after_queue_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true, checkpointInterruptedAfterQueue: true},
 		{name: "checkpoint_interruption_after_intern_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true, checkpointInterruptedAfterIntern: true},
+		{name: "checkpoint_interruption_after_first_fingerprint_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true, checkpointInterruptedAfterIntern: true, checkpointInterruptedAfterFirstFP: true},
 		{name: "worker_loss", workerLoss: true},
 		{name: "all_workers_lost", workerLoss: true, allWorkersLost: true},
 	} {
@@ -114,6 +116,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			recoveryDistinct, recoveryQueue := "16384", "16384"
 			if scenario.recovering {
 				var previousTraceMetadata []byte
+				var previousFingerprintCheckpoints [2][]byte
 				producer := "checkpoint-frontier"
 				if scenario.midRunCheckpoint {
 					producer = "checkpoint-mid-run"
@@ -136,12 +139,21 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					for i := range previousFingerprintCheckpoints {
+						previousFingerprintCheckpoints[i], err = os.ReadFile(filepath.Join(path[1], fmt.Sprintf("MC06_%d.fp.chkpt", i)))
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
 					producer = "checkpoint-interrupt"
 					if scenario.checkpointInterruptedAfterQueue {
 						producer = "checkpoint-interrupt-after-queue"
 					}
 					if scenario.checkpointInterruptedAfterIntern {
 						producer = "checkpoint-interrupt-after-intern"
+					}
+					if scenario.checkpointInterruptedAfterFirstFP {
+						producer = "checkpoint-interrupt-after-first-fingerprint"
 					}
 					producerArgs = []string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "-tool", "-deadlock", "-recover", path[1], "MC06"}
 				}
@@ -263,9 +275,27 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 								}
 							}
 						}
-						for _, name := range []string{"MC06_0.fp.tmp", "MC06_1.fp.tmp"} {
-							if _, err := os.Stat(filepath.Join(path[1], name)); err != nil {
-								t.Fatalf("uncommitted checkpoint file %s: %v", name, err)
+						for i, previous := range previousFingerprintCheckpoints {
+							name := fmt.Sprintf("MC06_%d.fp", i)
+							committed, err := os.ReadFile(filepath.Join(path[1], name+".chkpt"))
+							if err != nil {
+								t.Fatal(err)
+							}
+							_, temporaryErr := os.Stat(filepath.Join(path[1], name+".tmp"))
+							if scenario.checkpointInterruptedAfterFirstFP && i == 0 {
+								if !os.IsNotExist(temporaryErr) {
+									t.Fatal("first fingerprint temporary was not promoted")
+								}
+								if bytes.Equal(committed, previous) {
+									t.Fatal("first fingerprint checkpoint did not change after exploration")
+								}
+							} else {
+								if temporaryErr != nil {
+									t.Fatalf("uncommitted fingerprint temporary %s: %v", name, temporaryErr)
+								}
+								if !bytes.Equal(committed, previous) {
+									t.Fatalf("later fingerprint checkpoint %s was changed", name)
+								}
 							}
 						}
 						_, temporaryErr := os.Stat(filepath.Join(path[1], "queue.tmp"))
@@ -527,6 +557,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				} else {
 					status = ExitOK
 				}
+			} else if len(args) > 0 && args[0] == "checkpoint-interrupt-after-first-fingerprint" {
+				if err := nativeDistributedCheckpointMidRun(args[1:], "after_first_fingerprint_commit"); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
 			} else if len(args) > 0 && args[0] == "worker-failpoint" {
 				if err := nativeDistributedBlockedWorker(args[1:]); err != nil {
 					fmt.Fprintln(os.Stderr, err)
@@ -652,13 +688,19 @@ func (q *nativeMidRunCheckpointQueue) CommitChkpt() error {
 // Entry into this commit occurs after queue/trace/intern commits in TLCServer.
 type nativeInterruptedFingerprintCommit struct {
 	tlc.FPSet
-	server *tlc.TLCServer
+	server      *tlc.TLCServer
+	afterCommit bool
 }
 
 func (s *nativeInterruptedFingerprintCommit) CommitChkpt() error {
 	queue, ok := s.server.StateQueue.(*nativeMidRunCheckpointQueue)
-	if !ok || queue.interruption != "after_intern_commit" {
+	if !ok || (!s.afterCommit && queue.interruption != "after_intern_commit") || (s.afterCommit && queue.interruption != "after_first_fingerprint_commit") {
 		return fmt.Errorf("unexpected interrupted fingerprint commit setup")
+	}
+	if s.afterCommit {
+		if err := s.FPSet.CommitChkpt(); err != nil {
+			return err
+		}
 	}
 	queue.interruptProcess()
 	return nil
@@ -680,7 +722,7 @@ func nativeDistributedCheckpointMidRun(args []string, interruption string) error
 			server, err := tlc.NewTLCServerFromApp(app)
 			if err == nil {
 				server.ConfigurePublication(network.Publication())
-				if interruption == "after_intern_commit" {
+				if interruption == "after_intern_commit" || interruption == "after_first_fingerprint_commit" {
 					// MemFPSet init owns no open files. Replace the unused initial
 					// manager with the same factory/configuration plus a commit
 					// failpoint, before recovery or initialization uses either set.
@@ -689,9 +731,17 @@ func nativeDistributedCheckpointMidRun(args []string, interruption string) error
 						return nil, fmt.Errorf("interrupted fixture requires memory fingerprint storage")
 					}
 					set := tlc.NewFPSet(config)
+					if interruption == "after_first_fingerprint_commit" {
+						multi, ok := set.(*tlc.MultiFPSet)
+						if !ok || len(multi.Sets) != 2 {
+							return nil, fmt.Errorf("interrupted fixture requires two nested fingerprint sets")
+						}
+						multi.Sets[0] = &nativeInterruptedFingerprintCommit{FPSet: multi.Sets[0], server: server, afterCommit: true}
+					} else {
+						set = &nativeInterruptedFingerprintCommit{FPSet: set, server: server}
+					}
 					set.Init(1, app.GetMetadir(), app.GetFileName())
-					wrapped := &nativeInterruptedFingerprintCommit{FPSet: set, server: server}
-					server.FPSetManager = tlc.NewNonDistributedFPSetManager(wrapped, server.FPSetManager.GetHostName(), server.Trace)
+					server.FPSetManager = tlc.NewNonDistributedFPSetManager(set, server.FPSetManager.GetHostName(), server.Trace)
 				}
 			}
 			return server, err

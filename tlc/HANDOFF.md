@@ -73,102 +73,56 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
-Full native EWD840 recovery also passes after intern-table commit, immediately
-before fingerprint commit. Parent checks require committed queue/trace/intern
-files and both FP temporaries; fresh processes restore 20,480 fingerprints and
-12,288 queued states and finish at 114,942 distinct/zero queued. The failpoint
-wraps the same configured memory storage factory in test code. No production
-checkpoint hook or disabled Java harness completion credit is added.
+Checkpoint and recovery checks preserve source mutation, failure categories and
+phase ordering through native Go interfaces and transport. Detailed receipts
+belong in PORT_PROGRESS.md; the supplemental checks below add no completion
+credit to the four assumption-disabled Java remote model harnesses.
 
-Full native EWD840 recovery now covers interruption just after queue commit.
-Fresh processes retain the new 12,288-state queue, old trace checkpoint metadata
-and full 20,480-fingerprint trace, then reach the original 114,942 distinct/zero
-queued result. The pre-commit row also passes with its old 16,384-state queue.
-The isolated trace-commit and nested FP-commit boundaries remain pending; no disabled Java harness credit
-is added.
+The full native EWD840/MC06 process harness retains N=7, the original final
+114,942 distinct states and zero queued states, exactly one recovery, no repeated
+initialization or GENERAL/lost replies, normal fresh coordinator/worker exits
+and joined child processes. Initial and complete mid-run checkpoint recovery
+pass. Latest interruption receipts are:
 
-DiskFPSet named checkpoint creation now retains table locks and the flusher
-flag after flush/copy failure, matching source release order. Success alone
-advances the marker and releases ownership. Native TCP checks retain completed
-flush state and manager continuation to a healthy partition without reassignment.
-These supplemental checks add no original-method completion credit.
+| Interruption boundary | Recovered fingerprints | Recovered queue | Checkpoint files |
+| --- | ---: | ---: | --- |
+| Before queue commit | 20,480 | 16,384 | Old queue and trace metadata |
+| After queue commit | 20,480 | 12,288 | New queue, old trace metadata |
+| After intern commit | 20,480 | 12,288 | New queue/trace/intern, old FP checkpoints |
+| After first nested FP commit | 20,480 | 12,288 | First FP promoted, second FP byte-identical to its old checkpoint |
 
-Memory queue recovery now retains its cursor and untouched array slots,
-publishes each new empty state before reading, and preserves partial state
-fields on failure. Capacity overflow retains the fixed array and earlier reads
-with the source bounds failure; coordinator recovery stops before fingerprints
-or publication. These checks add no original-method completion credit.
+The harness inspects committed queue headers, trace metadata, temporary-file
+promotion and prior FP file contents independently of producer count markers.
+FP recovery reconstructs the complete persisted trace. Commit failpoints wrap
+the same configured production memory FP factory in test code; there is no
+production checkpoint hook. Isolated trace-commit interruption and broader
+process/network failures remain pending; this does not establish atomic recovery.
 
-Queue and trace checkpoint commit failures now retain the source I/O category
-through native failure payloads. Checks retain earlier pool deletion, stop at
-failed file promotion, and verify that coordinator failures preserve earlier
-checkpoint phases without running later commits or reporting completion.
+Focused recovery contracts are also verified:
 
-Memory fingerprint checkpoint creation now opens the requested file directly,
-without creating missing parents. Local and native TCP checks retain the source
-I/O failure and manager diagnostic. SetOfLong constructor allocation now keeps
-zero length and rejects negative length, completing the earlier size audit.
+- Trace metadata reads update the saved pointer before seek, including closed
+  owners. Enumeration creation/cursor/read/reset errors propagate without zero
+  insertion or false end-of-trace; reset retains source cursor/length behavior.
+- Memory and disk queues retain untouched slots and publish empty states before
+  reading them. Completed state-header fields survive later failures. Memory
+  recovery retains its cursor and fixed capacity; successful disk recovery closes
+  input before reader restart. Queue failures precede FP recovery/publication.
+- MultiFPSet trace recovery selects each child's RecoverFP. Disk/off-heap
+  duplicate errors or warnings, memory/parent runtime assertions, routing and
+  prior insertions survive. MemFPSet1 recovery retains source field assignments,
+  count/growth/zero quirks and exact zero/negative allocation boundaries.
+- Disk file recovery replaces readers one slot at a time, retains earlier
+  replacements and untouched later readers on failure, and resets the pool
+  cursor only on success. Named checkpoint creation retains locks/flusher state
+  on flush/copy failure; success advances the marker and releases ownership.
+- Memory checkpoint creation opens files without creating missing parents.
+  Queue/trace commit errors retain their I/O category through native payloads;
+  partial pool deletion and earlier commits remain when later phases fail.
+  Native manager checks retain source diagnostics and healthy-partition
+  continuation without reassignment or resetting failed storage ownership.
 
-MemFPSet1 backing-set recovery now assigns each successfully read header field
-immediately and reconstructs with ordinary Put/grow, matching Java. Source
-count quirks, zero membership during growth, empty arrays, negative allocation
-and partial record mutation are retained. Native TCP checks cover complete and
-truncated checkpoint files; no original-method completion credit is added.
-
-Disk fingerprint file recovery now replaces worker and pool readers one slot
-at a time, retaining earlier replacements and untouched later slots on close
-or reopen failure. The pool cursor resets only after successful completion;
-native reader snapshots retain the same partial recovery state.
-
-Memory and parent MultiFPSet duplicate recovery now retains the source runtime
-assertion category rather than an evaluator failure. Native payload and TCP
-manager checks retain that category, stop at the duplicate and preserve earlier
-insertion; the manager does not swallow it as unavailable storage.
-
-Unused RMI-specific unknown-host, connect-I/O and access error carriers have
-been removed. Native distributed failure payloads and retry/shutdown categories
-remain the transport contract; no RMI compatibility implementation is required.
-
-MultiFPSet trace recovery now calls the selected child's RecoverFP method,
-matching source dispatch. Disk and off-heap children retain recovery-corruption
-failures or duplicate warnings according to the source option, with exact
-partition routing and partial insertion state. A child I/O failure escapes
-coordinator recovery after the queue is restored and before publication.
-These supplemental native checks add no original-method completion credit.
-
-Disk queue recovery now retains source partial mutation on failed state reads.
-Untouched buffer slots survive; each visited slot receives its empty state before
-reading, and completed worker/UID fields survive a later read failure. The input
-closes once before reader restart on success. Four short enqueue/dequeue failure
-cases verify trace-first recovery and no later fingerprint recovery/publication.
-Existing original short queue/value-stream translations and assigned-block
-recovery pass. Later failure phases and broader parity remain under audit.
-
-Closed trace recovery now preserves the source lifecycle: read checkpoint
-metadata and update the saved pointer, then fail the seek on a closed owner
-without reopening it. Short coordinator checks cover missing metadata, all
-truncation lengths and a negative saved cursor. Failures escape recovery before
-queue recovery, hostname resolution, publication or initialization; reporting
-belongs to the outer command catch. Further recovery phases remain under audit.
-
-Trace enumeration now propagates creation, cursor, read and reset errors through
-native Go return values. MultiFPSet, disk and off-heap trace recovery and CheckImpl
-retain those failures instead of inserting zero or treating them as end-of-trace.
-Reset refreshes length from the owner and preserves its cursor semantics; closed
-handles remain errors. Focused checks and full pre-commit interruption recovery
-pass. Between-commit interruption and broader distributed parity remain pending.
-
-The native MC06 process harness now verifies a mid-run local MemFPSet checkpoint.
-A real TCP worker processes successors before the production checkpoint barrier
-captures the frontier. The producer exits abruptly after commit; its old worker
-is retired, and fresh CLI coordinator/worker processes must recover the exact
-saved counts without regenerating initial states. Full unchanged N=7 exploration
-then finishes with 114,942 distinct states and zero queued states, no GENERAL or
-lost replies, and normal exits for both fresh processes. This is supplemental
-native coverage, not disabled original-harness completion credit. Interruption before the first commit is also verified separately: queue recovery
-uses its old committed frontier while MultiFPSet reconstructs fingerprints from
-the full persisted trace. Interruption between commits and broader process-crash
-behavior remain pending.
+Unused RMI-specific error carriers are removed. Native Go failure traits drive
+retry/shutdown decisions; Java remote machinery is outside the port.
 
 Native state transfer now preserves shared backing value arrays for tuples,
 records, functions, configured operator argument rows, tuple products and record
@@ -2226,7 +2180,8 @@ and worker processes after abrupt producer exit. Interruption before the first c
 and full-trace recovery behavior. Interruption after queue commit is now verified
 with the new queue and old trace metadata. Interruption after intern-table commit
 is also verified with committed trace/intern metadata before FP commit. Isolated
-trace-commit and nested FP-commit boundaries remain pending;
+trace-commit interruption remains pending; nested FP-commit interruption now
+passes with mixed committed files;
 fresh-process remote-FP CLI recovery is the source startup
 limitation described above.
 

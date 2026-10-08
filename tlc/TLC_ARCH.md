@@ -11410,3 +11410,15 @@ temporaries and retained FP temporaries. Fresh CLI coordinator/worker recovery
 passes with the unchanged model and all final assertions. Isolated trace-commit
 and nested fingerprint-commit interruption remain pending; source atomicity
 or disabled Java harness completion is not claimed.
+
+Native EWD840 process recovery now covers interruption between the two nested
+MemFPSet commits. A test-only wrapper on child zero delegates its real commit
+before exiting, leaving child one's old checkpoint and its new temporary file.
+Parent inspection compares both FP checkpoints with the older complete baseline:
+first-child contents changed and its temporary is promoted; second-child contents
+remain byte-identical and its temporary remains. Earlier queue/trace/intern commits
+also remain. MultiFPSet recovery reconstructs fingerprints from the full persisted
+trace, preserving source behavior with mixed child checkpoint generations. Fresh
+CLI coordinator/worker processes complete the unchanged model. No atomicity
+protocol or production hook is added; isolated trace-commit interruption and
+broader failures remain pending.
