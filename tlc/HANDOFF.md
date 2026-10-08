@@ -762,7 +762,7 @@ operator alternatives and argument preview 72 (budget 2). Its other branch keeps
 direct OpArgs before structural preview 74 (budget 1).
 All 74 source lookahead entry points now have production callers. JavaCC's 130
 direct-choice expectation masks are now generated from upstream; source sites
-4, 5, 7–90, 92–96, 98, 120 and 123–128 are connected. Expectations expire by token generation
+4, 5, 7–90, 92–96, 98–118, 120 and 123–128 are connected. Expectations expire by token generation
 and are ordered
 by token kind, and precede saved-call rescans and their duplicate checks. Successful
 consumption now performs Java's 101-token cleanup of expired lookahead references.
@@ -781,10 +781,14 @@ source sites 55–76. Shared fact parsing receives each actual source site rathe
 than merging ordinary and DEF-item expectations. Expression arguments, quantifiers
 and set forms now record source sites 77–90, 92–96 and 98. Shared set loops retain
 their actual caller sites, and open/parenthesized expressions reject token kinds
-outside their Java productions. The earlier 641 state observations remain
-qualified evidence; all 5,424 current parser rows across 317 cases agree. Current
-original frontend/model checks pass in 9.739 seconds, complete SANY in 1.923 seconds
-and compilation passes.
+outside their Java productions. Brackets, EXCEPT components, tuples, restricted
+expressions, fairness, LET, junction items, CHOOSE and lambda now record source
+sites 99–118. Identifier and keyword record fields retain distinct sites 100/101.
+The earlier 641 state observations remain qualified evidence; all 5,823 current
+parser rows across 341 cases agree. Current original frontend/model checks pass
+in 9.948 seconds, complete SANY in 1.907 seconds and compilation passes.
+Unconnected direct-choice sites are 0–3, 6, 91, 97, 119, 121, 122 and 129, including
+redundant/unreachable source switch failures.
 Remaining direct-choice sites, native error-span estimates, full expected-token
 bookkeeping, syntax AST parity and proof generation remain reconciliation work.
 These bounded observations do not establish every semantic-predicate context or

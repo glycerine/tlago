@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 Bracket, EXCEPT and control-form expectation sites:
+Previous completed commit: f02d0b4. Connect source sites 99–118. SBracketCases
+records function-bound comma exit 99, separate identifier/keyword record field
+exits 100/101, record-set exit 102, function-argument exit 103, EXCEPT exit 104
+and continuation failure 105. Restore separate record constructor choices before
+field reclassification; shared field construction receives the actual site.
+ExceptSpec component exit uses 106, indexed component comma exit 107 and component
+failure 108. TupleOrAction uses element comma exit 109 and ending failure 110.
+NoOpExtension's absent continuation records 111; restricted expression failure
+112; fairness keyword failure 113; LET definition choice/loop exit 114/115;
+JuncItem bullet failure 116; CHOOSE intro failure 117; lambda comma exit 118.
+Converted failure paths retain actual source expectations instead of native
+estimates. Connected sites: 4, 5, 7–90, 92–96, 98–118, 120 and 123–128. Remaining
+sites: 0–3, 6, 91, 97, 119, 121, 122 and 129. Full bookkeeping/AST remains pending.
+
+All prior 5,424 production rows remain equal. Extend external observer by 24
+valid/malformed records, functions, EXCEPT components, tuples, restricted action
+subscripts, LET/recursive definitions, CHOOSE and lambda cases. All 5,823 rows
+across 341 cases match actual Java syntax kinds/images/four coordinates and
+complete parse messages/residual stack text, with outer log whitespace excluded.
+Java returns 0; Go observer 96964 passes. Existing BodyDefinitionProbe.java,
+manual Go observer and overlay remain external under /mnt/oldrog/tmp; receipts
+tlago-bracket-choice-*. No invented permanent tests, original-method credit,
+fixture/assertion weakening, race or optional corpus sweeps.
+
+Existing original frontend/model gate 9668 passes 9.948s; complete SANY 52978
+passes 1.907s; compile 1258 passes. All handles retired; diff check green. Update
+handoff and architecture; inventory totals unchanged. The qualified earlier
+failing full-workspace snapshot remains unchanged evidence. Remaining parser/AST,
+canonical/runtime sharing and documented TLC requirements keep the goal active.
+
 2026-10-07 Expression, quantifier and set expectation choices:
 Previous completed commit: 4630fec. Connect source sites 77–90, 92–96 and 98.
 Parenthesized/OpenExpression failures use 77/78 and now reject token kinds

@@ -1906,7 +1906,8 @@ func (p *SanyParser) junctionItem(stop func(*SanyToken) bool, itemKind string) *
 		}
 	}()
 	if !p.check(SanyTokenAND) && !p.check(SanyTokenOR) {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenOR}, {SanyTokenAND}}, "expected junction bullet")
+		p.recordDirectChoice(116)
+		p.throwParseException(nil, "expected junction bullet")
 	}
 	bullet := NewSanyTokenNode(p.advance())
 	expression := p.ExpressionUntil(stop)
@@ -2032,7 +2033,8 @@ func (p *SanyParser) FairnessExpr() *SanySyntaxNode {
 	if p.check(SanyTokenWF) || p.check(SanyTokenSF) {
 		heirs[0] = NewSanyTokenNode(p.advance())
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenWF}, {SanyTokenSF}}, "expected WF_ or SF_")
+		p.recordDirectChoice(113)
+		p.throwParseException(nil, "expected WF_ or SF_")
 	}
 	expr := p.ReducedExpression()
 	if p.scanLookahead(51, 2) {
@@ -2105,13 +2107,15 @@ func (p *SanyParser) LetDefinitions() *SanySyntaxNode {
 		case SanyTokenRecursive:
 			heirs = append(heirs, p.Recursive())
 		default:
-			p.throwParseException([][]SanyTokenKind{{SanyTokenLocal}, {SanyTokenDefbreak}, {SanyTokenRecursive}}, "expected LET definition")
+			p.recordDirectChoice(114)
+			p.throwParseException(nil, "expected LET definition")
 		}
 		kind := p.peek().Kind
 		if kind != SanyTokenLocal && kind != SanyTokenDefbreak && kind != SanyTokenRecursive {
 			break
 		}
 	}
+	p.recordDirectChoice(115)
 	return NewSanyNode(SanySyntaxNodeKindByName["N_LetDefinitions"], heirs...)
 }
 
@@ -2206,7 +2210,8 @@ func (p *SanyParser) UnboundOrBoundChoose(stop func(*SanyToken) bool) *SanySynta
 	case SanyTokenLab:
 		intro = p.IdentifierTuple()
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenLab}}, "expected CHOOSE identifier or tuple")
+		p.recordDirectChoice(117)
+		p.throwParseException(nil, "expected CHOOSE identifier or tuple")
 	}
 	maybe := p.MaybeBound()
 	colon := p.consumeParseToken(SanyTokenColon, "expected : in CHOOSE expression")
@@ -2241,6 +2246,7 @@ func (p *SanyParser) Lambda(stop func(*SanyToken) bool) *SanySyntaxNode {
 		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected LAMBDA identifier"))
 		p.expecting = "`,' or `:'"
 	}
+	p.recordDirectChoice(118)
 	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in LAMBDA expression"))
 	p.expecting = "Expression"
 	heirs = append(heirs, p.ExpressionUntil(stop))
@@ -2527,6 +2533,7 @@ func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRab || tok.Kind == SanyTokenArab || tok.Kind == SanyTokenEOF
 			}))
 		}
+		p.recordDirectChoice(109)
 	}
 	switch p.peek().Kind {
 	case SanyTokenRab:
@@ -2537,7 +2544,8 @@ func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 		heirs = append(heirs, p.ReducedExpression())
 		return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenRab}, {SanyTokenArab}}, "expected >> or >>_")
+		p.recordDirectChoice(110)
+		p.throwParseException(nil, "expected >> or >>_")
 		return nil
 	}
 }
@@ -2547,33 +2555,40 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 	defer p.endProduction()
 	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLsb, "expected [")}
 	kind := "N_FcnAppl"
+	readRecordFields := func(site int) {
+		kind = "N_RcdConstructor"
+		heirs = append(heirs, p.FieldVal())
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldVal())
+		}
+		p.recordDirectChoice(site)
+	}
 	if p.matchFcnConst() {
 		kind = "N_FcnConst"
 		heirs = append(heirs, p.QuantBound())
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.QuantBound())
 		}
+		p.recordDirectChoice(99)
 		heirs = append(heirs, p.consumeParseToken(SanyTokenMapto, "expected |-> in function constructor"))
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 		}))
-	} else if p.scanLookahead(46, 2147483647) || (p.peekNext().Kind == SanyTokenMapto && isSanyFieldNameToken(p.peek().Kind)) {
-		// Java first tries Identifier MAPTO, then reclassifies keyword fields.
+	} else if p.scanLookahead(46, 2147483647) {
+		readRecordFields(100)
+	} else if p.peekNext().Kind == SanyTokenMapto && isSanyFieldNameToken(p.peek().Kind) {
 		p.reclassifyFieldName()
-		kind = "N_RcdConstructor"
-		heirs = append(heirs, p.FieldVal())
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldVal())
-		}
+		readRecordFields(101)
 	} else if p.scanLookahead(47, 2147483647) {
 		kind = "N_SetOfRcds"
 		heirs = append(heirs, p.FieldSet())
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldSet())
 		}
+		p.recordDirectChoice(102)
 	} else {
 		if !p.scanLookahead(48, 1) {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected bracket expression")
+			p.throwParseException(nil, "expected bracket expression")
 		}
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenArsb || tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenExcept || tok.Kind == SanyTokenEOF
@@ -2586,6 +2601,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 					return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 				}))
 			}
+			p.recordDirectChoice(103)
 		case SanyTokenArrow:
 			kind = "N_SetOfFcns"
 			heirs = append(heirs, p.consumeParseToken(SanyTokenArrow, "expected -> in function set"))
@@ -2598,11 +2614,13 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 			for p.match(SanyTokenComma) {
 				heirs = append(heirs, NewSanyTokenNode(p.previous()), p.ExceptSpec())
 			}
+			p.recordDirectChoice(104)
 		case SanyTokenArsb:
 			heirs = append(heirs, p.consumeParseToken(SanyTokenArsb, "expected ]_"), p.ReducedExpression())
 			return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
 		default:
-			p.throwParseException([][]SanyTokenKind{{SanyTokenComma}, {SanyTokenRsb}, {SanyTokenArrow}, {SanyTokenExcept}, {SanyTokenArsb}}, "expected bracket expression continuation")
+			p.recordDirectChoice(105)
+			p.throwParseException(nil, "expected bracket expression continuation")
 		}
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
@@ -2679,6 +2697,7 @@ func (p *SanyParser) ExceptSpec() *SanySyntaxNode {
 			break
 		}
 	}
+	p.recordDirectChoice(106)
 	equals := p.consumeParseToken(SanyTokenEquals, "expected = in EXCEPT spec")
 	equals.Kind = SanySyntaxNodeKindByName["T_EQUAL"]
 	heirs = append(heirs, equals)
@@ -2714,9 +2733,11 @@ func (p *SanyParser) ExceptComponent() *SanySyntaxNode {
 				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 			}))
 		}
+		p.recordDirectChoice(107)
 		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ] in EXCEPT component"))
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenDot}, {SanyTokenLsb}}, "expected EXCEPT component")
+		p.recordDirectChoice(108)
+		p.throwParseException(nil, "expected EXCEPT component")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_ExceptComponent"], heirs...)
 }
@@ -2736,7 +2757,8 @@ func (p *SanyParser) ReducedExpression() *SanySyntaxNode {
 	case p.check(SanyTokenLab):
 		return p.TupleOrAction()
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenLbr}, {SanyTokenLbc}, {SanyTokenLsb}, {SanyTokenLab}}, "expected restricted expression after action subscript")
+		p.recordDirectChoice(112)
+		p.throwParseException(nil, "expected restricted expression after action subscript")
 		return nil
 	}
 }
@@ -2877,6 +2899,7 @@ func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
 			args = p.OpArgs()
 		}
 	}
+	p.recordDirectChoice(111)
 	// The final argument list is detached for FairnessExpr. Earlier prefix
 	// argument lists remain attached to their IdPrefixElement nodes.
 	p.fairnessHook = args

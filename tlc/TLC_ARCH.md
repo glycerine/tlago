@@ -10223,3 +10223,22 @@ Connected direct-choice sites are 4, 5, 7–90, 92–96, 98, 120 and 123–128. 
 production observations match 5,424 rows across 317 cases. Remaining expected-token
 bookkeeping and full parser/AST and canonical/evaluator fidelity remain separate
 requirements beyond this bounded evidence.
+
+
+## Brackets and control forms preserve direct-choice sites
+
+SBracketCases records function-bound exit 99, distinct identifier/keyword record
+field exits 100/101, record-set exit 102, function-argument exit 103, EXCEPT exit
+104 and continuation failure 105. Separate source record alternatives precede
+field reclassification; the shared construction helper receives each actual site.
+ExceptSpec/component choices use 106–108; tuples use 109/110; restricted
+NoOpExtension and ReducedExpression use 111/112; fairness uses 113; LET definition
+choice and repetition exit use 114/115; junction item failure 116; CHOOSE intro
+failure 117; lambda comma exit 118.
+
+Connected direct-choice sites are 4, 5, 7–90, 92–96, 98–118, 120 and 123–128.
+Remaining sites are 0–3, 6, 91, 97, 119, 121, 122 and 129, including redundant
+source switch failures. Full expected-token bookkeeping, native error-span
+estimates and parser/AST fidelity remain separate requirements. External
+production observations match 5,823 rows across 341 cases, providing bounded
+syntax/message evidence rather than whole parser or evaluator completion.
