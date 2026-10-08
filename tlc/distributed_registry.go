@@ -2,8 +2,8 @@ package tlc
 
 import "sync"
 
-// TLCServerRegistry supplies the three Registry calls made by TLCServer.
-// Remote backends preserve their checked exceptions through these boundaries.
+// TLCServerRegistry supplies the three coordinator catalog operations used by
+// TLCServer. Native failure categories preserve discovery and cleanup decisions.
 type TLCServerRegistry struct {
 	Rebind func(string, *TLCServer) error
 	Unbind func(string) error
@@ -30,7 +30,7 @@ var defaultTLCRegistryNamespace = NewTLCRegistryNamespace()
 
 // TLCRegistryNamespace represents local registry object identity and binding
 // lifetime. It is not a network transport. Separate namespaces separate names,
-// but do not isolate the evaluator's Java class globals.
+// but do not isolate the evaluator's package globals.
 type TLCRegistryNamespace struct {
 	mu         sync.Mutex
 	registries *InsMap[int, *TLCServerRegistry]
@@ -46,12 +46,10 @@ func (n *TLCRegistryNamespace) CreateRegistry(port int) (*TLCServerRegistry, err
 	}
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	// RegistryImpl exports a fixed ObjID. A repeated endpoint fails in the
-	// object table before opening another listener. JDK port-zero endpoints
-	// are cached too; zero does not allocate a fresh transport on every call.
-	// This local key preserves that identity without inventing an OS port.
+	// Local catalogs are keyed by the configured port, including zero. Creating
+	// an existing key fails without replacing its catalog or inventing a listener.
 	if _, found := n.registries.Get2(port); found {
-		return nil, NewExportException("internal error: ObjID already in use", nil)
+		return nil, coordinatorPublicationFailure("coordinator catalog already exists at port " + fmtInt(port))
 	}
 	var bindingsMu sync.Mutex
 	bindings := NewInsMap[string, *TLCServer]()
@@ -69,7 +67,7 @@ func (n *TLCRegistryNamespace) CreateRegistry(port int) (*TLCServerRegistry, err
 			bindingsMu.Lock()
 			defer bindingsMu.Unlock()
 			if found, _ := bindings.Delkey(name); !found {
-				return NewNotBoundException(name)
+				return coordinatorBindingMissingFailure(name)
 			}
 			return nil
 		},
@@ -79,7 +77,7 @@ func (n *TLCRegistryNamespace) CreateRegistry(port int) (*TLCServerRegistry, err
 			if server, found := bindings.Get2(name); found {
 				return server, nil
 			}
-			return nil, NewNotBoundException(name)
+			return nil, coordinatorBindingMissingFailure(name)
 		},
 	}
 	n.registries.Set(port, registry)
@@ -100,7 +98,7 @@ func (n *TLCRegistryNamespace) GetRegistry(port int) (*TLCServerRegistry, error)
 		registry, found := n.registries.Get2(port)
 		n.mu.Unlock()
 		if !found {
-			return nil, NewConnectException("Connection refused to host: 127.0.0.1", NewNetConnectException("Connection refused"))
+			return nil, &DistributedOperationError{Message: javaString("coordinator catalog is unavailable at port " + fmtInt(port)), Class: "tlc.CoordinatorUnavailable", Remote: true, IO: true, DiscoveryRetry: true}
 		}
 		return registry, nil
 	}
@@ -147,7 +145,7 @@ func (s *TLCServer) publicationBoundaries() TLCServerPublication {
 	if env.Unexport == nil {
 		env.Unexport = func(server *TLCServer, force bool) (bool, error) {
 			if !server.unexported.CompareAndSwap(false, true) {
-				return false, NewNoSuchObjectException("object not exported")
+				return false, coordinatorEndpointRemovedFailure()
 			}
 			return true, nil
 		}
@@ -194,7 +192,7 @@ func (s *TLCServer) RunWorkerShutdownHook() error {
 		if isDistributedRemoteFailure(err) {
 			return nil
 		}
-		if failure, missing := err.(*NotBoundException); missing && failure != nil {
+		if isDistributedCoordinatorBindingMissing(err) {
 			return nil
 		}
 		return err

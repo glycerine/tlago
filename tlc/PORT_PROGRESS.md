@@ -21371,3 +21371,38 @@ DieHard storage variants pass existing trace/event assertions (b04906, status 0,
 24.397 seconds). All processes are terminal. No full suite or race run was
 performed; supplemental checks add no original-method credit. Native peers need
 the updated failure payload build. Distributed parity remains incomplete.
+
+### 2026-10-08: Native coordinator catalog and discovery failures
+
+Local catalogs and TCP publication now use native Go operation categories for
+duplicate creation, missing lookup/unbind and repeated coordinator removal.
+Removed ObjID/JDK registry error fabrication from local catalog creation. Lazy
+local references report an unavailable catalog only at use, then observe later
+catalog and binding publication. BindingMissing is an explicit payload trait;
+reachable-but-unready discovery remains retryable without classifying the
+missing binding as connection/I/O loss. Lookup no longer inspects Java connect
+or naming exceptions. Worker keepalive and the shutdown hook use the native
+missing-binding trait, preserving coordinator-loss and guard behavior.
+Coordinator removal is distinct from worker removal and cannot enter a worker-
+only cleanup catch. Remaining legacy remote classifiers and fingerprint endpoint
+adapters are still pending. No Java registry or runtime implementation is added.
+
+No original method directly covers these catalog boundaries. Supplemental
+local/TCP cases verify missing lookup/unbind, payload round trips, original
+one/one/two-second retry delays, duplicate creation, shutdown guard suppression
+and later traversal, and repeated coordinator removal. The first local lookup
+initially returned NotBoundException (1476e6, status 1, 0.012 seconds). After
+implementation, the local fixture's published-hook check exposed its own wrong
+port: it created a catalog at 1099 while the hook correctly used the configured
+TLC port. Corrected the fixture to use TLCServerPort; production order was kept.
+An additional lazy-reference case distinguishes missing catalog/binding and
+observes later publication. Original Java test assertions were unchanged.
+
+Final native catalog/discovery/publication/worker lifecycle, shutdown/keepalive,
+payload and original nine smart-proxy checks pass (d9589a, status 0, 0.231 seconds).
+All four existing DieHard/TSnapShot process model variants, covering coordinator
+and standalone fingerprint storage, plus three original distributed initializer
+contexts pass (d6ee67, status 0, 50.669 seconds). All processes are terminal.
+No full suite or race run was performed. Supplemental cases add no original-
+method credit; native peers need the updated failure payload build. Distributed
+parity remains incomplete.

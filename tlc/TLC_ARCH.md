@@ -8108,25 +8108,32 @@ registry itself is never unexported by this method.
 RunWorkerShutdownHook skips empty registrations, performs one registry guard at
 the current mutable port and preserves source checked catches before direct
 worker exits. It retains registrations and propagates unchecked failures.
-TLCRegistryNamespace supplies local identity/binding lifetime, lazy registry
-references and JDK duplicate fixed-ObjID behavior, including cached port-zero
-endpoints. It has no wire listener, serialization, socket occupancy detection or
-actual OS ephemeral-port assignment. Separate namespaces isolate names only;
-FP64/interner class globals still need process/runtime isolation. The translated
+TLCRegistryNamespace supplies local catalog/binding lifetime and lazy references.
+Duplicate configured keys, including zero, fail without replacing the catalog.
+It has no wire listener, serialization, socket occupancy detection or actual OS
+ephemeral-port assignment. Separate namespaces isolate names only;
+FP64/interner package globals still need process/runtime isolation. The translated
 init test uses its own naming namespace like the source per-test JVM fork.
-Actual constructor autoexport, active remote calls, MP console flush and the
-complete command/exit lifecycle remain pending. Full DistributedTLCTestCase transport tests follow those
-features (the Java harness currently disables them for OffHeapDiskFPSet).
+Native endpoint publication, active calls and command/exit checks are tracked
+below. Java constructor autoexport and registry internals are not Go completion
+requirements. The four original DistributedTLCTestCase remote harness methods
+remain pending; upstream disables that harness for OffHeapDiskFPSet.
 
 Distributed discovery now has source worker and FP-server lookup loops with
-explicit Naming.lookup and Thread.sleep adapters. Only direct RMI connect
-failures with a net-connect cause and missing bindings retry. The source signed
+native discovery and delay adapters. Connection refusal and missing bindings
+retry through explicit Go operation traits. Missing bindings carry a distinct
+BindingMissing trait without pretending to be a connection/I/O failure; lazy
+local references distinguish absent catalogs from absent bindings. The source signed
 int backoff counter wraps, producing zero sleeps after its negative/zero phase.
 The root worker startup adapter joins this discovery to production tool/group
-loading. Typed checked-exception carriers preserve the distinct net/RMI families.
-Actual source loop bodies match deterministic boundary comparisons; wire
-registry/export/RPC and full command lifecycle remain pending. No dedicated upstream lookup tests exist; the complete upstream
-distributed harness follows the missing transport features.
+loading. Local catalogs and TCP publication use native failure categories for
+duplicate creation, missing lookup/unbind and repeated coordinator removal.
+The shutdown guard skips worker traversal for missing coordinator bindings;
+keepalive follows its coordinator-loss path. Native TCP discovery/publication
+and worker model checks are available; the four assumption-disabled upstream
+remote harness methods remain separately pending. No dedicated upstream lookup
+tests exist. Remaining legacy remote failure classifiers and fingerprint endpoint
+adapters still require migration.
 
 DistributedFPSet.main now has a concrete native RunDistributedFPServer boundary.
 It preserves ToolIO/System stream separation, argument early returns, two clock

@@ -22,8 +22,11 @@ Memory exhaustion permits smaller-batch retry, rejection does not. Worker endpoi
 removal also uses a native operation category, retained across TCP payloads.
 Shutdown and keepalive tolerate prior removal specifically, continue to later
 workers and avoid decrementing completion again. Connection closure remains a
-distinct unavailable condition. Other legacy remote exception classification and
-coordinator endpoint lifecycle adapters still need audit.
+distinct unavailable condition. Coordinator catalog creation, missing bindings,
+lazy local references and repeated endpoint removal now use native Go operation
+categories. Missing bindings retain discovery retry and suppress shutdown-hook
+worker traversal; keepalive retains its coordinator-loss path. Other legacy
+remote failure classifiers and fingerprint endpoint adapters still need audit.
 
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production

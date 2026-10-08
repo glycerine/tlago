@@ -59,20 +59,6 @@ func lookupDistributedServerURL(serverName, url string, lookup TLCServerLookup, 
 				return nil, err
 			}
 			reachable = failure.Reachable
-		case *ConnectException:
-			// Java inspects the immediate cause only, and distinguishes the
-			// java.net exception from java.rmi.ConnectException.
-			if failure == nil || failure.RemoteException == nil {
-				return nil, err
-			}
-			if cause, ok := failure.GetCause().(*NetConnectException); !ok || cause == nil {
-				return nil, err
-			}
-		case *NotBoundException:
-			if failure == nil {
-				return nil, err
-			}
-			reachable = true
 		default:
 			return nil, err
 		}

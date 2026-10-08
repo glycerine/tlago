@@ -55,7 +55,7 @@ func (n *DistributedCoordinatorNetwork) createRegistry(port int) (*TLCServerRegi
 		return nil, net.ErrClosed
 	}
 	if n.registry != nil {
-		return nil, errors.New("coordinator listener is already created")
+		return nil, coordinatorPublicationFailure("coordinator listener is already created")
 	}
 	listener, err := net.Listen("tcp", net.JoinHostPort(n.bindHost, strconv.Itoa(port)))
 	if err != nil {
@@ -84,7 +84,7 @@ func (n *DistributedCoordinatorNetwork) createRegistry(port int) (*TLCServerRegi
 				return net.ErrClosed
 			}
 			if _, found := n.Host.coordinators[name]; !found {
-				return NewNotBoundException(name)
+				return coordinatorBindingMissingFailure(name)
 			}
 			delete(n.Host.coordinators, name)
 			return nil
@@ -97,7 +97,7 @@ func (n *DistributedCoordinatorNetwork) createRegistry(port int) (*TLCServerRegi
 			}
 			binding, found := n.Host.coordinators[name]
 			if !found {
-				return nil, NewNotBoundException(name)
+				return nil, coordinatorBindingMissingFailure(name)
 			}
 			endpoint, ok := binding.endpoint.(*LocalServerEndpoint)
 			if !ok {
@@ -126,7 +126,7 @@ func (n *DistributedCoordinatorNetwork) Publication() TLCServerPublication {
 				return false, NewNullPointerException()
 			}
 			if !server.unexported.CompareAndSwap(false, true) {
-				return false, NewNoSuchObjectException("coordinator is already unpublished")
+				return false, coordinatorEndpointRemovedFailure()
 			}
 			// Calls that already captured an endpoint may finish. Unpublishing
 			// does not close the listener or cancel another object's calls.

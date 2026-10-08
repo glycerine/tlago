@@ -715,7 +715,14 @@ direct exit over local/TCP boundaries, failure-payload round trips and unchanged
 completion counts. Shutdown and keepalive continue past an already removed
 worker with their distinct logging behavior. TCP checks distinguish endpoint
 removal from connection closure. These supplemental cases add no original
-method credit; coordinator lifecycle adapters remain separately pending.
+method credit; remaining legacy remote failure classifiers are separately pending.
+
+Native coordinator catalog checks cover local/TCP missing lookup/unbind, failure
+payloads, retained retry delays, duplicate creation, shutdown-hook binding guards
+and repeated coordinator removal. A lazy-reference check distinguishes an absent
+catalog from a missing binding and observes later publication. These cases add
+no original-method credit; remaining legacy remote classifiers and fingerprint
+endpoint adapters are pending.
 
 Supplemental trace-evaluation checks preserve returned reconstruction/alias
 failure identity, partial output and coordinator ordinary/fatal catch boundaries.

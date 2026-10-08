@@ -332,7 +332,7 @@ func (t *distributedWorkerKeepAlive) run() (err error) {
 	if isDistributedRemoteFailure(err) {
 		return t.exitWorker(err, count)
 	}
-	if failure, notBound := err.(*NotBoundException); notBound && failure != nil {
+	if isDistributedCoordinatorBindingMissing(err) {
 		return t.exitWorker(err, count)
 	}
 	return err

@@ -115,7 +115,7 @@ func (d *DistributedNetworkDiscovery) Lookup(location string) (DistributedServer
 		return nil, workerConnectionFailure(err)
 	}
 	if !reply.Present {
-		return nil, &DistributedOperationError{Message: javaString("coordinator binding is not ready: " + name), Remote: true, IO: true, DiscoveryRetry: true, Reachable: true}
+		return nil, coordinatorBindingMissingFailure(name)
 	}
 	return client, nil
 }

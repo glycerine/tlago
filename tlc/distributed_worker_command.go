@@ -165,7 +165,7 @@ func (p *DistributedWorkerProcess) SetFilenameToStreamResolver(resolver *Distrib
 }
 
 // Shutdown only clears the resolver/runnable fields after all direct exits
-// succeed (or throw the source ignored NoSuchObjectException).
+// succeed or report an endpoint already removed.
 func (p *DistributedWorkerProcess) Shutdown() (err error) {
 	defer func() {
 		if failure := recover(); failure != nil {

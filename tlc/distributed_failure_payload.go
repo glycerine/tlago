@@ -21,6 +21,7 @@ type DistributedOperationError struct {
 	ExitIgnorable       bool
 	WorkerUnavailable   bool
 	EndpointRemoved     bool
+	BindingMissing      bool
 	DiscoveryRetry      bool
 	Reachable           bool
 	FingerprintRejected bool
@@ -63,7 +64,35 @@ func workerEndpointRemovedFailure(message string) *DistributedOperationError {
 // connection or operation failure merely because it also means unavailable.
 func isDistributedWorkerEndpointRemoved(err error) bool {
 	failure, ok := err.(*DistributedOperationError)
-	return ok && failure != nil && failure.EndpointRemoved
+	return ok && failure != nil && failure.EndpointRemoved && failure.WorkerUnavailable
+}
+
+func coordinatorBindingMissingFailure(name string) *DistributedOperationError {
+	return &DistributedOperationError{
+		Message: javaString("coordinator binding is not ready: " + name),
+		Class:   "tlc.CoordinatorBindingMissing", BindingMissing: true,
+		DiscoveryRetry: true, Reachable: true,
+	}
+}
+
+func isDistributedCoordinatorBindingMissing(err error) bool {
+	failure, ok := err.(*DistributedOperationError)
+	return ok && failure != nil && failure.BindingMissing
+}
+
+func coordinatorEndpointRemovedFailure() *DistributedOperationError {
+	return &DistributedOperationError{
+		Message: javaString("coordinator endpoint already removed"),
+		Class:   "tlc.CoordinatorEndpointRemoved", Remote: true, IO: true,
+		EndpointRemoved: true,
+	}
+}
+
+func coordinatorPublicationFailure(message string) *DistributedOperationError {
+	return &DistributedOperationError{
+		Message: javaString(message), Class: "tlc.CoordinatorPublicationFailed",
+		Remote: true, IO: true,
+	}
 }
 
 // Failure references are one-based and can contain shared or cyclic causes.
@@ -91,6 +120,7 @@ type DistributedFailureNode struct {
 	ExitIgnorable       bool
 	WorkerUnavailable   bool
 	EndpointRemoved     bool
+	BindingMissing      bool
 	DiscoveryRetry      bool
 	Reachable           bool
 	FingerprintRejected bool
@@ -183,6 +213,7 @@ func EncodeDistributedFailure(failure error) (*DistributedFailurePayload, error)
 		if operation, ok := err.(*DistributedOperationError); ok {
 			node.DiscoveryRetry, node.Reachable = operation.DiscoveryRetry, operation.Reachable
 			node.EndpointRemoved = operation.EndpointRemoved
+			node.BindingMissing = operation.BindingMissing
 		}
 		node.MessageNil = message == nil
 		if message != nil {
@@ -239,7 +270,7 @@ func DecodeDistributedFailure(payload *DistributedFailurePayload) (error, error)
 			worker.throwableTrace.remoteStack = node.Stack
 			failures[i+1] = worker
 		} else {
-			failures[i+1] = &DistributedOperationError{Message: message, Class: node.Class, Stack: node.Stack, Remote: node.Remote, Recoverable: node.Recoverable, IO: node.IO, Null: node.Null, ExitIgnorable: node.ExitIgnorable, WorkerUnavailable: node.WorkerUnavailable, EndpointRemoved: node.EndpointRemoved, DiscoveryRetry: node.DiscoveryRetry, Reachable: node.Reachable, FingerprintRejected: node.FingerprintRejected}
+			failures[i+1] = &DistributedOperationError{Message: message, Class: node.Class, Stack: node.Stack, Remote: node.Remote, Recoverable: node.Recoverable, IO: node.IO, Null: node.Null, ExitIgnorable: node.ExitIgnorable, WorkerUnavailable: node.WorkerUnavailable, EndpointRemoved: node.EndpointRemoved, BindingMissing: node.BindingMissing, DiscoveryRetry: node.DiscoveryRetry, Reachable: node.Reachable, FingerprintRejected: node.FingerprintRejected}
 		}
 	}
 	for i, node := range payload.Nodes {
