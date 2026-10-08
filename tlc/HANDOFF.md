@@ -110,7 +110,12 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 Error-trace printing propagates returned state-reconstruction and alias errors
 instead of fabricating fallback states. Ordinary printing errors reach the
 coordinator catch; fatal errors escape before queue completion/notification.
-Nil reconstruction results and source fatal-exit diagnostics still need parity.
+Noninitial error-trace reconstruction now follows source fatal branches `3`,
+`4` and `5`: recovery and bug diagnostics precede exit status 1; branches `4`
+and `5` additionally print the unrecovered standalone state. Child-process
+checks verify output ordering and that exit bypasses deferred cleanup. Fingerprint-
+sequence reconstruction (`getTrace`, branch `2`) still needs fatal-exit parity;
+initial-transition nil handling and successful reconstruction metadata need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

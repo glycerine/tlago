@@ -11898,5 +11898,11 @@ remains; subsequent states are not printed. The coordinator catches ordinary
 trace-printing errors, reports them and finishes/notifies its queue. Fatal errors
 escape that catch after preceding model-error mutation and skip queue completion
 and notification. Existing tool-local alias EvalException/runtime handling is
-preserved. Nil reconstruction results and their source fatal-exit diagnostics
-are still a separate incomplete parity boundary.
+preserved. Noninitial printing branches `3`, `4` and `5` now preserve nil
+reconstruction rather than fabricate a state. They print recovery and bug
+diagnostics, optionally the standalone unrecovered state (branches `4` and `5`),
+and terminate the native process with `os.Exit(1)`. This bypasses error catches
+and deferred cleanup as the source requires. Child-process checks exercise the
+actual exit without a production test hook. Fingerprint-sequence recovery branch
+`2`, initial-transition nil handling and successful reconstruction metadata remain
+separate parity work. No RMI or JVM machinery is introduced.

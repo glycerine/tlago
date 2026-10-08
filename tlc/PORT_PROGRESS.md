@@ -20886,3 +20886,34 @@ with unchanged original seven-state trace/event assertions (60444, status 0,
 24.362 seconds). All processes are terminal. No full suite or race run was
 performed. Supplemental checks add no original-method completion credit;
 distributed parity remains incomplete.
+
+### 2026-10-08: Fatal missing-state diagnostics during error-trace printing
+
+Compared the three explicit nil checks in pinned TLCTrace.printTrace with the
+Go implementation. Go fabricated a state after a tool returned no match, then
+continued printing. Reconstruction helpers now return that missing result to
+its caller. Noninitial printing branches 3 (empty prefix), 4 (current state
+following prefix) and 5 (successor) print FAILED_TO_RECOVER_INIT and TLC_BUG
+with the source branch number. Branches 4 and 5 also print the corresponding
+standalone unrecovered state. All three terminate the native process with
+os.Exit(1), bypassing the coordinator catch and deferred cleanup. This is native
+Go process behavior, without RMI, Java serialization or JVM machinery.
+
+No original method directly exercises these fatal branches. Three child-process
+checks initially failed because Go returned and ran deferred cleanup (a3cd53,
+status 1, 0.046 seconds). After the implementation change, all three and existing
+returned-evaluation-error/handler checks pass (b7a465, status 0, 0.047 seconds).
+Checks preserve exact diagnostic parameters/order, preceding printed-state
+counts, standalone-state events, exit status and absence of return/recovery/
+deferred-cleanup markers. No production exit hook is added.
+
+Related trace regeneration, nested/disk recovery, depth/write failures and nine
+original smart-proxy checks pass (d61700, status 0, 1.529 seconds). Original Alias
+safety and the three distributed initializer-continue, evaluator-error and TLCSet
+model contexts pass (1ae939, status 0, 2.274 seconds). Actual distributed DieHard
+passes both fingerprint-storage variants and original trace/event assertions
+(0e20b4, status 0, 24.372 seconds). All processes are terminal. No full suite or
+race run was performed. Supplemental checks add no original-method credit.
+Fingerprint-sequence recovery branch 2, initial-transition nil handling and
+successful reconstruction metadata remain to audit; distributed parity is
+incomplete.

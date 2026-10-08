@@ -706,7 +706,9 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 Supplemental trace-evaluation checks preserve returned reconstruction/alias
 failure identity, partial output and coordinator ordinary/fatal catch boundaries.
 Original Alias safety and distributed initializer/model checks remain green;
-nil reconstruction/fatal-exit handling remains pending. No method credit is added.
+noninitial printing branches `3`, `4` and `5` also preserve nil-reconstruction
+diagnostics and fatal exit in child processes. Fingerprint-sequence recovery
+branch `2` remains pending. No original-method credit is added.
 
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed

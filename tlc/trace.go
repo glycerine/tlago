@@ -372,6 +372,9 @@ func (t *TLCTrace) printTraceWithPrefix(curState *TLCStateMut, succState *TLCSta
 	var info *TLCStateInfo
 	if len(prefix) == 0 {
 		info = t.stateInfoForState(curState, nil)
+		if info == nil {
+			traceRecoveryExit("3", nil)
+		}
 	} else {
 		previous := prefix[len(prefix)-1]
 		curState.SetPredecessor(previous.State)
@@ -379,6 +382,9 @@ func (t *TLCTrace) printTraceWithPrefix(curState *TLCStateMut, succState *TLCSta
 		idx++
 		PrintInvariantViolationStateTraceState(aliased, lastState, idx)
 		info = t.stateInfoForState(curState, previous.State)
+		if info == nil {
+			traceRecoveryExit("4", curState)
+		}
 	}
 	successor := succState
 	if successor == nil {
@@ -391,10 +397,25 @@ func (t *TLCTrace) printTraceWithPrefix(curState *TLCStateMut, succState *TLCSta
 	if succState != nil {
 		previous := info
 		info = t.stateInfoForTransition(succState, curState)
+		if info == nil {
+			traceRecoveryExit("5", succState)
+		}
 		info = t.aliasTraceState(info, succState, prefix, previous, info)
 		idx++
 		PrintInvariantViolationStateTraceState(info, (*TLCStateMut)(nil), idx, true)
 	}
+}
+
+// A reconstruction failure terminates the process after source-ordered
+// diagnostics. It must bypass the coordinator's ordinary error catch and
+// deferred cleanup; returning an error would continue the shutdown protocol.
+func traceRecoveryExit(branch string, state *TLCStateMut) {
+	PrintError(ECTLCFailedToRecoverInit)
+	PrintError(ECTLCBug, branch)
+	if state != nil {
+		PrintStandaloneErrorState(state)
+	}
+	os.Exit(1)
 }
 
 func (t *TLCTrace) aliasTraceState(info *TLCStateInfo, successor *TLCStateMut, prefix []*TLCStateInfo, suffix ...*TLCStateInfo) *TLCStateInfo {
@@ -433,6 +454,7 @@ func (t *TLCTrace) stateInfoForState(state *TLCStateMut, predecessor *TLCStateMu
 			info.State.UID = state.UID
 			return info
 		}
+		return info
 	}
 	info := NewTLCStateInfo(state)
 	fp := state.FingerPrint()
@@ -454,6 +476,7 @@ func (t *TLCTrace) stateInfoForTransition(state *TLCStateMut, predecessor *TLCSt
 			info.State.UID = state.UID
 			return info
 		}
+		return info
 	}
 	return NewTLCStateInfo(state)
 }
