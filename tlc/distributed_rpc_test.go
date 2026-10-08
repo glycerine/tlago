@@ -40,6 +40,47 @@ func startFingerprintRPC(t *testing.T, endpoint DistributedFingerprintEndpoint) 
 	return server, client
 }
 
+type rpcFingerprintRepresentationEndpoint struct {
+	*LocalFingerprintEndpoint
+	bits *BitVector
+}
+
+func (e *rpcFingerprintRepresentationEndpoint) ContainsBlock(*LongVec) (*BitVector, error) {
+	return e.bits, nil
+}
+
+func TestFingerprintRPCNullAndEmptyWordArrays(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		bits *BitVector
+	}{
+		{"null_vector", nil},
+		{"uninitialized_words", &BitVector{}},
+		{"empty_words", NewBitVector(0)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			endpoint := &rpcFingerprintRepresentationEndpoint{NewLocalFingerprintEndpoint(NewMemFPSet()), test.bits}
+			_, client := startFingerprintRPC(t, endpoint)
+			got, err := client.ContainsBlock(NewLongVec())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.bits == nil {
+				if got != nil {
+					t.Fatal("null vector became an empty answer")
+				}
+				return
+			}
+			if got == nil || got == test.bits || (got.word == nil) != (test.bits.word == nil) {
+				t.Fatal("null/empty word-array representation changed across TCP")
+			}
+			if got.word != nil && NewBitVectorIter(got).Next() != -1 {
+				t.Fatal("initialized empty word array is not iterable")
+			}
+		})
+	}
+}
+
 func TestFingerprintRPCScalarAndBatchAnswers(t *testing.T) {
 	storage := NewMemFPSet()
 	_, client := startFingerprintRPC(t, NewLocalFingerprintEndpoint(storage))

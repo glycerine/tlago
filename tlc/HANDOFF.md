@@ -1986,6 +1986,16 @@ This is same-process storage reopening, not full-model recovery in fresh
 processes after a mid-run checkpoint or failure during the checkpoint. Those
 broader cases and remote-FP recovery remain pending.
 
+The shared bit-vector iterator now rejects null input and uninitialized words,
+matching Java rather than treating missing FP answers as empty results. This
+protects both coordinator publication and worker contains-block processing.
+Native FP replies distinguish null vectors, uninitialized word arrays and
+initialized empty arrays explicitly, preserving valid empty iteration through
+gob. Worker failures retain predecessor context and KeepCallStack locally and
+through native error traits. Original bit-vector formatting and manager tests,
+short native checks and focused race checks pass. Full remote-FP verification
+is recorded in PORT_PROGRESS.md; no Java wire protocol is introduced.
+
 
 
 These focused checks do not prove distributed completion.

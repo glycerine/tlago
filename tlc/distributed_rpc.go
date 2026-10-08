@@ -186,6 +186,7 @@ type DistributedFingerprintReply struct {
 	Bool          bool
 	Count         uint64
 	Words         []uint64
+	WordsNil      bool
 	VectorPresent bool
 	Failure       *DistributedEndpointError
 }
@@ -256,6 +257,7 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 	}
 	if bits != nil {
 		reply.VectorPresent = true
+		reply.WordsNil = bits.word == nil
 		reply.Words = append([]uint64(nil), bits.word...)
 	}
 	return nil
@@ -308,7 +310,12 @@ func (e *NetworkFingerprintEndpoint) block(operation string, fps *LongVec) (*Bit
 	if err != nil || !r.VectorPresent {
 		return nil, err
 	}
-	return &BitVector{word: r.Words}, nil
+	var words []uint64
+	if !r.WordsNil {
+		words = make([]uint64, len(r.Words))
+		copy(words, r.Words)
+	}
+	return &BitVector{word: words}, nil
 }
 func (e *NetworkFingerprintEndpoint) PutBlock(fps *LongVec) (*BitVector, error) {
 	return e.block("putBlock", fps)

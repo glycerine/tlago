@@ -729,6 +729,12 @@ coordinator is not done before replacement registration, then requires the
 original final model counts and exact one-time loss/cache-warning behavior.
 This adds native failure coverage, not original disabled-harness completion
 credit. Network partitions and fingerprint-server failure/recovery remain open.
+Null FP answers no longer become successful empty worker results: the shared
+iterator preserves the source null failure, and native replies retain the
+distinction between null vectors, null words and initialized empty words.
+Short direct/TCP checks require worker predecessor context and KeepCallStack.
+Existing original BitVector printing and dynamic-manager methods remain green;
+the new failure checks add no original-method completion credit.
 
 Remote server/worker integration, init failures, fingerprint-manager failover, and smart-proxy calculations. Native Go fingerprint, worker and coordinator TCP calls, ordinary state/value/result payloads, structured worker failures, manager snapshots, discovery and worker/coordinator/FP lifecycle publication are implemented and unit-verified. Native CLI entry points are wired with focused help/property/address checks. Native coordinator signal shutdown and separate-process DieHard execution with local and standalone remote fingerprint storage are verified. The native process harness also checkpoints and recovers the full MC06 initial frontier through the real `-recover` CLI in fresh coordinator/worker processes. It requires 16384 recovered fingerprints/queued states, no repeated initialization, and the original final 114942 distinct/0 queued result. This is additional native coverage, not original disabled-harness completion credit. A native worker-loss row also verifies requeueing after killing a worker with an assigned block, survivor/replacement completion, exact one-time deregistration and the original cache-warning behavior. Outstanding-block checkpoints, remote-FP recovery, extended/custom values and broader network failure coverage remain pending. The new Go boundary tests add no original-method completion credit.
 

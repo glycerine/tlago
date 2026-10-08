@@ -18376,6 +18376,50 @@ Network partitions, fingerprint-server failures, fresh-process mid-run
 checkpoint recovery and remote-FP recovery remain pending; the distributed
 goal is incomplete.
 
+## October 8, 2026: reject missing fingerprint answers in workers
+
+The manager/worker failure audit found a shared iterator shortcut: Init(nil)
+cleared its words and Next returned exhaustion. Java dereferences bv.word in
+Init and word.length in Next. Consequently a null contains-block answer could
+produce a successful worker response with no successors, silently losing work.
+Corrected the iterator's typed null failure for null input and uninitialized
+words; failed Init retains its previous position. Removed the redundant local
+publication guard so worker and coordinator use the same corrected iterator.
+
+Native fingerprint replies now carry WordsNil separately from VectorPresent.
+An initialized empty word array must be rebuilt as non-nil after gob, while a
+source default/uninitialized word array remains nil. This preserves null vector,
+uninitialized vector and initialized empty vector as separate representations;
+valid empty answers still iterate to exhaustion. No Java serialization or JVM
+machinery is added.
+
+Added short null-input/reinitialization/default-word checks, actual distributed
+worker null-answer failure/context checks, worker TCP failure propagation and
+FP TCP null/empty-array representation checks. No enabled direct Java test
+covers these failure paths. Existing original BitVector printing and dynamic
+manager methods remain unchanged. The worker requires predecessor context,
+null successor, KeepCallStack, one FP call and cleared Computing state.
+
+An initial native worker check expected a reconstructed NullPointerException
+pointer. The existing native boundary correctly returns DistributedOperationError
+with the null-failure trait instead of JVM exception reconstruction. Corrected
+the test to require that trait while retaining every state/context assertion;
+the direct worker check still requires the typed local NullPointerException.
+Initial selection 24972 is terminal status 1. No production failure handling
+was weakened or changed to manufacture a JVM object.
+
+Final short iterator, worker/FP TCP, publication and original dynamic-manager
+selection passes normally in 0.089 seconds (97229 terminal status 0). Only the
+two new short TCP checks run under -race and pass in 1.046 seconds (92990 terminal
+status 0). Full unchanged standalone-FP MC06/N=7 native process verification
+passes normally in 61.344 seconds (45647 terminal status 0), retaining FINISHED,
+114942 distinct states, zero queued states, no GENERAL/lost-reply errors and
+normal coordinator/worker/FP exits. Log:
+.codex-gotmp/distributed-null-fp-process-test.log. No full workspace suite or
+long race workload was run. All handles are retired. These native checks add
+no original disabled-harness completion credit; broader failure/recovery and
+payload audits remain pending, and the distributed goal is incomplete.
+
 ## October 8, 2026: checkpoint barrier with an assigned TCP block
 
 Added TestDistributedCheckpointWaitsForAssignedBlock. Upstream has no enabled

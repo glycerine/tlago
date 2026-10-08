@@ -10972,3 +10972,13 @@ finishes the queue, notifies the coordinator and returns. Previously publication
 handled the error internally and returned to the run loop, allowing another
 dequeue after failure. Neither publication failure path undoes FP insertion;
 adding rollback or retry would change the original distributed algorithm.
+
+The shared BitVectorIter also enforces the source null dereferences: Init(null)
+fails before replacing iterator state, and Next fails on uninitialized words.
+Worker contains-block answers pass through this same iterator. A null answer
+therefore becomes a WorkerException with its current predecessor, null successor
+and KeepCallStack, rather than a successful empty result. Native worker errors
+carry the null-failure trait instead of reconstructing JVM exception objects.
+FP TCP replies include word-array nullness separately from vector presence, so
+gob's empty-slice encoding cannot turn an initialized empty answer into an
+uninitialized one. Initialized empty vectors remain valid and yield no bits.

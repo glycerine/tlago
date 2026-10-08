@@ -277,17 +277,19 @@ func NewBitVectorIter(bv *BitVector) *BitVectorIter {
 }
 
 func (it *BitVectorIter) Init(bv *BitVector) {
-	if bv == nil {
-		it.word = nil
-	} else {
-		it.word = bv.word
+	if it == nil || bv == nil {
+		panic(NewNullPointerException())
 	}
+	it.word = bv.word
 	it.wd = 0
 	it.bit = 0
 	it.mask = 1
 }
 
 func (it *BitVectorIter) Next() int {
+	if it == nil || it.word == nil {
+		panic(NewNullPointerException())
+	}
 	for ; it.wd < len(it.word); it.wd++ {
 		word := it.word[it.wd]
 		for ; it.bit < 64; it.bit, it.mask = it.bit+1, it.mask<<1 {

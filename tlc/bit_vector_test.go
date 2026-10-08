@@ -5,6 +5,37 @@ import (
 	"testing"
 )
 
+// Upstream's enabled BitVector tests cover printing, not null iterator input.
+// Init dereferences bv.word before changing any iterator position.
+func TestBitVectorIteratorRejectsNullInput(t *testing.T) {
+	bv := NewBitVector(8)
+	bv.Set(1)
+	bv.Set(7)
+	iter := NewBitVectorIter(bv)
+	if iter.Next() != 1 {
+		t.Fatal("iterator did not reach the first bit")
+	}
+	for _, call := range []func(){func() { NewBitVectorIter(nil) }, func() { iter.Init(nil) }} {
+		failure := invokeDistributedServerOperation(func() error { call(); return nil })
+		if _, ok := failure.(*NullPointerException); !ok {
+			t.Fatalf("null iterator input: %T %v", failure, failure)
+		}
+	}
+	if iter.Next() != 7 || iter.Next() != -1 {
+		t.Fatal("failed reinitialization discarded the existing iterator position")
+	}
+	iter.Init(NewBitVector(0))
+	if iter.Next() != -1 {
+		t.Fatal("empty initialized vector must still be iterable")
+	}
+	for _, uninitialized := range []*BitVectorIter{{}, NewBitVectorIter(&BitVector{})} {
+		failure := invokeDistributedServerOperation(func() error { uninitialized.Next(); return nil })
+		if _, ok := failure.(*NullPointerException); !ok {
+			t.Fatalf("uninitialized iterator storage: %T %v", failure, failure)
+		}
+	}
+}
+
 func TestBitVectorStringMatchesJavaFormatting(t *testing.T) {
 	bv := NewBitVector(8)
 	bv.Set(0)

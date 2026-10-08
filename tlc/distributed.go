@@ -1053,9 +1053,6 @@ func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*State
 	}
 	visited := t.Server.FPSetManager.PutBlock(newFps, &t.Server.executor)
 	for i, vector := range visited {
-		if vector == nil {
-			panic(NewNullPointerException())
-		}
 		iter := NewBitVectorIter(vector)
 		for {
 			index := iter.Next()
