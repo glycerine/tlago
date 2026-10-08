@@ -107,6 +107,11 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Error-trace printing propagates returned state-reconstruction and alias errors
+instead of fabricating fallback states. Ordinary printing errors reach the
+coordinator catch; fatal errors escape before queue completion/notification.
+Nil reconstruction results and source fatal-exit diagnostics still need parity.
+
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes
 the required root trace write and queue enqueue; property checks follow. Missing

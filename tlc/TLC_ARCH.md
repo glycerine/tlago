@@ -11887,3 +11887,16 @@ matches TLCTrace's common source writer and applies to initial, distributed
 successor and single-process successor paths. Closed native descriptor checks
 force predecessor/fingerprint buffer-boundary failures without production hooks;
 focused trace, checkpoint and native TCP checks pass.
+
+
+### Error-trace evaluation failure propagation
+
+State reconstruction and transition reconstruction errors returned by Tool, and
+alias errors returned after Tool's own exception handling, propagate from trace
+printing without replacing the result with a fallback state. Previous output
+remains; subsequent states are not printed. The coordinator catches ordinary
+trace-printing errors, reports them and finishes/notifies its queue. Fatal errors
+escape that catch after preceding model-error mutation and skip queue completion
+and notification. Existing tool-local alias EvalException/runtime handling is
+preserved. Nil reconstruction results and their source fatal-exit diagnostics
+are still a separate incomplete parity boundary.

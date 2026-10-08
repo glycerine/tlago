@@ -20856,3 +20856,33 @@ status 0, 0.048 seconds). The three original distributed initializer-continue,
 evaluator-error and TLCSet model contexts pass (63352, status 0, 2.071 seconds).
 All processes are terminal. No full suite, long workload or race run was performed. Supplemental checks add
 no original-method completion credit; broader distributed parity is incomplete.
+
+### 2026-10-08: Returned trace-evaluation failures
+
+Audited TLCTrace.printTrace against pinned source. Go state/transition
+reconstruction and alias helpers ignored returned errors and printed fallback
+states. Source lets these errors escape to the coordinator's trace-printing catch.
+Changed the three helpers to propagate returned errors with their original
+identity. Tool's existing handling of alias EvalException/runtime failures remains
+inside the tool and is unchanged. Nil reconstruction fallback and source fatal
+recovery diagnostics remain a separate concrete parity gap.
+
+No original method directly covers escaping evaluation errors at this boundary.
+Added six native cases for alias/current-state/transition operations with I/O and
+fatal errors, preserving the behavior header, any state already printed and no
+fallback/later printing. All six initially failed (5e333d, status 1, 0.012 seconds).
+Added two handler integration cases through actual root trace reconstruction:
+ordinary alias failure is printed and queue completion/notifying proceeds; fatal
+alias failure escapes before those operations. Both retain the original worker
+error/state and preceding behavior header without printing fallback states.
+
+Initial related checks pass (90233, status 0, 1.864 seconds). Final eight cases
+and existing thread/finalizer, trace write/depth/recovery, behavior regeneration
+and original nine smart-proxy contexts pass (61551, status 0, 1.816 seconds).
+Original Alias safety plus the three distributed initializer-continue,
+evaluator-error and TLCSet model contexts pass (97232, status 0, 2.110 seconds).
+Actual distributed DieHard execution passes both fingerprint-storage variants
+with unchanged original seven-state trace/event assertions (60444, status 0,
+24.362 seconds). All processes are terminal. No full suite or race run was
+performed. Supplemental checks add no original-method completion credit;
+distributed parity remains incomplete.

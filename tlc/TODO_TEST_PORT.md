@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental trace-evaluation checks preserve returned reconstruction/alias
+failure identity, partial output and coordinator ordinary/fatal catch boundaries.
+Original Alias safety and distributed initializer/model checks remain green;
+nil reconstruction/fatal-exit handling remains pending. No method credit is added.
+
 Supplemental partial trace-write checks preserve the attempted-record pointer,
 partial bytes and unchanged state/record publication for initial, distributed
 successor and shared single-process successor writers. Upstream has no direct

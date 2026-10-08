@@ -400,7 +400,10 @@ func (t *TLCTrace) printTraceWithPrefix(curState *TLCStateMut, succState *TLCSta
 func (t *TLCTrace) aliasTraceState(info *TLCStateInfo, successor *TLCStateMut, prefix []*TLCStateInfo, suffix ...*TLCStateInfo) *TLCStateInfo {
 	if t.Tool != nil {
 		alias, err := t.Tool.EvalAliasInfoPrefixSuffix(info, successor, prefix, suffix...)
-		if err == nil && alias != nil {
+		if err != nil {
+			panic(err)
+		}
+		if alias != nil {
 			return alias
 		}
 	}
@@ -422,7 +425,10 @@ func (t *TLCTrace) stateInfoForState(state *TLCStateMut, predecessor *TLCStateMu
 		} else {
 			info, err = t.Tool.GetState(fp, predecessor)
 		}
-		if err == nil && info != nil && info.State != nil {
+		if err != nil {
+			panic(err)
+		}
+		if info != nil && info.State != nil {
 			info.State.WorkerID = state.WorkerID
 			info.State.UID = state.UID
 			return info
@@ -440,7 +446,10 @@ func (t *TLCTrace) stateInfoForTransition(state *TLCStateMut, predecessor *TLCSt
 	}
 	if t != nil && t.Tool != nil && predecessor != nil {
 		info, err := t.Tool.GetStateForTransition(state, predecessor)
-		if err == nil && info != nil && info.State != nil {
+		if err != nil {
+			panic(err)
+		}
+		if info != nil && info.State != nil {
 			info.State.WorkerID = state.WorkerID
 			info.State.UID = state.UID
 			return info
