@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-07 Port syntax corpus translator foundational helpers:
+Previous completed commit: b3d78df. Translate source SanyReparser cursor,
+lookahead/merge, previous/advance, kind checks, variadic matching and strict
+consumption with original kind names, error messages and offsets. Keep structural
+assertions distinct from DSL ParseException failures. Port id's builtin keyword
+cases; mechanically copy prefix/infix/postfix conversion tables and use the
+actual production synonym resolver. Port comma-separated identifier and tuple
+helpers. Recursive translate/flatTranslate and expression-dependent bound/use
+helpers remain pending, without fallback ASTs or weakened assertions.
+
+External TranslatorHelperProbe invokes actual Java private operator helpers on
+184 literal spellings/aliases/unsupported input across three fixities: all 552
+rows match Go AST serialization or ParseException message/offset. Java returned
+0; Go observer 75202 returned 0 and is retired. ReparserHelperProbe compares all
+446 kind names, twelve identifier images and twelve list/tuple conversions:
+all 470 rows match. Initial observer used incorrect numeric comma/bracket kinds;
+correct the external inputs to source kinds 88/102/104 to cover actual valid and
+malformed lists/tuples. Java returned 0; first Go observer 78750 returned 0;
+final observer 88304 returned 0. All handles retired. Probes/overlays/logs remain
+under /mnt/oldrog/tmp with prefixes tlago-translator-helper and
+tlago-reparser-helper. No invented permanent tests or original-method credit.
+
+Complete SANY gate 46731 returned 0 in 2.257 seconds; all-package compilation
+returned 0. No production parser code changed; existing tests retain their
+assertions, fixtures and bounds. Normal execution without race. Original syntax
+corpus testAll still reconciles pending canonical AST translation/equality and
+the exact known-failure runner. Main counts and known native XML failures remain
+unchanged; no whole-workspace green or complete TLC parity claim.
+
 2026-10-07 Restore source syntax-corpus expectations and DSL-kind usage:
 Previous completed commit: 6d66570. Audit original TlaPlusSyntaxCorpusTests and
 its AstNode/SyntaxCorpusFileParser/SyntaxCorpusRunner helpers. Native loader

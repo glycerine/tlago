@@ -10382,3 +10382,23 @@ all 355 parameter contexts. The SANY-to-DSL translator, full known-failure runne
 and testAll AST equality assertions remain pending; parser-status checks are
 supplementary. These helper observations do not establish every malformed DSL,
 constructor, Unicode-version edge or production AST fidelity.
+
+
+## Syntax corpus translator helper paths
+
+TlaPlusParserOutputTranslator's reparser now retains the source cursor, shared
+lookahead node slice, merge, end check, previous/advance, kind-aware match and
+strict consume behavior. Consume failures retain source expected/actual kind
+names and offsets, distinct from structural assertion failures. Identifier
+conversions retain the source Boolean/set/number-set/@ cases. Prefix/infix/postfix
+conversion tables are mechanically copied from Java and use the production
+operator synonym resolver. Identifier-list and tuple helper structure is ported.
+
+External calls to the actual private Java helpers match 552 operator-literal
+observations across all three fixities, including aliases and unsupported
+conversion errors. Another 470 rows match all 446 kind-name mappings, twelve
+identifier images, and twelve valid/malformed list/tuple conversions and offsets.
+These observations do not establish all string-reference identity contexts or
+recursive translator, AST equality, proof or production parser parity. The
+source recursive translate/flatTranslate and expression-dependent helpers remain
+pending; no permissive fallback or placeholder AST translation is installed.

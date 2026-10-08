@@ -1516,8 +1516,11 @@ and attributes. Its original DSL-kind usage method is port complete across all
 355 parameter contexts; the native SANY-kind surrogate is removed. Metadata and
 AST serialization match Java on 356 rows including the unused count. The current
 `testAll` still checks parser status without the original canonical AST comparison.
-Next, translate `TlaPlusParserOutputTranslator` and the source known-failure runner,
-then install its AST equality assertions and fix actual parser differences.
+The translator's identifier/operator conversions and strict reparser/list/tuple
+helpers are translated; 552 operator-literal and 470 identifier/kind/list/tuple
+observations match Java. Next, port recursive `translate`/`flatTranslate` and the
+expression-dependent bound/use helpers, then the source known-failure runner.
+Install its AST equality assertions and fix actual parser differences.
 These are remaining translation gaps, not full-suite fidelity receipts. Preserve the source harness's known-failure inversion: Java accepts
 the unchanged LOCAL-in-LET error fixture, and the original expects that success.
 

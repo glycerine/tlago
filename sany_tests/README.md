@@ -24,7 +24,11 @@ The corpus loader retains source bytes, multiline names, ERROR/SKIP attributes a
 expected DSL trees; 356 external metadata/AST rows (355 cases plus unused count)
 match the unchanged Java helpers. `testAll` remains **reconcile**: its current
 parser-status checks are supplementary until `TlaPlusParserOutputTranslator` and
-the original canonical AST equality/known-failure runner are translated. No main
+the original canonical AST equality/known-failure runner are translated. The
+translator's identifier/operator conversions and strict reparser cursor/consume,
+comma-separated identifier and tuple helpers are now translated. They match Java
+on 552 operator-literal and 470 identifier/kind/list/tuple observations; recursive
+`translate`/`flatTranslate` and expression-dependent helper paths remain pending. No main
 TLC inventory credit is added by this SANY work.
 
 `parser.BelchDefTests.runTestCase` is **port complete** in root
