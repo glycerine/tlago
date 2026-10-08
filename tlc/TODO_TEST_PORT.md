@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+The full native MC06 process matrix now includes `partitioned_fingerprints`
+with two standalone FP processes and private temporary storage. Their two
+distinct nonempty initial partitions must total 16,384 fingerprints before
+worker launch; the unchanged N=7 model retains FINISHED, 114,942 distinct/0 queued,
+two registrations and no GENERAL across all roles. This adds no disabled
+upstream harness completion credit.
+
 FP reference registration now preserves source capacity/latch behavior without
 an early network probe. Native checks accept a stopped-store reference, reject
 an extra unreachable reference with the exact capacity category/detail and

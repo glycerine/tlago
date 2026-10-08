@@ -11163,3 +11163,13 @@ and passes the reference to the manager. A stopped store can register, and an
 extra unreachable store reaches the source capacity rejection. The first FP
 operation performs connection setup. Worker registration still executes its
 source URI calls and therefore legitimately contacts the worker during registration.
+
+The full native EWD840 MC06 process harness supports two standalone fingerprint
+servers. It inspects the coordinator's manager reference graph after complete
+initialization and before worker launch, without truncating model exploration.
+Both distinct stores must be nonempty and total 16,384 initial fingerprints.
+Each owned FP process has a private TMPDIR, representing separate-host storage
+even when their source timestamp-based directories are created simultaneously.
+One worker then completes the unchanged N=7 model: FINISHED, 114,942 distinct
+states, zero queued states and no GENERAL/lost replies across all four roles.
+These native topology choices do not complete the disabled upstream harness.

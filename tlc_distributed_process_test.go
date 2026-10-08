@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/rpc"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,9 +26,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		name                                       string
 		remoteFP, recovering, workerLoss, combined bool
 		allWorkersLost                             bool
+		fingerprintServers                         int
 	}{
 		{name: "coordinator_fingerprints"},
 		{name: "standalone_fingerprints", remoteFP: true},
+		{name: "partitioned_fingerprints", remoteFP: true, fingerprintServers: 2},
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
 		{name: "worker_loss", workerLoss: true},
@@ -52,6 +55,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			defer cancel()
 			common := []string{fmt.Sprintf("-Dtlc2.tool.distributed.TLCServer.port=%d", port), "-Dtlago.distributed.bindHost=127.0.0.1", "-Dtlago.distributed.advertiseHost=127.0.0.1"}
 			var roles []*nativeDistributedTestProcess
+			roleCounts := make(map[string]int)
 			start := func(role string, args ...string) *nativeDistributedTestProcess {
 				commandArgs := []string{"-test.run=^TestNativeDistributedProcessHelper$", "--", role}
 				commandArgs = append(commandArgs, common...)
@@ -59,7 +63,17 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
 				command.Dir = model
 				command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
-				output := &nativeDistributedTestLog{test: t, role: role}
+				if scenario.fingerprintServers > 1 && role == "fpserver" {
+					// These roles represent separate hosts. Give each private
+					// temporary storage even when they start in the same millisecond.
+					command.Env = append(command.Env, "TMPDIR="+t.TempDir())
+				}
+				roleCounts[role]++
+				label := role
+				if scenario.fingerprintServers > 1 && role == "fpserver" {
+					label = fmt.Sprintf("fpserver-%d", roleCounts[role])
+				}
+				output := &nativeDistributedTestLog{test: t, role: label}
 				command.Stdout, command.Stderr = output, output
 				if err := command.Start(); err != nil {
 					t.Fatal(err)
@@ -94,7 +108,8 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				serverArgs = []string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "-tool", "-deadlock", "-recover", path[1], "MC06"}
 			}
 			if scenario.remoteFP {
-				serverArgs = append([]string{"-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=1"}, serverArgs...)
+				count := max(1, scenario.fingerprintServers)
+				serverArgs = append([]string{fmt.Sprintf("-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=%d", count)}, serverArgs...)
 			}
 			server := start("server", serverArgs...)
 			if scenario.combined {
@@ -104,7 +119,56 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			} else if scenario.remoteFP {
 				// A supported native implementation avoids inheriting the
 				// upstream harness's known OffHeap assumption failure.
-				start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+				for range max(1, scenario.fingerprintServers) {
+					start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+				}
+			}
+			if scenario.fingerprintServers > 1 {
+				// Before launching the worker, inspect the complete initial FP
+				// frontier. This does not truncate or bound the ensuing model run.
+				ticker := time.NewTicker(10 * time.Millisecond)
+				defer ticker.Stop()
+				for len(nativeDistributedMessages(server.output.String(), tlc.ECTLCDistributedServerRunning)) == 0 {
+					select {
+					case err := <-server.done:
+						server.joined = true
+						t.Fatalf("coordinator exited before initial partition inspection: %v", err)
+					case <-ctx.Done():
+						t.Fatal("initial partition inspection watchdog expired")
+					case <-ticker.C:
+					}
+				}
+				coordinator, err := rpc.Dial("tcp", net.JoinHostPort("127.0.0.1", fmt.Sprint(port)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var reply tlc.DistributedServerReply
+				err = coordinator.Call("Coordinator.Call", tlc.DistributedServerRequest{Object: tlc.TLCServerName, Operation: "manager"}, &reply)
+				_ = coordinator.Close()
+				if err != nil || reply.Failure != nil {
+					t.Fatalf("initial manager snapshot = %v/%v", err, reply.Failure)
+				}
+				manager := reply.Manager
+				if manager == nil || len(manager.Nodes) != 2 || len(manager.Partitions) != 2 || manager.Partitions[0] == manager.Partitions[1] {
+					t.Fatal("coordinator did not retain two FP partitions")
+				}
+				var initial uint64
+				for i, node := range manager.Nodes {
+					endpoint, err := tlc.DialFingerprintEndpoint(node.Endpoint.Address, node.Endpoint.Object)
+					if err != nil {
+						t.Fatal(err)
+					}
+					size, err := endpoint.Size()
+					_ = endpoint.CloseConnection()
+					if err != nil || size == 0 {
+						t.Fatalf("initial partition %d = %d/%v", i, size, err)
+					}
+					initial += size
+					t.Logf("initial fingerprint partition %d contains %d states", i, size)
+				}
+				if initial != 16384 {
+					t.Fatalf("initial fingerprint partitions total %d, want 16384", initial)
+				}
 			}
 			if !scenario.combined && !scenario.allWorkersLost {
 				start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
@@ -182,6 +246,17 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			// Mechanical EWD840Distributed{WithFPSet}TLCTest assertions:
 			// FINISHED, STATS distinct=114942 and queue=0, no GENERAL.
 			output := server.output.String()
+			if scenario.fingerprintServers > 1 {
+				if len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
+					t.Fatal("partitioned coordinator did not accept exactly two fingerprint registrations")
+				}
+				for _, process := range roles {
+					roleOutput := process.output.String()
+					if len(nativeDistributedMessages(roleOutput, tlc.ECGeneral)) != 0 || strings.Contains(roleOutput, "unexpected EOF") {
+						t.Fatalf("partitioned role %s emitted GENERAL or lost an RPC reply", process.output.role)
+					}
+				}
+			}
 			if scenario.workerLoss {
 				if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerLost)) || strings.Count(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerDeregistered)) != 1 {
 					t.Fatal("worker loss was not reported and deregistered exactly once")

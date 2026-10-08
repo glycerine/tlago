@@ -19024,3 +19024,30 @@ selection passes in 0.074 seconds (terminal status 0). Only the two new short
 reference registration cases run under -race, passing in 1.052 seconds (46670
 terminal status 0). All handles are retired. No full suite or long workload was
 run. Broader distributed parity remains incomplete.
+
+## October 8, 2026: full EWD840 checking with two standalone FP processes
+
+Extended the native process harness with partitioned_fingerprints: two separate
+standalone FP servers, one coordinator and one worker. Preserve the unchanged
+MC06/N=7 fixtures and full exploration with no state cutoff. Before launching
+the worker, wait for complete coordinator initialization and inspect its manager
+reference graph through the native RPC boundary. Require two distinct nonempty
+FP partitions totaling all 16,384 initial fingerprints. Both stores report 8,192
+in these runs. Give each FP process a private TMPDIR to preserve separate-host
+storage ownership despite the source timestamp-based metadata names.
+
+Keep all original active EWD840 assertions: FINISHED, 114,942 distinct states,
+zero queued states and no GENERAL. The new topology additionally requires two
+accepted FP registrations, no GENERAL or unexpected EOF across all roles and
+normal joins for every child. Progress logs distinguish fpserver-1/fpserver-2.
+The source remote harness remains unconditionally disabled and receives no
+original-method completion credit; two FP servers and one worker are explicit
+native harness choices.
+
+Initial full normal case passes in 50.949 seconds (81806 terminal status 0;
+/mnt/oldrog/tmp/tlago-ewd840-two-fingerprint-processes.log). After isolating the
+two FP temporary directories, the exact final case passes in 50.323 seconds
+(89067 terminal status 0; /mnt/oldrog/tmp/tlago-ewd840-two-fingerprint-processes-final.log).
+No production failure was found. Both handles are retired. No race instrumentation
+or full suite was run, and no other long model scenario was selected. Broader
+distributed parity, process-crash and mid-run recovery work remain incomplete.

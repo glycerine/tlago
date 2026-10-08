@@ -73,6 +73,14 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+The native EWD840 process harness now covers two standalone FP servers. Before
+starting its worker, it reads the coordinator's published manager reference
+graph and checks two distinct nonempty stores totaling the complete 16,384-state
+initial frontier. Each FP process owns private temporary storage. The unchanged
+MC06/N=7 workload must then finish with 114,942 distinct states and an empty
+queue, exactly two FP registrations, no GENERAL across any role and no lost RPC
+reply. This is supplemental native coverage, not disabled Java harness credit.
+
 Native fingerprint registration now stores the endpoint reference without an
 extra connection probe. This retains the dynamic manager's source capacity
 check and registration-latch order even when the referenced store is stopped.
