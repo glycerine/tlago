@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Coordinator system-failure diagnostics retain debug-enabled throwable stacks
+and original catch/finally cleanup order. Eight short returned/panicked cases
+cover stack-overflow/out-of-memory with debug off/on. They also require completed
+ToolIO stack lines, exposing and fixing a shared printer shortcut. Original Java
+MP/WarningControl and native keepalive checks remain green; no enabled direct
+Java coordinator-main test exists, so no original-method credit is added.
+
 Four short native in-flight FP block checks now cover sequential/concurrent
 put and contains reassignment after TCP host closure. They require original
 partition ordering, survivor wrapper sharing, one warning and the exact backing

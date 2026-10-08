@@ -1,7 +1,10 @@
 // Portions Copyright (c) 2025, Oracle and/or its affiliates.
 package tlc
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // PrintErrorThrowable ports MP.printError(int, Throwable). General errors use
 // ECGeneralMsg; other codes substitute the nullable detail and print a stack
@@ -99,5 +102,9 @@ func printThrowable(failure error) {
 	if failure == nil {
 		panic(NewNullPointerException())
 	}
-	ToolIOPrint(javaThrowableStackTrace(failure))
+	// Throwable.printStackTrace uses println for each line. A single print
+	// leaves ToolIO's buffered stream holding an unfinished message instead.
+	for _, line := range strings.Split(strings.TrimSuffix(javaThrowableStackTrace(failure), "\n"), "\n") {
+		ToolIOPrintln(line)
+	}
 }

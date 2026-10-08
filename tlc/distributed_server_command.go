@@ -195,11 +195,11 @@ func (p *DistributedServerProcess) finish(env DistributedServerEnvironment) erro
 }
 func printDistributedServerFailure(err error) {
 	if javaSystemFailureCode(err) == ECSystemStackOverflow {
-		PrintErrorNullable(ECSystemStackOverflow, javaThrowableDetailMessage(err))
+		PrintErrorThrowable(ECSystemStackOverflow, err)
 		return
 	}
 	if isJavaOutOfMemoryError(err) {
-		PrintErrorNullable(ECSystemOutOfMemory, javaThrowableDetailMessage(err))
+		PrintErrorThrowable(ECSystemOutOfMemory, err)
 		return
 	}
 	PrintError(ECGeneral, javaGeneralErrorMessage("", err))

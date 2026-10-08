@@ -18718,3 +18718,33 @@ manager-job joining, final exact normal/race checks pass in 0.025/1.058 seconds
 only the four short cases. No full suite or long model/race workload was run.
 Docs and inventory are current. Fingerprint-process failure/recovery and broader
 distributed parity remain pending; the goal is incomplete.
+
+## October 8, 2026: coordinator system-failure stacks and ToolIO line completion
+
+TLCServer.main reports StackOverflowError/OutOfMemoryError through MP's throwable
+overload. Go used PrintErrorNullable and lost debug stacks. Corrected both calls
+to PrintErrorThrowable. Added eight short main-process boundary checks: two
+system categories, returned/panicked, debug off/on. Require exact event detail,
+no GENERAL, debug stack presence and source properties/app/server/bean/hook/model/
+GC/close(false)/shutdown/unregister order. Restore worker-count, debug, ToolIO
+and recorder globals. No enabled direct Java main test covers this boundary;
+these checks add no original-method completion credit.
+
+All four debug-enabled cases reproduce missing stacks before the fix (11966
+terminal status 1, 0.012 seconds; /mnt/oldrog/tmp/tlago-server-system-before.log).
+After restoring the throwable overload, the test exposed a shared stack printer
+shortcut: printThrowable called ToolIOPrint with the entire stack, leaving it
+pending. With version/error messages filling the two-slot buffer, getAllMessages
+then raises its retained source arraycopy bounds exception (28253 terminal
+status 1). Java Throwable.printStackTrace prints each line with println; changed
+the Go stack printer accordingly rather than weakening the buffered-mode test.
+The final check requires no unfinished message after reporting the stack.
+
+Final process/output selection passes in 0.014 seconds (64551 terminal status 0),
+including original Java MP and WarningControl methods, original output message
+control and distributed option diagnostics. Existing native keepalive cases pass
+in 0.025 seconds (terminal status 0; /mnt/oldrog/tmp/tlago-keepalive-stack-lines.log).
+All handles are retired. No race, full suite or long model workload was run for
+this output-only change. Docs and inventory are current. Source startup recovery
+still precedes remote FP registration; broader recovery, failure and payload
+parity remain pending, and the distributed goal is incomplete.

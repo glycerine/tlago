@@ -73,6 +73,12 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Coordinator system-failure diagnostics use the source throwable overload for
+stack-overflow and out-of-memory categories, retaining debug stacks and cleanup
+order. The shared stack printer now completes each ToolIO line with println,
+as Java does, instead of leaving a raw stack in the unfinished-message buffer.
+Focused process, original output and native keepalive checks pass.
+
 Native fingerprint failover now has in-flight block coverage for put/contains
 in sequential and concurrent manager execution. A closed TCP host must trigger
 survivor reassignment while its accepted storage handler is still paused; result

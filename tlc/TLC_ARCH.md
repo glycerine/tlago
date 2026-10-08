@@ -11055,3 +11055,13 @@ ones; Put retries against surviving storage. No transport-level retry or new
 batch protocol is introduced. Host.Close owns sockets only, so the paused local
 storage handler remains alive and is explicitly released/joined by the test.
 This boundary does not establish fingerprint-process crash/recovery behavior.
+
+The coordinator main catch uses PrintErrorThrowable for stack-overflow and
+out-of-memory categories, preserving the source debug stack policy. The shared
+printThrowable writes each stack line using ToolIOPrintln, matching Java
+Throwable.printStackTrace's println calls. A single raw ToolIOPrint previously
+left the whole stack as an unfinished buffer prefix, which could also trigger
+the retained source getAllMessages arraycopy bounds failure. Normal stream
+bytes retain their line structure; buffered mode now receives completed lines.
+GC, close(false), executor shutdown and management cleanup remain ordered as
+in the source main catch/finally.
