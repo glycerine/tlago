@@ -20562,3 +20562,31 @@ assigned-block checkpoint and healthy-partition continuation checks pass
 (status 0, 0.060 seconds). All handles are terminal. No full suite, long workload
 or race run was performed. Supplemental checks add no original-method credit;
 broader distributed parity remains incomplete.
+
+### 2026-10-08: Live distributed application action traversal
+
+Audited TLCApp.getNextStates and checkState loops against pinned source. Java
+rereads the application’s public action arrays and lengths at every loop index;
+Go range retained the slice header/length chosen before evaluator callbacks.
+Replacing/shrinking/growing application arrays could run stale actions or skip
+new generation/property failures. Replaced the four range loops with source
+indexed traversal. Constructor capture of the tool’s original arrays, shared
+application ownership, merge order and current-tool violation names remain intact.
+This does not add concurrent array mutation support or extra locking.
+
+No original test directly covers evaluator-driven application-array replacement.
+Added 12 focused cases: shrink/replace/grow for generation, invariants, implied
+initial properties and implied transition properties. Generation replacement
+preserves the new evaluator failure’s identity; property replacement preserves
+violation label/name, predecessor/successor identity and false call-stack flag.
+All 12 initially failed (54474, status 1, 0.012 seconds). After production fix,
+these plus existing successor ownership/metadata, manager failure precedence
+and original nine smart-proxy contexts pass (94008, status 0, 0.013 seconds).
+
+Short native TCP worker partition/missing-manager/failure context and actual
+worker bootstrap/callback checks pass (status 0, 0.026 seconds). The three
+original distributed initializer-continue, evaluator-exception and TLCSet model
+contexts pass with unchanged assertions (74091, status 0, 1.432 seconds).
+All handles are terminal. No full suite, long workload or race run was performed.
+Supplemental mutation checks add no original-method completion credit; broader
+distributed parity remains incomplete.

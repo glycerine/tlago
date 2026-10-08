@@ -7986,6 +7986,11 @@ is a separate source case; zero-successor work can return empty partition arrays
 The concrete `TLCApp` runtime captures implied-init, invariant, implied-action,
 and next-action arrays at construction, retaining their identity even if the
 tool later replaces its arrays. Worker-group members share one application.
+Generation and property loops read the application’s current array length and
+entry at every index. Replacing those public application arrays during evaluator
+callbacks therefore changes subsequent traversal: shrink stops it, replacement
+uses the current entry, and growth includes added entries. This is separate from
+replacing the tool’s arrays, which leaves the captured application arrays intact.
 Successor generation calls the vector overload separately for each captured
 action. `StateVec.addElements` chooses the larger vector as receiver, so a
 later action producing more states can move its successors before earlier

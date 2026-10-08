@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental application traversal checks preserve evaluator-driven replacement,
+shrink and growth of generation/invariant/implied-init/implied-action arrays.
+Violation names/context and generation failure identity are retained. No original
+method covers these mutations; original-method completion counts are unchanged.
+
 Supplemental fingerprint lifecycle checks preserve explicit null failures at
 begin/commit/recover, including live replacement between phases. Distributed
 close reports and continues; local lifecycle calls propagate the failure.

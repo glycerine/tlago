@@ -339,6 +339,12 @@ its statistics update, preserving predecessor/error context and computing cleanu
 Generation failures still take precedence; empty managers remain distinct.
 Focused local/TCP checks pass and add no original-method completion credit.
 
+Distributed application generation/property loops now read their current arrays
+at each index, observing evaluator-driven replacement, shrink and growth. Initial
+constructor capture of tool arrays is retained. Focused traversal/native TCP
+checks and the three original distributed initialization/TLCSet models pass;
+these supplemental cases add no original-method completion credit.
+
 Distributed application successor results now have separate fixed-size array
 storage, preserving shared state objects and larger-vector merge order. Tool
 accumulator mutations cannot rewrite returned slots; validation-time shrink/grow

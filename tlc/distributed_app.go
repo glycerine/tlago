@@ -107,7 +107,8 @@ func (a *TLCApp) GetNextStates(state *TLCStateMut) (*StateVec, error) {
 		panic(NewNullPointerException())
 	}
 	out := NewStateVec(10)
-	for _, action := range a.Actions {
+	for i := 0; i < len(a.Actions); i++ {
+		action := a.Actions[i]
 		next, err := a.requireTool().GetNextStates(action, state)
 		if err != nil {
 			return nil, err
@@ -142,7 +143,8 @@ func (a *TLCApp) CheckState(predecessor, successor *TLCStateMut) error {
 	if a == nil {
 		panic(NewNullPointerException())
 	}
-	for i, invariant := range a.Invariants {
+	for i := 0; i < len(a.Invariants); i++ {
+		invariant := a.Invariants[i]
 		valid, err := a.requireTool().IsValidState(invariant, successor)
 		if err != nil {
 			return err
@@ -152,7 +154,8 @@ func (a *TLCApp) CheckState(predecessor, successor *TLCStateMut) error {
 		}
 	}
 	if predecessor == nil {
-		for i, implied := range a.ImpliedInits {
+		for i := 0; i < len(a.ImpliedInits); i++ {
+			implied := a.ImpliedInits[i]
 			valid, err := a.requireTool().IsValidState(implied, successor)
 			if err != nil {
 				return err
@@ -162,7 +165,8 @@ func (a *TLCApp) CheckState(predecessor, successor *TLCStateMut) error {
 			}
 		}
 	} else {
-		for i, implied := range a.ImpliedActions {
+		for i := 0; i < len(a.ImpliedActions); i++ {
+			implied := a.ImpliedActions[i]
 			valid, err := a.requireTool().IsValidTransition(implied, predecessor, successor)
 			if err != nil {
 				return err
