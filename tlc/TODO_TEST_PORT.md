@@ -818,6 +818,12 @@ negative/out-of-range indices, an empty owner list and valid slot replacement.
 Invalid registration leaves the fixed owner list unchanged. No original method
 directly covers this boundary; completion counts remain unchanged.
 
+Eight native source-disk-trace checkpoint cases cover begin/recovery with
+missing/closed owners and saved creation errors. Checks retain owner identity,
+flush-before-temporary-creation and read-before-seek mutation ordering, exact
+metadata bytes and lock release. No original method directly covers this
+boundary; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

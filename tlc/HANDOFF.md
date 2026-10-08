@@ -213,6 +213,12 @@ or worker references and out-of-range IDs fail before assignment; registration
 cannot expand the topology or silently drop an invalid owner. Valid registration
 replaces only its indexed slot and returns the supplied worker.
 
+The source-constructor disk trace also checkpoints through its existing owner.
+Begin flushes before temporary metadata creation; missing/closed owners leave
+prior temporary bytes untouched. Recovery reads and publishes the saved last
+pointer before requiring that owner for seek. Neither operation reopens a file
+or consults a saved creation error. Close retains the closed disk owner.
+
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes
 the required root trace write and queue enqueue; property checks follow. Missing

@@ -21629,3 +21629,28 @@ trace models plus all four DieHard/TSnapShot native process storage variants pas
 (e7c677, status 0, 54.455 seconds). Assertions and workload bounds remain unchanged.
 All processes are terminal. No full suite or race run was performed. Supplemental
 checks add no original-method credit; distributed completion remains unproven.
+
+### 2026-10-08: Source disk-trace checkpoint owner preservation
+
+Compared TLCServer checkpoint phase ordering and TLCTrace beginChkpt/recover/close
+with pinned source. Coordinator phase order already matches. Source-constructor
+disk traces now use their existing file owner for checkpoint creation/recovery,
+without lazy reopening or saved-open-error preflight. Begin requires the owner
+and flushes before temporary metadata creation. Recovery reads both metadata
+fields, publishes the last pointer and closes the reader before requiring the
+owner for seek. Close retains the closed source disk handle. The native in-memory
+trace adapter remains separate from this source disk contract.
+
+No original method directly covers missing owners. Eight supplemental begin/
+recovery cases cover missing/closed owners and saved errors with/without an owner,
+exact metadata bytes, prior temporary bytes, owner identity, last-pointer mutation
+order and lock release. Six initially failed (6dff2d, status 1, 0.014 seconds).
+Final focused trace/checkpoint/recovery and original simulation trace checks pass
+(756673, status 0, 0.197 seconds). Original checkpoint-on-violation/time-bound,
+error-trace and three-worker CodePlexBug08 archive recovery plus all four existing
+DieHard/TSnapShot native process storage variants pass (449f70, status 0, 58.198
+seconds). The original generated checkpoint trace recheck also passes (fb3177,
+status 0, 0.636 seconds). Original assertions and workload bounds remain intact.
+All processes are terminal. No full suite or race run was performed. Supplemental
+cases add no original-method credit. Construction/context and remaining trace
+operations still need audit; distributed parity is incomplete.

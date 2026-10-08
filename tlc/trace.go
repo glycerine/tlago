@@ -790,9 +790,14 @@ func (t *TLCTrace) BeginChkpt() error {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.diskdir != "" {
-		if err := t.ensureTraceRAFLocked(); err != nil {
-			return err
+	if t.rawPaths && t.raf == nil {
+		panic(NewNullPointerException())
+	}
+	if t.diskdir != "" || t.rawPaths {
+		if !t.rawPaths {
+			if err := t.ensureTraceRAFLocked(); err != nil {
+				return err
+			}
 		}
 		if t.raf != nil {
 			if err := t.raf.Flush(); err != nil {
@@ -916,12 +921,12 @@ func (t *TLCTrace) Recover() error {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.diskdir == "" {
+	if t.diskdir == "" && !t.rawPaths {
 		return nil
 	}
 	// A closed source RAF is not reopened by recovery. Metadata reads still
 	// precede the seek failure, including publication of the saved last pointer.
-	if !t.closed {
+	if !t.rawPaths && !t.closed {
 		if err := t.ensureTraceRAFLocked(); err != nil {
 			return err
 		}
@@ -931,7 +936,7 @@ func (t *TLCTrace) Recover() error {
 		return err
 	}
 	in := NewValueInputStream(file)
-	if t.raf != nil || t.closed {
+	if t.rawPaths || t.raf != nil || t.closed {
 		filePos, err := in.ReadLong()
 		if err != nil {
 			_ = in.Close()
@@ -945,6 +950,9 @@ func (t *TLCTrace) Recover() error {
 		t.lastPtr = lastPtr
 		if err := in.Close(); err != nil {
 			return err
+		}
+		if t.rawPaths && t.raf == nil {
+			panic(NewNullPointerException())
 		}
 		return t.raf.Seek(filePos)
 	}
@@ -1082,7 +1090,9 @@ func (t *TLCTrace) Close() error {
 		return nil
 	}
 	err := t.raf.Close()
-	t.raf = nil
+	if !t.rawPaths {
+		t.raf = nil
+	}
 	return err
 }
 
