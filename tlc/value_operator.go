@@ -6,7 +6,7 @@ import (
 )
 
 type OpDefNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Symbol                    *SymbolNode
 	Name                      *UniqueString
 	Params                    []*SymbolNode
@@ -60,6 +60,12 @@ func NewOpDefNode(name string, params []*SymbolNode, body SemanticNode) *OpDefNo
 }
 
 func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body SemanticNode) *OpDefNode {
+	return NewOpDefNodeForSymbolWithBase(symbol, params, body, nil)
+}
+
+// A parser adapter borrows the already constructed SANY identity. Standalone
+// runtime definitions allocate their own semantic base through the same path.
+func NewOpDefNodeForSymbolWithBase(symbol *SymbolNode, params []*SymbolNode, body SemanticNode, base *SemanticNodeBase) *OpDefNode {
 	outParams := make([]*SymbolNode, len(params))
 	copy(outParams, params)
 	if symbol == nil {
@@ -72,15 +78,19 @@ func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body Semant
 	if name != nil {
 		image = name.String()
 	}
+	if base == nil {
+		owned := NewSemanticNodeBase(SemanticUserDefinedOpKind, image)
+		base = &owned
+	}
 	definition := &OpDefNode{
-		SemanticNodeBase: NewSemanticNodeBase(SemanticUserDefinedOpKind, image),
+		SemanticNodeBase: base,
 		Symbol:           symbol,
 		Name:             name,
 		Params:           outParams,
 		Body:             body,
 	}
 	symbol.Definition = definition
-	symbol.SemanticBase = &definition.SemanticNodeBase
+	symbol.SemanticBase = definition.SemanticNodeBase
 	return definition
 }
 

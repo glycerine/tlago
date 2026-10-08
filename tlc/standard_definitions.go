@@ -351,7 +351,7 @@ func (t *Tool) defineStandardEvaluating(name string, arity int, eval EvaluatingE
 }
 
 func (t *Tool) defineStandardEvaluatingWithMinLevel(name string, arity int, minLevel int, eval EvaluatingEvalFunc, aliases ...string) {
-	opDef := &OpDefNode{Name: UniqueStringOf(name), Symbol: NewSymbolNode(name)}
+	opDef := &OpDefNode{SemanticNodeBase: &SemanticNodeBase{}, Name: UniqueStringOf(name), Symbol: NewSymbolNode(name)}
 	method := name
 	if name == "TLCGet" {
 		// EvaluatingValue's catch(Throwable) reports Method.toString(), including
@@ -372,7 +372,7 @@ func (t *Tool) defineStandardEvaluatingIdentity(name string, arity int, identity
 	for i := range params {
 		params[i] = NewSymbolNode(name + "$arg")
 	}
-	opDef := &OpDefNode{Name: UniqueStringOf(name), Symbol: NewSymbolNode(name), Params: params}
+	opDef := &OpDefNode{SemanticNodeBase: &SemanticNodeBase{}, Name: UniqueStringOf(name), Symbol: NewSymbolNode(name), Params: params}
 	if identityArg >= 0 && identityArg < len(params) {
 		opDef.Body = NewOpApplNode(params[identityArg])
 	}
@@ -433,7 +433,7 @@ func standardSyntheticOpDef(name string, arity int, body SemanticNode) *OpDefNod
 	for i := range params {
 		params[i] = NewSymbolNode(name + "$arg")
 	}
-	return &OpDefNode{Name: UniqueStringOf(name), Symbol: NewSymbolNode(name), Params: params, Body: body}
+	return &OpDefNode{SemanticNodeBase: &SemanticNodeBase{}, Name: UniqueStringOf(name), Symbol: NewSymbolNode(name), Params: params, Body: body}
 }
 
 func standardBinaryInt(name string, eval func(*IntValue, *IntValue) (*IntValue, error)) func([]Value) (Value, error) {

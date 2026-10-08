@@ -10779,6 +10779,17 @@ cover these cache branches and worker choices, with independently built graph
 locations normalized; they do not establish complete evaluator exception or
 malformed-graph parity.
 
+Runtime OpDef adapters now borrow the actual parser-owned SemanticNodeBase.
+Their symbols share the same pointer, so UID, syntax/location and indexed
+tool slots have one owner. Standalone runtime constructors still allocate a
+base. The bridge caches a definition shell by both source AST and canonical
+OpDef identity before visiting its body; debugger clones retain those caches.
+This does not change source Generator construction order. The 190 inspected
+explicit definitions from five original fixtures retain these identities.
+Canonical LET Context and imported-wrapper graph transfer remain pending;
+filtered runtime LET arrays and coverage's reconstructed Hashtable remain
+incomplete representations of source Context membership/history.
+
 Java Spec's toolId is static final and obtained once from semantic.FrontEnd's
 allocator. Current specToolID uses sync.Once for the same ownership. The tool
 ID is shared by subclasses; allocating a new ID for each ordinary Tool would

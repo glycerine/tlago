@@ -454,7 +454,7 @@ package. The native XML fixture failures remain. Base-less aliases, complete
 runtime ASSUME/PROVE definition bodies and remaining canonical Context/wrapper
 adapters are still incomplete; this is not full lookup/graph parity.
 
-The literal/theorem changes are committed as `5428acc`. The next record-field
+The literal/theorem changes are committed as `5428acc`. The record-field
 slice removes direct literal/generic-cache reads from record constructors and
 record sets, and removes field re-evaluation from record selection. These now
 follow Java's indexed-slot casts and worker muxing. Record selection preserves
@@ -463,6 +463,18 @@ Java's RecordValue subclass dispatch. All 102 bounded source comparisons agree.
 The original RecordValue, SetOfRcrdValue and value-stream checks pass. Current
 run details and remaining gates belong in PORT_PROGRESS.md. Canonical runtime
 Context transfer and ASSUME/PROVE definition bodies remain next bridge gaps.
+The record-field changes are committed as `6c91722`.
+
+The current operator adapter slice retains the actual SANY semantic base rather
+than allocating a separate UID/tool-slot identity. Runtime symbols share the
+same base, and definition shells are cached before body adaptation. Actual
+canonical-node caches preserve aliases and debugger dependency reuse. Original
+model/debugger/coverage and SANY gates pass; 190 inspected explicit definitions
+in existing fixtures retain their base, UID, syntax, location and indexed slots.
+This prepares canonical LET Context transfer, which is still pending. Preserve
+source Context Pair history and Hashtable buckets rather than reconstructing
+them from filtered `getLets` definitions; module-instance and theorem entries
+must not disappear. Full run receipts belong in PORT_PROGRESS.md.
 
 Recursive declarations now update the actual node and unresolved counters inside
 `endRecursiveDefinition`, before label-scope completion. Canonical named functions

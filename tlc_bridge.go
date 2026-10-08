@@ -28,6 +28,7 @@ type tlcBridge struct {
 	definitionModules      map[*Definition]string
 	sourceSymbols          map[*Definition]*tlc.SymbolNode
 	sourceDefinitions      map[*Definition]*tlc.OpDefNode
+	canonicalDefinitions   map[*sanySemOpDefNode]*tlc.OpDefNode
 	canonicalLets          map[*sanySemLetInNode]*tlc.LetInNode
 	canonicalFormals       map[*sanyFormalParamNode]*tlc.SymbolNode
 	canonicalTheorems      map[*sanySemTheoremNode]*tlc.TheoremNode
@@ -1313,6 +1314,12 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	if source := b.sourceDefinitions[def]; source != nil {
 		return source
 	}
+	if def.semanticNode != nil {
+		if source := b.canonicalDefinitions[def.semanticNode]; source != nil {
+			b.sourceDefinitions[def] = source
+			return source
+		}
+	}
 	sym := b.sourceDefinitionSymbol(name, def)
 	params := make([]*tlc.SymbolNode, len(def.Params))
 	priorParams := make([]*tlc.SymbolNode, len(def.Params))
@@ -1343,16 +1350,20 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 		}
 		b.convertingModule = prevModule
 	}()
-	var body tlc.SemanticNode
-	if function, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
-		body = b.functionDefinitionNode(def, function)
-	} else {
-		body = b.convertExpr(def.Expr)
+	var base *tlc.SemanticNodeBase
+	if def.semanticNode != nil {
+		base = def.semanticNode.SemanticNodeBase
 	}
-	if body == nil {
-		return nil
+	opDef := tlc.NewOpDefNodeForSymbolWithBase(sym, params, nil, base)
+	// SANY already owns the complete node. Publish its runtime view before
+	// adapting the body so recursive references and aliases share this shell.
+	b.sourceDefinitions[def] = opDef
+	if def.semanticNode != nil {
+		if b.canonicalDefinitions == nil {
+			b.canonicalDefinitions = map[*sanySemOpDefNode]*tlc.OpDefNode{}
+		}
+		b.canonicalDefinitions[def.semanticNode] = opDef
 	}
-	opDef := tlc.NewOpDefNodeForSymbol(sym, params, body)
 	// SpecProcessor reads the level computed by SANY on the actual definition,
 	// independently of coverage and runtime overrides.
 	var checkedDefinition sanyCanonicalLevelNode = def.semanticNode
@@ -1369,12 +1380,21 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	if mod := b.spec.Modules[b.convertingModule]; mod != nil {
 		opDef.SetInRecursive(recursiveDeclarationSections(mod.Recursives)[def.Name] != 0)
 	}
-	b.withSyntaxNode(def.Syntax, opDef)
-	b.withPositionLocation(def.SourcePosition(), opDef)
+	if def.semanticNode == nil {
+		b.withSyntaxNode(def.Syntax, opDef)
+		b.withPositionLocation(def.SourcePosition(), opDef)
+	}
 	if declaration := b.sourceLocationForPosition(def.DeclarationPosition()); !declaration.IsNull() {
 		opDef.SetDeclarationLocation(declaration)
 	}
-	b.sourceDefinitions[def] = opDef
+	if function, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
+		opDef.Body = b.functionDefinitionNode(def, function)
+	} else {
+		opDef.Body = b.convertExpr(def.Expr)
+	}
+	if opDef.Body == nil {
+		return nil
+	}
 	return opDef
 }
 

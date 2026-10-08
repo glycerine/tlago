@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-07 Share canonical operator identities before body adaptation:
+Previous completed commit: 6c91722; clean tree confirmed before this slice.
+The LET Context audit finds a prerequisite: runtime OpDefNodes still own a
+separate semantic base and are cached only after body adaptation. Runtime
+OpDefNode now stores a pointer to its semantic base. Standalone constructors
+allocate their own base; the parser bridge borrows the actual SANY definition's
+base and preserves its syntax/location instead of rewriting them from the AST
+facade. Runtime symbol and definition share that pointer. Synthetic standard
+override placeholders retain their existing zero metadata through explicit
+zero bases; this does not claim complete canonical native override binding.
+
+Publish the runtime shell in both source-AST and actual canonical-node caches
+before adapting the body. Already constructed SANY definitions are unchanged;
+this adjusts adapter traversal, not Java Generator's constructor order. Alias
+AST views now reuse the actual source node's adapter. Debugger bridges retain
+the canonical cache. Full imported-wrapper, LET Context and ASSUME/PROVE body
+transfer remain pending.
+
+All-package compilation passes (50523 retired). Short Tool, Callable/Evaluating,
+Specs/Defns/AST selections pass in 0.023 seconds. The affected original model,
+debugger and coverage selection passes in 21.017 seconds (20451 retired), and
+the original SANY package passes in 2.542 seconds (38175 retired). An external
+inspection of five unchanged original fixtures (Test201, Test216, Test219,
+Github715 and ConstantOperatorConfiguration) checks all 190 inspected explicit
+module definitions for actual base/UID/syntax/location and tool-slot identity;
+it passes in 1.076 seconds (75558 retired). That is an adapter invariant check,
+not an additional Java test translation or a complete semantic graph audit.
+Observer and log use tlago-opdef-base under /mnt/oldrog/tmp. No permanent tests,
+fixtures or inventory credit are added. Native XML failures remain; the goal
+and canonical LET Context transfer are still incomplete.
+Selected native standard-module/runtime-postcondition checks and original root
+SANY corpus, selector, incremental, builtin and Context translations pass in
+0.645 seconds (74686 retired). Diff checks pass; all handles are terminal.
+
 2026-10-07 Restore record-field cache consumers:
 Previous completed commit: 5428acc; clean tree confirmed before this slice.
 Java Tool's record and record-set constructors cast the active indexed field
