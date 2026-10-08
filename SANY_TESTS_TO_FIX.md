@@ -142,7 +142,7 @@ Java calls `SANYmain` with an **extensionless** `IllegalOperatorTest` path and i
 
 ### F07 — `Github429Test` changes semantic-analysis mode
 
-**Affected:** [drivers_github429test_test.go](sany_tests/drivers_github429test_test.go).
+**Affected:** [drivers_github429test_test.go](sany_github429_java_test.go).
 
 Java initializes the frontend, parses, then calls semantic analysis with **level checking disabled** (`false`). Its contract is that these operations do not throw an exception; it does not require an empty/error-free log. Go runs `CheckSpec`, including level checking, and requires no error diagnostics. This is a different and stricter workload, rather than the original nonthrowing phase test.
 
@@ -234,7 +234,7 @@ Java asserts XML_UNREPRESENTABLE_CHARACTER through both library and CLI paths; t
 
 ### F18 — XML help tests replace complete shared usage output with keywords
 
-**Affected:** both methods in [xml_testxmlexporterhelptext_test.go](sany_tests/xml_testxmlexporterhelptext_test.go).
+**Affected:** both methods in [xml_testxmlexporterhelptext_test.go](sany_xml_help_java_test.go).
 
 Java independently obtains the full output of `XMLExporter.printUsage` and requires the selected CLI stream to contain it. Go checks only `sany-xml` and `FILE` for help, and accepts either `sany-xml` **or** `file` for no arguments. A one-line error about a file passes without printing any usage. The current `runSanyXML` no-argument branch only prints `at least one file is required`; this is a concrete missing production behavior visible in source, not a test execution reported by this audit.
 
@@ -356,7 +356,7 @@ Repaired: Original fixture and initialized frontend retained; parsing and genera
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testForFailedParse`](sany_github429_java_test.go) | port complete | F07 |
+| [`testForFailedParse`](sany_github429_java_test.go:10) | port complete | F07 |
 
 ### IllegalOperatorTest
 
@@ -376,18 +376,18 @@ Reviewed: All 12 methods and original warning fixture retained. Settings/output,
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testWarningAppearsWithDefaultSettings`](sany_warning_control_java_test.go) | port complete | F04 |
-| [`testSuppressMessagesViaSettings`](sany_warning_control_java_test.go) | port complete | F04 |
-| [`testMessagesAsErrorsViaSettings`](sany_warning_control_java_test.go) | port complete | F04 |
-| [`testCLISuppressMessagesSilencesWarning`](sany_tests/drivers_warningcontroltest_test.go:49) | port complete | F05 |
-| [`testCLIMessagesAsErrorsCausesFailure`](sany_tests/drivers_warningcontroltest_test.go:60) | port complete | F05 |
-| [`testCLIMultipleCodesSuppressed`](sany_tests/drivers_warningcontroltest_test.go:71) | port complete | F05 |
-| [`testCLIUnknownCodeInSuppressMessages`](sany_tests/drivers_warningcontroltest_test.go:82) | port complete | F05 |
-| [`testCLIUnknownCodeInMessagesAsErrors`](sany_tests/drivers_warningcontroltest_test.go:93) | port complete | F05 |
-| [`testCLISuppressMessagesMissingArgument`](sany_tests/drivers_warningcontroltest_test.go:104) | Reviewed | — |
-| [`testCLIMessagesAsErrorsMissingArgument`](sany_tests/drivers_warningcontroltest_test.go:112) | Reviewed | — |
-| [`testCLIOverlapBetweenSuppressMessagesAndMessagesAsErrors`](sany_tests/drivers_warningcontroltest_test.go:120) | port complete | F05 |
-| [`testCLIErrorLevelCodeInSuppressMessages`](sany_tests/drivers_warningcontroltest_test.go:131) | port complete | F05 |
+| [`testWarningAppearsWithDefaultSettings`](sany_warning_control_java_test.go:21) | port complete | F04 |
+| [`testSuppressMessagesViaSettings`](sany_warning_control_java_test.go:31) | port complete | F04 |
+| [`testMessagesAsErrorsViaSettings`](sany_warning_control_java_test.go:43) | port complete | F04 |
+| [`testCLISuppressMessagesSilencesWarning`](sany_tests/drivers_warningcontroltest_test.go:13) | port complete | F05 |
+| [`testCLIMessagesAsErrorsCausesFailure`](sany_tests/drivers_warningcontroltest_test.go:24) | port complete | F05 |
+| [`testCLIMultipleCodesSuppressed`](sany_tests/drivers_warningcontroltest_test.go:35) | port complete | F05 |
+| [`testCLIUnknownCodeInSuppressMessages`](sany_tests/drivers_warningcontroltest_test.go:46) | port complete | F05 |
+| [`testCLIUnknownCodeInMessagesAsErrors`](sany_tests/drivers_warningcontroltest_test.go:57) | port complete | F05 |
+| [`testCLISuppressMessagesMissingArgument`](sany_tests/drivers_warningcontroltest_test.go:68) | Reviewed | — |
+| [`testCLIMessagesAsErrorsMissingArgument`](sany_tests/drivers_warningcontroltest_test.go:76) | Reviewed | — |
+| [`testCLIOverlapBetweenSuppressMessagesAndMessagesAsErrors`](sany_tests/drivers_warningcontroltest_test.go:84) | port complete | F05 |
+| [`testCLIErrorLevelCodeInSuppressMessages`](sany_tests/drivers_warningcontroltest_test.go:95) | port complete | F05 |
 
 ### TestSanyOutputFormatting
 
@@ -567,11 +567,11 @@ Reviewed: All five original methods present; production logger bypass in first t
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testPercentSignInMessageTextIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go) | port complete | F02 |
-| [`testPercentSignInMessageParameterIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go) | port complete | F02 |
-| [`testUnresolvedPercentOperator`](sany_error_message_formatting_java_test.go) | port complete | F03 |
-| [`testUnresolvedNonfixPercentOperator`](sany_error_message_formatting_java_test.go) | port complete | F03 |
-| [`testUnresolvedDoublePercentOperatorIsNotRenamed`](sany_error_message_formatting_java_test.go) | port complete | F03 |
+| [`testPercentSignInMessageTextIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go:11) | port complete | F02 |
+| [`testPercentSignInMessageParameterIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go:19) | port complete | F02 |
+| [`testUnresolvedPercentOperator`](sany_error_message_formatting_java_test.go:48) | port complete | F03 |
+| [`testUnresolvedNonfixPercentOperator`](sany_error_message_formatting_java_test.go:51) | port complete | F03 |
+| [`testUnresolvedDoublePercentOperatorIsNotRenamed`](sany_error_message_formatting_java_test.go:54) | port complete | F03 |
 
 ### TestErrors
 
@@ -581,10 +581,10 @@ Reviewed: Original message texts retained, but logger insertion, original error 
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testWarningMessages`](sany_errors_java_test.go) | port complete | F01 |
-| [`testErrorMessages`](sany_errors_java_test.go) | port complete | F01 |
-| [`testMixedMessageLevels`](sany_errors_java_test.go) | port complete | F01 |
-| [`testDuplicateErrorsIgnored`](sany_errors_java_test.go) | port complete | F01 |
+| [`testWarningMessages`](sany_errors_java_test.go:74) | port complete | F01 |
+| [`testErrorMessages`](sany_errors_java_test.go:85) | port complete | F01 |
+| [`testMixedMessageLevels`](sany_errors_java_test.go:96) | port complete | F01 |
+| [`testDuplicateErrorsIgnored`](sany_errors_java_test.go:105) | port complete | F01 |
 
 ### TestInstanceNode
 
@@ -638,10 +638,10 @@ Reviewed: Pointer boxes preserve Java object identity in contains/append asserti
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`containsUsesIdentityComparison`](sany_tests/utilities_vectortest_test.go:12) | Reviewed | — |
-| [`insertElementAtRejectsAppendPosition`](sany_tests/utilities_vectortest_test.go:25) | port complete | F09 |
-| [`elementsReturnsSnapshot`](sany_tests/utilities_vectortest_test.go:38) | Reviewed | — |
-| [`appendNoRepeatsUsesIdentity`](sany_tests/utilities_vectortest_test.go:51) | Reviewed | — |
+| [`containsUsesIdentityComparison`](sany_tests/utilities_vectortest_test.go:13) | Reviewed | — |
+| [`insertElementAtRejectsAppendPosition`](sany_tests/utilities_vectortest_test.go:26) | port complete | F09 |
+| [`elementsReturnsSnapshot`](sany_tests/utilities_vectortest_test.go:40) | Reviewed | — |
+| [`appendNoRepeatsUsesIdentity`](sany_tests/utilities_vectortest_test.go:53) | Reviewed | — |
 
 ### TestDecimalXMLExport
 
@@ -661,13 +661,13 @@ Reviewed: All seven methods present. Library and CLI paths and exact named error
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testHelpReturnsOk`](sany_tests/xml_testxmlexportererrors_test.go:15) | port complete | F15 |
+| [`testHelpReturnsOk`](sany_tests/xml_testxmlexportererrors_test.go:14) | port complete | F15 |
 | [`testNoArgs`](sany_tests/xml_testxmlexportererrors_test.go:23) | port complete | F15 |
-| [`testIncludeDirWithoutSpec`](sany_tests/xml_testxmlexportererrors_test.go:31) | port complete | F15 |
-| [`testCannotFindSpec`](sany_tests/xml_testxmlexportererrors_test.go:39) | port complete | F15 |
-| [`testSpecParseFailure`](sany_tests/xml_testxmlexportererrors_test.go:47) | port complete | F15, F16 |
-| [`testNullCharacterInStringLiteral`](sany_tests/xml_testxmlexportererrors_test.go:56) | port complete | F15, F17 |
-| [`testNullCharacterInComment`](sany_tests/xml_testxmlexportererrors_test.go:60) | port complete | F15, F17 |
+| [`testIncludeDirWithoutSpec`](sany_tests/xml_testxmlexportererrors_test.go:26) | port complete | F15 |
+| [`testCannotFindSpec`](sany_tests/xml_testxmlexportererrors_test.go:29) | port complete | F15 |
+| [`testSpecParseFailure`](sany_tests/xml_testxmlexportererrors_test.go:32) | port complete | F15, F16 |
+| [`testNullCharacterInStringLiteral`](sany_tests/xml_testxmlexportererrors_test.go:36) | port complete | F15, F17 |
+| [`testNullCharacterInComment`](sany_tests/xml_testxmlexportererrors_test.go:39) | port complete | F15, F17 |
 
 ### TestXMLExporterHelpText
 
@@ -677,8 +677,8 @@ Reviewed: Exit and empty opposite-stream checks retained; complete shared usage 
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testPrintHelpText`](sany_xml_help_java_test.go) | port complete | F18 |
-| [`testPrintHelpTextOnNoArgs`](sany_xml_help_java_test.go) | port complete | F18 |
+| [`testPrintHelpText`](sany_xml_help_java_test.go:11) | port complete | F18 |
+| [`testPrintHelpTextOnNoArgs`](sany_xml_help_java_test.go:25) | port complete | F18 |
 
 ### TestXMLExporterModule
 
@@ -689,25 +689,25 @@ Reviewed: All 20 methods and original model/comment fixtures retained. Reviewed 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
 | [`testExportDieHardModule`](sany_tests/xml_testxmlexportermodule_test.go:17) | port complete | F10, F22, F23, F11, F12 |
-| [`testExportCaseOtherModule`](sany_tests/xml_testxmlexportermodule_test.go:57) | port complete | F10, F22, F23, F11 |
-| [`testExportWithOfflineMode`](sany_tests/xml_testxmlexportermodule_test.go:67) | port complete | F10, F22, F23 |
-| [`testExportWithTerseMode`](sany_tests/xml_testxmlexportermodule_test.go:74) | port complete | F10, F22, F23 |
-| [`testExportWithRestrictedMode`](sany_tests/xml_testxmlexportermodule_test.go:81) | port complete | F10, F22, F23 |
-| [`testRelationPreComments`](sany_tests/xml_testxmlexportermodule_test.go:91) | port complete | F10, F22, F23, F11 |
-| [`testTLACommentStylesPreComments`](sany_tests/xml_testxmlexportermodule_test.go:110) | port complete | F10, F22, F23, F11 |
-| [`testNestedModuleIsChildOfEnclosingModule`](sany_tests/xml_testxmlexportermodule_test.go:150) | port complete | F10, F22, F23, F11 |
-| [`testNestedModuleIsNotInheritedThroughExtends`](sany_tests/xml_testxmlexportermodule_test.go:162) | port complete | F10, F22, F23, F11 |
-| [`testLetInstanceOfEmptyModuleExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:171) | port complete | F10, F22, F23, F11 |
-| [`testLetInstanceWithNothingToInlineExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:183) | port complete | F10, F22, F23, F11 |
-| [`testLetInstanceInlinesDefinitionsOfInstancee`](sany_tests/xml_testxmlexportermodule_test.go:195) | port complete | F10, F22, F23, F11 |
-| [`testLetExportsEachModuleDefinitionIndependently`](sany_tests/xml_testxmlexportermodule_test.go:208) | port complete | F10, F22, F23, F11 |
-| [`testLetAlwaysExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:213) | port complete | F10, F22, F23, F11 |
-| [`testTopLevelInstanceOfEmptyModuleExportsInstanceNode`](sany_tests/xml_testxmlexportermodule_test.go:226) | port complete | F10, F22, F23, F11 |
-| [`testUncommentFlagWithTLACommentStyles`](sany_tests/xml_testxmlexportermodule_test.go:240) | port complete | F10, F22, F23, F14 |
-| [`testUncommentFlagWithRelations`](sany_tests/xml_testxmlexportermodule_test.go:271) | port complete | F10, F22, F23 |
-| [`testLetInstanceExportsInstantiatedTheoremAndAssumption`](sany_tests/xml_testxmlexportermodule_test.go:290) | port complete | F10, F22, F23, F11 |
-| [`testRecursiveSectionGroupsJointDeclaration`](sany_tests/xml_testxmlexportermodule_test.go:304) | port complete | F10, F22, F23, F11, F13 |
-| [`testUseHideDefsExportsModuleReference`](sany_tests/xml_testxmlexportermodule_test.go:327) | port complete | F10, F22, F23, F11 |
+| [`testExportCaseOtherModule`](sany_tests/xml_testxmlexportermodule_test.go:61) | port complete | F10, F22, F23, F11 |
+| [`testExportWithOfflineMode`](sany_tests/xml_testxmlexportermodule_test.go:71) | port complete | F10, F22, F23 |
+| [`testExportWithTerseMode`](sany_tests/xml_testxmlexportermodule_test.go:78) | port complete | F10, F22, F23 |
+| [`testExportWithRestrictedMode`](sany_tests/xml_testxmlexportermodule_test.go:85) | port complete | F10, F22, F23 |
+| [`testRelationPreComments`](sany_tests/xml_testxmlexportermodule_test.go:95) | port complete | F10, F22, F23, F11 |
+| [`testTLACommentStylesPreComments`](sany_tests/xml_testxmlexportermodule_test.go:114) | port complete | F10, F22, F23, F11 |
+| [`testNestedModuleIsChildOfEnclosingModule`](sany_tests/xml_testxmlexportermodule_test.go:154) | port complete | F10, F22, F23, F11 |
+| [`testNestedModuleIsNotInheritedThroughExtends`](sany_tests/xml_testxmlexportermodule_test.go:166) | port complete | F10, F22, F23, F11 |
+| [`testLetInstanceOfEmptyModuleExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:175) | port complete | F10, F22, F23, F11 |
+| [`testLetInstanceWithNothingToInlineExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:187) | port complete | F10, F22, F23, F11 |
+| [`testLetInstanceInlinesDefinitionsOfInstancee`](sany_tests/xml_testxmlexportermodule_test.go:199) | port complete | F10, F22, F23, F11 |
+| [`testLetExportsEachModuleDefinitionIndependently`](sany_tests/xml_testxmlexportermodule_test.go:212) | port complete | F10, F22, F23, F11 |
+| [`testLetAlwaysExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:217) | port complete | F10, F22, F23, F11 |
+| [`testTopLevelInstanceOfEmptyModuleExportsInstanceNode`](sany_tests/xml_testxmlexportermodule_test.go:230) | port complete | F10, F22, F23, F11 |
+| [`testUncommentFlagWithTLACommentStyles`](sany_tests/xml_testxmlexportermodule_test.go:244) | port complete | F10, F22, F23, F14 |
+| [`testUncommentFlagWithRelations`](sany_tests/xml_testxmlexportermodule_test.go:275) | port complete | F10, F22, F23 |
+| [`testLetInstanceExportsInstantiatedTheoremAndAssumption`](sany_tests/xml_testxmlexportermodule_test.go:294) | port complete | F10, F22, F23, F11 |
+| [`testRecursiveSectionGroupsJointDeclaration`](sany_tests/xml_testxmlexportermodule_test.go:308) | port complete | F10, F22, F23, F11, F13 |
+| [`testUseHideDefsExportsModuleReference`](sany_tests/xml_testxmlexportermodule_test.go:331) | port complete | F10, F22, F23, F11 |
 
 ### TestXMLExporterStringEscapes
 
@@ -717,8 +717,8 @@ Reviewed: Original supported decoded string and form-feed fixture retained; CLI/
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testSupportedStringEscapes`](sany_tests/xml_testxmlexporterstringescapes_test.go:13) | port complete | F19, F22 |
-| [`testFormFeedStringEscapeIsRejected`](sany_tests/xml_testxmlexporterstringescapes_test.go:20) | port complete | F17 |
+| [`testSupportedStringEscapes`](sany_tests/xml_testxmlexporterstringescapes_test.go:11) | port complete | F19, F22 |
+| [`testFormFeedStringEscapeIsRejected`](sany_tests/xml_testxmlexporterstringescapes_test.go:23) | port complete | F17 |
 
 ## Recheck procedure
 

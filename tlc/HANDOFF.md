@@ -60,7 +60,9 @@ original arguments and independent schema validation. XML export now requires
 This completes the listed test-contract repairs, not general SANY implementation
 parity beyond their original assertions. Full `./...` normal verification with
 `-timeout=60m` is running under handle 53216; consult PORT_PROGRESS.md for the configuration correction and final
-receipts. Local-interface tests require the unrestricted environment.
+receipts. TLC has passed in 771.039 seconds and SANY in 2.419 seconds;
+root model tests are still running. Local-interface tests require the
+unrestricted environment.
 The audit remains the authoritative method ledger and completion gate. Do not
 claim the active goal complete before the final run/inventory audit is done.
 

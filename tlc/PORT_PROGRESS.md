@@ -16,6 +16,15 @@ output from the fingerprint case is not a hang or a reason to restart. Keep
 full source bounds and no race instrumentation. No full-suite success claim
 until the handle is terminal and all result events are inspected.
 
+Later poll of the same run: TLC completes successfully in 771.039 seconds,
+SANY in 2.419 seconds. Current full-run receipts cover every original SANY
+primary method: 95 pass, one original ignore, zero pending or failing methods;
+the empty source test is included among passes without functional credit.
+Root still runs its original model workloads, with no failure events. Refresh
+all 96 primary method links to their actual current function lines, and repair
+baseline finding links whose moved source files no longer existed. All local
+audit link targets resolve. Goal completion still awaits root's terminal result.
+
 2026-10-08 Final verification configuration and native fixture isolation:
 XML repairs committed as cbef79a. Inventory reconciliation resolves all 96
 ledger rows to exactly one current primary Go function, with no missing files
