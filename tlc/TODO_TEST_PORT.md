@@ -1388,6 +1388,10 @@ Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
 distinction between null vectors, null words and initialized empty words.
 Short direct/TCP checks require worker predecessor context and KeepCallStack.
+Successor validation also preserves the source distinction between a missing
+state and an ordinary incomplete state. Four supplemental local/TCP cases cover
+the failure cause, predecessor, call-stack flag and unchanged statistics; no
+direct original Java method covers this boundary, so method credit is unchanged.
 Existing original BitVector printing and dynamic-manager methods remain green;
 the new failure checks add no original-method completion credit.
 Failover warning routing now matches ToolIO for scalar, batch and statistics

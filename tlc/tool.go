@@ -444,7 +444,10 @@ func (t *Tool) IsGoodState(state *TLCStateMut) bool {
 	if t != nil && t.IsGoodStateFunc != nil {
 		return t.IsGoodStateFunc(t, state)
 	}
-	return state != nil && state.AllAssigned()
+	if state == nil {
+		panic(NewNullPointerException())
+	}
+	return state.AllAssigned()
 }
 
 func (t *Tool) IsInModel(state *TLCStateMut) (bool, error) {

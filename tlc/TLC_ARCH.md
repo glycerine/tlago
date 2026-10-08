@@ -12014,3 +12014,10 @@ insertion may remain in storage after its reply is lost; its caller receives a
 failure, not a fabricated insertion answer. The manager's existing source failover
 policy remains unchanged. Application failure graphs retain their separate
 diagnostic and catch categories.
+
+Successor validation calls the state assignment check directly. A missing state
+is an evaluator failure, rather than an incomplete-state result. The distributed
+worker wraps that failure with its predecessor, cause and call-stack flag before
+publishing generation totals. A present state with unassigned values retains the
+ordinary incomplete-successor WorkerException without a cause or call-stack flag.
+Native TCP preserves both outcomes without adopting Java transport machinery.

@@ -22121,3 +22121,26 @@ All output was captured and all processes are terminal. The earlier truncated
 model failure remains unexplained. Original assertions and bounds are unchanged.
 No full suite or race run was performed. Supplemental checks add no original-
 method credit; distributed parity remains incomplete.
+
+### 2026-10-08: Distributed successor validation failure classification
+
+Compared Tool.isGoodState, TLCApp.getNextStates and TLCWorker.getNextStates with
+pinned source. The default Go assignment check no longer turns a missing state
+into an ordinary incomplete-successor diagnostic. Missing states fail validation
+and the worker retains the predecessor, cause and call-stack flag. Present states
+with unassigned values retain the ordinary diagnostic. Neither failure publishes
+generation totals, accesses the missing fingerprint manager or leaves computing
+set. Transport remains native Go; no RMI or Java serialization was introduced.
+
+No direct original Java method covers this boundary. Four supplemental local/TCP
+cases cover missing and incomplete successors. The initial local run failed on
+the missing-successor classification (successor-validation-red.log, terminal
+process d22908 status 1). Focused distributed worker/application, WorkerRPC,
+Tool and original smart-proxy checks pass (successor-validation-focused.log,
+terminal process 2f7dd6 status 0; package time 0.205 seconds). Original
+ErrorTraceConstruction and Github461 models and all four native distributed
+DieHard/TSnapShot process variants pass (successor-validation-models.log,
+terminal process 8844c2 status 0; package time 49.413 seconds). All output was
+captured and inspected. Original assertions and bounds are unchanged. No full
+suite or race run was performed. Supplemental cases add no original-method
+credit; the distributed port remains incomplete.

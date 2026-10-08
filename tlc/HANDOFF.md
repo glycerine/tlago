@@ -130,6 +130,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Successor validation distinguishes a missing state from a present, incomplete
+state. The former escapes evaluator validation and becomes a worker failure with
+its predecessor, cause and call-stack flag; the latter retains the ordinary
+incomplete-state diagnostic. Short local and native TCP checks cover both paths
+and preserve generation/statistics/finally ordering. They add no original-method
+completion credit.
+
 Error-trace printing propagates returned state-reconstruction and alias errors
 instead of fabricating fallback states. Ordinary printing errors reach the
 coordinator catch; fatal errors escape before queue completion/notification.
