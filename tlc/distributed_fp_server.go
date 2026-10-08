@@ -27,7 +27,7 @@ type DistributedFPServerEnvironment struct {
 	SystemErr         io.Writer
 	CurrentTimeMillis func() int64
 	LocalHostName     func() (string, error)
-	RegisterFPSet     func(DistributedServerEndpoint, FPSet, string) error
+	RegisterFPSet     func(DistributedServerEndpoint, DistributedFingerprintEndpoint, string) error
 	Wait              func(FPSet, time.Duration) error
 }
 
@@ -122,16 +122,16 @@ func runDistributedFPServer(serverName string, env DistributedFPServerEnvironmen
 	return true, reportDistributedFPServer(set, hostname, env)
 }
 
-func invokeDistributedFPRegistration(register func(DistributedServerEndpoint, FPSet, string) error, server DistributedServerEndpoint, set FPSet, hostname string) (err error) {
+func invokeDistributedFPRegistration(register func(DistributedServerEndpoint, DistributedFingerprintEndpoint, string) error, server DistributedServerEndpoint, set FPSet, hostname string) (err error) {
 	defer func() {
 		if failure := recover(); failure != nil {
 			err = panicValueAsError(failure)
 		}
 	}()
 	if register == nil {
-		return server.RegisterFPSet(set, hostname)
+		return server.RegisterFPSet(NewLocalFingerprintEndpoint(set), hostname)
 	}
-	return register(server, set, hostname)
+	return register(server, NewLocalFingerprintEndpoint(set), hostname)
 }
 
 func reportDistributedFPServer(set FPSet, hostname string, env DistributedFPServerEnvironment) error {

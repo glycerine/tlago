@@ -24,7 +24,7 @@ func javaDynamicFPManager(t *testing.T, count int) *DistributedFPSetManager {
 	t.Helper()
 	m := NewDynamicDistributedFPSetManager(count)
 	for i := range count {
-		if err := m.RegisterFPSet(NewMemFPSet(), fmt.Sprintf("localhost%d", i)); err != nil {
+		if err := m.RegisterFPSet(NewLocalFingerprintEndpoint(NewMemFPSet()), fmt.Sprintf("localhost%d", i)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -156,14 +156,14 @@ func (s *javaFaultyFPSet) ContainsBlock(fps *LongVec) *BitVector {
 func javaFailoverManager(t *testing.T, secondFaulty bool) *DistributedFPSetManager {
 	t.Helper()
 	m := NewDynamicDistributedFPSetManager(2)
-	if err := m.RegisterFPSet(newJavaFaultyFPSet(), "TestFPSet1"); err != nil {
+	if err := m.RegisterFPSet(NewLocalFingerprintEndpoint(newJavaFaultyFPSet()), "TestFPSet1"); err != nil {
 		t.Fatal(err)
 	}
 	var second FPSet = NewMemFPSet()
 	if secondFaulty {
 		second = newJavaFaultyFPSet()
 	}
-	if err := m.RegisterFPSet(second, "TestFPSet2"); err != nil {
+	if err := m.RegisterFPSet(NewLocalFingerprintEndpoint(second), "TestFPSet2"); err != nil {
 		t.Fatal(err)
 	}
 	return m
@@ -248,7 +248,7 @@ func TestJavaDynamicFPSetManagerPutBlockConcurrentOrder(t *testing.T) {
 		if i == count-1 {
 			set.Put(1)
 		}
-		if err := m.RegisterFPSet(set, fmt.Sprintf("TestFPSet%d", i)); err != nil {
+		if err := m.RegisterFPSet(NewLocalFingerprintEndpoint(set), fmt.Sprintf("TestFPSet%d", i)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -279,7 +279,7 @@ func TestJavaFPSetManagerNestedFingerprintPartitions(t *testing.T) {
 			for i := 0; i < config.GetMultiFPSetCnt(); i++ {
 				set := NewFPSet(config)
 				set.Init(1, t.TempDir(), fmt.Sprintf("test%d", expected))
-				if err := m.RegisterFPSet(set, fmt.Sprintf("localhost%d", i)); err != nil {
+				if err := m.RegisterFPSet(NewLocalFingerprintEndpoint(set), fmt.Sprintf("localhost%d", i)); err != nil {
 					t.Fatal(err)
 				}
 			}

@@ -7,7 +7,7 @@ type DistributedServerEndpoint interface {
 	DistributedFileServer
 	InternSource
 	RegisterWorker(DistributedWorkerEndpoint) error
-	RegisterFPSet(FPSet, string) error
+	RegisterFPSet(DistributedFingerprintEndpoint, string) error
 	GetCheckDeadlock() (bool, error)
 	GetPreprocess() (bool, error)
 	GetFPSetManager() (*DistributedFPSetManager, error)
@@ -35,7 +35,7 @@ func (e *LocalServerEndpoint) RegisterWorker(worker DistributedWorkerEndpoint) e
 	return e.Server.RegisterWorker(worker)
 }
 
-func (e *LocalServerEndpoint) RegisterFPSet(set FPSet, hostname string) error {
+func (e *LocalServerEndpoint) RegisterFPSet(set DistributedFingerprintEndpoint, hostname string) error {
 	return e.Server.RegisterFPSet(set, hostname)
 }
 
@@ -48,7 +48,7 @@ func (e *LocalServerEndpoint) GetPreprocess() (bool, error) {
 }
 
 func (e *LocalServerEndpoint) GetFPSetManager() (*DistributedFPSetManager, error) {
-	return e.Server.GetFPSetManager(), nil
+	return e.Server.GetFPSetManager().snapshotForWorker(), nil
 }
 
 func (e *LocalServerEndpoint) GetIrredPolyForFP() (uint64, error) {

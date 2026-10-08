@@ -162,7 +162,7 @@ func (s *TLCServer) WaitForFPSetManager() {
 
 // RegisterFPSet keeps registration and countDown in one synchronized region.
 // Failed/extra registrations do not release the latch or print acceptance.
-func (s *TLCServer) RegisterFPSet(set FPSet, hostname string) error {
+func (s *TLCServer) RegisterFPSet(set DistributedFingerprintEndpoint, hostname string) error {
 	if s == nil {
 		panic(NewNullPointerException())
 	}

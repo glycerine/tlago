@@ -68,7 +68,7 @@ func TestDistributedWorkerURIMatchesJava(t *testing.T) {
 }
 
 func TestDistributedWorkerURIDiagnosticsAndRegistration(t *testing.T) {
-	manager := NewDistributedFPSetManager(NewMemFPSet())
+	manager := NewDistributedFPSetManager(NewLocalFingerprintEndpoint(NewMemFPSet()))
 	worker := NewDistributedWorker(7, nil, manager, DistributedWorkerAddress{Hostname: "e\u0301.example", Port: 10997})
 	if got, want := worker.GetURI(), "rmi://e\u0301.example:10997/7"; got != want {
 		t.Fatalf("URI = %q, want %q", got, want)

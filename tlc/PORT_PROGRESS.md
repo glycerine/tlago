@@ -17477,3 +17477,48 @@ The earlier endpoint/URI/proxy check also passed in 0.020 seconds (95537
 terminal status 0). All handles are retired. No full suite or race workload
 was run. Goal remains active: fingerprint endpoints, real network transport,
 serialization and distributed CLI/model integration are still pending.
+
+
+### 2026-10-08 — Fingerprint endpoints and worker manager ownership
+
+Continued from 50b6278. Introduced DistributedFingerprintEndpoint for scalar and
+batch answers, statistics, invariant/collision checks, lifecycle, checkpoint and
+recovery calls. Native allocation/configuration stays with FPSet at the owning
+server. The manager, coordinator registration and FP-server startup now accept
+endpoints. LocalFingerprintEndpoint adapts native storage; neither Java RMI nor
+rpc25519 is implemented. Existing native constructors explicitly wrap storage.
+
+Manager scalar/block/statistics operations now accept endpoint-returned errors
+in addition to local storage panics. Fatal local storage failures still escape
+ordinary failover. Parallel collision/invariant tasks retain ExecutionException
+wrapping. Non-distributed close propagates a failed close before invoking exit.
+Existing batching, partition mapping, fallback answers and retries are retained;
+no alternative idempotent batch protocol was introduced.
+
+Source ownership audit: IFPSetManager is Serializable, FPSetManager owns its
+partition wrapper list/availability flags and DynamicFPSetManager owns expected
+server count. NonDistributedFPSetManager marks the recovery trace transient.
+The previous local GetFPSetManager returned the same mutable manager, allowing
+one worker's failover to change coordinator/other-worker state. LocalServerEndpoint
+now returns a worker snapshot, preserving duplicate-wrapper identity within the
+copy and shared fingerprint endpoints while copying failover state and omitting
+the trace. Comments referring to a remote DynamicFPSetManager singleton in Java
+are stale: the actual source inheritance is FPSetManager implements the
+Serializable IFPSetManager, not UnicastRemoteObject. Follow source behavior.
+
+Existing original DynamicFPSetManager/FPSetManager source tests retain inputs,
+loops, helpers and assertions; registrations mechanically wrap their native test
+storage in the endpoint. All focused original methods pass. New Go unit tests
+cover returned scalar/batch endpoint failures and snapshot ownership, because
+no original direct test covers this new boundary. They verify new-fingerprint
+answers, failover routing, per-worker availability and shared storage. These
+unit tests do not earn missing upstream transport-test completion credit.
+
+Final normal focused TLC checks pass in 0.067 seconds (48481 terminal status 0),
+including original manager, smart proxy, URI and both endpoint chunks. Focused
+root app-failure order/TLCSet/init checks pass in 1.884 seconds (52424 terminal
+status 0). Earlier intermediate selections passed in 0.065/0.054 seconds for
+TLC and 1.844 seconds for root; handles 40252, 5868 and 84712 are retired. All
+handles are terminal. No full suite, long workload or race instrumentation ran.
+Next requirements remain actual Go networking, state/value serialization,
+standalone process/CLI wiring and distributed model integration. Goal active.

@@ -1816,8 +1816,14 @@ keepalive calls. All remote settings/status calls return errors. The local
 adapter pins coordinator interning identity before worker initialization and
 copies mutable metadata for workers. The root worker loader reads specification,
 configuration and deadlock arguments in source order and stops on failure.
-Network transport remains unimplemented. Next: fingerprint endpoint integration
-and network messages; do not treat the local adapters as distributed completion.
+`DistributedFingerprintEndpoint` now supplies fingerprint operations to the
+manager, coordinator registration and FP server startup. Its local adapter
+retains storage ownership. Endpoint-returned failures enter the same manager
+failover paths as local failures. Workers receive independent manager snapshots,
+preserving aliased partition wrappers and shared storage endpoints while omitting
+the coordinator-only trace. Network transport remains unimplemented. Next:
+network messages, serialization and process/CLI integration; local adapters and
+focused unit checks do not prove distributed completion.
 
 ## Testing and workflow
 

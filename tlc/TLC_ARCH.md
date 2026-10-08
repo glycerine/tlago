@@ -7843,8 +7843,12 @@ in-process behavior. `DistributedServerEndpoint` supplies the coordinator's
 settings, file, interning, registration and status operations to discovery,
 worker bootstrap and fingerprint-server startup. The local coordinator adapter
 pins the interning table before worker context initialization and returns owned
-copies of string metadata. Network transport and fingerprint endpoint boundaries
-remain to be implemented.
+copies of string metadata. `DistributedFingerprintEndpoint` supplies storage
+operations without local allocation/configuration methods. The manager consumes
+returned failures as well as existing local storage exceptions. Worker manager
+snapshots copy failover state and retain shared registration-wrapper identity;
+the coordinator recovery trace is excluded. Real network transport and its
+serialization/process integration remain to be implemented.
 
 The Java reference implementation uses RMI:
 

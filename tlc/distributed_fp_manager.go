@@ -12,7 +12,7 @@ import (
 // point to the same remote FPSet. Reassignment shares the wrapper, its cached
 // hostname and availability across all replaced partitions.
 type distributedFPSets struct {
-	set       FPSet
+	set       DistributedFingerprintEndpoint
 	hostname  string
 	available bool
 }
@@ -28,7 +28,7 @@ type DistributedFPSetManager struct {
 	Trace              *TLCTrace
 }
 
-func NewDistributedFPSetManager(sets ...FPSet) *DistributedFPSetManager {
+func NewDistributedFPSetManager(sets ...DistributedFingerprintEndpoint) *DistributedFPSetManager {
 	m := &DistributedFPSetManager{Mask: math.MaxInt64}
 	for _, set := range sets {
 		if set == nil {
@@ -56,13 +56,17 @@ func NewDynamicDistributedFPSetManager(expectedNumOfServers int) *DistributedFPS
 
 func NewDistributedFPSetManagerFromFPSet(set FPSet) *DistributedFPSetManager {
 	if multi, ok := set.(*MultiFPSet); ok && multi != nil {
-		return NewDistributedFPSetManager(multi.Sets...)
+		endpoints := make([]DistributedFingerprintEndpoint, len(multi.Sets))
+		for i, nested := range multi.Sets {
+			endpoints[i] = NewLocalFingerprintEndpoint(nested)
+		}
+		return NewDistributedFPSetManager(endpoints...)
 	}
-	return NewDistributedFPSetManager(set)
+	return NewDistributedFPSetManager(NewLocalFingerprintEndpoint(set))
 }
 
 func NewNonDistributedFPSetManager(set FPSet, hostname string, trace *TLCTrace) *DistributedFPSetManager {
-	m := &DistributedFPSetManager{Mask: math.MaxInt64, fpSets: []*distributedFPSets{{set: set, hostname: hostname, available: true}}}
+	m := &DistributedFPSetManager{Mask: math.MaxInt64, fpSets: []*distributedFPSets{{set: NewLocalFingerprintEndpoint(set), hostname: hostname, available: true}}}
 	m.NonDistributed, m.Description, m.Trace = true, hostname, trace
 	return m
 }
@@ -74,6 +78,39 @@ func (m *DistributedFPSetManager) entries() []*distributedFPSets {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return append([]*distributedFPSets(nil), m.fpSets...)
+}
+
+// A worker receives its own manager state, with references to the same
+// fingerprint servers. Preserve shared registration wrappers within that
+// snapshot, while isolating failover/availability changes between processes.
+// The coordinator's recovery trace is deliberately omitted.
+func (m *DistributedFPSetManager) snapshotForWorker() *DistributedFPSetManager {
+	if m == nil {
+		return nil
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	snapshot := &DistributedFPSetManager{
+		managerIsBroken:    m.managerIsBroken,
+		Mask:               m.Mask,
+		Description:        m.Description,
+		ExpectedNumServers: m.ExpectedNumServers,
+		NonDistributed:     m.NonDistributed,
+		fpSets:             make([]*distributedFPSets, len(m.fpSets)),
+	}
+	wrappers := make(map[*distributedFPSets]*distributedFPSets, len(m.fpSets))
+	for i, entry := range m.fpSets {
+		if entry == nil {
+			continue
+		}
+		copy := wrappers[entry]
+		if copy == nil {
+			copy = &distributedFPSets{set: entry.set, hostname: entry.hostname, available: entry.available}
+			wrappers[entry] = copy
+		}
+		snapshot.fpSets[i] = copy
+	}
+	return snapshot
 }
 
 func (m *DistributedFPSetManager) entry(index int) *distributedFPSets {
@@ -121,7 +158,7 @@ func (m *DistributedFPSetManager) NumOfAliveServers() int {
 	return count
 }
 
-func (m *DistributedFPSetManager) RegisterFPSet(set FPSet, hostname ...string) error {
+func (m *DistributedFPSetManager) RegisterFPSet(set DistributedFingerprintEndpoint, hostname ...string) error {
 	if m.NonDistributed {
 		panic(NewUnsupportedOperationException("Not applicable for non-distributed FPSetManager"))
 	}
@@ -229,7 +266,7 @@ func (m *DistributedFPSetManager) Contains(fp uint64) bool { return m.scalarCall
 func (m *DistributedFPSetManager) scalarCall(fp uint64, put bool) bool {
 	index := m.GetFPSetIndex(fp)
 	for {
-		result, err := tryFPSetCall(func() bool {
+		result, err := invokeFingerprintEndpoint(func() (bool, error) {
 			set := m.entry(index).set
 			if set == nil {
 				panic(NewNullPointerException())
@@ -267,7 +304,7 @@ func fpBlockAt(fingerprints []*LongVec, index int) *LongVec {
 
 func (m *DistributedFPSetManager) blockCall(fingerprints []*LongVec, index int, put bool) *BitVector {
 	for {
-		result, err := tryFPSetCall(func() *BitVector {
+		result, err := invokeFingerprintEndpoint(func() (*BitVector, error) {
 			entryIndex := index
 			if m.NonDistributed {
 				entryIndex = 0
@@ -397,7 +434,7 @@ func (m *DistributedFPSetManager) sumStatistics(statesSeen bool) uint64 {
 	}
 	count := m.NumOfServers()
 	for index := range count {
-		value, err := tryFPSetCall(func() uint64 {
+		value, err := invokeFingerprintEndpoint(func() (uint64, error) {
 			set := m.entry(index).set
 			if set == nil {
 				panic(NewNullPointerException())
@@ -429,7 +466,7 @@ type distributedCheckResult[T any] struct {
 	err   error
 }
 
-func submitDistributedCheck[T any](executor *DistributedExecutor, results chan<- distributedCheckResult[T], call func() T) {
+func submitDistributedCheck[T any](executor *DistributedExecutor, results chan<- distributedCheckResult[T], call func() (T, error)) {
 	executor.submit(func() {
 		result := distributedCheckResult[T]{}
 		defer func() {
@@ -438,13 +475,17 @@ func submitDistributedCheck[T any](executor *DistributedExecutor, results chan<-
 			}
 			results <- result
 		}()
-		result.value = call()
+		value, err := call()
+		result.value = value
+		if err != nil {
+			result.err = NewExecutionException(err)
+		}
 	})
 }
 
 func (m *DistributedFPSetManager) CheckFPs() uint64 {
 	if m.NonDistributed {
-		value, err := tryFPSetCall(func() uint64 {
+		value, err := invokeFingerprintEndpoint(func() (uint64, error) {
 			set := m.entry(0).set
 			if set == nil {
 				panic(NewNullPointerException())
@@ -469,7 +510,7 @@ func (m *DistributedFPSetManager) CheckFPs() uint64 {
 	results := make(chan distributedCheckResult[uint64], count)
 	for index := range count {
 		set := m.entry(index).set
-		submitDistributedCheck(executor, results, func() uint64 { return set.CheckFPs() })
+		submitDistributedCheck(executor, results, func() (uint64, error) { return set.CheckFPs() })
 	}
 	value := uint64(math.MaxInt64)
 	for range count {
@@ -485,7 +526,7 @@ func (m *DistributedFPSetManager) CheckFPs() uint64 {
 
 func (m *DistributedFPSetManager) CheckInvariant(expectFPs ...uint64) bool {
 	if m.NonDistributed {
-		value, err := tryFPSetCall(func() bool {
+		value, err := invokeFingerprintEndpoint(func() (bool, error) {
 			set := m.entry(0).set
 			if set == nil {
 				panic(NewNullPointerException())
@@ -510,7 +551,7 @@ func (m *DistributedFPSetManager) CheckInvariant(expectFPs ...uint64) bool {
 	results := make(chan distributedCheckResult[bool], count)
 	for index := range count {
 		set := m.entry(index).set
-		submitDistributedCheck(executor, results, func() bool { return set.CheckInvariant(expectFPs...) })
+		submitDistributedCheck(executor, results, func() (bool, error) { return set.CheckInvariant(expectFPs...) })
 	}
 	for range count {
 		result := <-results
@@ -554,7 +595,9 @@ func (m *DistributedFPSetManager) groupedEntries() []*distributedFPSets {
 
 func (m *DistributedFPSetManager) Close(cleanup bool) error {
 	if m.NonDistributed {
-		m.entry(0).set.Close()
+		if err := m.entry(0).set.Close(); err != nil {
+			return err
+		}
 		return m.entry(0).set.Exit(cleanup)
 	}
 	for _, entry := range m.groupedEntries() {
