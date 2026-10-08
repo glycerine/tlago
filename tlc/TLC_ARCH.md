@@ -10142,3 +10142,24 @@ unreachable inner switch site 6 and other grammar choices remain pending.
 External production observations agree on 3,801 rows across 229 cases, including
 raw prelude/module inputs, and 641 bookkeeping/lexical-reset rows. Evidence is
 bounded and does not establish whole grammar expectation or parser/AST parity.
+
+
+## Definition and formal declaration expectation sites remain distinct
+
+Definition records source sites 19–22 at optional LOCAL, function-bound comma
+exit, failed Expression/INSTANCE choice and prefix fallback failure. Identifier
+Tuples record comma exit 23 or absent first identifier 24. IdentLHS uses first
+formal-choice site 25 and subsequent-choice site 27, comma exit 26 and optional
+argument-list absence 28. The shared helper receives the caller's actual site;
+reusing one formal-choice site loses Java's distinct generation stamps.
+
+IdentDecl records comma exit 29 and absent argument list 30. Formal operator
+failures use 31/32 while constant operator failures retain 17/18. Instance,
+Instantiation, Substitution and Assumption use sites 33–37 at their source
+choices. Converted failures contribute actual generated mask expectations.
+Other helper callers retain their pending source-site integration.
+
+Connected direct-choice sites are 4, 5, 7–37, 120 and 123–128. External production
+observations match 4,142 rows across 251 cases. Complete expected-token sets,
+remaining grammar choices, native error-span estimates and whole parser/AST and
+evaluator fidelity remain requirements beyond this bounded evidence.

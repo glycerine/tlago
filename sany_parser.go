@@ -438,6 +438,8 @@ func (p *SanyParser) Instance() *SanySyntaxNode {
 	var zero []*SanySyntaxNode
 	if p.match(SanyTokenLocal) {
 		zero = append(zero, NewSanyTokenNode(p.previous()))
+	} else {
+		p.recordDirectChoice(33)
 	}
 	inst := p.Instantiation()
 	p.expecting = "COMMA or Module Body"
@@ -465,6 +467,8 @@ func (p *SanyParser) Instantiation() *SanySyntaxNode {
 			heirs = append(heirs, p.Substitution())
 			p.expecting = ""
 		}
+	} else {
+		p.recordDirectChoice(34)
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_NonLocalInstance"], heirs...)
 }
@@ -489,7 +493,8 @@ func (p *SanyParser) Substitution() *SanySyntaxNode {
 	case p.isGrammarPostfixOperator(p.peek()):
 		target = sanyOperatorTokenNode("N_PostfixOp", p.advance())
 	default:
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected substitution target")
+		p.recordDirectChoice(35)
+		p.throwParseException(nil, "expected substitution target")
 	}
 	p.expecting = "<-"
 	arrow := p.consumeParseToken(SanyTokenSubstitute, "expected <- in substitution")
@@ -503,11 +508,14 @@ func (p *SanyParser) Assumption() *SanySyntaxNode {
 	defer p.endProduction()
 	p.expecting = "ASSUM..."
 	if !p.check(SanyTokenAssume) && !p.check(SanyTokenAssumption) {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenAssume}, {SanyTokenAssumption}}, "expected ASSUME or ASSUMPTION")
+		p.recordDirectChoice(36)
+		p.throwParseException(nil, "expected ASSUME or ASSUMPTION")
 	}
 	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
 	if p.scanLookahead(13, 2) {
-		p.match(SanyTokenDefbreak)
+		if !p.match(SanyTokenDefbreak) {
+			p.recordDirectChoice(37)
+		}
 		heirs = append(heirs, p.Identifier())
 		p.expecting = "=="
 		heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in assumption"))
@@ -1249,6 +1257,8 @@ func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
 	var local *SanySyntaxNode
 	if p.match(SanyTokenLocal) {
 		local = NewSanyTokenNode(p.previous())
+	} else {
+		p.recordDirectChoice(19)
 	}
 	defer func() {
 		if node != nil && local != nil {
@@ -1288,7 +1298,8 @@ func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
 		return p.identifierDefinition(body)
 	default:
 		if !p.startsDefinitionPrefix() {
-			p.throwParseException([][]SanyTokenKind{{SanyTokenOp76}}, "expected definition identifier or prefix operator")
+			p.recordDirectChoice(22)
+			p.throwParseException(nil, "expected definition identifier or prefix operator")
 		}
 		return operator(p.PrefixLHS())
 	}
@@ -1309,7 +1320,8 @@ func (p *SanyParser) identifierDefinition(body func() *SanySyntaxNode) *SanySynt
 		kind = "N_ModuleDefinition"
 		heirs = append(heirs, p.Instantiation())
 	} else {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenInstance}}, "expected expression or instance in definition")
+		p.recordDirectChoice(21)
+		p.throwParseException(nil, "expected expression or instance in definition")
 	}
 	return NewSanySplitNode(SanySyntaxNodeKindByName[kind], nil, heirs)
 }
@@ -1372,15 +1384,18 @@ func (p *SanyParser) IdentLHS() *SanySyntaxNode {
 	if p.match(SanyTokenLbr) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		p.expecting = "Identifier Declaration, prefix op, _ or )"
-		heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
+		heirs = append(heirs, p.IdentDeclOrSomeFixDecl(25))
 		p.expecting = "COMMA or )"
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			p.expecting = "Identifier Declaration, prefix op or _"
-			heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
+			heirs = append(heirs, p.IdentDeclOrSomeFixDecl(27))
 			p.expecting = "COMMA or )"
 		}
+		p.recordDirectChoice(26)
 		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator definition parameters"))
+	} else {
+		p.recordDirectChoice(28)
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentLHS"], heirs...)
 }
@@ -1426,12 +1441,16 @@ func (p *SanyParser) startsDefinitionPrefixAt(offset int) bool {
 	}
 }
 
-func (p *SanyParser) IdentDeclOrSomeFixDecl() *SanySyntaxNode {
+func (p *SanyParser) IdentDeclOrSomeFixDecl(site ...int) *SanySyntaxNode {
 	if p.check(SanyTokenIdentifier) {
 		return p.IdentDecl()
 	}
 	if p.check(SanyTokenUs) || p.startsDefinitionPrefix() {
 		return p.SomeFixDecl()
+	}
+	if len(site) != 0 {
+		p.recordDirectChoice(site[0])
+		p.throwParseException(nil, "expected formal declaration")
 	}
 	p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenUs}, {SanyTokenOp76}}, "expected formal declaration")
 	return nil
@@ -1453,7 +1472,10 @@ func (p *SanyParser) IdentDecl() *SanySyntaxNode {
 			heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in operator parameter declaration"))
 			p.expecting = "COMMA or )"
 		}
+		p.recordDirectChoice(29)
 		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator parameter declaration"))
+	} else {
+		p.recordDirectChoice(30)
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentDecl"], heirs...)
 }
@@ -1478,7 +1500,8 @@ func (p *SanyParser) fixDeclaration(constant bool) *SanySyntaxNode {
 			p.recordDirectChoice(18)
 			p.throwParseException(nil, "expected operator declaration")
 		}
-		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected operator declaration")
+		p.recordDirectChoice(32)
+		p.throwParseException(nil, "expected operator declaration")
 	}
 	left := NewSanyTokenNode(p.advance())
 	p.expecting = "infix or postfix operator"
@@ -1496,7 +1519,8 @@ func (p *SanyParser) fixDeclaration(constant bool) *SanySyntaxNode {
 			p.recordDirectChoice(17)
 			p.throwParseException(nil, "expected infix or postfix operator declaration")
 		}
-		p.throwParseException([][]SanyTokenKind{{SanyTokenOp57}}, "expected infix or postfix operator declaration")
+		p.recordDirectChoice(31)
+		p.throwParseException(nil, "expected infix or postfix operator declaration")
 	}
 	op := sanyOperatorTokenNode("N_PostfixOp", p.advance())
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PostfixDecl"], left, op)
@@ -1562,6 +1586,9 @@ func (p *SanyParser) IdentifierTuple() *SanySyntaxNode {
 			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected identifier"))
 			p.expecting = "COMMA or >>"
 		}
+		p.recordDirectChoice(23)
+	} else {
+		p.recordDirectChoice(24)
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenRab, "expected >> in identifier tuple"))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentifierTuple"], heirs...)
@@ -2056,6 +2083,7 @@ func (p *SanyParser) functionDefinition(body func() *SanySyntaxNode) *SanySyntax
 		p.expecting = "Identifier"
 		heirs = append(heirs, p.QuantBound())
 	}
+	p.recordDirectChoice(20)
 	heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ] in function definition"))
 	p.expecting = "=="
 	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in function definition"))

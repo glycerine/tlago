@@ -1,5 +1,38 @@
 # TLC Port Progress
 
+2026-10-07 Definition, formal declaration and instance expectations:
+Previous completed commit: 23144b1. Connect source direct-choice sites 19–37.
+Definition records absent LOCAL 19, function-bound comma exit 20, failed
+Expression/INSTANCE choice 21 and prefix fallback failure 22. IdentifierTuple
+records comma exit 23 or absent first identifier 24. IdentLHS uses distinct
+formal-choice sites 25/27, comma exit 26 and absent argument-list site 28.
+IdentDecl records comma exit 29 and absent argument-list 30. Shared formal
+operator declarations use failure sites 31/32, separate from constant sites
+17/18. Instance records absent LOCAL 33; Instantiation absent WITH 34;
+Substitution failure 35; Assumption keyword failure 36 and optional definition
+break absence 37. Converted failure branches now use the source mask expectations
+instead of native estimates. Other users of the shared formal-choice helper
+retain their separate pending source sites.
+
+Connected direct-choice sites are 4, 5, 7–37, 120 and 123–128. Full remaining
+grammar wiring, native error-span estimates and expected-token fidelity are not
+claimed complete. All 3,801 previous production rows remain equal. Extend the
+external observer by 22 valid/malformed formal declarations, definitions, tuple
+bounds, substitutions and assumptions. All 4,142 rows across 251 cases match
+Java's actual syntax kinds/images/four coordinates and complete parse messages/
+residual stack text, excluding outer log whitespace. Java returns 0; Go observer
+23377 passes. Existing BodyDefinitionProbe.java, manual Go observer and overlay
+remain external under /mnt/oldrog/tmp; logs tlago-definition-choice-bookkeeping-*.
+No permanent invented tests, method credit, assertion/fixture weakening, race or
+optional sweeps.
+
+Existing original frontend/model gate 52983 passes 9.695s; complete SANY 39107
+passes 1.979s; compilation 32141 passes. All handles retired; diff check green.
+Update handoff and architecture; inventory totals unchanged. The earlier failing
+full-workspace snapshot remains qualified evidence. Remaining parser/AST,
+canonical/runtime sharing, trace reconciliation and documented TLC requirements
+keep the goal active and incomplete.
+
 2026-10-07 Module and declaration direct-choice recording:
 Previous completed commit: cb0b029. Connect source direct-choice sites 4, 5 and
 7–18: optional prelude, its repetition exit, module-header failure, EXTENDS
