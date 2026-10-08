@@ -8192,23 +8192,26 @@ catch. Null results/first partitions take the lost-worker path; an empty
 partition array takes the outer model-error path.
 
 `DistributedWorkerRuntime` represents the static executor, keepalive timer,
-ordered worker group, and completion latch of a Java worker JVM. A new Go
+ordered worker group, and completion latch for one worker process. A new Go
 worker has its own runtime; `DistributedWorkerGroup` instead assembles one
 shared runtime and publishes each runnable's worker before registration. The
 group starts all registration goroutines, then schedules the timer and prints
 readiness without waiting for registration. Standalone local registration still
 starts its convenience timer after starting the server thread. Exit prints
 completion, shuts down the executor,
-cancels the shared timer, forcibly unexports that worker, then decrements the
+cancels the shared timer, marks that worker endpoint removed, then decrements the
 latch. It does not acquire the computation lock or wait for accepted tasks.
-Repeated direct exits print again and fail at unexport without decrementing;
-proxy calls to an unexported endpoint fail with a direct NoSuchObjectException.
+Repeated direct exits print again and fail at removal without decrementing;
+endpoint calls to a removed worker fail with a native DistributedOperationError.
+The EndpointRemoved trait survives native failure payloads and is distinct from
+the broader WorkerUnavailable category, which also includes connection closure.
 Direct `isAlive` remains true. Shutdown resolves each runnable’s worker only
 when that index is reached, observing startup publication during earlier exits.
 It releases the lifecycle lock before calling Exit. A nil runnable fails after
 prior exits, retaining array/latch mutations and releasing the lock; a nonnull
-runnable with an unpublished worker is skipped. Shutdown ignores only direct NoSuchObjectException
-and does not recreate the executor or latch. AwaitTermination waits for the
+runnable with an unpublished worker is skipped. Shutdown tolerates only prior
+endpoint removal; keepalive logs that same condition and continues to later workers.
+Shutdown does not recreate the executor or latch. AwaitTermination waits for the
 latch, then sleeps ten seconds before returning.
 
 TLCWorkerAndFPSet.main now has native and root RunDistributedWorkerAndFPServer

@@ -18,8 +18,12 @@ retry and worker-loss decisions into Go error categories, preserving algorithmic
 behavior rather than Java transport details. Worker memory exhaustion and
 executor rejection now use `DistributedOperationError` directly across local
 and TCP calls; the fabricated local `ServerException` envelope is removed.
-Memory exhaustion permits smaller-batch retry, rejection does not. Other legacy
-remote exception classification and endpoint lifecycle adapters still need audit.
+Memory exhaustion permits smaller-batch retry, rejection does not. Worker endpoint
+removal also uses a native operation category, retained across TCP payloads.
+Shutdown and keepalive tolerate prior removal specifically, continue to later
+workers and avoid decrementing completion again. Connection closure remains a
+distinct unavailable condition. Other legacy remote exception classification and
+coordinator endpoint lifecycle adapters still need audit.
 
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production

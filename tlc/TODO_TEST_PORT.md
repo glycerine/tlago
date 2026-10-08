@@ -710,6 +710,13 @@ non-recoverable. Cause details, URI diagnostics, computing cleanup, counters and
 worker liveness are retained without a Java remote-exception envelope. Upstream
 has no direct methods for these cases; no original-method credit is added.
 
+Native endpoint-removal checks cover all five worker operations and repeated
+direct exit over local/TCP boundaries, failure-payload round trips and unchanged
+completion counts. Shutdown and keepalive continue past an already removed
+worker with their distinct logging behavior. TCP checks distinguish endpoint
+removal from connection closure. These supplemental cases add no original
+method credit; coordinator lifecycle adapters remain separately pending.
+
 Supplemental trace-evaluation checks preserve returned reconstruction/alias
 failure identity, partial output and coordinator ordinary/fatal catch boundaries.
 Original Alias safety and distributed initializer/model checks remain green;

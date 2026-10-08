@@ -21339,3 +21339,35 @@ event assertions (4fba4b, status 0, 24.402 seconds). All processes are terminal;
 no full suite or race run was performed. Supplemental checks add no original
 method credit. Other legacy remote exception classification and endpoint
 lifecycle adapters remain pending; distributed parity remains incomplete.
+
+### 2026-10-08: Native worker endpoint removal and cleanup catches
+
+Replaced worker repeated-exit and removed-endpoint NoSuchObjectException returns
+with native DistributedOperationError. The EndpointRemoved trait is encoded and
+decoded explicitly, distinguishing removal from the broader unavailable category
+used for connection closure. All five local endpoint calls reject removal before
+dispatch. The TCP service's absent worker reply uses the same native category.
+Shutdown and keepalive catch only prior removal, preserving their different
+logging behavior and continuing to later workers. Exit retains source ordering:
+console output, executor shutdown, timer cancellation, removal, then completion
+decrement. Repeated direct exit stops before the decrement. Removed the obsolete
+remoteEndpointError name; source coordinator lifecycle adapters remain pending.
+
+No original method directly covers these boundaries. Twelve supplemental cases
+cross local/TCP with five endpoint calls and repeated direct exit; each verifies
+native traits, failure-payload round trip and completion ownership. Two cleanup
+cases verify continued shutdown/keepalive traversal and their logging boundary.
+The initial six local endpoint cases and keepalive diagnostic exposed Java
+transport errors (2e965b, status 1, 0.012 seconds). Existing final-exit/shutdown
+fixtures now use the native removal condition; all original event, traversal,
+identity and mutation assertions remain. Existing TCP shutdown checks additionally
+distinguish endpoint removal from connection closure.
+
+Final focused checks pass (acda65, status 0, 0.270 seconds): new removal/cleanup
+cases, original nine smart-proxy methods, native worker bootstrap and keepalive,
+payload/lifecycle/error/retry checks, computation failures, source shutdown
+traversal, console output and final-exit process checks. Both actual distributed
+DieHard storage variants pass existing trace/event assertions (b04906, status 0,
+24.397 seconds). All processes are terminal. No full suite or race run was
+performed; supplemental checks add no original-method credit. Native peers need
+the updated failure payload build. Distributed parity remains incomplete.

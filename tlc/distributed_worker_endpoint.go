@@ -27,7 +27,7 @@ func (r *LocalWorkerEndpoint) endpointError() error {
 	if r == nil || r.Worker == nil {
 		return NewNullPointerException()
 	}
-	return r.Worker.remoteEndpointError()
+	return r.Worker.endpointError()
 }
 
 func (r *LocalWorkerEndpoint) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {

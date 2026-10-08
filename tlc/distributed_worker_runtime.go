@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-// DistributedWorkerRuntime represents the static fields shared by workers in
-// one Java worker JVM. Separate runtimes allow several such processes to be
-// represented in one Go program. Construct the group before registering it.
+// DistributedWorkerRuntime owns the shared resources of one worker process.
+// Separate runtimes allow several worker groups in one Go program. Construct
+// the group before registering it.
 type DistributedWorkerRuntime struct {
 	launchKeepAlive bool
 	runnables       []*DistributedWorkerRunnable
@@ -35,7 +35,7 @@ func NewDistributedWorkerRuntime(workers ...*DistributedWorker) *DistributedWork
 	return r
 }
 
-// StartKeepAlive captures the configured Naming.lookup/isDone boundary. Local
+// StartKeepAlive captures the configured coordinator discovery/status boundary. Local
 // groups retain a direct-server adapter; discovery groups configure relookup.
 func (r *DistributedWorkerRuntime) StartKeepAlive(server DistributedServerEndpoint) {
 	r.keepAliveMu.Lock()
@@ -99,7 +99,7 @@ func (r *DistributedWorkerRuntime) Shutdown() error {
 			continue
 		}
 		if err := worker.Exit(); err != nil {
-			if _, missing := err.(*NoSuchObjectException); !missing {
+			if !isDistributedWorkerEndpointRemoved(err) {
 				return err
 			}
 		}
@@ -347,7 +347,7 @@ func (t *distributedWorkerKeepAlive) exitWorker(failure error, count int) error 
 	for i := 0; i < count; i++ {
 		worker := t.workerAt(i)
 		if err := worker.Exit(); err != nil {
-			if missing, ok := err.(*NoSuchObjectException); ok && missing != nil {
+			if isDistributedWorkerEndpointRemoved(err) {
 				t.logFailure(err)
 			} else {
 				return err
@@ -400,19 +400,19 @@ func (w *DistributedWorker) Exit() (err error) {
 		return err
 	}
 	if !w.unexported.CompareAndSwap(false, true) {
-		return NewNoSuchObjectException("object not exported")
+		return workerEndpointRemovedFailure("worker endpoint already removed")
 	}
 	w.Runtime.latch.Load().countDown()
 	return nil
 }
 
-// Endpoint lookup precedes dispatch, so this error is not a ServerException.
-func (w *DistributedWorker) remoteEndpointError() error {
+// Endpoint lookup precedes dispatch; removed workers cannot run another call.
+func (w *DistributedWorker) endpointError() error {
 	if w == nil {
 		return NewNullPointerException()
 	}
 	if w.unexported.Load() {
-		return NewNoSuchObjectException("no such object in table")
+		return workerEndpointRemovedFailure("worker endpoint is removed")
 	}
 	return nil
 }

@@ -66,7 +66,7 @@ func (service *distributedWorkerService) Call(request DistributedWorkerRequest, 
 	endpoint := service.server.workers[request.Object]
 	service.server.mu.Unlock()
 	if endpoint == nil {
-		failure = &DistributedOperationError{Message: javaString("worker endpoint is not available: " + request.Object), Remote: true, IO: true, ExitIgnorable: true, WorkerUnavailable: true}
+		failure = workerEndpointRemovedFailure("worker endpoint is not available: " + request.Object)
 		return nil
 	}
 	switch request.Operation {

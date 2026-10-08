@@ -28,7 +28,7 @@ func workerExitFailure(family string) error {
 	case "connect":
 		return NewConnectException("worker unavailable", nil)
 	case "missing":
-		return NewNoSuchObjectException("worker unavailable")
+		return workerEndpointRemovedFailure("worker unavailable")
 	case "server":
 		return NewServerException(javaString("worker server failure"), nil)
 	case "remote":
@@ -145,6 +145,9 @@ func TestDistributedShutdownUnavailableWorkersOverTCP(t *testing.T) {
 			failure := client.Exit()
 			if !isDistributedWorkerUnavailable(failure) || !isIgnorableDistributedWorkerExit(failure) {
 				t.Fatalf("native unavailable worker lost exit traits: %T/%v", failure, failure)
+			}
+			if isDistributedWorkerEndpointRemoved(failure) != (phase == "unpublished") {
+				t.Fatal("endpoint removal became indistinguishable from connection closure")
 			}
 			server := &TLCServer{}
 			second := &orderedExitWorker{rpcTestWorker: &rpcTestWorker{}}
