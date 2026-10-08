@@ -598,19 +598,35 @@ func (t *TLCTrace) recoverTraceFromFPs(sinfo *TLCStateInfo, fps []uint64) ([]*TL
 }
 
 func (t *TLCTrace) GetLevelForReporting() int {
+	level, err := t.GetLevelForReportingWithError()
+	if err != nil {
+		panic(err)
+	}
+	return level
+}
+
+// GetLevelForReportingWithError preserves the checked I/O boundary used by
+// coordinator reporting and management callers with explicit I/O catches.
+func (t *TLCTrace) GetLevelForReportingWithError() (int, error) {
 	if t == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.raf != nil && t.lastPtr != 1 {
+	if t.closed {
+		return 0, NewIOException("File handle closed")
+	}
+	if t.raf != nil {
 		level, err := t.getLevelFromDiskLocked(t.lastPtr)
-		if err == nil && level > t.previousLevel {
+		if err != nil {
+			return 0, err
+		}
+		if level > t.previousLevel {
 			t.previousLevel = level
 		}
-		return t.previousLevel
+		return t.previousLevel, nil
 	}
-	return t.level
+	return t.level, nil
 }
 
 func (t *TLCTrace) GetLevel(startUID int64) int {
@@ -670,7 +686,6 @@ func (t *TLCTrace) getLevelFromDiskLocked(startLoc int64) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer func() { _ = t.raf.Seek(current) }()
 	level := 0
 	for predecessorLoc := startLoc; predecessorLoc != 1; {
 		level++
@@ -681,10 +696,10 @@ func (t *TLCTrace) getLevelFromDiskLocked(startLoc int64) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		if next == predecessorLoc {
-			break
-		}
 		predecessorLoc = next
+	}
+	if err := t.raf.Seek(current); err != nil {
+		return 0, err
 	}
 	return level, nil
 }

@@ -139,6 +139,14 @@ signed limits and the plain final `TLC_STATS` parameters. Existing worker locale
 checks and the four original MP methods pass. These supplemental coordinator
 formatting checks add no original-method completion credit.
 
+Trace depth reporting now exposes I/O failures through an explicit Go error
+return. Coordinator periodic/final reporting stops at that failure; management
+getters retain their source I/O catches and `-1` result. Disk depth traversal
+restores its cursor only on success and retains partial reads on failure.
+Focused failure, monotonic-depth, fresh-process final-reporting, native TCP and
+original TLCGetLevel/TTrace checks pass. Direct source tests for these failure
+boundaries do not exist, so supplemental checks add no method credit.
+
 Fingerprint check tasks now catch I/O failures before executor completion
 wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for
 fingerprint distance, `false` for invariants). Unchecked task failures retain

@@ -559,7 +559,14 @@ func (mc *ModelChecker) GetProgress() int64 {
 	if mc.Trace == nil {
 		return -1
 	}
-	return int64(mc.Trace.GetLevelForReporting())
+	level, err := mc.Trace.GetLevelForReportingWithError()
+	if err != nil {
+		if isJavaIOException(err) {
+			return -1
+		}
+		panic(err)
+	}
+	return int64(level)
 }
 
 func (mc *ModelChecker) GetStatistics() Value {

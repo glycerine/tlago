@@ -71,7 +71,10 @@ func (s *TLCServer) waitForDistributedCompletion() error {
 			s.monitor.Lock()
 			defer s.monitor.Unlock()
 			if !s.IsDone() {
-				generated, distinct := s.printProgressStatsLocked(oldGenerated, oldDistinct)
+				generated, distinct, err := s.printProgressStatsLocked(oldGenerated, oldDistinct)
+				if err != nil {
+					return false, err
+				}
 				if err := s.waitForReportLocked(interval); err != nil {
 					return false, err
 				}
@@ -89,26 +92,29 @@ func (s *TLCServer) waitForDistributedCompletion() error {
 	}
 }
 
-func (s *TLCServer) printProgressStatsLocked(oldGenerated int64, oldDistinct uint64) (int64, uint64) {
+func (s *TLCServer) printProgressStatsLocked(oldGenerated int64, oldDistinct uint64) (int64, uint64, error) {
 	generated, distinct := s.GetStatesGenerated(), s.fpSetSize()
 	factor := float64(TLCServerReportIntervalMillis()) / 60000
 	s.StatesPerMinute = javaDoubleToLong(float64(generated-oldGenerated) / factor)
 	s.DistinctStatesPerMinute = javaDoubleToLong(float64(int64(distinct)-int64(oldDistinct)) / factor)
-	level := s.Trace.GetLevelForReporting()
+	level, err := s.Trace.GetLevelForReportingWithError()
+	if err != nil {
+		return generated, distinct, err
+	}
 	PrintMessage(ECTLCProgressStats, fmtInt(level),
 		MessageNumberFormat(generated),
 		MessageNumberFormat(int64(distinct)),
 		MessageNumberFormat(s.getNewStatesLocked()),
 		MessageNumberFormat(s.StatesPerMinute),
 		MessageNumberFormat(s.DistinctStatesPerMinute))
-	return generated, distinct
+	return generated, distinct, nil
 }
 
 // PrintProgressStats retains the native observation helper while using the
 // distributed server's own interval and Java arithmetic/formatting.
-func (s *TLCServer) PrintProgressStats(startTime time.Time, oldGenerated *int64, oldDistinct *uint64) {
+func (s *TLCServer) PrintProgressStats(startTime time.Time, oldGenerated *int64, oldDistinct *uint64) error {
 	if s == nil {
-		return
+		panic(NewNullPointerException())
 	}
 	s.monitor.Lock()
 	defer s.monitor.Unlock()
@@ -120,11 +126,15 @@ func (s *TLCServer) PrintProgressStats(startTime time.Time, oldGenerated *int64,
 	if oldDistinct != nil {
 		distinct = *oldDistinct
 	}
-	generated, distinct = s.printProgressStatsLocked(generated, distinct)
+	generated, distinct, err := s.printProgressStatsLocked(generated, distinct)
+	if err != nil {
+		return err
+	}
 	if oldGenerated != nil {
 		*oldGenerated = generated
 	}
 	if oldDistinct != nil {
 		*oldDistinct = distinct
 	}
+	return nil
 }

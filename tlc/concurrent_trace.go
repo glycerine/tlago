@@ -82,7 +82,7 @@ func (t *ConcurrentTLCTrace) GetLevel() int {
 		}
 	}
 	if maxLevel == 1 && t.TLCTrace != nil {
-		if level := t.TLCTrace.GetLevelForReporting(); level > maxLevel {
+		if level, err := t.TLCTrace.GetLevelForReportingWithError(); err == nil && level > maxLevel {
 			maxLevel = level
 		}
 	}

@@ -427,9 +427,9 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 	tlcServerFinalDistinctStates.Store(s.FinalNumberOfDistinctStates)
 	statesGenerated := s.GetStatesGenerated()
 	statesLeft := s.GetNewStates()
-	level := 1
-	if s.Trace != nil {
-		level = s.Trace.GetLevelForReporting()
+	level, err := s.Trace.GetLevelForReportingWithError()
+	if err != nil {
+		return ECGeneral, err
 	}
 	s.monitor.Lock()
 	s.StatesPerMinute = 0

@@ -940,6 +940,12 @@ verify nine source locale reference rows, signed limits, rates, plain final
 statistics and tool/success conditions. Original MP tests remain green. No
 direct original coordinator-formatting method exists; no method credit is added.
 
+Coordinator trace depth I/O failures now stop periodic/final reporting instead
+of publishing stale depth. Native failure checks preserve partial cursor reads,
+monotonic successful depth, management `-1` catches and final reporting's
+shutdown/count mutation order. Existing original TLCGetLevel and its TTrace
+methods pass; supplemental failure tests add no original-method credit.
+
 Returned fatal local endpoint errors now escape exactly like fatal panics;
 scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
 warning or availability mutation. Original Java manager translations and native

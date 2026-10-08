@@ -11457,3 +11457,26 @@ limits, including POSIX explicit grouping and Arabic/Persian bidi affixes.
 Tool mode controls final progress, while success controls search depth.
 No new formatter or Java runtime dependency is introduced. Supplemental tests
 add no original-method completion credit; existing MP tests remain green.
+
+
+### Distributed trace depth read failures
+
+TLCTrace.GetLevelForReportingWithError supplies the native checked I/O boundary
+for coordinator and management reporting. Disk predecessor traversal first
+saves the file cursor, reads the chain without a synthetic cycle early exit,
+and seeks back only after successful traversal. Read/seek failures propagate
+and retain prior cursor mutations. The previously reported maximum is updated
+only on a successful traversal; closed trace ownership produces I/O failure.
+The integer-only convenience getter raises a returned error. The ordinary
+in-memory trace path retains its separate representation.
+
+Periodic coordinator reporting computes rates before depth access, then stops
+before message output, waiting or baseline publication on a trace error. Final
+reporting stops after worker/executor shutdown and final count collection but
+before rate reset, postprocessing, summary/finished output and cleanup. Native
+management getters catch I/O separately: plain ModelChecker progress returns
+-1, while distributed management also prints the existing native stack. The
+concurrent trace's prior embedded fallback behavior is unchanged and is not
+claimed as fully audited here. Focused native failure tests, original
+TLCGetLevel/TTrace methods and actual TCP checkpoint checks pass. Supplemental
+failure checks add no original-method completion credit.

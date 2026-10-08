@@ -19879,3 +19879,45 @@ initialization-order processes and all four original MP methods (31356,
 status 0, 0.324 seconds). No original coordinator-formatting method exists;
 supplemental checks add no original-method credit. No full suite, long workload
 or race instrumentation was selected; all handles are terminal.
+
+
+## October 8, 2026: distributed trace depth I/O propagation
+
+Compared TLCTrace.getLevel/getLevelForReporting and coordinator periodic/final
+reporting against Java. Go suppressed predecessor read errors and rewound the
+cursor using a deferred seek even after failure; source rewinds only after a
+complete traversal. Removed that rollback and the self-predecessor early-break
+shortcut. Successful final rewind failures now propagate. The checked reporting
+method retains monotonically reported disk depth only after successful reads,
+and closed traces report I/O failure instead of an in-memory stale depth.
+
+Added GetLevelForReportingWithError as the native checked boundary. The existing
+integer-only getter raises errors rather than suppressing them. Coordinator
+periodic and final reporting explicitly return I/O failures at their source
+boundaries. The observation helper now returns an error and publishes baselines
+only after success. ModelChecker's plain-trace progress path catches I/O and
+returns -1; the distributed management getter additionally prints its native
+stack, matching its separate source catch. Existing concurrent-trace fallback
+behavior is retained with an explicit checked call; its wider source parity is
+not claimed by this chunk.
+
+Supplemental distributed_trace_depth_failure_test.go covers a partial two-byte
+predecessor read, success-only rewind, monotonic successful depth, absent
+progress/baseline publication after failure, management catches and closed
+trace errors. A joined fresh native process runs the actual ModelCheck final
+report path with a one-millisecond report interval and closed trace: executor
+shutdown and final distinct count precede the failure, while rate reset,
+success/summary/finished output, flush/unbinding/unexport and metadata cleanup
+do not run. No Java runtime or production test hook is introduced.
+
+Initial cursor verification failed with the old rollback (26994, status 1,
+0.012 seconds); the cursor was 4 rather than the source partial-read position 8.
+The repaired depth/final-process/locale checks pass (43593, status 0, 0.207
+seconds). Focused trace regeneration, enumerator/recovery, reporting, locale
+and original MP tests pass (14621, status 0, 1.988 seconds). The original
+TLCGetLevel and TLCGetLevelTTrace methods pass normally (32041, status 0,
+1.050 seconds). Native TCP assigned-block checkpoint, worker lifecycle and
+coordinator retry/loss checks pass (0.047 seconds). There are no direct source
+failure methods for these boundaries, so supplemental checks add no method
+completion credit. No full suite, long workload or race instrumentation was
+selected. All handles are terminal; distributed completion remains unproven.

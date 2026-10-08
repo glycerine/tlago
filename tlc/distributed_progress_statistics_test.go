@@ -77,7 +77,9 @@ func checkDistributedProgressStatistics(t *testing.T, reference []string) {
 		FPSetManager: NewNonDistributedFPSetManager(store, "local", trace)}
 	for _, baseline := range []int64{0, 2468} {
 		generated, distinct := baseline, uint64(baseline)
-		server.PrintProgressStats(time.Time{}, &generated, &distinct)
+		if err := server.PrintProgressStats(time.Time{}, &generated, &distinct); err != nil {
+			t.Fatal(err)
+		}
 		if generated != 1234 || distinct != 1234 || server.StatesPerMinute != 1234-baseline || server.DistinctStatesPerMinute != 1234-baseline {
 			t.Fatal("formatting changed counters, rates or baseline publication")
 		}

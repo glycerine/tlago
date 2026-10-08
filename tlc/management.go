@@ -1,6 +1,10 @@
 package tlc
 
-import "sync/atomic"
+import (
+	"fmt"
+	"os"
+	"sync/atomic"
+)
 
 const ModelCheckerMXObjectName = "tlc2.tool:type=ModelChecker"
 
@@ -269,7 +273,15 @@ func (w *TLCServerMXWrapper) GetProgress() int {
 	if w == nil || w.Server == nil || !w.Server.IsRunning() || w.Server.Trace == nil {
 		return -1
 	}
-	return w.Server.Trace.GetLevelForReporting()
+	level, err := w.Server.Trace.GetLevelForReportingWithError()
+	if err != nil {
+		if !isJavaIOException(err) {
+			panic(err)
+		}
+		fmt.Fprint(os.Stderr, javaThrowableStackTrace(err))
+		return -1
+	}
+	return level
 }
 
 func (w *TLCServerMXWrapper) GetWorkerCount() int {
