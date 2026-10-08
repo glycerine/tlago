@@ -239,8 +239,12 @@ or postconditions, retaining their identity rather than substituting a raw state
 Noninitial final-state recovery now uses state equality against generated
 successors, matching the source overload. Initial recovery retains fingerprint
 selection. Both paths retain returned metadata without copying the target's
-worker ID or trace pointer. Nil reconstruction results and missing-owner guards
-remain pending.
+worker ID or trace pointer. Missing reconstruction results remain nil for source
+consumption; no raw state is substituted. Pairwise aliases publish nil results,
+and counterexample construction fails on a missing state-info entry instead of
+synthesizing an empty record. The alias loop reads its selected next state before
+evaluation, preserving source failure ordering. Remaining state-owner, empty-
+context and trace-prefix guards still need audit.
 An earlier related model selection failed once with its assertion lost to output
 truncation, then passed unchanged with captured output. This failure is unresolved;
 do not claim it diagnosed. Preserve failing output to a file on future runs.

@@ -21989,3 +21989,38 @@ processes are terminal. The earlier truncated model failure remains unexplained;
 passing runs do not diagnose it. Original assertions and bounds are unchanged.
 No full suite or race run was performed. Supplemental cases add no original-
 method credit; distributed parity remains incomplete.
+
+### 2026-10-08: Missing postcondition reconstruction and alias results
+
+Compared Worker.doPostCondition and CounterExample's trace loop with pinned
+source. Final-state recovery now returns its actual result, including nil, rather
+than creating a raw-state substitute. Pairwise aliases publish nil results and
+read the selected next state before evaluation. Missing reconstruction therefore
+fails at its source consumption point. CounterExample no longer substitutes a
+zero ordinal/empty record for a nil state-info entry. Nil alias results fail at
+counterexample construction after preceding aliases, matching source ordering.
+Remaining state-owner, empty-context and trace-prefix guards need further audit.
+
+Six supplemental native cases cover missing initial/transition recovery, first/
+last nil aliases and first/last missing counterexample entries. The initial run
+exposed all four reconstruction/alias failures and the first constructor failure
+(b83116 log, status 1, 3.446 seconds); constructor cases were then separated into
+subtests so both execute. Focused verification exposed existing native fixtures
+that depended on raw-state substitution: pairwise alias setup omitted its next
+relation (4a2af7, status 1, 3.901 seconds), and the deadlock-settings setup omitted
+its initial states (8dd1ad, status 1, 10.143 seconds). Those fixtures and the
+equivalent worker-functor deadlock fixture now provide reconstructable initial/
+next states. All existing assertions are retained; no original Java test changed.
+
+Final focused worker/native RPC, concurrent trace, original simulation trace,
+counterexample, reporting serialization, pairwise postcondition and distributed
+trace alias-failure checks pass (90901c log, terminal process 64ee33 status 0,
+13.592 seconds). Additional short checker initial/successor checks pass (54fbf2
+log, terminal process f8823e status 0, 5.353 seconds). Original checkpoint-on-
+violation/time-bound, error-trace, Github461, Github743, three-worker CodePlexBug08
+archive recovery, AliasSafety and TLCExtTraceAlias tests plus four native DieHard/
+TSnapShot process variants pass (0f6ba7 log, terminal process a249fa status 0,
+57.864 seconds). All output was captured and all processes are terminal. The
+earlier truncated model failure remains unexplained. No original assertions or
+bounds changed. No full suite or race run was performed. Supplemental cases add
+no original-method credit; distributed parity remains incomplete.

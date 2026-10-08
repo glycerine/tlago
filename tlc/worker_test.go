@@ -89,6 +89,7 @@ func TestWorkerFunctorPathReportsDeadlockWhenNoSuccessorsAreGenerated(t *testing
 	cur := checkerTestState(1)
 
 	tool := NewTool()
+	tool.InitStates = []*TLCStateMut{cur}
 	tool.Actions = []*Action{action}
 	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVec(0), nil

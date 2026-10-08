@@ -901,6 +901,13 @@ metadata and transition action. Worker ID and trace pointer are not copied from
 the target onto generated states. No original method directly covers these
 helper boundaries; completion counts remain unchanged.
 
+Six native missing-result cases cover initial/transition recovery, first/last
+nil aliases and first/last missing counterexample entries. No raw-state or
+empty-record substitute is created; failures retain source alias/constructor
+ordering. Existing native alias/deadlock fixtures now supply valid reconstruction
+setup without changing assertions. No original method directly covers these
+boundaries; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

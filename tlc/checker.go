@@ -2029,19 +2029,13 @@ func (mc *ModelChecker) stateInfoForState(tool *Tool, state *TLCStateMut, predec
 	if predecessor != nil {
 		return mc.stateInfoForTransition(tool, state, predecessor)
 	}
-	if mc != nil && tool != nil {
-		fp := state.FingerPrint()
-		info, err := tool.GetState(fp)
-		if err != nil {
-			panic(err)
-		}
-		if info != nil && info.State != nil {
-			return info
-		}
+	if tool == nil {
+		panic(NewNullPointerException())
 	}
-	info := NewTLCStateInfo(state)
-	fp := state.FingerPrint()
-	info.FP = &fp
+	info, err := tool.GetState(state.FingerPrint())
+	if err != nil {
+		panic(err)
+	}
 	return info
 }
 
@@ -2049,18 +2043,13 @@ func (mc *ModelChecker) stateInfoForTransition(tool *Tool, state *TLCStateMut, p
 	if state == nil {
 		return nil
 	}
-	if mc != nil && tool != nil && predecessor != nil {
-		info, err := tool.GetStateForTransition(state, predecessor)
-		if err != nil {
-			panic(err)
-		}
-		if info != nil && info.State != nil {
-			return info
-		}
+	if tool == nil {
+		panic(NewNullPointerException())
 	}
-	info := NewTLCStateInfo(state)
-	fp := state.FingerPrint()
-	info.FP = &fp
+	info, err := tool.GetStateForTransition(state, predecessor)
+	if err != nil {
+		panic(err)
+	}
 	return info
 }
 
@@ -2132,17 +2121,19 @@ func aliasTraceWithToolPairs(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo 
 	}
 	aliased := append([]*TLCStateInfo(nil), trace...)
 	for i, current := range aliased {
-		successor := current.OriginalState()
+		next := current
 		if i+1 < len(aliased) {
-			successor = aliased[i+1].OriginalState()
+			next = aliased[i+1]
 		}
+		if next == nil {
+			panic(NewNullPointerException())
+		}
+		successor := next.OriginalState()
 		alias, err := tool.EvalAliasInfoPair(current, successor)
 		if err != nil {
 			panic(err)
 		}
-		if alias != nil {
-			aliased[i] = alias
-		}
+		aliased[i] = alias
 	}
 	return aliased
 }

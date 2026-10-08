@@ -11,13 +11,15 @@ func TestWorkerRetainsConstructedDeadlockSetting(t *testing.T) {
 	for _, captured := range []bool{false, true} {
 		t.Run(map[bool]string{false: "disabled", true: "enabled"}[captured], func(t *testing.T) {
 			tool := NewTool()
+			cur := checkerTestState(1)
+			tool.InitStates = []*TLCStateMut{cur}
 			tool.Actions = []*Action{{Name: "Next"}}
 			installTestNextStateGenerator(tool, func(*Tool, *Action, *TLCStateMut) (*StateVec, error) { return NewStateVec(0), nil })
 			checker := NewModelChecker(tool, t.TempDir(), captured)
 			defer checker.ConcurrentTrace.Close()
 			worker := checker.Workers[0]
 			checker.CheckDeadlock = !captured
-			stop, err := worker.DoNext(checkerTestState(1))
+			stop, err := worker.DoNext(cur)
 			if stop || err != nil {
 				t.Fatalf("worker iteration: %v/%v", stop, err)
 			}

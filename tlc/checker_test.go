@@ -127,6 +127,12 @@ func TestModelCheckerPostConditionAliasUsesPairwiseJavaPath(t *testing.T) {
 	ceCalls := 0
 	tool := NewTool()
 	tool.InitStates = []*TLCStateMut{cur}
+	tool.Actions = []*Action{{Name: "Next"}}
+	installTestNextStateGenerator(tool, func(*Tool, *Action, *TLCStateMut) (*StateVec, error) {
+		states := NewStateVec(1)
+		states.AddElement(succ.Copy())
+		return states, nil
+	})
 	tool.CheckPostConditionCEFunc = func(tl *Tool, value Value) int {
 		ceCalls++
 		return NoError

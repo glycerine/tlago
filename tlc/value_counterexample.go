@@ -50,16 +50,13 @@ func NewCounterExample(trace []*TLCStateInfo, action *Action, loopOrdinal int, i
 	stateNodes := make([]Value, 0, len(trace))
 	actionEdges := make([]Value, 0, len(trace))
 	for i, info := range trace {
-		stateNumber := int32(0)
-		if info != nil {
-			stateNumber = int32(info.GetStateNumber())
+		if info == nil {
+			panic(NewNullPointerException())
 		}
+		stateNumber := int32(info.GetStateNumber())
 		node := NewTupleValue([]Value{NewIntValue(stateNumber), stateInfoRecordValue(info)})
 		if i > 0 {
-			edgeAction := UnknownAction
-			if info != nil {
-				edgeAction = info.Action()
-			}
+			edgeAction := info.Action()
 			edge := NewTupleValue([]Value{stateNodes[len(stateNodes)-1], edgeAction.ToRecordValue(), node})
 			actionEdges = append(actionEdges, edge)
 		}
