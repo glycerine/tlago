@@ -456,6 +456,9 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 	if acts == nil {
 		acts = EmptyActionItemList
 	}
+	if pred == nil {
+		panic(NewNullPointerException())
+	}
 	switch pred := pred.(type) {
 	case *OpApplNode:
 		if CoverageEnabled() {

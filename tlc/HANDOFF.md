@@ -153,6 +153,13 @@ incomplete-state diagnostic. Short local and native TCP checks cover both paths
 and preserve generation/statistics/finally ordering. They add no original-method
 completion credit.
 
+Default successor evaluation no longer turns missing actions or predicates into
+empty vectors. Missing actions fail before evaluation; missing predicates fail at
+predicate dispatch, after predecessor setup. Distributed failures retain their
+predecessor, cause and call-stack flag instead of reporting ordinary deadlock.
+A valid false action still reports deadlock normally. Six short local/TCP checks
+cover these cases without changing original-method credit.
+
 Error-trace printing propagates returned state-reconstruction and alias errors
 instead of fabricating fallback states. Ordinary printing errors reach the
 coordinator catch; fatal errors escape before queue completion/notification.

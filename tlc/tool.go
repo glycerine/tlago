@@ -383,8 +383,8 @@ func (t *Tool) GetNextStates(action *Action, state *TLCStateMut) (*StateVec, err
 	if t != nil && t.GetNextStatesFunc != nil {
 		return t.GetNextStatesFunc(t, action, state)
 	}
-	if t == nil || action == nil || action.Pred == nil {
-		return NewStateVec(0), nil
+	if t == nil || action == nil {
+		panic(NewNullPointerException())
 	}
 	return t.GetNextStatesImpl(action, state)
 }

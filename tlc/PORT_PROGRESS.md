@@ -22226,3 +22226,30 @@ suite or race run was performed. No production change was needed. Full-model
 fingerprint server restart/recovery, other failure phases and network partitions
 remain pending, along with isolated trace-commit interruption and other source
 audits documented in the handoff.
+
+### 2026-10-08: Remove empty-successor evaluator shortcuts
+
+Compared Tool.getNextStates and getNextStatesImpl with pinned source. Go no longer
+returns an empty vector for missing actions/predicates. Missing actions fail at
+the entry boundary; predicate failure occurs at dispatch, after successor
+predecessor/action setup, preserving source ordering. The worker wraps these
+evaluator failures with predecessor context, cause and KeepCallStack instead of
+misreporting ordinary deadlock. Default missing tool receivers also fail rather
+than inventing vectors. Explicit evaluator overrides retain their dispatch.
+Valid false predicates still produce ordinary deadlock with no cause/call-stack
+flag. Neither path publishes generation totals or enters missing-manager access.
+
+No original Java method directly covers these missing-input boundaries. Six
+supplemental local/TCP cases cover missing actions, missing predicates and a real
+false action. Initial local cases exposed both false deadlocks while the false
+action control passed (worker-action-validation-red.log, terminal process 5ef1d6
+status 1). Focused distributed worker/application, WorkerRPC, Tool, checker
+successor and original smart-proxy checks pass (worker-action-validation-focused.log,
+terminal process fa609c status 0; package time 2.591 seconds). Original
+ErrorTraceConstruction, Github461, IncompleteNext, IncompleteNextMultipleActions
+and SubseteqNextState models plus four native distributed DieHard/TSnapShot
+process variants pass (worker-action-validation-models.log, terminal process
+7b8b92 status 0; package time 50.061 seconds). Captured logs were inspected and
+all processes are terminal. Original assertions and bounds are unchanged. No
+full suite or race run was performed. Supplemental cases add no original-method
+credit; distributed completion remains unproven.

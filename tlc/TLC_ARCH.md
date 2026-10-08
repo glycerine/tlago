@@ -12045,3 +12045,11 @@ failure model row requires 229,884 reported states and queue zero; ordinary mode
 rows retain 114,942. This preserves source statistics rather than introducing
 deduplication. Full-model server restart/recovery and other failure phases remain
 pending; this native row adds no disabled Java harness completion credit.
+
+Default Tool successor evaluation requires an action and dispatches its actual
+predicate. Missing actions cannot return empty vectors. A missing predicate fails
+at predicate dispatch, after successor predecessor/action setup, rather than
+returning empty successors or a non-boolean diagnostic. DistributedWorker retains
+these evaluator failures with predecessor context and a call-stack flag. A real
+false predicate remains an empty successor set and follows ordinary deadlock
+handling. Explicit evaluator overrides retain their existing dispatch boundary.

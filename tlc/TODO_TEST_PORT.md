@@ -1407,6 +1407,10 @@ Successor validation also preserves the source distinction between a missing
 state and an ordinary incomplete state. Four supplemental local/TCP cases cover
 the failure cause, predecessor, call-stack flag and unchanged statistics; no
 direct original Java method covers this boundary, so method credit is unchanged.
+Default successor evaluation also rejects missing actions/predicates instead of
+fabricating empty vectors. Six supplemental local/TCP cases distinguish those
+failures from an ordinary false-action deadlock and preserve worker context and
+statistics. No original method directly covers this boundary; credit is unchanged.
 Existing original BitVector printing and dynamic-manager methods remain green;
 the new failure checks add no original-method completion credit.
 Failover warning routing now matches ToolIO for scalar, batch and statistics
