@@ -138,6 +138,13 @@ receiver ownership across gob and worker TCP. Further metadata/custom-data and
 process failure/recovery work remains pending.
 These short native checks add no original-method completion credit.
 
+Block selectors now retain the source null-server assertion and numeric
+conversion behavior, including zero workers, NaN and infinities. Proportional
+and static selectors ignore transfer-limit updates; limiting and statistical
+selectors apply them. Focused queue-bound and actual-dequeue average checks,
+the original smart-proxy methods and native TCP retry/loss check pass. Upstream
+has no selector test methods; supplemental checks add no original-method credit.
+
 The native EWD840 process harness now covers two standalone FP servers. Before
 starting its worker, it reads the coordinator's published manager reference
 graph and checks two distinct nonempty stores totaling the complete 16,384-state

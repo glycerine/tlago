@@ -19622,3 +19622,29 @@ this boundary; these supplemental checks add no original-method completion
 credit. Value source and cost-model fields are transient in the Java reference;
 this change does not claim extended evaluator/custom-data graph completion.
 No full suite, long workload or race instrumentation was selected.
+
+
+## October 8, 2026: distributed block-selector source contracts
+
+Compared all four source selector implementations. The port substituted one
+worker for zero, directly cast floating results to Go int64 (losing the source
+NaN/overflow conversions), omitted the null-server assertion and updated limits
+for selectors whose source setter is a no-op. Constructors now retain the
+assertion; proportional/statistical selection uses the existing numeric
+conversion helpers and actual worker count. Only limiting/statistical modes
+accept transfer-limit updates. No JVM or transport machinery was added.
+
+New focused checks reproduced the deviations (3259, status 1), then pass after
+the fix (17377 and final 25565, status 0, 0.012 seconds), together with all nine
+original smart-proxy method contexts. Checks include finite rounding, signed
+zero-worker infinities, NaN, large sizes, statistical fallback, setter behavior,
+queue request bounds, fixed-size requests and lossy averages based on actual
+returned counts, including null dequeues. The existing native coordinator
+retry/loss check passes over owned TCP listeners (0.015 seconds). Its fixture
+now explicitly selects limiting mode, as required by its existing reduced-limit
+assertion; a proportional selector correctly ignores that setter.
+
+Upstream's selector test directory contains only DummyTLCWorker, used by the
+ported smart-proxy methods, and no selector test methods. Supplemental checks
+add no original-method completion credit. Broader distributed parity remains
+pending. No full suite, long workload or race instrumentation was selected.

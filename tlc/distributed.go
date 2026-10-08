@@ -1329,6 +1329,9 @@ func NewBlockSelectorFromProperties(server *TLCServer) *BlockSelector {
 }
 
 func NewProportionalBlockSelector(server *TLCServer) *BlockSelector {
+	if server == nil {
+		panic(NewTLCRuntimeExceptionMessage("TLC found a null TLCServer"))
+	}
 	return &BlockSelector{
 		Server:               server,
 		Mode:                 BlockSelectorProportional,
@@ -1402,7 +1405,7 @@ func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWork
 }
 
 func (b *BlockSelector) SetMaxTXSize(maximum int) {
-	if b != nil {
+	if b != nil && (b.Mode == BlockSelectorLimiting || b.Mode == BlockSelectorStatistical) {
 		b.Maximum = maximum
 	}
 }
@@ -1429,7 +1432,7 @@ func (b *BlockSelector) getBlockSize(size int64, worker *DistributedWorkerSmartP
 			}
 			blockSize := math.Abs(math.Ceil(float64(size) * (worker.GetNetworkOverhead() / limit)))
 			blockSize = math.Min(math.Max(blockSize, 1), float64(b.Maximum))
-			return int64(blockSize)
+			return int64(javaDoubleToInt(blockSize))
 		}
 		fallthrough
 	case BlockSelectorLimiting:
@@ -1444,14 +1447,11 @@ func (b *BlockSelector) getBlockSize(size int64, worker *DistributedWorkerSmartP
 }
 
 func (b *BlockSelector) proportionalBlockSize(size int64) int64 {
-	workerCount := 1
-	if b != nil && b.Server != nil {
-		workerCount = b.Server.GetWorkerCount()
+	if b == nil || b.Server == nil {
+		panic(NewNullPointerException())
 	}
-	if workerCount <= 0 {
-		workerCount = 1
-	}
-	return int64(math.Ceil(float64(size) * (1.0 / float64(workerCount))))
+	workerCount := b.Server.GetWorkerCount()
+	return javaDoubleToLong(math.Ceil(float64(size) * (1.0 / float64(workerCount))))
 }
 
 func (b *BlockSelector) setAverageBlockCnt(blockCnt int64) {

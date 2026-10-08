@@ -780,6 +780,13 @@ inserting zero. Existing short original MultiFPSet translations and full native
 pre-commit interruption recovery pass. No enabled original method covers these
 error boundaries; supplemental checks add no original-method completion credit.
 
+Native block-selector checks cover the source null-server assertion, zero-worker
+arithmetic, saturated numeric conversions, NaN/infinite overhead, proportional
+and static limit no-ops, limiting/statistical limit updates, queue request bounds
+and actual-dequeue averages. Existing original smart-proxy methods and native
+TCP coordinator retry/loss pass. Upstream has no selector test methods; these
+supplemental checks add no original-method completion credit.
+
 Native value-array graph checks cover state, tuple, record, function, operator argument
 row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
 references and isolated receiver mutations across worker request/result TCP.
