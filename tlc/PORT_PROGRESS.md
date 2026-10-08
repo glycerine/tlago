@@ -1,5 +1,32 @@
 # TLC Port Progress
 
+2026-10-07 Preserve source EOF consumption and token identity:
+Previous completed commit: 4751cda. Audit successful consumption and discover
+native EOF clamping: advance skipped generation/cleanup and returned the prior
+token, while tokenAt reused the final EOF pointer. Java jj_consume_token advances
+and cleans up on EOF too; getToken links fresh EOF tokens on later requests.
+Correct actual production consumption and token caching. The pretokenized
+adapter creates fresh EOF tokens retaining EOF coordinates; EndModule uses
+consumeParseToken and unused native consume/consumeAny helpers are removed.
+
+External EOFConsumptionProbe.java invokes actual jj_consume_token and getToken
+for three streams, 110 consumptions each. Compare kind, four coordinates,
+generation, cleanup count, prior-token link and distinct next-token identities.
+All 330 Java rows match each of Go's token-manager and pretokenized paths (660
+Go observations). Java returned 0; first Go observer 22441 returned 0; expanded
+adapter observer 77893 returned 0. BodyExpected observer 36960 returned 0,
+retaining all 341 expected-entry and 5,823 syntax/message rows. Direct-choice
+observer 40712 returned 0; all 641 state rows remain equal. All handles retired.
+External probes/overlays/logs remain under /mnt/oldrog/tmp; logs use prefix
+tlago-eof-consumption. No invented permanent tests or original-method credit.
+
+Original frontend/model gate 55381 returned 0 in 9.545 seconds; complete SANY
+53168 returned 0 in 1.838 seconds; all-package compilation 58636 returned 0.
+All handles retired. Normal execution without race; unchanged assertions,
+fixtures and workload bounds. Main inventory and known native XML failures are
+unchanged. No new full-workspace green claim; full token-reference/constructor,
+parser AST, canonical integration and evaluator fidelity remain pending.
+
 2026-10-07 Port the actual ParseException message formatters:
 Previous completed commit: f46a48f. Generated failures now create an exception
 with retained token/sequence references and special-constructor state before

@@ -275,10 +275,7 @@ func (p *SanyParser) BeginModule() *SanySyntaxNode {
 }
 
 func (p *SanyParser) EndModule() *SanySyntaxNode {
-	if !p.check(SanyTokenEndModule) {
-		p.throwParseException([][]SanyTokenKind{{SanyTokenEndModule}}, p.parseErrorMessage("==== or more Module body", p.peek()))
-	}
-	end := p.consume(SanyTokenEndModule, p.parseErrorMessage("==== or more Module body", p.peek()))
+	end := p.consumeParseToken(SanyTokenEndModule, p.parseErrorMessage("==== or more Module body", p.peek()))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_EndModule"], end)
 }
 
@@ -3259,44 +3256,26 @@ func (p *SanyParser) match(kind SanyTokenKind) bool {
 	return false
 }
 
-func (p *SanyParser) consume(kind SanyTokenKind, msg string) *SanySyntaxNode {
-	if p.check(kind) {
-		return NewSanyTokenNode(p.advance())
-	}
-	p.add(p.peek().Begin, "E1300", msg)
-	return nil
-}
-
-func (p *SanyParser) consumeAny(kinds []SanyTokenKind, msg string) *SanySyntaxNode {
-	for _, kind := range kinds {
-		if p.check(kind) {
-			return NewSanyTokenNode(p.advance())
-		}
-	}
-	p.add(p.peek().Begin, "E1300", msg)
-	return nil
-}
-
 func (p *SanyParser) check(kind SanyTokenKind) bool {
 	return p.peek().Kind == kind
 }
 
+// Successful JavaCC consumption advances generation and cleanup even for EOF.
 func (p *SanyParser) advance() *SanyToken {
-	if !p.check(SanyTokenEOF) {
-		p.at++
-		p.lookaheadGC++
-		if p.lookaheadGC > 100 {
-			p.lookaheadGC = 0
-			for i := range p.lookaheadCalls {
-				for call := &p.lookaheadCalls[i]; call != nil; call = call.next {
-					if call.generation < p.at {
-						call.first = nil
-					}
+	token := p.peek()
+	p.at++
+	p.lookaheadGC++
+	if p.lookaheadGC > 100 {
+		p.lookaheadGC = 0
+		for i := range p.lookaheadCalls {
+			for call := &p.lookaheadCalls[i]; call != nil; call = call.next {
+				if call.generation < p.at {
+					call.first = nil
 				}
 			}
 		}
 	}
-	return p.previous()
+	return token
 }
 
 func (p *SanyParser) previous() *SanyToken {
@@ -3314,18 +3293,25 @@ func (p *SanyParser) peekNext() *SanyToken {
 
 func (p *SanyParser) tokenAt(offset int) *SanyToken {
 	idx := p.at + offset
-	for p.tokenManager != nil && idx >= len(p.tokens) {
-		if len(p.tokens) != 0 && p.tokens[len(p.tokens)-1].Kind == SanyTokenEOF {
-			return p.tokens[len(p.tokens)-1]
+	for idx >= len(p.tokens) {
+		var token *SanyToken
+		if p.tokenManager != nil {
+			token = p.tokenManager.NextToken()
+		} else {
+			// The pretokenized adapter supplies a fresh EOF for every subsequent
+			// request, as Java's token manager does, retaining EOF coordinates.
+			token = &SanyToken{Kind: SanyTokenEOF}
+			if len(p.tokens) != 0 {
+				last := p.tokens[len(p.tokens)-1]
+				if last.Kind == SanyTokenEOF {
+					token.Begin, token.End, token.LexState = last.Begin, last.End, last.LexState
+				}
+			}
 		}
-		token := p.tokenManager.NextToken()
 		if len(p.tokens) != 0 {
 			p.tokens[len(p.tokens)-1].Next = token
 		}
 		p.tokens = append(p.tokens, token)
-	}
-	if idx >= len(p.tokens) {
-		return &SanyToken{Kind: SanyTokenEOF}
 	}
 	return p.tokens[idx]
 }

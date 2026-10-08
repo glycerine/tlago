@@ -10301,3 +10301,22 @@ character. All 2,400 full/short formatter observations agree on Linux. Existing
 341 expected-entry and 5,823 syntax/message production rows remain identical.
 Windows newline behavior, full constructor/token-reference identity and exhaustive
 malformed rescan/AST contexts are not established by these observations.
+
+
+## EOF is consumed and linked like any other JavaCC token
+
+JavaCC jj_consume_token increments jj_gen and its cleanup clock on successful
+EOF consumption. Go advance now does the same and returns the actual consumed
+token. tokenAt requests a fresh token past EOF rather than returning the final
+cached pointer; the token manager supplies distinct EOF objects with source
+coordinates and links. The pretokenized adapter creates equivalent fresh EOF
+objects, preserving EOF coordinates and linking the chain. EndModule uses
+consumeParseToken; unused native consuming helpers are removed.
+
+External observations of three input streams consume 110 tokens each and compare
+kind, all four coordinates, generation, cleanup count, prior-token link and
+distinct next-token identities. Java agrees with both Go paths on all 330 rows
+per path. Existing 641 direct-choice/saved-call rows, 341 expected-entry rows and
+5,823 syntax/message rows remain equal. These observations cover the reported
+EOF state behavior, not full token constructor/reference, syntax AST or evaluator
+parity.
