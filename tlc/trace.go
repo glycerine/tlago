@@ -871,10 +871,10 @@ func (t *TLCTrace) CommitChkpt() error {
 	oldChkpt := t.chkptName("chkpt")
 	newChkpt := t.chkptName("tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("Trace.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("Trace.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("Trace.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("Trace.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	return nil
 }

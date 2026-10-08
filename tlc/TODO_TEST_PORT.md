@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental checkpoint commit checks cover queue/trace I/O categories, retained
+file/pool mutation and coordinator stop ordering. Original short queue methods
+remain green; these checks add no original-method completion credit.
+
 Supplemental memory checkpoint checks cover missing parents for all three
 implementations locally and through native TCP, plus zero/negative backing-set
 constructor sizes. These checks add no original Java method completion credit.

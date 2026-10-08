@@ -73,6 +73,11 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Queue and trace checkpoint commit failures now retain the source I/O category
+through native failure payloads. Checks retain earlier pool deletion, stop at
+failed file promotion, and verify that coordinator failures preserve earlier
+checkpoint phases without running later commits or reporting completion.
+
 Memory fingerprint checkpoint creation now opens the requested file directly,
 without creating missing parents. Local and native TCP checks retain the source
 I/O failure and manager diagnostic. SetOfLong constructor allocation now keeps

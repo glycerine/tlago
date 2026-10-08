@@ -19446,3 +19446,26 @@ allocation to exercise file opening; the failure occurs before table access.
 No enabled original Java method covers these new boundary cases; no original
 method completion credit is added. All handles are terminal and retired. No
 full suite, long workload or race run. Broader distributed parity remains open.
+
+## October 8, 2026: queue/trace checkpoint commit I/O categories
+
+Compared checkpoint commit bodies against Java. Ordinary old-file deletion and
+promotion order match, but MemStateQueue/DiskStateQueue/TLCTrace returned plain
+formatted errors where Java returns I/O failures. Seven error returns now use
+the existing I/O carrier, retaining exact diagnostic text. Supplemental nine-row
+file mutation matrix and partial disk pool deletion first fail on that category
+(1654, status 1, 0.015 seconds). Corrected cases plus original short memory queue
+methods and related disk recovery checks pass (16828, status 0, 0.023 seconds).
+
+Added real TLCServer.Checkpoint queue/trace commit failures requiring earlier
+checkpoint begins/commits, queue resume, retained partial files and stopped later
+commits with no completion event. Expanded source short memory queue selection
+passes (83805, status 0, 0.020 seconds). Related selection passes in 0.066
+seconds; verified selections separately with verbose output to establish all
+intended methods: nine original DiskStateQueue inherited methods pass in 0.017
+seconds, and native local/single/partitioned assigned-block checkpoints, three
+in-flight TCP checkpoint connection-loss phases and all new commit checks pass
+in 0.065 seconds. The unchanged 2,147,483,648-state growth method is not selected.
+No enabled original method covers these added failure boundaries; no original
+method completion credit is added. All handles are terminal and retired. No
+full suite, long workload or race run. Broader distributed parity remains open.

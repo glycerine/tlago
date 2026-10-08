@@ -378,10 +378,10 @@ func (q *MemStateQueue) CommitChkpt() error {
 	oldName := filepath.Join(q.diskdir, "queue.chkpt")
 	newName := filepath.Join(q.diskdir, "queue.tmp")
 	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
+		return NewIOException(fmt.Sprintf("MemStateQueue.commitChkpt: cannot delete %s", oldName))
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
+		return NewIOException(fmt.Sprintf("MemStateQueue.commitChkpt: cannot delete %s", oldName))
 	}
 	return nil
 }

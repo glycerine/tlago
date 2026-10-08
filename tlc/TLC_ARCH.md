@@ -11354,3 +11354,13 @@ Six local/TCP cases require failure without directory creation or storage
 mutation, including the original manager storage diagnostic. NewSetOfLong now
 allocates zero length exactly and rejects negative length rather than changing
 both to one; first insertion grows the zero-length set as in source.
+
+MemStateQueue, DiskStateQueue and TLCTrace commit failures now use the existing
+I/O failure carrier rather than plain formatted errors. Source diagnostics and
+file promotion order remain unchanged. Native payload encoding retains the I/O
+trait. Checks cover failed old-file deletion, successful promotion and missing
+temporary files after old-file deletion; disk pool deletion retains earlier
+removed files without advancing lastLoPool or touching later files after failure.
+Real coordinator checkpoint cases remove a queue/trace temporary at the source
+commit boundary and require queue resume, earlier begins/commits, stopped later
+commits and no checkpoint-end event. These are native supplemental checks.
