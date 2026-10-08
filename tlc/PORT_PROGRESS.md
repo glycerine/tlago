@@ -22488,3 +22488,23 @@ traversal/payload checks and all original dynamic-manager cases pass
 assertions or bounds changed; no full suite or race run was performed. These
 two supplemental cases have no direct original methods and add no completion
 credit. Distributed completion remains unproven.
+
+### 2026-10-08: Current distributed restart guide
+
+Replaced the 2,810-line handoff with a 225-line current guide. The old file mixed
+completed SANY/trace/transport audits with obsolete claims that process models
+and worker-loss coverage were still missing. The guide now separates current
+native behavior, verified process coverage, six remaining distributed work areas,
+original-method credit, known failure/scheduling caveats and workflow rules.
+Detailed history remains in this progress log, architecture notes and Git history;
+no archive copy, source change or test-credit change was made.
+
+Read the current harness, inventory, source false assumption and prior handoff
+before rewriting. Local validation resolves all six Markdown links, confirms both
+model-test filenames, checks the inventory's 41/37/4 counts against the guide and
+verifies the actual disabled-source assumption (terminal process 91113c status 0).
+Markdown fences and git diff whitespace checks pass. No Go tests were run for
+this documentation-only change, and the user's full-suite baseline was reused.
+Remaining full-model remote restart/recovery, additional failure/partition phases,
+isolated trace-commit interruption, ownership/cleanup audit and opaque-data
+reconciliation remain explicit. Distributed completion remains unproven.
