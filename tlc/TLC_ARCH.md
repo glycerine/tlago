@@ -11114,3 +11114,11 @@ Integer bit patterns retain both float widths exactly, including signed zero,
 subnormals, infinities and NaN; float32 decode rejects bits beyond uint32. This
 changes the native payload layout, so communicating roles use the same build.
 It adds no Java serialization and no arbitrary opaque-data registration.
+
+DistributedLocationError retains a malformed native coordinator location and
+its parsing/validation cause. Discovery previously returned ordinary errors;
+the keepalive task consequently missed its malformed-location catch and would
+terminate the timer. The task now recognizes this Go category alongside the
+existing source exception supplied by local adapters, logs at the finest-level
+boundary and continues without worker exit or timer cancellation. Validation
+rules are unchanged, and no Java transport type is used for native discovery.

@@ -15,6 +15,28 @@ import (
 // method. A listener can be reachable before either TLC binding is published.
 type DistributedCoordinatorLookupReply struct{ Present bool }
 
+// DistributedLocationError distinguishes invalid native coordinator locations
+// from connection loss. Keepalive logs this category and continues, matching
+// the source malformed-location catch without exposing a Java transport type.
+type DistributedLocationError struct {
+	Location string
+	Cause    error
+}
+
+func (e *DistributedLocationError) Error() string { return e.Cause.Error() }
+func (e *DistributedLocationError) Unwrap() error { return e.Cause }
+
+func isDistributedMalformedLocation(err error) bool {
+	switch failure := err.(type) {
+	case *DistributedLocationError:
+		return failure != nil
+	case *MalformedURLException:
+		return failure != nil
+	default:
+		return false
+	}
+}
+
 func (service *distributedServerService) Lookup(name string, reply *DistributedCoordinatorLookupReply) error {
 	service.server.mu.Lock()
 	_, reply.Present = service.server.coordinators[name]
@@ -42,14 +64,14 @@ func NewDistributedNetworkDiscovery() *DistributedNetworkDiscovery {
 func (d *DistributedNetworkDiscovery) Lookup(location string) (DistributedServerEndpoint, error) {
 	u, err := url.Parse(location)
 	if err != nil {
-		return nil, err
+		return nil, &DistributedLocationError{Location: location, Cause: err}
 	}
 	if u.Scheme != "" && u.Scheme != "tcp" {
-		return nil, fmt.Errorf("unsupported coordinator scheme %q", u.Scheme)
+		return nil, &DistributedLocationError{Location: location, Cause: fmt.Errorf("unsupported coordinator scheme %q", u.Scheme)}
 	}
 	name := strings.TrimPrefix(u.Path, "/")
 	if u.Host == "" || name == "" || strings.Contains(name, "/") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-		return nil, fmt.Errorf("coordinator location must identify a TCP address and binding: %q", location)
+		return nil, &DistributedLocationError{Location: location, Cause: fmt.Errorf("coordinator location must identify a TCP address and binding: %q", location)}
 	}
 	key := u.Host + "/" + name
 	d.mu.Lock()

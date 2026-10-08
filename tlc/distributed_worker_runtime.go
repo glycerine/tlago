@@ -313,7 +313,7 @@ func (t *distributedWorkerKeepAlive) run() (err error) {
 	if err == nil {
 		return nil
 	}
-	if failure, malformed := err.(*MalformedURLException); malformed && failure != nil {
+	if isDistributedMalformedLocation(err) {
 		t.logFailure(err)
 		return nil
 	}

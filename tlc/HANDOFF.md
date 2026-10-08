@@ -73,6 +73,14 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Native discovery now classifies malformed coordinator locations with
+`DistributedLocationError`, retaining the location and parser/validation cause.
+Keepalive logs this category and continues, matching the source catch rather
+than terminating its timer as an uncaught failure. Parser escapes, unsupported
+schemes, missing/nested bindings, user information, queries and fragments retain
+their existing validation rules. Focused checks require repeated logging without
+worker exit, executor shutdown, timer cancellation or completion-latch release.
+
 Native model-value data now supports `int8`, `int16` and `float32` as well as
 the existing scalar types. Floating-point data uses integer IEEE bit patterns:
 gob's omitted zero struct fields otherwise lose negative zero, including on

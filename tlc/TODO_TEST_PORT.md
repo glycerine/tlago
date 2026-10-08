@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Malformed native coordinator locations now retain a distinct Go error category.
+Short discovery/keepalive checks require the source log-and-continue handling
+without exit, cancellation or latch release, across existing validation cases.
+These supplemental checks add no original-method completion credit.
+
 Model-value scalar transfer now retains `int8`, `int16` and `float32`, with
 checked integer/bit ranges. Gob and worker TCP cases cover both float widths,
 signed zero, extrema, subnormals, infinities and NaN. Integer IEEE payload bits

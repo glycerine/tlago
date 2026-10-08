@@ -18872,3 +18872,31 @@ Only the exact three new short cases run under -race, passing in 1.099 seconds
 (76442 terminal status 0). All handles are retired. No full suite or long model
 workload was run. Broader process-crash and mid-run recovery coverage remains
 pending; the distributed goal is incomplete.
+
+## October 8, 2026: native malformed-location keepalive handling
+
+Reviewed worker cleanup and the keepalive catch boundaries against pinned Java.
+TLCTimerTask.run logs malformed-location failures at its finest-level logger
+and continues; it does not exit the worker or cancel the timer. Native discovery
+returned url.Error or ordinary validation errors instead, so the keepalive task
+missed that catch and returned an uncaught failure. Added DistributedLocationError
+with the invalid location and original cause, and recognize that native category
+alongside the existing source exception from local adapters. Native discovery
+uses no Java transport type. Existing location validation rules are unchanged.
+
+Seven cases retain invalid escapes, unsupported schemes, missing/nested bindings,
+user information, queries and fragments. Direct discovery must produce the
+native category without opening a connection. Two public keepalive invocations
+must log the source message twice, keep workers exported and executors running,
+leave completion latches unreleased and timers uncancelled, and emit no worker
+loss diagnostic. Timer intervals and activity bounds are unchanged. No enabled
+upstream method directly covers this boundary; supplemental Go checks add no
+original-method completion credit.
+
+The initial category/keepalive selection fails all seven cases in 0.013 seconds
+(93685 terminal status 1). After the production fix, that exact selection passes
+in 0.011 seconds (24250 terminal status 0). Final native discovery, keepalive and
+worker bootstrap/callback selection passes in 0.036 seconds (terminal status 0).
+Only the exact short malformed-location keepalive case runs under -race, passing
+in 1.031 seconds (35443 terminal status 0). All handles are retired. No full suite
+or long workload was run. Broader distributed parity remains incomplete.
