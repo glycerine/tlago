@@ -1,5 +1,40 @@
 # TLC Port Progress
 
+2026-10-07 Fairness, junction and expression-operand source previews:
+Previous completed commit: dd730b9. FairnessExpr now uses source call 51 with
+budget 2; remove its native opening-parenthesis preview and manual failed span.
+JunctionList starts the source indentation context before disjunction 52 and
+conjunction 53 (Integer.MAX_VALUE), in source order. Initial expressions use
+prefix/open-expression calls 54/55 (Integer.MAX_VALUE). The shared operand helper
+preserves distinct calls 62/63 for infix right operands rather than recording
+those decisions under initial-expression indices. ExtendableExpr uses junction
+preview 56 (Integer.MAX_VALUE) before PreInEmptyTop, and primitive preview 57
+(budget 1) after direct parenthesized-form choices. Remove obsolete native prefix,
+open-expression and primitive eligibility helpers. Connected source entry points:
+1–57, 62, 63, 68 and 72. Extension/selector decisions and full bookkeeping remain
+pending; this is not whole parser completion.
+
+External observer extends the earlier 114 cases with 19 valid/malformed fairness
+and indented junction forms, 18 prefix/open-expression forms and six infix right
+operand cases. Initial fairness/junction comparison matches 2,191 rows across 133
+cases; prefix comparison matches 2,536 rows across 151 cases; final comparison
+matches all 2,661 rows across 157 cases. Compare parse results, actual syntax
+kinds/images/four coordinates and complete messages/residual stack text with outer
+log whitespace excluded. Java returns 0; final Go observer 51284 passes. Probes
+and overlay remain external at the existing BodyDefinitionProbe.java and
+tlago-body-definition-manual_test.go paths under /mnt/oldrog/tmp; logs
+/mnt/oldrog/tmp/tlago-fairness-junction-lookahead-*. No permanent invented tests,
+original-method credit, weakened assertions/fixtures, race or optional sweeps.
+
+Initial existing original frontend/model gate 24493 passes 9.528s, complete SANY
+3660 passes 1.938s and compile 75441 passes. After final operand integration,
+original gate 96508 passes 9.791s, complete SANY 79987 passes 1.709s and compile
+47961 passes. All handles retired; diff check green. Current handoff/architecture
+updated. Main inventory totals unchanged. The earlier failing full-workspace
+snapshot remains qualified evidence; runtime LET sharing, remaining parser and
+canonical integration, trace reconciliation and documented TLC gaps keep the goal
+active and incomplete.
+
 2026-10-07 Actual expression-form lookahead integration:
 Previous completed commit: 3b9dd6e. Connect source calls 38–49. OpOrExpr retains
 source operator-reference preview 38 (budget 2), Lambda preview 39

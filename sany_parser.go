@@ -1572,7 +1572,7 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 	stack.NewStack()
 	previousStack := p.lookaheadOperatorStack
 	p.lookaheadOperatorStack = stack
-	p.expressionOperand(stack, stop)
+	p.expressionOperand(stack, stop, 54, 55)
 	// Source Expression calls epa before finalReduce, so a reduction failure
 	// does not retain this production in the residual stack.
 	p.endProduction()
@@ -1598,8 +1598,9 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 
 // expressionOperand is the prefix sequence followed by OpenExpression or
 // ExtendableExpr in the source grammar. The latter pushes onto this same stack.
-func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*SanyToken) bool) {
-	for p.startsExpressionPrefix() && p.aboveCurrentJunction() {
+// Initial expressions use calls 54/55; infix right operands use calls 62/63.
+func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*SanyToken) bool, prefixCall, openCall int) {
+	for p.scanLookahead(prefixCall, 2147483647) && p.aboveCurrentJunction() {
 		tok := p.advance()
 		op, _ := GetSanyOperator(tok.Image)
 		stack.Push(p.genericOperatorNode(tok, op), &op)
@@ -1607,7 +1608,7 @@ func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*Sany
 			p.throwOperatorStackFailure(err, tok.Begin)
 		}
 	}
-	if p.startsOpenExpression() && p.aboveCurrentJunction() {
+	if p.scanLookahead(openCall, 2147483647) && p.aboveCurrentJunction() {
 		stack.Push(p.OpenExpression(stop), nil)
 		return
 	}
@@ -1615,17 +1616,6 @@ func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*Sany
 		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected properly indented expression")
 	}
 	p.ExtendableExpr(stack, stop)
-}
-
-func (p *SanyParser) startsExpressionPrefix() bool {
-	switch p.peek().Kind {
-	case SanyTokenOp26, SanyTokenOp29, SanyTokenOp58, SanyTokenCasesep,
-		SanyTokenOp61, SanyTokenOp112, SanyTokenOp113, SanyTokenOp114,
-		SanyTokenOp115, SanyTokenOp116, SanyTokenOp77:
-		return true
-	default:
-		return false
-	}
 }
 
 func (p *SanyParser) aboveCurrentJunction() bool {
@@ -1637,7 +1627,7 @@ func (p *SanyParser) aboveCurrentJunction() bool {
 func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyToken) bool) {
 	p.beginProduction("ExtendableExpr")
 	defer p.endProduction()
-	if IsSanyJunctionBullet(p.peek().Kind) && stack.PreInEmptyTop() {
+	if p.scanLookahead(56, 2147483647) && stack.PreInEmptyTop() {
 		stack.Push(p.JunctionList(stop), nil)
 
 	} else {
@@ -1647,7 +1637,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 		case SanyTokenLbr, SanyTokenLbc, SanyTokenLab, SanyTokenLsb:
 			stack.Push(p.PrimitiveExpression(), nil)
 		default:
-			if !p.startsPrimitiveExp() {
+			if !p.scanLookahead(57, 1) {
 				p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected expression")
 			}
 			stack.Push(p.PrimitiveExp(), nil)
@@ -1695,7 +1685,7 @@ continuation:
 		if err := stack.ReduceStack(); err != nil {
 			p.throwOperatorStackFailure(err, tok.Begin)
 		}
-		p.expressionOperand(stack, stop)
+		p.expressionOperand(stack, stop, 62, 63)
 	} else if p.aboveCurrentJunction() && !stop(p.peek()) && p.check(SanyTokenColoncolon) {
 		colon := NewSanyTokenNode(p.advance())
 		label := stack.TopNode()
@@ -1711,17 +1701,6 @@ continuation:
 			p.throwReportedParseException(message, label.Range.Begin, "E1300", message)
 		}
 		stack.Push(NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, expr), nil)
-	}
-}
-
-// Source ExtendableExpr performs one-token PrimitiveExp lookahead before
-// entering that production, so an invalid start retains only ExtendableExpr.
-func (p *SanyParser) startsPrimitiveExp() bool {
-	switch p.peek().Kind {
-	case SanyTokenNumberLiteral, SanyTokenStringLiteral, SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
-		return true
-	default:
-		return p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) || p.check(SanyTokenOp76)
 	}
 }
 
@@ -1763,9 +1742,13 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	p.junctionListContext.startNewJunctionList(firstBullet.Begin.Column, firstBullet.Kind)
 	p.beginProduction("AND-OR Junction")
 	defer p.endProduction()
-	listKind, itemKind := "N_ConjList", "N_ConjItem"
-	if firstBullet.Kind == SanyTokenOR {
+	var listKind, itemKind string
+	if p.scanLookahead(52, 2147483647) {
 		listKind, itemKind = "N_DisjList", "N_DisjItem"
+	} else if p.scanLookahead(53, 2147483647) {
+		listKind, itemKind = "N_ConjList", "N_ConjItem"
+	} else {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenOR}, {SanyTokenAND}}, "expected junction bullet")
 	}
 	items := []*SanySyntaxNode{p.junctionItem(stop, itemKind)}
 	for p.junctionListContext.isNewBullet(p.peek().Begin.Column, p.peek().Kind) {
@@ -1875,15 +1858,6 @@ func sanyIsLabel(node *SanySyntaxNode) bool {
 	return true
 }
 
-func (p *SanyParser) startsOpenExpression() bool {
-	switch p.peek().Kind {
-	case SanyTokenIf, SanyTokenForall, SanyTokenExists, SanyTokenTExists, SanyTokenTForall, SanyTokenLet, SanyTokenCase, SanyTokenChoose:
-		return true
-	default:
-		return false
-	}
-}
-
 func (p *SanyParser) OpenExpression(stop func(*SanyToken) bool) *SanySyntaxNode {
 	switch p.peek().Kind {
 	case SanyTokenIf:
@@ -1926,7 +1900,7 @@ func (p *SanyParser) FairnessExpr() *SanySyntaxNode {
 		p.throwParseException([][]SanyTokenKind{{SanyTokenWF}, {SanyTokenSF}}, "expected WF_ or SF_")
 	}
 	expr := p.ReducedExpression()
-	if p.startsFairnessAction() {
+	if p.scanLookahead(51, 2) {
 		heirs[1], expr = expr, nil
 		heirs[2] = p.consumeParseToken(SanyTokenLbr, "expected ( in fairness expression")
 		heirs[3] = p.ExpressionUntil(func(tok *SanyToken) bool {
@@ -1960,17 +1934,6 @@ func (p *SanyParser) FairnessExpr() *SanySyntaxNode {
 		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_FairnessExpr"], heirs...)
-}
-
-func (p *SanyParser) startsFairnessAction() bool {
-	if !p.check(SanyTokenLbr) {
-		return false
-	}
-	if p.tokenAt(1).Kind != SanyTokenLambda && p.startsOpOrExprAt(1) {
-		return true
-	}
-	p.rememberFailedLookahead(2)
-	return false
 }
 
 func (p *SanyParser) reportFairnessParseError(token *SanySyntaxNode, suffix string) {

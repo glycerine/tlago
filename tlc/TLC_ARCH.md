@@ -10028,3 +10028,28 @@ cases, comparing parse results, syntax kinds/images/four coordinates and complet
 parse messages with outer log whitespace excluded. They do not establish every
 junction/operator-stack predicate context, expected-token alternative, allocation
 identity or evaluator graph-sharing requirement.
+
+
+## Fairness, junction and operand previews preserve caller identity
+
+FairnessExpr uses generated call 51 with budget 2 after ReducedExpression.
+JunctionList starts its indentation context before calls 52/53, selecting
+DisjList before ConjList with Integer.MAX_VALUE. Failed previews save their actual
+source calls instead of separate native input-span estimates.
+
+Initial Expression uses prefix/open-expression calls 54/55; ExtendableExpr's
+infix right operand uses distinct calls 62/63. All four use Integer.MAX_VALUE
+before the junction-column predicate. The shared Go operand helper receives
+these caller indices explicitly. Reusing 54/55 for right operands would preserve
+some branch results but lose Java's distinct saved-call/rescan identity.
+ExtendableExpr's initial operand uses junction call 56 (Integer.MAX_VALUE)
+before PreInEmptyTop, then primitive call 57 (budget 1) after the direct
+parenthesized-form alternatives.
+
+Connected source entry points are 1–57, 62, 63, 68 and 72. Remaining extension
+and selector decisions and full JavaCC bookkeeping still require integration.
+External observations match 2,661 rows across 157 cases, comparing actual parse
+results, syntax kinds/images/four coordinates and complete parse messages with
+outer log whitespace excluded. This bounded evidence does not prove every stack
+or indentation context, expected-token alternative, allocation identity or
+canonical/evaluator-sharing requirement.

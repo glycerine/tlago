@@ -743,9 +743,15 @@ source calls 38–49 with Java's budgets, predicate order and saved-call indices
 Set parsing previews its expression before the function-head predicate; bracket
 parsing preserves the keyword-field reclassification choice after record preview.
 Unused native previews and their manual error-span estimates are removed.
-Connected entry points are now 1–50, 68 and 72. All 1,828 external rows agree
-across 114 valid/malformed cases. Current original frontend/model checks pass in
-9.112 seconds, complete SANY in 1.864 seconds and compilation passes.
+Fairness uses source call 51 (budget 2). Junctions start their indentation context
+before source disjunction/conjunction calls 52/53 (Integer.MAX_VALUE). Initial
+expression prefixes and open expressions use calls 54/55; infix right operands
+retain distinct calls 62/63, all with Integer.MAX_VALUE. Initial extendable
+operands use junction preview 56 before the operator-stack predicate, then
+primitive preview 57 (budget 1) after direct parenthesized-form choices.
+Connected entry points are now 1–57, 62, 63, 68 and 72. All 2,661 external rows
+agree across 157 valid/malformed cases. Current original frontend/model checks
+pass in 9.791 seconds, complete SANY in 1.709 seconds and compilation passes.
 Remaining call-site integration, grammar expectations, general rescan integration
 and proof generation remain reconciliation work. These bounded observations do
 not establish every semantic-predicate context or full parser parity.
