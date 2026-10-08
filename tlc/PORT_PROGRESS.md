@@ -18568,3 +18568,35 @@ check runs under -race, passing both local and TCP rows in 1.077 seconds (20325
 terminal status 0). All handles are retired. No full suite or long model
 workload was run. Fresh-process mid-run recovery, checkpoint interruption and
 broader network failures remain pending; the distributed goal is incomplete.
+
+## October 8, 2026: permanent native DieHard and TSnapShot model checks
+
+Added TestNativeDistributedErrorTraceModels in the root package. Four rows use
+unchanged DieHard and TSnapShot fixtures with coordinator-owned or standalone
+TCP fingerprint storage. Each role runs in an owned process using the existing
+production CLI helper; all processes are joined on success and failure. The
+existing role-prefixed writer exposes progress under go test -v. A ten-minute
+watchdog is not a model cutoff; no exploration settings or fixtures are reduced.
+Native harness choices are one worker thread and MemFPSet for the remote role.
+
+Copied every active DieHardDistributedTLCTest.testSpec assertion: FINISHED,
+no GENERAL, BEHAVIOR, STATE_PRINT2 and the exact seven state strings in order.
+TSnapShotDistributedTLCTest.test retains FINISHED, STATS queue=0, no GENERAL
+and BEHAVIOR. No GENERAL is permitted in any role's output, retaining the scope
+of Java's shared recorder. All five fixture/config files are byte-identical to
+the pinned upstream; all seven expected string literals mechanically match.
+The original DistributedTLCTestCase is unconditionally disabled, so these are
+supplemental native model checks, not completion credit for its four missing
+harness methods. No production change was needed.
+
+The initial combined edit/test command never launched: automatic approval
+review timed out without an unsafe-action finding. Separated the file edit and
+test command, and the permitted retry launched normally. Initial four-row run
+passes in 48.853 seconds (11804 terminal status 0). After correcting diagnostic
+scope from coordinator-only to all roles, final normal verification passes in
+47.776 seconds (91057 terminal status 0): all four rows and all child roles exit
+normally. Both handles are retired. Logs are in /mnt/oldrog/tmp under
+ tlago-distributed-trace-models.log and tlago-distributed-trace-models-final.log.
+No race instrumentation or full workspace suite was run. Inventory, architecture
+and handoff are current. Broader failure/recovery and payload parity work remains
+pending; the distributed goal is incomplete.

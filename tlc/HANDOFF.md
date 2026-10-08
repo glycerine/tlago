@@ -73,6 +73,14 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Permanent native DieHard and TSnapShot process checks now retain the original
+active model assertions with coordinator-owned and standalone TCP fingerprint
+storage. DieHard requires its exact seven-state trace; TSnapShot requires an
+empty final queue. Both require FINISHED, BEHAVIOR and no GENERAL across all
+roles. Fixtures are byte-identical to Java; process progress is visible under
+`go test -v`. These supplemental checks do not complete the disabled upstream
+harness or add original-method completion credit.
+
 The TLC bridge now reads the checked canonical OpDef/ThmOrAssumpDef level,
 replacing the XML-exporter's estimate. Canonical construction for validated
 subexpression selectors now retains actual selected bodies, formal parameters,

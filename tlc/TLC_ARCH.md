@@ -11013,3 +11013,12 @@ pinned Java source, TLCServer.modelCheck calls recover before coordinator
 publication and waitForFPSetManager; DistributedFPSetTLCServer constructs an
 empty dynamic manager. Keep that startup limitation explicit rather than
 claiming this boundary test proves a remote recovery startup flow.
+
+Native error-trace model coverage uses real coordinator/worker processes and
+optional standalone fingerprint-server processes on owned loopback listeners.
+DieHard keeps all seven exact source state strings; TSnapShot keeps the source
+zero-queue, FINISHED and BEHAVIOR requirements. No GENERAL is allowed across
+any role, retaining the scope of Java's shared recorder. Native subprocesses
+need no JVM exit/security interception; all are joined on success or failure.
+The original DistributedTLCTestCase remains unconditionally disabled upstream,
+so these are supplemental model checks rather than completion of its harness.
