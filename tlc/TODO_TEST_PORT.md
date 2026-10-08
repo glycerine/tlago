@@ -927,6 +927,13 @@ verify host availability and failed Exit retains worker publication. Existing
 RPC and source manager checks remain green. These boundary cases add no
 original-method completion credit.
 
+Coordinator required-component checks now cover checkpoint, recovery and close
+access order. Missing owners retain preceding file writes, recovery reads and
+trace closure, without later resume, commits or metadata deletion. Failed queue
+suspension still bypasses later owners. Focused checkpoint/TCP checks pass.
+Upstream has no direct methods for missing coordinator components; these native
+checks add no original-method completion credit or changes to Missing entries.
+
 Returned fatal local endpoint errors now escape exactly like fatal panics;
 scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
 warning or availability mutation. Original Java manager translations and native

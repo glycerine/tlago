@@ -212,7 +212,7 @@ func (s *TLCServer) GetIrredPolyForFP() uint64 {
 
 func (s *TLCServer) Checkpoint() error {
 	if s == nil || s.StateQueue == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	if !s.StateQueue.SuspendAll() {
 		return nil
@@ -221,15 +221,17 @@ func (s *TLCServer) Checkpoint() error {
 	if err := s.StateQueue.BeginChkpt(); err != nil {
 		return err
 	}
-	if s.Trace != nil {
-		if err := s.Trace.BeginChkpt(); err != nil {
-			return err
-		}
+	if s.Trace == nil {
+		panic(NewNullPointerException())
 	}
-	if s.FPSetManager != nil {
-		if err := s.FPSetManager.Checkpoint(s.checkpointFileName()); err != nil {
-			return err
-		}
+	if err := s.Trace.BeginChkpt(); err != nil {
+		return err
+	}
+	if s.FPSetManager == nil {
+		panic(NewNullPointerException())
+	}
+	if err := s.FPSetManager.Checkpoint(s.checkpointFileName()); err != nil {
+		return err
 	}
 	s.StateQueue.ResumeAll()
 	if err := s.serverInternTable().beginChkptWithVarCount(s.Metadir, s.serverInternTable().varCount); err != nil {
@@ -238,58 +240,56 @@ func (s *TLCServer) Checkpoint() error {
 	if err := s.StateQueue.CommitChkpt(); err != nil {
 		return err
 	}
-	if s.Trace != nil {
-		if err := s.Trace.CommitChkpt(); err != nil {
-			return err
-		}
+	if s.Trace == nil {
+		panic(NewNullPointerException())
+	}
+	if err := s.Trace.CommitChkpt(); err != nil {
+		return err
 	}
 	if err := s.serverInternTable().CommitChkpt(s.Metadir); err != nil {
 		return err
 	}
-	if s.FPSetManager != nil {
-		if err := s.FPSetManager.CommitCheckpoint(); err != nil {
-			return err
-		}
+	if s.FPSetManager == nil {
+		panic(NewNullPointerException())
+	}
+	if err := s.FPSetManager.CommitCheckpoint(); err != nil {
+		return err
 	}
 	PrintMessage(ECTLCCheckpointEnd, "eted.")
 	return nil
 }
 
 func (s *TLCServer) Recover() error {
-	if s == nil {
-		return nil
+	if s == nil || s.Trace == nil {
+		panic(NewNullPointerException())
 	}
-	if s.Trace != nil {
-		if err := s.Trace.Recover(); err != nil {
-			return err
-		}
+	if err := s.Trace.Recover(); err != nil {
+		return err
 	}
-	if s.StateQueue != nil {
-		if err := s.StateQueue.Recover(); err != nil {
-			return err
-		}
+	if s.StateQueue == nil {
+		panic(NewNullPointerException())
 	}
-	if s.FPSetManager != nil {
-		if err := s.FPSetManager.Recover(s.checkpointFileName()); err != nil {
-			return err
-		}
+	if err := s.StateQueue.Recover(); err != nil {
+		return err
 	}
-	return nil
+	if s.FPSetManager == nil {
+		panic(NewNullPointerException())
+	}
+	return s.FPSetManager.Recover(s.checkpointFileName())
 }
 
 func (s *TLCServer) Close(cleanup bool) error {
-	if s == nil {
-		return nil
+	if s == nil || s.Trace == nil {
+		panic(NewNullPointerException())
 	}
-	if s.Trace != nil {
-		if err := s.Trace.Close(); err != nil {
-			return err
-		}
+	if err := s.Trace.Close(); err != nil {
+		return err
 	}
-	if s.FPSetManager != nil {
-		if err := s.FPSetManager.Close(cleanup); err != nil {
-			return err
-		}
+	if s.FPSetManager == nil {
+		panic(NewNullPointerException())
+	}
+	if err := s.FPSetManager.Close(cleanup); err != nil {
+		return err
 	}
 	if cleanup && !distributedVetoCleanup() {
 		deleteDirLikeJava(s.Metadir, true)

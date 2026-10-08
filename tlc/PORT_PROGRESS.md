@@ -19821,3 +19821,30 @@ not the broader distributed port. Upstream has no original worker-statistics
 formatting methods; supplemental checks add no method completion credit.
 No full suite, long workload or race instrumentation was selected. All handles
 are terminal.
+
+
+## October 8, 2026: required coordinator checkpoint and cleanup owners
+
+Compared TLCServer.java checkpoint/recover/close with the native coordinator.
+The Go methods silently skipped missing queue, trace or fingerprint ownership,
+allowing incomplete checkpoint/recovery or metadata deletion to report success.
+Removed those skips. Existing native null-failure traits now stop each operation
+at the actual source access, after any preceding mutations. No upfront bulk
+validation, rollback, transport machinery or trace-method changes were added.
+A false queue suspension still returns without accessing trace/fingerprints.
+
+Added distributed_server_ownership_test.go because upstream has no direct
+methods for these missing-component boundaries. It checks nil receivers and
+initial owners, queue/trace temporary checkpoint preservation before failure,
+absence of later commits/intern files/resume/completion output, recovery pointer
+and queue read ordering, trace closure before a missing fingerprint manager,
+and retained metadata after failed close. The initial check failed all four
+test groups (95455, status 1, 0.015 seconds). Focused ordering, commit-error,
+recovery-publication, manager catch and queue recovery checks now pass (92480,
+status 0, 0.053 seconds). Native TCP assigned-block checkpoint checks across
+local/remote/partitioned fingerprints, worker result/lifecycle, coordinator
+retry/loss and the original nine smart-proxy contexts pass (0.045 seconds).
+
+These supplemental checks add no original-method completion credit. The full
+suite was not rerun; no long workload or race instrumentation was selected.
+All test handles are terminal. Distributed completion remains unproven.

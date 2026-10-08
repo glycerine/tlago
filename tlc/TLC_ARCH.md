@@ -11422,3 +11422,21 @@ trace, preserving source behavior with mixed child checkpoint generations. Fresh
 CLI coordinator/worker processes complete the unchanged model. No atomicity
 protocol or production hook is added; isolated trace-commit interruption and
 broader failures remain pending.
+
+
+### Required distributed coordinator ownership
+
+TLCServer checkpoint/recover/close use required queue, trace and fingerprint
+manager ownership, matching source operation order. Null receiver/component
+access raises the existing native null-failure trait rather than silently
+skipping work. Guards occur at the actual access: checkpoint can retain the
+queue temporary file before a missing trace, or queue/trace temporary files
+before a missing fingerprint manager; it does not resume or begin intern-table
+checkpointing on those failures. A false suspend result bypasses later owners.
+Recovery publishes trace reads before accessing the queue and completes queue
+recovery before accessing the manager. Close closes the trace before accessing
+the manager and deletes metadata only after both close operations succeed.
+Earlier I/O failures still return unchanged and stop subsequent operations.
+No transport compatibility or JVM machinery is involved. Supplemental native
+ownership tests and focused actual TCP checkpoint checks pass, without new
+original-method completion credit or a broader completion claim.

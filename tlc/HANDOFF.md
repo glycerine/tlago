@@ -124,6 +124,14 @@ Focused recovery contracts are also verified:
 Unused RMI-specific error carriers are removed. Native Go failure traits drive
 retry/shutdown decisions; Java remote machinery is outside the port.
 
+Coordinator checkpoint, recovery and close require their source-owned queue,
+trace and fingerprint manager. Missing components fail at their actual access;
+earlier checkpoint files, recovery reads and trace closure remain observable,
+and later resume, commit or metadata deletion does not run. Failed suspension
+still returns without accessing later owners. Focused native ordering and TCP
+checkpoint checks pass; there are no direct original methods for these missing
+component cases, so they add no original-method completion credit.
+
 Fingerprint check tasks now catch I/O failures before executor completion
 wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for
 fingerprint distance, `false` for invariants). Unchecked task failures retain
