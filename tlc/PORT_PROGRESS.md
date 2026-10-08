@@ -19424,3 +19424,25 @@ Repository search finds no upstream SetOfLong test; supplemental checks add no
 original-method completion credit. All handles are terminal and retired. No
 full suite, long workload or race run. Constructor size handling remains a
 separate source audit item; distributed parity is still incomplete.
+
+## October 8, 2026: memory checkpoint file-open and size boundaries
+
+Completed the preceding SetOfLong constructor size audit: source allocates
+exactly the requested size. Removed zero/negative-to-one normalization; zero
+allocation grows on first insertion and negative allocation fails in the
+represented runtime category. Audited the memory fingerprint BeginChkptFile
+methods against source FileOutputStream constructors (BufferedDataOutputStream
+and FileUtil.newDFOS). Removed automatic MkdirAll from all three methods;
+missing parents must cause I/O failure rather than be silently created.
+
+Six supplemental local/native-TCP missing-parent cases and the constructor
+check expose the shortcuts before the fix (79689, status 1, 0.020 seconds).
+Corrected checks plus previous MemFPSet1 field/record recovery, runtime duplicate,
+corrupt checkpoint, manager catch/fatal and existing original dynamic manager
+methods pass (83179, status 0, 0.094 seconds). Existing native fingerprint
+checkpoint success/object lifecycle/scalar-batch and memory storage/commit
+checks also pass in 0.034 seconds. Empty MemFPSet2 storage needs no large table
+allocation to exercise file opening; the failure occurs before table access.
+No enabled original Java method covers these new boundary cases; no original
+method completion credit is added. All handles are terminal and retired. No
+full suite, long workload or race run. Broader distributed parity remains open.

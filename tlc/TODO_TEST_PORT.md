@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental memory checkpoint checks cover missing parents for all three
+implementations locally and through native TCP, plus zero/negative backing-set
+constructor sizes. These checks add no original Java method completion credit.
+
 Supplemental MemFPSet1 checks retain source backing-set recovery counts, growth,
 zero membership and field-by-field mutation, including complete/truncated files
 through native TCP. No upstream SetOfLong test exists; no original-method credit

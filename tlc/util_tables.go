@@ -710,8 +710,8 @@ type SetOfLong struct {
 }
 
 func NewSetOfLong(size int) *SetOfLong {
-	if size <= 0 {
-		size = 1
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
 	}
 	return &SetOfLong{
 		length: size,

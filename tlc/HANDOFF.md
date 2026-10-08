@@ -73,6 +73,11 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Memory fingerprint checkpoint creation now opens the requested file directly,
+without creating missing parents. Local and native TCP checks retain the source
+I/O failure and manager diagnostic. SetOfLong constructor allocation now keeps
+zero length and rejects negative length, completing the earlier size audit.
+
 MemFPSet1 backing-set recovery now assigns each successfully read header field
 immediately and reconstructs with ordinary Put/grow, matching Java. Source
 count quirks, zero membership during growth, empty arrays, negative allocation

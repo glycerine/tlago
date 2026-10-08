@@ -671,9 +671,6 @@ func (s *MemFPSet) BeginChkpt() error {
 
 func (s *MemFPSet) BeginChkptFile(fname string) error {
 	path := s.chkptName(fname, "tmp")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -1000,9 +997,6 @@ func (s *MemFPSet1) BeginChkpt() error {
 
 func (s *MemFPSet1) BeginChkptFile(fname string) error {
 	path := s.chkptName(fname, "tmp")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -1258,9 +1252,6 @@ func (s *MemFPSet2) BeginChkpt() error {
 
 func (s *MemFPSet2) BeginChkptFile(fname string) error {
 	path := s.chkptName(fname, "tmp")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
 	file, err := os.Create(path)
 	if err != nil {
 		return err

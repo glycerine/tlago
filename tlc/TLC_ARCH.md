@@ -11341,6 +11341,16 @@ again. The Go growth method now does the same. This intentionally retains Java
 quirks: two recovered records can yield count four, and growth can retain zero
 membership without counting zero. Tests check these observations, all 29 partial
 file lengths, negative allocation after header mutation and native TCP complete/
-partial file recovery with the manager's original I/O catch. Source constructor
-size handling remains a separate audit item; this does not claim SetOfLong or
-distributed parity complete. No upstream SetOfLong test exists.
+partial file recovery with the manager's original I/O catch. The subsequent constructor audit also restores exact zero allocation and
+negative-size failure. This does not claim distributed parity complete.
+No upstream SetOfLong test exists.
+
+Memory fingerprint BeginChkptFile methods now open the supplied path directly,
+matching FileOutputStream constructors used by source MemFPSet/MemFPSet1/
+MemFPSet2. The former MkdirAll shortcut suppressed missing-parent I/O failures.
+The native OS file error retains the I/O category through the native failure
+payload and manager catch; no Java file-runtime compatibility is introduced.
+Six local/TCP cases require failure without directory creation or storage
+mutation, including the original manager storage diagnostic. NewSetOfLong now
+allocates zero length exactly and rejects negative length rather than changing
+both to one; first insertion grows the zero-length set as in source.
