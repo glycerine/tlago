@@ -84,8 +84,8 @@ func (t *ConcurrentTLCTrace) GetLevel() int {
 }
 
 func (t *ConcurrentTLCTrace) PrintTrace(curState *TLCStateMut, succState *TLCStateMut) {
-	if curState == nil {
-		return
+	if t == nil || curState == nil {
+		panic(NewNullPointerException())
 	}
 	var prefix []*TLCStateInfo
 	if !curState.IsInitial() {

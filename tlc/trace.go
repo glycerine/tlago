@@ -339,8 +339,8 @@ func (t *TLCTrace) GetTrace(state *TLCStateMut) []*TLCStateInfo {
 }
 
 func (t *TLCTrace) PrintTrace(curState *TLCStateMut, succState *TLCStateMut) {
-	if curState == nil {
-		return
+	if t == nil || curState == nil {
+		panic(NewNullPointerException())
 	}
 	t.printTraceWithPrefix(curState, succState, t.GetTraceAt(curState.UID, false))
 }
@@ -349,6 +349,9 @@ func (t *TLCTrace) PrintTrace(curState *TLCStateMut, succState *TLCStateMut) {
 // trace is recovered from s1, including when s2 is incomplete and has no UID.
 // Worker postcondition reconstruction follows a separate source path.
 func (t *TLCTrace) printTraceWithPrefix(curState *TLCStateMut, succState *TLCStateMut, prefix []*TLCStateInfo) {
+	if t == nil || curState == nil {
+		panic(NewNullPointerException())
+	}
 	PrintError(ECTLCBehaviorUpToThisPoint)
 	if curState.IsInitial() {
 		if succState == nil {

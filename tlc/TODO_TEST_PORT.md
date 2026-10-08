@@ -843,6 +843,11 @@ Reset publishes length before old-cursor access; an explicit position opens a
 replacement even without an old reader. No original method directly covers these
 boundaries; completion counts remain unchanged.
 
+Nine native trace-print entry cases cover ordinary/concurrent/shared printers
+with missing current state, trace or both. Failures precede behavior-header and
+state output. No original method directly covers these boundaries; completion
+counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

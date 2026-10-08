@@ -232,6 +232,10 @@ the writer first, publishes its length, then requires the old reader only when
 retaining its cursor (`-1`). An explicit position can replace a missing reader.
 Missing disk owners cannot turn enumeration into in-memory completion. Native
 reset continues to release the replaced read-only handle.
+Ordinary, concurrent and shared trace printers require the trace and current
+state before behavior-header output. Missing owners cannot silently complete
+printing or emit a partial header; existing reconstruction/alias failures retain
+their later source output boundaries.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

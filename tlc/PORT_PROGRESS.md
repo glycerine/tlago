@@ -21735,3 +21735,26 @@ seconds). All processes are terminal. Source assertions and bounds are unchanged
 No full suite or race run was performed. Supplemental cases add no original-
 method credit; construction/context and remaining trace audits remain pending,
 and distributed parity is incomplete.
+
+### 2026-10-08: Trace printing rejects missing entry owners before output
+
+Compared ordinary, concurrent and shared printTrace entries with pinned source.
+Ordinary printing reads the current UID before reconstruction, concurrent printing
+reads the current initial-state flag before selecting its prefix, and the shared
+printer reads that flag before either branch's behavior header. Missing trace or
+current state now fails before output rather than returning success or emitting
+an early header. Existing reconstruction/alias errors retain their later output
+boundaries; valid printing and state metadata behavior are unchanged.
+
+No original method directly covers these missing owners. Nine supplemental cases
+cover all three entry paths with missing state, trace or both, requiring failure
+without behavior-header/state output. All nine initially failed (3d8382, status 1,
+0.012 seconds). The new shared-printer expectation was corrected against source
+before final verification; no existing original assertion was altered. Focused
+printing/reconstruction, disk/concurrent trace and original simulation trace
+checks pass (61edab, status 0, 1.765 seconds). Original error-trace construction
+and Github461 assertion/call-stack models plus all four DieHard/TSnapShot native
+process storage variants pass (3f139d, status 0, 49.490 seconds). All processes are
+terminal. No full suite or race run was performed. Supplemental cases add no
+original-method credit; construction/context and remaining source audits are
+pending, and distributed parity is incomplete.
