@@ -7967,6 +7967,15 @@ Core Java flow:
    `work.isInModel`, and, only if the model constraint passes, `work.isInActions`.
    Passing states inherit the predecessor UID and return in `NextStateResult`.
 
+Coordinator block selection requires its queue; null queue/selector access fails
+instead of returning a completion block. After the first recorded thread error,
+a nonnull predecessor requires trace printing even if the trace is missing.
+The printing attempt catches ordinary failures and reports that failure, while
+fatal errors escape. Queue FinishAll follows reporting and is required; failure
+there prevents completion notification and retains earlier model-error fields.
+Run’s separately registered finally still executes final cache read, keepalive
+cancellation and assigned-state clearing under their existing catch boundaries.
+
 Worker construction retains the supplied fingerprint manager without a fallback.
 A nil manager fails at the partition-count lookup after completed generation and
 the overall-state counter update. WorkerException retains the current predecessor,

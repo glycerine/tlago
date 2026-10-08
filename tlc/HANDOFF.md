@@ -323,6 +323,13 @@ creation. Missing queues and wakeup failures cannot create partial registrations
 focused local/TCP checks preserve failure categories and monitor release.
 Worker registration retains its required URI calls.
 
+Coordinator error handling requires the trace and queue at their source access
+points. Missing traces report the trace-printing failure; missing queues retain
+prior error state and skip completion notification. Block selection no longer
+treats a missing queue as completed work. Thread finally cleanup still runs.
+Focused handler/selector/finalizer and short TCP checks pass; supplemental checks
+add no original-method completion credit.
+
 Workers now retain the supplied fingerprint manager, including nil, rather than
 inventing an empty manager. Missing-manager failures occur after generation and
 its statistics update, preserving predecessor/error context and computing cleanup.

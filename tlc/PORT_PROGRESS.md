@@ -20502,3 +20502,33 @@ Final focused ownership/precedence run passes (10846, status 0). All handles
 are terminal. No full suite, long workload or race run was performed. These
 supplemental checks add no original-method credit; distributed parity remains
 incomplete.
+
+### 2026-10-08: Required coordinator error-handler owners
+
+Compared TLCServerThread.run’s outer Throwable catch with pinned source. Go
+silently skipped trace printing when Trace was missing and queue FinishAll when
+the queue was missing, replacing the trace failure’s diagnostic or notifying
+completion without the required queue operation. Source still attempts trace
+printing for a nonnull predecessor, catches ordinary printing failures and
+reports that failure; FinishAll follows and must succeed before notification.
+Restored these access/failure boundaries without changing the first-error winner
+or retained LastError/predecessor/call-stack fields.
+
+The related BlockSelector.getBlocks audit found nil queue/selector returned a
+nil completion block. Source accesses the queue and fails. Changed this to the
+source null failure, so a missing queue cannot invent normal work completion.
+Run’s separate finally still reads cache statistics, cancels keepalive and
+clears assigned states after the handler’s required queue access fails.
+
+No original method covers these missing-owner paths. New missing-trace and
+missing-queue checks initially fail (29089, status 1, 0.013 seconds): wrong
+GENERAL cause and suppressed queue failure. After fixing the handler, focused
+checks plus existing finalizer, worker-loss and original nine smart-proxy
+contexts pass (44418, status 0, 0.082 seconds). Added actual Run coverage for a
+missing queue, retaining error state, no completion notification, finally order
+and no worker-loss decrement. Final expanded handler/selector/finalizer/loss and
+original proxy run passes (59341, status 0, 0.071 seconds). Existing native TCP
+worker retry/loss, failure context, timer failures and assigned-block checkpoint
+checks pass (status 0, 0.043 seconds). All handles are terminal. No full suite,
+long workload or race run was performed. Supplemental checks add no original-
+method completion credit; distributed parity remains incomplete.

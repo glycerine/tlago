@@ -703,6 +703,12 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental coordinator handler checks preserve missing-trace diagnostics,
+required queue shutdown, skipped notification after queue failure and thread
+finally cleanup. Block selection fails for a missing queue. Existing selector,
+finalizer, worker-loss and short native TCP checks pass; no original-method
+completion credit is added.
+
 Supplemental missing-manager checks preserve constructor ownership, generation/
 statistics/failure ordering, predecessor context and computing cleanup locally
 and through native TCP. Empty-manager behavior remains distinct. No original

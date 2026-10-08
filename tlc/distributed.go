@@ -1125,7 +1125,7 @@ func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {
 	}
 	if t.Server.SetErrState(state1, nil, true, ECGeneral) {
 		t.Server.LastError = err
-		if state1 != nil && t.Server.Trace != nil {
+		if state1 != nil {
 			func() {
 				defer func() {
 					if recovered := recover(); recovered != nil {
@@ -1137,14 +1137,18 @@ func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {
 						PrintError(ECGeneral, generalErrorParams("", failure)...)
 					}
 				}()
+				if t.Server.Trace == nil {
+					panic(NewNullPointerException())
+				}
 				t.Server.Trace.PrintTrace(state1, state2)
 			}()
 		} else {
 			PrintError(ECGeneral, generalErrorParams("", err)...)
 		}
-		if stateQueue != nil {
-			stateQueue.FinishAll()
+		if stateQueue == nil {
+			panic(NewNullPointerException())
 		}
+		stateQueue.FinishAll()
 		t.Server.monitor.Lock()
 		t.Server.notifyCompletionLocked()
 		t.Server.monitor.Unlock()
@@ -1402,7 +1406,7 @@ func distributedIntProperty(name string) (int, bool) {
 
 func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWorkerSmartProxy) []*TLCStateMut {
 	if b == nil || stateQueue == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	if b.Mode == BlockSelectorStatic {
 		return stateQueue.SDequeueMany(b.StaticBlockSize)
