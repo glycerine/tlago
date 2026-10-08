@@ -57,8 +57,9 @@ library/error paths. Dedicated SANY and root SANY tests pass. All 227 mirrored
 fixtures and the current embedded XSD match pinned upstream bytes. XML
 validation requires `xmllint` (libxml2) on PATH; it cannot silently skip when
 required. Original ignored/empty methods remain explicitly identified, and the
-main TLC inventory totals do not change. Full normal verification and final
-method inventory audit are underway; this does not claim full SANY parity.
+main TLC inventory totals do not change. Full normal verification passes with zero failures. Final inventory reconciles
+all 96 primary methods: 95 pass (including one empty source body), one upstream
+ignore; this does not claim full SANY parity beyond the source assertions.
 
 ## Topic totals for the main suite
 

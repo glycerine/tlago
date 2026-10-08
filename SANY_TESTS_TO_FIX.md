@@ -8,7 +8,7 @@ This audit covers every `@Test` method under upstream `tlatools/org.lamport.tlat
 
 Java baseline: `../tlaplus`, commit `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`. Go baseline: commit `6c9172247e3763c658e82ff14df10dcda160c8af` plus the working-tree test sources inspected during this audit. The main development thread was active; unrelated TLC edits were left untouched.
 
-All 96 Java methods have Go counterparts. **59 methods have a recorded assertion, setup, helper or exercised-entry-point divergence**, grouped into 25 findings. That includes smaller omissions and overly strict translations as well as serious false-positive paths; it does not mean 59 production bugs. **35 methods have no identified divergence in their reviewed test contract**, one preserves an upstream ignore, and one preserves an upstream empty test body. Finding counts overlap: one method can need several repairs.
+All 96 Java methods have Go counterparts. **59 methods had a recorded assertion, setup, helper or exercised-entry-point divergence at the baseline**, grouped into 25 findings. That includes smaller omissions and overly strict translations as well as serious false-positive paths; it does not mean 59 production bugs. **35 methods have no identified divergence in their reviewed test contract**, one preserves an upstream ignore, and one preserves an upstream empty test body. Finding counts overlap: one method can need several repairs.
 
 The concrete defects below record the original source-review baseline. That review made no production fixes or test changes and ran no workload; subsequent authorized repairs and execution receipts are recorded in Repair status. Where a restored assertion would expose missing production behavior, the implementation requirement is stated explicitly. “No identified divergence” is a source-review result, not certification that the SANY implementation is bug-free or that every helper has been formally proved equivalent.
 
@@ -16,7 +16,7 @@ The concrete defects below record the original source-review baseline. That revi
 
 All listed repairs are implemented under the user’s instruction to fix this
 audit and the production failures found by the restored tests. Final broader
-verification is still running. The finding text
+verification has passed with zero failures. The finding text
 below records the original audit baseline; this status and the method ledger
 track the current repairs.
 
@@ -52,12 +52,18 @@ track the current repairs.
   and namespace/QName handling are restored. The seven error methods exercise
   both the typed library and exact CLI categories; help, full string parsing,
   sorted error-corpus selection and decimal options match source.
-- **Final SANY verification:** dedicated SANY passes in 2.669 seconds; root
-  SANY/parser/semantic/logger/driver/XML tests pass in 2.606 seconds, including
-  all primary root translations. All 227 mirrored source fixtures remain byte
-  identical; the auxiliary schema matches pinned upstream byte for byte.
-  All 59 divergent method contracts are repaired. The other 35 reviewed
-  methods, original ignore and empty source body retain their previous status.
+- **Final verification: complete.** Full normal `go test ./... -count=1
+  -timeout=60m` returns status 0 with zero failure events: root 1,552.199 seconds,
+  TLC 771.039 seconds, dedicated SANY 2.419 seconds; the command package compiles
+  and has no tests. This run uses the unrestricted environment for source tests
+  that inspect local network interfaces, with no race instrumentation or reduced
+  bounds. Its primary SANY receipts cover all 96 methods: 95 pass, including the
+  empty upstream body, and one preserves the upstream ignore. All 94 functional
+  method contracts are verified. The 59 divergent contracts are repaired; the
+  other 35 reviewed contracts retain their assertions and complete parameter sets.
+  All 227 mirrored fixtures and the auxiliary embedded schema match pinned Java
+  bytes. No pending finding, missing mapping or unverified primary method remains.
+  Receipt: `.codex-gotmp/full-final-tests.jsonl` (handle 53216 retired, status 0).
   This completes the listed audit repairs, not every possible SANY behavior or
   unrestricted proof of full implementation parity.
 

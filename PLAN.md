@@ -23,8 +23,8 @@ Current user priority (2026-10-08): repair the defects documented in
 `SANY_TESTS_TO_FIX.md`, run the faithfully restored original SANY tests and fix
 production failures. This authorizes the XML schema/driver/test repairs in that
 audit; it does not resume the broad ApalacheIR corpus sweeps. All 25 repairs are
-implemented and the restored SANY tests pass; full normal verification and the
-final inventory audit are underway. Read `tlc/HANDOFF.md` first, then
+complete, all 96 primary methods are reconciled and full normal verification
+passes with zero failures. Read `tlc/HANDOFF.md` first, then
 `tlc/PORT_PROGRESS.md`, before resuming work. Resume core TLC parity afterward.
 
 Current TLC method:

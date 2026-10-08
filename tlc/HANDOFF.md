@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 8, 2026. Full-workspace verification baseline: `44aaf11`.
+Updated: October 8, 2026. Full-workspace verification baseline: `23f046e` (subsequent changes are documentation only).
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -22,12 +22,12 @@ The Java reference checkout is `../tlaplus`, pinned to
 `github.com/glycerine/tlago`; most TLC implementation lives in package `tlc`,
 with parser integration and model tests in the repository's root package.
 
-Current priority: repair every test-contract defect in
-[SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md), then run the restored original
-SANY suites and fix their production failures. This includes XML entry points,
-schema validation and the exact diagnostic/logger contracts. Resume remaining
-faithful Java TLC parity afterward on `master`. The new reusable
-rpc25519/Tube distributed service is postponed until the remaining port is
+The SANY audit goal is complete: every defect in
+[SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md) is repaired, the original methods
+are verified against the Go port, and full normal workspace verification passes.
+Resume remaining faithful Java TLC parity afterward on `master`, including the
+canonical adapter/context integration gaps listed below. The new reusable
+rpc25519/Tube distributed service remains postponed until the remaining port is
 complete. Do not resume its unfinished code or its service BDD work here.
 
 The original checkpoint-on-violation and time-bound model tests are now complete.
@@ -50,21 +50,21 @@ packaged properties, networking primitives, OpenJDK notices, and `x/text`.
 The current user request authorizes the SANY XML repairs listed in the audit.
 ApalacheIR corpus sweeps remain deferred.
 
-SANY audit progress: all F01–F25 test-contract repairs are implemented. The
-restored dedicated SANY suite and root SANY/parser/semantic/logger/driver/XML
-methods pass. All 227 mirrored fixtures remain byte-identical to Java; the
-embedded auxiliary schema is an exact pinned upstream copy. XML tests exercise
-typed library errors, exact command exit codes, complete shared help output,
-original arguments and independent schema validation. XML export now requires
-`xmllint` (libxml2) on PATH unless `-o` is selected; validation uses no network.
-This completes the listed test-contract repairs, not general SANY implementation
-parity beyond their original assertions. Full `./...` normal verification with
-`-timeout=60m` is running under handle 53216; consult PORT_PROGRESS.md for the configuration correction and final
-receipts. TLC has passed in 771.039 seconds and SANY in 2.419 seconds;
-root model tests are still running. Local-interface tests require the
-unrestricted environment.
-The audit remains the authoritative method ledger and completion gate. Do not
-claim the active goal complete before the final run/inventory audit is done.
+SANY audit progress: all F01–F25 repairs are complete. Every original primary
+method has a verified current mapping and full-run receipt: 95 pass, including
+one empty source body, and one preserves the upstream ignore. All 59 repaired
+and 35 unchanged reviewed functional contracts pass with original parameter
+matrices. All 227 mirrored fixtures and the embedded schema remain byte-identical
+to pinned Java. XML export requires `xmllint` (libxml2) on PATH unless `-o` is
+selected; validation uses no network. This completes the listed source test
+contracts, not general SANY parity beyond their original assertions.
+
+Full normal `go test ./... -count=1 -timeout=60m` has passed with status 0 and
+zero failures: root 1,552.199 seconds, TLC 771.039 seconds, SANY 2.419 seconds.
+Handle 53216 is retired. All original workload bounds are retained, with no
+race instrumentation. Local-interface tests require the unrestricted environment.
+The run verifies implementation and test sources at `23f046e`; later commits
+only refine documentation. Detailed receipts are in PORT_PROGRESS.md.
 
 ## Current verified state
 
@@ -84,12 +84,13 @@ with the native AST's export list. That comparison is absent in Java and wrongly
 rejects modules with recursive LOCAL definitions: Java retains the recursive
 declaration's locality flag. Actual child/body completeness checks remain.
 
-Full normal workspace verification of `4cd17ea` has finished. Session `12025`
+Historical full normal workspace verification of `4cd17ea` has finished. Session `12025`
 returned status 1 and is retired. TLC passed in 775.694 seconds and SANY passed
 in 1.525 seconds. Root failed in 1,561.759 seconds on three native XML fixtures:
 the two missing-Naturals cases documented below, and an explicit PROOF location
-fixture with an empty BY. Java reports the same two empty-BY errors. No fixture
-change was applied and no optional XML/Apalache sweep was enabled. Log:
+fixture with an empty BY. Java reports the same two empty-BY errors. That older run applied no fixture
+change and enabled no optional XML/Apalache sweep. The current audit fixes all
+three invalid native fixtures, and current full verification passes. Log:
 `/mnt/oldrog/tmp/tlago-canonical-driver-workspace.json`. This earlier snapshot
 does not verify the subsequent selector and traversal changes.
 

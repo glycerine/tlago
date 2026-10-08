@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-08 SANY audit goal achieved; full normal workspace green:
+Full ./... run 53216 is terminal with status 0 and no failure events. Root
+passes in 1,552.199 seconds, TLC in 771.039 seconds, dedicated SANY in 2.419
+seconds; command package compiles and has no tests. Exact command: offline
+caches, go test ./... -json -count=1 -timeout=60m, unrestricted environment
+for original local-network-interface assertions, no race and no shortened
+bounds. JSON receipt: .codex-gotmp/full-final-tests.jsonl. This binary includes
+all implementation/test changes through 23f046e; subsequent 207ea35/91e7490
+changes only documentation, verified by git diff path inspection.
+
+Final completion audit re-enumerates pinned Java 34 classes/96 methods and
+resolves all 96 current primary Go functions uniquely. Current full-run method
+receipts: 95 pass (including the source empty body), one original ignore, zero
+pending/missing/failing methods. All 59 divergent and 35 unchanged reviewed
+functional contracts are verified with original setup/parameters/assertions.
+All F01–F25 repaired; no pending Fix ledger entries. All 227 mirrored source
+fixtures still match pinned Java byte for byte, and embedded current sany.xsd
+is identical. Complete source schema validation, typed XML errors, original
+CLI/library entry points and detailed help are retained. No invented test
+method, weakened source assertion, fixture rewrite or optional corpus-sweep
+credit. The three supplementary native XML fixtures and standalone monolith
+setup fixes are separately identified in prior entries.
+
+Update PLAN/HANDOFF/TODO_TEST_PORT/audit to the verified completed status. All
+live test handles from this goal are retired. This completes the SANY audit
+goal and its required production fixes, not general SANY/TLC implementation
+parity beyond these source contracts. Resume the existing remaining TLC parity
+work afterward; new rpc25519/Tube distributed service remains deferred.
+
 2026-10-08 Completion audit while full normal verification continues:
 Re-enumerate the pinned Java source checkout: exact revision
 8f4bc8b73ad1202774a6bf70143436f8ba50aab0, 34 classes and 96 @Test methods.
