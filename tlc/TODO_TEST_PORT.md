@@ -1385,10 +1385,13 @@ original final model counts and exact one-time loss/cache-warning behavior.
 This adds native failure coverage, not original disabled-harness completion
 credit. A short native fingerprint-server process check now covers abrupt kill,
 manager reassignment, insertion on surviving storage and fresh-process recovery
-of committed MemFPSet membership. It distinguishes committed fingerprints from
-a later volatile insertion and preserves the dead client's shutdown cause and
-existing manager registrations. This has no direct original method counterpart
-and adds no credit. Full-model fingerprint-server failure/recovery and network
+of committed MemFPSet, LSBDiskFPSet and MSBDiskFPSet membership. It distinguishes
+committed fingerprints from a later insertion in an uncommitted snapshot. Disk
+rows also verify flushed live membership, byte-identical committed checkpoints
+and no promotion of pending snapshots after process loss. It preserves the dead
+client's shutdown cause and existing manager registrations. No original method
+directly covers this native process boundary, so it adds no credit.
+Full-model fingerprint-server failure/recovery and network
 partitions remain open.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the

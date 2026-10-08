@@ -34,12 +34,14 @@ reply is lost: storage remains mutated, and the client does not replay or redial
 Standalone fingerprint fixtures now supply distributed coordinator registration
 state, preserving the base coordinator's rejection behavior.
 
-A short native process check now kills a fingerprint server after a committed
-MemFPSet checkpoint and a later volatile insertion. The manager reassigns its
-partition without copying lost membership, and a fresh server recovers only the
-committed fingerprints. The dead client remains closed; restart does not replace
-manager registrations. This supplements the original manager tests. Full-model
-fingerprint-server crash/recovery and network partition coverage remain pending.
+A short native process check kills MemFPSet, LSBDiskFPSet and MSBDiskFPSet hosts
+after a committed checkpoint and a later insertion/pending checkpoint. Disk rows
+verify the later membership was flushed to the live file before process loss.
+The committed checkpoint remains byte-identical and the pending one is not
+promoted. The manager reassigns without copying lost membership; a fresh server
+recovers only committed fingerprints. The dead client remains closed and restart
+does not replace registrations. This supplements the original manager tests.
+Full-model fingerprint-server crash/recovery and network partitions remain pending.
 
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production

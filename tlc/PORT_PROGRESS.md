@@ -22168,3 +22168,29 @@ assertions or workload bounds changed; no full suite or race run was performed.
 No enabled original method covers this native process boundary, so this is
 supplemental coverage with no original-method credit. Full-model fingerprint
 server failures, disk-store process failures and network partitions remain open.
+
+### 2026-10-08: Disk-backed fingerprint process crash matrix
+
+Extended native independent-host loss/recovery to LSBDiskFPSet and MSBDiskFPSet,
+retaining the MemFPSet row. Each row commits two fingerprints, adds a third and
+begins a separate pending snapshot before killing and joining the host. Disk
+rows verify pending begin flushed all three fingerprints into the live file.
+Process loss leaves the committed checkpoint byte-identical and cannot promote
+the pending snapshot. Manager failover retains source registration/membership
+semantics. Fresh hosts start empty and recover only the two committed members;
+the dead client remains closed and manager registrations remain on the survivor.
+Reviewed disk begin/commit/recover against pinned source. No production change
+was needed for these cases. Test storage memory bounds are explicit; unchanged
+original recovery tests keep their source workload bounds.
+
+All three process rows pass (fp-disk-process-crash-focused.log, terminal process
+d1302f status 0; package time 0.112 seconds). Original LSB/MSB testFPSetRecovery
+methods pass with the original exclusive 99,999 limit (99,998 fingerprints each)
+(fp-disk-process-original-recovery.log,
+terminal process 27aa85 status 0; package time 14.166 seconds). Original dynamic
+manager/nested-partition and short native fingerprint RPC checks also pass
+(fp-disk-process-rpc.log, terminal process 3e650c status 0; package time 0.228
+seconds). All logs were captured and inspected; processes are terminal. No full
+suite or race run was performed. These supplemental rows add no original-method
+credit. Full-model fingerprint server failure/recovery, other disk failure phases
+and network partitions remain open.

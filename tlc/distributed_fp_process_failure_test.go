@@ -10,6 +10,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -20,7 +21,19 @@ import (
 // closing a hosted connection, killing this child also destroys its live store.
 func TestFingerprintRPCProcessCrashRecovery(t *testing.T) {
 	if directory := os.Getenv("TLAGO_FP_CRASH_DIRECTORY"); directory != "" {
-		storage := NewMemFPSet()
+		var storage FPSet
+		config := NewFPSetConfiguration()
+		config.GetMemoryInBytesOverride = func() int64 { return 8192 }
+		switch os.Getenv("TLAGO_FP_CRASH_STORAGE") {
+		case "mem":
+			storage = NewMemFPSet()
+		case "lsb":
+			storage = NewLSBDiskFPSet(config)
+		case "msb":
+			storage = NewMSBDiskFPSet(config)
+		default:
+			t.Fatal("unknown fingerprint process storage")
+		}
 		storage.Init(1, directory, "primary")
 		host := NewDistributedRPCServer()
 		if err := host.RegisterFingerprint("primary", NewLocalFingerprintEndpoint(storage)); err != nil {
@@ -36,13 +49,20 @@ func TestFingerprintRPCProcessCrashRecovery(t *testing.T) {
 		}
 		return
 	}
+	for _, storage := range []string{"mem", "lsb", "msb"} {
+		t.Run(storage, func(t *testing.T) { checkFingerprintProcessCrashRecovery(t, storage) })
+	}
+}
+
+func checkFingerprintProcessCrashRecovery(t *testing.T, storage string) {
+	t.Helper()
 	captureFailoverToolIO(t, ToolIOTool)
 	directory := t.TempDir()
 	start := func() (*NetworkFingerprintEndpoint, func()) {
 		t.Helper()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestFingerprintRPCProcessCrashRecovery$")
-		command.Env = append(os.Environ(), "TLAGO_FP_CRASH_DIRECTORY="+directory)
+		command.Env = append(os.Environ(), "TLAGO_FP_CRASH_DIRECTORY="+directory, "TLAGO_FP_CRASH_STORAGE="+storage)
 		var stderr bytes.Buffer
 		command.Stderr = &stderr
 		stdout, err := command.StdoutPipe()
@@ -107,8 +127,28 @@ func TestFingerprintRPCProcessCrashRecovery(t *testing.T) {
 	if err := primary.CommitChkptFile("job"); err != nil {
 		t.Fatal(err)
 	}
+	checkpoint := filepath.Join(directory, "job.fp.chkpt")
+	committed, err := os.ReadFile(checkpoint)
+	if err != nil || len(committed) != 16 {
+		t.Fatalf("committed fingerprint snapshot: %d bytes/%v", len(committed), err)
+	}
 	if known, err := primary.Put(6); err != nil || known {
 		t.Fatalf("post-checkpoint insertion: %v/%v", known, err)
+	}
+	// Disk begin flushes the live table as well as writing a pending snapshot.
+	// A crash must not promote it or include these later bytes in job recovery.
+	if err := primary.BeginChkptFile("pending"); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := os.ReadFile(filepath.Join(directory, "pending.fp.tmp"))
+	if err != nil || len(pending) != 24 {
+		t.Fatalf("uncommitted fingerprint snapshot: %d bytes/%v", len(pending), err)
+	}
+	if storage != "mem" {
+		live, err := os.ReadFile(filepath.Join(directory, "primary.fp"))
+		if err != nil || !bytes.Equal(live, pending) {
+			t.Fatalf("disk begin did not flush later membership before crash: %d bytes/%v", len(live), err)
+		}
 	}
 	survivorStore := NewMemFPSet()
 	_, survivor := startFingerprintRPC(t, NewLocalFingerprintEndpoint(survivorStore))
@@ -116,6 +156,12 @@ func TestFingerprintRPCProcessCrashRecovery(t *testing.T) {
 	manager.fpSets[0].hostname = "killed-primary"
 	t.Log("killing fingerprint process and checking manager failover")
 	kill()
+	if snapshot, err := os.ReadFile(checkpoint); err != nil || !bytes.Equal(snapshot, committed) {
+		t.Fatalf("crash changed committed snapshot: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(directory, "pending.fp.chkpt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("crash promoted pending snapshot: %v", err)
+	}
 	partitions := []*LongVec{NewLongVecFrom([]int64{2, 4, 6}), NewLongVec()}
 	answers := manager.ContainsBlock(partitions)
 	requireJavaBitCounts(t, answers, 3, 0)

@@ -12023,10 +12023,14 @@ ordinary incomplete-successor WorkerException without a cause or call-stack flag
 Native TCP preserves both outcomes without adopting Java transport machinery.
 
 Fingerprint connection loss and process loss have separate coverage. The native
-process check terminates an independent fingerprint host after committing a
-MemFPSet checkpoint and adding a volatile fingerprint. Manager failover preserves
+process check terminates independent MemFPSet, LSBDiskFPSet and MSBDiskFPSet hosts
+after committing a checkpoint, adding a fingerprint and beginning another
+snapshot. Disk rows verify the later membership was flushed to the live file;
+the committed checkpoint remains byte-identical and pending snapshots are not
+promoted. Manager failover preserves
 the source partition reassignment and new-membership answers on surviving storage;
 it does not copy the dead store. A fresh host starts empty and recovers committed
 membership through its endpoint. Recovery neither reconnects the dead client nor
-replaces the manager's registrations. Full-model server crash/recovery, disk-store
-process failures and network partitions remain separate pending requirements.
+replaces the manager's registrations. Full-model server crash/recovery and network
+partitions remain separate pending requirements. This short storage matrix does
+not establish all disk-store process failure phases or full-model recovery.
