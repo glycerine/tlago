@@ -10502,3 +10502,26 @@ ReInit across all six starting states, valid/invalid target states and round
 values around the reset boundary, including full state arrays. All 5,823 parser
 tree/error rows remain exact. General byte-reader/error constructors still need
 source reconciliation. These bounded receipts do not establish full parser parity.
+
+
+## SANY byte-source UTF-8 decoding
+
+ParseUnit constructs TLAplusParser through its SanyOutput/InputStream overload,
+which explicitly selects UTF-8. Direct conversion of file bytes to a Go string
+previously let rune decoding replace each malformed byte separately, whereas
+Java groups some malformed prefixes into one replacement. This shifted token
+end columns, string values and following locations.
+
+The loader and debugger dependency loader now call `tlc.DecodeUTF8Replacing`,
+which exposes the existing Java-compatible replacement codec. Decoded strings
+then feed the UTF-16 reader and generated scanner. The explicit UTF-8 source
+path is independent of the configured default charset. Text-based parsing APIs
+continue to accept already-decoded strings.
+
+A bounded matrix of 6,166 byte inputs covers all single-byte values, selected
+leading bytes with every second byte, truncated/surrogate/overlong/range cases,
+BOM and a supplementary character in strings and expression positions. All
+49,430 actual Java byte-stream token/decoded-text rows and 6,166 complete parser
+outputs agree; seven direct file-loader cases pass. This does not establish
+arbitrary stream chunking, I/O failures or every encoding constructor. No new
+permanent tests or original test-method credit.

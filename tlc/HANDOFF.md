@@ -376,7 +376,11 @@ state rows also agree on counters, raw image buffers and state-array hashes.
 The stream mechanics separately match 11,452 bounded observations, including
 buffer growth/reuse, backup, reinitialization, signed position wraparound and
 line adjustment. These bounded comparisons do not establish every constructor,
-byte decoder, arbitrary reader/exception boundary or concurrent interleaving.
+arbitrary reader/exception boundary or concurrent interleaving. Production
+module and debugger-dependency loading now decode UTF-8 with Java replacement
+lengths, preserving columns for malformed prefixes. All 49,430 byte-decoding/token
+rows and 6,166 parser-output rows agree with Java; seven direct file-loader cases
+pass. General encoding constructors and I/O-failure paths remain audit work.
 Another 300 ReInit/round-reset rows agree, including complete state arrays and
 invalid lexical-state handling. Continue the remaining parser and canonical
 semantic-graph audit. Preserve source error

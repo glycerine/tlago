@@ -1,5 +1,38 @@
 # TLC Port Progress
 
+2026-10-07 Preserve Java UTF-8 decoding at SANY file boundaries:
+Previous completed commit: 76bce85. Audit the remaining runtime LET context gap;
+canonical context integration still requires actual symbol identity and complete
+module-instance bindings, so no reconstructed-context shortcut is introduced.
+Continue the concrete scanner input-boundary audit: ParseUnit uses the
+SanyOutput/InputStream constructor, which explicitly selects UTF-8. Go's direct
+string(data) conversion followed by rune decoding replaces malformed prefixes
+per byte, shifting source token columns and literal values.
+
+External ByteScannerProbe constructs the actual Java byte-stream character reader.
+Build 6,166 inputs from every single byte, eleven leading bytes with all 256
+second bytes, and eleven explicit malformed/truncated/BOM/supplementary cases,
+each in quoted and expression positions. Initial comparison has 1,068 differing
+observations among 49,430 rows. Route module loading and debugger dependency
+loading through the existing Java-compatible UTF-8 replacement codec, exposed
+as tlc.DecodeUTF8Replacing. Final full row comparison is exact. ByteParserProbe
+uses the original byte-array/SanyOutput parser constructor: all 6,166 status and
+complete output rows agree. Seven external direct file-loader checks pass and
+retain the decoded source. No fixture/assertion weakening, invented permanent
+tests or additional original-method credit. External inputs, probes, overlays
+and logs use tlago-byte-scanner and tlago-byte-parser under /mnt/oldrog/tmp.
+
+Complete SANY passes in 2.267 seconds. Focused root originals/parser/selector/
+scoped/debugger/model gate 1413 passes normally in 10.631 seconds, including the
+original Debug02Debugger and MonolithSpec methods. Byte scanner observer 45986,
+Java parser 85579 and Go parser/loader 56297 are terminal and retired; initial
+observer 17786 also retired. All-package compilation 14215 passes and is retired;
+git diff check passes.
+No race or unrelated long workload rerun. Canonical/evaluator sharing and general
+reader/encoding-constructor exception boundaries remain incomplete. Main TLC
+inventory and known native XML failures remain unchanged; no full green claim.
+
+
 2026-10-07 Integrate the actual generated token scanner:
 Previous completed commit: 055b4d5. Replace candidate-based token selection with
 58 mechanically translated generated DFA/NFA and character-class methods in

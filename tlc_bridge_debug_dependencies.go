@@ -37,7 +37,7 @@ func (b *tlcBridge) resolveDebuggerDependencies(dependencies []string) (bool, er
 				failed = true // Java adds an IO error to the shared semantic log.
 				continue
 			}
-			dependency, transitive, diagnostics := parseSanyModuleSourceWithDependencies(name+".tla", string(source))
+			dependency, transitive, diagnostics := parseSanyModuleSourceWithDependencies(name+".tla", tlc.DecodeUTF8Replacing(source))
 			if diagnostics.HasErrors() || dependency == nil {
 				return fmt.Errorf("Syntax error while parsing breakpoint expression's dependency \"%s\"", name)
 			}

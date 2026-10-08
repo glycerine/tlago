@@ -243,6 +243,14 @@ func javaCharsetDecode(data []byte, charset string, replace bool) (string, error
 	return javaStringFromUTF16(units), nil
 }
 
+// DecodeUTF8Replacing applies the UTF-8 reader's malformed-input replacement
+// rules. SANY's InputStream constructor uses this codec explicitly, independently
+// of the default charset used by other Java text I/O.
+func DecodeUTF8Replacing(data []byte) string {
+	text, _ := javaCharsetDecodeUTF8(data, true)
+	return text
+}
+
 func javaCharsetDecodeUTF8(data []byte, replace bool) (string, error) {
 	var result strings.Builder
 	for i := 0; i < len(data); {

@@ -299,7 +299,7 @@ func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string
 	l.moduleFiles = append(l.moduleFiles, logicalFilename)
 	l.reportParsing(path, provenance...)
 	extracted := l.monolithTempDir != "" && filepath.Dir(path) == l.monolithTempDir
-	mod, _, diags := parseSanyModuleSourceWithDependencies(path, string(data), extracted)
+	mod, _, diags := parseSanyModuleSourceWithDependencies(path, tlc.DecodeUTF8Replacing(data), extracted)
 	parserFailure := false
 	for _, diagnostic := range diags {
 		if diagnostic.SANYParseMessage == "" {
