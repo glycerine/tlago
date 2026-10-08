@@ -1937,6 +1937,19 @@ roles retain process-global isolation. This covers a quiescent initial frontier,
 not a checkpoint while worker blocks are outstanding or remote-FP recovery;
 those broader boundaries remain pending.
 
+The native MC06 `worker_loss` row now kills an owned worker after a real block
+arrives and successor evaluation is paused. A second worker remains registered,
+and a replacement joins after the kill. The coordinator must report loss,
+deregister exactly once and complete the full 114,942-distinct/zero-queued model.
+Java's exact GENERAL cache-statistic warning for a dead worker is required in
+this new failure case; any other GENERAL event fails. Existing no-failure rows
+retain their original no-GENERAL requirement. A short race check verifies that
+simultaneous keepalive/RPC loss reports requeue the block and decrement worker
+count only once. This covers one interrupted worker with a survivor/replacement,
+not loss of every worker or arbitrary network partitions. No production shortcut
+or warning suppression was needed for this case.
+
+
 
 These focused checks do not prove distributed completion.
 

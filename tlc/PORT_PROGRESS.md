@@ -18203,3 +18203,49 @@ all recovery, original model-result and native reply assertions pass. Log:
 `.codex-gotmp/distributed-checkpoint-final-process-test.log`. All handles are
 retired. No full-workspace baseline or complete distributed recovery claim is
 made; outstanding-block/crash and remote-FP boundaries remain pending.
+
+## Assigned-block worker loss and replacement (October 8, 2026)
+
+Compared Java TLCServerThread.handleRemoteWorkerLost with Go: cleanup cancels
+keepalive, uses the source compare-and-set guard, deregisters, returns the
+unfinished worklist, clears its assigned-state reference, wakes queue waiters
+before decrementing NumWorkers. That ordering is already translated. Added
+native MC06 worker_loss coverage: one ordinary worker remains available while
+a second actual worker loads the original model through production bootstrap
+and receives a real TCP GetNextStates block. A test-only evaluation hook signals
+assignment and waits; the parent kills that owned process only after both workers
+register and work is actually assigned. It then starts a replacement worker.
+No result, fingerprint insertion or successor response is fabricated. Model
+N=7/full exploration bounds, coordinator batching and checkpoint defaults remain
+unchanged. Surviving/replacement roles must exit normally, loss must be reported,
+deregistration must occur exactly once and the full result must remain 114942
+distinct/0 queued. All child roles are joined; assignment wait also detects an
+early coordinator/failpoint exit instead of waiting silently for its watchdog.
+
+The first full loss run reached the correct counts but failed its inherited
+no-GENERAL check. Source comparison confirms Java's finally block deliberately
+prints GENERAL as a warning when the dead worker's cache ratio cannot be read.
+The new loss row now requires exactly that original warning with severity 3 and
+its exact text (including source typo), and rejects any other GENERAL event.
+Existing ordinary EWD840 rows retain their original no-GENERAL assertion. No
+production warning is suppressed and no model-result assertion is relaxed.
+Initial failure 69423 is terminal status 1 in 30.686 seconds; its log is
+`.codex-gotmp/distributed-worker-loss-process-test.log`.
+
+There is no enabled direct Java test of the concurrent cleanup guard. Added
+TestDistributedConcurrentWorkerLossRequeuesOnce with 32 paired keepalive/RPC
+loss reports: assigned state identities/order retained, block queued exactly
+once, assigned count cleared and worker count decremented once. The exact short
+race check passes in 1.033 seconds (74877 terminal status 0). Focused existing
+native retry/loss checks and original dynamic-manager/smart-proxy methods plus
+the concurrent cleanup check pass normally in 0.044 seconds (61431 terminal
+status 0). Full corrected MC06 loss/replacement row passes normally in 30.385
+seconds (79771 terminal status 0); all loss, warning and original final-count
+assertions pass. Log `.codex-gotmp/distributed-worker-loss-final-process-test.log`.
+No full suite or long race workload is run. All handles are retired; original
+disabled-harness translation receives no completion credit. Complete worker
+loss, network partitions, outstanding-block checkpoints and remote-FP recovery
+remain pending; the distributed goal is not complete.
+Final helper compilation/CLI/signal focused gate after adding early producer-exit
+handling passes in 0.016 seconds (88968 terminal status 0). No unchanged full
+model workload was repeated for that failure-only harness branch.

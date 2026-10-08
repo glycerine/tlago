@@ -22,9 +22,9 @@ import (
 // needs its own process because FP64 and the tool's interning are process-wide.
 func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 	for _, scenario := range []struct {
-		name                 string
-		remoteFP, recovering bool
-	}{{"coordinator_fingerprints", false, false}, {"standalone_fingerprints", true, false}, {"checkpoint_recovery", false, true}} {
+		name                             string
+		remoteFP, recovering, workerLoss bool
+	}{{"coordinator_fingerprints", false, false, false}, {"standalone_fingerprints", true, false, false}, {"checkpoint_recovery", false, true, false}, {"worker_loss", false, false, true}} {
 		t.Run(scenario.name, func(t *testing.T) {
 			model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 			if err != nil {
@@ -95,6 +95,36 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 			}
 			start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+			if scenario.workerLoss {
+				failed := start("worker-failpoint", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				// Wait for a real assigned RPC block and both registrations.
+				// The failpoint pauses actual successor evaluation, so killing
+				// it deterministically discards an unfinished assigned block.
+				ticker := time.NewTicker(10 * time.Millisecond)
+				defer ticker.Stop()
+				for !strings.Contains(failed.output.String(), "NATIVE_WORKER_BLOCK_ASSIGNED") || strings.Count(server.output.String(), "@!@!@STARTMSG 7001:") < 2 {
+					select {
+					case err := <-server.done:
+						server.joined = true
+						t.Fatalf("coordinator exited before worker assignment: %v\n%s", err, server.output.String())
+					case err := <-failed.done:
+						failed.joined = true
+						t.Fatalf("failpoint worker exited before assigned work: %v", err)
+					case <-ctx.Done():
+						t.Fatal("worker assignment watchdog expired")
+					case <-ticker.C:
+					}
+				}
+				if err := failed.command.Process.Kill(); err != nil {
+					t.Fatal(err)
+				}
+				if err := <-failed.done; err == nil {
+					t.Fatal("killed worker unexpectedly exited successfully")
+				}
+				failed.joined = true
+				t.Log("killed worker with an unfinished assigned block; starting replacement")
+				start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+			}
 			for _, process := range roles {
 				if process.joined {
 					continue
@@ -109,6 +139,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			// Mechanical EWD840Distributed{WithFPSet}TLCTest assertions:
 			// FINISHED, STATS distinct=114942 and queue=0, no GENERAL.
 			output := server.output.String()
+			if scenario.workerLoss {
+				if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerLost)) || strings.Count(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerDeregistered)) != 1 {
+					t.Fatal("worker loss was not reported and deregistered exactly once")
+				}
+			}
 			if scenario.recovering {
 				if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd)) || !strings.Contains(output, "Recovery completed. 16384 states examined. 16384 states on queue.") {
 					t.Fatalf("initial frontier recovery counts absent:\n%s", output)
@@ -124,7 +159,12 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			if len(stats) != 2 || !regexp.MustCompile(`^\d+ states generated, 114942 distinct states found, 0 states left on queue\.$`).MatchString(stats[1]) {
 				t.Fatal("TLC_STATS lacks original distinct/queue assertions")
 			}
-			if strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECGeneral)) {
+			if scenario.workerLoss {
+				general := regexp.MustCompile(fmt.Sprintf(`(?s)@!@!@STARTMSG %d:(\d+) @!@!@\n(.*?)\n@!@!@ENDMSG %d @!@!@`, tlc.ECGeneral, tlc.ECGeneral)).FindAllStringSubmatch(output, -1)
+				if len(general) != 1 || general[0][1] != "3" || general[0][2] != "Failed to read remote worker cache statistic (Expect to see a negative chache hit rate. Does not invalidate model checking results)" {
+					t.Fatalf("worker-loss GENERAL events differ from source cache warning: %v", general)
+				}
+			} else if strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECGeneral)) {
 				t.Fatal("GENERAL recorded")
 			}
 			if strings.Contains(output, "unexpected EOF") {
@@ -148,6 +188,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				} else {
 					status = ExitOK
 				}
+			} else if len(args) > 0 && args[0] == "worker-failpoint" {
+				if err := nativeDistributedBlockedWorker(args[1:]); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
 			} else {
 				status = RunCLI(args, os.Stdout, os.Stderr)
 			}
@@ -156,6 +202,44 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 		}
 	}
 	t.Fatal("helper role arguments missing")
+}
+
+// Use the production worker bootstrap and TCP callbacks. Only evaluation is
+// paused, after a coordinator block has actually arrived, until this owned
+// test process is killed. No successor response or fingerprint put is faked.
+func nativeDistributedBlockedWorker(args []string) error {
+	args, err := tlc.ExtractDistributedStartupProperties(args)
+	if err != nil {
+		return err
+	}
+	network, err := tlc.NewDistributedWorkerNetwork("127.0.0.1:0", "127.0.0.1")
+	if err != nil {
+		return err
+	}
+	defer network.Close()
+	process := tlc.NewDistributedWorkerProcess()
+	env := network.Environment(tlc.DistributedWorkerEnvironment{LoadApp: func(server tlc.DistributedServerEndpoint, resolver *tlc.RMIFilenameToStreamResolver) (*tlc.TLCApp, error) {
+		app, diagnostics, err := loadDistributedEndpointApp(server, resolver, tlc.RuntimeParameters{})
+		if err != nil {
+			return nil, err
+		}
+		if app == nil || diagnostics.HasErrors() {
+			return nil, fmt.Errorf("worker model failed to load: %v", diagnostics)
+		}
+		app.Tool.GetNextStatesFunc = func(*tlc.Tool, *tlc.Action, *tlc.TLCStateMut) (*tlc.StateVec, error) {
+			fmt.Println("NATIVE_WORKER_BLOCK_ASSIGNED")
+			<-make(chan struct{})
+			return nil, fmt.Errorf("unreachable paused worker evaluation")
+		}
+		return app, nil
+	}})
+	if _, err := RunDistributedWorker(process, args, env, tlc.RuntimeParameters{}); err != nil {
+		return err
+	}
+	if process.Group == nil {
+		return fmt.Errorf("worker startup failed")
+	}
+	return process.Runtime.AwaitTermination()
 }
 
 // Checkpoint an unchanged model's complete initial frontier before any worker
