@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 func TestSanySemanticBridgeBehaviors(t *testing.T) {
@@ -114,6 +116,11 @@ Use == LET I == INSTANCE Inner IN I!Op
 	})
 
 	t.Run("loads sibling modules declared later in the same TLA file", func(t *testing.T) {
+		// This standalone SANY fixture starts before TLC assigns a metadata
+		// directory. Earlier CLI tests may have left a now-deleted directory.
+		oldMetaDir := tlc.MetaDir()
+		tlc.SetMetaDir("")
+		t.Cleanup(func() { tlc.SetMetaDir(oldMetaDir) })
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
 		writeFile(t, root, `---- MODULE Root ----

@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-08 Final verification configuration and native fixture isolation:
+XML repairs committed as cbef79a. Inventory reconciliation resolves all 96
+ledger rows to exactly one current primary Go function, with no missing files
+or ambiguous mappings. Receipts from the restored SANY runs contain 95 passing
+primary methods and one original ignored method; the empty upstream body is
+among those passes and earns no functional coverage. The 59 repaired and 35
+unchanged reviewed contracts are present, with original parameter matrices.
+
+Initial broad runs used Go's default ten-minute timeout rather than the
+documented sixty-minute setting. They exposed two collector host-ID failures
+from sandbox denial of read-only net.Interfaces (netlinkrib: operation not
+permitted). The unchanged original collector class passes outside the sandbox
+in 0.017 seconds; do not modify production or weaken assertions for confinement.
+Root additionally exposed stale Globals.MetaDir from earlier CLI execution in
+the standalone native SANY monolith fixture. Java FileUtil.createTempFile
+intentionally uses the assigned metadata directory, so preserve that producer.
+The fixture now starts with the source standalone unset metadata directory and
+restores the prior value on cleanup. CLI followed by the complete native bridge
+class passes in 4.678 seconds (70414 retired), with all assertions unchanged.
+
+Explicitly stop only the two owned verification groups to correct the known
+timeout/environment configuration; 25107 and 78742 retire with status 143 and
+earn no full-suite pass credit. This was not an observation-timeout restart.
+Start full ./... normally with -timeout=60m in the unrestricted environment,
+needed by original local-interface tests. Current handle 53216 is live and logs
+JSON to .codex-gotmp/full-final-tests.jsonl. No race or shortened bounds.
+Final goal completion still awaits that terminal result and review of any
+failures. Do not restart this handle merely because output is quiet.
+
 2026-10-08 Restore all XML SANY audit contracts (F10–F19/F22–F24):
 Previous chunk committed as 736bf89. Embed a byte-for-byte copy of pinned Java
 sany.xsd, and enforce its complete XSD through libxml2 xmllint with network

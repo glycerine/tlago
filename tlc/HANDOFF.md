@@ -58,8 +58,9 @@ typed library errors, exact command exit codes, complete shared help output,
 original arguments and independent schema validation. XML export now requires
 `xmllint` (libxml2) on PATH unless `-o` is selected; validation uses no network.
 This completes the listed test-contract repairs, not general SANY implementation
-parity beyond their original assertions. Full root and TLC normal verification
-is running; consult PORT_PROGRESS.md for the live handles and final receipts.
+parity beyond their original assertions. Full `./...` normal verification with `-timeout=60m` is running under handle
+53216; consult PORT_PROGRESS.md for the configuration correction and final
+receipts. Local-interface tests require the unrestricted environment.
 The audit remains the authoritative method ledger and completion gate. Do not
 claim the active goal complete before the final run/inventory audit is done.
 
