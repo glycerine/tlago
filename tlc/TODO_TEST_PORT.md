@@ -914,6 +914,12 @@ Failure precedes postcondition evaluation; no fresh trace or initial-state
 recovery is substituted for a missing owner or last prefix state. No original
 method directly covers these boundaries; completion counts remain unchanged.
 
+Nine native liveness-tail checks cover missing current/set/checker/writer/tool/
+liveness owners, current checker-tool selection, earlier writer failure and
+call-stack replay ownership. Stuttering insertion and output retain source
+ordering; no replacement set or silent tail skip is allowed. No original method
+directly covers these owner boundaries; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

@@ -22054,3 +22054,38 @@ TSnapShot process variants pass (c5af1b log, terminal process 4e48d0 status 0,
 earlier truncated model failure remains unexplained. No original assertions or
 bounds changed. No full suite or race run was performed. Supplemental cases add
 no original-method credit; distributed parity remains incomplete.
+
+### 2026-10-08: Worker liveness-tail owners and replay tool
+
+Compared Worker.doNextCheckLiveness with pinned source. The tail now fingerprints
+the current state and inserts stuttering into its existing successor set before
+accessing checker/writer/liveness owners. Missing owners cannot skip the tail or
+allocate a replacement set. Current checker writer failures retain preceding
+insertion and take precedence over later missing liveness owners. Evaluation
+uses the checker's current noDebug tool, while stuttering set insertion retains
+the worker tool. Replay copies the checker tool through NewCallStackTool's single
+noDebug selection instead of selecting twice or using the worker tool. Existing
+eligible-error classification and original-failure retention are unchanged.
+
+No original method directly covers these owner boundaries. Eight native cases
+initially failed (48adeb log, terminal process efb9d4 status 1, 4.831 seconds),
+exposing skipped mutations/writes, replacement-set allocation and wrong tool
+selection. A ninth replay check initially used a ViewSpec marker, which wrongly
+affected fingerprint evaluation (59db3f and ce9939 logs). The marker was moved to
+harmless metadata; ownership and call-count assertions were retained. No existing
+original assertion changed. Final focused worker/native RPC, concurrent trace,
+original simulation trace, short checker initial/successor, counterexample,
+reporting serialization, pairwise postcondition and distributed trace alias-
+failure checks pass (8a2dc7 log, terminal process 9bcf32 status 0, 18.687 seconds).
+
+Original checkpoint-on-violation/time-bound, error-trace, Github461, Github743,
+three-worker CodePlexBug08 archive recovery, AliasSafety, TLCExtTraceAlias,
+EmptyOrderOfSolutions and both initial-liveness evaluation-error tests plus four
+native DieHard/TSnapShot process variants pass (89da0f log, terminal process
+b05931 status 0, 59.444 seconds). Original Github317/Github317a exact liveness
+call-stack tests and IncompatibleTypesLive also pass (dee61d log, terminal process
+4ed2d0 status 0, 3.121 seconds). All output was captured and all processes are
+terminal. The earlier truncated model failure remains unexplained. Original
+assertions and bounds are unchanged. No full suite or race run was performed.
+Nine supplemental cases add no original-method credit; distributed parity is
+incomplete and remaining constructor/state-owner audits are pending.

@@ -214,6 +214,12 @@ Empty-context/filename guards and remaining trace cleanup boundaries need audit.
 Workers capture deadlock/liveness settings and tool mode during construction.
 Later owner changes cannot alter deadlock checks, liveness set allocation or
 stuttering graph insertion. Error-stack replay captures the same run settings.
+The liveness tail requires the existing successor set, inserts stuttering before
+writer/checker access, and retains preceding mutations on failure. Stuttering
+output and liveness evaluation use the checker's current writer and tool;
+call-stack replay selects that tool's ordinary evaluator once. Missing owners
+cannot skip the tail or allocate a replacement set. Earlier writer failures
+take precedence over later missing liveness owners.
 Workers also retain their construction-time queue for dequeue, worker-owned
 shutdown and successor enqueue. Successor processing uses the executing worker
 for trace publication rather than looking it up again in the checker list.

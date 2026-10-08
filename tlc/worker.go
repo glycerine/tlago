@@ -282,20 +282,28 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 }
 
 func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
-	if w == nil || w.Checker == nil || w.Checker.LiveCheck == nil || curState == nil {
-		return nil
-	}
-	if w.SetOfStates == nil {
-		w.SetOfStates = w.CreateSetOfStates()
+	if w == nil || curState == nil {
+		panic(NewNullPointerException())
 	}
 	curFP := curState.FingerPrint()
-	w.SetOfStates.PutFP(curFP, curState, w.Tool)
-	if w.Checker.AllStateWriter != nil {
-		if err := w.Checker.AllStateWriter.WriteTransitionVisual(curState, curState, StateVisitUnseen, nil, StateVisualizationStuttering); err != nil {
-			return err
-		}
+	if w.SetOfStates == nil {
+		panic(NewNullPointerException())
 	}
-	err := w.Checker.LiveCheck.AddNextState(w.Tool.NoDebug(), curState, curFP, w.SetOfStates)
+	w.SetOfStates.PutFP(curFP, curState, w.Tool)
+	if w.Checker == nil || w.Checker.AllStateWriter == nil {
+		panic(NewNullPointerException())
+	}
+	if err := w.Checker.AllStateWriter.WriteTransitionVisual(curState, curState, StateVisitUnseen, nil, StateVisualizationStuttering); err != nil {
+		return err
+	}
+	if w.Checker.Tool == nil {
+		panic(NewNullPointerException())
+	}
+	tool := w.Checker.Tool.NoDebug()
+	if w.Checker.LiveCheck == nil {
+		panic(NewNullPointerException())
+	}
+	err := w.Checker.LiveCheck.AddNextState(tool, curState, curFP, w.SetOfStates)
 	if err == nil || !livenessErrorNeedsCallStackReplay(err) {
 		return err
 	}
@@ -303,7 +311,14 @@ func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
 		return nil
 	}
 	w.SetOfStates.ResetNext()
-	callStackTool := NewCallStackTool(w.Tool.NoDebug())
+	if w.Checker.Tool == nil {
+		panic(NewNullPointerException())
+	}
+	// NewCallStackTool selects noDebug once while copying the checker tool.
+	callStackTool := NewCallStackTool(w.Checker.Tool)
+	if w.Checker.LiveCheck == nil {
+		panic(NewNullPointerException())
+	}
 	rerunErr := w.Checker.LiveCheck.AddNextState(callStackTool, curState, curFP, w.SetOfStates)
 	if rerunErr == nil {
 		return newTLCError(ECGeneral, "%s", err.Error())
