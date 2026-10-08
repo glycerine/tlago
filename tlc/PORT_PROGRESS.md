@@ -21805,3 +21805,27 @@ pass (670c0a, status 0, 58.310 seconds). All processes are terminal. Source
 assertions and bounds remain unchanged. No full suite or race run was performed.
 Supplemental cases add no original-method credit; remaining source audits are
 pending and distributed parity is incomplete.
+
+### 2026-10-08: Worker queue and executing-worker ownership
+
+Compared Worker's final squeue field and dequeue, termination and successor
+enqueue paths with pinned source. Workers now retain their construction-time
+queue for those operations. Successor processing receives the executing worker
+instead of resolving it again through the checker's mutable worker list, so
+trace publication retains that worker too. Checker-owned error handlers keep
+their own queue access; other constructor snapshots remain separate audit work.
+
+No original method directly covers these boundaries. Five supplemental cases
+cover queue replacement/removal, dequeue failure and successor publication with
+a retained or missing checker slot. All five initially failed (d068ff, status 1,
+5.066 seconds). The first broad worker selection hit sandbox TCP-listener denial
+(d929be, status 1, 7.333 seconds); rerunning unchanged with local TCP access passed
+(10ae0d, status 0, 6.849 seconds). It includes native worker RPC, concurrent trace
+and original simulation trace checks. Original checkpoint-on-violation/time-bound,
+error-trace, Github461 assertion/call-stack and three-worker CodePlexBug08 archive
+recovery plus all four existing DieHard/TSnapShot native process storage variants
+passed (b17e11, status 0, 58.030 seconds). All processes are terminal. Original
+assertions and workload bounds are unchanged. No full suite or race run was
+performed. Supplemental cases add no original-method credit. Distributed work
+uses native Go transport, concurrency and errors, without RMI, Java serialization
+or JVM emulation. Remaining source audits are pending; parity is incomplete.

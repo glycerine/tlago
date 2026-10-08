@@ -1674,7 +1674,7 @@ func workerIDForReplayWorker(worker *Worker) int {
 	return worker.ID
 }
 
-func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
+func (mc *ModelChecker) processSuccessorForWorker(worker *Worker, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
 	if !mc.Tool.IsGoodState(succState) {
 		return mc.doNextSetErrParamsWithPostCondition(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
 	}
@@ -1694,7 +1694,7 @@ func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCSta
 	}
 	unseen := true
 	if inModel {
-		seen, err := mc.isSeenStateUsingWorker(workerID, mc.workerAt(workerID), curState, succState, action, collectedStates)
+		seen, err := mc.isSeenStateUsingWorker(worker.ID, worker, curState, succState, action, collectedStates)
 		if err != nil {
 			return true, false, err
 		}
@@ -1715,7 +1715,10 @@ func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCSta
 		return stop, false, err
 	}
 	if inModel && unseen {
-		mc.StateQueue.SEnqueue(succState)
+		if worker.stateQueue == nil {
+			panic(NewNullPointerException())
+		}
+		worker.stateQueue.SEnqueue(succState)
 		CountStateVariableCoverage(succState)
 		return false, true, nil
 	}

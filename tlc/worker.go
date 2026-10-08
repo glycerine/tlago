@@ -32,6 +32,7 @@ type Worker struct {
 	checkDeadlock         bool
 	checkLiveness         bool
 	mode                  ToolMode
+	stateQueue            StateQueue
 }
 
 type WorkerWrappingRuntimeException struct {
@@ -99,6 +100,7 @@ func (w *Worker) captureRunSettings() {
 	w.checkDeadlock = w.Checker.CheckDeadlock
 	w.checkLiveness = w.Checker.CheckLiveness
 	w.mode = w.Tool.GetMode()
+	w.stateQueue = w.Checker.StateQueue
 }
 
 func (w *Worker) MyGetID() int {
@@ -150,8 +152,8 @@ func (w *Worker) Run() (err error) {
 				if w.Checker.SetErrState(curState, nil, true, ECGeneral) {
 					PrintError(ECGeneral, generalErrorParams("", err)...)
 				}
-				if w.Checker.StateQueue != nil {
-					w.Checker.StateQueue.FinishAll()
+				if w.stateQueue != nil {
+					w.stateQueue.FinishAll()
 				}
 			}
 		}
@@ -162,26 +164,26 @@ func (w *Worker) Run() (err error) {
 	if w.Checker == nil {
 		return newTLCError(ECGeneral, "worker has no model checker")
 	}
-	if w.Checker.StateQueue == nil {
+	if w.stateQueue == nil {
 		return newTLCError(ECGeneral, "model checker has no state queue")
 	}
 	for {
-		curState = w.Checker.StateQueue.SDequeue()
+		curState = w.stateQueue.SDequeue()
 		if curState == nil {
 			w.Checker.SetDone()
-			w.Checker.StateQueue.FinishAll()
+			w.stateQueue.FinishAll()
 			return nil
 		}
 		stop, runErr := w.DoNext(curState)
 		if runErr != nil {
-			if w.Checker.StateQueue != nil {
-				w.Checker.StateQueue.FinishAll()
+			if w.stateQueue != nil {
+				w.stateQueue.FinishAll()
 			}
 			return runErr
 		}
 		if stop {
-			if w.Checker.StateQueue != nil {
-				w.Checker.StateQueue.FinishAll()
+			if w.stateQueue != nil {
+				w.stateQueue.FinishAll()
 			}
 			return nil
 		}
@@ -259,8 +261,8 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	if w.checkLiveness {
 		if err := w.CheckLiveness(curState); err != nil {
 			if IsInvariantViolatedException(err) {
-				if w.Checker.StateQueue != nil {
-					w.Checker.StateQueue.FinishAll()
+				if w.stateQueue != nil {
+					w.stateQueue.FinishAll()
 				}
 				return true, nil
 			}
@@ -360,7 +362,7 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 		action.CM.IncInvocations()
 	}
 	w.statesGenerated.Add(1)
-	stop, queued, err := w.Checker.processSuccessorForWorker(w.ID, curState, succState, action, w.SetOfStates)
+	stop, queued, err := w.Checker.processSuccessorForWorker(w, curState, succState, action, w.SetOfStates)
 	if stop || err != nil {
 		w.Halted = true
 	}

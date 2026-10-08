@@ -859,6 +859,12 @@ liveness and debugger-mode settings. Deadlock diagnostics, set allocation and
 stuttering graph insertion use captured settings. No original method directly
 covers this boundary; completion counts remain unchanged.
 
+Five native worker queue cases cover replacement or removal of the checker's
+queue, dequeue failure and successor publication with a retained or missing
+checker worker slot. Worker-owned operations retain the captured queue and
+executing worker. No original method directly covers these boundaries;
+completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

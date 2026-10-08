@@ -214,6 +214,11 @@ Empty-context/filename guards and remaining trace cleanup boundaries need audit.
 Workers capture deadlock/liveness settings and tool mode during construction.
 Later owner changes cannot alter deadlock checks, liveness set allocation or
 stuttering graph insertion. Error-stack replay captures the same run settings.
+Workers also retain their construction-time queue for dequeue, worker-owned
+shutdown and successor enqueue. Successor processing uses the executing worker
+for trace publication rather than looking it up again in the checker list.
+Checker-owned error handlers retain their own queue access. Other constructor
+owner snapshots still need source audit.
 
 Concurrent trace registration retains its fixed worker-owner list. Missing trace
 or worker references and out-of-range IDs fail before assignment; registration
