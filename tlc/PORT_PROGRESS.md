@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-07 Begin canonical LET/formal runtime adapters:
+Previous completed commit: c9b2abb; clean tree confirmed. Replace copied local
+Definition values with original pointers and cache each actual canonical LET's
+runtime adapter before converting children. Preserve distinct actual LET nodes;
+clone existing adapter caches for debugger expression bridges.
+
+Initial focused gate 25097 fails original Test206/Test209; confirmation 1701
+repeats both. Do not weaken assertions or abandon source identity. Captured
+formals were previously reconstructed independently on source/selector paths,
+and copied native selector LET wrappers falsely retained the original graph
+pointer despite replacing their body. Adapt actual formals once for definitions,
+quantifiers, CHOOSE, functions/LAMBDA, comprehensions, INSTANCE parameters and
+selectors. Clear the false graph identity on temporary native wrappers. Initial
+selector check 10979 still fails CHOOSE capture; port its formal mapping too.
+Both whole original methods then pass (60387 retired). Final 40-method original
+LET/legacy/scoped/debugger gate passes in 9.577 seconds (37601 retired). All
+19 selected original coverage methods pass in 5.791 seconds (97803 retired);
+assertions/settings remain unchanged.
+
+External LetRuntimeIdentityProbe uses actual Java FastTool and generated source
+LETs. Seven rows match Go over five ordinary/recursive/function/nested cases:
+repeated node/body identity, original definition ownership, distinct LET wrappers,
+formal identity and constant evaluation. Initial Go observer omitted source
+level checking (23748 retired, failure earns no credit); corrected 23647 passes.
+Initial Java helper compilation required an actual local reflection helper;
+config loading required the explicit source resolver directory. Corrected Java
+and Go observations match; failed observer preparations earn no success credit.
+External files/vectors/logs/overlays use tlago-let-runtime-identity under
+/mnt/oldrog/tmp. No invented permanent tests or original-method inventory credit.
+
+Full SANY passes in 2.216 seconds (99440 retired); all-package compilation and
+Git diff checks pass. All handles terminal and retired. No race, fixture change
+or long workload selected. Main inventory and native XML failures remain unchanged;
+no full workspace-green or complete runtime LET parity claim. Canonical Context
+transfer, full SemanticNode base/UID sharing, imported theorem mapping, OpDef
+adapter shells and native selector/substitution reconstruction remain work.
+
 2026-10-07 Retain null syntax in recursive completion:
 Previous completed commit: 75ab840; clean tree confirmed. Inspect runtime LET
 traversal and bridge. Source walkGraph explicitly visits retained Context because

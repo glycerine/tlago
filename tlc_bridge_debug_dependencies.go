@@ -128,6 +128,8 @@ func (b *tlcBridge) debuggerBridge(spec *Spec) *tlcBridge {
 	convert.definitionModules = maps.Clone(b.definitionModules)
 	convert.sourceSymbols = maps.Clone(b.sourceSymbols)
 	convert.sourceDefinitions = maps.Clone(b.sourceDefinitions)
+	convert.canonicalLets = maps.Clone(b.canonicalLets)
+	convert.canonicalFormals = maps.Clone(b.canonicalFormals)
 	convert.conversionContexts = maps.Clone(b.conversionContexts)
 	convert.instanceDefinitions = maps.Clone(b.instanceDefinitions)
 	convert.moduleNodes = maps.Clone(b.moduleNodes)

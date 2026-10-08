@@ -28,6 +28,8 @@ type tlcBridge struct {
 	definitionModules      map[*Definition]string
 	sourceSymbols          map[*Definition]*tlc.SymbolNode
 	sourceDefinitions      map[*Definition]*tlc.OpDefNode
+	canonicalLets          map[*sanySemLetInNode]*tlc.LetInNode
+	canonicalFormals       map[*sanyFormalParamNode]*tlc.SymbolNode
 	instanceDefinitions    map[string]*tlcBridgeInstance
 	instanceBindings       map[tlcBridgeInstanceKey]*tlcBridgeInstance
 	nativeDefinitions      map[*tlc.UniqueString]any
@@ -1254,6 +1256,9 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	for i, param := range def.Params {
 		priorParams[i] = b.symbols[param]
 		params[i] = b.formalParameter(param, def.ParamArities[param], def.ParamPositions[param], def.Syntax)
+		if def.semanticNode != nil && i < len(def.semanticNode.formalNodes) {
+			params[i] = b.canonicalFormalParameter(def.semanticNode.formalNodes[i])
+		}
 		b.symbols[param] = params[i]
 	}
 	prevModule := b.convertingModule
@@ -1389,6 +1394,9 @@ func (b *tlcBridge) prepareInstanceBinding(binding *tlcBridgeInstance) {
 		binding.params = make([]*tlc.SymbolNode, len(inst.Params))
 		for i, param := range inst.Params {
 			binding.params[i] = b.formalParameter(param, inst.ParamArities[param], inst.ParamPositions[param], nil)
+			if inst.definitionNode != nil && i < len(inst.definitionNode.formalNodes) {
+				binding.params[i] = b.canonicalFormalParameter(inst.definitionNode.formalNodes[i])
+			}
 		}
 	}
 	if binding.substs == nil {
@@ -1884,6 +1892,21 @@ func (b *tlcBridge) callNode(e *CallExpr) tlc.SemanticNode {
 }
 
 func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
+	canonical, _ := sanyGeneratedExpressionNode(e).(*sanySemLetInNode)
+	if canonical != nil {
+		if node := b.canonicalLets[canonical]; node != nil {
+			return node
+		}
+	}
+	node := tlc.NewLetInNode(nil)
+	if canonical != nil {
+		if b.canonicalLets == nil {
+			b.canonicalLets = map[*sanySemLetInNode]*tlc.LetInNode{}
+		}
+		// Publish the adapter before visiting children. References to this
+		// actual source LET retain its identity during recursive conversion.
+		b.canonicalLets[canonical] = node
+	}
 	lets := make([]*tlc.OpDefNode, 0, len(e.Definitions))
 	letNames := make([]string, 0, len(e.Definitions))
 	for _, def := range e.Definitions {
@@ -1905,6 +1928,11 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 		priorSymbols[i] = b.symbols[name]
 		b.symbols[name] = tlc.NewSymbolNode(name)
 	}
+	for i := range e.Definitions {
+		if symbol := b.sourceSymbols[&e.Definitions[i]]; symbol != nil {
+			b.symbols[e.Definitions[i].Name] = symbol
+		}
+	}
 	defer func() {
 		for i, name := range letNames {
 			if priorSymbols[i] == nil {
@@ -1916,11 +1944,11 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 	}()
 	restore := b.pushConvertBoundNames(letNames...)
 	defer restore()
-	for _, def := range e.Definitions {
-		next := def
-		opDef := b.convertDefinitionAs(next.Name, &next)
+	for i := range e.Definitions {
+		definition := &e.Definitions[i]
+		opDef := b.convertDefinitionAs(definition.Name, definition)
 		if opDef != nil {
-			opDef.SetInRecursive(recursiveDeclarationSections(e.Recursives)[next.Name] != 0)
+			opDef.SetInRecursive(recursiveDeclarationSections(e.Recursives)[definition.Name] != 0)
 			// A Java OpApplNode references its LET OpDefNode directly. Keep
 			// that definition available to graph walking and default lookup;
 			// evaluation's contextual lazy binding still takes precedence.
@@ -1936,7 +1964,8 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 			lets = append(lets, opDef)
 		}
 	}
-	node := tlc.NewLetInNode(b.convertExpr(e.Body), lets...)
+	node.Lets = lets
+	node.Body = b.convertExpr(e.Body)
 	for _, inst := range e.Instances {
 		node.Bindings = append(node.Bindings, b.standardInstanceBindings(inst)...)
 	}
@@ -1977,6 +2006,9 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 	parameters := make([]*tlc.SymbolNode, len(quantifiers))
 	for i, quantifier := range quantifiers {
 		parameters[i] = b.formalParameter(quantifier.Var, quantifier.OperatorArity, quantifier.VarPos, e.Syntax)
+		if quantifier.formalNode != nil {
+			parameters[i] = b.canonicalFormalParameter(quantifier.formalNode)
+		}
 	}
 	// Generator.processQuantBoundArgs converts every domain before adding any
 	// quantified variable to the new context.
@@ -2024,7 +2056,7 @@ func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
 	if e.Set != nil {
 		bound = b.convertExpr(e.Set)
 	}
-	parameters := b.boundParameters(e.boundVars(), e.Syntax)
+	parameters := b.boundParameters(e.boundVars(), e.Syntax, e.formalNodes)
 	restore := b.pushFormalParameters(parameters)
 	body := b.convertExpr(e.Body)
 	restore()
@@ -2040,7 +2072,7 @@ func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
 }
 
 func (b *tlcBridge) lambdaNode(e *FunctionExpr) tlc.SemanticNode {
-	params := b.boundParameters(e.Bounds, e.Syntax)
+	params := b.boundParameters(e.Bounds, e.Syntax, e.formalNodes)
 	restore := b.pushFormalParameters(params)
 	body := b.convertExpr(e.Body)
 	restore()
@@ -2059,6 +2091,9 @@ func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc
 	if exprReferencesName(e, def.Name, nil) {
 		op = tlc.OpRFS
 		self = b.formalParameter(def.Name, 0, def.SourcePosition(), def.Syntax)
+		if e.functionSymbol != nil {
+			self = b.canonicalFormalParameter(e.functionSymbol)
+		}
 		previous := b.symbols[def.Name]
 		b.symbols[def.Name] = self
 		restore := b.pushConvertBoundNames(def.Name)
@@ -2083,7 +2118,7 @@ func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc
 
 func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {
 	boundExprs := b.boundDomainNodes(e.Bounds)
-	parameters := b.boundParameters(e.Bounds, e.Syntax)
+	parameters := b.boundParameters(e.Bounds, e.Syntax, e.formalNodes)
 	restore := b.pushFormalParameters(parameters)
 	defer restore()
 	body := b.convertExpr(e.Body)
@@ -2115,7 +2150,7 @@ func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
 
 func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNode {
 	boundExprs := b.boundDomainNodes(e.Bounds)
-	parameters := b.boundParameters(e.Bounds, e.Syntax)
+	parameters := b.boundParameters(e.Bounds, e.Syntax, e.formalNodes)
 	restore := b.pushFormalParameters(parameters)
 	defer restore()
 	groups := b.boundGroups(e.Bounds, boundExprs)

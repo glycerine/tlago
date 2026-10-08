@@ -10664,12 +10664,39 @@ Replaying filtered getLets or Pair insertion order is insufficient for contexts
 whose duplicate operation rebuilt lookup bindings in a different order.
 
 Runtime conversion therefore needs a canonical node adapter with an identity
-cache before it can transfer the actual context. The existing bridge copies
-local AST Definition values, constructs runtime OpDefs after converting bodies
+cache before it can transfer the actual context. The bridge now retains original local AST Definition pointers and caches actual
+LET adapters; it still constructs runtime OpDefs after converting bodies
 and separately reconstructs INSTANCE exports. These are not canonical-context
 identity mappings. Formal symbols also lack their canonical SemanticNode base;
 imported ThmOrAssumpDef bodies and module-instance kind/parameters require their
 actual canonical counterparts. Preserve cycles by publishing adapter shells
 before traversing their children, and use the retained context rather than a
-name-matching substitute. This integration remains unimplemented. The source
+name-matching substitute. The complete context integration remains unimplemented. The source
 completion fixes above do not earn runtime LET parity credit.
+
+## First canonical LET and formal adapters
+
+The bridge caches each runtime LET by its actual canonical LetInNode pointer,
+with an adapter shell published before child conversion. It passes original
+local Definition pointers to the existing definition cache, instead of copying
+those declarations on every traversal. A separate canonical formal cache reuses
+the runtime declaration for each actual FormalParamNode across source bodies,
+bound expressions and lifted selector formals. Debugger bridge copies retain
+these existing mappings while new parser nodes remain independent.
+
+This identity change exposed the prior bridge's reliance on reconstructing
+captured formals: unchanged Test206 and Test209 initially failed. Definitions,
+quantifiers, CHOOSE, named/anonymous functions, comprehensions and INSTANCE
+parameters now share the actual formal mappings with selectors. The native
+selector path also constructs temporary lexical LET wrappers with replacement
+bodies. Those wrappers must not retain the original canonical LET graph pointer;
+otherwise caching returns the wrong body. Their native context lowering remains
+pending replacement by the full canonical graph adapter.
+
+Seven bounded Java/Go observations agree for ordinary, recursive, function and
+nested LET bodies: repeated node/body identity, original local declaration
+ownership, distinct adapter nodes for distinct source LETs, formal reuse and
+constant evaluation. All 40 focused original model/debugger methods and 19
+coverage methods pass unchanged. These receipts do not complete canonical
+Context transfer, semantic-base/UID sharing, imported theorem adapters, complete
+OpDef shell publication or source substitution-array sharing.

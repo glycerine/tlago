@@ -415,6 +415,17 @@ retained registration and labels when recursion-field assignment throws. The
 247 normal LET graph rows and 4,256 body/domain failure rows remain exact.
 This does not complete canonical evaluator integration or all constructor paths.
 
+The TLC bridge now caches an actual canonical LET's runtime adapter before
+converting children and uses original local Definition pointers. Declaration
+formals are adapted once by canonical identity for definitions, quantifiers,
+CHOOSE, functions, LAMBDA, comprehensions, INSTANCE parameters and selectors.
+Original Test206/Test209 initially exposed captured-formal failures; these are
+fixed in production. Temporary native selector LET wrappers have different
+bodies and no longer claim the original LET's canonical identity. All 40 focused
+original methods and 19 coverage methods pass; seven external Java/Go identity/
+evaluation observations agree. Context transfer, full semantic-base sharing and
+remaining native selector reconstruction still need implementation.
+
 Recursive declarations now update the actual node and unresolved counters inside
 `endRecursiveDefinition`, before label-scope completion. Canonical named functions
 also complete there rather than during native preregistration. Thirty direct Java

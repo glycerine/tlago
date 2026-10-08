@@ -14,8 +14,8 @@ type tlcBridgeInstanceKey struct {
 
 // Java's selected SubstIn copies retain the instance's existing Subst array
 // and formal nodes. Module definitions and selections share their binding.
-// LET is lowered in its enclosing lexical context on each conversion; its
-// bindings must not be merged across those separately constructed contexts.
+// Native selector wrappers still own separate substitution records until the
+// canonical Subst adapter is implemented. Actual declaration formals are shared.
 func (b *tlcBridge) instanceBinding(owner *Module, inst Instance) *tlcBridgeInstance {
 	key := tlcBridgeInstanceKey{owner: owner, pos: inst.SourcePosition(), name: inst.Name, module: inst.Module}
 	moduleInstance := false
@@ -46,6 +46,22 @@ func (b *tlcBridge) instanceBinding(owner *Module, inst Instance) *tlcBridgeInst
 // selected body is compiled in its original module, with the lifted formals.
 func (b *tlcBridge) selectorNode(expr Expr, selected *sanySelectorSelection) tlc.SemanticNode {
 	params := b.boundParameters(selected.params, selected.definition.def.Syntax)
+	var canonicalParameters []*sanyFormalParamNode
+	switch node := sanyGeneratedExpressionNode(expr).(type) {
+	case *sanySemOpApplNode:
+		if definition, ok := node.operator.(*sanySemOpDefNode); ok && definition.semName() == "LAMBDA" {
+			canonicalParameters = definition.formalNodes
+		}
+	case *sanySemOpArgNode:
+		if definition, ok := node.operator.(*sanySemOpDefNode); ok {
+			canonicalParameters = definition.formalNodes
+		}
+	}
+	if len(canonicalParameters) == len(params) {
+		for i, parameter := range canonicalParameters {
+			params[i] = b.canonicalFormalParameter(parameter)
+		}
+	}
 	var bindings []*tlcBridgeInstance
 	offset := 0
 	for _, wrapper := range selected.definition.wrappers {
@@ -74,6 +90,9 @@ func (b *tlcBridge) selectorNode(expr Expr, selected *sanySelectorSelection) tlc
 		seen[original] = true
 		let := *original
 		let.Body = bodyExpr
+		// This native lexical wrapper has a different body from the actual
+		// source LET. It must not claim that node's adapter identity.
+		let.semanticGraph = nil
 		bodyExpr = &let
 	}
 	body := b.convertExpr(bodyExpr)
