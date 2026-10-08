@@ -10593,3 +10593,24 @@ depth, current goal clause, context binding order and exception families. The
 225 prior AP graph rows still agree; original selector/Test212/Test213 and SANY
 checks pass. These bounded observations do not establish all generation callers,
 constructor-abort paths or canonical/evaluator graph sharing.
+
+## Ordinary operator label scope through construction
+
+Java `processOperator` pops its formal context after body generation, then
+constructs/registers the OpDef or completes the actual recursive declaration.
+It assigns recursion fields before popping the label set and attaching it to
+the definition. Go now returns the pending label-scope completion from body
+generation and invokes it at that same successful construction boundary. It
+no longer stores an early label-table copy on `SanyExprSource`. Native paths
+whose canonical graph remains incomplete explicitly finish their successful
+scope without manufacturing a body or definition.
+
+Recursion-field assignment retains the Java array-bounds exception family for
+negative/out-of-range LET levels when unresolved declarations require the array
+lookup. A failure here preserves the registered definition and active label
+scope; the returned definition and attached labels remain absent. Twenty exact
+external observations cover levels -1, 0, 99, 100 and 101 with zero/positive
+unresolved sums, actual source registration, recursion fields and label tables.
+The previous normal LET graph and body/domain failure observations remain exact.
+These supplied-state probes do not establish all constructor failures or runtime
+canonical graph sharing. No permanent tests or inventory credit added.

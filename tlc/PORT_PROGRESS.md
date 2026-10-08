@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-07 Ordinary operator label scope survives construction failures:
+Previous completed commit: eb6cec4. Audit actual Generator.processOperator.
+Go popped the label scope after body generation, before OpDef construction and
+registration. Return its pending completion from body generation, preserve it
+through construction/recursive completion and recursion-field assignment, then
+pop and attach labels on normal completion. Remove the premature expression-
+owned label-table copy. Both LET and module callers explicitly complete skipped
+native construction paths; incomplete canonical graphs remain incomplete.
+
+External OperatorLifecycleProbe invokes actual Java processOperator over 10
+supplied-state cases: levels -1, 0, 99, 100 and 101, each with unresolved sum
+zero/one. Compare returned/registered identity, context and label stack lengths,
+recursion fields, attached labels and module recursion vector size. Probe exposes
+an additional raw Go bounds panic in recursion-field assignment; translate its
+source exception family. All 20 state/node rows now match. Initial Go probe
+compilation required the added tlc import; failed compilation earns no credit.
+External files use tlago-operator-lifecycle under /mnt/oldrog/tmp; handle 83035
+is terminal and retired. No production observer hook or invented permanent test.
+
+Earlier 247 normal LET graph rows remain exact (40750 retired). All 4,256 earlier
+body/domain failure observations remain exact (87384 retired). Initial SANY
+passes in 2.446 seconds (53122 retired), focused root gate in 9.839 seconds
+(27160 retired). Final SANY passes in 2.301 seconds (72242 retired), focused
+original semantic/selector/scoped/debugger gate in 9.949 seconds (65644 retired).
+All-package compilation passes (66494 and 24894 retired); diff checks pass.
+All handles are retired. No race or long workload selected; no original-method
+inventory credit, fixture/assertion weakening or full-workspace-green claim.
+Canonical runtime LET/evaluator sharing and other constructor boundaries remain
+incomplete. Main TLC inventory and the recorded native XML failures are unchanged.
+
 2026-10-07 Retain the actual ASSUME/PROVE declaration-scope state:
 Previous completed commit: d8bd7d1. Continue failure lifecycle audit. Labels and
 EXCEPT already use explicit successful-path cleanup, but checkAssumeProveBindings

@@ -1046,6 +1046,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		defArities := definitionBodyArities(arities, def)
 		bodyContext := expressionContexts.at(def.Syntax, defined)
+		var finishDefinitionLabels func() *sanyLabelTable
 		if def.TheoremLike && theorem != nil && theorem.Syntax != nil {
 			var current Diagnostics
 			current, finishTheoremGeneration = expressionGeneration.generateTheoremStatement(theorem, bodyContext)
@@ -1069,7 +1070,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				diags = append(diags, checkDefinitionFunctionBody(def, bodyContext, locals, expressionGeneration)...)
 			}
 		} else {
-			diags = append(diags, checkDefinitionExpression(def, bodyContext, locals, expressionGeneration)...)
+			var current Diagnostics
+			current, finishDefinitionLabels = checkDefinitionExpression(def, bodyContext, locals, expressionGeneration)
+			diags = append(diags, current...)
 		}
 		// Java processOperator constructs/registers after generating the body
 		// and popping its parameter scope. Keep missing imported/recursive
@@ -1078,7 +1081,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		_, conflict := constructorConflicts[positionKey(def.SourcePosition())]
 		previous := expressionGeneration.formalSymbolTable().resolveSymbol(def.Name)
 		if !def.FunctionDef && !def.TheoremLike && !def.AssumeProve && (!recursive || (expressionGeneration.bindings[def.Name] != nil && expressionGeneration.bindings[def.Name].node != nil)) && (!conflict || previous != nil) && !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
-			diags = append(diags, expressionGeneration.constructOrdinaryDefinition(definition)...)
+			diags = append(diags, expressionGeneration.constructOrdinaryDefinition(definition, finishDefinitionLabels)...)
 			def.semanticNode = definition.semanticNode
 			if node := def.semanticNode; node != nil {
 				mod.semanticNode.definitions = append(mod.semanticNode.definitions, node)
@@ -1088,6 +1091,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 					expressionGeneration.moduleSymbols[def.Name] = symbol
 				}
 			}
+		} else if finishDefinitionLabels != nil {
+			finishDefinitionLabels()
 		}
 		diags = append(diags, checkCallArity(def.Expr, defArities, operatorParamSpecs, locals)...)
 		diags = append(diags, checkOperatorArgumentKinds(def.Expr, operatorParamSpecs, defArities, locals)...)

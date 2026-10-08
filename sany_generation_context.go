@@ -166,15 +166,15 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 	return contexts
 }
 
-// Generator.processFunction evaluates all domains before introducing the
-// function's temporary recursion symbol. That symbol and the bound variables
-// are available only while generating the function body.
-func checkDefinitionExpression(definition Definition, context map[string]Position, locals map[string]bool, generators ...*sanyExpressionGeneration) Diagnostics {
+// Ordinary definitions return their label-scope completion for the caller to
+// invoke after construction/registration. Named functions complete their own
+// scopes after generating their body.
+func checkDefinitionExpression(definition Definition, context map[string]Position, locals map[string]bool, generators ...*sanyExpressionGeneration) (Diagnostics, func() *sanyLabelTable) {
 	_, ok := definition.Expr.(*FunctionExpr)
 	if !definition.FunctionDef || !ok {
 		return sanyExpressionGenerator(generators).checkDefinitionBody(definition, context, locals)
 	}
-	return append(checkDefinitionFunctionDomains(definition, context, locals, generators...), checkDefinitionFunctionBody(definition, context, locals, generators...)...)
+	return append(checkDefinitionFunctionDomains(definition, context, locals, generators...), checkDefinitionFunctionBody(definition, context, locals, generators...)...), nil
 }
 
 func checkDefinitionFunctionDomains(definition Definition, context map[string]Position, locals map[string]bool, generators ...*sanyExpressionGeneration) Diagnostics {

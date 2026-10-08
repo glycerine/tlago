@@ -310,11 +310,14 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 			diags = append(diags, checkDefinitionFunctionBody(*definition, positions, bodyLocals, g)...)
 		}
 	} else {
-		diags = append(diags, g.checkDefinitionBody(*definition, positions, bodyLocals)...)
+		bodyDiags, finishLabels := g.checkDefinitionBody(*definition, positions, bodyLocals)
+		diags = append(diags, bodyDiags...)
 		// processOperator constructs and registers only after its parameter
 		// context has been popped. Do not reconstruct missing body symbols.
 		if !symbolExists || previousSymbol.opDefNode != nil {
-			diags = append(diags, g.constructOrdinaryDefinition(definition)...)
+			diags = append(diags, g.constructOrdinaryDefinition(definition, finishLabels)...)
+		} else {
+			finishLabels()
 		}
 		if recursive && !wrongLevel {
 			g.complete(binding, definition.SourcePosition())
@@ -339,7 +342,7 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 	return diags
 }
 
-func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
+func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, context map[string]Position, locals map[string]bool) (Diagnostics, func() *sanyLabelTable) {
 	closeContext := g.pushFormalContext(len(definition.Params))
 	var diags Diagnostics
 	parameters := make([]*sanyFormalParamNode, 0, len(definition.Params))
@@ -391,11 +394,10 @@ func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, co
 	finishLabels := g.pushLabelScope()
 	diags = append(diags, g.checkExpr(definition.Expr, context, locals)...)
 	closeContext()
-	labels := finishLabels()
-	if source := sanyGenerationSource(definition.Expr); source != nil {
-		source.definitionLabels = labels
-	}
-	return diags
+	// processOperator retains this label scope through construction and
+	// registration, after popping the formal context. The caller completes it
+	// only after those operations return normally.
+	return diags, finishLabels
 }
 
 func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]Position) (localSymbol, bool) {
@@ -811,7 +813,7 @@ func (g *sanyExpressionGeneration) checkRecordForm(expr Expr, operator string, f
 
 // The actual body/formals are retained by generation. Construction happens only
 // after the parameter scope has been popped, and registers in the current table.
-func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Definition) Diagnostics {
+func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Definition, finishLabels func() *sanyLabelTable) Diagnostics {
 	if sanyExpressionGenerationFailure(definition.Expr) == sanyGenerationNullOperator {
 		g.retainNullOperatorOperand(definition.Expr, false)
 	}
@@ -822,10 +824,11 @@ func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Defin
 			// graph is still unported. Preserve source completion/syntax on
 			// the actual declaration without fabricating a body node.
 			g.endRecursiveDefinition(binding.node, nil, definition.Syntax)
-			if source != nil {
-				binding.node.labels = source.definitionLabels
-			}
 			definition.semanticNode = binding.node
+		}
+		labels := finishLabels()
+		if definition.semanticNode != nil {
+			definition.semanticNode.labels = labels
 		}
 		return nil
 	}
@@ -835,13 +838,13 @@ func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Defin
 	}
 	if binding := g.bindings[definition.Name]; binding != nil && binding.node != nil && !binding.node.defined && binding.node.letInLevel == g.level {
 		g.endRecursiveDefinition(binding.node, source.semanticGraph, definition.Syntax)
-		binding.node.labels = source.definitionLabels
+		binding.node.labels = finishLabels()
 		definition.semanticNode = binding.node
 		return nil
 	}
 	node, diagnostics := newSanySemOpDefNode(definition.Name, sanyUserDefinedOpKind, source.definitionFormals, definition.Local, source.semanticGraph, module, g.formalSymbolTable(), definition.Syntax, true, nil)
 	g.setDefinitionRecursionFields(node)
-	node.labels = source.definitionLabels
+	node.labels = finishLabels()
 	definition.semanticNode = node
 	return diagnostics
 }

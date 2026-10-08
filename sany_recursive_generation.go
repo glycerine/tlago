@@ -2,6 +2,8 @@
 // Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
+import "github.com/glycerine/tlago/tlc"
+
 // processRecursive builds an unregistered declaration, then unnamed dummy
 // formals and the registered, undefined OpDef. Rejected nodes still enter all
 // three source module vectors; declaration bookkeeping must not discard them.
@@ -40,6 +42,9 @@ func (g *sanyExpressionGeneration) setDefinitionRecursionFields(node *sanySemOpD
 		node.recursiveSection = g.module.section
 		count := g.module.count
 		if g.level != 0 {
+			if g.level < 0 || g.level >= len(g.module.counts) {
+				panic(tlc.NewArrayIndexOutOfBoundsException(g.level, len(g.module.counts)))
+			}
 			count = g.module.counts[g.level]
 		}
 		node.inRecursiveSection = count > 0

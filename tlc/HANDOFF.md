@@ -406,6 +406,15 @@ as Java does. All 1,077 bounded state observations across 21 cases agree,
 including nested/domain failures, array bounds and signed endpoints; the earlier
 225 AP graph rows remain exact. Other generation boundaries remain audit work.
 
+Ordinary operator generation now retains its label scope after popping the
+formal context, through OpDef construction, registration and recursion-field
+assignment. Only normal completion pops the scope and attaches its label table.
+The early label-table copy on the source expression is removed. Twenty external
+observations across 10 direct source `processOperator` cases match, including
+retained registration and labels when recursion-field assignment throws. The
+247 normal LET graph rows and 4,256 body/domain failure rows remain exact.
+This does not complete canonical evaluator integration or all constructor paths.
+
 The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and
 `DefStep` leaves it for the definition parser as Java does. Twenty-one scratch
