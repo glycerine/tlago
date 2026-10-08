@@ -7859,7 +7859,12 @@ string metadata independently of the receiver table. Symbolic set types/caches
 are retained; source custom serialization materializes functions/predicates
 and sends only cached lazy values. Extended evaluator state metadata and opaque
 custom user/data/operator types are explicitly rejected pending their remaining
-implementation. Coordinator/worker network calls and payload integration/process
+implementation. DistributedResultPayload references state and fingerprint vector
+nodes separately, retaining repeated vector identities and null/empty arrays.
+All state partitions use a single state/value graph. Signed computation time
+and states-computed counters are preserved without recomputation. Vector nodes
+send active entries only; decoded capacity equals size, matching the source
+TLCStateVec/LongVec serialization contracts. Coordinator/worker network calls and payload integration/process
 wiring remain to be implemented.
 
 The Java reference implementation uses RMI:

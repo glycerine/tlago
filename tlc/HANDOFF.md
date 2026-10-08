@@ -1833,6 +1833,12 @@ UIDs, state/value/string object sharing, symbolic set representations and caches
 with the source function/predicate/lazy materialization rules. Gob round-trip
 unit tests pass. It currently rejects extended evaluator state metadata, opaque
 custom user values/data and operator values; those are not silently discarded.
+`DistributedResultPayload` now carries worker result partitions and signed
+counters. Repeated state/fingerprint vectors retain identity, and all partitions
+share one state/value graph. Null arrays and partitions remain distinct from
+empty arrays and vectors. Only active vector entries cross the wire, matching
+the source vector serialization contract. Focused gob round-trip checks and
+the related original vector/smart-proxy tests pass.
 Coordinator/worker network calls and process/CLI integration remain pending,
 and payload integration/remaining classes need implementation. These focused
 checks do not prove distributed completion.

@@ -17665,3 +17665,29 @@ Go net/rpc over TCP with explicit Go payloads; Java RMI and Java object-stream
 compatibility are excluded. Source serialization is consulted only to preserve
 TLC value behavior across process boundaries. Coordinator/worker wiring and
 remaining payload types still need implementation.
+
+### 2026-10-08 — Native worker-result graph payload
+
+Continued from 2e1bd88. Reviewed NextStateResult and the source TLCStateVec and
+LongVec custom serialization: both vectors send their active count and entries,
+not unused backing capacity. Added DistributedResultPayload with separate
+one-based vector references, zero for null partitions, explicit null/empty
+outer-array flags and one state/value graph shared across every partition.
+Repeated vector objects retain identity; distinct vectors sharing states/values
+retain those shared objects. Computation time and states-computed keep their
+signed 64-bit values. No assumption of matching partition widths or recomputed
+counters is introduced. Malformed references and length/graph contradictions
+return errors. Existing unsupported state/value representations remain explicit
+errors rather than omitted entries.
+
+No direct original result-serialization test exists. Three new focused Go tests
+exercise actual gob round trips, cross-partition aliases, null entries and
+arrays, empty vectors, receiver ownership, active-only capacities, high-bit
+fingerprints, signed counters and malformed messages. Existing original
+smart-proxy cases and both LongVec classes are unchanged. Initial payload and
+smart-proxy selection passed in 0.013 seconds; final selection adding the
+original LongVec/GrowingLongVec classes passed in 0.014 seconds (terminal status
+0). No full-suite, race or socket workload was run. Updated the inventory's
+transport prerequisites without changing original-method completion counts.
+Worker/coordinator calls, structured worker errors and process/CLI wiring still
+need implementation; distributed completion is not claimed.
