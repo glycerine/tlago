@@ -865,6 +865,12 @@ checker worker slot. Worker-owned operations retain the captured queue and
 executing worker. No original method directly covers these boundaries;
 completion counts remain unchanged.
 
+Eight native successor-owner cases cover replacement/removal of the fingerprint
+set or state writer, excluded state/action constraint reasons and unsatisfied
+writer failure propagation. Captured owners retain insertion and transition
+output; liveness stuttering keeps the source's current-checker writer access.
+No original method directly covers these boundaries; counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

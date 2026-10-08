@@ -219,6 +219,11 @@ shutdown and successor enqueue. Successor processing uses the executing worker
 for trace publication rather than looking it up again in the checker list.
 Checker-owned error handlers retain their own queue access. Other constructor
 owner snapshots still need source audit.
+Successor insertion retains the worker's captured fingerprint set and state
+writer. Normal, excluded and unsatisfied transitions use that writer; writer
+failures cannot disappear silently. Liveness stuttering output retains the
+source's explicit access to the checker's current writer. Successor evaluation's
+tool ownership and remaining missing-owner guards still need audit.
 
 Concurrent trace registration retains its fixed worker-owner list. Missing trace
 or worker references and out-of-range IDs fail before assignment; registration

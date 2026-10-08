@@ -33,6 +33,8 @@ type Worker struct {
 	checkLiveness         bool
 	mode                  ToolMode
 	stateQueue            StateQueue
+	fingerprintSet        FPSet
+	stateWriter           IStateWriter
 }
 
 type WorkerWrappingRuntimeException struct {
@@ -101,6 +103,8 @@ func (w *Worker) captureRunSettings() {
 	w.checkLiveness = w.Checker.CheckLiveness
 	w.mode = w.Tool.GetMode()
 	w.stateQueue = w.Checker.StateQueue
+	w.fingerprintSet = w.Checker.FPSet
+	w.stateWriter = w.Checker.AllStateWriter
 }
 
 func (w *Worker) MyGetID() int {
@@ -381,8 +385,13 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 }
 
 func (w *Worker) AddUnsatisfiedNextState(curState *TLCStateMut, action *Action, succState *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {
-	if w != nil && w.Checker != nil && w.Checker.AllStateWriter != nil && w.Checker.AllStateWriter.IsConstrained() {
-		_ = w.Checker.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, pred)
+	if w == nil || w.stateWriter == nil {
+		panic(NewNullPointerException())
+	}
+	if w.stateWriter.IsConstrained() {
+		if err := w.stateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, pred); err != nil {
+			panic(err)
+		}
 	}
 	return succState
 }

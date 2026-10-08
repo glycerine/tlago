@@ -1699,8 +1699,10 @@ func (mc *ModelChecker) processSuccessorForWorker(worker *Worker, curState *TLCS
 			return true, false, err
 		}
 		unseen = !seen
-	} else if mc.AllStateWriter != nil && mc.AllStateWriter.IsConstrained() {
-		if err := mc.writeConstrainedTransitionReasons(curState, succState, action); err != nil {
+	} else if worker.stateWriter == nil {
+		panic(NewNullPointerException())
+	} else if worker.stateWriter.IsConstrained() {
+		if err := mc.writeConstrainedTransitionReasons(worker.stateWriter, curState, succState, action); err != nil {
 			return true, false, err
 		}
 	}
@@ -1725,17 +1727,14 @@ func (mc *ModelChecker) processSuccessorForWorker(worker *Worker, curState *TLCS
 	return false, false, nil
 }
 
-func (mc *ModelChecker) writeConstrainedTransitionReasons(curState *TLCStateMut, succState *TLCStateMut, action *Action) error {
-	if mc == nil || mc.Tool == nil || mc.AllStateWriter == nil {
-		return nil
-	}
+func (mc *ModelChecker) writeConstrainedTransitionReasons(writer IStateWriter, curState *TLCStateMut, succState *TLCStateMut, action *Action) error {
 	for _, constraint := range mc.Tool.GetModelConstraints() {
 		ok, err := mc.Tool.IsInModelForConstraint(constraint, succState)
 		if err != nil {
 			return err
 		}
 		if !ok {
-			if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, constraint); err != nil {
+			if err := writer.WriteTransition(curState, succState, StateVisitNotInModel, action, constraint); err != nil {
 				return err
 			}
 		}
@@ -1746,7 +1745,7 @@ func (mc *ModelChecker) writeConstrainedTransitionReasons(curState *TLCStateMut,
 			return err
 		}
 		if !ok {
-			if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, constraint); err != nil {
+			if err := writer.WriteTransition(curState, succState, StateVisitNotInModel, action, constraint); err != nil {
 				return err
 			}
 		}
@@ -1788,13 +1787,23 @@ func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, cur
 		tool = worker.Tool
 	}
 	fp := succState.FingerPrintWithTool(tool)
-	seen := mc.FPSet.Put(fp)
-	if mc.AllStateWriter != nil {
+	fingerprintSet, writer := mc.FPSet, mc.AllStateWriter
+	if worker != nil {
+		fingerprintSet, writer = worker.fingerprintSet, worker.stateWriter
+	}
+	if fingerprintSet == nil {
+		panic(NewNullPointerException())
+	}
+	seen := fingerprintSet.Put(fp)
+	if worker != nil && writer == nil {
+		panic(NewNullPointerException())
+	}
+	if writer != nil {
 		status := StateVisitUnseen
 		if seen {
 			status = StateVisitSeen
 		}
-		if err := mc.AllStateWriter.WriteTransition(curState, succState, status, action); err != nil {
+		if err := writer.WriteTransition(curState, succState, status, action); err != nil {
 			return seen, err
 		}
 	}

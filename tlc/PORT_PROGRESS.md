@@ -21829,3 +21829,27 @@ assertions and workload bounds are unchanged. No full suite or race run was
 performed. Supplemental cases add no original-method credit. Distributed work
 uses native Go transport, concurrency and errors, without RMI, Java serialization
 or JVM emulation. Remaining source audits are pending; parity is incomplete.
+
+### 2026-10-08: Captured successor fingerprint and writer owners
+
+Compared Worker's final theFPSet/allStateWriter fields and successor publication
+with pinned source. Workers now capture those owners during construction.
+Fingerprint insertion and normal/excluded/unsatisfied transition output use
+them instead of rereading mutable checker owners. Unsatisfied transition writer
+errors propagate instead of being discarded. Source liveness stuttering output
+explicitly uses tlc.allStateWriter; its current-checker access is retained.
+Successor evaluation's tool ownership remains separate audit work.
+
+No original method directly covers these boundaries. Six replacement/removal
+cases initially failed (b97f0a, status 1, 4.714 seconds). Added two supplemental
+checks preserve ordered state/action exclusion reasons without insertion/enqueue
+and original unsatisfied-writer failure identity. A new test callback field name
+was corrected after compilation rejected it (0621f5); source assertions were
+unchanged. Final focused worker/native RPC, concurrent trace and original
+simulation trace checks pass (cbbbc1, status 0, 9.694 seconds). Original checkpoint-
+on-violation/time-bound, error-trace, Github461 assertion/call-stack and three-
+worker CodePlexBug08 archive recovery plus all four existing DieHard/TSnapShot
+native process storage variants pass (b12ad6, status 0, 58.336 seconds). All
+processes are terminal. Original assertions and bounds are unchanged. No full
+suite or race run was performed. Eight supplemental cases add no original-method
+credit; remaining source audits are pending and distributed parity is incomplete.
