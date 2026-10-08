@@ -11,6 +11,12 @@ not be mistaken for current work.
 
 ## Goal and scope
 
+User clarification (October 8): distributed TLC uses native Go networking and
+concurrency. Do not implement RMI or pretend to provide a Java runtime. Existing
+Java-named remote exception wrappers are a migration concern: translate their
+retry and worker-loss decisions into Go error categories, preserving algorithmic
+behavior rather than Java transport details.
+
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production
 implementation. Fix implementation shortcuts before proceeding. Preserve the
@@ -163,7 +169,11 @@ without modifying it. Worker depth comparison uses signed 32-bit next-level
 arithmetic, preserving the previous maximum when addition wraps. At the depth
 limit, completed record and UID/worker updates survive the later predecessor
 failure; extended states retain the predecessor assigned before that failure.
-Worker owner/recovery and trace cleanup boundaries still need audit.
+Worker recovery publishes the checkpoint pointer after its complete read, then
+closes the checkpoint reader and seeks the existing trace owner. It cannot
+reopen missing or closed owners; closing retains the closed handle. Truncated
+checkpoint reads leave the pointer unchanged. Worker construction, other owner
+access and trace cleanup boundaries still need audit.
 
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes

@@ -745,7 +745,10 @@ bytes and earlier depth updates before write failure. Successful worker/mirror
 cases retain generated actions and the source predecessor metadata policy.
 Eight depth-limit cases preserve signed 32-bit maximum selection, completed
 record/UID/worker updates, extended predecessor assignment and failure-time
-counter/mirror behavior. Upstream has no direct methods for these failure boundaries; completion counts
+counter/mirror behavior. Worker recovery checks cover publication before
+missing-owner, closed-owner and seek failures, preservation of the existing
+owner, and every truncated checkpoint length from zero through fifteen bytes.
+Upstream has no direct methods for these failure boundaries; completion counts
 are unchanged.
 
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/

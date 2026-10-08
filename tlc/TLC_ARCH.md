@@ -7836,6 +7836,13 @@ alternative aside. Java uses RMI, but the Go implementation must not emulate
 Java RMI or a JVM. Preserve batching, fingerprint answers, retries, checkpoint
 boundaries and termination behavior independently of transport.
 
+The user's October 8 clarification also rejects Java runtime impersonation.
+The current wire transport is native Go TCP/net/rpc. Existing Java-named remote
+exception wrappers still couple some retry decisions to source transport types;
+replace that coupling with Go failure categories while retaining the distributed
+algorithm's retry, worker-loss and completion decisions. These wrappers do not
+justify implementing an RMI protocol or Java serialization.
+
 `DistributedWorkerEndpoint` supplies the five worker operations used by the
 coordinator. Server registration, server threads, smart-proxy measurements and
 shutdown use this interface. `LocalWorkerEndpoint` supplies the existing
@@ -11962,5 +11969,9 @@ Overflow preserves the prior maximum rather than storing a negative depth.
 Record and state UID/worker updates precede the later trace-depth failure, while
 count and mirror publication do not occur. Extended state predecessor assignment
 also precedes the base depth check, retaining that assignment on failure. Worker
-owner/recovery and trace cleanup boundaries still need audit. No RMI or JVM
-machinery is introduced.
+recovery publishes the last pointer immediately after reading it, before closing
+the checkpoint reader and seeking the existing trace owner. Missing or closed
+owners cannot be reopened by recovery; closing retains the closed owner handle.
+Truncated reads do not publish the pointer. Worker construction, other owner
+access and trace cleanup boundaries still need audit. No RMI or JVM machinery
+is introduced.

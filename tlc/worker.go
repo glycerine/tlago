@@ -708,17 +708,14 @@ func (w *Worker) RecoverTrace() error {
 		_ = in.Close()
 		return err
 	}
+	w.lastPtr = lastPtr
 	if err := in.Close(); err != nil {
 		return err
 	}
-	if err := w.ensureTraceRAF(); err != nil {
-		return err
+	if w.traceRAF == nil {
+		panic(NewNullPointerException())
 	}
-	w.lastPtr = lastPtr
-	if w.traceRAF != nil {
-		return w.traceRAF.Seek(filePos)
-	}
-	return nil
+	return w.traceRAF.Seek(filePos)
 }
 
 func (w *Worker) CloseTrace() error {
@@ -727,9 +724,7 @@ func (w *Worker) CloseTrace() error {
 	if w.traceRAF == nil {
 		return nil
 	}
-	err := w.traceRAF.Close()
-	w.traceRAF = nil
-	return err
+	return w.traceRAF.Close()
 }
 
 func (w *Worker) DeleteTrace() error {

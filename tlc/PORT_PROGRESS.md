@@ -21284,3 +21284,29 @@ DieHard fingerprint-storage variants pass unchanged trace/event assertions
 race run was performed. Supplemental checks add no original-method credit.
 Worker owner/recovery and trace cleanup boundaries still need audit; distributed
 parity remains incomplete. No RMI or JVM machinery was introduced.
+
+### 2026-10-08: Worker checkpoint recovery ordering and native Go scope
+
+Compared Worker.recover with the pinned source. Recovery now publishes lastPtr
+immediately after its complete checkpoint read, then closes the checkpoint reader
+and seeks the existing trace owner. It no longer opens a replacement owner or
+lets a saved creation error suppress already-read metadata. CloseTrace retains
+the closed handle so later operations observe that resource's closure.
+
+No original method directly covers these boundaries. Five native cases cover
+healthy, missing-owner, closed-owner, prior-open-error and negative-seek paths;
+sixteen truncated checkpoint lengths preserve the old pointer and omit owner
+access. Missing-owner, closed-owner and prior-open-error cases initially failed
+(42455c, status 1, 0.015 seconds). New and related worker/trace checks, original
+smart-proxy checks and seven original simulation trace methods pass (fffef3,
+status 0, 2.039 seconds). Original checkpoint, alias, error-trace and distributed
+initializer model selection passes (312fd7, status 0, 7.606 seconds). Both native
+distributed DieHard storage variants pass (14ccdd, status 0, 24.360 seconds).
+All check processes are terminal. No full suite or race run was performed;
+supplemental checks add no original-method credit. Other owner and cleanup
+boundaries remain pending.
+
+The user reiterated that Go must not pretend to be Java. Current networking is
+native TCP/net/rpc, but Java-named remote exception wrappers remain in some retry
+paths. Their replacement with Go failure categories is explicitly pending;
+preserve algorithmic recovery decisions without expanding RMI compatibility.
