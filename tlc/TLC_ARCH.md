@@ -8415,6 +8415,9 @@ current one. Neither path holds the manager lock during endpoint calls.
 Concurrent block calls submit one callable per partition and collect results
 by their saved index, regardless of completion order. Submission retries retain
 the three-retry bound, Java random one-to-five-second delay and shutdown check.
+Null fingerprint-check endpoints fail inside the task with the source null
+failure category; missing registration wrappers fail during submission. Failed
+check completions do not reassign registrations or enter callable I/O catches.
 ExecutionException is logged and leaves a null result slot; checkFPs and
 checkInvariant also use concurrent completion collection, with Java's signed
 minimum and early false return. NonDistributedFPSetManager bypasses executors

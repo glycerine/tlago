@@ -527,7 +527,12 @@ func (m *DistributedFPSetManager) CheckFPs() uint64 {
 	for index := range count {
 		set := m.entry(index).set
 		submitDistributedCheck(executor, results, func() (uint64, error) {
-			return invokeDistributedFingerprintCheck(uint64(math.MaxInt64), set.CheckFPs)
+			return invokeDistributedFingerprintCheck(uint64(math.MaxInt64), func() (uint64, error) {
+				if set == nil {
+					panic(NewNullPointerException())
+				}
+				return set.CheckFPs()
+			})
 		})
 	}
 	value := uint64(math.MaxInt64)
@@ -570,7 +575,12 @@ func (m *DistributedFPSetManager) CheckInvariant(expectFPs ...uint64) bool {
 	for index := range count {
 		set := m.entry(index).set
 		submitDistributedCheck(executor, results, func() (bool, error) {
-			return invokeDistributedFingerprintCheck(false, func() (bool, error) { return set.CheckInvariant(expectFPs...) })
+			return invokeDistributedFingerprintCheck(false, func() (bool, error) {
+				if set == nil {
+					panic(NewNullPointerException())
+				}
+				return set.CheckInvariant(expectFPs...)
+			})
 		})
 	}
 	for range count {

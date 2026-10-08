@@ -117,3 +117,66 @@ func TestDistributedFingerprintChecksCatchIO(t *testing.T) {
 		}
 	}
 }
+
+// A null endpoint is captured by a callable; a null registration fails during
+// submission instead. Source catches failed completions and retains other results.
+func TestDistributedFingerprintChecksNullEndpointCompletion(t *testing.T) {
+	for _, operation := range []string{"fingerprints", "invariant"} {
+		t.Run(operation, func(t *testing.T) {
+			captureFailoverToolIO(t, ToolIOTool)
+			output, err := os.CreateTemp(t.TempDir(), "null-check-stderr-")
+			if err != nil {
+				t.Fatal(err)
+			}
+			previousStderr := os.Stderr
+			os.Stderr = output
+			defer func() { os.Stderr = previousStderr; _ = output.Close() }()
+			healthy := NewMemFPSet()
+			healthy.Put(11)
+			healthy.Put(18)
+			manager := NewDistributedFPSetManager(NewLocalFingerprintEndpoint(healthy))
+			if err := manager.RegisterFPSet(nil, "null-endpoint"); err != nil {
+				t.Fatal(err)
+			}
+			first, second := manager.entry(0), manager.entry(1)
+			if operation == "fingerprints" {
+				if got, want := manager.CheckFPs(), healthy.CheckFPs(); got != want {
+					t.Fatalf("check result %d, want %d", got, want)
+				}
+			} else if !manager.CheckInvariant() {
+				t.Fatal("null completion entered callable I/O catch")
+			}
+			data, err := os.ReadFile(output.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Count(string(data), "java.util.concurrent.ExecutionException:") != 1 || !strings.Contains(string(data), "java.lang.NullPointerException") {
+				t.Fatalf("completion diagnostic %s", data)
+			}
+			if len(ToolIOGetAllMessages()) != 0 || manager.entry(0) != first || manager.entry(1) != second || !first.available || !second.available {
+				t.Fatal("failed completion changed registrations or entered I/O catch")
+			}
+		})
+	}
+}
+
+func TestDistributedFingerprintChecksNullRegistrationEscapes(t *testing.T) {
+	for _, operation := range []string{"fingerprints", "invariant"} {
+		t.Run(operation, func(t *testing.T) {
+			manager := NewDistributedFPSetManager()
+			manager.fpSets = []*distributedFPSets{nil}
+			defer func() {
+				if failure := recover(); failure == nil {
+					t.Fatal("null registration was treated as a failed task completion")
+				} else if _, ok := failure.(*NullPointerException); !ok {
+					t.Fatalf("failure %T, want null registration failure", failure)
+				}
+			}()
+			if operation == "fingerprints" {
+				manager.CheckFPs()
+			} else {
+				manager.CheckInvariant()
+			}
+		})
+	}
+}

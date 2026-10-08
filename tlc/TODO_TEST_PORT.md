@@ -703,6 +703,10 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental fingerprint-check boundaries preserve null-endpoint failed task
+completions, healthy results and null-registration submission failures. Original
+manager methods and native TCP I/O checks pass; no original-method credit is added.
+
 Supplemental live-registration checks cover checkpoint phase replacement,
 post-first-call tail selection, current failure hostnames, fixed initial counts,
 shutdown's captured-next ordering and wrapper identity. Existing original dynamic

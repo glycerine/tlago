@@ -20332,3 +20332,26 @@ short native TCP assigned-block checkpoint, inflight checkpoint connection-loss
 and healthy-partition continuation checks pass (status 0, 0.051 seconds).
 All handles are terminal. No full suite, long workload or race run was performed.
 Broader distributed parity and disabled original model harnesses remain pending.
+
+### 2026-10-08: Fingerprint check null-endpoint failure boundaries
+
+Compared CheckFPsCallable and CheckInvariantCallable with manager submission and
+completion handling. RegisterFPSet permits a null endpoint within a nonnull
+registration. Both Go tasks previously turned this into runtime.errorString
+rather than the source NullPointerException. Added explicit null checks inside
+the tasks, preserving execution-completion wrapping, retained healthy results,
+unchanged availability and no I/O-catch GENERAL messages. Missing registration
+wrappers still fail synchronously during submission. Generic port exceptions
+retain Go frames; no RMI/JVM machinery or fabricated Java frames is introduced.
+
+The first check draft incorrectly used the convenience endpoint constructor,
+which rejects null just as its source constructor does. Corrected setup to use
+RegisterFPSet, then reproduced both raw runtime-error diagnostics (27348,
+status 1, 0.017 seconds). Focused null, I/O, unchecked/fatal completion, failover
+warning and all original DynamicFPSetManager checks pass after the fix (31649,
+status 0, 0.073 seconds). Added separate null-registration submission checks;
+final focused run passes (23963, status 0, 0.112 seconds). Short native TCP check
+I/O and failover warning tests pass (92288, status 0, 0.021 seconds).
+No direct upstream test covers these null boundaries; supplemental tests add
+no original-method completion credit. All handles are terminal. No full suite,
+long workload or race run was performed; distributed completion remains pending.

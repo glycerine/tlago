@@ -239,6 +239,9 @@ Checkpoint phases and caught-I/O hostnames resolve the current slot separately;
 shutdown captures the next wrapper before exiting the current one. Focused
 manager, failure-boundary and native TCP checkpoint checks pass. Supplemental
 registration-change checks add no original-method credit.
+Fingerprint and invariant tasks also preserve null-endpoint failure categories
+and healthy completion results. Null registrations still fail during submission;
+these supplemental boundary checks add no original-method credit.
 
 Record-backed printable states now retain their record through the native value
 graph, including sharing with caches, ordinary state values and other printable
