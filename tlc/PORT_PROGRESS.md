@@ -21608,3 +21608,24 @@ DieHard/TSnapShot native process storage variants pass (1612a0, status 0, 54.607
 seconds). Source assertions and workload bounds are unchanged. All processes are
 terminal. No full suite or race run was performed. Supplemental cases add no
 original-method credit; construction/context and trace cleanup audits remain.
+
+### 2026-10-08: Fixed concurrent trace worker registration
+
+Compared ConcurrentTLCTrace.addWorker with pinned source and its ModelChecker
+constructor call sites. Registration now requires the trace and worker and rejects
+negative/out-of-range IDs before assignment. Removed silent invalid registration
+and automatic owner-list expansion. Valid registration replaces exactly one slot
+and returns the supplied worker. Production construction still uses the captured
+worker count for its trace and registers each worker at its configured index.
+
+No original method directly covers invalid registration. Six supplemental cases
+cover missing trace/worker references, negative/out-of-range IDs, an empty list
+and valid replacement. Five initially failed (1a320c, status 1, 0.013 seconds).
+Final focused trace/worker, recovery/checkpoint and original short proxy/simulation
+checks pass (23f50b, status 0, 2.504 seconds). The original three-worker recovery
+test against the unchanged Java-produced CodePlexBug08 archive passes (76a3d6,
+status 0, 3.400 seconds). Original checkpoint-on-violation/time-bound and error-
+trace models plus all four DieHard/TSnapShot native process storage variants pass
+(e7c677, status 0, 54.455 seconds). Assertions and workload bounds remain unchanged.
+All processes are terminal. No full suite or race run was performed. Supplemental
+checks add no original-method credit; distributed completion remains unproven.

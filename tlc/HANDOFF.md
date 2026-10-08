@@ -208,6 +208,11 @@ or substitute an in-memory offset. Error-stack replay opens its unregistered
 worker's trace before evaluation and closes it afterward. Worker construction,
 filename/context guards and trace cleanup boundaries still need audit.
 
+Concurrent trace registration retains its fixed worker-owner list. Missing trace
+or worker references and out-of-range IDs fail before assignment; registration
+cannot expand the topology or silently drop an invalid owner. Valid registration
+replaces only its indexed slot and returns the supplied worker.
+
 Distributed initial-state publication changes only the state UID, preserving
 worker, predecessor, action and level metadata. Fingerprint insertion precedes
 the required root trace write and queue enqueue; property checks follow. Missing

@@ -813,6 +813,11 @@ before missing-predecessor failure; level and unrelated metadata stay unchanged.
 No original method directly covers these boundaries; completion counts remain
 unchanged. The seven original simulation trace methods retain their assertions.
 
+Six native trace-registration cases cover missing trace/worker references,
+negative/out-of-range indices, an empty owner list and valid slot replacement.
+Invalid registration leaves the fixed owner list unchanged. No original method
+directly covers this boundary; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

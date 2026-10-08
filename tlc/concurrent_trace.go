@@ -51,14 +51,11 @@ func (t *ConcurrentTLCTrace) SetCheckpointContext(metadir string, rootName strin
 
 func (t *ConcurrentTLCTrace) AddWorker(worker *Worker) *Worker {
 	if t == nil || worker == nil {
-		return worker
+		panic(NewNullPointerException())
 	}
 	id := worker.MyGetID()
-	if id < 0 {
-		return worker
-	}
-	for id >= len(t.Workers) {
-		t.Workers = append(t.Workers, nil)
+	if id < 0 || id >= len(t.Workers) {
+		panic(NewArrayIndexOutOfBoundsException(id, len(t.Workers)))
 	}
 	t.Workers[id] = worker
 	return worker
