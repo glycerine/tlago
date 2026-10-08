@@ -90,16 +90,11 @@ func (r *DistributedWorkerRuntime) Shutdown() error {
 		return NewNullPointerException()
 	}
 	_ = r.cancelKeepAlive(false)
-	r.keepAliveMu.Lock()
-	workers := append([]*DistributedWorker(nil), r.workers...)
-	if r.runnables != nil {
-		workers = make([]*DistributedWorker, len(r.runnables))
-		for i, runnable := range r.runnables {
-			workers[i] = runnable.GetTLCWorker()
+	for index := 0; ; index++ {
+		worker, present := r.shutdownWorkerAt(index)
+		if !present {
+			break
 		}
-	}
-	r.keepAliveMu.Unlock()
-	for _, worker := range workers {
 		if worker == nil {
 			continue
 		}
@@ -115,6 +110,23 @@ func (r *DistributedWorkerRuntime) Shutdown() error {
 	r.keepAliveMu.Unlock()
 	// Java neither recreates the executor nor resets the completion latch.
 	return nil
+}
+
+// Shutdown resolves each worker only when its turn is reached. Startup can
+// publish a later runnable's worker while an earlier exit is in progress.
+func (r *DistributedWorkerRuntime) shutdownWorkerAt(index int) (*DistributedWorker, bool) {
+	r.keepAliveMu.Lock()
+	defer r.keepAliveMu.Unlock()
+	if r.runnables != nil {
+		if index >= len(r.runnables) {
+			return nil, false
+		}
+		return r.runnables[index].GetTLCWorker(), true
+	}
+	if index >= len(r.workers) {
+		return nil, false
+	}
+	return r.workers[index], true
 }
 
 func (r *DistributedWorkerRuntime) AwaitTermination() error {

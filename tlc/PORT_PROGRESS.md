@@ -20413,3 +20413,33 @@ existing snapshot/registration, unprobed/incomplete registration and fingerprint
 check I/O tests pass (status 0, 0.032 seconds). All handles are terminal. No full
 suite, long workload or race run was performed. Broader distributed completion
 and disabled original model harnesses remain pending.
+
+### 2026-10-08: Live worker lookup during process shutdown
+
+Audited TLCWorker.shutdown against pinned source. Go prefetched every runnable’s
+worker before any exit, while source reads the worker for each index after
+preceding exits. A worker published during an earlier exit could be skipped,
+leaving its endpoint exported and latch outstanding after arrays were cleared.
+A nil later runnable also failed before earlier exits and retained the lifecycle
+lock because the prefetch loop lacked deferred unlock.
+
+Replaced prefetch with locked per-index lookup, releasing the lock before Exit.
+Each loop observes the current runnable/worker array and each worker’s atomic
+publication. Source null-worker skips and ignored NoSuchObjectException behavior
+are retained. A nil runnable still fails, after prior exits, without clearing
+arrays; deferred unlock preserves further lifecycle access. Shutdown does not
+wait for still-unpublished workers or reset the executor/latch.
+
+No original test covers these traversal boundaries. New checks first failed
+for both late publication and earlier-exit ordering (80277, status 1, 0.013
+seconds). After the fix, both plus registration/ownership contexts and the
+original nine smart-proxy contexts pass (46480, status 0, 0.013 seconds).
+Expanded late publication to a gated, joined startup goroutine and retained a
+separate unpublished-worker skip check. The three exact short new checks pass
+with race instrumentation (98850, status 0, 1.031 seconds), including explicit
+lifecycle-lock availability after failure. Existing native worker keepalive,
+RPC lifecycle/shutdown and timer-failure TCP checks pass normally (84517,
+status 0, 0.029 seconds). All handles are terminal. No full suite or long
+workload was run; race selection contained only the three short new checks.
+Supplemental checks add no original-method credit; distributed parity remains
+incomplete.

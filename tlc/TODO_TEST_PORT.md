@@ -703,6 +703,12 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental shutdown traversal checks preserve late startup publication,
+earlier exits/latch mutations before a nil runnable failure, lifecycle lock
+release and source unpublished-worker skips. Three short checks pass with race
+instrumentation; existing short TCP lifecycle checks pass normally. No original
+method covers this boundary, so completion counts are unchanged.
+
 Supplemental gob/TCP manager checks preserve nil endpoints separately from empty
 registration slots, shared/distinct wrapper identity, metadata and operation-time
 failover. Contradictory null references fail before resolution. Existing original

@@ -323,6 +323,12 @@ creation. Missing queues and wakeup failures cannot create partial registrations
 focused local/TCP checks preserve failure categories and monitor release.
 Worker registration retains its required URI calls.
 
+Worker-process shutdown reads each runnable’s worker at its turn, so later
+startup publication during an earlier exit is observed. A later nil runnable
+retains earlier exit/latch mutations and releases the lifecycle lock; unpublished
+workers still receive the source skip. Focused normal/race and short TCP lifecycle
+checks pass. Supplemental checks add no original-method completion credit.
+
 Worker fingerprint-manager snapshots now create native endpoint references
 without dialing every store. A stopped fingerprint host no longer prevents
 snapshot receipt; the first operation reaches TLC's existing failover logic.

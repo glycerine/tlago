@@ -8169,7 +8169,11 @@ cancels the shared timer, forcibly unexports that worker, then decrements the
 latch. It does not acquire the computation lock or wait for accepted tasks.
 Repeated direct exits print again and fail at unexport without decrementing;
 proxy calls to an unexported endpoint fail with a direct NoSuchObjectException.
-Direct `isAlive` remains true. Shutdown ignores only direct NoSuchObjectException
+Direct `isAlive` remains true. Shutdown resolves each runnable’s worker only
+when that index is reached, observing startup publication during earlier exits.
+It releases the lifecycle lock before calling Exit. A nil runnable fails after
+prior exits, retaining array/latch mutations and releasing the lock; a nonnull
+runnable with an unpublished worker is skipped. Shutdown ignores only direct NoSuchObjectException
 and does not recreate the executor or latch. AwaitTermination waits for the
 latch, then sleeps ten seconds before returning.
 
