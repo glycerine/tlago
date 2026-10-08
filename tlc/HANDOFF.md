@@ -1511,9 +1511,14 @@ Keep each scope distinct. Whole-module canonical AST assertions, general source 
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.
 Numeric/general-Object driver formatting, PrintStream error-state queries and remaining production-frame
 coverage still require reconciliation. Do not claim full SanyOutput or parser
-parity. The existing syntax corpus port checks parser status and node usage, without the original canonical AST
-comparison. These are remaining translation gaps, not full-suite fidelity
-receipts. Preserve the source harness's known-failure inversion: Java accepts
+parity. The syntax corpus now retains all 355 expected DSL trees, source bytes
+and attributes. Its original DSL-kind usage method is port complete across all
+355 parameter contexts; the native SANY-kind surrogate is removed. Metadata and
+AST serialization match Java on 356 rows including the unused count. The current
+`testAll` still checks parser status without the original canonical AST comparison.
+Next, translate `TlaPlusParserOutputTranslator` and the source known-failure runner,
+then install its AST equality assertions and fix actual parser differences.
+These are remaining translation gaps, not full-suite fidelity receipts. Preserve the source harness's known-failure inversion: Java accepts
 the unchanged LOCAL-in-LET error fixture, and the original expects that success.
 
 Missing modules and filename/module-name mismatches now abort loading with source E4220/E4221 details and null or

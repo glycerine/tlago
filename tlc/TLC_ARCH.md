@@ -10362,3 +10362,23 @@ and all 130 sites together. Existing 341 expected-entry, 5,823 syntax/message an
 641 saved-call/direct-choice state rows remain equal. These observations do not
 establish full ReInit/constructor, syntax AST, canonical/evaluator fidelity or
 all malformed rescan contexts.
+
+
+## Corpus expectations retain the source AST DSL
+
+The test helper now translates AstNode's DSL kind table, ordered child/field-name
+identity, aliasing, serialization and recursive equality behavior. Expected trees
+are parsed by the source S-expression tokenization and recursive parser rules.
+Retain source details: addField appends only to an already-present field list
+while recording the child's field name; equality checks expected named edges;
+tokenization does not flush an identifier at EOF. Header/separator matching
+preserves complete TLA+ input bytes, multiline names and ERROR/SKIP attributes.
+Kind usage is marked by fromString when expected DSL trees are loaded, matching
+the Java static usage set. PlusCal and FAIR are excluded from the TLA+ usage check.
+
+All 355 unchanged corpus metadata and expected-tree serialization rows agree
+with Java, plus the zero-unused row. The original DSL-kind usage test now retains
+all 355 parameter contexts. The SANY-to-DSL translator, full known-failure runner
+and testAll AST equality assertions remain pending; parser-status checks are
+supplementary. These helper observations do not establish every malformed DSL,
+constructor, Unicode-version edge or production AST fidelity.

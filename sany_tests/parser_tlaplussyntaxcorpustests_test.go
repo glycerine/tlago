@@ -11,12 +11,16 @@ import (
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/TlaPlusSyntaxCorpusTests.java.
-// Each test starts skipped until its Java assertions are ported and made green.
+// testAll remains a supplementary status check until the original AST translator
+// and equality assertions are ported. The DSL-kind usage assertion is translated.
 func TestTlaPlusSyntaxCorpusTests_testAll(t *testing.T) {
 	for _, file := range sanySyntaxCorpusFiles(t) {
 		for _, tc := range readSanySyntaxCorpusCases(t, file) {
 			tc := tc
 			t.Run(filepath.Base(file)+"/"+tc.Title, func(t *testing.T) {
+				if tc.Skip {
+					t.Skip("source corpus SKIP attribute")
+				}
 				_, diags := tlago.ParseSanySyntax("Test.tla", tc.Source)
 				if isExpectedSanySyntaxParseFailure(tc) {
 					if !diags.HasErrors() {
@@ -31,33 +35,34 @@ func TestTlaPlusSyntaxCorpusTests_testAll(t *testing.T) {
 }
 
 func TestTlaPlusSyntaxCorpusTests_testAllTlaPlusNodesUsed(t *testing.T) {
-	used := map[string]bool{}
+	// Source getTests loads all expected ASTs before parameterized methods run.
+	type parameter struct {
+		file string
+		test sanySyntaxCorpusCase
+	}
+	var parameters []parameter
 	for _, file := range sanySyntaxCorpusFiles(t) {
 		for _, tc := range readSanySyntaxCorpusCases(t, file) {
-			if isExpectedSanySyntaxParseFailure(tc) {
-				continue
+			parameters = append(parameters, parameter{file, tc})
+		}
+	}
+	for _, parameter := range parameters {
+		t.Run(filepath.Base(parameter.file)+"/"+parameter.test.Title, func(t *testing.T) {
+			var unused []string
+			for _, kind := range syntaxCorpusKinds {
+				if strings.HasPrefix(kind.name, "pcal") || kind.enum == "FAIR" {
+					continue
+				}
+				if syntaxCorpusUnused[kind.name] {
+					unused = append(unused, kind.enum)
+				}
 			}
-			root, diags := tlago.ParseSanySyntax("Test.tla", tc.Source)
-			requireNoSANYDiagnostics(t, "parse "+tc.Title, diags)
-			collectSanySyntaxNodeKinds(root, used)
-		}
-	}
-
-	var unused []string
-	for _, def := range tlago.SanySyntaxNodeKinds {
-		if !strings.HasPrefix(def.Name, "N_") {
-			continue
-		}
-		if isLegacyUnusedJavaSyntaxNodeKind(def.Name) {
-			continue
-		}
-		if !used[def.Name] {
-			unused = append(unused, def.Name)
-		}
-	}
-	sort.Strings(unused)
-	if len(unused) != 0 {
-		t.Fatalf("unused TLA+ syntax node kinds: %v", unused)
+			t.Logf("Total unused node kinds: %d", len(unused))
+			t.Log(unused)
+			if len(unused) != 0 {
+				t.Fatalf("expected zero unused TLA+ AST DSL kinds; actual %d", len(unused))
+			}
+		})
 	}
 }
 
@@ -65,6 +70,8 @@ type sanySyntaxCorpusCase struct {
 	Title       string
 	Source      string
 	ExpectError bool
+	Skip        bool
+	ExpectedAST *syntaxCorpusAST
 }
 
 func sanySyntaxCorpusFiles(t *testing.T) []string {
@@ -96,77 +103,11 @@ func readSanySyntaxCorpusCases(t *testing.T, file string) []sanySyntaxCorpusCase
 	if err != nil {
 		t.Fatalf("read syntax corpus %s: %v", file, err)
 	}
-	lines := strings.Split(string(data), "\n")
-	var cases []sanySyntaxCorpusCase
-	for i := 0; i < len(lines); {
-		if !isSanySyntaxCorpusSeparator(lines[i], '=') {
-			i++
-			continue
-		}
-		i++
-		var header []string
-		for i < len(lines) && !isSanySyntaxCorpusSeparator(lines[i], '=') {
-			header = append(header, lines[i])
-			i++
-		}
-		if i >= len(lines) {
-			break
-		}
-		i++
-		for i < len(lines) && strings.TrimSpace(lines[i]) == "" {
-			i++
-		}
-		start := i
-		for i < len(lines) && !isSanySyntaxCorpusSeparator(lines[i], '-') {
-			i++
-		}
-		source := strings.TrimRight(strings.Join(lines[start:i], "\n"), "\n")
-		title, expectError := parseSanySyntaxCorpusHeader(header)
-		if title != "" && source != "" {
-			cases = append(cases, sanySyntaxCorpusCase{Title: title, Source: source, ExpectError: expectError})
-		}
-		for i < len(lines) && !isSanySyntaxCorpusSeparator(lines[i], '=') {
-			i++
-		}
+	cases, err := parseSyntaxCorpusFile(file, string(data))
+	if err != nil {
+		t.Fatalf("parse syntax corpus %s: %v", file, err)
 	}
 	return cases
-}
-
-func parseSanySyntaxCorpusHeader(lines []string) (string, bool) {
-	var title []string
-	expectError := false
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		if trimmed == ":error" {
-			expectError = true
-			continue
-		}
-		title = append(title, trimmed)
-	}
-	if len(title) == 0 {
-		return "", expectError
-	}
-	return title[0], expectError
-}
-
-func isSanySyntaxCorpusSeparator(line string, marker byte) bool {
-	line = strings.TrimSpace(line)
-	if !strings.HasSuffix(line, "|||") {
-		return false
-	}
-	prefix := strings.TrimSuffix(line, "|||")
-	if prefix == "" {
-		return false
-	}
-	for i := 0; i < len(prefix); i++ {
-		if prefix[i] != marker {
-			return false
-		}
-	}
-	return true
 }
 
 func isExpectedSyntaxCorpusFailure(title string) bool {
@@ -208,33 +149,5 @@ func isSanySyntaxCorpusJavaParseSuccess(title string) bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func isLegacyUnusedJavaSyntaxNodeKind(kind string) bool {
-	switch kind {
-	case "N_ActDecl",
-		"N_AssumeDecl",
-		"N_FunctionParam",
-		"N_InnerProof",
-		"N_Integer",
-		"N_NonExprBody",
-		"N_NumberedAssumeProve",
-		"N_NumerableStep",
-		"N_ParamDecl",
-		"N_TempDecl":
-		return true
-	default:
-		return false
-	}
-}
-
-func collectSanySyntaxNodeKinds(node *tlago.SanySyntaxNode, used map[string]bool) {
-	if node == nil {
-		return
-	}
-	used[node.Kind.JavaName()] = true
-	for _, child := range node.GetHeirs() {
-		collectSanySyntaxNodeKinds(child, used)
 	}
 }

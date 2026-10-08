@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-07 Restore source syntax-corpus expectations and DSL-kind usage:
+Previous completed commit: 6d66570. Audit original TlaPlusSyntaxCorpusTests and
+its AstNode/SyntaxCorpusFileParser/SyntaxCorpusRunner helpers. Native loader
+threw away expected ASTs and trimmed input; native usage test counted SANY kinds
+instead of the source AST DSL. Port the DSL kind table, ordered children/field
+names, source serialization/equality/alias helpers and expected-tree parser.
+Keep source addField's existing-list-only behavior and tokenizer's missing EOF
+identifier flush. Restore source header/separator matching, complete input bytes,
+multiline names and ERROR/SKIP attributes. Translate original DSL-kind usage
+assertion across all 355 parameter contexts, excluding PlusCal and FAIR. Remove
+unused native-kind surrogate helpers. testAll remains supplementary/reconcile
+until the 1,700-line SANY-to-DSL translator and known-failure runner are ported;
+do not weaken or replace their AST equality assertions.
+
+External CorpusDSLProbe.java reads the actual Java loader, serializes expected
+AstNodes, and invokes the original testAllTlaPlusNodesUsed method. Go observer
+89967 returned 0 and is retired; Java returned 0. All 356 rows match: 355 case
+names/source bytes/attributes/AST serializations and the unused count. Probes,
+overlay and logs remain under /mnt/oldrog/tmp with prefix tlago-corpus-dsl.
+Focused corpus gate 68692 returned 0 and is retired. No invented permanent tests
+or fixture changes. One original SANY method is now port complete; no main TLC
+method/class credit. Preserve testAll's known-failure runner for the next stage.
+
+Final complete SANY gate 62068 returned 0 in 2.163 seconds; original root frontend/
+model gate 50146 returned 0 in 9.502 seconds; all-package compile 78694 returned
+0. All handles retired. Normal execution without race. Logs:
+tlago-corpus-dsl-sany, -originals and -compile under /mnt/oldrog/tmp. Known native
+XML failures and main TLC counts remain unchanged; no full-workspace green claim.
+Broader syntax AST, canonical integration and evaluator parity remain pending.
+
 2026-10-07 Port failed-kind state and the generated exception constructor:
 Previous completed commit: a8dbab2. Remove native arbitrary expected-sequence
 injection, including its longer-sequence compatibility branch. Record one failed

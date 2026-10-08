@@ -16,6 +16,17 @@ Keep translated assertions faithful to the Java source, and add any copied
 fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
 locations.
 
+`parser.TlaPlusSyntaxCorpusTests.testAllTlaPlusNodesUsed` is **port complete**
+with all 355 original parameter contexts. It checks unused AST DSL kinds after
+loading every expected corpus tree, excludes PlusCal kinds and FAIR, and retains
+the exact zero-unused assertion. The earlier native SANY-kind surrogate is removed.
+The corpus loader retains source bytes, multiline names, ERROR/SKIP attributes and
+expected DSL trees; 356 external metadata/AST rows (355 cases plus unused count)
+match the unchanged Java helpers. `testAll` remains **reconcile**: its current
+parser-status checks are supplementary until `TlaPlusParserOutputTranslator` and
+the original canonical AST equality/known-failure runner are translated. No main
+TLC inventory credit is added by this SANY work.
+
 `parser.BelchDefTests.runTestCase` is **port complete** in root
 `sany_belchdef_java_test.go`, retaining all five original parameter rows. It
 checks the actual lazy parser stream: initialization leaves the cursor before
