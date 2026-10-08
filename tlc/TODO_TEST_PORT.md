@@ -798,6 +798,12 @@ retain diagnostics and leave coordinator/assigned work unchanged. Timer owners
 are joined. TCP worker-loss/keepalive and original smart-proxy checks pass.
 Upstream has no enabled method for this boundary; no original-method credit.
 
+Native fingerprint-check callable failure checks retain the source I/O-only
+catch, GENERAL diagnostic, MaxInt64/false sentinels, unchanged partition ownership
+and unchecked execution-failure path. Both returned and panicked I/O failures
+pass locally and over TCP; host availability remains intact. Original manager
+methods pass. No upstream methods cover this catch; no completion credit added.
+
 Native value-array graph checks cover state, tuple, record, function, operator argument
 row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
 references and isolated receiver mutations across worker request/result TCP.

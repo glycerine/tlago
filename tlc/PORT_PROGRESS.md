@@ -19699,3 +19699,31 @@ the check does not claim a second real interval. Upstream has no enabled direct
 method for this boundary; native checks add no original-method completion credit.
 No full suite, reduced timer delay or race instrumentation was selected.
 Broader distributed parity remains pending; all test handles are terminal.
+
+
+## October 8, 2026: fingerprint check callable I/O catches
+
+CheckFPsCallable and CheckInvariantCallable catch IOException inside each task,
+print GENERAL and return Long.MAX_VALUE/false. The port submitted raw endpoint
+checks, so I/O errors instead became ExecutionException results that the manager
+printed and ignored. Invariant checking could consequently return true after
+an I/O failure. Both callables now run through their source I/O-only catch before
+the executor wraps other failures. Native returned errors and panics retain the
+same boundary. No RMI, transport retry, partition reassignment or JVM work.
+
+New checks reproduce the missing diagnostics and false invariant success
+(1231, status 1, 0.019 seconds). Local returned/panicked I/O checks pass after the
+fix (63307, status 0, 0.016 seconds), followed by local unchecked RuntimeException
+and AssertionError cases (3038, status 0, 0.023 seconds). Unchecked cases retain
+the source manager's logged failed-completion behavior; they are not converted
+to callable I/O sentinels. TCP returned/panicked I/O cases pass (0.018 seconds),
+with both diagnostics, false invariants, MaxInt64 distance and unchanged storage
+availability/ownership; a subsequent size RPC confirms host survival. Existing
+original dynamic/static manager methods pass (0.066 seconds).
+
+The generated-state statistics audit confirms the existing initial-state offset
+is already correct; no statistics implementation or supplemental test change
+was needed. Upstream has no direct check-callable failure methods, so supplemental
+coverage adds no original-method completion credit. No full suite, long workload
+or race instrumentation was selected. Broader distributed parity remains pending;
+all test handles are terminal.

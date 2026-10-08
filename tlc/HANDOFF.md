@@ -124,6 +124,12 @@ Focused recovery contracts are also verified:
 Unused RMI-specific error carriers are removed. Native Go failure traits drive
 retry/shutdown decisions; Java remote machinery is outside the port.
 
+Fingerprint check tasks now catch I/O failures before executor completion
+wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for
+fingerprint distance, `false` for invariants). Unchecked task failures retain
+the source execution-failure path. Focused local/TCP checks and original manager
+methods pass; supplemental failure checks add no original-method credit.
+
 Native state transfer now preserves shared backing value arrays for states, tuples,
 records, functions, configured operator argument rows, tuple products and record
 sets. Receiver mutations remain visible through shared arrays without touching

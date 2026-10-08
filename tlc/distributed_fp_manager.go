@@ -483,6 +483,17 @@ func submitDistributedCheck[T any](executor *DistributedExecutor, results chan<-
 	})
 }
 
+// The source check callables catch IOException before the executor can wrap
+// it. Other failures still reach the manager as failed task completions.
+func invokeDistributedFingerprintCheck[T any](failureValue T, call func() (T, error)) (T, error) {
+	value, err := invokeFingerprintEndpoint(call)
+	if err != nil && isJavaIOException(err) {
+		PrintError(ECGeneral, generalErrorParams("", err)...)
+		return failureValue, nil
+	}
+	return value, err
+}
+
 func (m *DistributedFPSetManager) CheckFPs() uint64 {
 	if m.NonDistributed {
 		value, err := invokeFingerprintEndpoint(func() (uint64, error) {
@@ -510,7 +521,9 @@ func (m *DistributedFPSetManager) CheckFPs() uint64 {
 	results := make(chan distributedCheckResult[uint64], count)
 	for index := range count {
 		set := m.entry(index).set
-		submitDistributedCheck(executor, results, func() (uint64, error) { return set.CheckFPs() })
+		submitDistributedCheck(executor, results, func() (uint64, error) {
+			return invokeDistributedFingerprintCheck(uint64(math.MaxInt64), set.CheckFPs)
+		})
 	}
 	value := uint64(math.MaxInt64)
 	for range count {
@@ -551,7 +564,9 @@ func (m *DistributedFPSetManager) CheckInvariant(expectFPs ...uint64) bool {
 	results := make(chan distributedCheckResult[bool], count)
 	for index := range count {
 		set := m.entry(index).set
-		submitDistributedCheck(executor, results, func() (bool, error) { return set.CheckInvariant(expectFPs...) })
+		submitDistributedCheck(executor, results, func() (bool, error) {
+			return invokeDistributedFingerprintCheck(false, func() (bool, error) { return set.CheckInvariant(expectFPs...) })
+		})
 	}
 	for range count {
 		result := <-results
