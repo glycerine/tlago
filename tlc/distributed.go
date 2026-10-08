@@ -1502,9 +1502,6 @@ func initializeDistributedWorkerProperties() {
 
 func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetManager, address ...DistributedWorkerAddress) *DistributedWorker {
 	initializeDistributedWorkerProperties()
-	if fpSetManager == nil {
-		fpSetManager = NewDistributedFPSetManager()
-	}
 	var app *TLCApp
 	if tool != nil {
 		app = NewTLCApp(tool, true)
@@ -1702,6 +1699,9 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 		for _, fp := range orderedFPs {
 			holders = append(holders, holdersByFP[fp])
 		}
+	}
+	if w.FPSetManager == nil {
+		panic(NewNullPointerException())
 	}
 	serverCount := w.FPSetManager.NumOfServers()
 	predecessors := make([]*StateVec, serverCount)

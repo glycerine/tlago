@@ -20474,3 +20474,31 @@ required events/no-GENERAL assertions, pass (36700, status 0, 24.396 seconds).
 These native harnesses add no completion credit to the assumption-disabled
 Java harnesses. All handles are terminal. No full suite or race run was performed;
 broader distributed completion remains pending.
+
+### 2026-10-08: Supplied worker fingerprint-manager ownership
+
+Compared TLCWorker construction and getNextStates ordering with pinned Java.
+Go replaced a supplied null manager with an invented empty manager. With zero
+successors this could return empty successful results, while nonempty work
+reached an arithmetic failure instead of source’s null manager dereference.
+Removed the fallback. The worker now checks for null at partition-count lookup,
+after generation and the overallStatesComputed update, preserving generic port
+failure categories, predecessor context and computing’s finally cleanup.
+
+No direct original test covers this constructor/failure boundary. Added zero/
+two-successor checks retaining the null manager, prior overall count, generation
+calls and WorkerException predecessor/null-successor/call-stack context. Both
+initially failed at constructor ownership (78921, status 1, 0.012 seconds).
+After production fix, these, empty-manager distinction, existing worker vector/
+selection/shutdown checks and original nine smart-proxy contexts pass (76886,
+status 0, 0.015 seconds). Native TCP missing-manager/null-answer/partition and
+worker keepalive/lifecycle checks pass (status 0, 0.033 seconds); the endpoint
+remains alive after the failed computation.
+
+Added generation-failure precedence: incomplete successor validation preserves
+its direct WorkerException and leaves the prior overall count untouched, before
+manager access. Corrected a draft test’s nonexistent Message field to Error().
+Final focused ownership/precedence run passes (10846, status 0). All handles
+are terminal. No full suite, long workload or race run was performed. These
+supplemental checks add no original-method credit; distributed parity remains
+incomplete.

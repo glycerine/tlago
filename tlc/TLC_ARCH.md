@@ -7967,6 +7967,13 @@ Core Java flow:
    `work.isInModel`, and, only if the model constraint passes, `work.isInActions`.
    Passing states inherit the predecessor UID and return in `NextStateResult`.
 
+Worker construction retains the supplied fingerprint manager without a fallback.
+A nil manager fails at the partition-count lookup after completed generation and
+the overall-state counter update. WorkerException retains the current predecessor,
+null successor and call-stack flag, and finally clears computing. Generation
+failures occur first and do not update the overall counter. A real empty manager
+is a separate source case; zero-successor work can return empty partition arrays.
+
 The concrete `TLCApp` runtime captures implied-init, invariant, implied-action,
 and next-action arrays at construction, retaining their identity even if the
 tool later replaces its arrays. Worker-group members share one application.

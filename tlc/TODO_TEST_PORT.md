@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental missing-manager checks preserve constructor ownership, generation/
+statistics/failure ordering, predecessor context and computing cleanup locally
+and through native TCP. Empty-manager behavior remains distinct. No original
+method covers this boundary; completion counts remain unchanged.
+
 Supplemental application successor-array checks preserve container isolation,
 shared state objects, larger-vector order and validation-time replacement/shrink/
 growth behavior. Existing worker/TCP checks pass; no original-method credit is

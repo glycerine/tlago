@@ -323,6 +323,12 @@ creation. Missing queues and wakeup failures cannot create partial registrations
 focused local/TCP checks preserve failure categories and monitor release.
 Worker registration retains its required URI calls.
 
+Workers now retain the supplied fingerprint manager, including nil, rather than
+inventing an empty manager. Missing-manager failures occur after generation and
+its statistics update, preserving predecessor/error context and computing cleanup.
+Generation failures still take precedence; empty managers remain distinct.
+Focused local/TCP checks pass and add no original-method completion credit.
+
 Distributed application successor results now have separate fixed-size array
 storage, preserving shared state objects and larger-vector merge order. Tool
 accumulator mutations cannot rewrite returned slots; validation-time shrink/grow
