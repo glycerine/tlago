@@ -422,6 +422,9 @@ also complete there rather than during native preregistration. Thirty direct Jav
 invalid-level failures. The earlier LET, named-function and body/domain graph/
 state observations still agree. Native paths without actual declaration nodes
 remain explicitly incomplete; broader generation and runtime sharing need work.
+Replacing completion syntax with null now clears the actual tree interface,
+native position and source location. A null declaration throws the source
+NullPointerException family. All 32 direct source completion observations agree.
 
 The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and

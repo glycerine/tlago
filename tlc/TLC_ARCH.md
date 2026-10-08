@@ -10633,3 +10633,43 @@ nodes. Thirty exact external processOperator observations cover levels -1, 0,
 returned identity, node/body/labels, contexts, active label sets and retained
 counters. Earlier 247 LET, 500 named-function and 4,256 body/domain rows remain
 exact. Other constructor boundaries and canonical evaluator sharing remain work.
+
+## Recursive completion with null syntax
+
+`endOpDefNode` assigns the supplied syntax even when it is null. Java
+`SemanticNode.getLocation` then returns Location.nullLoc. The Go completion
+path now clears its tree interface, native position and cached location at that
+same mutation boundary. Assigning a typed nil syntax pointer to the interface
+alone left GetTreeNode observably non-null; retaining the declaration's location
+also contradicted source behavior. Null declaration arguments throw the source
+NullPointerException family before changing any counters.
+
+Thirty-two external observations agree with actual endOpDefNode over null/non-
+null nodes, syntax and bodies, recursive/nonrecursive definitions and unresolved
+sums zero/one. Counter underflow still retains the already-written body and
+syntax. Comparison covers exception family, counters, body identity, defined
+state, tree nullness and location text; it does not establish every exception
+message or other syntax mutation path.
+
+## Remaining runtime LET adapter requirements
+
+The retained canonical `sanySemLetInNode.context` is the source of traversal
+bindings. Runtime LetInNode currently has only Lets, Bindings and Body, and
+coverageLetDefinitions reconstructs a Hashtable from filtered user definitions.
+Java walkGraph visits Context instead, specifically because opDefs is incomplete.
+Module-instance definitions and imported theorem/assumption bindings must survive
+that traversal. Preserve context Pair history, current key-to-Pair selection,
+bucket/chain order, original module namespace and shared symbol identities.
+Replaying filtered getLets or Pair insertion order is insufficient for contexts
+whose duplicate operation rebuilt lookup bindings in a different order.
+
+Runtime conversion therefore needs a canonical node adapter with an identity
+cache before it can transfer the actual context. The existing bridge copies
+local AST Definition values, constructs runtime OpDefs after converting bodies
+and separately reconstructs INSTANCE exports. These are not canonical-context
+identity mappings. Formal symbols also lack their canonical SemanticNode base;
+imported ThmOrAssumpDef bodies and module-instance kind/parameters require their
+actual canonical counterparts. Preserve cycles by publishing adapter shells
+before traversing their children, and use the retained context rather than a
+name-matching substitute. This integration remains unimplemented. The source
+completion fixes above do not earn runtime LET parity credit.

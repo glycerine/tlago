@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-07 Retain null syntax in recursive completion:
+Previous completed commit: 75ab840; clean tree confirmed. Inspect runtime LET
+traversal and bridge. Source walkGraph explicitly visits retained Context because
+opDefs is incomplete; the Go coverage Hashtable reconstruction still loses
+source bindings and identity. Record exact adapter prerequisites in TLC_ARCH.
+Do not replace this with a context rebuilt from getLets or AST names.
+
+Follow-up completion inspection exposes two actual source mismatches: nil syntax
+leaves an interface holding a typed nil pointer and retains the declaration's
+old location/position. Clear the actual tree interface and metadata, matching
+SemanticNode.getLocation after source endOpDefNode assigns null syntax. Translate
+null declaration argument failure to the source NullPointerException family
+before any mutation. Existing body/counter mutation ordering remains intact.
+
+External RecursiveSyntaxProbe invokes actual Java endOpDefNode across all 32
+null/non-null node, syntax and body combinations, recursive flag and unresolved
+sum zero/one. Compare exception family, counters, body identity, defined state,
+tree nullness and source location text. All 32 final observations agree. Initial
+observer inputs placed replacement syntax on different source lines; align the
+Go probe with Java's separate parsed module before comparison, without changing
+production or assertions. Initial 68309 and final 49921 are terminal and retired.
+External files use tlago-recursive-syntax under /mnt/oldrog/tmp. No invented
+permanent tests, weakened original tests or inventory credit.
+
+Full SANY passes in 2.224 seconds (76226 retired); focused original semantic/
+selector/scoped/debugger gate passes in 10.115 seconds (51689 retired).
+All-package compilation passes (89389 retired) and git diff checks pass.
+All handles retired. No race or long workload selected. Main inventory and
+recorded native XML failures remain unchanged; no full workspace-green claim.
+Runtime canonical LET adapter and further source generation boundaries remain
+incomplete; the reusable distributed service stays postponed.
+
 2026-10-07 Complete recursive counters at the actual node boundary:
 Previous completed commit: fa21bfe. Follow-up source audit finds endOpDefNode
 updates unresolved counters before processOperator pops labels; Go retained

@@ -58,11 +58,18 @@ func (g *sanyExpressionGeneration) setDefinitionRecursionFields(node *sanySemOpD
 // endOpDefNode changes the declaration before decrementing its unresolved
 // counters. A failure retains those changes and the caller's active scopes.
 func (g *sanyExpressionGeneration) endRecursiveDefinition(node *sanySemOpDefNode, body sanySemanticGraphNode, syntax *SanySyntaxNode) {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
 	node.defined, node.body, node.TreeNode = true, body, syntax
 	if syntax != nil {
 		node.pos = sanyNodePosition(syntax)
 		bridge := tlcBridge{convertingModule: node.originalModuleName}
 		node.Location = bridge.sourceLocationForPosition(node.pos)
+	} else {
+		node.TreeNode = nil
+		node.pos = Position{}
+		node.Location = tlc.NullSourceLocation
 	}
 	if binding := g.bindings[node.semName()]; binding != nil && binding.node == node {
 		binding.defined = true
