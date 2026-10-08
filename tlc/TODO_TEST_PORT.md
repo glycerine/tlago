@@ -959,6 +959,14 @@ status payloads. Remote failures enter worker-loss cleanup once, preserving
 assigned work and deregistration-only diagnostics. Local unchecked failures
 retain ownership. No direct original timer-task methods exist; no credit is added.
 
+Final worker-exit and shutdown-hook checks now preserve their distinct catches
+for local/native-payload failures and return/panic forms. Final completion removes
+the exited thread even on failure; the hook retains registrations. Native worker
+unavailability has a separate wire trait from the broader final-exit ignore
+category. Twelve completion processes, 56 hook cases and actual unavailable TCP
+workers pass. No direct original methods exist for these boundaries; no credit
+is added.
+
 Returned fatal local endpoint errors now escape exactly like fatal panics;
 scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
 warning or availability mutation. Original Java manager translations and native

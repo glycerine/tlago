@@ -215,18 +215,11 @@ func (s *TLCServer) RunWorkerShutdownHook() error {
 		if err == nil {
 			continue
 		}
-		switch failure := err.(type) {
-		case *ConnectException:
-			if failure != nil {
-				continue
-			}
-		case *NoSuchObjectException:
-			if failure != nil {
-				continue
-			}
+		if isDistributedWorkerUnavailable(err) {
+			continue
 		}
 		if isJavaIOException(err) {
-			PrintError(ECGeneral, javaGeneralErrorMessage("", err))
+			PrintErrorThrowable(ECGeneral, err)
 			continue
 		}
 		return err

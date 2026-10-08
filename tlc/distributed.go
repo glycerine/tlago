@@ -409,7 +409,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		)
 		exitErr := func() error {
 			defer s.removeServerThreadOnly(thread)
-			if err := thread.Worker.Exit(); err != nil {
+			if err := invokeRegistryOperation(thread.Worker.Exit); err != nil {
 				if isIgnorableDistributedWorkerExit(err) {
 					PrintWarning(ECGeneral, "Ignoring attempt to exit dead worker")
 				} else {

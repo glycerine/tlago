@@ -19,6 +19,7 @@ type DistributedOperationError struct {
 	IO                  bool
 	Null                bool
 	ExitIgnorable       bool
+	WorkerUnavailable   bool
 	DiscoveryRetry      bool
 	Reachable           bool
 	FingerprintRejected bool
@@ -61,6 +62,7 @@ type DistributedFailureNode struct {
 	IO                  bool
 	Null                bool
 	ExitIgnorable       bool
+	WorkerUnavailable   bool
 	DiscoveryRetry      bool
 	Reachable           bool
 	FingerprintRejected bool
@@ -80,6 +82,19 @@ func isIgnorableDistributedWorkerExit(err error) bool {
 	}
 	switch err.(type) {
 	case *NoSuchObjectException, *ConnectException, *ServerException:
+		return true
+	}
+	return false
+}
+
+// Shutdown silently ignores unavailable workers, but reports other I/O
+// failures, including a remote server failure ignored by normal completion.
+func isDistributedWorkerUnavailable(err error) bool {
+	if failure, ok := err.(*DistributedOperationError); ok {
+		return failure.WorkerUnavailable
+	}
+	switch err.(type) {
+	case *NoSuchObjectException, *ConnectException:
 		return true
 	}
 	return false
@@ -133,6 +148,7 @@ func EncodeDistributedFailure(failure error) (*DistributedFailurePayload, error)
 			Remote: isDistributedRemoteFailure(err), Recoverable: isRecoverableDistributedError(err),
 			IO: isJavaIOException(err), Null: isDistributedNullFailure(err),
 			ExitIgnorable:       isIgnorableDistributedWorkerExit(err),
+			WorkerUnavailable:   isDistributedWorkerUnavailable(err),
 			FingerprintRejected: isDistributedFPRegistrationRejected(err),
 		}
 		message := javaThrowableDetailMessage(err)
@@ -194,7 +210,7 @@ func DecodeDistributedFailure(payload *DistributedFailurePayload) (error, error)
 			worker.throwableTrace.remoteStack = node.Stack
 			failures[i+1] = worker
 		} else {
-			failures[i+1] = &DistributedOperationError{Message: message, Class: node.Class, Stack: node.Stack, Remote: node.Remote, Recoverable: node.Recoverable, IO: node.IO, Null: node.Null, ExitIgnorable: node.ExitIgnorable, DiscoveryRetry: node.DiscoveryRetry, Reachable: node.Reachable, FingerprintRejected: node.FingerprintRejected}
+			failures[i+1] = &DistributedOperationError{Message: message, Class: node.Class, Stack: node.Stack, Remote: node.Remote, Recoverable: node.Recoverable, IO: node.IO, Null: node.Null, ExitIgnorable: node.ExitIgnorable, WorkerUnavailable: node.WorkerUnavailable, DiscoveryRetry: node.DiscoveryRetry, Reachable: node.Reachable, FingerprintRejected: node.FingerprintRejected}
 		}
 	}
 	for i, node := range payload.Nodes {

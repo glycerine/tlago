@@ -19994,3 +19994,44 @@ status failures, coordinator retry/loss and fatal endpoint boundary checks pass
 (0.029 seconds). Supplemental cases add no original-method completion credit.
 No timer delay, full suite, long workload or race instrumentation was selected.
 All handles are terminal; distributed completion remains unproven.
+
+
+## October 8, 2026: final worker exit versus shutdown hook catches
+
+Compared normal coordinator completion and WorkerShutdownHook.run with Java.
+Normal completion silently ignores NoSuchObject/Connect/Server failures except
+for its warning, and removes the thread in finally. Panicked ignored failures
+previously bypassed that catch. The exit invocation now normalizes native return
+and panic forms before applying the same narrow catch and finally removal.
+Other failures stop before later workers, executor shutdown and final reporting.
+
+The shutdown hook silently ignores only NoSuchObject/Connect failures, prints
+other I/O failures and continues, and lets unchecked failures stop iteration.
+Its type-only catches did not recognize these distinctions in decoded native
+failures. Added WorkerUnavailable to the native operation error and graph node
+traits, retaining it through encode/decode. It is distinct from ExitIgnorable,
+which additionally includes server failures for normal completion. Unpublished
+TCP worker endpoints and dead transport connections set both traits. The hook
+uses WorkerUnavailable and the source throwable printing overload. This overload
+was behaviorally equivalent to its prior GENERAL formatted-string call; no
+generic formatter changed. All communicating roles need the current build.
+
+Added distributed_worker_exit_order_test.go: 56 hook cases across seven families,
+local/decoded payloads and return/panic forms; 12 joined fresh native completion
+processes across six families and both forms; and actual unpublished/closed TCP
+worker cases. Completion processes use the real ModelCheck method and completed
+thread fixtures with a one-millisecond report interval. Assertions retain exact
+iteration, registration removal/retention, warnings, worker statistics, later
+shutdown/count publication and finished reporting.
+
+The first supplemental hook assertion incorrectly expected GENERAL to record
+the Throwable object. Read MP.printError(int, Throwable) and its GENERAL string
+cause overload: the source records formatted string parameters. Corrected the
+translation to require that exact event shape and retained the source message
+detail; no production formatter or source assertion was weakened. Corrected
+hook/completion/payload/finalizer and original nine smart-proxy contexts pass
+(61518, status 0, 0.237 seconds). Native TCP unavailability, lifecycle, panic/
+shutdown, fatal boundaries and fingerprint failure graphs pass (48850, status 0,
+0.033 seconds). Upstream has no direct exit-order methods; supplemental checks
+add no original-method completion credit. No full suite, long workload or race
+instrumentation was selected. All handles are terminal.

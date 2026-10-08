@@ -162,6 +162,14 @@ local failures still escape without ownership changes; recent/future activity
 suppresses status calls. Focused local and native TCP checks pass. These timer
 boundaries have no direct original methods and add no completion credit.
 
+Final coordinator worker exit normalizes returned/panicked failures before its
+three-family dead-worker catch and always removes that thread's registration.
+The shutdown hook has a narrower silent catch, represented by the native
+`WorkerUnavailable` payload trait; server and other I/O failures are reported
+and iteration continues. Payload round trips, 12 fresh completion processes,
+56 hook cases and actual unavailable TCP endpoints pass. All communicating
+roles need the current payload build. Supplemental checks add no method credit.
+
 Fingerprint check tasks now catch I/O failures before executor completion
 wrapping, print `GENERAL` and return the source sentinels (`MaxInt64` for
 fingerprint distance, `false` for invariants). Unchecked task failures retain

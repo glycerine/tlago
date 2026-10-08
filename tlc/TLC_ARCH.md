@@ -11514,3 +11514,26 @@ last-invocation timestamps suppress status calls. Native TCP fatal handler
 failures retain the remote I/O category and invoke the same cleanup without
 stopping the worker host. Focused synchronous task and owned TCP checks pass;
 no source test methods exist for these boundaries and no method credit is added.
+
+
+### Final worker exit and shutdown hook failure traits
+
+Normal coordinator completion normalizes an exit call's returned/panicked
+failure before applying its existing ExitIgnorable catch. A warning is printed
+for that category and completion continues. Registration removal runs in finally
+for success and every failure; other failures stop before later workers and
+executor/final-result publication. The shutdown hook retains registrations,
+silently ignores WorkerUnavailable, reports other I/O failures and continues,
+and lets unchecked failures stop iteration.
+
+WorkerUnavailable is a native operation/graph payload trait for missing worker
+ownership or a dead connection. It preserves the source hook's narrower catch
+without inspecting Java class strings or reconstructing remote exceptions.
+ExitIgnorable also covers source server failures during normal completion,
+which the hook must report. Native TCP unpublished endpoints and dead transport
+connections set both traits; graph encode/decode retains them independently.
+Communicating roles need the same payload build. The source GENERAL throwable
+overload formats a string event, which the existing Go printer preserves.
+Focused local/payload, fresh completion-process and actual TCP checks pass. No
+direct original methods cover these exit-order boundaries; no method credit is
+added and broader distributed completion remains unproven.

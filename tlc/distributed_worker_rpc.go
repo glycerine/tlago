@@ -65,7 +65,7 @@ func (service *distributedWorkerService) Call(request DistributedWorkerRequest, 
 	endpoint := service.server.workers[request.Object]
 	service.server.mu.Unlock()
 	if endpoint == nil {
-		failure = &DistributedOperationError{Message: javaString("worker endpoint is not available: " + request.Object), Remote: true, IO: true, ExitIgnorable: true}
+		failure = &DistributedOperationError{Message: javaString("worker endpoint is not available: " + request.Object), Remote: true, IO: true, ExitIgnorable: true, WorkerUnavailable: true}
 		return nil
 	}
 	switch request.Operation {
@@ -124,7 +124,8 @@ func workerConnectionFailure(err error) error {
 	return &DistributedOperationError{
 		Message: javaString(err.Error()), Class: fmt.Sprintf("%T", err), Cause: err,
 		Remote: true, IO: true,
-		ExitIgnorable: deadWorker,
+		ExitIgnorable:     deadWorker,
+		WorkerUnavailable: deadWorker,
 		// The original coordinator treats a reply ending abruptly without an
 		// EOF detail message as a candidate for a smaller computation block.
 		// Connection refusal/closure and RPC application errors are not this.
