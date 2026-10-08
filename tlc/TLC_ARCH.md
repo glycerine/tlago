@@ -8413,6 +8413,14 @@ quirk. Statistics failures reassign without retrying that slot, and size/seen
 totals count every partition, including shared wrappers. Close and checkpoint
 coalesce adjacent wrappers and trailing copies of the first wrapper, rather
 than globally deduplicating underlying FPSet objects.
+Native manager payload nodes carry an explicit endpoint-null bit. Empty slots
+still use registration ID zero; nonnull wrappers with nil endpoints retain their
+own IDs, hostname, availability and sharing. Encoding skips reference publication
+for nil endpoints; decoding neither resolves them nor acquires connections.
+A null endpoint containing a nonempty reference is rejected before resolution.
+Receiving the manager does not invoke failover; operations retain manager policy.
+Peers need the current payload build.
+
 Traversal fixes the initial registration count but reads slots live. Checkpoint
 runs its first operation before trimming trailing first-wrapper copies; each
 begin, commit and caught-I/O hostname lookup resolves the slot separately.

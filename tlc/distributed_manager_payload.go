@@ -15,9 +15,10 @@ type DistributedManagerPayload struct {
 	Nodes              []DistributedManagerNode
 }
 type DistributedManagerNode struct {
-	Endpoint  DistributedEndpointReference
-	Hostname  string
-	Available bool
+	Endpoint    DistributedEndpointReference
+	EndpointNil bool
+	Hostname    string
+	Available   bool
 }
 
 func encodeDistributedManager(manager *DistributedFPSetManager, reference func(DistributedFingerprintEndpoint) (DistributedEndpointReference, error)) (*DistributedManagerPayload, error) {
@@ -33,13 +34,17 @@ func encodeDistributedManager(manager *DistributedFPSetManager, reference func(D
 		}
 		id := ids[entry]
 		if id == 0 {
-			ref, err := reference(entry.set)
-			if err != nil {
-				return nil, err
+			var ref DistributedEndpointReference
+			if entry.set != nil {
+				var err error
+				ref, err = reference(entry.set)
+				if err != nil {
+					return nil, err
+				}
 			}
 			id = len(payload.Nodes) + 1
 			ids[entry] = id
-			payload.Nodes = append(payload.Nodes, DistributedManagerNode{Endpoint: ref, Hostname: entry.hostname, Available: entry.available})
+			payload.Nodes = append(payload.Nodes, DistributedManagerNode{Endpoint: ref, EndpointNil: entry.set == nil, Hostname: entry.hostname, Available: entry.available})
 		}
 		payload.Partitions[i] = id
 	}
@@ -62,7 +67,11 @@ func decodeDistributedManager(payload *DistributedManagerPayload, resolve func(D
 		}
 	}
 	for _, node := range payload.Nodes {
-		if node.Endpoint.Address == "" || node.Endpoint.Object == "" {
+		if node.EndpointNil {
+			if node.Endpoint != (DistributedEndpointReference{}) {
+				return nil, fmt.Errorf("null fingerprint endpoint contains a reference")
+			}
+		} else if node.Endpoint.Address == "" || node.Endpoint.Object == "" {
 			return nil, fmt.Errorf("incomplete fingerprint endpoint reference")
 		}
 	}
@@ -71,7 +80,7 @@ func decodeDistributedManager(payload *DistributedManagerPayload, resolve func(D
 	endpoints := make(map[DistributedEndpointReference]DistributedFingerprintEndpoint)
 	for i, node := range payload.Nodes {
 		endpoint := endpoints[node.Endpoint]
-		if endpoint == nil {
+		if endpoint == nil && !node.EndpointNil {
 			var err error
 			endpoint, err = resolve(node.Endpoint)
 			if err != nil {

@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental gob/TCP manager checks preserve nil endpoints separately from empty
+registration slots, shared/distinct wrapper identity, metadata and operation-time
+failover. Contradictory null references fail before resolution. Existing original
+manager methods pass; no original-method credit is added for transfer checks.
+
 Supplemental local/TCP worker-registration checks preserve required queue wakeup
 before worker contact, null-worker ordering and monitor release after wakeup
 failure. Existing registration and original smart-proxy checks pass. No upstream

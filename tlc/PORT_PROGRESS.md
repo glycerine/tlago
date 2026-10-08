@@ -20381,3 +20381,35 @@ registration, missing-name/failure and worker retry/loss checks passes (5528,
 status 0, 0.025 seconds). All handles are terminal. No full suite, long workload
 or race run was performed. These supplemental checks add no original-method
 credit; broader distributed completion remains pending.
+
+### 2026-10-08: Nullable native manager endpoint graph
+
+Followed the null-endpoint check audit through FPSetManager.FPSets transfer.
+The source registration wrapper permits a null endpoint while retaining hostname
+and availability. Native encodeDistributedManager previously passed that null
+to endpoint publication, preventing receipt of an otherwise valid manager.
+Added an explicit EndpointNil field to native manager nodes. Registration ID
+zero still denotes an empty slot. Null endpoints skip publication/resolution,
+while shared wrappers reuse IDs and distinct null wrappers retain distinct IDs.
+Validation rejects a null endpoint with any nonempty reference before resolving
+other nodes. Existing nonnull references retain their validation and lifecycle.
+All communicating roles need the current native payload build; no Java
+serialization or RMI implementation is introduced.
+
+Added focused graph checks through gob, preserving null slots, shared and
+independent null wrappers, hostname/availability, broken-manager state, mask,
+expected count and receiver isolation. The reference and resolution callbacks
+are invoked only for the real endpoint. Three contradictory reference forms
+are rejected before resolution. Native coordinator TCP receipt now retains null
+endpoints without probing or failover; a subsequent real Put triggers source
+warning/reassignment and inserts into live coordinator-owned storage. Worker
+mutations leave coordinator wrappers and later manager receipts unchanged.
+No direct upstream method covers nullable manager transfer; supplemental checks
+add no original-method completion credit.
+
+Focused manager graph/validation, null-check completion and original dynamic
+manager methods pass (38469, status 0, 0.050 seconds). Native TCP nullable transfer,
+existing snapshot/registration, unprobed/incomplete registration and fingerprint
+check I/O tests pass (status 0, 0.032 seconds). All handles are terminal. No full
+suite, long workload or race run was performed. Broader distributed completion
+and disabled original model harnesses remain pending.

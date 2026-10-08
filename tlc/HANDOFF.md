@@ -242,6 +242,10 @@ registration-change checks add no original-method credit.
 Fingerprint and invariant tasks also preserve null-endpoint failure categories
 and healthy completion results. Null registrations still fail during submission;
 these supplemental boundary checks add no original-method credit.
+Native manager payloads now distinguish empty slots from registrations with nil
+endpoints, retaining shared/distinct wrappers and availability. Gob/TCP receipt
+defers failover until an operation, with worker-local mutations. All communicating
+roles need the current payload build; original-method counts remain unchanged.
 
 Record-backed printable states now retain their record through the native value
 graph, including sharing with caches, ordinary state values and other printable
