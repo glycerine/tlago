@@ -26,9 +26,8 @@ arguments and exact rendered diagnostics in this directory.
 [sany_github429_java_test.go](../sany_github429_java_test.go), using the initialized
 frontend, actual parsing and generation-only semantic driver with silent output.
 Its source contract is nonthrowing phases, without added diagnostic-success checks.
-The remaining fidelity repairs are tracked in
-[SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md); current green tests alone do not
-resolve that audit.
+The completed fidelity repairs and original method ledger are tracked in
+[SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md); its repair status identifies the verified scope.
 Keep translated assertions faithful to the Java source, and add any copied
 fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
 locations.
@@ -184,3 +183,18 @@ branch; it does not reinterpret that branch as a negative decimal exponent.
 Integer XML also uses the generated numeral representation, preserving decimal
 leading-zero and TLA radix semantics instead of Go radix auto-detection. Bounded
 scratch constructor/XML comparisons earn no additional original-test credit.
+
+XML parity tests and non-offline XML export require `xmllint` (libxml2) on PATH.
+The exact pinned Java `sany.xsd` is packaged with Go via embedding; validation
+uses the complete libxml2 XSD engine with network access disabled. It checks
+captured module-test output independently of production validation. A missing
+validator fails explicitly rather than skipping or passing the check. The
+original `-o` flag skips production schema validation; its source module test
+still independently validates when the packaged schema is present.
+
+The XML help methods now live in root
+[sany_xml_help_java_test.go](../sany_xml_help_java_test.go), independently
+capturing the complete production usage printer. The decimal method uses the
+library exporter with its original four explicit false options, including
+non-offline validation and no pretty printing. Error and string-escape methods
+exercise both typed library failures and exact command exit categories.

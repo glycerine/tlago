@@ -13,7 +13,7 @@ import (
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterModule.java.
-// Each test starts skipped until its Java assertions are ported and made green.
+// Restore original command, schema, document and field assertions.
 func TestTestXMLExporterModule_testExportDieHardModule(t *testing.T) {
 	root, xmlText := checkedXMLExporterModule(t, "DieHard.tla")
 	if root.Name != "modules" {
@@ -26,7 +26,7 @@ func TestTestXMLExporterModule_testExportDieHardModule(t *testing.T) {
 	if got := strings.TrimSpace(rootModules[0].text()); got != "DieHard" {
 		t.Fatalf("RootModule = %q, want DieHard", got)
 	}
-	if filename := rootModules[0].Attrs["filename"]; filename != "" && !strings.HasSuffix(filename, "DieHard.tla") {
+	if filename, present := rootModules[0].Attrs["filename"]; present && !strings.HasSuffix(filename, "DieHard.tla") {
 		t.Fatalf("RootModule filename = %q, want suffix DieHard.tla", filename)
 	}
 	if got := len(xmlDescendants(root, "context")); got != 1 {
@@ -47,8 +47,12 @@ func TestTestXMLExporterModule_testExportDieHardModule(t *testing.T) {
 		"DieHard": true, "Naturals": true, "Integers": true, "Sequences": true, "FiniteSets": true, "TLC": true,
 	}
 	for _, module := range xmlDescendants(root, "ModuleNode") {
-		name := xmlUniqueName(module)
-		if name != "" && !expected[name] {
+		names := xmlDescendants(module, "uniquename")
+		if len(names) == 0 {
+			t.Fatal("ModuleNode lacks uniquename")
+		}
+		name := strings.TrimSpace(names[0].text())
+		if !expected[name] {
 			t.Fatalf("unexpected module %s", name)
 		}
 	}
@@ -265,7 +269,7 @@ Note the indentation at the start.`,
 			"\n" +
 			"See: https://github.com/tlaplus/CommunityModules/issues/37",
 	}
-	requireXMLPreComments(t, preComments, expected, false)
+	requireXMLPreCommentsWithPolicy(t, preComments, expected, false, true)
 }
 
 func TestTestXMLExporterModule_testUncommentFlagWithRelations(t *testing.T) {
@@ -307,20 +311,20 @@ func TestTestXMLExporterModule_testRecursiveSectionGroupsJointDeclaration(t *tes
 	g := xmlUserDefinedOpKind(t, root, "g")
 	h := xmlUserDefinedOpKind(t, root, "h")
 	nonRecursive := xmlUserDefinedOpKind(t, root, "nonRecursive")
-	fSection := xmlRecursiveSection(f)
-	gSection := xmlRecursiveSection(g)
-	hSection := xmlRecursiveSection(h)
-	if fSection == "" || gSection == "" || hSection == "" {
-		t.Fatalf("recursive sections: f=%q g=%q h=%q; want all non-empty", fSection, gSection, hSection)
+	fSection, fPresent := xmlRecursiveSection(f)
+	gSection, gPresent := xmlRecursiveSection(g)
+	hSection, hPresent := xmlRecursiveSection(h)
+	if !fPresent || !hPresent {
+		t.Fatal("f and h must have recursiveSection elements")
 	}
-	if fSection != gSection {
+	if !gPresent || fSection != gSection {
 		t.Fatalf("f and g recursiveSection differ: %q vs %q", fSection, gSection)
 	}
 	if hSection == fSection {
 		t.Fatalf("h recursiveSection = %q, want distinct from f/g", hSection)
 	}
-	if got := xmlRecursiveSection(nonRecursive); got != "" {
-		t.Fatalf("nonRecursive recursiveSection = %q, want empty", got)
+	if got, present := xmlRecursiveSection(nonRecursive); present {
+		t.Fatalf("nonRecursive recursiveSection = %q, want absent", got)
 	}
 }
 
@@ -346,11 +350,15 @@ func TestTestXMLExporterModule_testUseHideDefsExportsModuleReference(t *testing.
 }
 
 type sanyXMLTestNode struct {
-	Name     string
-	Attrs    map[string]string
-	Text     strings.Builder
-	Parent   *sanyXMLTestNode
-	Children []*sanyXMLTestNode
+	Name           string
+	QName          xml.Name
+	Namespace      string
+	Namespaces     map[string]string
+	AttrNamespaces map[string]string
+	Attrs          map[string]string
+	Text           strings.Builder
+	Parent         *sanyXMLTestNode
+	Children       []*sanyXMLTestNode
 }
 
 func xmlExporterModulePath(parts ...string) string {
@@ -360,25 +368,50 @@ func xmlExporterModulePath(parts ...string) string {
 
 func checkedXMLExporterModule(t *testing.T, parts ...string) (*sanyXMLTestNode, string) {
 	t.Helper()
-	xmlText := checkedSANYXMLForPath(t, xmlExporterModulePath(parts...))
-	return parseSANYXMLTestDocument(t, xmlText), xmlText
+	path := xmlExporterModulePath(parts...)
+	// Early direct methods do not use the shared Java export helper.
+	switch path {
+	case xmlExporterModulePath("DieHard.tla"), xmlExporterModulePath("TLACommentStyles.tla"), xmlExporterModulePath("Echo", "Relation.tla"):
+		return runSANYXMLCommand(t, path)
+	case xmlExporterModulePath("CaseOtherXml.tla"):
+		return runSANYXMLCommandWithContract(t, false, false, path)
+	default:
+		return runSANYXMLCommand(t, "-I", xmlExporterModulePath(), path)
+	}
 }
-
 func runSANYXMLCommand(t *testing.T, args ...string) (*sanyXMLTestNode, string) {
+	t.Helper()
+	offline := false
+	for _, arg := range args {
+		offline = offline || arg == "-o"
+	}
+	return runSANYXMLCommandWithContract(t, true, offline, args...)
+}
+func runSANYXMLCommandWithContract(t *testing.T, requireQuiet, schemaOptional bool, args ...string) (*sanyXMLTestNode, string) {
 	t.Helper()
 	var stdout, stderr bytes.Buffer
 	code := tlago.RunCLI(append([]string{"sany-xml"}, args...), &stdout, &stderr)
-	if code != tlago.ExitOK {
-		t.Fatalf("sany-xml %v exit = %d, want %d; stderr=%s", args, code, tlago.ExitOK, stderr.String())
+	if code != int(tlago.XMLExporterOK) {
+		t.Fatalf("sany-xml %v = %d, want OK: %s", args, code, stderr.String())
 	}
-	if got := strings.TrimSpace(stderr.String()); got != "" {
-		t.Fatalf("sany-xml %v stderr = %q, want empty", args, got)
+	if requireQuiet && strings.TrimSpace(stderr.String()) != "" {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
 	}
 	text := stdout.String()
 	if strings.TrimSpace(text) == "" {
-		t.Fatalf("sany-xml %v produced empty stdout", args)
+		t.Fatal("empty XML output")
 	}
-	return parseSANYXMLTestDocument(t, text), text
+	root := parseSANYXMLTestDocument(t, text)
+	schema := tlago.SanyXMLSchema()
+	if !schemaOptional && len(schema) == 0 {
+		t.Fatal("embedded sany.xsd missing")
+	}
+	if len(schema) != 0 {
+		if err := tlago.ValidateSanyXML([]byte(text)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root, text
 }
 
 func parseSANYXMLTestDocument(t *testing.T, text string) *sanyXMLTestNode {
@@ -387,7 +420,7 @@ func parseSANYXMLTestDocument(t *testing.T, text string) *sanyXMLTestNode {
 	var stack []*sanyXMLTestNode
 	var root *sanyXMLTestNode
 	for {
-		token, err := decoder.Token()
+		token, err := decoder.RawToken()
 		if err == io.EOF {
 			break
 		}
@@ -396,9 +429,40 @@ func parseSANYXMLTestDocument(t *testing.T, text string) *sanyXMLTestNode {
 		}
 		switch token := token.(type) {
 		case xml.StartElement:
-			node := &sanyXMLTestNode{Name: token.Name.Local, Attrs: map[string]string{}}
+			node := &sanyXMLTestNode{Name: xmlQName(token.Name), QName: token.Name, Attrs: map[string]string{}, Namespaces: map[string]string{"xml": "http://www.w3.org/XML/1998/namespace"}, AttrNamespaces: map[string]string{}}
+			if len(stack) > 0 {
+				for prefix, uri := range stack[len(stack)-1].Namespaces {
+					node.Namespaces[prefix] = uri
+				}
+			}
 			for _, attr := range token.Attr {
-				node.Attrs[attr.Name.Local] = attr.Value
+				if attr.Name.Space == "xmlns" {
+					node.Namespaces[attr.Name.Local] = attr.Value
+				}
+				if attr.Name.Space == "" && attr.Name.Local == "xmlns" {
+					node.Namespaces[""] = attr.Value
+				}
+			}
+			node.Namespace = node.Namespaces[token.Name.Space]
+			if token.Name.Space != "" && node.Namespace == "" {
+				t.Fatalf("unbound XML prefix %s", token.Name.Space)
+			}
+			for _, attr := range token.Attr {
+				key := xmlQName(attr.Name)
+				if _, exists := node.Attrs[key]; exists {
+					t.Fatalf("duplicate XML attribute %s", key)
+				}
+				node.Attrs[key] = attr.Value
+				if attr.Name.Space != "" {
+					namespace := node.Namespaces[attr.Name.Space]
+					if attr.Name.Space == "xmlns" {
+						namespace = "http://www.w3.org/2000/xmlns/"
+					}
+					if namespace == "" {
+						t.Fatalf("unbound attribute prefix %s", attr.Name.Space)
+					}
+					node.AttrNamespaces[key] = namespace
+				}
 			}
 			if len(stack) > 0 {
 				parent := stack[len(stack)-1]
@@ -411,13 +475,15 @@ func parseSANYXMLTestDocument(t *testing.T, text string) *sanyXMLTestNode {
 			}
 			stack = append(stack, node)
 		case xml.EndElement:
-			if len(stack) == 0 || stack[len(stack)-1].Name != token.Name.Local {
+			if len(stack) == 0 || stack[len(stack)-1].QName != token.Name {
 				t.Fatalf("unexpected XML end element %s", token.Name.Local)
 			}
 			stack = stack[:len(stack)-1]
 		case xml.CharData:
 			if len(stack) > 0 {
 				stack[len(stack)-1].Text.Write([]byte(token))
+			} else if strings.TrimSpace(string(token)) != "" {
+				t.Fatal("character data outside document root")
 			}
 		}
 	}
@@ -446,7 +512,7 @@ func xmlDescendants(root *sanyXMLTestNode, name string) []*sanyXMLTestNode {
 	var out []*sanyXMLTestNode
 	var walk func(*sanyXMLTestNode)
 	walk = func(node *sanyXMLTestNode) {
-		if node.Name == name {
+		if node.Name == name && node.Namespace == "" {
 			out = append(out, node)
 		}
 		for _, child := range node.Children {
@@ -489,7 +555,7 @@ func xmlDirectChildren(parent *sanyXMLTestNode, name string) []*sanyXMLTestNode 
 		return out
 	}
 	for _, child := range parent.Children {
-		if child.Name == name {
+		if child.Name == name && child.Namespace == "" {
 			out = append(out, child)
 		}
 	}
@@ -523,9 +589,13 @@ func requireXMLContainsAll(t *testing.T, xmlText string, values ...string) {
 
 func requireXMLPreComments(t *testing.T, preComments []*sanyXMLTestNode, expected map[string]string, exact bool) {
 	t.Helper()
+	requireXMLPreCommentsWithPolicy(t, preComments, expected, exact, false)
+}
+func requireXMLPreCommentsWithPolicy(t *testing.T, preComments []*sanyXMLTestNode, expected map[string]string, exact, immediate bool) {
+	t.Helper()
 	for _, preComment := range preComments {
 		commentText := strings.TrimSpace(preComment.text())
-		if commentText == "" {
+		if !immediate && commentText == "" {
 			t.Fatal("pre-comment is empty")
 		}
 		opName := xmlUniqueName(preComment.Parent)
@@ -533,13 +603,14 @@ func requireXMLPreComments(t *testing.T, preComments []*sanyXMLTestNode, expecte
 		if !ok {
 			continue
 		}
+		matches := strings.Contains(commentText, want)
 		if exact {
-			if commentText == want {
-				delete(expected, opName)
-			}
-			continue
+			matches = commentText == want
 		}
-		if strings.Contains(commentText, want) {
+		if immediate && !matches {
+			t.Fatalf("%s pre-comment lacks %q: %s", opName, want, commentText)
+		}
+		if matches {
 			delete(expected, opName)
 		}
 	}
@@ -736,12 +807,12 @@ func xmlUserDefinedOpKind(t *testing.T, root *sanyXMLTestNode, opName string) *s
 	return nil
 }
 
-func xmlRecursiveSection(userDefinedOpKind *sanyXMLTestNode) string {
+func xmlRecursiveSection(userDefinedOpKind *sanyXMLTestNode) (string, bool) {
 	sections := xmlDescendants(userDefinedOpKind, "recursiveSection")
 	if len(sections) == 0 {
-		return ""
+		return "", false
 	}
-	return strings.TrimSpace(sections[0].text())
+	return strings.TrimSpace(sections[0].text()), true
 }
 
 func xmlRequiredDescendantText(node *sanyXMLTestNode, name string) string {
@@ -750,4 +821,11 @@ func xmlRequiredDescendantText(node *sanyXMLTestNode, name string) string {
 		return ""
 	}
 	return matches[0].text()
+}
+
+func xmlQName(name xml.Name) string {
+	if name.Space == "" {
+		return name.Local
+	}
+	return name.Space + ":" + name.Local
 }

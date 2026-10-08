@@ -31,12 +31,14 @@ import (
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestDecimalXMLExport.java.
 func TestTestDecimalXMLExport_test(t *testing.T) {
-	spec, diags := tlago.LoadSanySpec(sanyTestVectorPath("test-model", "Decimal.tla"), tlago.LoadOptions{})
-	requireNoSANYDiagnostics(t, "parse", diags)
-	requireNoSANYDiagnostics(t, "semantic", tlago.CheckSpec(spec))
-	xmlText, xmlDiags := tlago.SanyXML(spec)
-	requireNoSANYDiagnostics(t, "xml", xmlDiags)
-	output := string(xmlText)
+	spec, err := tlago.ParseSanyXMLSpec(sanyTestVectorPath("test-model", "Decimal.tla"), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := tlago.SanySpecToXMLString(spec, false, false, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, want := range []string{
 		"<integralPart>000123</integralPart>",
 		"<fractionalPart>456000</fractionalPart>",

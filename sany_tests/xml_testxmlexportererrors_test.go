@@ -10,66 +10,60 @@ import (
 	"github.com/glycerine/tlago"
 )
 
-// Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterErrors.java.
-// Each test starts skipped until its Java assertions are ported and made green.
+// Ported from TestXMLExporterErrors.java, retaining library and CLI contracts.
 func TestTestXMLExporterErrors_testHelpReturnsOk(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := tlago.RunCLI([]string{"sany-xml", "-help"}, &stdout, &stderr)
-	if code != tlago.ExitOK {
-		t.Fatalf("sany-xml -help exit = %d, want %d; stderr=%s", code, tlago.ExitOK, stderr.String())
+	if err := tlago.XMLModuleToXML([]string{"-help"}, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	if code := tlago.RunCLI([]string{"sany-xml", "-help"}, &stdout, &stderr); code != int(tlago.XMLExporterOK) {
+		t.Fatalf("help = %d, want OK", code)
 	}
 }
-
 func TestTestXMLExporterErrors_testNoArgs(t *testing.T) {
-	var stderr bytes.Buffer
-	code := tlago.RunCLI([]string{"sany-xml"}, nil, &stderr)
-	if code != tlago.ExitToolFailure {
-		t.Fatalf("sany-xml with no args exit = %d, want %d; stderr=%s", code, tlago.ExitToolFailure, stderr.String())
-	}
+	requireXMLExporterFailure(t, nil, tlago.XMLArgsParsingFailure, "", false)
 }
-
 func TestTestXMLExporterErrors_testIncludeDirWithoutSpec(t *testing.T) {
-	var stderr bytes.Buffer
-	code := tlago.RunCLI([]string{"sany-xml", "-I", "SomeDir"}, nil, &stderr)
-	if code != tlago.ExitToolFailure {
-		t.Fatalf("sany-xml include without spec exit = %d, want %d; stderr=%s", code, tlago.ExitToolFailure, stderr.String())
-	}
+	requireXMLExporterFailure(t, []string{"-I", "SomeDir"}, tlago.XMLArgsParsingFailure, "", false)
 }
-
 func TestTestXMLExporterErrors_testCannotFindSpec(t *testing.T) {
-	var stderr bytes.Buffer
-	code := tlago.RunCLI([]string{"sany-xml", "ThisModuleDoesNotExist.tla"}, nil, &stderr)
-	if code != tlago.ExitSyntaxFailure {
-		t.Fatalf("sany-xml missing spec exit = %d, want %d; stderr=%s", code, tlago.ExitSyntaxFailure, stderr.String())
-	}
+	requireXMLExporterFailure(t, []string{"ThisModuleDoesNotExist.tla"}, tlago.XMLSpecParsingFailure, "", false)
 }
-
 func TestTestXMLExporterErrors_testSpecParseFailure(t *testing.T) {
-	var stderr bytes.Buffer
-	path := sanyTestVectorPath("tla2sany", "semantic", "error_corpus", "E4200_Test.tla")
-	code := tlago.RunCLI([]string{"sany-xml", path}, nil, &stderr)
-	if code == tlago.ExitOK {
-		t.Fatalf("sany-xml parse/semantic failure exit = %d, want failure", code)
-	}
+	files := sanyTLAFilesUnder(t, sanyTestVectorPath("tla2sany", "semantic", "error_corpus"), func(path string) bool { return semanticErrorCorpusFilenameRE.MatchString(filepath.Base(path)) })
+	requireXMLExporterFailure(t, []string{files[0]}, tlago.XMLSpecParsingFailure, "", false)
 }
-
 func TestTestXMLExporterErrors_testNullCharacterInStringLiteral(t *testing.T) {
 	assertXMLUnrepresentableCharacter(t, `op == "a`+"\u0000"+`b"`)
 }
-
 func TestTestXMLExporterErrors_testNullCharacterInComment(t *testing.T) {
 	assertXMLUnrepresentableCharacter(t, "\\* comment a\u0000b\nop == 1")
 }
-
 func assertXMLUnrepresentableCharacter(t *testing.T, body string) {
 	t.Helper()
-	modulePath := writeXMLExporterErrorModule(t, body)
-	_, diags := xmlForUnrepresentableStringFixture(modulePath)
-	if !diags.HasErrors() {
-		t.Fatalf("expected XML export to reject unrepresentable character in:\n%s", body)
+	requireXMLExporterFailure(t, []string{writeXMLExporterErrorModule(t, body)}, tlago.XMLUnrepresentableCharacter, "U+0000", true)
+}
+func requireXMLExporterFailure(t *testing.T, args []string, expected tlago.XMLExporterExitCode, message string, requireNonBug bool) {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	err := tlago.XMLModuleToXML(args, &stdout, &stderr)
+	failure, ok := err.(*tlago.XMLExportingException)
+	if !ok {
+		t.Fatalf("moduleToXML(%v) = %T (%v), want XMLExportingException", args, err, err)
 	}
-	if got, want := diags.Error(), "U+0000"; !strings.Contains(got, want) {
-		t.Fatalf("XML diagnostics missing %q\n%s", want, got)
+	if failure.Code != expected {
+		t.Fatalf("moduleToXML(%v) code = %d, want %d: %v; stderr=%s", args, failure.Code, expected, failure, stderr.String())
+	}
+	if message != "" && !strings.Contains(failure.Message, message) {
+		t.Fatalf("exception message %q lacks %q", failure.Message, message)
+	}
+	if requireNonBug && failure.Code.IsBug() {
+		t.Fatalf("%d incorrectly classified as bug", failure.Code)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := tlago.RunCLI(append([]string{"sany-xml"}, args...), &stdout, &stderr); code != int(expected) {
+		t.Fatalf("run(%v) = %d, want %d: %s", args, code, expected, stderr.String())
 	}
 }
 

@@ -50,6 +50,16 @@ known-failure/error handling are installed. All 355 actual translated-output row
 match Java; the original Java class passes all 710 contexts. Source metadata and
 expected trees also match across all unchanged cases. Main TLC totals are unchanged.
 
+SANY fidelity audit (2026-10-08): all 25 findings in
+[SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md) are repaired. All 59 affected
+original method contracts are restored, including the full XML schema/command/
+library/error paths. Dedicated SANY and root SANY tests pass. All 227 mirrored
+fixtures and the current embedded XSD match pinned upstream bytes. XML
+validation requires `xmllint` (libxml2) on PATH; it cannot silently skip when
+required. Original ignored/empty methods remain explicitly identified, and the
+main TLC inventory totals do not change. Full normal verification and final
+method inventory audit are underway; this does not claim full SANY parity.
+
 ## Topic totals for the main suite
 
 | Topic | Non-ignored classes | Classes fully mapped | Logical methods | Mapped methods | Pending methods |

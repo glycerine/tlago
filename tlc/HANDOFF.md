@@ -50,17 +50,18 @@ packaged properties, networking primitives, OpenJDK notices, and `x/text`.
 The current user request authorizes the SANY XML repairs listed in the audit.
 ApalacheIR corpus sweeps remain deferred.
 
-SANY audit progress: F01–F09 are repaired. The nine logger/formatting methods,
-all twelve WarningControl methods and IllegalOperator pass. Settings tests call
-the production driver and record WARNING/ERROR output; CLI tests retain original
-arguments, combined streams and exact diagnostic substrings. The remaining
-SANY package and selected original root methods pass, but the XML findings F10–F19 and F22–F24 remain
-uncorrected. Github429 now runs generation without levels or linting, Location
-uses independent coordinate assertions, and Vector checks the typed bounds
-exception. Precedence navigation, builtin membership and the two CLI diagnostic contracts
-(F20–F21 and F25) are now repaired. Continue with XML schema validation,
-library/CLI error contracts, then individual XML assertions. Do not credit
-green counterparts until their source contracts are restored.
+SANY audit progress: all F01–F25 test-contract repairs are implemented. The
+restored dedicated SANY suite and root SANY/parser/semantic/logger/driver/XML
+methods pass. All 227 mirrored fixtures remain byte-identical to Java; the
+embedded auxiliary schema is an exact pinned upstream copy. XML tests exercise
+typed library errors, exact command exit codes, complete shared help output,
+original arguments and independent schema validation. XML export now requires
+`xmllint` (libxml2) on PATH unless `-o` is selected; validation uses no network.
+This completes the listed test-contract repairs, not general SANY implementation
+parity beyond their original assertions. Full root and TLC normal verification
+is running; consult PORT_PROGRESS.md for the live handles and final receipts.
+The audit remains the authoritative method ledger and completion gate. Do not
+claim the active goal complete before the final run/inventory audit is done.
 
 ## Current verified state
 

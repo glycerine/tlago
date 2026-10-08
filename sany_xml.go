@@ -35,8 +35,20 @@ type SanyXMLOptions struct {
 }
 
 func SanyXMLWithOptions(spec *Spec, opts SanyXMLOptions) ([]byte, Diagnostics) {
-	x := newSanyXMLExporter(spec, opts)
-	return x.xml()
+	text, err := SanySpecToXMLString(spec, opts.Restricted, opts.UncommentPreComments, !opts.Terse, opts.Offline)
+	if err != nil {
+		failure := err.(*XMLExportingException)
+		code := "E7000"
+		if failure.Code == XMLUnrepresentableCharacter {
+			code = "E7007"
+		}
+		message := failure.Message
+		if failure.Nested != nil {
+			message += ": " + failure.Nested.Error()
+		}
+		return nil, Diagnostics{errorAt(Position{}, code, "%s", message)}
+	}
+	return []byte(text), nil
 }
 
 type sanyXMLExporter struct {
@@ -315,6 +327,9 @@ func (x *sanyXMLExporter) xml() ([]byte, Diagnostics) {
 		}
 	}
 	b.WriteString("</modules>")
+	if x.opts.Terse {
+		return b.Bytes(), nil
+	}
 	pretty, err := prettySanyXML(b.Bytes())
 	if err != nil {
 		return nil, Diagnostics{errorAt(Position{}, "E7000", "cannot pretty-print SANY XML: %v", err)}

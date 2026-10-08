@@ -387,7 +387,7 @@ THEOREM TRUE
 	})
 
 	t.Run("terminal BY parses prefix operator expression facts", func(t *testing.T) {
-		xmlText, diags := SanyXMLSource("TerminalByPrefixFactXML.tla", `---- MODULE TerminalByPrefixFactXML ----
+		xmlText, diags := SanyXMLSource("TerminalByPrefixFactXML.tla", `---- MODULE TerminalByPrefixFactXML ---- EXTENDS Naturals
 THEOREM TRUE
   BY DOMAIN <<1>> = 1..1
 ====`)
@@ -1183,7 +1183,7 @@ A == /\ x = x
 		xmlText, diags := SanyXMLSource("ExplicitProofStepsLocationXML.tla", `---- MODULE ExplicitProofStepsLocationXML ----
 THEOREM TRUE
 PROOF
-  <1>1. TRUE BY
+  <1>1. TRUE BY TRUE
   <1> QED BY <1>1
 ====`)
 		requireNoErrors(t, diags)
@@ -3636,7 +3636,7 @@ THEOREM T == TRUE
 	})
 
 	t.Run("PICK proof step theorem level includes bounded domains", func(t *testing.T) {
-		xmlText, diags := SanyXMLSource("ProofPickBoundLevelXML.tla", `---- MODULE ProofPickBoundLevelXML ----
+		xmlText, diags := SanyXMLSource("ProofPickBoundLevelXML.tla", `---- MODULE ProofPickBoundLevelXML ---- EXTENDS Naturals
 VARIABLE x
 THEOREM T == TRUE
 <1>1. PICK n \in 1..x : n = n

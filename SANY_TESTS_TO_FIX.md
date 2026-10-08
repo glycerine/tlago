@@ -1,6 +1,6 @@
 # SANY Java-to-Go test fidelity audit
 
-Audit completed: 2026-10-08 (source review began 2026-10-07). Status: findings documented; fixes not implemented by this audit.
+Audit completed: 2026-10-08 (source review began 2026-10-07). Status: baseline findings documented; all 25 repairs now implemented and passing their restored SANY tests.
 
 ## Scope and result
 
@@ -43,9 +43,22 @@ track the current repairs.
   context membership operation before retrieval on both passes. The two CLI
   diagnostic methods retain shared capture and source substrings without added
   exit assertions. The dedicated SANY suite and related root methods pass.
-- **F10–F19 and F22–F24: pending.** A green run of their current counterparts does not resolve
-  their recorded test-contract defects. Final verification of the fully restored
-  96-method inventory has not yet occurred.
+- **F10–F19 and F22–F24: port complete for all 32 affected original methods.**
+  Package the exact current schema and validate non-offline exports through the
+  full libxml2 XSD engine (`xmllint` on PATH). All twenty module tests restore
+  independent captured-output validation, original CLI/include arguments and
+  their own stream contracts. Presence predicates, immediate comment assertions
+  and namespace/QName handling are restored. The seven error methods exercise
+  both the typed library and exact CLI categories; help, full string parsing,
+  sorted error-corpus selection and decimal options match source.
+- **Final SANY verification:** dedicated SANY passes in 2.669 seconds; root
+  SANY/parser/semantic/logger/driver/XML tests pass in 2.606 seconds, including
+  all primary root translations. All 227 mirrored source fixtures remain byte
+  identical; the auxiliary schema matches pinned upstream byte for byte.
+  All 59 divergent method contracts are repaired. The other 35 reviewed
+  methods, original ignore and empty source body retain their previous status.
+  This completes the listed audit repairs, not every possible SANY behavior or
+  unrestricted proof of full implementation parity.
 
 ## Evidence and counting rules
 
@@ -298,7 +311,7 @@ Both Java tests call the void `SANYmain` entry point and assert exact diagnostic
 3. Bring in the current schema and faithful non-offline XML validation/error APIs (F10, F15-F17, F23-F24). Restore command capture, include paths and complete help output (F11, F18-F19).
 4. Restore individual XML predicates, immediate assertions and qualified-name handling (F12-F14, F22).
 
-Each affected method is complete only when its original setup, operation, expected result and all assertions are present and the faithfully ported method passes. Shared-helper fixes must be checked against every listed dependent method; success in one dependent test is insufficient. Where a supplementary test deliberately adds stricter checks, keep those separate from the mechanical source translation. Mark actual repairs elsewhere only when done; this document records outstanding work and does not declare it implemented.
+Each affected method is complete only when its original setup, operation, expected result and all assertions are present and the faithfully ported method passes. Shared-helper fixes must be checked against every listed dependent method; success in one dependent test is insufficient. Where a supplementary test deliberately adds stricter checks, keep those separate from the mechanical source translation. Mark actual repairs elsewhere only when done; the repair-status block and method ledger now record the verified completed repairs.
 
 ## Method-by-method review ledger
 
@@ -553,11 +566,11 @@ Reviewed: All five original methods present; production logger bypass in first t
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testPercentSignInMessageTextIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go) | Port complete | F02 |
-| [`testPercentSignInMessageParameterIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go) | Port complete | F02 |
-| [`testUnresolvedPercentOperator`](sany_error_message_formatting_java_test.go) | Port complete | F03 |
-| [`testUnresolvedNonfixPercentOperator`](sany_error_message_formatting_java_test.go) | Port complete | F03 |
-| [`testUnresolvedDoublePercentOperatorIsNotRenamed`](sany_error_message_formatting_java_test.go) | Port complete | F03 |
+| [`testPercentSignInMessageTextIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go) | port complete | F02 |
+| [`testPercentSignInMessageParameterIsNotAFormatSpecifier`](sany_error_message_formatting_java_test.go) | port complete | F02 |
+| [`testUnresolvedPercentOperator`](sany_error_message_formatting_java_test.go) | port complete | F03 |
+| [`testUnresolvedNonfixPercentOperator`](sany_error_message_formatting_java_test.go) | port complete | F03 |
+| [`testUnresolvedDoublePercentOperatorIsNotRenamed`](sany_error_message_formatting_java_test.go) | port complete | F03 |
 
 ### TestErrors
 
@@ -567,10 +580,10 @@ Reviewed: Original message texts retained, but logger insertion, original error 
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testWarningMessages`](sany_errors_java_test.go) | Port complete | F01 |
-| [`testErrorMessages`](sany_errors_java_test.go) | Port complete | F01 |
-| [`testMixedMessageLevels`](sany_errors_java_test.go) | Port complete | F01 |
-| [`testDuplicateErrorsIgnored`](sany_errors_java_test.go) | Port complete | F01 |
+| [`testWarningMessages`](sany_errors_java_test.go) | port complete | F01 |
+| [`testErrorMessages`](sany_errors_java_test.go) | port complete | F01 |
+| [`testMixedMessageLevels`](sany_errors_java_test.go) | port complete | F01 |
+| [`testDuplicateErrorsIgnored`](sany_errors_java_test.go) | port complete | F01 |
 
 ### TestInstanceNode
 
@@ -633,78 +646,78 @@ Reviewed: Pointer boxes preserve Java object identity in contains/append asserti
 
 Java: [xml/TestDecimalXMLExport.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestDecimalXMLExport.java).
 
-Reviewed: Both exact integral/fractional XML substrings and Decimal.tla retained. Original non-offline library export and its validation/format option behavior not retained (F24).
+Reviewed: Both exact integral/fractional XML substrings and Decimal.tla retained. Original non-offline library export, explicit four options and production validation restored (F24).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`test`](sany_tests/xml_testdecimalxmlexport_test.go:33) | Fix | F24, F23 |
+| [`test`](sany_tests/xml_testdecimalxmlexport_test.go:33) | port complete | F24, F23 |
 
 ### TestXMLExporterErrors
 
 Java: [xml/TestXMLExporterErrors.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterErrors.java).
 
-Reviewed: All seven methods present. Source requires library and CLI paths and exact named error categories, not just any error. Missing paths and distinctions detailed in F15-F17.
+Reviewed: All seven methods present. Library and CLI paths and exact named error categories are restored, including the first sorted error-corpus fixture and both null-character reproducers (F15–F17).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testHelpReturnsOk`](sany_tests/xml_testxmlexportererrors_test.go:15) | Fix | F15 |
-| [`testNoArgs`](sany_tests/xml_testxmlexportererrors_test.go:23) | Fix | F15 |
-| [`testIncludeDirWithoutSpec`](sany_tests/xml_testxmlexportererrors_test.go:31) | Fix | F15 |
-| [`testCannotFindSpec`](sany_tests/xml_testxmlexportererrors_test.go:39) | Fix | F15 |
-| [`testSpecParseFailure`](sany_tests/xml_testxmlexportererrors_test.go:47) | Fix | F15, F16 |
-| [`testNullCharacterInStringLiteral`](sany_tests/xml_testxmlexportererrors_test.go:56) | Fix | F15, F17 |
-| [`testNullCharacterInComment`](sany_tests/xml_testxmlexportererrors_test.go:60) | Fix | F15, F17 |
+| [`testHelpReturnsOk`](sany_tests/xml_testxmlexportererrors_test.go:15) | port complete | F15 |
+| [`testNoArgs`](sany_tests/xml_testxmlexportererrors_test.go:23) | port complete | F15 |
+| [`testIncludeDirWithoutSpec`](sany_tests/xml_testxmlexportererrors_test.go:31) | port complete | F15 |
+| [`testCannotFindSpec`](sany_tests/xml_testxmlexportererrors_test.go:39) | port complete | F15 |
+| [`testSpecParseFailure`](sany_tests/xml_testxmlexportererrors_test.go:47) | port complete | F15, F16 |
+| [`testNullCharacterInStringLiteral`](sany_tests/xml_testxmlexportererrors_test.go:56) | port complete | F15, F17 |
+| [`testNullCharacterInComment`](sany_tests/xml_testxmlexportererrors_test.go:60) | port complete | F15, F17 |
 
 ### TestXMLExporterHelpText
 
 Java: [xml/TestXMLExporterHelpText.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterHelpText.java).
 
-Reviewed: Exit and empty opposite-stream checks retained; complete shared usage text check replaced by loose keywords (F18).
+Reviewed: Exit and empty opposite-stream checks retained; complete shared usage text independently captured and checked (F18).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testPrintHelpText`](sany_tests/xml_testxmlexporterhelptext_test.go:13) | Fix | F18 |
-| [`testPrintHelpTextOnNoArgs`](sany_tests/xml_testxmlexporterhelptext_test.go:27) | Fix | F18 |
+| [`testPrintHelpText`](sany_xml_help_java_test.go) | port complete | F18 |
+| [`testPrintHelpTextOnNoArgs`](sany_xml_help_java_test.go) | port complete | F18 |
 
 ### TestXMLExporterModule
 
 Java: [xml/TestXMLExporterModule.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterModule.java).
 
-Reviewed: All 20 methods and original model/comment fixtures retained. Reviewed UID resolution, nesting order/reachability, LET reference kinds/names/order, theorem/assumption references, recursive sections and HIDE defs. Shared schema, driver and namespace omissions affect every method; individual differences detailed below.
+Reviewed: All 20 methods and original model/comment fixtures retained. Reviewed UID resolution, nesting order/reachability, LET reference kinds/names/order, theorem/assumption references, recursive sections and HIDE defs. Shared schema, driver and namespace omissions are repaired for every method, together with the individual presence/comment predicates (F10–F14/F22–F23).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testExportDieHardModule`](sany_tests/xml_testxmlexportermodule_test.go:17) | Fix | F10, F22, F23, F11, F12 |
-| [`testExportCaseOtherModule`](sany_tests/xml_testxmlexportermodule_test.go:57) | Fix | F10, F22, F23, F11 |
-| [`testExportWithOfflineMode`](sany_tests/xml_testxmlexportermodule_test.go:67) | Fix | F10, F22, F23 |
-| [`testExportWithTerseMode`](sany_tests/xml_testxmlexportermodule_test.go:74) | Fix | F10, F22, F23 |
-| [`testExportWithRestrictedMode`](sany_tests/xml_testxmlexportermodule_test.go:81) | Fix | F10, F22, F23 |
-| [`testRelationPreComments`](sany_tests/xml_testxmlexportermodule_test.go:91) | Fix | F10, F22, F23, F11 |
-| [`testTLACommentStylesPreComments`](sany_tests/xml_testxmlexportermodule_test.go:110) | Fix | F10, F22, F23, F11 |
-| [`testNestedModuleIsChildOfEnclosingModule`](sany_tests/xml_testxmlexportermodule_test.go:150) | Fix | F10, F22, F23, F11 |
-| [`testNestedModuleIsNotInheritedThroughExtends`](sany_tests/xml_testxmlexportermodule_test.go:162) | Fix | F10, F22, F23, F11 |
-| [`testLetInstanceOfEmptyModuleExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:171) | Fix | F10, F22, F23, F11 |
-| [`testLetInstanceWithNothingToInlineExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:183) | Fix | F10, F22, F23, F11 |
-| [`testLetInstanceInlinesDefinitionsOfInstancee`](sany_tests/xml_testxmlexportermodule_test.go:195) | Fix | F10, F22, F23, F11 |
-| [`testLetExportsEachModuleDefinitionIndependently`](sany_tests/xml_testxmlexportermodule_test.go:208) | Fix | F10, F22, F23, F11 |
-| [`testLetAlwaysExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:213) | Fix | F10, F22, F23, F11 |
-| [`testTopLevelInstanceOfEmptyModuleExportsInstanceNode`](sany_tests/xml_testxmlexportermodule_test.go:226) | Fix | F10, F22, F23, F11 |
-| [`testUncommentFlagWithTLACommentStyles`](sany_tests/xml_testxmlexportermodule_test.go:240) | Fix | F10, F22, F23, F14 |
-| [`testUncommentFlagWithRelations`](sany_tests/xml_testxmlexportermodule_test.go:271) | Fix | F10, F22, F23 |
-| [`testLetInstanceExportsInstantiatedTheoremAndAssumption`](sany_tests/xml_testxmlexportermodule_test.go:290) | Fix | F10, F22, F23, F11 |
-| [`testRecursiveSectionGroupsJointDeclaration`](sany_tests/xml_testxmlexportermodule_test.go:304) | Fix | F10, F22, F23, F11, F13 |
-| [`testUseHideDefsExportsModuleReference`](sany_tests/xml_testxmlexportermodule_test.go:327) | Fix | F10, F22, F23, F11 |
+| [`testExportDieHardModule`](sany_tests/xml_testxmlexportermodule_test.go:17) | port complete | F10, F22, F23, F11, F12 |
+| [`testExportCaseOtherModule`](sany_tests/xml_testxmlexportermodule_test.go:57) | port complete | F10, F22, F23, F11 |
+| [`testExportWithOfflineMode`](sany_tests/xml_testxmlexportermodule_test.go:67) | port complete | F10, F22, F23 |
+| [`testExportWithTerseMode`](sany_tests/xml_testxmlexportermodule_test.go:74) | port complete | F10, F22, F23 |
+| [`testExportWithRestrictedMode`](sany_tests/xml_testxmlexportermodule_test.go:81) | port complete | F10, F22, F23 |
+| [`testRelationPreComments`](sany_tests/xml_testxmlexportermodule_test.go:91) | port complete | F10, F22, F23, F11 |
+| [`testTLACommentStylesPreComments`](sany_tests/xml_testxmlexportermodule_test.go:110) | port complete | F10, F22, F23, F11 |
+| [`testNestedModuleIsChildOfEnclosingModule`](sany_tests/xml_testxmlexportermodule_test.go:150) | port complete | F10, F22, F23, F11 |
+| [`testNestedModuleIsNotInheritedThroughExtends`](sany_tests/xml_testxmlexportermodule_test.go:162) | port complete | F10, F22, F23, F11 |
+| [`testLetInstanceOfEmptyModuleExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:171) | port complete | F10, F22, F23, F11 |
+| [`testLetInstanceWithNothingToInlineExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:183) | port complete | F10, F22, F23, F11 |
+| [`testLetInstanceInlinesDefinitionsOfInstancee`](sany_tests/xml_testxmlexportermodule_test.go:195) | port complete | F10, F22, F23, F11 |
+| [`testLetExportsEachModuleDefinitionIndependently`](sany_tests/xml_testxmlexportermodule_test.go:208) | port complete | F10, F22, F23, F11 |
+| [`testLetAlwaysExportsModuleInstanceRef`](sany_tests/xml_testxmlexportermodule_test.go:213) | port complete | F10, F22, F23, F11 |
+| [`testTopLevelInstanceOfEmptyModuleExportsInstanceNode`](sany_tests/xml_testxmlexportermodule_test.go:226) | port complete | F10, F22, F23, F11 |
+| [`testUncommentFlagWithTLACommentStyles`](sany_tests/xml_testxmlexportermodule_test.go:240) | port complete | F10, F22, F23, F14 |
+| [`testUncommentFlagWithRelations`](sany_tests/xml_testxmlexportermodule_test.go:271) | port complete | F10, F22, F23 |
+| [`testLetInstanceExportsInstantiatedTheoremAndAssumption`](sany_tests/xml_testxmlexportermodule_test.go:290) | port complete | F10, F22, F23, F11 |
+| [`testRecursiveSectionGroupsJointDeclaration`](sany_tests/xml_testxmlexportermodule_test.go:304) | port complete | F10, F22, F23, F11, F13 |
+| [`testUseHideDefsExportsModuleReference`](sany_tests/xml_testxmlexportermodule_test.go:327) | port complete | F10, F22, F23, F11 |
 
 ### TestXMLExporterStringEscapes
 
 Java: [xml/TestXMLExporterStringEscapes.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterStringEscapes.java).
 
-Reviewed: Original supported decoded string and form-feed fixture retained; CLI/library categories, complete document parsing and qualified names are weakened (F17/F19/F22).
+Reviewed: Original supported decoded string and form-feed fixture retained; CLI/library categories, complete document parsing and qualified names are restored (F17/F19/F22).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testSupportedStringEscapes`](sany_tests/xml_testxmlexporterstringescapes_test.go:13) | Fix | F19, F22 |
-| [`testFormFeedStringEscapeIsRejected`](sany_tests/xml_testxmlexporterstringescapes_test.go:20) | Fix | F17 |
+| [`testSupportedStringEscapes`](sany_tests/xml_testxmlexporterstringescapes_test.go:13) | port complete | F19, F22 |
+| [`testFormFeedStringEscapeIsRejected`](sany_tests/xml_testxmlexporterstringescapes_test.go:20) | port complete | F17 |
 
 ## Recheck procedure
 

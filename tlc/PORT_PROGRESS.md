@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-08 Restore all XML SANY audit contracts (F10–F19/F22–F24):
+Previous chunk committed as 736bf89. Embed a byte-for-byte copy of pinned Java
+sany.xsd, and enforce its complete XSD through libxml2 xmllint with network
+access disabled. Missing validator fails explicitly; -o retains the original
+production skip, while the offline module test independently validates when
+the embedded resource exists. All twenty module methods restore their original
+CLI/include invocations, individual stream contracts and independent schema
+validation. Preserve qualified element/attribute names and resolved namespaces,
+complete-document/root/end-tag checks, present-versus-empty filename/recursive
+fields, unconditional module-name membership and immediate uncomment-style
+assertion/removal without changing deferred relation matching.
+
+Add the XML-specific exit enum/typed exception and the library moduleToXML
+entry shared by the command. Spec parsing uses source validAstSettings, including
+no linting and error-only reporting. Restore library and command assertions for
+all seven error methods, first sorted E4200_Instance_Test fixture, exact null/
+formfeed code 7 and source message/nonbug predicates. Move help methods to root
+and compare complete independently printed usage. Route top-level XML help/no
+argument handling to that printer. Preserve the existing detailed command-help
+guide. String success uses the actual command and complete qualified XML decode;
+decimal uses library parsing/export and exact false/false/false/false options.
+Production now honors terse formatting and validates before returning output.
+
+All 32 affected original XML methods pass (21245 retired). Final dedicated SANY
+passes in 2.669 seconds (15242 retired), and root SANY/parser/semantic/logger/
+driver/XML methods pass in 2.606 seconds (69534 retired). All-package compile
+passes (25969 retired). Broader native XML run initially exposes three invalid
+handwritten fixtures: two missing Naturals imports for .. and one empty BY.
+Restore imports on existing module-header lines and make BY nonempty; preserve
+all assertions and location expectations. Corrected XML/root help/canonical
+selection passes in 1.432 seconds (83223 retired; optional Java conformance
+method skipped by its original env condition, no conformance-pass credit).
+All 227 mirrored files and embedded XSD bytes match upstream. Whitespace check
+passes with space-before-tab disabled solely to retain two upstream schema
+indentation lines byte-for-byte; no schema grooming or constraint patch.
+
+All 25 findings implemented, but final goal completion remains pending the
+method inventory audit and broader normal verification. Root/SANY normal run
+25107 and TLC normal run 78742 are live, with JSON output in
+.codex-gotmp/sany-final-tests.jsonl and .codex-gotmp/tlc-final-tests.jsonl.
+No race flags; preserve full original workload bounds. Do not restart merely
+because an observation expires, and do not claim these runs passed until their
+terminal outputs have been inspected.
+
 2026-10-08 Restore precedence/membership/void CLI contracts (F20–F21/F25):
 Previous chunk committed as 173f270. Replace recursive operator-token search
 with the source fixed wrapper child/heir[1] navigation and use N_GeneralId to

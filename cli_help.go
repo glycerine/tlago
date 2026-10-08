@@ -230,8 +230,8 @@ func cliHelpGroups(command string) []cliHelpGroup {
 	}
 	if command == "" || command == "sany-xml" {
 		groups = append(groups, cliHelpGroup{title: "SANY XML export (sany-xml)", options: []cliHelpOption{
-			{"-o, --offline", "Accept the Java offline XML-export option.", "Java -o skips schema validation. The current Go exporter performs no online schema validation, so this accepted option does not change its output. Parsing and semantic checking still run.", "Java XMLExporter: -o. No TLC model-checking or Toolbox checking-mode equivalent."},
-			{"-t, --terse", "Accept the Java terse XML-export option.", "Java -t omits formatting tabs and newlines. The current Go exporter accepts this option but does not yet apply a distinct terse formatting mode. It is unrelated to TLC -terse.", "Java XMLExporter: -t. No TLC flag equivalent."},
+			{"-o, --offline", "Skip XML schema validation.", "Skip validation against the embedded SANY XSD. By default, XML export validates through xmllint (libxml2), which must be on PATH. Validation uses no network access. Parsing and level checking still run.", "Java XMLExporter: -o. No TLC model-checking or Toolbox checking-mode equivalent."},
+			{"-t, --terse", "Omit XML indentation and formatting newlines.", "Omit XML indentation and formatting newlines, preserving character data. It is unrelated to TLC -terse.", "Java XMLExporter: -t. No TLC flag equivalent."},
 			{"-r, --restricted", "Accept the Java restricted XML-export option.", "Java -r exports only the root module's declarations and definitions. The current Go exporter accepts the option but does not yet apply a separate restricted-export mode.", "Java XMLExporter: -r. No TLC checking-mode equivalent."},
 			{"-u, --uncomment", "Remove comment delimiters from XML pre-comments.", "Process operator pre-comments to extract their content, including boxed and single-line comment forms. Pre-comments are already exported without this flag; -u controls their normalization.", "Java XMLExporter: -u. No TLC checking-mode equivalent."},
 		}})

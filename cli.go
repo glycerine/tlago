@@ -53,11 +53,11 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		return runModelCheck(args, stdout, stderr)
 	}
 	files := args[1:]
-	if command := canonicalCLICommand(cmd); command != "" && cliArgsContainHelp(files) {
+	if command := canonicalCLICommand(cmd); command != "" && command != "sany-xml" && cliArgsContainHelp(files) {
 		printCLIHelp(stdout, command)
 		return ExitOK
 	}
-	if len(files) == 0 && cmd != "modelcheck" && cmd != "mc" {
+	if len(files) == 0 && cmd != "modelcheck" && cmd != "mc" && cmd != "sany-xml" {
 		fmt.Fprintln(stderr, "at least one file is required")
 		return ExitToolFailure
 	}
@@ -83,48 +83,27 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 }
 
 func runSanyXML(args []string, stdout, stderr io.Writer) int {
-	if cliArgsContainHelp(args) {
-		printSanyXMLUsage(stdout)
-		return ExitOK
+	err := XMLModuleToXML(args, stdout, stderr)
+	if err == nil {
+		return int(XMLExporterOK)
 	}
-	opts, xmlOpts, err := parseSanyXMLCLIOptions(args)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return ExitToolFailure
-	}
-	if len(opts.files) == 0 {
-		fmt.Fprintln(stderr, "at least one file is required")
-		return ExitToolFailure
-	}
-	exit := ExitOK
-	for i, file := range opts.files {
-		spec, diags := LoadSanySpec(file, opts.load)
-		if diags.HasErrors() {
-			writeDiagnostics(stderr, diags)
-			exit = ExitSyntaxFailure
-			continue
+	failure := err.(*XMLExportingException)
+	if failure.Code == XMLArgsParsingFailure {
+		fmt.Fprintln(stderr, "ERROR: "+failure.Message)
+		printSanyXMLUsage(stderr)
+	} else if failure.Code.IsBug() {
+		fmt.Fprintln(stderr, failure.Message)
+		if failure.Nested != nil {
+			fmt.Fprintln(stderr, failure.Nested)
 		}
-		sem := CheckSpec(spec)
-		writeDiagnostics(stderr, sem)
-		if sem.HasErrors() {
-			exit = ExitSemanticFailure
-			continue
-		}
-		data, xmlDiags := SanyXMLWithOptions(spec, xmlOpts)
-		writeDiagnostics(stderr, xmlDiags)
-		if xmlDiags.HasErrors() {
-			exit = ExitSemanticFailure
-			continue
-		}
-		if i > 0 {
-			fmt.Fprintln(stdout)
-		}
-		_, _ = stdout.Write(data)
-		if len(data) == 0 || data[len(data)-1] != '\n' {
-			fmt.Fprintln(stdout)
+		fmt.Fprintln(stderr, "This is likely a bug in the XML Exporter; please report to https://github.com/tlaplus/tlaplus/issues")
+	} else {
+		fmt.Fprintln(stderr, "ERROR: "+failure.Message)
+		if failure.Nested != nil {
+			fmt.Fprintln(stderr, failure.Nested)
 		}
 	}
-	return exit
+	return int(failure.Code)
 }
 
 func runREPLExpression(args []string, stdout, stderr io.Writer) int {
@@ -198,9 +177,7 @@ func cliArgsContainHelp(args []string) bool {
 }
 
 func printSanyXMLUsage(w io.Writer) {
-	fmt.Fprintln(w, "usage: tlago sany-xml [-o] [-t] [-r] [-u] [-I DIR] FILE...")
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Parse, check, and export TLA+ modules as SANY XML.")
+	printCLIHelp(w, "sany-xml")
 }
 
 func parseSanyXMLCLIOptions(args []string) (commonCLIOptions, SanyXMLOptions, error) {

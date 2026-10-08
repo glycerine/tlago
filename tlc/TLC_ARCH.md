@@ -1,5 +1,24 @@
 # TLC Architecture Notes for the Go Port
 
+## SANY XML driver and schema boundary
+
+XMLExporter has its own exit enum and structured exception; a semantic spec
+failure is SPEC_PARSING_FAILURE (2), not the SANY semantic exit (4). The XML
+parse driver uses validAstSettings: generation and level checking with linting
+disabled, reporting only ERROR output. The library moduleToXML entry and command
+runner share that driver and preserve code, message and nested failure. XML 1.0
+control-character rejection is code 7 and is not an exporter bug.
+
+The schema is embedded from the exact pinned Java sany.xsd. Non-offline export
+uses libxml2's complete XSD engine through xmllint, requiring it on PATH and
+failing explicitly if unavailable. Validation disables network access and
+does not use test-specific element checks. The original module tests also
+validate captured stdout independently. Terse output omits formatting while
+retaining character data. The source four-option decimal library path and
+complete XML help printer are exercised directly by their translated tests.
+This establishes the repaired source contracts, not unrestricted semantic graph
+or XML equality beyond the original assertions.
+
 ## Missing EXTENDS module aborts generation and uses checked boundaries
 
 When no ModuleNode resolves, Generator records INTERNAL_ERROR 4003 at that
