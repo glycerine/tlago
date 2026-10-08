@@ -20700,3 +20700,34 @@ status 0, 1.872 seconds). All processes are terminal. No full suite, long worklo
 or race run was performed.
 Supplemental checks add no original-method credit; distributed parity remains
 incomplete.
+
+### 2026-10-08: Worker-loss consumer wakeup
+
+Audited TLCServerThread.handleRemoteWorkerLost against pinned source. After
+requeueing and clearing assigned work, source unconditionally notifies the queue
+monitor before decrementing workers. Go called ResumeAllStuck instead. For a
+suspended queue, that operation wakes checkpoint waiters rather than consumer
+waiters, leaving the source consumer notification absent. Added native
+StateQueue.WakeAllWaiters with locked consumer-condition broadcast for memory,
+deque, disk and byte-array queues. Worker loss uses it; registration retains the
+separate ResumeAllStuck contract. Queue suspension/completion flags are untouched.
+The existing explicit checker queue mock implements the expanded interface.
+
+No original test directly covers this notification boundary. Added joined
+condition-waiter checks for all four suspended queues, plus a callback ordering
+check for deregistration/requeue/assigned-state clearing before notification,
+notification before worker decrement, and duplicate-loss idempotence. All four
+suspended-queue cases initially failed (83593, status 1, 4.018 seconds). Focused
+thread/finalizer, worker-loss, missing-timer and original nine smart-proxy checks
+pass after the fix (1347ba, status 0, 0.073 seconds). Final normal checks include
+the added ordering case and all nine original memory StateQueue methods (7b0c4d,
+status 0, 0.018 seconds). Exact three short concurrency checks pass with race
+detection (64257, status 0, 1.043 seconds); no long workload was included.
+
+Short normal TCP assigned-block checkpoint, retry/loss, keepalive coordinator
+lifecycle and timer-failure checks pass (8be7a8, status 0, 0.055 seconds).
+The three original distributed initializer-continue, evaluator-error and TLCSet
+model contexts pass (88623, status 0, 1.168 seconds). All processes are terminal.
+No full suite was run.
+Supplemental wakeup checks add no original-method completion credit; broader
+distributed parity remains incomplete.

@@ -227,6 +227,12 @@ func (q *DiskByteArrayQueue) ResumeAll() {
 	q.cond.Broadcast()
 }
 
+func (q *DiskByteArrayQueue) WakeAllWaiters() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.cond.Broadcast()
+}
+
 func (q *DiskByteArrayQueue) ResumeAllStuck() {
 	q.mu.Lock()
 	stop := q.stop

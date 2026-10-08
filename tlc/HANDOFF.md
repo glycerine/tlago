@@ -52,6 +52,11 @@ counts update first, then the keepalive timestamp, then generated-state delta.
 An absent timer enters worker-loss cleanup and requeues assigned work rather
 than returning a publishable result. Direct-construction fixtures supply the
 timer task normally created by the production constructor.
+Worker-loss cleanup wakes queue consumers unconditionally after requeueing and
+clearing assigned work, before decrementing the worker count. It uses native
+`WakeAllWaiters`, preserving suspension; registration still uses the distinct
+`ResumeAllStuck` operation. All four queue implementations and short concurrency
+checks cover this boundary.
 
 The original checkpoint-on-violation and time-bound model tests are now complete.
 Both pass normally with their full assertions; the time-bound test retains the

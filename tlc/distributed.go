@@ -1157,7 +1157,7 @@ func (t *TLCServerThread) HandleRemoteWorkerLost(stateQueue StateQueue) {
 	}
 	t.setStates([]*TLCStateMut{})
 	if stateQueue != nil {
-		stateQueue.ResumeAllStuck()
+		stateQueue.WakeAllWaiters()
 	}
 	DecNumWorkers()
 }

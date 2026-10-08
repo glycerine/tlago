@@ -11814,3 +11814,16 @@ triggers worker-loss cleanup and requeues the assigned states; it does not retur
 a publishable result. Counts already updated remain updated. Production thread
 construction supplies the task; direct-construction test fixtures must do so too.
 Focused native checks cover mutation/failure ordering and assigned-state recovery.
+
+
+### Worker-loss consumer notification
+
+Worker loss cancels keepalive, claims the idempotent cleanup flag, deregisters,
+requeues unfinished states, clears assigned work, wakes all queue consumers and
+then decrements worker count. Consumer notification is unconditional even when
+the queue is empty or suspended. StateQueue.WakeAllWaiters provides this native
+operation with a locked consumer-condition broadcast in all four implementations;
+it changes neither suspension nor completion. ResumeAllStuck is a different
+operation, including checkpoint-barrier recovery, and remains the registration
+wakeup. Joined suspended-consumer tests, cleanup-order checks and exact short
+race checks cover the corrected boundary.

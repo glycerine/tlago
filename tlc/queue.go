@@ -22,6 +22,8 @@ type StateQueue interface {
 	SuspendAll() bool
 	ResumeAll()
 	ResumeAllStuck()
+	// WakeAllWaiters wakes consumers without changing suspension or completion.
+	WakeAllWaiters()
 	Size() int64
 	IsEmpty() bool
 	BeginChkpt() error
@@ -304,6 +306,12 @@ func (q *MemStateQueue) ResumeAll() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.stop = false
+	q.cond.Broadcast()
+}
+
+func (q *MemStateQueue) WakeAllWaiters() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	q.cond.Broadcast()
 }
 
@@ -645,6 +653,12 @@ func (q *StateDeque) ResumeAll() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.stop = false
+	q.cond.Broadcast()
+}
+
+func (q *StateDeque) WakeAllWaiters() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	q.cond.Broadcast()
 }
 

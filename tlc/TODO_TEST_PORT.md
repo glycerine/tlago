@@ -703,6 +703,11 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental worker-loss checks cover unconditional suspended-consumer wakeup
+for all four queues, cleanup/requeue-before-wakeup, wake-before-decrement and
+duplicate loss reports. Focused concurrency checks pass with race detection;
+no upstream method directly covers this boundary, so counts remain unchanged.
+
 Supplemental batch-statistics checks preserve required timer/coordinator owners,
 received-count/timestamp/delta ordering and worker-loss requeueing after an
 absent timer. No original method covers these boundaries; counts are unchanged.

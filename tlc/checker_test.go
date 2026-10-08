@@ -454,6 +454,7 @@ func (q *recordingStateQueue) FinishAll()                          {}
 func (q *recordingStateQueue) SuspendAll() bool                    { return true }
 func (q *recordingStateQueue) ResumeAll()                          { q.resumeAll++ }
 func (q *recordingStateQueue) ResumeAllStuck()                     {}
+func (q *recordingStateQueue) WakeAllWaiters()                     {}
 func (q *recordingStateQueue) Size() int64                         { return q.size }
 func (q *recordingStateQueue) IsEmpty() bool                       { return q.size == 0 }
 func (q *recordingStateQueue) BeginChkpt() error                   { q.beginChkpt++; return nil }

@@ -231,6 +231,12 @@ func (q *DiskStateQueue) ResumeAll() {
 	q.cond.Broadcast()
 }
 
+func (q *DiskStateQueue) WakeAllWaiters() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.cond.Broadcast()
+}
+
 func (q *DiskStateQueue) ResumeAllStuck() {
 	q.mu.Lock()
 	stop := q.stop
