@@ -17,6 +17,11 @@ translations now live in root [sany_errors_java_test.go](../sany_errors_java_tes
 and [sany_error_message_formatting_java_test.go](../sany_error_message_formatting_java_test.go).
 They call production logging/rendering and generation-only semantics rather
 than constructing expected diagnostic slices or formatting inside the tests.
+The three `drivers.WarningControlTest` settings methods live in root
+[sany_warning_control_java_test.go](../sany_warning_control_java_test.go), calling
+the production settings-controlled driver and observing WARNING/ERROR output.
+Its nine CLI methods and IllegalOperator retain combined streams, original
+arguments and exact rendered diagnostics in this directory.
 The remaining fidelity repairs are tracked in
 [SANY_TESTS_TO_FIX.md](../SANY_TESTS_TO_FIX.md); current green tests alone do not
 resolve that audit.

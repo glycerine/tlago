@@ -50,13 +50,14 @@ packaged properties, networking primitives, OpenJDK notices, and `x/text`.
 The current user request authorizes the SANY XML repairs listed in the audit.
 ApalacheIR corpus sweeps remain deferred.
 
-SANY audit progress: F01–F03 are repaired and the nine original logger/formatting
-methods pass in their root-package translations. They exercise insertion-time
-logging, complete detail rendering and generation-only percent reproducers.
-The remaining dedicated SANY package and selected original root methods also
-pass, but F04–F25 remain uncorrected. Continue with warning settings, recorded
-driver output and CLI arguments (F04–F06), then the audit's remaining findings.
-Do not credit green counterparts until their source contracts are restored.
+SANY audit progress: F01–F06 are repaired. The nine logger/formatting methods,
+all twelve WarningControl methods and IllegalOperator pass. Settings tests call
+the production driver and record WARNING/ERROR output; CLI tests retain original
+arguments, combined streams and exact diagnostic substrings. The remaining
+SANY package and selected original root methods pass, but F07–F25 remain
+uncorrected. Continue with generation-only setup, Location ordering and Vector
+exception identity (F07–F09), then the audit's remaining findings. Do not credit
+green counterparts until their source contracts are restored.
 
 ## Current verified state
 

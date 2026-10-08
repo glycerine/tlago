@@ -1,5 +1,30 @@
 # TLC Port Progress
 
+2026-10-08 Restore SANY settings and CLI test contracts (F04–F06):
+Previous chunk committed as 688fb7c. Move the three original WarningControl
+settings methods to root and call the production settings-controlled driver,
+recording WARNING/ERROR output and exact SANY exit categories. Restore all
+original CLI arguments, shared output streams and exact overlap text. The
+IllegalOperator method now uses its extensionless CLI path and all four exact
+source substrings, without test-side deduplication or an added exit assertion.
+The check command uses the same driver and renders SANY summaries/ErrorDetails;
+SANY ERROR (-1) maps to the process tool failure (1). Phase switches govern
+generation, levels and linting. Warning elevation controls status without
+rewriting raw semantic logs; an elevated parsing warning does not throw the
+source ParseException. Preserve the legacy TLC adapter exit policy. This is
+parity for these tested contracts, not all SanySettings options or all parsing
+warning paths. Update the supplementary native CLI warning expectation to the
+actual field-name diagnostic, retaining suppression checks.
+
+All thirteen original WarningControl/IllegalOperator methods pass. The related
+CLI behavior selection passes in 3.689 seconds (10746 retired). Final selected
+original root logger/formatting/settings/context/builtin/corpus/incremental/
+selector methods pass in 0.240 seconds; dedicated SANY passes in 2.513 seconds
+(73287 retired). All-package compile passes. All vectors remain unchanged.
+Mark only F04–F06 complete; F07–F25 remain pending. No full repaired-suite or
+full-workspace completion claim. Next: generation-only Github429, independent
+Location comparator predicates, and exact Vector exception type (F07–F09).
+
 2026-10-08 Restore SANY logger and percent-error tests (F01–F03):
 Context prerequisite committed as 87cc2c4. Inspect the pinned original Errors
 and TestErrors/TestErrorMessageFormatting classes. Move all nine original

@@ -24,7 +24,14 @@ track the current repairs.
   exercise production logging/rendering, and preserve generation-only semantics.
   Targeted tests pass, as do the remaining dedicated SANY package and selected
   original root SANY methods. No original parameter or assertion was weakened.
-- **F04–F25: pending.** A green run of their current counterparts does not resolve
+- **F04–F06: port complete for the eleven affected original methods.** All
+  twelve WarningControl methods and IllegalOperator pass. The three settings
+  methods use the production settings-controlled driver and record WARNING/ERROR
+  output. CLI methods retain source arguments, combined streams, exit mapping and
+  exact substrings; IllegalOperator uses its extensionless path. The driver now
+  renders SANY summaries and ErrorDetails and propagates warning elevation to its
+  named exit status. This covers these contracts, not every SanySettings option.
+- **F07–F25: pending.** A green run of their current counterparts does not resolve
   their recorded test-contract defects. Final verification of the fully restored
   96-method inventory has not yet occurred.
 
@@ -329,32 +336,32 @@ Reviewed: Original fixture retained; semantic phase selection and success requir
 
 Java: [drivers/IllegalOperatorTest.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/drivers/IllegalOperatorTest.java).
 
-Reviewed: Fixture retained; original CLI argument and rendered-output assertions replaced (F06).
+Repaired: Original extensionless CLI argument, shared output stream and all four exact rendered-output assertions restored (F06).
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`test`](sany_tests/drivers_illegaloperatortest_test.go:12) | Fix | F06 |
+| [`test`](sany_tests/drivers_illegaloperatortest_test.go:12) | port complete | F06 |
 
 ### WarningControlTest
 
 Java: [drivers/WarningControlTest.java](../tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/drivers/WarningControlTest.java).
 
-Reviewed: All 12 methods and original warning fixture retained. Settings/output, CLI argument and stream differences recorded below. The two missing-argument cases preserve their tested failure category.
+Reviewed: All 12 methods and original warning fixture retained. Settings/output, CLI argument and stream differences repaired (F04–F05). The two missing-argument cases preserve their tested failure category.
 
 | Java method / primary Go translation | Result | Findings |
 | --- | --- | --- |
-| [`testWarningAppearsWithDefaultSettings`](sany_tests/drivers_warningcontroltest_test.go:13) | Fix | F04 |
-| [`testSuppressMessagesViaSettings`](sany_tests/drivers_warningcontroltest_test.go:23) | Fix | F04 |
-| [`testMessagesAsErrorsViaSettings`](sany_tests/drivers_warningcontroltest_test.go:36) | Fix | F04 |
-| [`testCLISuppressMessagesSilencesWarning`](sany_tests/drivers_warningcontroltest_test.go:49) | Fix | F05 |
-| [`testCLIMessagesAsErrorsCausesFailure`](sany_tests/drivers_warningcontroltest_test.go:60) | Fix | F05 |
-| [`testCLIMultipleCodesSuppressed`](sany_tests/drivers_warningcontroltest_test.go:71) | Fix | F05 |
-| [`testCLIUnknownCodeInSuppressMessages`](sany_tests/drivers_warningcontroltest_test.go:82) | Fix | F05 |
-| [`testCLIUnknownCodeInMessagesAsErrors`](sany_tests/drivers_warningcontroltest_test.go:93) | Fix | F05 |
+| [`testWarningAppearsWithDefaultSettings`](sany_warning_control_java_test.go) | port complete | F04 |
+| [`testSuppressMessagesViaSettings`](sany_warning_control_java_test.go) | port complete | F04 |
+| [`testMessagesAsErrorsViaSettings`](sany_warning_control_java_test.go) | port complete | F04 |
+| [`testCLISuppressMessagesSilencesWarning`](sany_tests/drivers_warningcontroltest_test.go:49) | port complete | F05 |
+| [`testCLIMessagesAsErrorsCausesFailure`](sany_tests/drivers_warningcontroltest_test.go:60) | port complete | F05 |
+| [`testCLIMultipleCodesSuppressed`](sany_tests/drivers_warningcontroltest_test.go:71) | port complete | F05 |
+| [`testCLIUnknownCodeInSuppressMessages`](sany_tests/drivers_warningcontroltest_test.go:82) | port complete | F05 |
+| [`testCLIUnknownCodeInMessagesAsErrors`](sany_tests/drivers_warningcontroltest_test.go:93) | port complete | F05 |
 | [`testCLISuppressMessagesMissingArgument`](sany_tests/drivers_warningcontroltest_test.go:104) | Reviewed | — |
 | [`testCLIMessagesAsErrorsMissingArgument`](sany_tests/drivers_warningcontroltest_test.go:112) | Reviewed | — |
-| [`testCLIOverlapBetweenSuppressMessagesAndMessagesAsErrors`](sany_tests/drivers_warningcontroltest_test.go:120) | Fix | F05 |
-| [`testCLIErrorLevelCodeInSuppressMessages`](sany_tests/drivers_warningcontroltest_test.go:131) | Fix | F05 |
+| [`testCLIOverlapBetweenSuppressMessagesAndMessagesAsErrors`](sany_tests/drivers_warningcontroltest_test.go:120) | port complete | F05 |
+| [`testCLIErrorLevelCodeInSuppressMessages`](sany_tests/drivers_warningcontroltest_test.go:131) | port complete | F05 |
 
 ### TestSanyOutputFormatting
 

@@ -395,15 +395,16 @@ Use == LibraryValue
 	if code := RunCLI([]string{"check", warn}, nil, &stderr); code != ExitOK {
 		t.Fatalf("warning check exit = %d, want %d; stderr=%s", code, ExitOK, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "W4802") {
-		t.Fatalf("warning check stderr = %q, want W4802", stderr.String())
+	// SANY renders ErrorDetails without the native diagnostic-code prefix.
+	if !strings.Contains(stderr.String(), "The field name \"Foo\"") {
+		t.Fatalf("warning check stderr = %q, want field-name warning", stderr.String())
 	}
 	stderr.Reset()
 	if code := RunCLI([]string{"check", "-suppressMessages", "4802", warn}, nil, &stderr); code != ExitOK {
 		t.Fatalf("suppressed warning exit = %d, want %d; stderr=%s", code, ExitOK, stderr.String())
 	}
-	if strings.Contains(stderr.String(), "W4802") {
-		t.Fatalf("suppressed warning stderr = %q, want no W4802", stderr.String())
+	if strings.Contains(stderr.String(), "W4802") || strings.Contains(stderr.String(), "The field name \"Foo\"") {
+		t.Fatalf("suppressed warning stderr = %q, want no field-name warning", stderr.String())
 	}
 	stderr.Reset()
 	if code := RunCLI([]string{"check", "-messagesAsErrors", "4802", warn}, nil, &stderr); code != ExitSemanticFailure {

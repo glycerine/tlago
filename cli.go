@@ -299,21 +299,17 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	exit := ExitOK
 	for _, file := range opts.files {
-		spec, diags := LoadSanySpec(file, opts.load)
-		diags = opts.diag.apply(diags)
-		if diags.HasErrors() {
-			writeDiagnostics(stderr, diags)
-			exit = ExitSyntaxFailure
+		settings := defaultSanyDriverSettings()
+		settings.messages = opts.diag
+		spec, status := parseSanyWithSettings(file, opts.load, settings, func(_ Severity, message string) { fmt.Fprintln(stderr, message) })
+		if status != 0 {
+			if status == -1 {
+				status = sanyExitCode(ExitToolFailure)
+			}
+			exit = int(status)
 			continue
 		}
-		sem := CheckSpec(spec)
-		sem = opts.diag.apply(sem)
-		writeDiagnostics(stderr, sem)
-		if sem.HasErrors() {
-			exit = ExitSemanticFailure
-			continue
-		}
-		if spec.Root != nil {
+		if spec != nil && spec.Root != nil {
 			fmt.Fprintf(stdout, "Checked module %s\n", spec.Root.Name)
 		}
 	}
@@ -342,6 +338,11 @@ func parseCommonCLIOptions(args []string, diagnostics bool) (commonCLIOptions, e
 			continue
 		}
 		switch args[i] {
+		case "-error-codes":
+			if !diagnostics {
+				opts.files = append(opts.files, args[i])
+			}
+			// check already exposes descriptive syntax/semantic exit statuses.
 		case "-suppressMessages", "--suppressMessages", "-suppress-messages", "--suppress-messages":
 			if !diagnostics {
 				opts.files = append(opts.files, args[i])
@@ -472,7 +473,7 @@ func (opts diagnosticCLIOptions) validate() error {
 	for code := range opts.suppressed {
 		normalized := normalizeDiagnosticCode(code)
 		if diagnosticCodeSetContains(opts.elevated, normalized) {
-			return fmt.Errorf("message code %s cannot be configured in both -suppressMessages and -messagesAsErrors", normalized)
+			return fmt.Errorf("codes were set to both -suppressMessages and -messagesAsErrors: %s", normalized)
 		}
 	}
 	return nil
