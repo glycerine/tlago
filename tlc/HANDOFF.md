@@ -73,6 +73,14 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Native state transfer now preserves shared backing value arrays for tuples,
+records, functions, configured operator argument rows, tuple products and record
+sets. Receiver mutations remain visible through shared arrays without touching
+sender storage; recursive arrays and nil/empty distinctions survive gob and TCP.
+This is Go graph transfer, not a Java transport implementation. ValueVec object
+identity, its full backing capacity and shared name arrays remain pending.
+These short native checks add no original-method completion credit.
+
 The native EWD840 process harness now covers two standalone FP servers. Before
 starting its worker, it reads the coordinator's published manager reference
 graph and checks two distinct nonempty stores totaling the complete 16,384-state

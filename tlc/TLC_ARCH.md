@@ -11173,3 +11173,16 @@ even when their source timestamp-based directories are created simultaneously.
 One worker then completes the unchanged N=7 model: FINISHED, 114,942 distinct
 states, zero queued states and no GENERAL/lost replies across all four roles.
 These native topology choices do not complete the disabled upstream harness.
+
+Native payloads now include a ValueArrays table. Composite fields and operator
+argument rows hold one-based references to shared backing value slices, while
+synthetic scalar edges remain inline. Encoding reserves array IDs before visiting
+children; decoding allocates all Value objects before resolving arrays and then
+populates owners, preserving recursive graphs. Exact nonempty backing pointer
+and length identify source arrays; distinct equal-content arrays remain distinct.
+Receiver arrays own their storage. Nil and initialized empty arrays remain
+separate; empty-array object identity and arbitrary overlapping Go slice views
+are not represented as Java array objects. Invalid/conflicting references fail
+graph decoding. All communicating roles need the same native payload build.
+ValueVec identity/full capacity and shared UniqueString name arrays remain pending.
+This is a native Go graph representation, without Java serialization or RMI.

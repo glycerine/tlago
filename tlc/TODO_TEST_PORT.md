@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native value-array graph checks cover tuple, record, function, operator argument
+row, tuple-product and record-set sharing, cycles, nil/empty arrays, malformed
+references and isolated receiver mutations across worker request/result TCP.
+No enabled original Java method directly covers this boundary; no original-method
+credit is added. ValueVec identity/full backing storage and shared name arrays
+remain pending implementation and verification.
+
 The full native MC06 process matrix now includes `partitioned_fingerprints`
 with two standalone FP processes and private temporary storage. Their two
 distinct nonempty initial partitions must total 16,384 fingerprints before

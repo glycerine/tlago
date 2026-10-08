@@ -11,12 +11,13 @@ import (
 // remain shared after decoding; receiver objects do not alias sender objects.
 // State levels use the in-memory int32 range, not the short disk-queue format.
 type DistributedStatePayload struct {
-	Nil        bool
-	Roots      []int
-	States     []DistributedStateNode
-	Values     []DistributedValueNode
-	Strings    []DistributedStringNode
-	ByteArrays [][]byte
+	Nil         bool
+	Roots       []int
+	States      []DistributedStateNode
+	Values      []DistributedValueNode
+	Strings     []DistributedStringNode
+	ByteArrays  [][]byte
+	ValueArrays [][]int
 }
 
 type DistributedStateNode struct {
@@ -37,6 +38,7 @@ type DistributedStringNode struct {
 type DistributedValueReferences struct {
 	Nil        bool
 	References []int
+	Array      int
 }
 
 // Value nodes retain representation and caches for symbolic set constructors.
@@ -47,8 +49,10 @@ type DistributedValueNode struct {
 	OperatorDomain    []DistributedValueReferences
 	OperatorDomainNil bool
 	References        []int
+	ReferencesArray   int
 	ReferencesNil     bool
 	Domain            []int
+	DomainArray       int
 	DomainNil         bool
 	Names             []int
 	NamesNil          bool
@@ -72,11 +76,13 @@ type DistributedValueNode struct {
 }
 
 type distributedPayloadEncoder struct {
-	payload *DistributedStatePayload
-	states  map[*TLCStateMut]int
-	values  map[Value]int
-	strings map[*UniqueString]int
-	bytes   map[distributedByteArrayKey]int
+	payload    *DistributedStatePayload
+	states     map[*TLCStateMut]int
+	values     map[Value]int
+	strings    map[*UniqueString]int
+	bytes      map[distributedByteArrayKey]int
+	arrays     map[distributedByteArrayKey]int
+	arrayRoots [][]Value // Keep address-keyed backing storage alive while encoding.
 }
 
 type distributedByteArrayKey struct {
@@ -92,7 +98,7 @@ func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePa
 		}
 	}()
 	payload = &DistributedStatePayload{Nil: states == nil}
-	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int)}
+	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int), arrays: make(map[distributedByteArrayKey]int)}
 	payload.Roots = make([]int, len(states))
 	for i, state := range states {
 		id, failure := encoder.state(state)
@@ -158,6 +164,27 @@ func (e *distributedPayloadEncoder) refs(values []Value) ([]int, error) {
 	return refs, nil
 }
 
+func (e *distributedPayloadEncoder) array(values []Value) (int, error) {
+	if values == nil {
+		return 0, nil
+	}
+	key := distributedByteArrayKey{reflect.ValueOf(values).Pointer(), len(values)}
+	if id := e.arrays[key]; id != 0 && len(values) != 0 {
+		return id, nil
+	}
+	id := len(e.payload.ValueArrays) + 1
+	e.arrays[key] = id
+	e.arrayRoots = append(e.arrayRoots, values)
+	// Reserve before visiting elements so an array may refer to its owner.
+	e.payload.ValueArrays = append(e.payload.ValueArrays, nil)
+	refs, err := e.refs(values)
+	if err != nil {
+		return 0, err
+	}
+	e.payload.ValueArrays[id-1] = refs
+	return id, nil
+}
+
 func (e *distributedPayloadEncoder) names(names []*UniqueString) []int {
 	if names == nil {
 		return nil
@@ -183,6 +210,7 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 	var children, domain []Value
 	var names []*UniqueString
 	var cache Value
+	sharedChildren, sharedDomain := false, false
 	switch v := value.(type) {
 	case *BoolValue:
 		node.Kind, node.Flag = "bool", v.Val
@@ -199,8 +227,10 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 		node.Kind, node.Low, node.High = "interval", v.Low, v.High
 	case *TupleValue:
 		node.Kind, children = "tuple", v.Elems
+		sharedChildren = true
 	case *RecordValue:
 		node.Kind, children, names, node.Flag = "record", v.Values, v.Names, v.IsNorm
+		sharedChildren = true
 	case *SetEnumValue:
 		node.Kind, node.Flag, node.CollectionPresent = "enum", v.IsNorm, v.Elems != nil
 		if v.Elems != nil {
@@ -209,6 +239,7 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 	case *FcnRcdValue:
 		node.Kind, children, domain, node.Flag = "function", v.Values, v.Domain, v.IsNorm
 		cache = v.Intv
+		sharedChildren, sharedDomain = true, true
 	case *OpRcdValue:
 		// Unlike evaluator-backed operators, a configured constant operator
 		// contains only finite argument rows and result values. Keep it an
@@ -216,11 +247,11 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 		node.Kind, children, node.OperatorDomainNil = "operatorRecord", v.Values, v.Domain == nil
 		node.OperatorDomain = make([]DistributedValueReferences, len(v.Domain))
 		for i, row := range v.Domain {
-			refs, err := e.refs(row)
+			array, err := e.array(row)
 			if err != nil {
 				return 0, err
 			}
-			node.OperatorDomain[i] = DistributedValueReferences{Nil: row == nil, References: refs}
+			node.OperatorDomain[i] = DistributedValueReferences{Nil: row == nil, Array: array}
 		}
 	case *FcnLambdaValue:
 		node.Kind, children = "lambda", []Value{v.ToFcnRcd()}
@@ -245,8 +276,10 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 		node.Kind, children = "predicate", []Value{v.InVal}
 	case *SetOfTuplesValue:
 		node.Kind, children, cache, node.Dummy = "product", v.Sets, v.TupleSet, v.TupleSetDummy
+		sharedChildren = true
 	case *SetOfRcdsValue:
 		node.Kind, children, names, cache, node.Dummy = "recordSet", v.Values, v.Names, v.RcdSet, v.RcdSetDummy
+		sharedChildren = true
 	case *SetOfFcnsValue:
 		node.Kind, children, cache, node.Dummy = "functionSet", []Value{v.Domain, v.Range}, v.FcnSet, v.FcnSetDummy
 	case *KSubsetValue:
@@ -285,11 +318,19 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 	}
 	var err error
 	node.ReferencesNil, node.DomainNil, node.NamesNil = children == nil, domain == nil, names == nil
-	node.References, err = e.refs(children)
+	if sharedChildren {
+		node.ReferencesArray, err = e.array(children)
+	} else {
+		node.References, err = e.refs(children)
+	}
 	if err != nil {
 		return 0, err
 	}
-	node.Domain, err = e.refs(domain)
+	if sharedDomain {
+		node.DomainArray, err = e.array(domain)
+	} else {
+		node.Domain, err = e.refs(domain)
+	}
 	if err != nil {
 		return 0, err
 	}
@@ -361,6 +402,7 @@ type distributedPayloadDecoder struct {
 	values  []Value
 	strings []*UniqueString
 	bytes   [][]byte
+	arrays  [][]Value
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -390,6 +432,14 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, fmt.Errorf("value %d: %w", i+1, err)
 		}
 		decoder.values[i] = value
+	}
+	decoder.arrays = make([][]Value, len(payload.ValueArrays))
+	for i, refs := range payload.ValueArrays {
+		values, err := decoder.refs(refs, false)
+		if err != nil {
+			return nil, fmt.Errorf("value array %d: %w", i+1, err)
+		}
+		decoder.arrays[i] = values
 	}
 	for i, node := range payload.Values {
 		if err := decoder.populate(decoder.values[i], node); err != nil {
@@ -535,6 +585,19 @@ func (d *distributedPayloadDecoder) refs(ids []int, isNil bool) ([]Value, error)
 	return values, nil
 }
 
+func (d *distributedPayloadDecoder) arrayRefs(ids []int, isNil bool, array int) ([]Value, error) {
+	if array == 0 {
+		return d.refs(ids, isNil)
+	}
+	if array < 0 || array > len(d.arrays) {
+		return nil, fmt.Errorf("invalid value array reference %d", array)
+	}
+	if isNil || len(ids) != 0 {
+		return nil, fmt.Errorf("value array reference conflicts with inline/null values")
+	}
+	return d.arrays[array-1], nil
+}
+
 func (d *distributedPayloadDecoder) names(ids []int, isNil bool) ([]*UniqueString, error) {
 	if isNil {
 		if len(ids) != 0 {
@@ -566,11 +629,11 @@ func distributedValueCast[T Value](value Value) (T, error) {
 }
 
 func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueNode) error {
-	refs, err := d.refs(node.References, node.ReferencesNil)
+	refs, err := d.arrayRefs(node.References, node.ReferencesNil, node.ReferencesArray)
 	if err != nil {
 		return err
 	}
-	domain, err := d.refs(node.Domain, node.DomainNil)
+	domain, err := d.arrayRefs(node.Domain, node.DomainNil, node.DomainArray)
 	if err != nil {
 		return err
 	}
@@ -641,7 +704,7 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 		} else {
 			v.Domain = make([][]Value, len(node.OperatorDomain))
 			for i, row := range node.OperatorDomain {
-				v.Domain[i], err = d.refs(row.References, row.Nil)
+				v.Domain[i], err = d.arrayRefs(row.References, row.Nil, row.Array)
 				if err != nil {
 					return err
 				}

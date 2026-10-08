@@ -19051,3 +19051,29 @@ two FP temporary directories, the exact final case passes in 50.323 seconds
 No production failure was found. Both handles are retired. No race instrumentation
 or full suite was run, and no other long model scenario was selected. Broader
 distributed parity, process-crash and mid-run recovery work remain incomplete.
+
+## October 8, 2026: shared composite backing arrays in native state transfer
+
+The source tuple, record, function, product, record-set and configured operator
+argument fields retain mutable Value arrays; their default object transfer
+preserves backing-array identity. The native graph previously retained Value
+object sharing but copied each backing array independently. Added a native
+ValueArrays reference table, with IDs reserved before traversing children and
+all receiver Value objects allocated before resolving arrays. Exact nonempty
+pointer/length keys retain sharing and separate equal-content arrays. Sender
+storage remains isolated. Nil and initialized empty arrays remain distinct.
+
+The new sharing check first fails in 0.011 seconds (82950 terminal status 1).
+Initial graph/result checks pass after the fix in 0.015 seconds (84626 terminal
+status 0). Final expanded value-array/state/result/model-data/worker RPC selection
+passes in 0.036 seconds (6857 terminal status 0), including all listed owner types,
+recursive arrays, malformed references and request/result partition sharing.
+Only the short worker TCP array case runs under -race, passing in 1.034 seconds
+(74630 terminal status 0). All handles are retired; no long model or full suite
+was run. No enabled original Java method directly covers this graph boundary,
+so these native checks add no original-method completion credit.
+
+The native DTO layout changes; communicating roles use the same build. ValueVec
+object identity, full backing capacity and shared name arrays remain pending.
+No Java serialization, RMI transport or arbitrary opaque-data codec was added.
+Broader distributed parity remains incomplete.
