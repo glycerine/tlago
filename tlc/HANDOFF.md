@@ -1910,10 +1910,13 @@ completion. Fixtures are byte-identical to pinned upstream. The remote row
 explicitly uses the supported MemFPSet implementation and one worker thread.
 Both full workloads pass normally, without race instrumentation. This is native
 transport coverage using the original assertion bodies, not completion credit
-for the source's unconditionally disabled in-JVM harness. A dropped fingerprint
-Exit reply can still print `unexpected EOF` after FINISHED; original close ignores
-UnmarshalException on process exit, and equivalent native failure classification
-needs reconciliation before declaring complete shutdown parity.
+for the source's unconditionally disabled in-JVM harness. Orderly worker/FP process cleanup now drains accepted native RPC replies before
+closing connections. The gob server codec tracks requests until response flush,
+preventing the reporting-loop return from cutting off its triggering Exit reply.
+Explicit forced Close remains available and does not acknowledge unfinished
+calls. No insertion retry or exception suppression was introduced. Focused
+shutdown checks pass normally and under an exact short race selection; broader
+failure/recovery coverage remains pending.
 
 
 These focused checks do not prove distributed completion.

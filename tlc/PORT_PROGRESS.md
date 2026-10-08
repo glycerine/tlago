@@ -18080,3 +18080,44 @@ status 0), retaining 114942 distinct/0 queued and all event assertions. Log:
 CLI and signal checks plus original dynamic-manager/nested-partition/smart-proxy
 methods pass: root 0.016 seconds and TLC 0.049 seconds (15428 terminal status 0).
 All handles are retired. No additional full-workspace verification is claimed.
+
+## Drain native role replies before process exit (October 8, 2026)
+
+The intermittent EOF after FINISHED came from the FP reporting loop returning
+as soon as storage Exit notified it. Its process owner closed the host while
+the triggering RPC response was still pending. Corrected the native transport
+rather than suppressing the error or retrying the operation. A net/rpc gob
+ServerCodec preserves the existing Go header/body protocol and counts accepted
+requests until WriteResponse flush completes. Shutdown closes listeners and
+gates new headers under the same mutex used for request admission, then waits
+for accepted replies before releasing connections and outbound clients. The
+worker/FP role owner uses CloseGracefully. Coordinator/error cleanup retains
+immediate Close, which can also force interruption of an ongoing drain. Repeated
+graceful closers wait for pending replies. Storage and source command timing
+remain unchanged; no Java RMI machinery is introduced.
+
+No direct enabled upstream test covers this native response/process boundary.
+Added short loopback checks with a gated Exit handler: orderly/concurrent close
+preserves its reply; forced close reports failure without acknowledging an
+unfinished call; an idle client does not prevent closing. Normal focused checks
+pass in 0.019 seconds (2843 terminal status 0). All affected fingerprint, worker,
+coordinator, discovery, bootstrap and FP-role checks plus original dynamic-manager
+methods pass in 0.106 seconds. Exact short shutdown race checks, five repetitions,
+pass in 1.119 seconds (76543 terminal status 0). These checks earn no original
+model-harness completion credit.
+
+Strengthened native EWD840 process coverage to reject an `unexpected EOF`
+shutdown diagnostic in addition to the unchanged original FINISHED/STATS/GENERAL
+assertions. The standalone FP row is run normally with its full N=7 model and
+original 114942 distinct/0 queued requirements; no full suite or long race
+workload is run. Its receipt follows below. Extended/custom payloads, worker-loss
+and checkpoint/recovery process coverage, and remaining original disabled harness
+translation are still pending. Distributed completion is not claimed.
+
+Full standalone-FP EWD840 process verification passes in 61.690 seconds (18469
+terminal status 0), including the new no-lost-reply assertion and all unchanged
+source count/event requirements. All three processes exit normally. Log:
+`.codex-gotmp/distributed-ewd840-drained-process-test.log`. Final concurrent-close
+short race checks pass in 1.114 seconds (85198 terminal status 0); final normal
+focused RPC/source-manager gate passes in 0.128 seconds (94985 terminal status
+0). All handles are retired. No new full-workspace baseline is claimed.

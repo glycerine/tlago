@@ -10918,3 +10918,22 @@ retains Java's counter and reports the remaining signature. Native metadata that
 lacks the actual cumulative source signature retains its local-arity accounting;
 this compatibility path does not complete canonical selector generation.
 The whole original Test219 passes with its unchanged fixture and assertions.
+
+## Native distributed reply and process lifetime
+
+Distributed Go endpoints use net/rpc over TCP with explicit Go payload graphs.
+The server codec uses the standard gob request/response header and body format;
+it also records accepted requests until the response is flushed. Request
+admission and the closed flag share a mutex, so no request can join the drain
+once orderly shutdown has started. The worker and FP command owners close their
+hosts gracefully: stop listening, finish accepted replies, then release socket
+and outbound-client ownership. This is necessary because storage Exit wakes the
+FP reporting loop before the RPC handler returns its response.
+
+Explicit Close remains an immediate transport abort, including during a drain.
+It must not acknowledge an unfinished insertion or hide its ambiguous outcome.
+No automatic retry is performed at this boundary. Fingerprint storage lifetime,
+worker exit latch, reporting/checkpoint bounds and coordinator batching remain
+owned by the original TLC port. These Go transport lifecycle rules do not imply
+Java RMI compatibility or a JVM runtime. Process/model coverage still needs the
+remaining failure, checkpoint/recovery and extended-payload cases.

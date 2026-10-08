@@ -79,7 +79,7 @@ func (n *DistributedWorkerNetwork) Environment(base DistributedWorkerEnvironment
 }
 func (n *DistributedWorkerNetwork) Close() error {
 	n.closeOnce.Do(func() {
-		n.closeError = errors.Join(n.Host.Close(), n.Discovery.Close())
+		n.closeError = errors.Join(n.Host.CloseGracefully(), n.Discovery.Close())
 		if err := <-n.done; err != nil && !errors.Is(err, net.ErrClosed) {
 			n.closeError = errors.Join(n.closeError, err)
 		}

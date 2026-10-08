@@ -104,6 +104,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			if strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECGeneral)) {
 				t.Fatal("GENERAL recorded")
 			}
+			if strings.Contains(output, "unexpected EOF") {
+				t.Fatal("native process shutdown lost an accepted RPC reply")
+			}
 		})
 	}
 }

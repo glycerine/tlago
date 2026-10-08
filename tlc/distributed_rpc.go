@@ -25,6 +25,7 @@ type DistributedRPCServer struct {
 	rpc                 *rpc.Server
 	mu                  sync.Mutex
 	closed              bool
+	replies             sync.WaitGroup
 	listeners           map[net.Listener]struct{}
 	connections         map[net.Conn]struct{}
 	fingerprints        map[string]DistributedFingerprintEndpoint
@@ -113,15 +114,28 @@ func (s *DistributedRPCServer) Serve(listener net.Listener) error {
 				delete(s.connections, conn)
 				s.mu.Unlock()
 			}()
-			s.rpc.ServeConn(conn)
+			s.rpc.ServeCodec(newDistributedServerCodec(s, conn))
 		}()
 	}
 }
 
 func (s *DistributedRPCServer) Close() error {
+	return s.close(false)
+}
+
+// CloseGracefully stops accepting requests and waits for accepted replies to
+// reach the socket before closing connections. In particular an FP Exit may
+// wake the command's reporting loop before its RPC handler writes the reply.
+// No call is retried, and storage lifetime remains owned by the command.
+func (s *DistributedRPCServer) CloseGracefully() error {
+	return s.close(true)
+}
+
+func (s *DistributedRPCServer) close(graceful bool) error {
 	s.mu.Lock()
-	if s.closed {
+	if s.closed && graceful {
 		s.mu.Unlock()
+		s.replies.Wait()
 		return nil
 	}
 	s.closed = true
@@ -135,13 +149,16 @@ func (s *DistributedRPCServer) Close() error {
 	}
 	s.mu.Unlock()
 	var failures []error
-	if err := s.outbound.close(); err != nil {
-		failures = append(failures, err)
-	}
 	for _, listener := range listeners {
 		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
 			failures = append(failures, err)
 		}
+	}
+	if graceful {
+		s.replies.Wait()
+	}
+	if err := s.outbound.close(); err != nil {
+		failures = append(failures, err)
 	}
 	for _, conn := range connections {
 		if err := conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
