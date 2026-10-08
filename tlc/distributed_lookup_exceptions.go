@@ -1,7 +1,7 @@
 package tlc
 
-// NetConnectException is java.net.ConnectException, distinct from the
-// java.rmi.ConnectException already used by remote endpoint calls.
+// Generic source diagnostic carriers are retained independently of transport.
+// Native endpoint adapters use Go operation traits for discovery and retries.
 type NetConnectException struct{ javaExceptionBase }
 
 func NewNetConnectException(message ...string) *NetConnectException {

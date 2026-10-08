@@ -28,7 +28,7 @@ func TestDistributedTimerTaskRemoteFailureForms(t *testing.T) {
 		t.Run(phase, func(t *testing.T) {
 			worker := &timerStatusWorker{rpcTestWorker: &rpcTestWorker{}, panics: phase == "panicked_remote"}
 			if phase != "not_alive" {
-				worker.failure = NewRemoteException(javaString("worker unavailable"), nil)
+				worker.failure = distributedTestRemoteFailure("worker unavailable")
 			}
 			checkTimerTaskWorkerLoss(t, worker)
 			if worker.calls != 2 {

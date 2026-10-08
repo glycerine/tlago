@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+// Native endpoint fixtures set the same operation traits as Go adapters, without
+// fabricating Java remote exceptions. Tests retain failure identity and text.
+func distributedTestRemoteFailure(message string) *DistributedOperationError {
+	return newDistributedOperationError(DistributedOperationError{Message: javaString(message), Class: "tlc.DistributedOperationFailure", Remote: true, IO: true})
+}
+
 func TestDistributedFailurePayloadCyclesAndOwnership(t *testing.T) {
 	failure := &DistributedOperationError{Message: javaString("cyclic cause"), Class: "native failure"}
 	failure.Cause = failure

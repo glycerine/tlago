@@ -25,7 +25,20 @@ type DistributedOperationError struct {
 	DiscoveryRetry      bool
 	Reachable           bool
 	FingerprintRejected bool
+	pcs                 []uintptr
 }
+
+// Capture Go frames at the originating endpoint, not when a received payload
+// is decoded. The existing stack field carries the sender's formatted frames.
+func newDistributedOperationError(failure DistributedOperationError) *DistributedOperationError {
+	failure.pcs = captureThrowableTrace().pcs
+	if failure.Class == "" {
+		failure.Class = "tlc.DistributedOperationError"
+	}
+	return &failure
+}
+
+func (e *DistributedOperationError) throwablePCs() []uintptr { return e.pcs }
 
 func (e *DistributedOperationError) Error() string {
 	if e.Message != nil {
@@ -44,29 +57,29 @@ func (e *DistributedOperationError) remoteThrowableStack() string { return e.Sta
 // Fingerprint calls preserve their Go transport cause without borrowing the
 // worker's smaller-batch retry or worker-exit categories. No call is replayed.
 func fingerprintConnectionFailure(cause error) *DistributedOperationError {
-	return &DistributedOperationError{
+	return newDistributedOperationError(DistributedOperationError{
 		Message: javaString(cause.Error()), Class: fmt.Sprintf("%T", cause),
 		Cause: cause, Remote: true, IO: true,
-	}
+	})
 }
 
 // Worker resource failures carry coordinator decisions directly. Exhausting
 // worker memory can be retried with a smaller batch; rejected execution cannot.
 // The original cause remains available without a fabricated transport envelope.
 func workerComputationFailure(message string, cause error, recoverable bool) *DistributedOperationError {
-	return &DistributedOperationError{
+	return newDistributedOperationError(DistributedOperationError{
 		Message: javaString(message), Class: "tlc.DistributedWorkerFailure",
 		Cause: cause, Remote: true, IO: true, Recoverable: recoverable,
 		ExitIgnorable: true,
-	}
+	})
 }
 
 func workerEndpointRemovedFailure(message string) *DistributedOperationError {
-	return &DistributedOperationError{
+	return newDistributedOperationError(DistributedOperationError{
 		Message: javaString(message), Class: "tlc.WorkerEndpointRemoved",
 		Remote: true, IO: true, ExitIgnorable: true, WorkerUnavailable: true,
 		EndpointRemoved: true,
-	}
+	})
 }
 
 // Worker cleanup tolerates prior removal, but must not suppress a different
@@ -77,11 +90,11 @@ func isDistributedWorkerEndpointRemoved(err error) bool {
 }
 
 func coordinatorBindingMissingFailure(name string) *DistributedOperationError {
-	return &DistributedOperationError{
+	return newDistributedOperationError(DistributedOperationError{
 		Message: javaString("coordinator binding is not ready: " + name),
 		Class:   "tlc.CoordinatorBindingMissing", BindingMissing: true,
 		DiscoveryRetry: true, Reachable: true,
-	}
+	})
 }
 
 func isDistributedCoordinatorBindingMissing(err error) bool {
@@ -90,18 +103,18 @@ func isDistributedCoordinatorBindingMissing(err error) bool {
 }
 
 func coordinatorEndpointRemovedFailure() *DistributedOperationError {
-	return &DistributedOperationError{
+	return newDistributedOperationError(DistributedOperationError{
 		Message: javaString("coordinator endpoint already removed"),
 		Class:   "tlc.CoordinatorEndpointRemoved", Remote: true, IO: true,
 		EndpointRemoved: true,
-	}
+	})
 }
 
 func coordinatorPublicationFailure(message string) *DistributedOperationError {
-	return &DistributedOperationError{
+	return newDistributedOperationError(DistributedOperationError{
 		Message: javaString(message), Class: "tlc.CoordinatorPublicationFailed",
 		Remote: true, IO: true,
-	}
+	})
 }
 
 // Failure references are one-based and can contain shared or cyclic causes.
@@ -144,34 +157,20 @@ func isDistributedFPRegistrationRejected(err error) bool {
 }
 
 func isIgnorableDistributedWorkerExit(err error) bool {
-	if failure, ok := err.(*DistributedOperationError); ok {
-		return failure.ExitIgnorable
-	}
-	switch err.(type) {
-	case *NoSuchObjectException, *ConnectException, *ServerException:
-		return true
-	}
-	return false
+	failure, ok := err.(*DistributedOperationError)
+	return ok && failure != nil && failure.ExitIgnorable
 }
 
 // Shutdown silently ignores unavailable workers, but reports other I/O
 // failures, including a remote server failure ignored by normal completion.
 func isDistributedWorkerUnavailable(err error) bool {
-	if failure, ok := err.(*DistributedOperationError); ok {
-		return failure.WorkerUnavailable
-	}
-	switch err.(type) {
-	case *NoSuchObjectException, *ConnectException:
-		return true
-	}
-	return false
+	failure, ok := err.(*DistributedOperationError)
+	return ok && failure != nil && failure.WorkerUnavailable
 }
 
 func isDistributedRemoteFailure(err error) bool {
-	if failure, ok := err.(*DistributedOperationError); ok {
-		return failure.Remote
-	}
-	return javaRemoteException(err) != nil
+	failure, ok := err.(*DistributedOperationError)
+	return ok && failure != nil && failure.Remote
 }
 func isDistributedNullFailure(err error) bool {
 	if failure, ok := err.(*DistributedOperationError); ok {

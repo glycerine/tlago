@@ -49,6 +49,9 @@ func TestDistributedWorkerComputationFailure(t *testing.T) {
 					if failure.Cause == nil || failure.Cause.Error() != cause.Error() {
 						t.Fatalf("failure lost cause: %v", failure.Cause)
 					}
+					if !strings.Contains(javaThrowableStackTrace(failure), "distributed.go") {
+						t.Fatal("worker failure lost its originating Go computation stack")
+					}
 					if worker.Computing.Load() || worker.LastInvocation.Load() == 0 || worker.OverallStatesComputed.Load() != 17 {
 						t.Fatal("resource failure changed computation lifecycle or counters")
 					}

@@ -203,7 +203,7 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 	endpoint := service.server.fingerprints[request.Object]
 	service.server.mu.Unlock()
 	if endpoint == nil {
-		failure = &DistributedOperationError{Message: javaString("fingerprint endpoint is not available: " + request.Object), Remote: true, IO: true}
+		failure = newDistributedOperationError(DistributedOperationError{Message: javaString("fingerprint endpoint is not available: " + request.Object), Remote: true, IO: true})
 		return nil
 	}
 	var vector *LongVec

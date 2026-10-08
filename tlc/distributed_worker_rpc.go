@@ -124,7 +124,7 @@ func (e *NetworkWorkerEndpoint) CloseConnection() error { return e.client.Close(
 func workerConnectionFailure(err error) error {
 	var network *net.OpError
 	deadWorker := errors.As(err, &network) || errors.Is(err, net.ErrClosed) || err == rpc.ErrShutdown || err == io.EOF || err == io.ErrUnexpectedEOF
-	return &DistributedOperationError{
+	return newDistributedOperationError(DistributedOperationError{
 		Message: javaString(err.Error()), Class: fmt.Sprintf("%T", err), Cause: err,
 		Remote: true, IO: true,
 		ExitIgnorable:     deadWorker,
@@ -133,7 +133,7 @@ func workerConnectionFailure(err error) error {
 		// EOF detail message as a candidate for a smaller computation block.
 		// Connection refusal/closure and RPC application errors are not this.
 		Recoverable: err == io.EOF || err == io.ErrUnexpectedEOF,
-	}
+	})
 }
 
 // Native graph validation/representation errors belong to the remote I/O

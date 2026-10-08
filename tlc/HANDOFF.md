@@ -12,21 +12,19 @@ not be mistaken for current work.
 ## Goal and scope
 
 User clarification (October 8): distributed TLC uses native Go networking and
-concurrency. Do not implement RMI or pretend to provide a Java runtime. Existing
-Java-named remote exception wrappers are a migration concern: translate their
-retry and worker-loss decisions into Go error categories, preserving algorithmic
-behavior rather than Java transport details. Worker memory exhaustion and
-executor rejection now use `DistributedOperationError` directly across local
-and TCP calls; the fabricated local `ServerException` envelope is removed.
-Memory exhaustion permits smaller-batch retry, rejection does not. Worker endpoint
-removal also uses a native operation category, retained across TCP payloads.
-Shutdown and keepalive tolerate prior removal specifically, continue to later
-workers and avoid decrementing completion again. Connection closure remains a
-distinct unavailable condition. Coordinator catalog creation, missing bindings,
-lazy local references and repeated endpoint removal now use native Go operation
-categories. Missing bindings retain discovery retry and suppress shutdown-hook
-worker traversal; keepalive retains its coordinator-loss path. Other legacy
-remote failure classifiers and fingerprint endpoint adapters still need audit.
+concurrency. Do not implement RMI or pretend to provide a Java runtime.
+Distributed retry, remote-failure, worker-availability and exit decisions now use
+`DistributedOperationError` traits exclusively. Java remote-exception hierarchy
+and nested-cause inference are removed from those decisions. Native endpoint
+errors capture Go frames where they originate; payload decoding retains sender
+stacks. Generic source diagnostic carriers remain separate from transport logic.
+
+Memory exhaustion permits smaller-batch retry; executor rejection does not.
+Shutdown and keepalive tolerate prior worker removal, continue to later workers
+and avoid decrementing completion again. Coordinator missing bindings retain
+discovery retry and suppress shutdown-hook traversal. Connection closure remains
+distinct from endpoint removal. Source algorithm, checkpoint, trace ownership
+and the four assumption-disabled original remote harnesses still require work.
 
 Fingerprint transport failures use `DistributedOperationError` and preserve Go
 causes for `errors.Is`/`errors.As`, replacing the flattened endpoint error. They

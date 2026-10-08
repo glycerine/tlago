@@ -21440,3 +21440,36 @@ DieHard/TSnapShot process variants pass their original model trace/event asserti
 (6c36ba, status 0, 48.846 seconds). All processes are terminal. No full suite or
 race run was performed. Supplemental checks add no original-method credit;
 legacy remote classifiers and remaining distributed parity still require work.
+
+### 2026-10-08: Native distributed decision traits and originating Go stacks
+
+Removed Java RemoteException hierarchy and nested-cause inference from
+distributed recoverability, remote-failure, worker-availability and exit-ignore
+decisions. These classifiers now use native operation traits exclusively.
+Converted supplemental worker/coordinator/fingerprint fixtures from fabricated
+Java transport exceptions to Go operation failures. Kept their event, identity,
+cause, mutation, retry, timer, finalizer, shutdown and bootstrap assertions.
+Truncated worker replies use the actual native EOF adapter; nested application
+memory/EOF causes do not independently grant retry. Original Java manager and
+smart-proxy assertions were not changed. Generic diagnostic carriers are retained
+outside distributed transport decisions.
+
+The related distributed gate exposed missing sender frames in the new native
+error fixture (04cde7, status 1, 11.370 seconds): status_failure/debug=true expected
+the sender Go file in output, but received only its class/message. Fixed production
+native operation creation to capture Go program counters at worker, coordinator
+and fingerprint boundaries. Existing payload stack text preserves those sender
+frames; decoding does not invent receiver frames. Unnamed native operations get
+the Go operation class. Retained the debug assertion and strengthened the actual
+local/TCP worker resource-failure cases to require the computation's Go stack.
+No dedicated original Java method covers this native diagnostic boundary.
+
+Final relevant distributed worker/coordinator/fingerprint, trace/checkpoint,
+timer/finalizer/shutdown, payload, actual native endpoint and original Java manager/
+smart-proxy checks pass (e573b1, status 0, 11.372 seconds). All four DieHard/TSnapShot
+process model storage variants and three original distributed initializer contexts
+pass on the final source snapshot (491ac4, status 0, 49.809 seconds). All check
+processes are terminal. No full suite or race run was performed. Supplemental
+changes add no original-method credit. Source algorithm, checkpoint/trace owner
+audits and the four assumption-disabled original remote harnesses remain pending;
+distributed parity is incomplete.

@@ -110,7 +110,7 @@ func TestNativeFPServerRejectionPreservesWorkerHost(t *testing.T) {
 }
 
 func TestNativeFPRegistrationFailureCategories(t *testing.T) {
-	for _, failure := range []error{NewFPSetManagerException("full"), NewRemoteException(javaString("connection"), nil), NewRuntimeException("runtime")} {
+	for _, failure := range []error{NewFPSetManagerException("full"), distributedTestRemoteFailure("connection"), NewRuntimeException("runtime")} {
 		payload, err := EncodeDistributedFailure(failure)
 		if err != nil {
 			t.Fatal(err)

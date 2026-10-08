@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -26,13 +27,15 @@ func (w *orderedExitWorker) Exit() error {
 func workerExitFailure(family string) error {
 	switch family {
 	case "connect":
-		return NewConnectException("worker unavailable", nil)
+		return workerConnectionFailure(net.ErrClosed)
 	case "missing":
 		return workerEndpointRemovedFailure("worker unavailable")
 	case "server":
-		return NewServerException(javaString("worker server failure"), nil)
+		failure := distributedTestRemoteFailure("worker server failure")
+		failure.ExitIgnorable = true
+		return failure
 	case "remote":
-		return NewRemoteException(javaString("worker remote failure"), nil)
+		return distributedTestRemoteFailure("worker remote failure")
 	case "io":
 		return NewIOException("worker I/O failure")
 	case "runtime":

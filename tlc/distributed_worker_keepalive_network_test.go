@@ -10,7 +10,7 @@ import (
 type keepaliveFailureCoordinator struct{ *LocalServerEndpoint }
 
 func (s *keepaliveFailureCoordinator) IsDone() (bool, error) {
-	return false, NewRemoteException(javaString("coordinator status failed"), nil)
+	return false, distributedTestRemoteFailure("coordinator status failed")
 }
 
 // No enabled Java test directly covers this timer boundary. Invoke its public

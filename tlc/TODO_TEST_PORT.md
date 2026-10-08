@@ -715,14 +715,13 @@ direct exit over local/TCP boundaries, failure-payload round trips and unchanged
 completion counts. Shutdown and keepalive continue past an already removed
 worker with their distinct logging behavior. TCP checks distinguish endpoint
 removal from connection closure. These supplemental cases add no original
-method credit; remaining legacy remote failure classifiers are separately pending.
+method credit; broader distributed parity remains separately pending.
 
 Native coordinator catalog checks cover local/TCP missing lookup/unbind, failure
 payloads, retained retry delays, duplicate creation, shutdown-hook binding guards
 and repeated coordinator removal. A lazy-reference check distinguishes an absent
 catalog from a missing binding and observes later publication. These cases add
-no original-method credit; remaining legacy remote classifiers and fingerprint
-endpoint adapters are pending.
+no original-method credit; broader distributed parity remains pending.
 
 Native fingerprint transport checks preserve network causes through
 `errors.Is`/`errors.As` for failed dial and closed-client operations. A completed
@@ -731,6 +730,13 @@ failure and verifies no replay/redial. Original manager failover/checkpoint test
 remain unchanged. Standalone fingerprint registration fixtures now supply the
 distributed coordinator's registration state; base-coordinator rejection remains
 intact. No original-method credit is added for these native checks.
+
+Distributed failure fixtures now use native Go operation traits rather than
+fabricated Java remote exceptions. Existing retry/loss, shutdown, timer, finalizer
+and bootstrap assertions remain intact. The sender-stack debug assertion exposed
+missing Go frame capture; endpoint creation now captures its originating frames,
+and actual local/TCP worker cases require the computation stack. Original Java
+manager and smart-proxy test assertions are unchanged; no method credit is added.
 
 Supplemental trace-evaluation checks preserve returned reconstruction/alias
 failure identity, partial output and coordinator ordinary/fatal catch boundaries.

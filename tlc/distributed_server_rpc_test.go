@@ -32,7 +32,7 @@ func (f *rpcCoordinatorFixture) GetFile(name string) ([]byte, error) {
 	case "empty":
 		return []byte{}, nil
 	case "error":
-		return nil, NewRemoteException(javaString("file unavailable"), nil)
+		return nil, distributedTestRemoteFailure("file unavailable")
 	}
 	return []byte{0, 255, 1}, nil
 }
@@ -212,7 +212,7 @@ func TestCoordinatorRPCManagerSnapshotAndRegistration(t *testing.T) {
 
 func TestCoordinatorRPCFailureAndMissingName(t *testing.T) {
 	fixture := coordinatorFixture()
-	fixture.failure = NewRemoteException(javaString("polynomial unavailable"), nil)
+	fixture.failure = distributedTestRemoteFailure("polynomial unavailable")
 	_, client := startCoordinatorRPC(t, fixture)
 	if _, err := client.GetIrredPolyForFP(); !isDistributedRemoteFailure(err) || err.Error() != fixture.failure.Error() {
 		t.Fatalf("coordinator failure changed: %v", err)

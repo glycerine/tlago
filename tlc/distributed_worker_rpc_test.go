@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"errors"
+	"io"
 	"math"
 	"net"
 	"strconv"
@@ -159,11 +160,11 @@ func TestWorkerRPCFailureClassification(t *testing.T) {
 		failure                   error
 		remote, recoverable, null bool
 	}{
-		{"truncated", NewRemoteException(javaString("decode"), NewEOFException()), true, true, false},
-		{"eof detail", NewRemoteException(javaString("decode"), NewEOFException("detail")), true, false, false},
+		{"truncated", workerConnectionFailure(io.EOF), true, true, false},
+		{"eof detail", &DistributedOperationError{Message: javaString("decode"), Cause: NewEOFException("detail"), Remote: true, IO: true}, true, false, false},
 		{"worker memory", workerComputationFailure("memory", NewOutOfMemoryError(), true), true, true, false},
-		{"direct memory", NewRemoteException(nil, NewOutOfMemoryError()), true, false, false},
-		{"connection", NewConnectException("lost", nil), true, false, false},
+		{"direct memory", &DistributedOperationError{Cause: NewOutOfMemoryError(), Remote: true, IO: true}, true, false, false},
+		{"connection", workerConnectionFailure(net.ErrClosed), true, false, false},
 		{"null", NewNullPointerException(), false, false, true},
 		{"runtime", NewRuntimeException("broken"), false, false, false},
 	}
@@ -234,9 +235,9 @@ func TestWorkerRPCCoordinatorRetryAndLoss(t *testing.T) {
 	for _, recoverable := range []bool{true, false} {
 		t.Run(strconv.FormatBool(recoverable), func(t *testing.T) {
 			SetNumWorkers(1)
-			failure := NewRemoteException(javaString("reply failed"), NewEOFException())
+			failure := workerConnectionFailure(io.EOF)
 			if !recoverable {
-				failure = NewRemoteException(javaString("disconnected"), nil)
+				failure = workerConnectionFailure(net.ErrClosed)
 			}
 			_, client := startWorkerRPC(t, &rpcTestWorker{next: func([]*TLCStateMut) (*NextStateResult, error) { return nil, failure }})
 			queue := NewMemStateQueue()

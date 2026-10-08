@@ -15,7 +15,7 @@ func TestTLCServerRegistrationRemoteURIOrder(t *testing.T) {
 			queue := NewMemStateQueue()
 			queue.FinishAll()
 			server := &TLCServer{StateQueue: queue}
-			failure := NewRemoteException(javaString("URI lookup failed"), nil)
+			failure := distributedTestRemoteFailure("URI lookup failed")
 			worker := &registrationRemoteWorker{
 				DistributedWorkerSmartProxy: NewDistributedWorkerSmartProxy(nil),
 				server:                      server, failAt: failAt, failure: failure,
@@ -77,7 +77,7 @@ func (w *registrationRemoteWorker) GetCacheRateRatio() (float64, error) {
 // creation. A missing queue must not turn into a partially started registration.
 func TestTLCServerRegistrationRequiresQueueBeforeWorkerContact(t *testing.T) {
 	server := &TLCServer{}
-	failure := NewRemoteException(javaString("worker must not be contacted"), nil)
+	failure := distributedTestRemoteFailure("worker must not be contacted")
 	worker := &registrationRemoteWorker{server: server, failAt: 1, failure: failure}
 	err := server.RegisterWorker(worker)
 	if _, ok := err.(*NullPointerException); !ok {
@@ -114,7 +114,7 @@ func TestTLCServerRegistrationWakeFailureReleasesMonitor(t *testing.T) {
 	failure := NewIllegalStateException("queue wake failed")
 	queue := &registrationWakeQueue{MemStateQueue: NewMemStateQueue(), failure: failure}
 	server := &TLCServer{StateQueue: queue}
-	worker := &registrationRemoteWorker{server: server, failAt: 1, failure: NewRemoteException(javaString("unexpected URI call"), nil)}
+	worker := &registrationRemoteWorker{server: server, failAt: 1, failure: distributedTestRemoteFailure("unexpected URI call")}
 	func() {
 		defer func() {
 			if got := recover(); got != failure {

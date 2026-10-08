@@ -7837,11 +7837,11 @@ Java RMI or a JVM. Preserve batching, fingerprint answers, retries, checkpoint
 boundaries and termination behavior independently of transport.
 
 The user's October 8 clarification also rejects Java runtime impersonation.
-The current wire transport is native Go TCP/net/rpc. Existing Java-named remote
-exception wrappers still couple some retry decisions to source transport types;
-replace that coupling with Go failure categories while retaining the distributed
-algorithm's retry, worker-loss and completion decisions. These wrappers do not
-justify implementing an RMI protocol or Java serialization.
+The current wire transport is native Go TCP/net/rpc. Retry, remote-failure,
+worker-availability and exit decisions use native operation traits exclusively.
+Java remote-exception hierarchy and nested-cause inference do not drive these
+decisions. Source diagnostic carriers remain generic reporting compatibility,
+without implementing an RMI protocol or Java serialization.
 
 `DistributedWorkerEndpoint` supplies the five worker operations used by the
 coordinator. Server registration, server threads, smart-proxy measurements and
@@ -8132,8 +8132,9 @@ The shutdown guard skips worker traversal for missing coordinator bindings;
 keepalive follows its coordinator-loss path. Native TCP discovery/publication
 and worker model checks are available; the four assumption-disabled upstream
 remote harness methods remain separately pending. No dedicated upstream lookup
-tests exist. Remaining legacy remote failure classifiers and fingerprint endpoint
-adapters still require migration.
+tests exist. Distributed algorithm, checkpoint and trace ownership parity remain
+separately incomplete; generic source diagnostic carriers do not drive transport
+decisions.
 
 DistributedFPSet.main now has a concrete native RunDistributedFPServer boundary.
 It preserves ToolIO/System stream separation, argument early returns, two clock
@@ -8508,8 +8509,8 @@ Worker failure contracts preserve TLC decisions through native Go errors:
 - Worker memory exhaustion permits smaller-batch retry; executor rejection does
   not. Recoverable multi-state blocks print the reduction message, requeue the
   block, and reduce the selection limit in source order. Native truncated-reply
-  failures also retain their existing smaller-batch decision. Legacy source-type
-  classification remains for other adapters and still needs migration.
+  failures also retain their existing smaller-batch decision. Native operation
+  traits replace all source remote-type classification for these decisions.
 - Other remote failures and direct null-pointer failures deregister the worker;
   null-pointer diagnostics include the stack. Other exceptions reach the
   server's outer model-error catch and keep their error-state metadata.
@@ -8517,6 +8518,12 @@ Worker failure contracts preserve TLC decisions through native Go errors:
   versus empty messages and saved Go stack frames. Timing uses differences of
   epoch millisecond readings; empty-block network-overhead division retains
   Java's floating-point result.
+
+Native operation errors capture Go program counters when created at worker,
+coordinator and fingerprint boundaries. Payloads carry their formatted sender
+stacks, and decoding does not invent receiver frames. Causes retain application
+context and native errors.Is/errors.As behavior locally. A nested memory or EOF
+cause does not itself grant retry: the endpoint adapter supplies that trait.
 
 Important Java data structures:
 

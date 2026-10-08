@@ -35,7 +35,7 @@ func TestNativeDiscoveryBindingAndRetry(t *testing.T) {
 	}
 	// Naming lookup must not call a setting: the polynomial can fail after
 	// discovery has succeeded and its original error still belongs to bootstrap.
-	fixture.failure = NewRemoteException(javaString("polynomial failed"), nil)
+	fixture.failure = distributedTestRemoteFailure("polynomial failed")
 	if _, err := discovery.Lookup(location); err != nil {
 		t.Fatalf("setting failure polluted discovery: %v", err)
 	}

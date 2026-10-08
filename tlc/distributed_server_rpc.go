@@ -151,7 +151,7 @@ func (service *distributedServerService) Call(request DistributedServerRequest, 
 	service.server.mu.Unlock()
 	endpoint := binding.endpoint
 	if endpoint == nil {
-		failure = &DistributedOperationError{Message: javaString("coordinator is not available: " + request.Object), Remote: true, IO: true}
+		failure = newDistributedOperationError(DistributedOperationError{Message: javaString("coordinator is not available: " + request.Object), Remote: true, IO: true})
 		return nil
 	}
 	switch request.Operation {

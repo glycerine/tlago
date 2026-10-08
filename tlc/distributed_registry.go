@@ -98,7 +98,7 @@ func (n *TLCRegistryNamespace) GetRegistry(port int) (*TLCServerRegistry, error)
 		registry, found := n.registries.Get2(port)
 		n.mu.Unlock()
 		if !found {
-			return nil, &DistributedOperationError{Message: javaString("coordinator catalog is unavailable at port " + fmtInt(port)), Class: "tlc.CoordinatorUnavailable", Remote: true, IO: true, DiscoveryRetry: true}
+			return nil, newDistributedOperationError(DistributedOperationError{Message: javaString("coordinator catalog is unavailable at port " + fmtInt(port)), Class: "tlc.CoordinatorUnavailable", Remote: true, IO: true, DiscoveryRetry: true})
 		}
 		return registry, nil
 	}

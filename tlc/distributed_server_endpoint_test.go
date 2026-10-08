@@ -8,7 +8,7 @@ import (
 // The original distributed tests have no direct coordinator-call failure
 // cases. These focused tests cover the Go endpoint boundary added for transport.
 func TestDistributedServerStatusEndpointFailure(t *testing.T) {
-	failure := NewRemoteException(javaString("status unavailable"), nil)
+	failure := distributedTestRemoteFailure("status unavailable")
 	endpoint := &failingServerEndpoint{statusFailure: failure}
 	lookupCalls := 0
 	lookup := NewTLCServerStatusLookup(func(url string) (DistributedServerEndpoint, error) {
@@ -25,7 +25,7 @@ func TestDistributedServerStatusEndpointFailure(t *testing.T) {
 }
 
 func TestDistributedWorkerBootstrapPolynomialFailure(t *testing.T) {
-	failure := NewRemoteException(javaString("polynomial unavailable"), nil)
+	failure := distributedTestRemoteFailure("polynomial unavailable")
 	endpoint := &failingServerEndpoint{polyFailure: failure}
 	process := NewDistributedWorkerProcess()
 	var output bytes.Buffer

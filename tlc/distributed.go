@@ -1277,24 +1277,11 @@ func (t *TLCTimerTask) SetLastInvocation(when time.Time) {
 	t.LastInvocation.Store(when.UnixMilli())
 }
 
-// Java TLCServerThread.isRecoverable inspects exactly one cause, then the
-// direct cause of a nested RemoteException. It does not search a cause chain.
+// Endpoint adapters classify failures at their origin. Coordinator retry
+// decisions use those native traits rather than infer Java exception nesting.
 func isRecoverableDistributedError(err error) bool {
-	if failure, ok := err.(*DistributedOperationError); ok {
-		return failure.Remote && failure.Recoverable
-	}
-	remote := javaRemoteException(err)
-	if remote == nil {
-		return false
-	}
-	cause := remote.GetCause()
-	if eof, ok := cause.(*EOFException); ok && eof != nil && eof.GetMessage() == nil {
-		return true
-	}
-	if nested := javaRemoteException(cause); nested != nil {
-		return isJavaOutOfMemoryError(nested.GetCause())
-	}
-	return false
+	failure, ok := err.(*DistributedOperationError)
+	return ok && failure != nil && failure.Remote && failure.Recoverable
 }
 
 type BlockSelectorMode int

@@ -31,7 +31,7 @@ func TestDistributedThreadFinalCacheRemoteFailure(t *testing.T) {
 			defer RemoveMessageRecorder(recorder)
 			thread := &TLCServerThread{CacheRateHitRatio: -1,
 				Worker: NewDistributedWorkerSmartProxy(&finalizerCacheWorker{
-					rpcTestWorker: &rpcTestWorker{}, failure: NewRemoteException(javaString("cache unavailable"), nil), panics: panics,
+					rpcTestWorker: &rpcTestWorker{}, failure: distributedTestRemoteFailure("cache unavailable"), panics: panics,
 				})}
 			err := invokeDistributedServerOperation(func() error { thread.readCacheRateRatio(); return nil })
 			if err != nil || thread.CacheRateHitRatio != -1 {
@@ -80,7 +80,7 @@ func checkDistributedThreadFinalizerFailure(t *testing.T, family string) {
 	if family == "handler_fatal" {
 		state := &TLCStateMut{UID: 7, level: 2}
 		queue.Enqueue(state)
-		worker.failure = NewRemoteException(javaString("final cache unavailable"), nil)
+		worker.failure = distributedTestRemoteFailure("final cache unavailable")
 		worker.next = func([]*TLCStateMut) (*NextStateResult, error) {
 			return nil, NewWorkerExceptionWithCause("worker failure", nil, state, nil, true)
 		}
