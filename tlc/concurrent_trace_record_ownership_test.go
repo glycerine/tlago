@@ -104,6 +104,9 @@ func TestConcurrentTraceCollectsRequestedPredecessorRange(t *testing.T) {
 	worker := NewWorker(0)
 	worker.SetTraceContext(t.TempDir(), "Spec")
 	defer worker.CloseTrace()
+	if err := worker.ensureTraceRAF(); err != nil {
+		t.Fatal(err)
+	}
 	initial, middle, end := checkerTestState(1), checkerTestState(2), checkerTestState(3)
 	if err := worker.WriteInitState(initial, initial.FingerPrint()); err != nil {
 		t.Fatal(err)

@@ -800,6 +800,13 @@ precedence, exact bytes and earlier depth/last-pointer updates. Failures suppres
 state/count/mirror publication and release the worker lock. No original method
 directly covers these boundaries; completion counts remain unchanged.
 
+Eight native writer-owner cases cover initial/successor writes with missing,
+memory-only, closed and healthy owners with a saved creation error. Writes cannot
+open or replace the owner or publish state/count/mirror data after owner failure.
+Successor depth updates precede owner access. Native fixtures initialize owners
+during setup; original assertions remain unchanged. No original method directly
+covers these boundaries; completion counts remain unchanged.
+
 Supplemental initial-publication checks preserve metadata, fingerprint/trace/
 queue/property order, missing-owner and I/O failure context, suppression of
 later elements and seen/excluded-state owner access. No original method directly

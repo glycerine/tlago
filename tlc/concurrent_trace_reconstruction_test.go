@@ -106,6 +106,9 @@ func TestConcurrentTracePublicRecoveryFailure(t *testing.T) {
 				worker.SetTraceContext(t.TempDir(), "Spec")
 				defer worker.CloseTrace()
 				initial, middle, end := checkerTestState(1), checkerTestState(2), checkerTestState(3)
+				if err := worker.ensureTraceRAF(); err != nil {
+					t.Fatal(err)
+				}
 				if err := worker.WriteInitState(initial, initial.FingerPrint()); err != nil {
 					t.Fatal(err)
 				}

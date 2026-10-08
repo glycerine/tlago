@@ -21558,3 +21558,30 @@ time-bound workload retains five seconds. All processes are terminal. No full
 suite or race run was performed. Supplemental cases add no original-method
 credit. Writer lazy creation/in-memory fallback, construction, filename/context
 guards and trace cleanup remain pending; distributed parity is incomplete.
+
+### 2026-10-08: Worker writes require the existing trace owner
+
+Removed lazy file creation and in-memory offset fallback from both worker trace
+writers. Writes use the existing owner, ignore saved creation errors and preserve
+depth-before-owner and last-pointer-before-byte ordering. Missing or closed owners
+cannot publish state metadata, counters or mirror records. Error-stack replay now
+opens its unregistered worker's trace before evaluation, handles opening failures
+through the existing diagnostic path and closes the native resource afterward.
+Direct-construction native fixtures initialize their owner during setup; original
+Java assertions and model workload bounds remain unchanged.
+
+No original method directly covers these owner boundaries. Eight supplemental
+initial/successor cases cover missing, memory-only, closed and healthy owners with
+a saved error. Six cases initially failed (3e7482, status 1, 0.013 seconds) because
+writes reopened owners, substituted offsets or consulted stale errors. Final
+focused trace/checkpoint and original short proxy/simulation checks pass (2ab1d6,
+status 0, 0.265 seconds). Worker execution checks pass (031473, status 0, 5.434
+seconds), as does the original Github461 assertion trace and exact call stack
+(e5972f, status 0, 0.266 seconds). Original checkpoint-on-violation/time-bound and
+error-trace models plus all four DieHard/TSnapShot native process storage variants
+pass (75648c, status 0, 54.344 seconds). All processes are terminal. No full suite
+or race run was performed. Supplemental cases add no original-method credit.
+
+Distributed behavior uses native Go transport and failure traits; no RMI, Java
+serialization or JVM machinery is required. Construction, filename/context
+guards and trace cleanup remain pending; distributed parity is incomplete.

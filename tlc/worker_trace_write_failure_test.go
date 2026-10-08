@@ -88,6 +88,10 @@ func TestWorkerTraceWritePreservesGeneratedActionAndMetadataPolicy(t *testing.T)
 			worker := NewWorker(2)
 			worker.SetTraceContext(t.TempDir(), "Spec")
 			generatedAction := &Action{Name: "Generated"}
+			if err := worker.ensureTraceRAF(); err != nil {
+				t.Fatal(err)
+			}
+			defer worker.CloseTrace()
 			state := &TLCStateMut{UID: 314, WorkerID: 7, level: 5, action: generatedAction}
 			parent := &TLCStateMut{UID: 37, WorkerID: 1, level: 8}
 			if mirrored {

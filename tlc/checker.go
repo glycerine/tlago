@@ -1549,7 +1549,12 @@ func (mc *ModelChecker) replayNextErrorCallStack() int {
 		rootName = mc.Tool.GetRootName()
 	}
 	replayWorker.SetTraceContext(mc.Metadir, rootName)
-	if _, err := mc.doNextWithTool(callStackTool, mc.PredErrState, liveNextStates, replayWorker); err != nil {
+	defer replayWorker.CloseTrace()
+	err := replayWorker.ensureTraceRAF()
+	if err == nil {
+		_, err = mc.doNextWithTool(callStackTool, mc.PredErrState, liveNextStates, replayWorker)
+	}
+	if err != nil {
 		if fpErr, ok := err.(*FingerprintException); ok && fpErr != nil {
 			trace := fpErr.GetTrace()
 			if callStackTool.HasCallStack() {

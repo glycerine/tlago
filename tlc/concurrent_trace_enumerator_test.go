@@ -107,6 +107,9 @@ func TestWorkerTraceEnumeratorDoesNotFlushWriter(t *testing.T) {
 	worker := NewWorker(0)
 	worker.SetTraceContext(t.TempDir(), "Spec")
 	defer worker.CloseTrace()
+	if err := worker.ensureTraceRAF(); err != nil {
+		t.Fatal(err)
+	}
 	if err := worker.WriteInitState(NewEmptyState(), 99); err != nil {
 		t.Fatal(err)
 	}

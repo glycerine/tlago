@@ -515,30 +515,23 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if err := w.ensureTraceRAF(); err != nil {
+	if w.traceRAF == nil {
+		panic(NewNullPointerException())
+	}
+	ptr, err := w.traceRAF.GetFilePointer()
+	if err != nil {
 		return err
 	}
-	var ptr int64
-	if w.traceRAF != nil {
-		filePtr, err := w.traceRAF.GetFilePointer()
-		if err != nil {
-			return err
-		}
-		ptr = filePtr
-		w.lastPtr = ptr
-		if err := w.traceRAF.WriteLongNat(1); err != nil {
-			return err
-		}
-		if err := w.traceRAF.WriteShortNat(w.ID); err != nil {
-			return err
-		}
-		if err := w.traceRAF.WriteLong(int64(fp)); err != nil {
-			return err
-		}
-	} else {
-		ptr = int64(len(w.traceRecordsFallback()))
-	}
 	w.lastPtr = ptr
+	if err := w.traceRAF.WriteLongNat(1); err != nil {
+		return err
+	}
+	if err := w.traceRAF.WriteShortNat(w.ID); err != nil {
+		return err
+	}
+	if err := w.traceRAF.WriteLong(int64(fp)); err != nil {
+		return err
+	}
 	if initialState == nil {
 		panic(NewNullPointerException())
 	}
@@ -562,32 +555,25 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 	if level := int(int32(curState.Level()) + int32(1)); level > w.GetMaxLevel() {
 		w.SetLevel(level)
 	}
-	if err := w.ensureTraceRAF(); err != nil {
-		return err
+	if w.traceRAF == nil {
+		panic(NewNullPointerException())
 	}
 	prevUID := curState.UID
 	prevWorker := curState.WorkerID
-	var ptr int64
-	if w.traceRAF != nil {
-		filePtr, err := w.traceRAF.GetFilePointer()
-		if err != nil {
-			return err
-		}
-		ptr = filePtr
-		w.lastPtr = ptr
-		if err := w.traceRAF.WriteLongNat(prevUID); err != nil {
-			return err
-		}
-		if err := w.traceRAF.WriteShortNat(int(prevWorker)); err != nil {
-			return err
-		}
-		if err := w.traceRAF.WriteLong(int64(succFP)); err != nil {
-			return err
-		}
-	} else {
-		ptr = int64(len(w.traceRecordsFallback()))
+	ptr, err := w.traceRAF.GetFilePointer()
+	if err != nil {
+		return err
 	}
 	w.lastPtr = ptr
+	if err := w.traceRAF.WriteLongNat(prevUID); err != nil {
+		return err
+	}
+	if err := w.traceRAF.WriteShortNat(int(prevWorker)); err != nil {
+		return err
+	}
+	if err := w.traceRAF.WriteLong(int64(succFP)); err != nil {
+		return err
+	}
 	if succState == nil {
 		panic(NewNullPointerException())
 	}
@@ -599,13 +585,6 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 		w.Checker.Trace.MirrorNextStateForWorker(w.ID, curState, succFP, succState, action, ptr)
 	}
 	return nil
-}
-
-func (w *Worker) traceRecordsFallback() []TraceRecord {
-	if w == nil || w.DisableTraceMirror || w.Checker == nil || w.Checker.Trace == nil {
-		return nil
-	}
-	return w.Checker.Trace.Records()
 }
 
 func (w *Worker) ReadStateRecord(ptr int64) (ConcurrentTraceRecord, error) {

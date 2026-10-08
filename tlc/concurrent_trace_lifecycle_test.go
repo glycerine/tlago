@@ -17,6 +17,9 @@ func TestConcurrentTraceLifecycleRequiresWorkersInOrder(t *testing.T) {
 			for _, worker := range []*Worker{first, last} {
 				worker.SetTraceContext(directory, "Spec")
 				defer worker.CloseTrace()
+				if err := worker.ensureTraceRAF(); err != nil {
+					t.Fatal(err)
+				}
 				if err := worker.WriteInitState(NewEmptyState(), 99); err != nil {
 					t.Fatal(err)
 				}
