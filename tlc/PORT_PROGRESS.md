@@ -1,5 +1,21 @@
 # TLC Port Progress
 
+2026-10-08 Completion audit while full normal verification continues:
+Re-enumerate the pinned Java source checkout: exact revision
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0, 34 classes and 96 @Test methods.
+Current ledger resolves all 96 to unique existing primary Go functions; 59
+repaired contracts, 35 unchanged reviewed contracts, one source ignore and one
+empty source body. Correct audit prose that still described the older schema
+as current and distinguish baseline review statements from subsequent repairs.
+
+Poll the same full handle 53216: live, no failure events. Dedicated SANY passes
+in 2.419 seconds in this full run; root is advancing through CodePlex models,
+and TLC is running the original MSB forced-flush recovery workload. Read-only
+process observation confirms both binaries remain live and consume CPU; quiet
+output from the fingerprint case is not a hang or a reason to restart. Keep
+full source bounds and no race instrumentation. No full-suite success claim
+until the handle is terminal and all result events are inspected.
+
 2026-10-08 Final verification configuration and native fixture isolation:
 XML repairs committed as cbef79a. Inventory reconciliation resolves all 96
 ledger rows to exactly one current primary Go function, with no missing files

@@ -8,14 +8,15 @@ This audit covers every `@Test` method under upstream `tlatools/org.lamport.tlat
 
 Java baseline: `../tlaplus`, commit `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`. Go baseline: commit `6c9172247e3763c658e82ff14df10dcda160c8af` plus the working-tree test sources inspected during this audit. The main development thread was active; unrelated TLC edits were left untouched.
 
-All 96 Java methods have Go counterparts. **59 methods have a recorded assertion, setup, helper or exercised-entry-point divergence**, grouped into 25 findings. That includes smaller omissions and overly strict translations as well as serious false-positive paths; it does not mean 57 production bugs. **35 methods have no identified divergence in their reviewed test contract**, one preserves an upstream ignore, and one preserves an upstream empty test body. Finding counts overlap: one method can need several repairs.
+All 96 Java methods have Go counterparts. **59 methods have a recorded assertion, setup, helper or exercised-entry-point divergence**, grouped into 25 findings. That includes smaller omissions and overly strict translations as well as serious false-positive paths; it does not mean 59 production bugs. **35 methods have no identified divergence in their reviewed test contract**, one preserves an upstream ignore, and one preserves an upstream empty test body. Finding counts overlap: one method can need several repairs.
 
-The concrete defects below are established by comparing test source and helper behavior. No production fixes or test changes were made, and no test workload was run for this audit. Where a restored assertion would expose missing production behavior, the implementation requirement is stated explicitly. “No identified divergence” is a source-review result, not certification that the SANY implementation is bug-free or that every helper has been formally proved equivalent.
+The concrete defects below record the original source-review baseline. That review made no production fixes or test changes and ran no workload; subsequent authorized repairs and execution receipts are recorded in Repair status. Where a restored assertion would expose missing production behavior, the implementation requirement is stated explicitly. “No identified divergence” is a source-review result, not certification that the SANY implementation is bug-free or that every helper has been formally proved equivalent.
 
 ## Repair status
 
-Repairs are now in progress under the user’s instruction to fix this audit and
-then fix the production failures found by the restored tests. The finding text
+All listed repairs are implemented under the user’s instruction to fix this
+audit and the production failures found by the restored tests. Final broader
+verification is still running. The finding text
 below records the original audit baseline; this status and the method ledger
 track the current repairs.
 
@@ -65,7 +66,7 @@ track the current repairs.
 - The Go copies of all **227 files** in `sany_tests/test_vectors` were compared with their corresponding upstream `test/tla2sany` or `test-model` originals: all match byte for byte; none of those Go files lacks an upstream counterpart. No upstream syntax, semantic or semantic-error corpus fixture is absent from its mirrored corpus directory.
 - The syntax corpus contains **42 files / 355 cases**; the semantic corpus has **28 .tla files**, including the upstream-excluded `NegativeOpTest.tla`; the semantic error corpus has **121 matching cases**. The tokenizer has nine rows, belchDEF five, proofs four, and level checking 51.
 - The independently written operator fixture table has **98 rows**, matching Java's fixity, ordered synonyms, precedence bounds and associativity exactly. No operator row was missing in the current tree.
-- The auxiliary `test_vectors/java-sany/xml/sany.xsd` is **not** one of those 227 mirrored test files and does **not** match the pinned upstream schema. Its substantive differences are F23.
+- The auxiliary `test_vectors/java-sany/xml/sany.xsd` is **not** one of those 227 mirrored test files. At the audit baseline it differed from pinned upstream (F23); the repaired resource now matches upstream byte for byte.
 - Root-package replacements are the primary translations where present. Older surrogate tests in `sany_tests` marked supplementary are not mistaken for the primary tests. In particular, the former approximations for incremental parsing, semantic corpus traversal, selectors, built-in initialization, context merge and parser-error output have current replacements.
 - Java test infrastructure without `@Test` methods was reviewed where used: `SANYTest`, `RecordedSanyOutput`, test frontend/resolvers, `SyntaxCorpusRunner`, `SyntaxCorpusFileParser`, `AstNode`, and `TlaPlusParserOutputTranslator`. These are helpers, not additional test methods.
 - Go subtests, `t.TempDir`, explicit output writers, pointer boxes for Java reference identity and a slice for the vector enumeration snapshot can preserve the source behavior without emulating a JVM. Do not mistake such representation changes for weakened assertions.
