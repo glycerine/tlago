@@ -24,12 +24,14 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 	for _, scenario := range []struct {
 		name                                       string
 		remoteFP, recovering, workerLoss, combined bool
+		allWorkersLost                             bool
 	}{
 		{name: "coordinator_fingerprints"},
 		{name: "standalone_fingerprints", remoteFP: true},
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
 		{name: "worker_loss", workerLoss: true},
+		{name: "all_workers_lost", workerLoss: true, allWorkersLost: true},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
@@ -104,17 +106,21 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				// upstream harness's known OffHeap assumption failure.
 				start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 			}
-			if !scenario.combined {
+			if !scenario.combined && !scenario.allWorkersLost {
 				start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 			}
 			if scenario.workerLoss {
 				failed := start("worker-failpoint", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
-				// Wait for a real assigned RPC block and both registrations.
+				// Wait for a real assigned RPC block and all registrations.
 				// The failpoint pauses actual successor evaluation, so killing
 				// it deterministically discards an unfinished assigned block.
 				ticker := time.NewTicker(10 * time.Millisecond)
 				defer ticker.Stop()
-				for !strings.Contains(failed.output.String(), "NATIVE_WORKER_BLOCK_ASSIGNED") || strings.Count(server.output.String(), "@!@!@STARTMSG 7001:") < 2 {
+				registrations := 2
+				if scenario.allWorkersLost {
+					registrations = 1
+				}
+				for !strings.Contains(failed.output.String(), "NATIVE_WORKER_BLOCK_ASSIGNED") || strings.Count(server.output.String(), "@!@!@STARTMSG 7001:") < registrations {
 					select {
 					case err := <-server.done:
 						server.joined = true
@@ -134,6 +140,31 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					t.Fatal("killed worker unexpectedly exited successfully")
 				}
 				failed.joined = true
+				if scenario.allWorkersLost {
+					// The finally-block cache warning follows the source worker
+					// cleanup and worker-count decrement. Wait for both before
+					// permitting any replacement to register.
+					for !strings.Contains(server.output.String(), fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerDeregistered)) || !strings.Contains(server.output.String(), nativeDistributedLostWorkerCacheWarning) {
+						select {
+						case err := <-server.done:
+							server.joined = true
+							t.Fatalf("coordinator exited after losing its last worker: %v\n%s", err, server.output.String())
+						case <-ctx.Done():
+							t.Fatal("last-worker cleanup watchdog expired")
+						case <-ticker.C:
+						}
+					}
+					coordinator, err := tlc.DialServerEndpoint(net.JoinHostPort("127.0.0.1", fmt.Sprint(port)), tlc.TLCServerWorkerName)
+					if err != nil {
+						t.Fatal(err)
+					}
+					done, failure := coordinator.IsDone()
+					_ = coordinator.CloseConnection()
+					if failure != nil || done {
+						t.Fatalf("coordinator did not preserve unfinished work with no workers: done %v, error %v", done, failure)
+					}
+					t.Log("last worker cleanup completed; coordinator remains available with unfinished work")
+				}
 				t.Log("killed worker with an unfinished assigned block; starting replacement")
 				start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 			}
@@ -173,7 +204,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			}
 			if scenario.workerLoss {
 				general := regexp.MustCompile(fmt.Sprintf(`(?s)@!@!@STARTMSG %d:(\d+) @!@!@\n(.*?)\n@!@!@ENDMSG %d @!@!@`, tlc.ECGeneral, tlc.ECGeneral)).FindAllStringSubmatch(output, -1)
-				if len(general) != 1 || general[0][1] != "3" || general[0][2] != "Failed to read remote worker cache statistic (Expect to see a negative chache hit rate. Does not invalidate model checking results)" {
+				if len(general) != 1 || general[0][1] != "3" || general[0][2] != nativeDistributedLostWorkerCacheWarning {
 					t.Fatalf("worker-loss GENERAL events differ from source cache warning: %v", general)
 				}
 			} else if strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECGeneral)) {
@@ -185,6 +216,8 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		})
 	}
 }
+
+const nativeDistributedLostWorkerCacheWarning = "Failed to read remote worker cache statistic (Expect to see a negative chache hit rate. Does not invalidate model checking results)"
 
 func TestNativeDistributedProcessHelper(t *testing.T) {
 	if os.Getenv("TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER") != "1" {

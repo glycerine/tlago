@@ -1960,6 +1960,15 @@ count only once. This covers one interrupted worker with a survivor/replacement,
 not loss of every worker or arbitrary network partitions. No production shortcut
 or warning suppression was needed for this case.
 
+The `all_workers_lost` MC06 row now covers loss of the sole registered worker
+with an assigned block. It waits for deregistration and the source finally-block
+warning before registering a replacement, then uses a native IsDone call to
+require that the coordinator is available with unfinished work. Replacement
+exploration must finish with 114,942 distinct states and zero queued states,
+exactly one deregistration and only the original dead-worker cache warning.
+The full row passes normally; no production change was needed. Arbitrary network
+partitions and fingerprint-server failure/recovery remain separate coverage gaps.
+
 Coordinator publication now preserves the source failure boundary after FP
 insertion. Missing/nil selected state partitions, null states and null visited
 vectors fail instead of silently dropping successors. Trace write errors return

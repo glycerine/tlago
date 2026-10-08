@@ -18346,6 +18346,36 @@ or race workload was run. All handles are retired. Outstanding-worker
 checkpoint/recovery, remote-FP recovery and broader failure coverage remain
 pending; the distributed goal is incomplete.
 
+## October 8, 2026: loss of the last registered worker
+
+Added all_workers_lost to the native EWD840/MC06 process matrix. It starts only
+the actual coordinator and one failpoint worker, waits for real assigned work,
+then kills that owned worker process. Unlike the earlier worker_loss row, no
+survivor is registered. The parent waits for one deregistration and the source
+finally-block cache warning; that warning follows HandleRemoteWorkerLost's
+worker-count decrement. Only then does it query the real worker binding's
+IsDone endpoint, requiring an available coordinator with unfinished work before
+any replacement may register. The replacement then runs the unchanged model.
+
+All normal source result assertions and full N=7 bounds remain: FINISHED,
+114942 distinct states, zero queued states and normal surviving process exits.
+The failure row retains exactly one source GENERAL cache warning at severity 3
+and exact text; any other GENERAL event fails. Loss must be reported and the
+dead worker deregistered exactly once. Every owned child is joined, with early
+coordinator exit and watchdog handling during cleanup. Existing survivor-loss
+settings are preserved. No response, fingerprint insertion or successor is
+fabricated, and no production behavior was changed to obtain a passing test.
+
+The exact new full process row passes normally in 49.197 seconds (99875 terminal
+status 0). Log: .codex-gotmp/distributed-all-workers-lost-process-test.log. The
+log confirms the coordinator was available and not done after cleanup, before
+the replacement started, followed by the original final counts and normal
+exits. No full suite or race workload was run. All handles are retired. This
+adds native failure coverage without original Java harness completion credit.
+Network partitions, fingerprint-server failures, fresh-process mid-run
+checkpoint recovery and remote-FP recovery remain pending; the distributed
+goal is incomplete.
+
 ## October 8, 2026: checkpoint barrier with an assigned TCP block
 
 Added TestDistributedCheckpointWaitsForAssignedBlock. Upstream has no enabled
