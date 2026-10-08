@@ -18600,3 +18600,30 @@ normally. Both handles are retired. Logs are in /mnt/oldrog/tmp under
 No race instrumentation or full workspace suite was run. Inventory, architecture
 and handoff are current. Broader failure/recovery and payload parity work remains
 pending; the distributed goal is incomplete.
+
+## October 8, 2026: returned fatal local fingerprint failures
+
+Source FPSetManager catches Exception for scalar/block/statistics and Close;
+Checkpoint.run catches IOException. Fatal Error escapes those catches. The Go
+invokeFingerprintEndpoint helper rethrew fatal panics but accepted returned
+fatal errors, letting distributed calls fail over, print diagnostics or return
+normally. Close separately used tryFPSetCall and had the same returned-error
+gap. Corrected the shared endpoint helper to raise returned fatal errors and
+routed distributed Close through it. Native remote fatal errors still carry
+the RPC handler's I/O wrapper and retain ordinary remote failure behavior.
+
+No enabled upstream direct test covers these Go endpoint return forms. Added
+nine operations with returned/panicked variants: put, contains, both block
+calls, size, states seen, checkpoint, recover and close. Require the identical
+fatal object, exactly one endpoint call, no manager-broken/availability change
+and no ToolIO warning. All nine returned cases fail before the production fix;
+all panic cases already pass (70774 terminal status 1, 0.023 seconds). The
+failure evidence is in /mnt/oldrog/tmp/tlago-fatal-local-before.log.
+
+After the production fix, the entire focused selection passes in 0.148 seconds
+(40221 terminal status 0): new cases, original Java dynamic manager translations,
+original nested partitions, checkpoint contracts, all native fingerprint RPC
+checks and failover ToolIO checks. Both handles are retired. No full suite,
+long model or race workload was run for this catch-boundary change. These
+boundary checks add no original-method completion credit. Broader distributed
+failure/recovery and payload coverage remains pending; the goal is incomplete.

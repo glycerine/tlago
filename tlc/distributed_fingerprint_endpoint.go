@@ -100,7 +100,11 @@ func invokeFingerprintEndpoint[T any](call func() (T, error)) (value T, err erro
 			}
 		}
 	}()
-	return call()
+	value, err = call()
+	if isJavaError(err) {
+		panic(err)
+	}
+	return value, err
 }
 
 var _ DistributedFingerprintEndpoint = (*LocalFingerprintEndpoint)(nil)

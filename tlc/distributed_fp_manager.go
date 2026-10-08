@@ -601,10 +601,9 @@ func (m *DistributedFPSetManager) Close(cleanup bool) error {
 		return m.entry(0).set.Exit(cleanup)
 	}
 	for _, entry := range m.groupedEntries() {
-		returned, failure := tryFPSetCall(func() error { return entry.set.Exit(cleanup) })
-		if failure == nil {
-			failure = returned
-		}
+		_, failure := invokeFingerprintEndpoint(func() (struct{}, error) {
+			return struct{}{}, entry.set.Exit(cleanup)
+		})
 		if failure != nil {
 			if _, ignored := failure.(*UnmarshalException); !ignored {
 				fmt.Fprint(os.Stderr, javaThrowableStackTrace(failure))

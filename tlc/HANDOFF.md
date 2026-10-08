@@ -73,6 +73,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Local fingerprint endpoint fatal errors now escape manager catches whether
+returned or panicked. Scalar/block/statistics, checkpoint/recovery and close
+paths retain the source fatal category without failover or availability changes.
+Remote fatal failures still arrive as native I/O operation errors. Focused
+original manager and native RPC checks pass; no transport compatibility changes
+are involved.
+
 Permanent native DieHard and TSnapShot process checks now retain the original
 active model assertions with coordinator-owned and standalone TCP fingerprint
 storage. DieHard requires its exact seven-state trace; TSnapShot requires an

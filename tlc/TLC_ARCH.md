@@ -11022,3 +11022,10 @@ any role, retaining the scope of Java's shared recorder. Native subprocesses
 need no JVM exit/security interception; all are joined on success or failure.
 The original DistributedTLCTestCase remains unconditionally disabled upstream,
 so these are supplemental model checks rather than completion of its harness.
+
+The local fingerprint invocation boundary checks fatal errors returned from
+Go endpoints as well as panics. Both escape the manager's ordinary exception
+catches. Distributed Close uses this same boundary, so a fatal local Exit does
+not become a printed ordinary error. Remote fatal failures are already wrapped
+as native I/O operation errors by the RPC handler, retaining the source remote
+failover behavior without reconstructing JVM exception objects.

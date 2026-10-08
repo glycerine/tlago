@@ -703,6 +703,12 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Returned fatal local endpoint errors now escape exactly like fatal panics;
+scalar/block/statistics, checkpoint/recovery and close checks verify no retry,
+warning or availability mutation. Original Java manager translations and native
+RPC checks remain green. These short Go boundary checks have no enabled direct
+Java counterpart and add no original-method completion credit.
+
 Fingerprint RPC failures now use the existing native Go failure payload, retaining
 nullable messages, causes, suppressed-error sharing and actual Go diagnostics.
 Fatal endpoint failures retain the remote I/O category needed by TLC failover.
