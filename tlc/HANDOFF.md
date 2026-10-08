@@ -73,6 +73,14 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Native TCP connection loss during accepted fingerprint checkpoint begin,
+commit and recovery calls is now verified. The source I/O catch emits one
+warning and continues to the healthy store without partition reassignment or
+availability changes. The coordinator resumes its queue and commits queue/trace
+checkpoints despite the caught FP failure. Accepted disconnected storage work
+remains alive until explicitly released and joined. This is connection-loss
+coverage, not process-crash recovery or an atomic distributed checkpoint.
+
 Assigned-block checkpoint recovery now covers two independent native TCP FP
 stores. Initial and successor fingerprints occupy different partitions, stored
 in separate metadata directories and reopened behind fresh hosts/tables. The

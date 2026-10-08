@@ -703,6 +703,14 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Accepted native checkpoint calls now have connection-loss coverage for begin,
+commit and recovery. The source I/O catch must warn once, continue to the healthy
+store and leave partition registrations/availability unchanged. Queue/trace
+checkpoints commit and the queue resumes while the disconnected handler is
+still gated; accepted storage work finishes after release. These short native
+checks add no original-method credit and do not prove process-crash recovery
+or checkpoint atomicity.
+
 Partitioned assigned-block checkpoint/recovery now uses two native TCP stores
 with separate metadata directories. Reopened tables must recover the initial
 and successor fingerprints into different original partitions while retaining

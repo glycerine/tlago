@@ -11093,3 +11093,14 @@ registration. FPSetManager.recover invokes chkptInner, which has no endpoint to
 call in this empty manager. Go mirrors that ordering. The registered-endpoint
 recovery checks do not claim the CLI restores those remote stores. Supporting
 that startup flow would require an explicit algorithm enhancement beyond parity.
+
+FPSetManager.Checkpoint.run catches I/O failures for both named checkpoint and
+recovery calls, warns and continues synchronously to the next distinct store.
+It does not mark the failed registration unavailable or reassign its partition.
+The native TCP boundary now verifies disconnection after a begin/commit/recover
+handler has been accepted but before storage executes. Manager continuation and
+coordinator queue/trace commit complete before that handler is released. Closing
+transport does not cancel the accepted storage operation. A failed begin has no
+follow-up commit; an ambiguously completed commit may still commit at the old
+store after the caller proceeds. These source semantics provide neither an
+atomic cross-store checkpoint nor process-crash recovery.

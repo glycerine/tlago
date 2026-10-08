@@ -18810,3 +18810,34 @@ coverage remains pending.
 The user's transport boundary remains native Go: preserve distributed TLC
 algorithms and failure handling without Java RMI, Java serialization or JVM
 emulation. The checkpoint coverage above uses the existing Go TCP transport.
+
+## October 8, 2026: accepted checkpoint request connection loss
+
+Compared FPSetManager.Checkpoint.run and TLCServer.checkpoint with the native
+manager/coordinator. The source catches checkpoint/recovery I/O failures,
+warns and continues to the next store. It does not reassign the failed partition
+or mark its registration unavailable. Added three short gated TCP checks for
+accepted begin, commit and recovery requests. Closing the host disconnects the
+caller while owned storage remains paused. The manager must continue before
+release, emit exactly one source warning and retain both registration wrappers
+and their availability. Begin failure must skip commit; no request is retried.
+
+The coordinator checkpoint cases also require queue resumption and readable
+committed queue/trace checkpoints. The healthy FP checkpoint is reopened from
+disk and must retain only its partition fingerprint. Recovery must restore the
+healthy store while the disconnected store is still empty. After releasing and
+joining the original handler, its accepted operation must finish: begin writes
+its temporary file, commit publishes its file, or recovery restores its table.
+This covers connection loss, not process kill, checkpoint atomicity or durable
+cross-store transactions. No production shortcut was found in these paths.
+No enabled direct upstream test covers this boundary; supplemental Go checks
+add no original-method completion credit.
+
+Initial exact new selection passes in 0.032 seconds (52603 terminal status 0).
+After adding queue/trace reopening assertions, the final focused checkpoint
+selection passes in 0.075 seconds (46801 terminal status 0), including existing
+I/O/fatal/corrupt-file contracts, assigned-block checkpoints and TCP FP recovery.
+Only the exact three new short cases run under -race, passing in 1.099 seconds
+(76442 terminal status 0). All handles are retired. No full suite or long model
+workload was run. Broader process-crash and mid-run recovery coverage remains
+pending; the distributed goal is incomplete.
