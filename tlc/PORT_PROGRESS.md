@@ -17602,3 +17602,66 @@ argument guards changed afterward. All handles are retired. Updated inventory
 transport prerequisites without changing original-method completion counts.
 Goal remains active: coordinator/worker networking, native state/value payloads,
 process/CLI lifecycle wiring and distributed model execution are not complete.
+
+
+### 2026-10-08 — Native ordinary-state/value graph payload
+
+Continued from f54f0fe with clean worktree. Source review confirms TLCStateMut's
+network state fields are values plus worker ID, signed UID and full int level;
+its on-disk write has the separate short-level limit. UniqueString uses default
+serialization of text/token/location; Value source and cost model are transient.
+FcnLambdaValue.writeObject calls toFcnRcd, SetPredValue.writeObject converts its
+predicate set, and LazyValue.writeObject rejects null/undefined cached values.
+No direct upstream network object-graph test exists (StringDeserialize covers
+the separate value disk stream, whose original translation is already present).
+
+Added DistributedStatePayload, encoder and decoder using native Go graph nodes
+and one-based references. Shared states, values and UniqueStrings stay shared
+within a message, with receiver-owned objects. Null/empty roots and value arrays
+are distinct; incomplete state entries and signed initial UID are preserved.
+Levels retain 0..MaxInt32, without the disk queue's MaxInt16 cutoff. Primitive,
+model, tuple, record, interval, enumerated/function values, symbolic set
+constructors, set operators, subset/k-subset, counterexample and native
+Nat/Int/STRING/ANY/Seq values retain their runtime representations and cached-set
+flags. Raw model/string metadata is copied without mutating receiver interning.
+Supported scalar/byte/value model data is transferred; opaque data is rejected.
+Functions are materialized through the actual source helper and reconstructed
+as function wrappers, predicate sets become converted wrappers and lazy values
+send only their cached value. Evaluator graphs/cost/source metadata are not
+serialized. Extended state metadata, custom user/operator/opaque data types
+currently return explicit errors and remain implementation work; this is not
+full generic Serializable or extended-state parity.
+
+The decoder allocates all value placeholders before filling edges, preserving
+cycles. Reference bounds, unknown kinds, fixed constructor arity, typed caches,
+record/function widths and integer ranges are checked before use. The payload
+is tested across actual gob encoding/decoding rather than sharing pointers in
+an in-memory comparison. Five focused unit tests cover graph sharing/depth,
+20 representation cases, actual unevaluated-function/predicate materialization
+plus lazy rejection, null/cycle/malformed-message cases and model data types. No original Java
+assertion or fixture was modified; these Go-only boundary checks earn no new
+original-method completion credit.
+
+Initial payload tests all pass in 0.013 seconds (67004 terminal status 0).
+Related original FcnLambdaValue and ValueInputOutputStream, original smart-proxy
+and payload checks pass in 0.019 seconds. Root original distributed checks
+receipt and the final precise source selection follow. No socket/full-suite or
+race workloads were run. Next is wiring these payloads into actual worker
+requests/results, structured worker errors and the coordinator network endpoint;
+full distributed completion remains unproven.
+
+Final precise payload/original FcnLambdaValue/value-stream/smart-proxy
+selection passes in 0.019 seconds (10430 terminal status 0).
+Root original TLCSet/init and app-boundary selection passes in 1.814 seconds
+(29537 terminal status 0). All handles are retired.
+
+Added model-data scalar/byte-array checks, including explicit null/empty byte
+array preservation across gob. Opaque data rejection is also asserted. Final
+payload/original selection receipt follows; no existing production path changed.
+
+Final payload and related original-test selection passes in 0.018 seconds
+(19165 terminal status 0). All test handles are retired. The transport is native
+Go net/rpc over TCP with explicit Go payloads; Java RMI and Java object-stream
+compatibility are excluded. Source serialization is consulted only to preserve
+TLC value behavior across process boundaries. Coordinator/worker wiring and
+remaining payload types still need implementation.

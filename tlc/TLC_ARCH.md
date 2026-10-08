@@ -7852,8 +7852,15 @@ Go net/rpc over TCP for named fingerprint objects. The transport performs no
 insertion retry. It preserves scalar/batch answers, full fingerprint bits,
 null/empty vectors and checkpoint-file recovery; trace objects remain local to
 the coordinator. Server shutdown closes listeners and client connections
-without implicitly exiting storage. Coordinator/worker network calls and
-state/value serialization/process integration remain to be implemented.
+without implicitly exiting storage. DistributedStatePayload is a native object
+graph with one-based references (zero is null), explicit nil-array flags and
+full int32 state levels. It preserves object sharing/cycles and copies raw
+string metadata independently of the receiver table. Symbolic set types/caches
+are retained; source custom serialization materializes functions/predicates
+and sends only cached lazy values. Extended evaluator state metadata and opaque
+custom user/data/operator types are explicitly rejected pending their remaining
+implementation. Coordinator/worker network calls and payload integration/process
+wiring remain to be implemented.
 
 The Java reference implementation uses RMI:
 

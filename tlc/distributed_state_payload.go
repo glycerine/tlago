@@ -1,0 +1,650 @@
+package tlc
+
+import (
+	"fmt"
+	"math"
+	"reflect"
+)
+
+// DistributedStatePayload is a native Go graph for a single remote invocation.
+// IDs are one-based, with zero reserved for null. Objects shared across states
+// remain shared after decoding; receiver objects do not alias sender objects.
+// State levels use the in-memory int32 range, not the short disk-queue format.
+type DistributedStatePayload struct {
+	Nil     bool
+	Roots   []int
+	States  []DistributedStateNode
+	Values  []DistributedValueNode
+	Strings []DistributedStringNode
+}
+
+type DistributedStateNode struct {
+	WorkerID  int16
+	UID       int64
+	Level     int32
+	Values    []int
+	ValuesNil bool
+}
+
+type DistributedStringNode struct {
+	Text         string
+	Token        int
+	Location     int
+	Unregistered bool
+}
+
+// Value nodes retain representation and caches for symbolic set constructors.
+// Function/predicate/lazy wrappers use the same materialization contracts as
+// their source network serialization, without serializing evaluator machinery.
+type DistributedValueNode struct {
+	Kind              string
+	References        []int
+	ReferencesNil     bool
+	Domain            []int
+	DomainNil         bool
+	Names             []int
+	NamesNil          bool
+	Flag              bool
+	Cache             int
+	Dummy             bool
+	Integer           int64
+	Low               int32
+	High              int32
+	String            int
+	ModelIndex        int
+	ModelType         rune
+	CollectionPresent bool
+	DataKind          string
+	DataString        string
+	DataInteger       int64
+	DataFloat         float64
+	DataBool          bool
+	DataBytes         []byte
+	DataBytesNil      bool
+	DataValue         int
+}
+
+type distributedPayloadEncoder struct {
+	payload *DistributedStatePayload
+	states  map[*TLCStateMut]int
+	values  map[Value]int
+	strings map[*UniqueString]int
+}
+
+func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePayload, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			payload = nil
+			err = panicValueAsError(failure)
+		}
+	}()
+	payload = &DistributedStatePayload{Nil: states == nil}
+	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int)}
+	payload.Roots = make([]int, len(states))
+	for i, state := range states {
+		id, failure := encoder.state(state)
+		if failure != nil {
+			return nil, failure
+		}
+		payload.Roots[i] = id
+	}
+	return payload, nil
+}
+
+func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
+	if state == nil {
+		return 0, nil
+	}
+	if id := e.states[state]; id != 0 {
+		return id, nil
+	}
+	if state.level < 0 || state.level > math.MaxInt32 {
+		return 0, fmt.Errorf("invalid network state level %d", state.level)
+	}
+	// The ordinary distributed app uses TLCStateMut. Extended debugger/executor
+	// state graphs require their own metadata contract and must not be dropped.
+	if state.functional || state.functionalBindings != nil || state.TracePredecessor() != nil || state.action != nil || state.callable != nil || len(state.cached) != 0 || state.printRecord != nil {
+		return 0, fmt.Errorf("network state contains extended evaluator metadata")
+	}
+	id := len(e.payload.States) + 1
+	e.states[state] = id
+	e.payload.States = append(e.payload.States, DistributedStateNode{})
+	values, err := e.refs(state.values)
+	if err != nil {
+		return 0, err
+	}
+	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), Values: values, ValuesNil: state.values == nil}
+	return id, nil
+}
+
+func (e *distributedPayloadEncoder) string(value *UniqueString) int {
+	if value == nil {
+		return 0
+	}
+	if id := e.strings[value]; id != 0 {
+		return id
+	}
+	id := len(e.payload.Strings) + 1
+	e.strings[value] = id
+	e.payload.Strings = append(e.payload.Strings, DistributedStringNode{Text: value.s, Token: value.tok, Location: value.loc, Unregistered: value.unregistered})
+	return id
+}
+
+func (e *distributedPayloadEncoder) refs(values []Value) ([]int, error) {
+	if values == nil {
+		return nil, nil
+	}
+	refs := make([]int, len(values))
+	for i, value := range values {
+		id, err := e.value(value)
+		if err != nil {
+			return nil, err
+		}
+		refs[i] = id
+	}
+	return refs, nil
+}
+
+func (e *distributedPayloadEncoder) names(names []*UniqueString) []int {
+	if names == nil {
+		return nil
+	}
+	refs := make([]int, len(names))
+	for i, name := range names {
+		refs[i] = e.string(name)
+	}
+	return refs
+}
+
+func (e *distributedPayloadEncoder) value(value Value) (int, error) {
+	if value == nil || reflect.ValueOf(value).Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil() {
+		return 0, nil
+	}
+	if id := e.values[value]; id != 0 {
+		return id, nil
+	}
+	id := len(e.payload.Values) + 1
+	e.values[value] = id
+	e.payload.Values = append(e.payload.Values, DistributedValueNode{})
+	node := DistributedValueNode{}
+	var children, domain []Value
+	var names []*UniqueString
+	var cache Value
+	switch v := value.(type) {
+	case *BoolValue:
+		node.Kind, node.Flag = "bool", v.Val
+	case *IntValue:
+		node.Kind, node.Integer = "int", int64(v.Val)
+	case *StringValue:
+		node.Kind, node.String = "string", e.string(v.Val)
+	case *ModelValue:
+		node.Kind, node.String, node.ModelIndex, node.ModelType = "model", e.string(v.Val), v.Index, v.Type
+		if err := e.modelData(&node, v.Data); err != nil {
+			return 0, err
+		}
+	case *IntervalValue:
+		node.Kind, node.Low, node.High = "interval", v.Low, v.High
+	case *TupleValue:
+		node.Kind, children = "tuple", v.Elems
+	case *RecordValue:
+		node.Kind, children, names, node.Flag = "record", v.Values, v.Names, v.IsNorm
+	case *SetEnumValue:
+		node.Kind, node.Flag, node.CollectionPresent = "enum", v.IsNorm, v.Elems != nil
+		if v.Elems != nil {
+			children = v.Elems.data
+		}
+	case *FcnRcdValue:
+		node.Kind, children, domain, node.Flag = "function", v.Values, v.Domain, v.IsNorm
+		cache = v.Intv
+	case *FcnLambdaValue:
+		node.Kind, children = "lambda", []Value{v.ToFcnRcd()}
+	case *LazySupplierValue:
+		if v.Val == nil || v.Val == ValUndef {
+			return 0, fmt.Errorf("attempted to serialize an unevaluated lazy value")
+		}
+		node.Kind, children = "lazy", []Value{v.Val}
+	case *LazyValue:
+		if v.Val == nil || v.Val == ValUndef {
+			return 0, fmt.Errorf("attempted to serialize an unevaluated lazy value")
+		}
+		node.Kind, children = "lazy", []Value{v.Val}
+	case *SetPredValue:
+		if !v.Converted {
+			set, err := v.ToSetEnum()
+			if err != nil {
+				return 0, err
+			}
+			v.InVal, v.Converted = set, true
+		}
+		node.Kind, children = "predicate", []Value{v.InVal}
+	case *SetOfTuplesValue:
+		node.Kind, children, cache, node.Dummy = "product", v.Sets, v.TupleSet, v.TupleSetDummy
+	case *SetOfRcdsValue:
+		node.Kind, children, names, cache, node.Dummy = "recordSet", v.Values, v.Names, v.RcdSet, v.RcdSetDummy
+	case *SetOfFcnsValue:
+		node.Kind, children, cache, node.Dummy = "functionSet", []Value{v.Domain, v.Range}, v.FcnSet, v.FcnSetDummy
+	case *KSubsetValue:
+		node.Kind, children, cache, node.Dummy, node.Integer = "kSubset", []Value{v.Set}, v.PSet, v.PSetDummy, int64(v.K)
+	case *SubsetValue:
+		node.Kind, children, cache, node.Dummy = "subset", []Value{v.Set}, v.PSet, v.PSetDummy
+	case *SetCupValue:
+		node.Kind, children, cache, node.Dummy = "cup", []Value{v.Set1, v.Set2}, v.CupSet, v.CupSetDummy
+	case *SetCapValue:
+		node.Kind, children, cache, node.Dummy = "cap", []Value{v.Set1, v.Set2}, v.CapSet, v.CapSetDummy
+	case *SetDiffValue:
+		node.Kind, children, cache, node.Dummy = "difference", []Value{v.Set1, v.Set2}, v.DiffSet, v.DiffSetDummy
+	case *UnionValue:
+		node.Kind, children, cache, node.Dummy = "union", []Value{v.Set}, v.RealSet, v.RealSetDummy
+	case *UndefValue:
+		node.Kind = "undefined"
+	case *CounterExample:
+		node.Kind, children = "counterexample", []Value{v.RecordValue}
+	case *UserValue:
+		switch obj := v.UserObj.(type) {
+		case naturalsObj:
+			node.Kind = "naturals"
+		case integersObj:
+			node.Kind = "integers"
+		case stringsObj:
+			node.Kind = "strings"
+		case AnySet:
+			node.Kind = "any"
+		case *sequencesObj:
+			node.Kind, children, node.Integer = "sequences", []Value{obj.Range}, int64(obj.SizeBound)
+		default:
+			return 0, fmt.Errorf("unsupported network user value %T", v.UserObj)
+		}
+	default:
+		return 0, fmt.Errorf("unsupported network value %T", value)
+	}
+	var err error
+	node.ReferencesNil, node.DomainNil, node.NamesNil = children == nil, domain == nil, names == nil
+	node.References, err = e.refs(children)
+	if err != nil {
+		return 0, err
+	}
+	node.Domain, err = e.refs(domain)
+	if err != nil {
+		return 0, err
+	}
+	node.Names = e.names(names)
+	node.Cache, err = e.value(cache)
+	if err != nil {
+		return 0, err
+	}
+	e.payload.Values[id-1] = node
+	return id, nil
+}
+
+func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data any) error {
+	switch v := data.(type) {
+	case nil:
+	case string:
+		node.DataKind, node.DataString = "string", v
+	case bool:
+		node.DataKind, node.DataBool = "bool", v
+	case int:
+		node.DataKind, node.DataInteger = "int", int64(v)
+	case int32:
+		node.DataKind, node.DataInteger = "int32", int64(v)
+	case int64:
+		node.DataKind, node.DataInteger = "int64", v
+	case float64:
+		node.DataKind, node.DataFloat = "float64", v
+	case []byte:
+		node.DataKind, node.DataBytesNil = "bytes", v == nil
+		node.DataBytes = append([]byte(nil), v...)
+	case Value:
+		id, err := e.value(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataValue = "value", id
+	default:
+		return fmt.Errorf("unsupported network model-value data %T", data)
+	}
+	return nil
+}
+
+type distributedPayloadDecoder struct {
+	values  []Value
+	strings []*UniqueString
+}
+
+func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			states = nil
+			err = panicValueAsError(failure)
+		}
+	}()
+	if payload == nil {
+		return nil, fmt.Errorf("missing distributed state payload")
+	}
+	if payload.Nil && len(payload.Roots) != 0 {
+		return nil, fmt.Errorf("null distributed state array contains roots")
+	}
+	decoder := &distributedPayloadDecoder{values: make([]Value, len(payload.Values)), strings: make([]*UniqueString, len(payload.Strings))}
+	for i, name := range payload.Strings {
+		decoder.strings[i] = &UniqueString{s: name.Text, tok: name.Token, loc: name.Location, unregistered: name.Unregistered}
+	}
+	for i, node := range payload.Values {
+		value, err := allocateDistributedValue(node)
+		if err != nil {
+			return nil, fmt.Errorf("value %d: %w", i+1, err)
+		}
+		decoder.values[i] = value
+	}
+	for i, node := range payload.Values {
+		if err := decoder.populate(decoder.values[i], node); err != nil {
+			return nil, fmt.Errorf("value %d: %w", i+1, err)
+		}
+	}
+	objects := make([]*TLCStateMut, len(payload.States))
+	for i, node := range payload.States {
+		if node.Level < 0 {
+			return nil, fmt.Errorf("negative distributed state level")
+		}
+		values, err := decoder.refs(node.Values, node.ValuesNil)
+		if err != nil {
+			return nil, err
+		}
+		objects[i] = &TLCStateMut{WorkerID: node.WorkerID, UID: node.UID, level: int(node.Level), values: values}
+	}
+	if payload.Nil {
+		return nil, nil
+	}
+	states = make([]*TLCStateMut, len(payload.Roots))
+	for i, id := range payload.Roots {
+		if id < 0 || id > len(objects) {
+			return nil, fmt.Errorf("invalid distributed state reference %d", id)
+		}
+		if id != 0 {
+			states[i] = objects[id-1]
+		}
+	}
+	return states, nil
+}
+
+func allocateDistributedValue(node DistributedValueNode) (Value, error) {
+	base := newBaseValue()
+	switch node.Kind {
+	case "bool":
+		return &BoolValue{BaseValue: base, Val: node.Flag}, nil
+	case "int":
+		if node.Integer < math.MinInt32 || node.Integer > math.MaxInt32 {
+			return nil, fmt.Errorf("network integer is outside int32 range")
+		}
+		return &IntValue{BaseValue: base, Val: int32(node.Integer)}, nil
+	case "string":
+		return &StringValue{BaseValue: base}, nil
+	case "model":
+		return &ModelValue{BaseValue: base, Index: node.ModelIndex, Type: node.ModelType}, nil
+	case "interval":
+		return &IntervalValue{BaseValue: base, Low: node.Low, High: node.High}, nil
+	case "tuple":
+		return &TupleValue{BaseValue: base}, nil
+	case "record":
+		return &RecordValue{BaseValue: base, IsNorm: node.Flag}, nil
+	case "enum":
+		return &SetEnumValue{BaseValue: base, IsNorm: node.Flag}, nil
+	case "function":
+		return &FcnRcdValue{BaseValue: base, IsNorm: node.Flag}, nil
+	case "lambda":
+		return &FcnLambdaValue{BaseValue: base}, nil
+	case "lazy":
+		return &LazyValue{BaseValue: base}, nil
+	case "predicate":
+		return &SetPredValue{BaseValue: base, Converted: true}, nil
+	case "product":
+		return &SetOfTuplesValue{BaseValue: base, TupleSetDummy: node.Dummy}, nil
+	case "recordSet":
+		return &SetOfRcdsValue{BaseValue: base, RcdSetDummy: node.Dummy}, nil
+	case "functionSet":
+		return &SetOfFcnsValue{BaseValue: base, FcnSetDummy: node.Dummy}, nil
+	case "kSubset":
+		if node.Integer < math.MinInt32 || node.Integer > math.MaxInt32 {
+			return nil, fmt.Errorf("network subset rank is outside int32 range")
+		}
+		return &KSubsetValue{BaseValue: base, K: int(node.Integer), PSetDummy: node.Dummy}, nil
+	case "subset":
+		return &SubsetValue{BaseValue: base, PSetDummy: node.Dummy}, nil
+	case "cup":
+		return &SetCupValue{BaseValue: base, CupSetDummy: node.Dummy}, nil
+	case "cap":
+		return &SetCapValue{BaseValue: base, CapSetDummy: node.Dummy}, nil
+	case "difference":
+		return &SetDiffValue{BaseValue: base, DiffSetDummy: node.Dummy}, nil
+	case "union":
+		return &UnionValue{BaseValue: base, RealSetDummy: node.Dummy}, nil
+	case "undefined":
+		return &UndefValue{BaseValue: base}, nil
+	case "counterexample":
+		return &CounterExample{}, nil
+	case "naturals":
+		return &UserValue{BaseValue: base, UserObj: naturalsObj{}}, nil
+	case "integers":
+		return &UserValue{BaseValue: base, UserObj: integersObj{}}, nil
+	case "strings":
+		return &UserValue{BaseValue: base, UserObj: stringsObj{}}, nil
+	case "any":
+		return &UserValue{BaseValue: base, UserObj: AnySet{}}, nil
+	case "sequences":
+		if node.Integer < math.MinInt32 || node.Integer > math.MaxInt32 {
+			return nil, fmt.Errorf("network sequence bound is outside int32 range")
+		}
+		return &UserValue{BaseValue: base, UserObj: &sequencesObj{SizeBound: int(node.Integer)}}, nil
+	default:
+		return nil, fmt.Errorf("unknown network value kind %q", node.Kind)
+	}
+}
+
+func (d *distributedPayloadDecoder) value(id int) (Value, error) {
+	if id < 0 || id > len(d.values) {
+		return nil, fmt.Errorf("invalid distributed value reference %d", id)
+	}
+	if id == 0 {
+		return nil, nil
+	}
+	return d.values[id-1], nil
+}
+
+func (d *distributedPayloadDecoder) string(id int) (*UniqueString, error) {
+	if id < 0 || id > len(d.strings) {
+		return nil, fmt.Errorf("invalid distributed string reference %d", id)
+	}
+	if id == 0 {
+		return nil, nil
+	}
+	return d.strings[id-1], nil
+}
+
+func (d *distributedPayloadDecoder) refs(ids []int, isNil bool) ([]Value, error) {
+	if isNil {
+		if len(ids) != 0 {
+			return nil, fmt.Errorf("null value array contains references")
+		}
+		return nil, nil
+	}
+	values := make([]Value, len(ids))
+	for i, id := range ids {
+		value, err := d.value(id)
+		if err != nil {
+			return nil, err
+		}
+		values[i] = value
+	}
+	return values, nil
+}
+
+func (d *distributedPayloadDecoder) names(ids []int, isNil bool) ([]*UniqueString, error) {
+	if isNil {
+		if len(ids) != 0 {
+			return nil, fmt.Errorf("null name array contains references")
+		}
+		return nil, nil
+	}
+	names := make([]*UniqueString, len(ids))
+	for i, id := range ids {
+		name, err := d.string(id)
+		if err != nil {
+			return nil, err
+		}
+		names[i] = name
+	}
+	return names, nil
+}
+
+func distributedValueCast[T Value](value Value) (T, error) {
+	var zero T
+	if value == nil {
+		return zero, nil
+	}
+	typed, ok := value.(T)
+	if !ok {
+		return zero, fmt.Errorf("network value %T cannot be used as %T", value, zero)
+	}
+	return typed, nil
+}
+
+func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueNode) error {
+	refs, err := d.refs(node.References, node.ReferencesNil)
+	if err != nil {
+		return err
+	}
+	domain, err := d.refs(node.Domain, node.DomainNil)
+	if err != nil {
+		return err
+	}
+	names, err := d.names(node.Names, node.NamesNil)
+	if err != nil {
+		return err
+	}
+	cache, err := d.value(node.Cache)
+	if err != nil {
+		return err
+	}
+	name, err := d.string(node.String)
+	if err != nil {
+		return err
+	}
+	// Constructors with a fixed arity must not index malformed wire arrays.
+	want := -1
+	switch node.Kind {
+	case "lambda", "lazy", "predicate", "subset", "kSubset", "union", "counterexample", "sequences":
+		want = 1
+	case "functionSet", "cup", "cap", "difference":
+		want = 2
+	}
+	if want >= 0 && len(refs) != want {
+		return fmt.Errorf("network %s requires %d references, got %d", node.Kind, want, len(refs))
+	}
+	var set *SetEnumValue
+	switch node.Kind {
+	case "product", "recordSet", "functionSet", "subset", "kSubset", "cup", "cap", "difference", "union":
+		set, err = distributedValueCast[*SetEnumValue](cache)
+		if err != nil {
+			return err
+		}
+	}
+	switch v := value.(type) {
+	case *StringValue:
+		v.Val = name
+	case *ModelValue:
+		v.Val = name
+		v.Data, err = d.modelData(node)
+	case *TupleValue:
+		v.Elems = refs
+	case *RecordValue:
+		if len(names) != len(refs) {
+			return fmt.Errorf("record has unequal names and values")
+		}
+		v.Names, v.Values = names, refs
+	case *SetEnumValue:
+		if node.CollectionPresent {
+			v.Elems = &ValueVec{data: refs}
+		} else if len(refs) != 0 {
+			return fmt.Errorf("null value vector contains elements")
+		}
+	case *FcnRcdValue:
+		v.Intv, err = distributedValueCast[*IntervalValue](cache)
+		if err != nil {
+			return err
+		}
+		if v.Intv == nil && len(domain) != len(refs) {
+			return fmt.Errorf("function has unequal domain and values")
+		}
+		v.Domain, v.Values = domain, refs
+	case *FcnLambdaValue:
+		v.FcnRcd, err = distributedValueCast[*FcnRcdValue](refs[0])
+	case *LazyValue:
+		v.Val = refs[0]
+	case *SetPredValue:
+		v.InVal = refs[0]
+	case *SetOfTuplesValue:
+		v.Sets, v.TupleSet = refs, set
+	case *SetOfRcdsValue:
+		if len(names) != len(refs) {
+			return fmt.Errorf("record set has unequal names and values")
+		}
+		v.Names, v.Values, v.RcdSet = names, refs, set
+	case *SetOfFcnsValue:
+		v.Domain, v.Range, v.FcnSet = refs[0], refs[1], set
+	case *KSubsetValue:
+		v.Set, v.PSet = refs[0], set
+	case *SubsetValue:
+		v.Set, v.PSet = refs[0], set
+	case *SetCupValue:
+		v.Set1, v.Set2, v.CupSet = refs[0], refs[1], set
+	case *SetCapValue:
+		v.Set1, v.Set2, v.CapSet = refs[0], refs[1], set
+	case *SetDiffValue:
+		v.Set1, v.Set2, v.DiffSet = refs[0], refs[1], set
+	case *UnionValue:
+		v.Set, v.RealSet = refs[0], set
+	case *CounterExample:
+		v.RecordValue, err = distributedValueCast[*RecordValue](refs[0])
+	case *UserValue:
+		if sequence, ok := v.UserObj.(*sequencesObj); ok {
+			sequence.Range = refs[0]
+		}
+	}
+	return err
+}
+
+func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, error) {
+	switch node.DataKind {
+	case "":
+		return nil, nil
+	case "string":
+		return node.DataString, nil
+	case "bool":
+		return node.DataBool, nil
+	case "int":
+		value := int(node.DataInteger)
+		if int64(value) != node.DataInteger {
+			return nil, fmt.Errorf("model data outside native int range")
+		}
+		return value, nil
+	case "int32":
+		if node.DataInteger < math.MinInt32 || node.DataInteger > math.MaxInt32 {
+			return nil, fmt.Errorf("model data outside int32 range")
+		}
+		return int32(node.DataInteger), nil
+	case "int64":
+		return node.DataInteger, nil
+	case "float64":
+		return node.DataFloat, nil
+	case "bytes":
+		if node.DataBytesNil {
+			return []byte(nil), nil
+		}
+		value := make([]byte, len(node.DataBytes))
+		copy(value, node.DataBytes)
+		return value, nil
+	case "value":
+		return d.value(node.DataValue)
+	default:
+		return nil, fmt.Errorf("unknown model data kind %q", node.DataKind)
+	}
+}

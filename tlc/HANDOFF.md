@@ -1828,9 +1828,14 @@ transport. Source-style manager failover consumes connection/storage failures.
 Scalar/batch answers, all 64 fingerprint bits, null/empty vectors and checkpoint
 filenames cross the wire. Null batches now fail across all six native storage
 backends, matching the source dereference rather than being treated as empty.
-Trace recovery stays coordinator-local. Coordinator
-and worker network calls, state/value serialization and process/CLI integration
-remain pending; these focused checks do not prove distributed completion.
+Trace recovery stays coordinator-local. A native state/value graph payload now preserves full int32 levels, signed
+UIDs, state/value/string object sharing, symbolic set representations and caches,
+with the source function/predicate/lazy materialization rules. Gob round-trip
+unit tests pass. It currently rejects extended evaluator state metadata, opaque
+custom user values/data and operator values; those are not silently discarded.
+Coordinator/worker network calls and process/CLI integration remain pending,
+and payload integration/remaining classes need implementation. These focused
+checks do not prove distributed completion.
 
 ## Testing and workflow
 
