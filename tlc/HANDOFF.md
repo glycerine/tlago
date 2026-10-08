@@ -73,6 +73,12 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Model-value byte data uses native graph references instead of per-value copies.
+Shared buffers stay shared across states and result partitions; equal-content
+separate buffers remain distinct, and receiver data stays isolated from sender
+data. Nil/empty byte buffers remain distinct. Graph and worker TCP checks pass;
+opaque custom data and evaluator metadata still require their own audit.
+
 Coordinator system-failure diagnostics use the source throwable overload for
 stack-overflow and out-of-memory categories, retaining debug stacks and cleanup
 order. The shared stack printer now completes each ToolIO line with println,

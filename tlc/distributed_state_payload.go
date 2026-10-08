@@ -11,11 +11,12 @@ import (
 // remain shared after decoding; receiver objects do not alias sender objects.
 // State levels use the in-memory int32 range, not the short disk-queue format.
 type DistributedStatePayload struct {
-	Nil     bool
-	Roots   []int
-	States  []DistributedStateNode
-	Values  []DistributedValueNode
-	Strings []DistributedStringNode
+	Nil        bool
+	Roots      []int
+	States     []DistributedStateNode
+	Values     []DistributedValueNode
+	Strings    []DistributedStringNode
+	ByteArrays [][]byte
 }
 
 type DistributedStateNode struct {
@@ -66,8 +67,7 @@ type DistributedValueNode struct {
 	DataInteger       int64
 	DataFloat         float64
 	DataBool          bool
-	DataBytes         []byte
-	DataBytesNil      bool
+	DataBytes         int
 	DataValue         int
 }
 
@@ -76,6 +76,12 @@ type distributedPayloadEncoder struct {
 	states  map[*TLCStateMut]int
 	values  map[Value]int
 	strings map[*UniqueString]int
+	bytes   map[distributedByteArrayKey]int
+}
+
+type distributedByteArrayKey struct {
+	address uintptr
+	length  int
 }
 
 func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePayload, err error) {
@@ -86,7 +92,7 @@ func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePa
 		}
 	}()
 	payload = &DistributedStatePayload{Nil: states == nil}
-	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int)}
+	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int)}
 	payload.Roots = make([]int, len(states))
 	for i, state := range states {
 		id, failure := encoder.state(state)
@@ -312,8 +318,17 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 	case float64:
 		node.DataKind, node.DataFloat = "float64", v
 	case []byte:
-		node.DataKind, node.DataBytesNil = "bytes", v == nil
-		node.DataBytes = append([]byte(nil), v...)
+		node.DataKind = "bytes"
+		if v != nil {
+			key := distributedByteArrayKey{reflect.ValueOf(v).Pointer(), len(v)}
+			id := e.bytes[key]
+			if id == 0 || len(v) == 0 {
+				id = len(e.payload.ByteArrays) + 1
+				e.bytes[key] = id
+				e.payload.ByteArrays = append(e.payload.ByteArrays, append([]byte{}, v...))
+			}
+			node.DataBytes = id
+		}
 	case Value:
 		id, err := e.value(v)
 		if err != nil {
@@ -329,6 +344,7 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 type distributedPayloadDecoder struct {
 	values  []Value
 	strings []*UniqueString
+	bytes   [][]byte
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -344,7 +360,11 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 	if payload.Nil && len(payload.Roots) != 0 {
 		return nil, fmt.Errorf("null distributed state array contains roots")
 	}
-	decoder := &distributedPayloadDecoder{values: make([]Value, len(payload.Values)), strings: make([]*UniqueString, len(payload.Strings))}
+	decoder := &distributedPayloadDecoder{values: make([]Value, len(payload.Values)), strings: make([]*UniqueString, len(payload.Strings)), bytes: make([][]byte, len(payload.ByteArrays))}
+	for i, data := range payload.ByteArrays {
+		decoder.bytes[i] = make([]byte, len(data))
+		copy(decoder.bytes[i], data)
+	}
 	for i, name := range payload.Strings {
 		decoder.strings[i] = &UniqueString{s: name.Text, tok: name.Token, loc: name.Location, unregistered: name.Unregistered}
 	}
@@ -673,12 +693,13 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 	case "float64":
 		return node.DataFloat, nil
 	case "bytes":
-		if node.DataBytesNil {
+		if node.DataBytes < 0 || node.DataBytes > len(d.bytes) {
+			return nil, fmt.Errorf("invalid model byte data reference %d", node.DataBytes)
+		}
+		if node.DataBytes == 0 {
 			return []byte(nil), nil
 		}
-		value := make([]byte, len(node.DataBytes))
-		copy(value, node.DataBytes)
-		return value, nil
+		return d.bytes[node.DataBytes-1], nil
 	case "value":
 		return d.value(node.DataValue)
 	default:

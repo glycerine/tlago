@@ -703,6 +703,13 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Native model-value byte data now preserves shared buffer identity across states
+and worker-result partitions, with separate equal-content buffers, isolated
+receiver ownership and nil/empty distinctions. Gob and worker TCP checks retain
+mutation-visible sharing; malformed byte references are rejected. No enabled
+Java test directly covers this graph boundary, so no original-method credit is
+added. Opaque custom model data remains separately pending.
+
 Coordinator system-failure diagnostics retain debug-enabled throwable stacks
 and original catch/finally cleanup order. Eight short returned/panicked cases
 cover stack-overflow/out-of-memory with debug off/on. They also require completed

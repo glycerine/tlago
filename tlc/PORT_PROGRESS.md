@@ -18748,3 +18748,36 @@ All handles are retired. No race, full suite or long model workload was run for
 this output-only change. Docs and inventory are current. Source startup recovery
 still precedes remote FP registration; broader recovery, failure and payload
 parity remain pending, and the distributed goal is incomplete.
+
+## October 8, 2026: shared model-value byte data in native graphs
+
+ModelValue's source data field is an ordinary Object; a shared serializable byte
+array remains one object in the transferred graph. The native codec copied byte
+data independently for each model value, losing mutation-visible sharing.
+Added a ByteArrays graph table and one-based DataBytes references. Nonempty
+buffers use starting address/length identity rather than content equality.
+Decode allocates/copies each buffer once for receiver ownership; references
+reuse it across states and result partitions. Zero denotes a nil byte slice;
+explicit empty nodes decode to initialized empty slices despite gob's empty/nil
+encoding. Reference bounds are checked. This represents source array objects,
+not arbitrary overlapping Go slice views, and adds no opaque custom-data codec.
+
+No enabled direct upstream test covers this network graph boundary. The gob
+check retains one shared buffer across two model values/states and a distinct
+buffer with identical contents. Mutating decoded data must affect only its
+shared receiver alias, not sender or separate data. Nil/empty remain distinct.
+A worker TCP request/result check mutates real decoded model data and requires
+sharing across returned partitions with isolated caller ownership. Negative and
+out-of-range buffer IDs must fail. These checks add no original-method credit.
+
+The pre-fix sharing case fails in 0.012 seconds (25348 terminal status 1).
+Initial graph/model-data selection passes after the production fix in 0.014
+seconds (83006 terminal status 0). Compilation of the new TCP test caught an
+unneeded TLCStateMut type assertion on StateVec.At, which already returns that
+pointer; corrected the test to use the declared type. Final graph/state/result,
+worker RPC and coordinator snapshot selection passes in 0.037 seconds (87579
+terminal status 0). Only the exact short byte-data worker RPC case runs under
+-race, passing in 1.037 seconds (78445 terminal status 0). All handles are retired.
+No full suite or long model/race workload was run. The native DTO layout changed,
+so peers use the same build. Docs/inventory are current; custom payload, recovery
+and broader distributed failure parity work remains pending.

@@ -11065,3 +11065,15 @@ the retained source getAllMessages arraycopy bounds failure. Normal stream
 bytes retain their line structure; buffered mode now receives completed lines.
 GC, close(false), executor shutdown and management cleanup remain ordered as
 in the source main catch/finally.
+
+ModelValue byte data belongs to the native invocation graph. The payload carries
+ByteArrays once and DataBytes as a one-based reference (zero is a nil byte slice).
+The encoder identifies nonempty buffers by their starting address and length;
+equal contents in different arrays do not merge. This represents shared source
+byte-array objects, not arbitrary overlapping Go slice views. Empty buffers get
+explicit nodes, and decoding allocates an initialized empty slice even if gob
+represents its node contents as nil. The decoder copies each buffer once for
+receiver ownership and reuses it for every model-data reference, validating
+bounds. Sharing therefore survives across states and result partitions without
+aliasing sender storage. This changes the native DTO layout; communicating roles
+use the same build. No Java serialization or opaque custom-data codec is added.
