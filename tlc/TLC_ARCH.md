@@ -12112,6 +12112,16 @@ goroutine and reports its uncaught failure. A nil thread receiver fails before
 the run body and worker increment. Missing-owner native checks distinguish these
 paths from the existing in-run handler/finalizer failures.
 
+Fingerprint-manager shutdown preserves source tolerance of a process disappearing
+during exit through native operation traits. Only an exit call with an underlying
+TCP EOF/UnexpectedEOF marks its failure as exit-ignorable. The cause remains
+available through errors.Is; no call is retried or redialed. Manager shutdown
+suppresses that diagnostic and continues registration traversal. Prior closed
+clients, failed dials and other operations remain reportable. The unused RMI
+UnmarshalException carrier/class metadata are removed. Native lost-exit-reply
+checks join all accepted handlers and require one exit plus later registration
+shutdown; lost insertion replies explicitly retain non-ignorable errors.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

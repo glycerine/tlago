@@ -627,7 +627,7 @@ func exitFingerprintRegistration(entry *distributedFPSets, cleanup bool) {
 		return struct{}{}, entry.endpoint().Exit(cleanup)
 	})
 	if failure != nil {
-		if _, ignored := failure.(*UnmarshalException); !ignored {
+		if operation, ok := failure.(*DistributedOperationError); !ok || !operation.ExitIgnorable {
 			fmt.Fprint(os.Stderr, javaThrowableStackTrace(failure))
 		}
 	}

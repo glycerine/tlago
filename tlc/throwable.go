@@ -76,8 +76,6 @@ func javaThrowableClassName(err error) string {
 		return "java.rmi.ConnectException"
 	case *FPSetManagerException:
 		return "tlc2.tool.distributed.fp.FPSetManagerException"
-	case *UnmarshalException:
-		return "java.rmi.UnmarshalException"
 	case *ExportException:
 		return "java.rmi.server.ExportException"
 	case *CharacterCodingException:

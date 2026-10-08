@@ -76,7 +76,7 @@ func TestFingerprintRPCCompletedInsertionLostReply(t *testing.T) {
 	endpoint.host.Store(host)
 	bits, err := client.PutBlock(NewLongVecFrom([]int64{73, 74}))
 	failure, ok := err.(*DistributedOperationError)
-	if bits != nil || !ok || failure.Cause == nil || !failure.Remote || !failure.IO || failure.Recoverable || endpoint.calls.Load() != 1 || storage.Size() != 2 || !storage.Contains(73) || !storage.Contains(74) {
+	if bits != nil || !ok || failure.Cause == nil || !failure.Remote || !failure.IO || failure.Recoverable || failure.ExitIgnorable || endpoint.calls.Load() != 1 || storage.Size() != 2 || !storage.Contains(73) || !storage.Contains(74) {
 		t.Fatalf("ambiguous insertion lost storage/cause or was replayed: %v, %T/%v, calls %d", bits, err, err, endpoint.calls.Load())
 	}
 	if _, err := client.PutBlock(NewLongVecFrom([]int64{73, 74})); !errors.Is(err, rpc.ErrShutdown) || endpoint.calls.Load() != 1 {

@@ -89,6 +89,12 @@ read and reports an uncaught failure through the native goroutine wrapper.
 Missing thread receivers fail before incrementing. Three supplemental checks
 cover these boundaries; existing run-handler/finalizer assertions are intact.
 
+Fingerprint shutdown uses native error traits exclusively. A lost exit reply
+retains its TCP EOF cause and is ignored during manager shutdown, allowing later
+registrations to exit. Prior closed-client failures remain reportable, and
+insertion/checkpoint failures do not acquire this exit-only trait. The unused
+`UnmarshalException` carrier and its RMI-specific shutdown branch are removed.
+
 Faithfully port Java TLC to Go, then translate its existing correctness tests.
 When a translated test fails, inspect both the translation and the production
 implementation. Fix implementation shortcuts before proceeding. Preserve the

@@ -54,8 +54,9 @@ func (e *DistributedOperationError) GetSuppressed() []error {
 func (e *DistributedOperationError) diagnosticClassName() string  { return e.Class }
 func (e *DistributedOperationError) remoteThrowableStack() string { return e.Stack }
 
-// Fingerprint calls preserve their Go transport cause without borrowing the
-// worker's smaller-batch retry or worker-exit categories. No call is replayed.
+// Fingerprint calls preserve their Go transport cause without worker retry or
+// availability categories. Exit may mark its own lost reply as ignorable after
+// this boundary returns; other operations retain these traits. No call is replayed.
 func fingerprintConnectionFailure(cause error) *DistributedOperationError {
 	return newDistributedOperationError(DistributedOperationError{
 		Message: javaString(cause.Error()), Class: fmt.Sprintf("%T", cause),

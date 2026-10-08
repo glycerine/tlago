@@ -3,6 +3,7 @@ package tlc
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/rpc"
 	"sync"
@@ -391,7 +392,14 @@ func (e *NetworkFingerprintEndpoint) operation(operation, filename string, clean
 func (e *NetworkFingerprintEndpoint) AddThread() error { return e.operation("addThread", "", false) }
 func (e *NetworkFingerprintEndpoint) Close() error     { return e.operation("close", "", false) }
 func (e *NetworkFingerprintEndpoint) Exit(cleanup bool) error {
-	return e.operation("exit", "", cleanup)
+	err := e.operation("exit", "", cleanup)
+	// A fingerprint process can disappear before acknowledging exit. Keep
+	// this shutdown category local to exit; other ambiguous calls are errors.
+	if failure, ok := err.(*DistributedOperationError); ok && failure.Remote &&
+		(errors.Is(failure.Cause, io.EOF) || errors.Is(failure.Cause, io.ErrUnexpectedEOF)) {
+		failure.ExitIgnorable = true
+	}
+	return err
 }
 func (e *NetworkFingerprintEndpoint) BeginChkpt() error { return e.operation("begin", "", false) }
 func (e *NetworkFingerprintEndpoint) BeginChkptFile(name string) error {

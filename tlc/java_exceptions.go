@@ -473,14 +473,6 @@ func NewConnectException(message string, cause error) *ConnectException {
 
 func (e *ConnectException) Error() string { return javaThrowableMessage(e) }
 
-type UnmarshalException struct{ *RemoteException }
-
-func NewUnmarshalException(message string, cause error) *UnmarshalException {
-	return &UnmarshalException{RemoteException: NewRemoteException(javaString(message), cause)}
-}
-
-func (e *UnmarshalException) Error() string { return javaThrowableMessage(e) }
-
 type FPSetManagerException struct{ *RemoteException }
 
 func NewFPSetManagerException(message string) *FPSetManagerException {
@@ -506,10 +498,6 @@ func javaRemoteException(err error) *RemoteException {
 			return failure.RemoteException
 		}
 	case *FPSetManagerException:
-		if failure != nil {
-			return failure.RemoteException
-		}
-	case *UnmarshalException:
 		if failure != nil {
 			return failure.RemoteException
 		}

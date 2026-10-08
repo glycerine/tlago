@@ -1429,6 +1429,13 @@ ownership, retain the source worker-increment boundary and keep startup failures
 outside catch/finally. Direct and owned-goroutine checks preserve assigned states,
 keepalive, cleanup flag and cache-read behavior. No direct original method covers
 these invalid-owner cases; original-method completion credit is unchanged.
+Two native fingerprint exit-reply cases now exercise an actual completed exit
+whose TCP reply is lost, directly and through manager shutdown. They retain the
+exact net/rpc UnexpectedEOF cause, continue to later registrations and require
+one exit without replay. Prior closed clients stay reportable; completed insertion
+reply loss remains non-ignorable. The RMI-specific exception branch is replaced
+with native exit traits. No direct original method covers this native boundary;
+method completion credit is unchanged.
 Null FP answers no longer become successful empty worker results: the shared
 iterator preserves the source null failure, and native replies retain the
 distinction between null vectors, null words and initialized empty words.

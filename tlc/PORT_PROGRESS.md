@@ -22455,3 +22455,36 @@ source assertions and bounds are unchanged. No full suite, repeated full-model
 workload or race run was needed. There is no direct original method for these
 three invalid-owner cases; completion credit is unchanged. Distributed completion
 remains unproven.
+
+### 2026-10-08: Native fingerprint exit-reply loss
+
+The checkpoint/lifecycle audit found a remaining RMI-specific shutdown branch:
+FPSetManager ignored UnmarshalException when the fingerprint process disappeared
+during exit. Native TCP failure did not enter that branch. Exit now marks only
+its own underlying EOF/UnexpectedEOF reply loss as exit-ignorable, preserving the
+actual cause and other transport traits. Manager close uses that native trait and
+continues to later registrations. Prior closed clients and other operations retain
+their errors, and no request is retried or redialed. Removed the now-unused
+UnmarshalException carrier and class metadata; no Java transport is implemented.
+
+Two native cases execute real storage exit before closing the TCP host. They
+cover direct failure traits/cause and manager continuation without diagnostics,
+require one exit and preserve closed-client reporting afterward. Handlers are
+joined. The existing lost-insertion-reply check additionally requires that its
+failure never acquire the exit-ignorable trait.
+
+Initial cases failed (fingerprint-exit-reply-red.log, terminal process e56488
+status 1; package time 0.020 seconds). The first focused selection after production
+repair still failed the direct test's incorrect EOF expectation (fingerprint-
+exit-reply-focused.log, terminal process 144005 status 1; package time 0.229
+seconds); manager continuation was green. Inspection of Go net/rpc/client.go
+confirmed pending-call EOF becomes ErrUnexpectedEOF, so the direct case now
+requires that exact native cause rather than inventing an EOF representation.
+
+Final fingerprint RPC scalar/block/lifecycle/checkpoint/failure checks, manager
+traversal/payload checks and all original dynamic-manager cases pass
+(fingerprint-exit-reply-final.log, terminal process 946831 status 0; package time
+0.195 seconds). Logs were inspected and processes are terminal. No original
+assertions or bounds changed; no full suite or race run was performed. These
+two supplemental cases have no direct original methods and add no completion
+credit. Distributed completion remains unproven.
