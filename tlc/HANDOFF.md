@@ -73,6 +73,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Full native EWD840 recovery now covers interruption just after queue commit.
+Fresh processes retain the new 12,288-state queue, old trace checkpoint metadata
+and full 20,480-fingerprint trace, then reach the original 114,942 distinct/zero
+queued result. The pre-commit row also passes with its old 16,384-state queue.
+Later file-commit boundaries remain pending; no disabled Java harness credit
+is added.
+
 DiskFPSet named checkpoint creation now retains table locks and the flusher
 flag after flush/copy failure, matching source release order. Success alone
 advances the marker and releases ownership. Native TCP checks retain completed
@@ -2209,7 +2216,8 @@ positions. Normal and exact short race checks pass; no production fix was needed
 That short check reopens storage in the same process. Separate full-model
 coverage now restores a mid-run local MemFPSet checkpoint in fresh coordinator
 and worker processes after abrupt producer exit. Interruption before the first commit is now also checked with the source old-queue
-and full-trace recovery behavior. Interruption between commits remains pending;
+and full-trace recovery behavior. Interruption after queue commit is now verified
+with the new queue and old trace metadata. Later file-commit boundaries remain pending;
 fresh-process remote-FP CLI recovery is the source startup
 limitation described above.
 

@@ -19521,3 +19521,29 @@ reset failed storage ownership. No enabled original method covers these failure
 boundaries; supplemental checks add no original-method credit. All handles are
 terminal and retired. No full suite, long workload or race run. Distributed
 parity remains incomplete.
+
+## October 8, 2026: full-model recovery after queue commit interruption
+
+Extended the existing native EWD840 process harness with interruption just after
+the real disk queue commit and before trace commit. Generalized its owned queue
+wrapper from a pre-commit boolean to an explicit before/after-queue boundary.
+No production change was needed. Producer still recovers an older complete
+initial checkpoint, advances the unchanged N=7 MC06 model with a real TCP worker,
+and enters the production checkpoint barrier before abrupt process exit.
+
+Added independent parent inspection of committed queue headers, unchanged old
+trace metadata, promoted/retained queue temporaries and uncommitted trace/intern/
+FP files. Trace enumeration independently computes the full fingerprint count.
+Both original pre-commit and new after-queue rows pass normally with unchanged
+model/workload bounds (73603, status 0, 120.230 seconds total; 60.16/60.05 seconds).
+Pre-commit recovery reports 20,480 fingerprints and old queue 16,384; after-queue
+recovery reports 20,480 fingerprints and new queue 12,288. Both finish at the
+original 114,942 distinct states/zero queued, exactly one recovery, no repeated
+initialization or GENERAL/unexpected EOF, with fresh coordinator/worker normal
+exit and every owned child joined. Receipt:
+/mnt/oldrog/tmp/tlago-checkpoint-between-commits.log.
+
+The four original remote model harnesses remain assumption-disabled/Missing;
+this native process coverage adds no original-method credit. Later trace/intern/
+fingerprint commit boundaries and broader distributed parity remain pending.
+All handles are terminal and retired. No full suite or race instrumentation.

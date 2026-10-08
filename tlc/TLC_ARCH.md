@@ -11386,3 +11386,15 @@ A two-partition native TCP manager check requires completed failed-store flush,
 unchanged marker/registrations, the source diagnostic and healthy-store commit.
 Storage operations needing retained locks remain blocked after the source
 failure; native transport does not retry or reset that storage ownership.
+
+The native EWD840 process matrix now includes interruption after queue commit,
+using the same production checkpoint and recovery paths. The producer starts
+from an older complete initial checkpoint, advances with a real worker, suspends
+through the source barrier, writes all temporary files, commits the queue and
+exits before trace commit. Parent inspection requires the new exact queue count,
+unchanged old trace metadata, absent promoted queue temporary and retained trace/
+intern/FP temporary files. MultiFPSet recovery still enumerates the full persisted
+trace independently of the old metadata cursor. Fresh CLI coordinator/worker
+processes retain the full unchanged model and final assertions; no atomicity
+protocol or disabled Java harness completion credit is introduced. Later trace/
+intern/fingerprint commit boundaries remain pending.
