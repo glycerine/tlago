@@ -11045,3 +11045,13 @@ failure stack through ToolIO. The native lifecycle check invokes the public
 RunKeepAliveOnce boundary against real TCP calls, preserving the production
 schedule and timeout. Computing/recent activity suppresses lookup; idle completion
 or loss shuts down the executor, worker callback, completion latch and timer.
+
+In-flight fingerprint connection-loss checks hold an actual accepted PutBlock
+or ContainsBlock handler, close its native host, and require the manager to
+reassign to another TCP store before releasing the old handler. Sequential and
+concurrent calls retain input partition order and alias both registrations to
+the survivor wrapper. Contains does not copy lost fingerprints or insert new
+ones; Put retries against surviving storage. No transport-level retry or new
+batch protocol is introduced. Host.Close owns sockets only, so the paused local
+storage handler remains alive and is explicitly released/joined by the test.
+This boundary does not establish fingerprint-process crash/recovery behavior.

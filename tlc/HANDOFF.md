@@ -73,6 +73,13 @@ changes after `d7c029b` have focused receipts in PORT_PROGRESS.md.
 
 ## Current verified state
 
+Native fingerprint failover now has in-flight block coverage for put/contains
+in sequential and concurrent manager execution. A closed TCP host must trigger
+survivor reassignment while its accepted storage handler is still paused; result
+partition order, shared survivor wrapper and exact warning count are retained.
+Transport closure leaves owned storage work alive, and the test joins it. This
+covers connection loss, not fingerprint-process crash/recovery.
+
 Worker keepalive now reports coordinator failures through the throwable printer,
 retaining debug-enabled sender stacks. Short native TCP checks cover completion,
 missing binding, disconnected coordinator and status failure. Computing/recently

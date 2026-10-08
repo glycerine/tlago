@@ -18687,3 +18687,34 @@ short race checks pass in 0.026/1.069 seconds (81965/41087 terminal status 0).
 All handles are retired. No full suite or long model/race workload was run.
 These native checks add no original-method completion credit. Broader failure,
 recovery and payload parity work remains pending; the goal is incomplete.
+
+## October 8, 2026: in-flight native fingerprint block connection loss
+
+Compared FPSetManager.putBlock/containsBlock and both concurrent callable
+reassignment paths with the native manager. The port retains source retry to
+a surviving registration and result partition indices; no production fix was
+needed. Existing native loss checks closed the endpoint before a call. Added
+TestFingerprintRPCInflightBlockFailover with four short rows: put/contains using
+sequential/concurrent manager execution against two real native TCP stores.
+
+Hold an accepted primary storage handler before the storage operation, close its
+host's transport, and require manager completion from the survivor before the
+original handler is released. Assert each original partition's exact bit answers,
+shared survivor wrapper, one failover warning, alive-server count and store
+effects. Contains cannot copy/insert lost fingerprints; Put must insert all four
+fingerprints into the survivor while the original primary remains empty. Then
+release/join the old handler; its legitimate local storage work completes even
+though its response socket was closed. This is connection-loss coverage, not
+process kill, durable replication, rollback or ambiguous insertion deduplication.
+The transport still never retries; original manager semantics are unchanged.
+
+No enabled upstream direct test covers this native boundary. These checks add
+no original-method completion credit. Manager jobs and accepted handlers are
+owned and joined in cleanup; executor, host/client and ToolIO state are cleaned
+up as well. Original Java failover-block and concurrent-order translations plus
+new cases pass in 0.038 seconds (79600 terminal status 0). After adding explicit
+manager-job joining, final exact normal/race checks pass in 0.025/1.058 seconds
+(70323/72221 terminal status 0). All handles are retired. Race selection contains
+only the four short cases. No full suite or long model/race workload was run.
+Docs and inventory are current. Fingerprint-process failure/recovery and broader
+distributed parity remain pending; the goal is incomplete.

@@ -703,6 +703,14 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Four short native in-flight FP block checks now cover sequential/concurrent
+put and contains reassignment after TCP host closure. They require original
+partition ordering, survivor wrapper sharing, one warning and the exact backing
+store effects. Transport closure does not cancel the old owned storage handler;
+all test jobs/handlers are joined. No enabled direct Java test covers this native
+boundary, so these cases add no original-method completion credit. Process crash
+and recovery models remain pending.
+
 Native worker keepalive checks now cover finished, unbound, disconnected and
 status-failure coordinators, with debug stacks enabled/disabled. They retain
 activity suppression, idle shutdown, completion latch, cancelled timer and
