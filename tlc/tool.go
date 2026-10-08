@@ -551,7 +551,7 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", fp)
+			return nil, NewEvalException(ECTLCFailedToRecoverNext)
 		case *TLCStateMut:
 			info, err := t.GetStateAfter(fp, predecessor)
 			if err == nil && info != nil {
@@ -560,7 +560,7 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", fp)
+			return nil, nil
 		}
 	}
 	info, err := t.GetInitState(fp)
@@ -570,7 +570,7 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return nil, newTLCError(ECTLCFailedToRecoverInit, "initial state fingerprint %d could not be regenerated", fp)
+	return nil, nil
 }
 
 func (t *Tool) GetInitState(fp uint64) (*TLCStateInfo, error) {

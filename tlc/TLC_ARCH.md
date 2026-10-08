@@ -11904,5 +11904,11 @@ diagnostics, optionally the standalone unrecovered state (branches `4` and `5`),
 and terminate the native process with `os.Exit(1)`. This bypasses error catches
 and deferred cleanup as the source requires. Child-process checks exercise the
 actual exit without a production test hook. Fingerprint-sequence recovery branch
-`2`, initial-transition nil handling and successful reconstruction metadata remain
-separate parity work. No RMI or JVM machinery is introduced.
+`2` also exits after source diagnostics, formatting the fingerprint as a signed
+64-bit value. It uses the predecessor-state lookup, restores randomness only
+after normal completion and preserves returned info metadata. Fingerprint-only
+and predecessor-state lookups return nil for no match; predecessor-info lookup
+returns EvalException with FAILED_TO_RECOVER_NEXT. A sole missing initial result
+remains a nil array element; with more fingerprints, dereferencing it fails before
+another lookup. Initial-transition nil handling and successful printing metadata
+remain separate parity work. No RMI or JVM machinery is introduced.

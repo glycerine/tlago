@@ -20917,3 +20917,41 @@ race run was performed. Supplemental checks add no original-method credit.
 Fingerprint-sequence recovery branch 2, initial-transition nil handling and
 successful reconstruction metadata remain to audit; distributed parity is
 incomplete.
+
+### 2026-10-08: Fingerprint-sequence recovery and lookup overloads
+
+Audited pinned TLCTrace.getTrace(sinfo,fps) and Tool.getState overloads. The
+sequence helper passed predecessor info rather than predecessor state, converted
+missing initial/successor results to invented errors, overwrote returned info
+fingerprints and restored randomness in a defer even on failure. It now follows
+the source lookup/order: retain initial result (including nil), dereference it
+before any successor lookup, use predecessor state, preserve returned info,
+restore the saved generator only on normal completion, and print recovery/bug
+branch 2 diagnostics then exit 1 for a missing successor. Fingerprint diagnostics
+use signed 64-bit formatting, matching the source Long.toString.
+
+Tool.GetState also incorrectly raised errors for fingerprint-only and predecessor-
+state missing matches. Both now return nil without an error. Predecessor-info
+lookup retains the distinct source EvalException/FAILED_TO_RECOVER_NEXT contract.
+Existing evaluation failures still propagate with their original identity.
+
+No original method directly covers these boundaries. Extended child-process
+exit checks to branch 2 and replaced synthetic missing-result callbacks with
+real tool lookups in all branches. Branches 2, 3 and 4 initially failed (bb441c,
+status 1, 0.055 seconds), exposing the production overload gap beneath the earlier
+printing fix. Seven native sequence cases cover empty/success/supplied initial,
+initial/successor errors and one/two-fingerprint missing-initial behavior, plus
+three direct overload cases. Corrected the test RNG setup to use an enumerable
+random instance rather than plain Random; then all sequence cases and missing-
+match checks were red (5d1953, status 1, 0.014 seconds).
+
+After the implementation correction, focused new/related cases pass (4e19be,
+status 0, 1.834 seconds). Final related trace regeneration, disk/nested recovery,
+depth/write failures and original nine smart-proxy checks pass (a0a4d5, status 0,
+1.991 seconds). Original Alias safety and three distributed initializer-continue,
+evaluator-error and TLCSet model contexts pass (51b206, status 0, 2.152 seconds).
+Both actual distributed DieHard fingerprint-storage variants pass unchanged
+original trace/event assertions (7c7754, status 0, 24.375 seconds). All processes
+are terminal. No full suite or race run was performed. Supplemental checks add
+no original-method credit. Initial-transition nil handling and successful
+printing metadata still need audit; distributed parity remains incomplete.

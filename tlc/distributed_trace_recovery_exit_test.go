@@ -26,26 +26,35 @@ func TestDistributedTraceRecoveryExit(t *testing.T) {
 		}()
 		current, successor := checkerTestState(2), checkerTestState(3)
 		current.level, successor.level = 2, 3
-		tool := &Tool{GetStateFunc: func(*Tool, uint64, ...any) (*TLCStateInfo, error) { return nil, nil }}
+		tool := &Tool{}
 		var prefix []*TLCStateInfo
 		switch branch {
+		case "2":
+			tool.InitStates = []*TLCStateMut{current}
 		case "3":
 			successor = nil
 		case "4":
 			successor = nil
 			prefix = []*TLCStateInfo{NewTLCStateInfo(checkerTestState(1))}
 		case "5":
-			tool.GetStateFunc = func(*Tool, uint64, ...any) (*TLCStateInfo, error) { return NewTLCStateInfo(current), nil }
+			tool.InitStates = []*TLCStateMut{current}
 		default:
 			t.Fatal("unknown branch", branch)
 		}
 		trace := NewTLCTrace()
 		trace.Tool = tool
-		trace.printTraceWithPrefix(current, successor, prefix)
+		if branch == "2" {
+			_, err := trace.recoverTraceFromFPs(nil, []uint64{^uint64(0), current.FingerPrint()})
+			if err != nil {
+				fmt.Fprintln(os.Stdout, "TRACE_ERROR", err)
+			}
+		} else {
+			trace.printTraceWithPrefix(current, successor, prefix)
+		}
 		fmt.Fprintln(os.Stdout, "TRACE_RETURNED")
 		return
 	}
-	for _, branch := range []string{"3", "4", "5"} {
+	for _, branch := range []string{"2", "3", "4", "5"} {
 		t.Run(branch, func(t *testing.T) {
 			command := exec.Command(os.Args[0], "-test.run=^TestDistributedTraceRecoveryExit$", "-test.v")
 			command.Env = append(os.Environ(), "TLAGO_TRACE_RECOVERY_EXIT="+branch)
@@ -61,12 +70,19 @@ func TestDistributedTraceRecoveryExit(t *testing.T) {
 					events = append(events, line)
 				}
 			}
-			want := []string{fmt.Sprintf("TRACE_EVENT %d [] 0", ECTLCBehaviorUpToThisPoint)}
-			if branch != "3" {
+			var want []string
+			if branch != "2" {
+				want = append(want, fmt.Sprintf("TRACE_EVENT %d [] 0", ECTLCBehaviorUpToThisPoint))
+			}
+			bug := branch
+			if branch == "2" {
+				bug = "2 -1"
+			}
+			if branch == "4" || branch == "5" {
 				want = append(want, fmt.Sprintf("TRACE_EVENT %d ", ECTLCStatePrint2))
 			}
-			want = append(want, fmt.Sprintf("TRACE_EVENT %d [] 0", ECTLCFailedToRecoverInit), fmt.Sprintf("TRACE_EVENT %d [%q] 0", ECTLCBug, branch))
-			if branch != "3" {
+			want = append(want, fmt.Sprintf("TRACE_EVENT %d [] 0", ECTLCFailedToRecoverInit), fmt.Sprintf("TRACE_EVENT %d [%q] 0", ECTLCBug, bug))
+			if branch == "4" || branch == "5" {
 				want = append(want, fmt.Sprintf("TRACE_EVENT %d ", ECTLCStatePrint1))
 			}
 			if len(events) != len(want) {
@@ -77,7 +93,7 @@ func TestDistributedTraceRecoveryExit(t *testing.T) {
 					t.Fatalf("event %d: got %q, want prefix %q\n%s", i, events[i], want[i], output)
 				}
 			}
-			if branch != "3" && !strings.HasSuffix(events[len(events)-1], " -1") {
+			if (branch == "4" || branch == "5") && !strings.HasSuffix(events[len(events)-1], " -1") {
 				t.Fatalf("missing standalone state: %v", events)
 			}
 			for _, forbidden := range []string{"TRACE_DEFER_RAN", "TRACE_PANIC", "TRACE_RETURNED"} {

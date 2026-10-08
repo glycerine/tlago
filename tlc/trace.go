@@ -594,38 +594,40 @@ func (t *TLCTrace) traceFPsFromDisk(pos int64, included bool) ([]uint64, error) 
 }
 
 func (t *TLCTrace) recoverTraceFromFPs(sinfo *TLCStateInfo, fps []uint64) ([]*TLCStateInfo, error) {
-	if t == nil || t.Tool == nil || len(fps) == 0 {
+	if t == nil || t.Tool == nil {
 		return nil, nil
 	}
 	snapshot := ResetRandomEnumerableValues()
-	defer SetRandomEnumerableGenerator(snapshot)
 	out := make([]*TLCStateInfo, 0, len(fps))
-	if sinfo == nil {
-		fp := fps[len(fps)-1]
-		info, err := t.Tool.GetState(fp)
-		if err != nil {
-			return nil, err
+	if len(fps) > 0 {
+		if sinfo == nil {
+			info, err := t.Tool.GetState(fps[len(fps)-1])
+			if err != nil {
+				return nil, err
+			}
+			sinfo = info
 		}
-		if info == nil {
-			return nil, newTLCError(ECTLCFailedToRecoverInit, "initial state fingerprint %d could not be regenerated", fp)
+		out = append(out, sinfo)
+		for i := len(fps) - 2; i >= 0; i-- {
+			fp := fps[i]
+			if sinfo == nil {
+				panic(NewNullPointerException())
+			}
+			// Source passes the predecessor state, not the info overload that
+			// raises an evaluation error for a missing match.
+			info, err := t.Tool.GetState(fp, sinfo.State)
+			if err != nil {
+				return nil, err
+			}
+			if info == nil {
+				traceRecoveryExit(fmt.Sprintf("2 %d", int64(fp)), nil)
+			}
+			out = append(out, info)
+			sinfo = info
 		}
-		info.FP = &fp
-		sinfo = info
 	}
-	out = append(out, sinfo)
-	for i := len(fps) - 2; i >= 0; i-- {
-		fp := fps[i]
-		info, err := t.Tool.GetState(fp, sinfo)
-		if err != nil {
-			return nil, err
-		}
-		if info == nil {
-			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", fp)
-		}
-		info.FP = &fp
-		out = append(out, info)
-		sinfo = info
-	}
+	// Source restores the snapshot only after normal completion.
+	SetRandomEnumerableGenerator(snapshot)
 	return out, nil
 }
 
