@@ -20532,3 +20532,33 @@ worker retry/loss, failure context, timer failures and assigned-block checkpoint
 checks pass (status 0, 0.043 seconds). All handles are terminal. No full suite,
 long workload or race run was performed. Supplemental checks add no original-
 method completion credit; distributed parity remains incomplete.
+
+### 2026-10-08: Explicit null failures at fingerprint lifecycle access
+
+Compared FPSets beginChkpt/commitChkpt/recover/exit dereferences and manager
+catch boundaries with pinned source. Native nullable registration transfer is
+supported, but lifecycle methods still let nil endpoint accesses become raw
+Go runtime diagnostics. Added a required endpoint accessor and used it at each
+checkpoint/close/local lifecycle call, preserving live per-phase registration
+lookup. Generic null failures retain Go frames, without JVM/RMI machinery.
+Checkpoint null failures stop later phases/registrations, without entering its
+I/O catch or reassigning. Distributed close reports the ordinary failure and
+continues; local close/checkpoint/commit/recover propagate at the access.
+
+No original method directly tests nullable lifecycle endpoints. Added begin,
+commit (registration replaced after begin), recover and close checks preserving
+phase order, no later healthy checkpoint operation, no ToolIO checkpoint warning,
+availability and close continuation. Initial run exposed the raw close diagnostic
+(62929, status 1, 0.017 seconds); its initial checkpoint assertions checked only
+the null trait, which already recognizes raw Go nil-pointer failures. Strengthened
+those assertions to the explicit null exception type/category, and added all four
+local-manager lifecycle methods.
+
+Focused lifecycle, existing I/O/fatal and live-traversal boundaries and all
+original DynamicFPSetManager methods pass (88852, status 0, 0.067 seconds).
+Final strengthened lifecycle checks pass (98971, status 0, 0.021 seconds).
+Short native TCP nullable manager transfer/failover, inflight checkpoint loss,
+assigned-block checkpoint and healthy-partition continuation checks pass
+(status 0, 0.060 seconds). All handles are terminal. No full suite, long workload
+or race run was performed. Supplemental checks add no original-method credit;
+broader distributed parity remains incomplete.

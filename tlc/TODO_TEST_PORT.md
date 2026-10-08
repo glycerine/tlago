@@ -703,6 +703,12 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
+Supplemental fingerprint lifecycle checks preserve explicit null failures at
+begin/commit/recover, including live replacement between phases. Distributed
+close reports and continues; local lifecycle calls propagate the failure.
+Existing original manager and short TCP checkpoint checks pass. No original
+method covers these boundaries, so completion counts are unchanged.
+
 Supplemental coordinator handler checks preserve missing-trace diagnostics,
 required queue shutdown, skipped notification after queue failure and thread
 finally cleanup. Block selection fails for a missing queue. Existing selector,

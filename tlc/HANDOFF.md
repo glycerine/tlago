@@ -246,6 +246,9 @@ Native manager payloads now distinguish empty slots from registrations with nil
 endpoints, retaining shared/distinct wrappers and availability. Gob/TCP receipt
 defers failover until an operation, with worker-local mutations. All communicating
 roles need the current payload build; original-method counts remain unchanged.
+Lifecycle endpoint access also preserves explicit null failures: checkpoint
+stops at the failing phase, while distributed close reports and continues.
+Focused local and short TCP lifecycle checks pass without original-method credit.
 
 Record-backed printable states now retain their record through the native value
 graph, including sharing with caches, ordinary state values and other printable

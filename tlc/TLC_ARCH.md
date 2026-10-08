@@ -8450,6 +8450,11 @@ Peers need the current payload build.
 Traversal fixes the initial registration count but reads slots live. Checkpoint
 runs its first operation before trimming trailing first-wrapper copies; each
 begin, commit and caught-I/O hostname lookup resolves the slot separately.
+Lifecycle calls require the endpoint at each access, preserving explicit null
+failure diagnostics. Checkpoint’s unchecked null failure stops later phases and
+registrations without I/O reporting/reassignment. Distributed close catches that
+ordinary failure, prints its stack and continues; the local manager propagates
+it before later lifecycle calls. Fatal failures keep their existing boundary.
 Shutdown trims before exit and captures the next wrapper before exiting the
 current one. Neither path holds the manager lock during endpoint calls.
 

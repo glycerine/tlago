@@ -17,6 +17,15 @@ type distributedFPSets struct {
 	available bool
 }
 
+// Lifecycle operations fail at endpoint access; selection may still skip an
+// empty registration slot, and checkpoint/close retain their distinct catches.
+func (entry *distributedFPSets) endpoint() DistributedFingerprintEndpoint {
+	if entry == nil || entry.set == nil {
+		panic(NewNullPointerException())
+	}
+	return entry.set
+}
+
 type DistributedFPSetManager struct {
 	mu                 sync.RWMutex
 	fpSets             []*distributedFPSets
@@ -619,7 +628,7 @@ func (m *DistributedFPSetManager) lastRegistration(length, first int, current *d
 
 func exitFingerprintRegistration(entry *distributedFPSets, cleanup bool) {
 	_, failure := invokeFingerprintEndpoint(func() (struct{}, error) {
-		return struct{}{}, entry.set.Exit(cleanup)
+		return struct{}{}, entry.endpoint().Exit(cleanup)
 	})
 	if failure != nil {
 		if _, ignored := failure.(*UnmarshalException); !ignored {
@@ -630,10 +639,10 @@ func exitFingerprintRegistration(entry *distributedFPSets, cleanup bool) {
 
 func (m *DistributedFPSetManager) Close(cleanup bool) error {
 	if m.NonDistributed {
-		if err := m.entry(0).set.Close(); err != nil {
+		if err := m.entry(0).endpoint().Close(); err != nil {
 			return err
 		}
-		return m.entry(0).set.Exit(cleanup)
+		return m.entry(0).endpoint().Exit(cleanup)
 	}
 	length := m.NumOfServers()
 	first, current := m.firstRegistration(length)
@@ -655,21 +664,21 @@ func (m *DistributedFPSetManager) Close(cleanup bool) error {
 
 func (m *DistributedFPSetManager) Checkpoint(filename string) error {
 	if m.NonDistributed {
-		return m.entry(0).set.BeginChkpt()
+		return m.entry(0).endpoint().BeginChkpt()
 	}
 	return m.checkpointInner(filename, true)
 }
 
 func (m *DistributedFPSetManager) CommitCheckpoint() error {
 	if m.NonDistributed {
-		return m.entry(0).set.CommitChkpt()
+		return m.entry(0).endpoint().CommitChkpt()
 	}
 	return nil
 }
 
 func (m *DistributedFPSetManager) Recover(filename string) error {
 	if m.NonDistributed {
-		return m.entry(0).set.RecoverTrace(m.Trace)
+		return m.entry(0).endpoint().RecoverTrace(m.Trace)
 	}
 	return m.checkpointInner(filename, false)
 }
@@ -702,12 +711,12 @@ func (m *DistributedFPSetManager) checkpointRegistration(index int, filename str
 	// Source checkpoint work is synchronous; no extra goroutine is needed.
 	_, err := invokeFingerprintEndpoint(func() (struct{}, error) {
 		if checkpoint {
-			if err := m.entry(index).set.BeginChkptFile(filename); err != nil {
+			if err := m.entry(index).endpoint().BeginChkptFile(filename); err != nil {
 				return struct{}{}, err
 			}
-			return struct{}{}, m.entry(index).set.CommitChkptFile(filename)
+			return struct{}{}, m.entry(index).endpoint().CommitChkptFile(filename)
 		}
-		return struct{}{}, m.entry(index).set.RecoverFile(filename)
+		return struct{}{}, m.entry(index).endpoint().RecoverFile(filename)
 	})
 	if err != nil {
 		if !isJavaIOException(err) {
