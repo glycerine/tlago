@@ -28045,3 +28045,53 @@ runtime-declaration-metadata-broad-originals.log, terminal a11725, status 0,
 175.272 seconds. Original assertions and workload bounds are unchanged.
 The full off-heap random log now exceeds 331 million iterations and its same
 session remains live. Git diff --check passes.
+
+
+Canonical source module inheritance metadata (2026-10-09)
+
+Previous goal turn made authoritative progress in f9904f4. Revalidated the clean
+worktree and confirmed the same full off-heap random session 77502 remains live.
+Inspected pinned Java ModuleNode.createExtendeeArray, getExtendedModuleSet and
+extendsModule plus all runtime callers. The Go bridge had reconstructed extendees
+from AST loader dependencies, including implicit trace helpers. Source generation
+already excludes those helpers. Runtime module views now adapt the actual source
+extendee array in identity and order, after all module shells are installed.
+AST-only module views use sourceModuleExtends. Helpers continue to load and remain
+in the external module table; their runtime services are preserved.
+
+Focused original proof models, Debug02, EWD998Chan and scoped-identifier checks
+pass: runtime-source-extendees-originals.log, terminal 450a62, status 0,
+6.136 seconds. All original TraceExpressionSpec safety BFS/simulation, runtime,
+deadlock and lasso methods pass: runtime-source-extendees-trace-originals.log,
+terminal 02446c, status 0, 4.001 seconds.
+
+Ignored before/after observations on unchanged original Test219 compare actual
+source module identities and order for all 12 arrays, direct and recursive set
+membership for all 12 modules, and ExtendsModule against every represented
+candidate. Before the fix, the runtime root had four direct and five transitive
+extendees instead of two and three. After conversion all 36 array/set comparisons
+match, including candidate membership checks. Receipts:
+runtime-source-extendees-before.log, terminal c5370d, and
+runtime-source-extendees-after.log, terminal c5d2b0; both status 0. Original
+assertions are unchanged; no persistent tests or original-method credit added.
+
+General source generation, cross-representation mutation sharing and remaining
+native INSTANCE fallback lowering stay pending. Updated architecture and current
+handoff. No full-workspace or XML/ApalacheIR sweep, race instrumentation or email
+work. The original long off-heap random workload retains its bounds and assertions;
+completion and method credit remain pending.
+
+An ignored expression-conversion observation on unchanged original Test207,
+Test208, Test209 and Test219 records nine AST fallback calls: three for Test207's
+ASSUME/PROVE theorem and six for Test219a's Thm/Thm2 declarations. These include
+synthetic theorem-expression views, so the observation alone does not prove a
+source generation defect. Next audit should reconcile theorem lookup conversion
+with the already retained canonical ThmOrAssumpDef and proof bodies before
+removing a fallback. Receipt: runtime-source-expression-fallback-observation.log,
+terminal 240525, status 0, 1.670 seconds. No production change to theorem lowering.
+
+Final broader original legacy/debugger/EWD998/coverage/LET/cyclic selection passes:
+runtime-source-extendees-broad-originals.log, terminal 129a71, status 0.
+Receipt: ok  	github.com/glycerine/tlago	176.596s
+The same full off-heap random session remains live; no completion credit.
+Git diff --check passes.

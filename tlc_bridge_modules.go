@@ -182,8 +182,17 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 			continue
 		}
 		node := nodes[mod]
-		for _, ext := range mod.Extends {
-			node.Extendees = append(node.Extendees, nodes[b.spec.Modules[ext]])
+		if mod.semanticNode != nil {
+			// Runtime helper dependencies are not source EXTENDS entries. Adapt
+			// the actual source module array, preserving identity and order.
+			node.Extendees = make([]*tlc.ModuleNode, len(mod.semanticNode.extendees))
+			for i, extendee := range mod.semanticNode.extendees {
+				node.Extendees[i] = b.canonicalModuleOwner(extendee)
+			}
+		} else {
+			for _, ext := range sourceModuleExtends(mod) {
+				node.Extendees = append(node.Extendees, nodes[b.spec.Modules[ext]])
+			}
 		}
 		for _, entry := range tlcBridgeContextEntries(b.spec, mod, map[*Module]bool{}) {
 			if entry.initial {

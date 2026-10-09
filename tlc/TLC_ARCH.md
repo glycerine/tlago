@@ -10996,6 +10996,17 @@ analysis, selector lookup and native Context reconstruction. Explicit `EXTENDS`
 entries remain visible. This corrects the hidden trace-helper declarations that
 original debugger tests exposed when canonical Context state became authoritative.
 
+Runtime module extendees now adapt the actual source ModuleNode array by source
+identity and order. Implicit runtime trace helpers remain loaded dependencies
+without becoming source inheritance edges. AST-only module views use the same
+source-import filter. On unchanged original Test219, all 12 extendee arrays and
+24 direct/recursive extended-module sets match canonical source membership,
+including ExtendsModule results for every represented module. The root has two
+direct extendees (TLC and Integers) and three transitive extendees (also Naturals).
+Previously its runtime array had four direct entries and its transitive set five.
+The observation establishes this represented inheritance metadata contract; it
+does not establish general source generation or mutation sharing.
+
 The unchanged Test219 whole-module observation now matches all 12 modules,
 including 9,200 root entry/exit events. All 60 observed getter arrays also match
 in source identity and order: Context and Module operator definitions, theorem

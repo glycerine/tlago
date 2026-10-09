@@ -66,8 +66,10 @@ Runtime helper dependencies stay outside user source imports. All 12 observed
 Test219 whole-module traces and 60 getter arrays match. General source-generation
 completeness, mutation sharing and remaining native INSTANCE fallback lowering
 remain pending; see `TLC_ARCH.md`.
-Next metadata gap: runtime root `Extendees` still includes implicit trace helpers
-that the canonical source extendees excludes; reconcile their source membership.
+Runtime module extendees now preserve the actual source module identities and
+order, excluding implicit trace helpers from inheritance membership.
+Next audit: reconcile theorem lookup AST conversion with canonical theorem
+definitions before removing the remaining synthetic-expression fallback.
 
 ## Verification baseline and test credit
 
