@@ -125,7 +125,7 @@ func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNod
 			}
 		}
 		if source.semKind() == sanyBuiltInKind {
-			node := b.builtinDefinition(source.semName())
+			node := b.canonicalBuiltinDefinition(source)
 			remember(node)
 			return node
 		}
@@ -406,4 +406,25 @@ func (b *tlcBridge) bindCanonicalGraphModules() {
 			node.(*tlc.InstanceNode).Module = b.canonicalModuleOwner(source.module)
 		}
 	}
+}
+
+// Builtins are actual SANY OpDefNodes, including their phony formal parameters.
+// Cache by source identity: a later frontend reInit creates different symbols
+// with the same names while existing running tools retain the earlier context.
+func (b *tlcBridge) canonicalBuiltinDefinition(source *sanySemOpDefNode) *tlc.OpDefNode {
+	if node := b.canonicalDefinitions[source]; node != nil {
+		return node
+	}
+	symbol := tlc.NewSymbolNode(source.semName())
+	node := tlc.NewOpDefNodeForSymbolWithBase(symbol, nil, nil, source.SemanticNodeBase)
+	symbol.Kind, symbol.Arity = tlc.SymbolBuiltIn, source.semArity()
+	if b.canonicalDefinitions == nil {
+		b.canonicalDefinitions = map[*sanySemOpDefNode]*tlc.OpDefNode{}
+	}
+	if b.canonicalGraphs == nil {
+		b.canonicalGraphs = map[sanySemanticGraphNode]tlc.SemanticNode{}
+	}
+	b.canonicalDefinitions[source], b.canonicalGraphs[source] = node, node
+	node.Params = b.canonicalParameters(source.formalNodes)
+	return node
 }

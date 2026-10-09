@@ -10928,9 +10928,18 @@ statements for constant processing and checking, and graph/syntax traversal
 supplements the canonical vector where necessary. Exact source interleaving for
 any remaining fallback statements is still a completion requirement.
 
+Builtin runtime definitions now borrow the actual SANY OpDef base, including
+its UID, level and tool slots. Their parameters are adapters of the actual
+source formal nodes; fixed-arity empty arrays and variadic nil arrays retain
+their source distinction. The cache uses source pointers, so frontend reInit
+can create distinct same-named symbols without replacing a running tool's
+earlier views. Name-based lookup uses the spec's retained initial context;
+canonical graph conversion uses its exact source node. Source-less native
+construction retains the existing fallback.
+
 This is not full runtime graph parity. Complete Context/Subst explorer callbacks,
-mutation/null-boundary behavior, builtin formal/base adaptation and the remaining
-native INSTANCE lowering still need reconciliation with canonical source nodes.
+mutation/null-boundary behavior and the remaining native INSTANCE lowering still
+need reconciliation with canonical source nodes.
 The listed original test receipts establish retained behavior and loading of the
 represented proof graphs; they do not prove every visitor contract or complete
 source generation. Preserve source identities when extending these adapters.

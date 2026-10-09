@@ -27722,3 +27722,41 @@ new tests, race instrumentation or email work. Final broader original legacy/deb
 passes: instance-qualified-prefix-final-originals.log, terminal f4909f,
 status 0, 207.534 seconds. Original assertions and bounds remain unchanged.
 Git diff --check passes.
+
+## 2026-10-09: Retain canonical builtin bases and formal parameters
+
+Previous goal turn made authoritative progress in 4ad6579. Continued the runtime
+semantic adapter work with actual SANY builtin definitions. The old bridge
+allocated unrelated identities and omitted the builtin phony formal parameters.
+Name lookup now uses the spec's retained initial context, while canonical graph
+conversion adapts its exact source OpDef. A source-pointer cache publishes the
+adapter before formal conversion and retains earlier frontend generations after
+reInit. Runtime definitions share the actual semantic base, UID, level and tool
+slots; formal adapters share the source formals. Fixed-arity empty parameter
+arrays and variadic nil arrays retain their distinction. The source-less native
+fallback remains. No builtin Symbol.Data binding is introduced.
+
+Focused unchanged original selector, debugger, LET, cyclic-redefinition,
+ASSUME and builtin-initialization checks pass: canonical-builtin-first-originals.log,
+terminal b5a183, status 0, 6.637 seconds. Original SANY initialization, selector,
+incremental-semantic and operator checks pass: canonical-builtin-sany-originals.log,
+terminal bdb591, status 0, 0.054 seconds. All 18 original scoped-identifier rows
+pass: canonical-builtin-original-scopes.log, terminal 9a6305, status 0, 0.045
+seconds. Broader original legacy/debugger/EWD998/coverage/LET/cyclic selection
+passes: canonical-builtin-final-originals.log, terminal 4c87bc, status 0,
+205.828 seconds. Original assertions and workload bounds remain unchanged.
+
+A temporary Go overlay on unchanged original Test219 observes 71 builtin views,
+all sharing their source base and formal nodes; 17 retain variadic nil arrays.
+The source table has 72 entries: name lookup normalizes the separate neg synonym
+to lnot, explaining the 71 observed views. This is an observation of existing
+execution, not a new test or proof of every visitor contract. Receipt:
+canonical-builtin-observation.log, terminal c46622, status 0, 0.968 seconds.
+All logs and overlay files remain under .codex-gotmp.
+
+The same full off-heap random session 77502 remains live, beyond 209 million
+of its original 2,147,483,648 iterations. No restart or completion credit.
+Updated the current handoff and architecture; original-method inventory counts
+remain unchanged. No invented tests, full-workspace or XML/ApalacheIR sweep,
+race instrumentation or email work. Remaining visitor/null/mutation and INSTANCE
+lowering work stays explicit. Git diff --check passes.

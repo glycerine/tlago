@@ -52,8 +52,10 @@ Separate assumption/theorem vectors preserve constant processing. Qualified
 INSTANCE lookup now accumulates unresolved prefixes as Java does; original
 model 219's formerly missing assumption graphs on lines 42 and 57 now generate.
 AST fallback retention remains until complete generation is established across
-source forms. Complete visitor callbacks, mutation/null boundaries, builtin
-adapters and native INSTANCE lowering remain pending; see `TLC_ARCH.md`.
+source forms. Builtin adapters now share their actual SANY bases and formal
+parameters, preserving source identity across frontend reinitialization.
+Complete visitor callbacks, mutation/null boundaries and native INSTANCE
+lowering remain pending; see `TLC_ARCH.md`.
 
 ## Verification baseline and test credit
 

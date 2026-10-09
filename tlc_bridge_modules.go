@@ -27,6 +27,13 @@ func (b *tlcBridge) builtinDefinition(name string) *tlc.OpDefNode {
 		b.builtinDefinitions = map[string]*tlc.OpDefNode{}
 	}
 	name = tlcSymbolName(name)
+	if b.spec != nil && b.spec.initialContext != nil {
+		if source, ok := b.spec.initialContext.getSymbol(name).(*sanySemOpDefNode); ok && source.semKind() == sanyBuiltInKind {
+			def := b.canonicalBuiltinDefinition(source)
+			b.builtinDefinitions[name] = def
+			return def
+		}
+	}
 	if def := b.builtinDefinitions[name]; def != nil {
 		return def
 	}
