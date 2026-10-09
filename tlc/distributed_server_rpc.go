@@ -15,9 +15,11 @@ import (
 // Adding after shutdown closes the connection immediately, including a dial
 // that overlapped shutdown. No RPC or dial is performed while holding this lock.
 type distributedConnections struct {
-	mu      sync.Mutex
-	closed  bool
-	clients []io.Closer
+	mu        sync.Mutex
+	closed    bool
+	clients   []io.Closer
+	closeOnce sync.Once
+	closeErr  error
 }
 
 type distributedConnectionCloser func() error
@@ -26,31 +28,35 @@ func (close distributedConnectionCloser) Close() error { return close() }
 
 func (c *distributedConnections) add(client io.Closer) error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.closed {
-		_ = client.Close()
+		c.mu.Unlock()
+		if err := client.Close(); !distributedCloseIsBenign(err) {
+			return errors.Join(net.ErrClosed, err)
+		}
 		return net.ErrClosed
 	}
 	c.clients = append(c.clients, client)
+	c.mu.Unlock()
 	return nil
 }
 func (c *distributedConnections) close() error {
-	c.mu.Lock()
-	if c.closed {
+	// Views of a discovered endpoint share this owner. Join its release even
+	// after admission closes, retaining the result for the process owner too.
+	c.closeOnce.Do(func() {
+		c.mu.Lock()
+		c.closed = true
+		clients := c.clients
+		c.clients = nil
 		c.mu.Unlock()
-		return nil
-	}
-	c.closed = true
-	clients := c.clients
-	c.clients = nil
-	c.mu.Unlock()
-	var failures []error
-	for _, client := range clients {
-		if err := client.Close(); !distributedCloseIsBenign(err) {
-			failures = append(failures, err)
+		var failures []error
+		for _, client := range clients {
+			if err := client.Close(); !distributedCloseIsBenign(err) {
+				failures = append(failures, err)
+			}
 		}
-	}
-	return errors.Join(failures...)
+		c.closeErr = errors.Join(failures...)
+	})
+	return c.closeErr
 }
 
 // An already-closed component is harmless only when it is the entire failure.

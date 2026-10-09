@@ -14287,3 +14287,28 @@ cleanup, including a real failure joined with net.ErrClosed. Existing owner
 checks retain mixed causes and suppress closed-only results. The full unchanged
 DieHard distributed diagnostic exercises successful coordinator/worker CLI
 teardown and retains every source assertion. No original-method credit is added.
+
+
+### Shared callback cleanup joins and retains its result
+
+`distributedConnections` is shared by coordinator endpoint views and owns their
+fingerprint callbacks; hosts also use it for outbound references. Its old
+closed flag prevented duplicate release but let concurrent callers return
+before cleanup finished, and later callers lost the first release failure.
+Thus direct endpoint CloseConnection could consume a failure before process
+discovery shutdown and CLI reporting observed it. The owner now uses one
+sync.Once release, with its result retained for every close caller. Admission
+is closed and the client list detached under the mutex; client cleanup runs
+outside that mutex. Rejected late callbacks are also closed outside the mutex
+and return real release failure joined with the closed-owner cause. Entirely
+benign closed results retain the existing classification.
+
+New native checks cover gated concurrent release, sticky original causes and
+one raw release, closed-only/mixed rejected callbacks, and direct endpoint
+close followed by discovery-owner close. Existing raw-client shutdown discovery
+coverage remains separate and intact. Mixed-cleanup tests now require the
+original failure on repeated owner close, strengthening their prior once-only
+release assertion. No Java test covers native Go callback resource ownership.
+RPC method/retry behavior, storage lifetime and original inventory (37/41) are
+unchanged. Normal RPC lifecycle checks and isolated short owner race checks
+verify this chunk; no long model or full-suite rerun.

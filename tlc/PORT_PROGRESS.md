@@ -26416,3 +26416,38 @@ distributed-cli-close-owner-controls.log, terminal 02bb2a, status 0,
 distributed-cli-close-diehard-diagnostic.log, terminal af81ce, status 0.
 No full-suite rerun or race instrumentation. All handles terminal and
 git diff --check passes. Distributed original-method credit stays 37/41.
+
+
+### October 9, 2026: shared callback owner joins and retains release results
+
+Found another concrete native ownership gap: distributedConnections set closed
+before releasing callbacks, allowing concurrent close to return early and
+later close to erase the original failure. A direct coordinator endpoint close
+could consume a callback failure before its discovery/process owner reached
+CLI shutdown. Late rejected callbacks also discarded real Close errors.
+
+Callback cleanup now executes through sync.Once, joins concurrent callers,
+closes raw clients once and retains the original result. Closed admission and
+list detachment remain under the mutex, with releases outside it. Late rejected
+callbacks close outside the mutex and return non-benign release errors joined
+with the closed-owner cause. Existing benign-close classification remains.
+New native checks cover gated concurrent close, late closed-only/mixed release,
+and direct endpoint close followed by discovery close. Existing raw-client
+shutdown discovery control is preserved separately; repeated mixed-cleanup
+assertions now additionally require the retained original failure. No direct
+Java test exists for native callback ownership; original credit stays 37/41.
+
+Red: distributed-callback-close-join-red.log, terminal c9068e, status 1,
+0.014 seconds; concurrent close returned early, repeated cleanup lost errors,
+late mixed cleanup lost its cause and discovery lost an earlier callback error.
+Initial green: distributed-callback-close-join-green.log, terminal ab5ca5,
+status 0, 0.267 seconds. Final green including both separate discovery cases:
+distributed-callback-close-join-final.log, terminal a18bf7, status 0,
+0.268 seconds. Normal coordinator settings/files/interning, manager
+snapshot/registration, concurrent snapshot/interning, worker lifecycle and
+fingerprint scalar/batch/checkpoint/lifecycle checks pass:
+distributed-callback-close-join-rpc-focused.log, terminal b59e37, status 0,
+0.040 seconds. Isolated short callback/mixed/closed-only owner checks pass
+with race instrumentation: distributed-callback-close-join-race.log, terminal
+9fc8f4, status 0, 1.084 seconds. No long workload or full-suite run. All handles
+terminal; git diff --check passes.

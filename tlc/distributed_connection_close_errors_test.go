@@ -31,8 +31,8 @@ func TestDistributedConnectionCloseRetainsMixedFailures(t *testing.T) {
 			if err := connections.close(); !errors.Is(err, failure) || closed != 2 {
 				t.Fatalf("cleanup lost failure or skipped later owner: %v, closed %d", err, closed)
 			}
-			if err := connections.close(); err != nil || closed != 2 {
-				t.Fatal("repeated owner cleanup repeated connection closes")
+			if err := connections.close(); !errors.Is(err, failure) || closed != 2 {
+				t.Fatal("repeated owner cleanup lost its original failure or repeated connection closes")
 			}
 		})
 	}
