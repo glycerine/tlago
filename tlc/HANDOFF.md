@@ -472,8 +472,10 @@ also reopen in fresh stores. This covers transport loss, not host death.
    completed checks. Missing-component behavior alone cannot prove full parity.
    Built-in selector arithmetic, startup capture, queue bounds, statistics and
    smart-proxy timing have a current source audit and focused green receipt.
-   Java's custom factory class-loading option has no native mapping yet; do not
-   mistake this built-in audit for support of custom factories or add a JVM loader.
+   Custom factory selection now uses linked Go constructors registered through
+   `RegisterBlockSelectorFactory`, with the original startup property. The
+   coordinator and threads retain the returned `BlockSelection` policy. Keep
+   source fallback/panic boundaries; do not add a JVM loader.
 5. Reconcile opaque custom data and evaluator metadata against actual source
    transferability. Preserve explicit rejection until a faithful native contract
    is established. No Java object serialization or reflection runtime is wanted.

@@ -24777,3 +24777,46 @@ modes. Do not claim this audit covers custom factories or implement a JVM loader
 Keep this concrete limitation visible for subsequent port work. No full suite,
 long model or race workload ran. Distributed inventory remains 37 complete and
 four Missing; no original-method credit changed. All handles are terminal.
+
+### October 9, 2026: native custom selector factory mapping
+
+Implemented the factory-name property gap identified by the preceding audit.
+RegisterBlockSelectorFactory binds exact names to linked Go constructors.
+The original property is captured with built-in flags at first factory use;
+each selector creation invokes a new constructor, then its selection callback.
+Unknown names and returned constructor errors report native stderr diagnostics
+and fall back; nil factories also fall back. Constructor/selection panics keep
+their identity, and nil selections remain nil. Source base-factory selection
+retains built-in behavior. No class loader, Java runtime or rpc25519 introduced.
+
+The coordinator/thread selection field now uses the three-method BlockSelection
+interface, retaining concrete built-ins while allowing complete native policies.
+Custom policy selection, transfer limits and average statistics dispatch through
+this boundary. Registry callbacks run outside its lock. Architecture notes
+include a linked Go registration example and the original -D property spelling.
+
+Initial interface conversion exposed an existing missing-selector expectation:
+nil interface dispatch produced a Go runtime panic instead of the source null
+failure (native-selector-factory-builtins.log, terminal d65eec, status 1).
+Added explicit source-access guards before block selection and after requeue,
+before the retry limit setter. Existing ownership/finally/retry assertions remain
+unchanged. Built-in factory tests now assert the concrete type before retaining
+their existing mode/static-size assertions; no original smart-proxy test changed.
+
+Nine isolated native factory cases cover custom priority, startup capture,
+construction frequency, unknown/empty/base names, constructor errors, nil
+factory/selection and constructor/selection panics. Custom policy checks retain
+server/thread identity, dispatch queue arguments and statistics, and perform a
+real recoverable smaller-batch retry through computeBlock. Final focused factory,
+built-in, startup, statistics, ownership/finalizer and original smart-proxy checks
+pass (native-selector-factory-final.log, terminal a2d6a2, status 0, 0.275 seconds).
+An earlier fixed selection also passed (native-selector-factory-green.log,
+terminal 9a5f46, status 0, 0.199 seconds).
+
+The unchanged N=7 two-worker model passes normally
+(native-selector-factory-model.log, terminal 0f486b, status 0,
+38.132 seconds): both workers do real work,
+114,942 distinct states, an empty queue and normal role exits. No full suite or
+race workload ran. No upstream selector-factory test exists; native checks earn
+no original-method credit. Inventory remains 37 complete and four Missing.
+All handles are terminal.

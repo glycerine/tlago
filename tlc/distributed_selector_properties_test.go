@@ -66,7 +66,7 @@ func checkDistributedSelectorStartupCapture(t *testing.T, scenario string) {
 		if failure, ok := err.(*TLCError); !ok || !failure.Runtime || failure.Error() != "TLC found a null TLCServer" {
 			t.Fatalf("missing server factory failure: %T/%v", err, err)
 		}
-	} else if got := NewBlockSelectorFromProperties(server); got.Mode != want || (want == BlockSelectorStatic && (got.StaticBlockSize != 17 || got.GetAverageBlockCnt() != 17)) {
+	} else if got := NewBlockSelectorFromProperties(server).(*BlockSelector); got.Mode != want || (want == BlockSelectorStatic && (got.StaticBlockSize != 17 || got.GetAverageBlockCnt() != 17)) {
 		t.Fatalf("initial selector = mode %v, size %d, average %d", got.Mode, got.StaticBlockSize, got.GetAverageBlockCnt())
 	}
 	if scenario == "deferred-static" {
@@ -87,7 +87,7 @@ func checkDistributedSelectorStartupCapture(t *testing.T, scenario string) {
 		set(distributedSelectorStaticProperty, "false")
 	}
 	set(distributedStaticBlockSizeProperty, "33")
-	got := NewBlockSelectorFromProperties(server)
+	got := NewBlockSelectorFromProperties(server).(*BlockSelector)
 	if got.Mode != want || (want == BlockSelectorStatic && (got.StaticBlockSize != 17 || got.GetAverageBlockCnt() != 17)) {
 		t.Fatalf("later selector changed captured settings: mode %v (want %v), size %d, average %d", got.Mode, want, got.StaticBlockSize, got.GetAverageBlockCnt())
 	}

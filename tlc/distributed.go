@@ -114,7 +114,7 @@ type TLCServer struct {
 	threadsMu                   sync.Mutex
 	threadsToWorkers            *InsMap[*TLCServerThread, DistributedWorkerEndpoint]
 	executor                    DistributedExecutor
-	BlockSelector               *BlockSelector
+	BlockSelector               BlockSelection
 	FinalNumberOfDistinctStates int64
 }
 
@@ -831,7 +831,7 @@ type TLCServerThread struct {
 	ReceivedStates    int
 	SentStates        int
 	CacheRateHitRatio float64
-	Selector          *BlockSelector
+	Selector          BlockSelection
 	states            atomic.Pointer[distributedStateBlock]
 	TimerTask         *TLCTimerTask
 	Worker            *DistributedWorkerSmartProxy
@@ -844,7 +844,7 @@ type TLCServerThread struct {
 	runDone           chan struct{}
 }
 
-func NewTLCServerThread(worker DistributedWorkerEndpoint, uri string, server *TLCServer, selector *BlockSelector) *TLCServerThread {
+func NewTLCServerThread(worker DistributedWorkerEndpoint, uri string, server *TLCServer, selector BlockSelection) *TLCServerThread {
 	thread := &TLCServerThread{
 		ID:                int(tlcServerThreadCount.Add(1) - 1),
 		CacheRateHitRatio: -1,
@@ -954,6 +954,9 @@ func (t *TLCServerThread) Run() {
 		}
 	}()
 	for {
+		if t.Selector == nil {
+			panic(NewNullPointerException())
+		}
 		t.setStates(t.Selector.GetBlocks(stateQueue, t.Worker))
 		if t.currentStates() == nil {
 			t.Server.monitor.Lock()
@@ -1034,6 +1037,9 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 				panic(NewNullPointerException())
 			}
 			stateQueue.SEnqueueAll(t.currentStates())
+			if t.Selector == nil {
+				panic(NewNullPointerException())
+			}
 			t.Selector.SetMaxTXSize(len(t.currentStates()) / 2)
 			return nil, true
 		}
@@ -1325,13 +1331,15 @@ type BlockSelector struct {
 	maximumMu            sync.RWMutex
 }
 
-func NewBlockSelector(server *TLCServer) *BlockSelector {
+func NewBlockSelector(server *TLCServer) BlockSelection {
 	return NewBlockSelectorFromProperties(server)
 }
 
 var distributedSelectorStartup struct {
 	sync.Once
-	mode BlockSelectorMode
+	mode           BlockSelectorMode
+	factoryName    string
+	factoryPresent bool
 }
 
 var distributedStaticSelectorStartup struct {
@@ -1339,8 +1347,9 @@ var distributedStaticSelectorStartup struct {
 	size int
 }
 
-func NewBlockSelectorFromProperties(server *TLCServer) *BlockSelector {
+func NewBlockSelectorFromProperties(server *TLCServer) BlockSelection {
 	distributedSelectorStartup.Do(func() {
+		distributedSelectorStartup.factoryName, distributedSelectorStartup.factoryPresent = tlcLookupSystemProperty(distributedSelectorFactoryProperty)
 		switch {
 		case distributedBooleanProperty(distributedSelectorStaticProperty):
 			distributedSelectorStartup.mode = BlockSelectorStatic
@@ -1352,6 +1361,11 @@ func NewBlockSelectorFromProperties(server *TLCServer) *BlockSelector {
 			distributedSelectorStartup.mode = BlockSelectorStatistical
 		}
 	})
+	if distributedSelectorStartup.factoryPresent {
+		if factory := loadBlockSelectorFactory(distributedSelectorStartup.factoryName); factory != nil {
+			return factory(server)
+		}
+	}
 	switch distributedSelectorStartup.mode {
 	case BlockSelectorStatic:
 		return NewStaticBlockSelector(server)

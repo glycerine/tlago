@@ -9,7 +9,8 @@ import (
 // constructor, arithmetic and limit contracts at the native Go boundary.
 func TestDistributedBlockSelectorRequiresServer(t *testing.T) {
 	for _, constructor := range []func(*TLCServer) *BlockSelector{
-		NewBlockSelector, NewProportionalBlockSelector, NewStatisticalBlockSelector,
+		func(s *TLCServer) *BlockSelector { return NewBlockSelector(s).(*BlockSelector) },
+		NewProportionalBlockSelector, NewStatisticalBlockSelector,
 		func(s *TLCServer) *BlockSelector { return NewLimitingBlockSelector(s) },
 		func(s *TLCServer) *BlockSelector { return NewStaticBlockSelector(s) },
 	} {

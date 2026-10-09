@@ -1778,6 +1778,14 @@ exact membership prefixes, one close and healthy continuation. Existing original
 buffered-input/manager tests and local/TCP partial/duplicate/close/startup checks
 remain unchanged. No original-method credit is added.
 
+Custom selector factories now have a linked Go registration boundary using the
+original factory-name property. Nine isolated native cases preserve startup
+capture, fresh construction, custom precedence, fallback/error/panic/nil
+boundaries and coordinator/thread selection/statistics/retry dispatch. Existing
+built-in and nine original smart-proxy contexts remain intact. No original
+factory test exists; distributed inventory remains 37 port complete and four
+Missing.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

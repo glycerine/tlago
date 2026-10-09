@@ -13274,6 +13274,44 @@ positive network-time floor and division by the actual input array length.
 All nine original TLCWorkerSmartProxyTest contexts retain their complete inputs
 and assertions, including the source MAX_ARRAY_SIZE expression evaluating to zero.
 The bounded audit and focused checks require no production change or new tests.
-Java BlockSelectorFactory's optional factory-name property still has no native
-extension mapping. Its reflective class loading is not implemented; this audit
-establishes built-in contracts only and does not claim custom-factory support.
+This audit establishes built-in contracts. The subsequent native factory
+extension below supplies the optional factory-name property's Go mapping.
+
+### Native custom block-selector factories
+
+`RegisterBlockSelectorFactory` binds exact names to linked Go constructors.
+The original `tlc2.tool.distributed.selector.factory` property is captured with
+the built-in selection settings on first factory use. Each selector creation
+constructs a fresh factory, then invokes it with the original coordinator.
+Callbacks run outside the registry lock; no shared factory instance is cached.
+
+`BlockSelection` supplies GetBlocks, SetMaxTXSize and GetAverageBlockCnt. The
+coordinator and server threads retain this policy, so native extensions can
+implement arbitrary selection behavior rather than only reconfigure a built-in
+mode. Built-in implementations remain concrete BlockSelector objects. Existing
+built-in tests retain all assertions with explicit concrete-type checks.
+
+Unknown names and returned constructor errors report native diagnostics to
+stderr on each request and fall back to the captured built-in policy. A nil
+factory also falls back. Constructor/selection panics propagate unchanged;
+a nil selection remains nil. Missing-policy failures retain source access
+points, including requeue before the smaller-batch retry's limit setter.
+The upstream base factory name explicitly selects built-in behavior. Java
+class loading/reflection is replaced by linked Go registration.
+
+For example, an embedding executable can register a factory during startup:
+
+```go
+tlc.RegisterBlockSelectorFactory("small-batches", func() (tlc.BlockSelectorFactory, error) {
+    return func(server *tlc.TLCServer) tlc.BlockSelection {
+        return tlc.NewLimitingBlockSelector(server, 256)
+    }, nil
+})
+```
+
+It then selects that binding with
+`-Dtlc2.tool.distributed.selector.factory=small-batches`. Unregistered names
+cannot load Java classes or Go code at runtime. Nine isolated native cases
+verify precedence, captured settings, construction frequency, fallback,
+panic/nil behavior, thread ownership, statistics and actual retry dispatch.
+No upstream factory test exists; these checks add no original-method credit.
