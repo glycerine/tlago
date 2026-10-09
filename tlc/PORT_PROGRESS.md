@@ -25067,3 +25067,41 @@ queue, real work/statistics from both workers and normal shutdown. No dedicated
 upstream bulk-spill method exists; these native checks add no original-method
 credit. Inventory remains 37 complete and four Missing. No full suite, long
 growth workload or race run. All handles are terminal.
+
+### October 9, 2026: raw byte queue filesystem and partial-read parity
+
+Compared raw queue storage with `DiskByteArrayQueue.java` and
+`BufferedDataInputStream.java`. Go substituted a temporary directory for empty
+configuration, created missing parents at checkpoint/spill/pool writes, and
+cleaned source paths with filepath.Join. Native checks reproduce missing-parent
+successes, symlink traversal changes and substituted empty paths
+(byte-queue-path-red.log, terminal 19568b, status 1, 0.036 seconds). Removed those
+shortcuts. Literal directory/separator concatenation now serves all checkpoint
+and pool operations, and initial pool scheduling does not open/create storage.
+
+Raw reads also used ReadFull and replaced slots only after successful reads;
+checkpoint recovery cleared inactive slots. Source allocates/publishes each
+slot first, uses BufferedDataInputStream.read and ignores its count. Native
+checks reproduce missing partial publication and cleared inactive slots
+(byte-queue-read-red.log, terminal aef2fb, status 1, 0.014 seconds). Raw file and
+checkpoint reads now use the existing eager buffered stream directly, retain
+partial/untouched slots and the source's zero-padded short final entry. Negative
+lengths retain allocation failure. Recovery closes input successfully before
+reader restart/loFile publication. Earlier failures close owned native files
+without replacing the primary failure.
+
+Initial related checks pass (byte-queue-storage-green.log, terminal 0dfece,
+status 0, 0.122 seconds). Final verbose native storage/pool/checkpoint checks and
+unchanged original DiskPoolWriter, BufferedDataInputStream and
+ValueInputOutputStream methods pass (byte-queue-storage-final.log, terminal
+457bf8, status 0, 0.123 seconds). No direct original raw-storage method exists;
+no original-method credit added. Distributed inventory remains 37 complete and
+four Missing. The source distributed application constructor selects the regular
+disk queue directly; this chunk does not claim a raw-queue full-model run.
+No full suite, long workload or race run. All handles are terminal.
+
+Next concrete gap: raw-pool background failures currently store errors and stop
+their goroutine rather than print the source diagnostic and exit the process;
+pending writer waiters can remain blocked. Its synchronous queue pool catches
+also lack the source coded assertions. Preserve native Go transport and failure
+handling while porting these source boundaries, without runtime emulation.

@@ -1975,6 +1975,12 @@ their state identity/order assertions unchanged. The nine original StateQueue
 methods and nine inherited disk methods remain unchanged. These native cases
 add no original-method credit.
 
+Native raw byte-queue storage checks cover missing-parent failures, literal
+symlink traversal, empty configured paths, partial slot publication, inactive
+slot retention and source short-final-read behavior. The original DiskPoolWriter
+wake/finish methods and buffered/value stream methods pass unchanged. No direct
+original raw queue storage method exists; these cases add no completion credit.
+
 Native coordinator read checks in `distributed_server_file_path_test.go` verify
 relative/absolute symlink traversal, exact directory/open-failure diagnostics
 and retained nested file-open causes. Absolute diagnostics now preserve dot

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -35,9 +34,6 @@ type DiskByteArrayQueue struct {
 }
 
 func NewDiskByteArrayQueue(metaDir string) *DiskByteArrayQueue {
-	if metaDir == "" {
-		metaDir = filepath.Join(os.TempDir(), "DiskByteArrayQueue")
-	}
 	bufSize := diskStateQueueBufferSize()
 	q := &DiskByteArrayQueue{
 		diskdir:  metaDir,
@@ -265,10 +261,7 @@ func (q *DiskByteArrayQueue) BeginChkpt() error {
 	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
-		return err
-	}
-	file, err := os.Create(filepath.Join(q.diskdir, "queue.tmp"))
+	file, err := os.Create(q.queuePath("queue.tmp"))
 	if err != nil {
 		return err
 	}
@@ -305,8 +298,8 @@ func (q *DiskByteArrayQueue) CommitChkpt() error {
 		}
 	}
 	q.lastLoPool = q.newLastLoPool
-	oldName := filepath.Join(q.diskdir, "queue.chkpt")
-	newName := filepath.Join(q.diskdir, "queue.tmp")
+	oldName := q.queuePath("queue.chkpt")
+	newName := q.queuePath("queue.tmp")
 	if _, err := os.Stat(oldName); err == nil {
 		if err := os.Remove(oldName); err != nil {
 			return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldName))
@@ -321,12 +314,21 @@ func (q *DiskByteArrayQueue) CommitChkpt() error {
 func (q *DiskByteArrayQueue) Recover() error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	file, err := os.Open(filepath.Join(q.diskdir, "queue.chkpt"))
+	file, err := os.Open(q.queuePath("queue.chkpt"))
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
-	defer in.Close()
+	in, err := NewBufferedDataInputStream(file)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
+	closed := false
+	defer func() {
+		if !closed {
+			_ = file.Close()
+		}
+	}()
 	length, err := in.ReadLong()
 	if err != nil {
 		return err
@@ -341,12 +343,14 @@ func (q *DiskByteArrayQueue) Recover() error {
 		*ptr = int(value)
 	}
 	q.lastLoPool = q.loPool - 1
-	clearByteArrayBuffer(q.enqBuf)
-	clearByteArrayBuffer(q.deqBuf)
 	if err := readByteArrayEntries(in, q.enqBuf[:q.enqIndex]); err != nil {
 		return err
 	}
 	if err := readByteArrayEntries(in, q.deqBuf[q.deqIndex:]); err != nil {
+		return err
+	}
+	closed = true
+	if err := in.Close(); err != nil {
 		return err
 	}
 	if q.reader != nil {
@@ -439,9 +443,6 @@ func (q *DiskByteArrayQueue) fillDequeueBuffer() error {
 }
 
 func (q *DiskByteArrayQueue) spillEnqueueBuffer() error {
-	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
-		return err
-	}
 	buf, err := q.writer.DoWork(q.enqBuf, q.poolName(q.hiPool))
 	if err != nil {
 		return err
@@ -480,7 +481,11 @@ func (q *DiskByteArrayQueue) needsWaiting() bool {
 }
 
 func (q *DiskByteArrayQueue) poolName(pool int) string {
-	return filepath.Join(q.diskdir, intToDecimal(pool))
+	return q.queuePath(intToDecimal(pool))
+}
+
+func (q *DiskByteArrayQueue) queuePath(name string) string {
+	return q.diskdir + string(os.PathSeparator) + name
 }
 
 func (q *DiskByteArrayQueue) maybeCleanByteArrayPools() {
@@ -802,9 +807,6 @@ func mustBytesToState(raw []byte) *TLCStateMut {
 }
 
 func writeByteArrayPoolFile(name string, entries [][]byte) error {
-	if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
-		return err
-	}
 	file, err := os.Create(name)
 	if err != nil {
 		return err
@@ -822,9 +824,22 @@ func readByteArrayPoolFile(name string, entries [][]byte) error {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
-	defer in.Close()
-	return readByteArrayEntries(in, entries)
+	in, err := NewBufferedDataInputStream(file)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
+	closed := false
+	defer func() {
+		if !closed {
+			_ = file.Close()
+		}
+	}()
+	if err := readByteArrayEntries(in, entries); err != nil {
+		return err
+	}
+	closed = true
+	return in.Close()
 }
 
 func writeByteArrayEntries(out *ValueOutputStream, entries [][]byte) error {
@@ -842,20 +857,21 @@ func writeByteArrayEntries(out *ValueOutputStream, entries [][]byte) error {
 	return nil
 }
 
-func readByteArrayEntries(in *ValueInputStream, entries [][]byte) error {
+func readByteArrayEntries(in *BufferedDataInputStream, entries [][]byte) error {
 	for i := range entries {
 		length, err := in.ReadInt()
 		if err != nil {
 			return err
 		}
 		if length < 0 {
-			return newTLCError(ECGeneral, "negative byte-array queue entry length %d", length)
+			panic(NewNegativeArraySizeException(fmt.Sprint(length)))
 		}
-		buf := make([]byte, int(length))
-		if _, err := io.ReadFull(in.in, buf); err != nil {
+		entries[i] = make([]byte, int(length))
+		// Source read(byte[]) publishes the slot first and ignores its count.
+		// A short final entry therefore retains zero padding rather than failing.
+		if _, err := in.ReadBytes(entries[i], 0, len(entries[i])); err != nil {
 			return err
 		}
-		entries[i] = buf
 	}
 	return nil
 }

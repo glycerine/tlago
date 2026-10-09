@@ -495,6 +495,10 @@ also reopen in fresh stores. This covers transport loss, not host death.
    The application constructor attaches its original tool, application and
    flags before calling the factory. Failed callbacks retain native resource
    rollback; subclass registration setup still follows base factory creation.
+   Raw byte-queue paths and partial reads now match the source. Next fix its
+   background pool failure handling: it still stores errors silently, which can
+   leave writer waiters blocked. Java reports the pool diagnostic and exits.
+   Reconcile its synchronous coded queue catches in the same chunk.
 5. Reconcile opaque custom data and evaluator metadata against actual source
    transferability. Preserve explicit rejection until a faithful native contract
    is established. No Java object serialization or reflection runtime is wanted.
@@ -505,6 +509,11 @@ Bulk queues publish their logical length after the whole enqueue loop. Failed
 disk spills retain the inserted prefix without counting it. Deque storage tracks
 occupancy independently. The source memory queue's bulk slot-overwrite quirk is
 preserved; distributed retry fixtures use the actual disk queue.
+
+Raw byte-queue checkpoint/pool files retain literal symlink traversal and never
+create missing parents. Recovery preserves inactive slots, publishes allocations
+before reading, and retains the source's zero-padded short final entry. Empty
+configured directories retain their source paths rather than selecting `/tmp`.
 
 The production checkpoint order is queue begin, trace begin, FP begin, queue
 resume, intern begin, queue commit, trace commit, intern commit, FP commit.

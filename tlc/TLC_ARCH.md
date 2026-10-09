@@ -13487,3 +13487,31 @@ two instead of the unchanged one. The same cases pass afterward, alongside
 deque growth/null failure, original queue methods and native worker checks.
 There is no dedicated upstream bulk-spill test; these native checks add no
 original-method completion credit.
+
+### Raw byte queue storage paths and partial reads
+
+`DiskByteArrayQueue` source constructs its prefix by concatenating the configured
+directory and separator, without creating parents. The Go constructor no longer
+substitutes a temporary directory for an empty argument. Checkpoint begin,
+commit, recovery and pool filenames now use literal concatenation, preserving
+filesystem interpretation of symlinks followed by `..`. Removed directory
+creation from checkpoint begin, spill scheduling and the raw pool file writer.
+The first pending pool is scheduled without opening it; a subsequent synchronous
+spill fails when opening that pending output if its parent is missing.
+
+Raw pool/checkpoint recovery now uses the existing eager
+`BufferedDataInputStream` port directly. Each slot is allocated and published
+before its body is read, and the source's ignored `read(byte[])` count is
+preserved. A short final entry completes with the unread suffix zero-filled;
+if another entry follows, its missing length fails without replacing that slot.
+Negative lengths retain allocation-failure classification. Checkpoint recovery
+does not clear inactive enqueue/dequeue slots. Input close must succeed before
+restarting the reader or changing `loFile`; early failures close the owned native
+file once while retaining the original failure and partial mutations.
+
+Focused native checks cover these storage contracts, including exact raw pool
+bytes and source symlink traversal. Existing original disk-pool writer wake/finish
+and buffered/value stream assertions remain unchanged. These checks add no
+original-method credit. The separate raw-pool background catch still needs its
+source diagnostic/process-exit behavior and synchronous queue assertion mapping;
+stored errors cannot stand in for that behavior.
