@@ -537,6 +537,8 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		node.DataKind, node.DataString = "string", v
 	case *UniqueString:
 		node.DataKind, node.DataName = "uniqueString", e.string(v)
+	case []*UniqueString:
+		node.DataKind, node.DataArray = "nameArray", e.nameArray(v)
 	case bool:
 		node.DataKind, node.DataBool = "bool", v
 	case int:
@@ -1309,6 +1311,8 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 		return node.DataString, nil
 	case "uniqueString":
 		return d.string(node.DataName)
+	case "nameArray":
+		return d.nameArrayRefs(nil, node.DataArray == 0, node.DataArray)
 	case "bool":
 		return node.DataBool, nil
 	case "int":

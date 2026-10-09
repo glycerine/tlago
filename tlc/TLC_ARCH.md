@@ -12565,3 +12565,19 @@ coordinator must report unfinished work after deregistration and before a fresh
 worker registers. Original N=7 final assertions remain 114,942 distinct states
 and zero queued states. No production fault hook or original-method completion
 credit is introduced.
+
+### Attached native name arrays
+
+ModelValue's attached data can contain native []*UniqueString arrays. The
+encoder uses the existing name-array IDs rather than flattening names or copying
+each attachment independently. The decoder reuses arrays allocated before value
+population, so record fields, record-set fields and nested attachments retain
+shared backing storage and name identities. Distinct equal arrays remain
+separate; nil arrays retain their native type, empty arrays remain nonnil and nil
+elements remain null. Receiver storage is isolated from the sender. Existing
+array/name ID validation also applies to attachments and compact object nodes.
+No Java serialization or new table representation is introduced; peers carrying
+the new nameArray attachment tag require the updated native payload build.
+Direct payload, TCP result and WorkerException-context checks verify these
+contracts. No direct original Java method tests this network attachment, so no
+original-method completion credit is added.

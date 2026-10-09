@@ -1634,6 +1634,14 @@ equal distinct names, typed nil values/keys and invalid IDs in direct payloads,
 TCP results and WorkerException contexts. Original ModelValue/StringHelper tests
 remain green; these networking checks add no original-method completion credit.
 
+Attached native `[]*UniqueString` arrays now share the record-name array graph.
+Direct/TCP/result/WorkerException checks retain backing-array sharing with record
+and record-set fields and nested attachments, separate equal-content arrays,
+native nil/empty array types, nil entries, name metadata and receiver isolation.
+Invalid array and name references fail explicitly. The original ModelValue
+methods pass; these new networking checks add no original-method completion
+credit.
+
 Finite operator container checks retain shared domain rows and result arrays
 across operators and model-data attachments. Receiver updates change the sibling
 operator's application without affecting the sender. Direct/TCP/failure-context

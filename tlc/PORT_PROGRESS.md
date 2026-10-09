@@ -23383,3 +23383,29 @@ normally. Focused short retry, lost-computed-reply and finalizer checks also pas
 full suite or race workload ran. There is no direct original Java shared-process
 loss method, so this supplement adds no original-method completion credit. All
 verification handles are terminal.
+
+### October 8, 2026: attached native name-array transfer
+
+The startup/application comparison identified no justified production change.
+The native graph audit then found a concrete attached-data shortcut: individual
+UniqueString pointers transferred, but []*UniqueString arrays were rejected,
+even though record fields already retained those arrays in the payload graph.
+Source ModelValue data is not transient and UniqueString is transferable; this
+requires a native array contract, not Java serialization machinery.
+
+New direct and actual TCP checks reproduce the rejection before production
+changes (model-data-name-arrays-before.log, terminal eb7964, status 1,
+0.013 seconds). Encoding/decoding now reuse the existing name-array table.
+Checks retain array sharing with record/record-set fields and nested attachments,
+distinct equal arrays, typed nil and nonnil empty arrays, nil elements, exact
+name metadata and receiver isolation. Invalid outer and element references fail
+explicitly. TCP results and WorkerException state context retain the same graph.
+Peers carrying the new attachment tag require the updated payload build.
+
+Final name-array, existing name/value-array, TCP and original ModelValue checks
+pass (model-data-name-arrays-verified.log, terminal 81bc49, status 0,
+0.024 seconds). Only the new short graph/TCP checks ran with race instrumentation
+and pass (model-data-name-arrays-race.log, terminal f78072, status 0,
+1.045 seconds). No direct original method tests this network array boundary, so
+native checks add no original-method completion credit. All handles are terminal;
+no full model or full suite was repeated.

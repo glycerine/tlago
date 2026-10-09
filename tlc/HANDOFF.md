@@ -140,6 +140,12 @@ evaluated or fingerprinted to sort them. Peers need the updated payload schema.
 Attached `*UniqueString` values and keys share the existing name graph with
 value fields. Text, token, location, identity and typed nil references survive;
 equal distinct names are not re-interned or merged.
+
+Attached `[]*UniqueString` arrays reuse the same native name-array table as
+record and record-set fields. Direct/TCP/error-context checks preserve shared
+backing storage, distinct equal arrays, nil/empty arrays and nil entries, with
+isolated receiver ownership. Invalid array/name references fail explicitly.
+
 Finite `OpRcdValue` domain-row containers and result arrays retain constructor
 sharing with other operators and model-data attachments. Native `[][]Value`
 attachments use that row graph; receiver updates affect shared operator
