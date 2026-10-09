@@ -6326,9 +6326,11 @@ Port guidance:
   `longNat(uid)`, `shortNat(level)`, then every state variable value. It does
   not serialize variable-count headers, nil markers, predecessors, or action
   names; those are runtime/trace-reconstruction metadata.
-- `TLCStateMutExt.copy` preserves level, predecessor, and action but resets
-  worker id and uid; `deepCopy` preserves worker id and uid. Neither copy path
-  carries deferred executor callables, matching Java's `TLCStateMutExt`.
+- `TLCStateMutExt.copy` preserves predecessor and action but resets worker id
+  and uid. It starts at the initial level, then reapplies the predecessor setter
+  when present. `deepCopy` first preserves level/worker id/uid, then reapplies
+  that setter. Both therefore recalculate the level from the current predecessor
+  and retain its depth-limit failure. Neither carries deferred callables.
 - The Go `TLCTrace` still keeps an in-memory mirror of `TraceRecord` values as a
   transitional convenience for direct state-object trace access. This mirror is
   not the source-of-truth file format and should shrink as reconstruction moves
@@ -12488,7 +12490,8 @@ Extended `TLCStateMutExt` retains action and predecessor fields. Its ordinary
 populated `Action` holds `SemanticNode`, `Context` and `CostModel.DO_NOT_RECORD`
 without transient exclusions. Those owners do not implement the source transfer
 contract. `Action`'s own Serializable declaration does not make its reachable
-graph transferable. `TLCStateFun` similarly does not implement that contract.
+graph transferable. `TLCStateFun` inherits Serializable through `TLCState`, but
+populated functional bindings retain non-transferable semantic `SymbolNode`s.
 The native codec preserves supported predecessor graphs and rejects populated
 evaluator metadata instead of dropping it. This is not a claim that every
 possible custom Action or attachment is non-transferable.

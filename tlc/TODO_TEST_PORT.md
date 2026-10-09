@@ -1960,6 +1960,12 @@ Go setter; no direct original callable test exists. Seven existing original
 simulation-trace test ports and focused payload/application checks pass unchanged.
 This adds no original-method completion credit.
 
+Native extended-copy checks cover shallow/deep copies with no predecessor,
+consistent or changed predecessor levels, and the maximum-depth failure. Copies
+now reapply the source predecessor setter rather than copying its fields. No
+direct upstream copyExt test exists; existing state/vector/alias and seven
+original simulation trace checks pass. Original-method counts are unchanged.
+
 Full N=7 coverage also pauses TCP traffic to one of two fingerprint hosts while
 keeping connections open. Separate cases hold both directions, only requests
 or only replies; markers require the selected direction and reject an opposite

@@ -279,8 +279,13 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 		functionalBindings: s.functionalBindings,
 	}
 	if statePreserveMetadata {
-		out.pred = s.pred
-		out.action = s.action
+		// TLCStateMutExt.copy goes straight to copyExt, bypassing the
+		// base level-copy hook. Its new state starts at the initial level.
+		out.level = TLCStateInitLevel
+		if pred := s.TracePredecessor(); pred != nil {
+			out.SetTracePredecessor(pred)
+		}
+		out.SetAction(s.GetAction())
 	}
 	return out
 }
@@ -308,8 +313,12 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		functionalBindings: s.functionalBindings,
 	}
 	if statePreserveMetadata {
-		out.pred = s.pred
-		out.action = s.action
+		// Extended deepCopy first applies the base metadata hook, then
+		// copyExt recalculates the level through the predecessor setter.
+		if pred := s.TracePredecessor(); pred != nil {
+			out.SetTracePredecessor(pred)
+		}
+		out.SetAction(s.GetAction())
 	}
 	return out
 }

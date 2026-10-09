@@ -25515,3 +25515,31 @@ application and local/TCP payload selection passes
 (distributed-callable-mode-green.log, terminal 8395c9, status 0, 0.029 seconds).
 All handles are terminal. Distributed inventory remains 37 complete and four
 Reconcile; no unsupported transfer was silently dropped or Java service added.
+
+
+### October 9, 2026: reapply predecessor when copying extended states
+
+Follow-up comparison found TLCStateMutExt.copy calls copyExt directly rather
+than the base level-copy hook. Its new state starts at INIT_LEVEL. Both shallow
+and deep extended copies invoke setPredecessor when a predecessor exists,
+recalculating the level and checking the maximum depth; deepCopy first copies
+base level/worker/UID metadata. Go had directly copied level and predecessor in
+both paths, bypassing those effects. Ordinary copy behavior is unchanged.
+
+New focused native matrix fails before correction for predecessor-free shallow
+copy, changed predecessor levels and maximum-depth checks
+(distributed-extended-copy-red.log, terminal 5ed442, status 1). Production now
+applies the source setter in both extended paths, with shallow initial-level
+reset. No direct original copyExt test exists in the pinned test tree.
+
+Focused copy/predecessor/callable, native TCP graph and seven original simulation
+trace checks pass (distributed-extended-copy-green.log, terminal 230979, status 0,
+0.019 seconds). Related state/vector/alias and original simulation checks also
+pass (distributed-extended-copy-related.log, terminal f34e82, status 0).
+Architecture notes correct the older blanket level-preservation description.
+
+Also corrected the preceding audit's overly broad statement about TLCStateFun:
+it inherits Serializable from TLCState; populated bindings fail because they
+retain semantic SymbolNodes, not because the subclass lacks a declaration.
+No Java runtime implementation is added. No full suite, long model or race run;
+all handles are terminal and original-method completion counts are unchanged.

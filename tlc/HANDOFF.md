@@ -541,6 +541,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
    Ordinary states now ignore deferred callables, matching the source base state;
    extended states retain execution. This avoids an artificial transfer failure
    from `TLCDefer` during distributed model checking.
+   Extended copies now reapply the predecessor setter and its depth limit.
+   A shallow copy without a predecessor starts at the initial level; a deep
+   copy retains the old level. Do not replace these with direct field copies.
 6. Reconcile the four opt-in original model bodies with the upstream disabled
    harness and its retained-flusher failure. The source-profile failure is now
    located; staged bodies and native coverage earn no completion credit.
