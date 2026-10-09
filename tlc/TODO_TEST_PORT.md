@@ -1566,6 +1566,15 @@ The deliberately interrupted coordinator call requires one EOF diagnostic;
 other roles retain their no-EOF check, and all roles reject GENERAL. This adds
 native failure-phase coverage without original-method completion credit.
 
+The full-model fingerprint lookup-reply-loss row holds a real nonempty
+`containsBlock` answer, then kills its host. The worker must report exactly one
+lost-reply EOF and reassign through the source callable; the coordinator must
+independently converge on the same surviving registration. Both partition slots
+alias that host. The unchanged N=7 model finishes with 229,884 slot-counted
+distinct states, an empty queue and FINISHED, with no GENERAL in any role. Other
+roles retain their no-EOF assertions. This native supplement leaves all four
+disabled original methods missing.
+
 Full MC06 N=7 coverage also runs two workers in one native process, exercising
 the source shared application, fingerprint manager, executor and exit latch.
 Both worker identities must share one listener, each must report actual sent

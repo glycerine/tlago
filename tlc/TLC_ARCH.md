@@ -12535,3 +12535,18 @@ retains WorkerException predecessor identity, cause, call-stack flag and finally
 statistics, rather than manufacturing an empty successor set. There is no direct
 original Java test of this distributed boundary, so these checks add no method
 completion credit. Existing original value-initialization methods remain green.
+
+### Native full-model lookup reply loss
+
+The fingerprint host fixture performs a real nonempty ContainsBlock operation
+and holds its completed answer before the parent kills that process. This is a
+lookup failure boundary, separate from insertion reply loss. The worker's source
+manager callable warns, reassigns and repeats the lookup against surviving
+storage. The coordinator independently discovers the dead host during insertion
+and reassigns its own manager snapshot. Both retain two partition slots pointing
+at the one surviving registration. No production hook or new retry protocol is
+introduced. The unchanged MC06 N=7 model finishes with 229,884 slot-counted
+distinct states and an empty queue. Only the worker is required to emit the lost
+lookup's single EOF diagnostic; other roles retain no-EOF checks and all roles
+reject GENERAL. This native coverage does not translate the four disabled Java
+model methods or establish arbitrary network-partition behavior.

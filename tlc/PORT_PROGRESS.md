@@ -23332,3 +23332,27 @@ the new short null-input/worker checks ran with race instrumentation and pass
 upstream method tests this distributed null boundary, so new native checks add
 no original-method completion credit. All handles are terminal. No full model or
 full suite was repeated.
+
+### October 8, 2026: full-model fingerprint lookup reply loss
+
+The coordinator completion/reporting comparison agrees with Java TLC; no
+production change was justified there. Extended the native full-model matrix
+at a different remaining failure boundary: a fingerprint host performs a real
+nonempty containsBlock lookup, then holds the completed answer until killed.
+The fixture uses native TCP and process ownership, with no RMI or JVM machinery.
+
+The unchanged MC06 N=7 run completed a lookup of 10,176 fingerprints, with 2,048
+missing, before losing the reply. Worker callable failover and coordinator
+publication failover independently retained the surviving registration. The
+coordinator snapshot retained two slots aliasing that host. Final assertions
+require 229,884 source slot-counted distinct states, zero queued states, FINISHED,
+normal surviving-role exits and no GENERAL. Only the worker permits and requires
+one EOF diagnostic for this intentionally lost lookup reply.
+
+The focused full-model run passes (fingerprint-lookup-reply-loss.log, terminal
+a03733, status 0, 70.441 seconds). Related original Java fingerprint-manager
+methods and short native in-flight block failover checks pass (fingerprint-
+lookup-related.log, terminal 263d6f, status 0, 0.063 seconds). No race workload
+or full suite ran. These native failure-phase checks add no original-method
+completion credit; the four disabled Java model methods remain missing. All
+verification handles are terminal.

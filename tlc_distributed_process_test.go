@@ -34,6 +34,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		duplicateWorkerRegistration                bool
 		fingerprintStall                           bool
 		fingerprintReplyLoss                       bool
+		fingerprintLookupReplyLoss                 bool
 		fingerprintLoss                            bool
 		fingerprintServers                         int
 		workerThreads                              int
@@ -50,6 +51,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "fingerprint_transport_stall", remoteFP: true, fingerprintServers: 2, fingerprintStall: true},
 		{name: "fingerprint_server_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true},
 		{name: "fingerprint_put_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true},
+		{name: "fingerprint_lookup_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintLookupReplyLoss: true},
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
 		{name: "mid_run_checkpoint_recovery", recovering: true, midRunCheckpoint: true},
@@ -96,14 +98,14 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if role == "worker-fingerprint-loss" || role == "worker-reply-loss" || role == "worker-register-twice" || role == "fpserver-transport-stall" {
 					command.Env = append(command.Env, "TLAGO_NATIVE_WORKER_RELEASE="+releaseWorker)
 				}
-				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-transport-stall") {
+				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-lookup-reply-loss" || role == "fpserver-transport-stall") {
 					// These roles represent separate hosts. Give each private
 					// temporary storage even when they start in the same millisecond.
 					command.Env = append(command.Env, "TMPDIR="+t.TempDir())
 				}
 				roleCounts[role]++
 				label := role
-				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-transport-stall") {
+				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-lookup-reply-loss" || role == "fpserver-transport-stall") {
 					label = fmt.Sprintf("%s-%d", role, roleCounts[role])
 				}
 				if scenario.midRunCheckpoint && role == "worker" {
@@ -361,6 +363,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					if scenario.fingerprintReplyLoss && index == 0 {
 						fingerprintRole = "fpserver-put-reply-loss"
 					}
+					if scenario.fingerprintLookupReplyLoss && index == 0 {
+						fingerprintRole = "fpserver-lookup-reply-loss"
+					}
 					fingerprint := start(fingerprintRole, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 					if (scenario.fingerprintLoss || scenario.fingerprintStall) && index == 0 {
 						failedFingerprint = fingerprint
@@ -448,13 +453,16 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			}
 			if scenario.fingerprintLoss {
 				workerRole := "worker-fingerprint-loss"
-				if scenario.fingerprintReplyLoss {
+				if scenario.fingerprintReplyLoss || scenario.fingerprintLookupReplyLoss {
 					workerRole = "worker"
 				}
 				worker := start(workerRole, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 				markerOutput, marker := worker.output, "NATIVE_WORKER_BLOCK_ASSIGNED"
 				if scenario.fingerprintReplyLoss {
 					markerOutput, marker = failedFingerprint.output, "NATIVE_FP_PUT_COMPLETED_NEW="
+				}
+				if scenario.fingerprintLookupReplyLoss {
+					markerOutput, marker = failedFingerprint.output, "NATIVE_FP_LOOKUP_COMPLETED_COUNT="
 				}
 				ticker := time.NewTicker(10 * time.Millisecond)
 				for !strings.Contains(markerOutput.String(), marker) {
@@ -487,6 +495,12 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 						t.Fatal("fingerprint host did not complete an actual insertion before reply loss")
 					}
 					t.Logf("killed first fingerprint host after inserting %s new fingerprints, before returning the reply", completed[1])
+				} else if scenario.fingerprintLookupReplyLoss {
+					completed := regexp.MustCompile(`NATIVE_FP_LOOKUP_COMPLETED_COUNT=(\d+) MISSING=(\d+)`).FindStringSubmatch(failedFingerprint.output.String())
+					if len(completed) != 3 || completed[1] == "0" {
+						t.Fatal("fingerprint host did not complete a nonempty lookup before reply loss")
+					}
+					t.Logf("killed first fingerprint host after looking up %s fingerprints (%s missing), before returning the reply", completed[1], completed[2])
 				} else {
 					t.Log("killed first fingerprint host with a worker block assigned; resuming actual successor evaluation")
 					if err := os.WriteFile(releaseWorker, nil, 0o600); err != nil {
@@ -655,6 +669,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 						// Source failover reports the transport error before retry.
 						expectedEOF = 1
 					}
+					if scenario.fingerprintLookupReplyLoss && process.output.role == "worker" {
+						// Lookup fails at the worker; the coordinator independently
+						// discovers the dead host when publishing the returned block.
+						expectedEOF = 1
+					}
 					if len(nativeDistributedMessages(roleOutput, tlc.ECGeneral)) != 0 || strings.Count(roleOutput, "unexpected EOF") != expectedEOF {
 						t.Fatalf("partitioned role %s emitted GENERAL or lost an RPC reply", process.output.role)
 					}
@@ -812,8 +831,8 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				} else {
 					status = ExitOK
 				}
-			} else if len(args) > 0 && args[0] == "fpserver-put-reply-loss" {
-				if err := nativeDistributedFingerprintLostReply(args[1:]); err != nil {
+			} else if len(args) > 0 && (args[0] == "fpserver-put-reply-loss" || args[0] == "fpserver-lookup-reply-loss") {
+				if err := nativeDistributedFingerprintLostReply(args[1:], args[0] == "fpserver-lookup-reply-loss"); err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				} else {
 					status = ExitOK

@@ -222,6 +222,14 @@ the kill. Source callable failover retries against the survivor and completes
 with the same 229,884 slot-based count and empty queue. Only this row requires
 one coordinator EOF diagnostic for the deliberately lost insertion reply.
 
+A separate full-model row kills the host after a nonempty `containsBlock` lookup
+completes but before its answer returns. The worker receives the single expected
+EOF diagnostic and retries through source callable reassignment; the coordinator
+independently reassigns its publication endpoint. Both retain the surviving host,
+and the run finishes with 229,884 slot-counted distinct states and an empty queue.
+This covers lookup reply loss, not arbitrary partitions, and adds no original
+method completion credit.
+
 Fresh-process local recovery covers the complete 16,384-state initial frontier,
 a mid-run checkpoint and interruptions before queue commit, after queue commit,
 after intern commit and after the first nested fingerprint commit. Checks inspect
