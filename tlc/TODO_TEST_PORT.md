@@ -2203,6 +2203,13 @@ A separate twelve-case Linux syscall matrix verifies real scan-close EIO
 overrides valid/invalid/truncated scan results and retains locks, with successful
 close controls. It requires strace and adds no original-method credit.
 
+Native final-reporting coverage also runs the unchanged EWD840 N=7 model with
+a remote Mem host returning or raising checked I/O failure from CheckFPs.
+It requires one GENERAL, the source Long.MAX_VALUE distance fallback, subsequent
+statistics and cleanup, 114,942 distinct fingerprints and an empty queue.
+The normal model harness retains its zero-GENERAL gate. No original Java method
+directly tests this failure branch; original-method credit remains unchanged.
+
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Reconcile**: `testSpec`.
   Source setup/body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go). The ordinary entry preserves the exact upstream unconditional skip. Explicit body diagnostic: [tlc_distributed_java_diagnostic_test.go](../tlc_distributed_java_diagnostic_test.go), build tag `tlago_disabled_distributed_tests`. All seven trace states, ordinal/action-label checks, FINISHED, BEHAVIOR and no GENERAL are staged; the source Ant-profile run passes with 48 workers. The restored source assumption is separate from diagnostic execution; no passing-body or completion credit is added.
 - [x] [tlc2/tool/distributed/DistributedDoInitFunctorInvariantContinueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DistributedDoInitFunctorInvariantContinueTest.java) — **Port complete**: `testSpec`. Translation: [tlc_init_model_java_test.go](../tlc_init_model_java_test.go). Original inherits ordinary ModelCheckerTestCase rather than a remote server harness. Identical original NotNine model/config bytes, inherited exit and all diagnostic assertions retained; continuation also preserves exact counts and uncovered assertion. Unchanged Java and Go pass.

@@ -14362,3 +14362,29 @@ occurs once and no requests are written. Existing native discovery, worker
 bootstrap, coordinator snapshots and address-reuse checks cover normal paths.
 No original Java test covers native Go connection release; distributed original
 inventory stays 37/41. No TLC mutation/retry or wire protocol change.
+
+
+### Final remote fingerprint check preserves source reporting after I/O failure
+
+Java CheckFPsCallable catches IOException, reports GENERAL and returns
+Long.MAX_VALUE. FPSetManager takes the minimum task result without reassignment.
+TLCServer does not turn that diagnostic into a checker error: it still reads
+states-seen, prints success/statistics/FINISHED and calls close(true). The source
+AbstractChecker rounds the reciprocal distance with MathContext(2), giving
+1.1E-19 for that fallback. Existing Go production follows these boundaries.
+
+The native full-model check uses the unchanged EWD840 MC06 N=7 fixture, one
+worker and one live remote Mem host. Only CheckFPs is replaced with a returned
+or raised checked-I/O failure; real storage, successor evaluation, statistics,
+TCP callbacks and Exit remain in use. The host observes 114,942 stored entries
+when the check fails, then final states-seen collection and cleanup=true Exit
+with the same count. All roles join normally. Exactly one check and GENERAL
+are required, followed by success, 114,942 distinct/zero queued statistics and
+FINISHED. No transport replay or live-host reassignment is accepted.
+
+The fault runner is separate from original test entry points; their existing
+zero-GENERAL gate remains active. There is no direct original Java test of
+this failure branch, so original inventory stays 37/41. This does not establish
+behavior after final-check reply loss, host death, unchecked task failure or
+multiple failed final-check hosts. Native Go TCP remains the transport; no RMI
+or Java serialization machinery is introduced.

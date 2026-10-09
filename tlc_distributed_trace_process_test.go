@@ -85,6 +85,15 @@ func runNativeDistributedTraceModel(t *testing.T, model string, remote bool) str
 // off-heap/512 KiB profile, and starts the worker before the coordinator.
 func runNativeDistributedModel(t *testing.T, model string, remote, sourceHarness bool) string {
 	t.Helper()
+	return runNativeDistributedModelWithCheckFailure(t, model, remote, sourceHarness, "")
+}
+
+// Fault mode is native-only; original model checks keep their zero-GENERAL gate.
+func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remote, sourceHarness bool, checkFailure string) string {
+	t.Helper()
+	if checkFailure != "" && (!remote || sourceHarness || model != "EWD840") {
+		t.Fatal("final-check fault requires the native remote EWD840 model")
+	}
 	directory, err := filepath.Abs(filepath.Join("tlc/test_vectors/models", model))
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +159,11 @@ func runNativeDistributedModel(t *testing.T, model string, remote, sourceHarness
 		if sourceHarness {
 			start("fpserver", "127.0.0.1")
 		} else {
-			start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+			role := "fpserver"
+			if checkFailure != "" {
+				role = "fpserver-check-io-" + checkFailure
+			}
+			start(role, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 		}
 	}
 	if !sourceHarness {
@@ -165,8 +178,24 @@ func runNativeDistributedModel(t *testing.T, model string, remote, sourceHarness
 		// Java's recorder is shared by all roles in its single process. In
 		// the native harness, retain that scope across each child's output.
 		output := process.output.String()
-		if len(nativeDistributedMessages(output, tlc.ECGeneral)) != 0 {
-			t.Fatalf("%s recorded GENERAL", process.output.role)
+		expectedGeneral := 0
+		if checkFailure != "" && process == server {
+			expectedGeneral = 1
+		}
+		messages := nativeDistributedMessages(output, tlc.ECGeneral)
+		if len(messages) != expectedGeneral || (expectedGeneral == 1 && !strings.Contains(messages[0], nativeFinalFingerprintCheckFailure)) {
+			t.Fatalf("%s GENERAL messages = %q, want %d", process.output.role, messages, expectedGeneral)
+		}
+		if checkFailure != "" && strings.HasPrefix(process.output.role, "fpserver-check-io-") {
+			markers := []string{"NATIVE_FINAL_FP_CHECK_COUNT=114942", "NATIVE_FINAL_FP_STATES_SEEN=", "NATIVE_FINAL_FP_EXIT_CLEANUP=true COUNT=114942"}
+			previous := -1
+			for _, marker := range markers {
+				index := strings.Index(output, marker)
+				if strings.Count(output, marker) != 1 || index <= previous {
+					t.Fatalf("final fingerprint operations missing, repeated or reordered: %s", output)
+				}
+				previous = index
+			}
 		}
 		if strings.Contains(output, "unexpected EOF") {
 			t.Fatalf("%s shutdown lost an accepted RPC reply", process.output.role)

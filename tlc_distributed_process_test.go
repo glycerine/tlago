@@ -924,6 +924,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				} else {
 					status = ExitOK
 				}
+			} else if len(args) > 0 && (args[0] == "fpserver-check-io-returned" || args[0] == "fpserver-check-io-panicked") {
+				if err := nativeDistributedFinalFingerprintCheckHost(args[1:], args[0] == "fpserver-check-io-panicked"); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
 			} else if len(args) > 0 && args[0] == "worker-register-twice" {
 				if err := nativeDistributedRegisterWorkerTwice(args[1:], os.Getenv("TLAGO_NATIVE_WORKER_RELEASE")); err != nil {
 					fmt.Fprintln(os.Stderr, err)

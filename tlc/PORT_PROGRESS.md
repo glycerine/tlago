@@ -26523,3 +26523,40 @@ worker/FP endpoint and shared callback-owner race checks pass:
 distributed-coordinator-close-join-race.log, terminal ab5642, status 0.
 No long model or full-suite rerun. All handles terminal and git diff --check
 passes.
+
+
+### October 9, 2026: full-model final fingerprint checked-I/O failure
+
+Compared CheckFPsCallable, FPSetManager.checkFPs and TLCServer final reporting
+with Go production. Checked I/O prints GENERAL and returns Long.MAX_VALUE;
+it does not reassign storage or change the checker error flag. Statistics,
+success/FINISHED and cleanup=true Exit still follow. No production shortcut
+was found in this phase and no production behavior was changed.
+
+Added native returned/panicked I/O failure cases over unchanged EWD840 MC06
+N=7, one worker and one remote Mem host. Real evaluation and fingerprint
+storage finish with 114,942 distinct and zero queued. The host checks its
+actual count before failing, then forwards final states-seen and Exit. The
+fixture requires one check, one diagnostic, the exact fallback distance
+probability, source reporting order, retained count at normal cleanup, no
+failover warning and all child process joins. Shared original model entries
+still require zero GENERAL; only the explicit native fault runner admits
+exactly its expected diagnostic. There is no original Java method for this
+branch, so original distributed credit remains 37/41. Final-check lost replies
+and host death remain separate, unverified process phases.
+
+Initial fixture run failed only its mistaken 1.0E-19 probability expectation:
+distributed-final-check-io-process-assertion.log, terminal 7b00a8, status 1,
+109.552 seconds. Java AbstractChecker.reportSuccess uses MathContext(2) to
+round 1/Long.MAX_VALUE to 1.1E-19; Go already reported that value. Corrected the
+new assertion to the source value. Both cases pass in
+distributed-final-check-io-process.log, terminal 70a24f, status 0,
+110.006 seconds. The combined selection in that command ran only these two
+fault cases; it gives no normal-runner credit. A separate slash-scoped remote
+DieHard trace control passed in distributed-final-check-normal-control.log,
+terminal 68cbf0, status 0, 12.198 seconds, retaining all seven state assertions
+and the zero-GENERAL gate. Existing five short fingerprint-check tests,
+including TCP I/O, unchecked completions and null boundaries, passed in
+distributed-final-check-io-focused.log, terminal d1dad4, status 0,
+0.028 seconds. No race or full-suite run. All handles are terminal and
+git diff --check passes. Native TCP only; no RMI/JVM emulation.
