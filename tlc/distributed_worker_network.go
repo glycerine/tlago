@@ -65,7 +65,7 @@ func (n *DistributedWorkerNetwork) Environment(base DistributedWorkerEnvironment
 	base.Lookup = n.Discovery.Lookup
 	base.LocalCanonicalHostName = func() (string, error) { return n.workerAddress.Hostname, nil }
 	base.PublishWorker = func(worker *DistributedWorker) error {
-		name := fmt.Sprintf("worker-%d-%d", worker.ID, n.sequence.Add(1))
+		name := n.Host.generatedEndpointName(fmt.Sprintf("worker-%d", worker.ID), n.sequence.Add(1))
 		// Identity is complete before publication or the runnable's worker
 		// pointer becomes visible to keepalive/shutdown.
 		worker.uri = newDistributedWorkerEndpointURI(n.workerAddress, name)

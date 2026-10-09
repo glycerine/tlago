@@ -1,6 +1,8 @@
 package tlc
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +16,7 @@ import (
 // Calls are independent and concurrent. It performs no implicit retries: a
 // failed insertion may already have changed storage, so TLC owns retry policy.
 type DistributedRPCServer struct {
+	identity            string
 	rpc                 *rpc.Server
 	mu                  sync.Mutex
 	closed              bool
@@ -28,8 +31,13 @@ type DistributedRPCServer struct {
 }
 
 func NewDistributedRPCServer() *DistributedRPCServer {
+	var identity [16]byte
+	if _, err := io.ReadFull(rand.Reader, identity[:]); err != nil {
+		panic(fmt.Errorf("generate distributed host identity: %w", err))
+	}
 	s := &DistributedRPCServer{
-		rpc: rpc.NewServer(), listeners: make(map[net.Listener]struct{}),
+		identity: hex.EncodeToString(identity[:]),
+		rpc:      rpc.NewServer(), listeners: make(map[net.Listener]struct{}),
 		connections:  make(map[net.Conn]struct{}),
 		fingerprints: make(map[string]DistributedFingerprintEndpoint),
 		workers:      make(map[string]DistributedWorkerEndpoint),
@@ -45,6 +53,13 @@ func NewDistributedRPCServer() *DistributedRPCServer {
 		panic(err)
 	}
 	return s
+}
+
+// Generated object references must outlive neither their publication nor this
+// host incarnation. A fresh host can reuse the TCP address and sequence numbers,
+// but cannot silently become the target of an earlier lazy reference.
+func (s *DistributedRPCServer) generatedEndpointName(kind string, sequence uint64) string {
+	return fmt.Sprintf("%s-%s-%d", kind, s.identity, sequence)
 }
 
 func (s *DistributedRPCServer) RegisterFingerprint(name string, endpoint DistributedFingerprintEndpoint) error {

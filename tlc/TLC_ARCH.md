@@ -13085,3 +13085,23 @@ string contents. This introduces no Java string objects or serialization runtime
 Updated peers are required for the new tag. Focused gob and worker request/result
 checks cover sharing through mixed containers, element mutation, nil/empty forms
 and invalid references. No original method directly tests this native boundary.
+
+### Native endpoint identity across host replacement
+
+Automatically published worker, fingerprint and coordinator-owned fingerprint
+objects include a cryptographically random 128-bit native host identity and a
+per-host sequence in their names. Identity is immutable for the host's lifetime;
+failure to obtain entropy stops construction. Repeated references to the same
+published fingerprint endpoint still reuse its name and registration identity.
+Explicit caller-selected names and coordinator discovery service names retain
+their existing semantics. No wire fields, retry protocol or epoch service added.
+
+Earlier names used only counters that restarted with a host. A delayed lazy
+fingerprint reference could then connect to a replacement host at the same address
+and silently insert into different storage. Host-scoped generated names prevent
+this: old references receive the existing missing-object remote I/O failure,
+which reaches TLC's original fingerprint reassignment. Fresh references work
+normally, and replacement storage remains isolated. Native TCP checks reuse
+the exact address for separate host owners and exercise coordinator-owned
+fingerprints and the worker/FP publication adapters. This is Go object identity,
+without Java RMI, JVM machinery or distributed coordinator redesign.

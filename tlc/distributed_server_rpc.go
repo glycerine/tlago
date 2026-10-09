@@ -135,7 +135,7 @@ func (s *DistributedRPCServer) fingerprintReference(endpoint DistributedFingerpr
 	name := ""
 	for {
 		s.fingerprintSequence++
-		name = fmt.Sprintf("coordinator-fp-%d", s.fingerprintSequence)
+		name = s.generatedEndpointName("coordinator-fp", s.fingerprintSequence)
 		if _, exists := s.fingerprints[name]; !exists {
 			break
 		}

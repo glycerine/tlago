@@ -33,7 +33,7 @@ func (n *DistributedWorkerNetwork) FPEnvironment(base DistributedFPServerEnviron
 		if !ok {
 			return fmt.Errorf("native fingerprint publication requires owned local storage, got %T", endpoint)
 		}
-		name := fmt.Sprintf("fingerprint-%d", n.sequence.Add(1))
+		name := n.Host.generatedEndpointName("fingerprint", n.sequence.Add(1))
 		n.fingerprintsMu.Lock()
 		if err := n.Host.RegisterFingerprint(name, endpoint); err != nil {
 			n.fingerprintsMu.Unlock()

@@ -97,6 +97,11 @@ Transport does not redial or replay ambiguous fingerprint mutations. Manager
 failover retains the source algorithm, including its forward reassignment and
 slot-based statistics. Workers receive independent manager snapshots with shared
 registration-wrapper aliases; the coordinator recovery trace is omitted.
+Generated worker, fingerprint and coordinator-owned fingerprint references include
+a random native host identity and a per-host sequence. A fresh host reusing an
+address cannot receive an old object's delayed call. Stale lazy fingerprint
+references fail through the existing manager failover path; replacement storage
+remains untouched. Explicit caller-selected endpoint names retain their meaning.
 
 `DistributedOperationError` traits drive retry, removal, discovery and exit
 choices. Causes remain available through `errors.Is`/`errors.As`; native sender

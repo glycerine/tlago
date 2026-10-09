@@ -24415,3 +24415,36 @@ failure paths (terminal 77f0c3, status 0, 0.042 seconds). The original ModelValu
 translation remains unchanged. No original method directly covers this transport
 boundary, so no method completion credit added. No full suite, long model or race
 workload ran. All handles are terminal.
+
+### 2026-10-09: Native endpoint identity after address reuse
+
+Found a native reference-identity defect: generated endpoint names used counters
+that reset with each host. A lazy fingerprint reference first used after host
+replacement at the same TCP address could silently insert into a different empty
+store. Added a real address-reuse check using the production coordinator-owned
+fingerprint publisher; the original implementation reproduces the invalid
+successful insertion (terminal 15a29e, status 1, 0.017 seconds).
+
+Each native RPC host now owns an immutable cryptographically random 128-bit
+identity. Generated coordinator-owned fingerprint, standalone fingerprint and
+worker names include that identity plus their existing per-host sequence.
+Construction stops if entropy cannot be obtained. Repeated publication of an
+existing fingerprint retains its name; caller-selected names and coordinator
+discovery service names retain their meaning. No new wire field, retry protocol,
+Raft/RPC alternative, RMI or JVM machinery added.
+
+Old references now receive the existing missing-object remote I/O failure.
+Short real TCP checks verify unchanged source manager failover to the healthy
+registration without touching replacement storage, fresh-reference success,
+and normal worker/FP publication adapters across exact address reuse. Initial
+fixed case passes (terminal 106c9a, status 0, 0.017 seconds). Expanded publication,
+coordinator snapshot/lazy-reference, address/label and original dynamic-manager
+selection passes (terminal 3b810a, status 0, 0.086 seconds; final strengthened
+failover selection terminal ca7bf9, status 0, 0.123 seconds).
+
+The unchanged combined worker/fingerprint N=7 model also passes with the new
+generated identities (native-endpoint-incarnation-model.log, terminal dba847,
+status 0, 54.839 seconds), retaining 114,942 distinct states, an empty queue and
+normal joined shutdown of both processes. No original method directly tests
+this native address-reuse defect; no original-method credit added. No full suite
+or race workload ran. All handles are terminal.
