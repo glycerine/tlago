@@ -824,7 +824,10 @@ type distributedStateBlock struct {
 }
 
 type TLCServerThread struct {
-	ID                int
+	ID int
+	// Statistics may be initialized before Run; concurrent observers use
+	// the getters. Never hold statisticsMu across a worker/network call.
+	statisticsMu      sync.Mutex
 	ReceivedStates    int
 	SentStates        int
 	CacheRateHitRatio float64
@@ -965,7 +968,9 @@ func (t *TLCServerThread) Run() {
 		if len(t.currentStates()) == 0 {
 			continue
 		}
+		t.statisticsMu.Lock()
 		t.SentStates = int(int32(t.SentStates) + int32(len(t.currentStates())))
+		t.statisticsMu.Unlock()
 
 		res, ok := t.computeBlock(stateQueue)
 		if !ok {
@@ -1008,7 +1013,10 @@ func (t *TLCServerThread) computeBlockAttempt() (res *NextStateResult, err error
 	if newStates[0] == nil {
 		panic(NewNullPointerException())
 	}
-	t.ReceivedStates = int(int32(t.ReceivedStates) + int32(newStates[0].Size()))
+	received := newStates[0].Size()
+	t.statisticsMu.Lock()
+	t.ReceivedStates = int(int32(t.ReceivedStates) + int32(received))
+	t.statisticsMu.Unlock()
 	t.TimerTask.SetLastInvocation(time.Now())
 	t.Server.AddStatesGeneratedDelta(res.GetStatesComputedDelta())
 	return res, nil
@@ -1199,6 +1207,8 @@ func (t *TLCServerThread) GetReceivedStates() int {
 	if t == nil {
 		return 0
 	}
+	t.statisticsMu.Lock()
+	defer t.statisticsMu.Unlock()
 	return t.ReceivedStates
 }
 
@@ -1206,6 +1216,8 @@ func (t *TLCServerThread) GetSentStates() int {
 	if t == nil {
 		return 0
 	}
+	t.statisticsMu.Lock()
+	defer t.statisticsMu.Unlock()
 	return t.SentStates
 }
 
@@ -1213,6 +1225,8 @@ func (t *TLCServerThread) GetCacheRateRatio() float64 {
 	if t == nil {
 		return -1
 	}
+	t.statisticsMu.Lock()
+	defer t.statisticsMu.Unlock()
 	return t.CacheRateHitRatio
 }
 
@@ -1228,7 +1242,9 @@ func (t *TLCServerThread) readCacheRateRatio() {
 		PrintWarning(ECGeneral, "Failed to read remote worker cache statistic (Expect to see a negative chache hit rate. Does not invalidate model checking results)")
 		return
 	}
+	t.statisticsMu.Lock()
 	t.CacheRateHitRatio = ratio
+	t.statisticsMu.Unlock()
 }
 
 func (t *TLCServerThread) cancelKeepAlive() {

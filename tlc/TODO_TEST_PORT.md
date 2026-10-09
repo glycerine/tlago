@@ -1727,6 +1727,12 @@ and received states, and final counts remain 114,942 distinct with an empty
 queue and FINISHED. Both roles reject GENERAL and unexpected EOF. This native
 coverage does not complete any of the four disabled original methods.
 
+A short native server-thread statistics check observes real batch execution
+and finalization concurrently, retaining signed 32-bit counter overflow and
+NaN cache ratios. Getter/update synchronization fixes three native data races.
+No direct original method covers this boundary; the original counts remain
+37 port complete and four Missing.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

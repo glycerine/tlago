@@ -24480,3 +24480,35 @@ registrations and actual work/statistics from each worker
 of coordinator and worker. No original enabled method directly tests this native
 callback-dial boundary; no method completion credit added. No full suite ran and
 no long workload used race instrumentation. All handles are terminal.
+
+### 2026-10-09: Concurrent coordinator worker statistics
+
+Compared TLCServerThread's source counter updates and cache finalization with
+its public observation methods. Go used unsynchronized fields for sent/received
+counts and the final cache ratio. A short native check runs actual selection,
+batch computation, fingerprint publication and finalization while four observers
+read through the getters. With the test compiling, race instrumentation reports
+all three read/write races (thread-statistics-red.log, terminal 998f75, status 1,
+package time 0.351 seconds). An earlier test build failed because the new fixture
+incorrectly treated MemFPSet.Put's boolean result as an error pair; corrected
+that fixture before collecting race evidence.
+
+Updates and getters now share a native statistics mutex. Counter additions
+retain signed 32-bit overflow; NaN cache values and the initial failure sentinel
+remain intact. Fields can be initialized before execution; concurrent observers
+use getters. No remote callback, diagnostic or coordinator operation holds this
+mutex, preserving the existing failure ordering and lifecycle boundaries.
+
+The exact short concurrency check passes with race instrumentation
+(thread-statistics-green.log, terminal edbb27, status 0, 1.115 seconds). Related
+thread/finalizer/selector ownership, batch statistics and original smart-proxy
+checks pass normally (thread-statistics-related.log, terminal 8a1ba7, status 0,
+0.077 seconds). No original Java method directly covers this native race;
+distributed method credit remains 37 complete and four Missing.
+
+The unchanged shared two-worker N=7 process model passes normally
+(thread-statistics-model.log, terminal a0e941, status 0, 38.942 seconds). Both
+workers report actual sent/received/computed work, with 114,942 final distinct
+states and an empty queue. Coordinator and worker exit normally and join; the
+harness rejects GENERAL and unexpected EOF. No full suite ran and no long
+workload used race instrumentation. All handles are terminal.

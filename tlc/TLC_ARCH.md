@@ -13123,3 +13123,14 @@ failed connections remain retained and calls are not replayed or redialed. The
 public DialWorkerEndpoint helper still opens TCP immediately when explicitly
 requested. Short real TCP checks cover queue waking on refusal, concurrent first
 calls, closed unused references, failed-client retention and idempotent closure.
+
+### Concurrent server-thread statistics
+
+TLCServerThread protects sent/received counters and the final worker cache ratio
+with a native mutex shared by updates and public getters. Fields may be initialized
+before Run; concurrent callers observe them through getters. Counter additions
+retain signed 32-bit overflow, and cache values retain exact floating-point
+contents, including NaN and the initial failure sentinel. The mutex is released
+before timer/coordinator updates, remote cache calls, diagnostics and shutdown.
+This avoids native Go data races without introducing Java monitor machinery or
+changing batch publication, failure precedence or worker lifecycle behavior.

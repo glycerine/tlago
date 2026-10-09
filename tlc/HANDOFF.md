@@ -312,6 +312,12 @@ manager, executor and exit latch. It requires distinct worker endpoints on one
 native listener, work and statistics from each worker, 114,942 distinct states,
 an empty queue and clean shutdown with no GENERAL or EOF on either role.
 
+Server-thread sent/received counters and final cache ratios use a native mutex
+for concurrent getter access. Counter updates retain signed 32-bit overflow;
+cache values retain NaN and the failure sentinel. Initialize fields before Run
+and use getters during execution. The short concurrency check adds no original
+method credit; no worker/network operation holds this statistics mutex.
+
 Repeated registration of one native worker preserves two coordinator threads
 and shared worker identity. The full model retains 114,942 distinct states and
 an empty queue. First exit removes the endpoint; the second receives the native
