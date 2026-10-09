@@ -87,6 +87,7 @@ const (
 	nativeRemoteCheckpointDuplicateMemSnapshot
 	nativeRemoteCheckpointTruncatedLaterMemSnapshot
 	nativeRemoteCheckpointDuplicateLaterMemSnapshot
+	nativeRemoteCheckpointTruncatedIntern
 )
 
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
@@ -112,6 +113,12 @@ func TestNativeDistributedRemoteCheckpointTruncatedQueue(t *testing.T) {
 // Trace recovery must win over an independently missing queue checkpoint.
 func TestNativeDistributedRemoteCheckpointTruncatedTrace(t *testing.T) {
 	checkNativeDistributedRemoteCheckpointRestart(t, "lsb", 1, nativeRemoteCheckpointTruncatedTrace)
+}
+
+// Application creation restores intern tokens before parsing or constructing
+// the server. An independent missing trace must not obscure that first failure.
+func TestNativeDistributedRemoteCheckpointTruncatedIntern(t *testing.T) {
+	checkNativeDistributedRemoteCheckpointRestart(t, "lsb", 1, nativeRemoteCheckpointTruncatedIntern)
 }
 
 func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
@@ -192,6 +199,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	traceToIntern := fault == nativeRemoteCheckpointTraceToIntern
 	truncatedQueue := fault == nativeRemoteCheckpointTruncatedQueue
 	truncatedTrace := fault == nativeRemoteCheckpointTruncatedTrace
+	truncatedIntern := fault == nativeRemoteCheckpointTruncatedIntern
 	corruptCoordinator := truncatedQueue || truncatedTrace
 	corruptDiskOrdering := fault == nativeRemoteCheckpointDuplicateDiskSnapshot || fault == nativeRemoteCheckpointDescendingDiskSnapshot
 	emptyDiskSnapshot := fault == nativeRemoteCheckpointEmptyDiskSnapshot
@@ -578,12 +586,20 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		}
 	}
 	coordinatorSnapshots := make(map[string][]byte)
+	if truncatedIntern {
+		if err := os.Truncate(filepath.Join(path[1], "vars.chkpt"), 1); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(filepath.Join(path[1], "MC06.st.chkpt"), filepath.Join(path[1], "MC06.st.chkpt.unreached")); err != nil {
+			t.Fatal(err)
+		}
+	}
 	entries, err := os.ReadDir(path[1])
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if strings.HasSuffix(entry.Name(), ".chkpt") || entry.Name() == "queue.chkpt.unreached" {
+		if strings.HasSuffix(entry.Name(), ".chkpt") || strings.HasSuffix(entry.Name(), ".chkpt.unreached") {
 			data, err := os.ReadFile(filepath.Join(path[1], entry.Name()))
 			if err != nil {
 				t.Fatal(err)
@@ -593,6 +609,61 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	}
 	restarted, addresses := startHosts("restarted")
 	server := start("recovered-coordinator", "registered-fp-recovery", []string{"TLAGO_REGISTERED_FP_ENDPOINTS=" + strings.Join(addresses, ",")}, "-tool", "-deadlock", "-recover", path[1], "MC06")
+	if truncatedIntern {
+		err := <-server.done
+		server.joined = true
+		var exit *exec.ExitError
+		if !errors.As(err, &exit) || exit.ExitCode() != ExitToolFailure {
+			t.Fatalf("intern startup failure exit = %v, want tool failure\n%s", err, server.output.String())
+		}
+		output := server.output.String()
+		failure := nativeDistributedMessages(output, tlc.ECGeneral)
+		if len(failure) != 1 || !strings.Contains(failure[0], "EOF") || !strings.Contains(output, "NullPointerException") || strings.Contains(output, "NATIVE_REGISTERED_FP_SERVER_CREATE") {
+			t.Fatalf("intern recovery did not fail before construction with source finally precedence: %s", output)
+		}
+		for _, code := range []int{tlc.ECTLCCheckpointRecoverStart, tlc.ECTLCCheckpointRecoverEnd, tlc.ECTLCDistributedServerFPSetRegistered, tlc.ECTLCComputingInit, tlc.ECTLCDistributedServerRunning, tlc.ECTLCDistributedWorkerRegistered, tlc.ECTLCFinished, tlc.ECTLCStats} {
+			if len(nativeDistributedMessages(output, code)) != 0 {
+				t.Fatalf("intern recovery failure crossed startup phase %d: %s", code, output)
+			}
+		}
+		// No server was constructed to own remote cleanup. The parent owns
+		// these fresh hosts and explicitly exits them after inspecting storage.
+		for i, address := range addresses {
+			client, err := tlc.DialFingerprintEndpoint(address, "primary")
+			if err != nil {
+				t.Fatal(err)
+			}
+			size, failure := client.Size()
+			exitErr := client.Exit(false)
+			closeErr := client.CloseConnection()
+			if size != 0 || failure != nil || exitErr != nil || closeErr != nil {
+				t.Fatalf("unreached host %d inspection/cleanup: %d/%v/%v/%v", i, size, failure, exitErr, closeErr)
+			}
+			process := restarted[i]
+			err = <-process.done
+			process.joined = true
+			if err != nil || strings.Contains(process.output.String(), "NATIVE_CHECKPOINT_FP_RECOVER=") || strings.Count(process.output.String(), "NATIVE_CHECKPOINT_FP_EXIT_SIZE=0\n") != 1 || len(nativeDistributedMessages(process.output.String(), tlc.ECGeneral)) != 0 {
+				t.Fatalf("intern failure reached remote recovery or broke parent cleanup: %v\n%s", err, process.output.String())
+			}
+			for _, snapshot := range snapshots[i] {
+				data, err := os.ReadFile(filepath.Join(directories[i], snapshot.filename))
+				if err != nil || !bytes.Equal(data, snapshot.data) {
+					t.Fatal("intern startup failure changed remote committed checkpoint")
+				}
+			}
+		}
+		for filename, expected := range coordinatorSnapshots {
+			data, err := os.ReadFile(filepath.Join(path[1], filename))
+			if err != nil || !bytes.Equal(data, expected) {
+				t.Fatalf("intern startup failure changed checkpoint %s: %v", filename, err)
+			}
+		}
+		if _, err := os.Stat(filepath.Join(path[1], "MC06.st.chkpt")); !os.IsNotExist(err) {
+			t.Fatal("intern startup failure regenerated the missing trace checkpoint")
+		}
+		t.Log("intern EOF precedes parsing/server construction and missing trace recovery; fresh remote stores remain empty and all roles join")
+		return
+	}
 	if corruptCoordinator {
 		for _, process := range append([]*nativeDistributedTestProcess{server}, restarted...) {
 			err := <-process.done
@@ -1122,6 +1193,7 @@ func nativeRegisteredFingerprintRecovery(args []string) error {
 	network := tlc.NewDistributedCoordinatorNetwork("127.0.0.1", "127.0.0.1")
 	defer network.Close()
 	env := tlc.DistributedServerEnvironment{CreateServer: func(app *tlc.TLCApp, _ int) (*tlc.TLCServer, error) {
+		fmt.Fprintln(os.Stdout, "NATIVE_REGISTERED_FP_SERVER_CREATE")
 		server, err := nativeRegisteredFingerprintServer(app)
 		if err == nil {
 			server.ConfigurePublication(network.Publication())

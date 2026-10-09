@@ -149,7 +149,9 @@ Distributed named fingerprint checkpoints commit during the fingerprint-begin
 phase; their final manager commit is a no-op. Local fingerprints commit in the
 final phase. Mixed generations after interruption are source behavior. Do not
 turn these checkpoints into an atomic transaction or promote pending files.
-Recovery runs trace, queue, then fingerprints. Intern recovery holds its mutex
+Application creation restores intern tokens before parsing and server construction;
+a truncated header fails before trace/queue/FP recovery or publication. Server
+recovery runs trace, queue, then fingerprints. Intern recovery holds its mutex
 from before open through token publication/replay.
 
 Direct checked-I/O failures warn and continue healthy registrations. Nested
@@ -200,8 +202,10 @@ restart or checkpoint atomicity. See architecture notes for their exact limits.
 ## Remaining distributed work
 
 1. Extend recovery coverage to additional failure phases beyond the matrix above.
-   Keep the CLI empty-manager limitation separate from registered-endpoint
-   library recovery. Do not claim checkpoint atomicity from successful restarts.
+   Intern-header, trace and queue startup failure ordering is verified; other
+   phases remain open. Keep the CLI empty-manager limitation separate from
+   registered-endpoint library recovery. Do not claim checkpoint atomicity from
+   successful restarts.
 2. Cover additional full-model fingerprint failure phases and general network
    partitions beyond forced closure, reply loss and the controlled relay stalls.
 3. Continue source ownership/constructor and native cleanup comparisons only

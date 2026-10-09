@@ -26755,3 +26755,29 @@ New scheduler check passes in distributed-worker-real-timer-loss.log, terminal
 and stalled-fingerprint worker-control cases pass in
 distributed-worker-real-timer-controls.log, terminal e7f3f5, status 0. No race,
 long-model or full-suite rerun. All handles terminal; git diff --check passes.
+
+
+### October 9, 2026: fresh distributed intern-header failure precedence
+
+Source comparison confirms TLCApp.create restores intern tokens before parsing
+and server construction; server recovery subsequently restores trace, queue and
+fingerprints. Extended the existing native N=7 real mid-run checkpoint fixture
+with a one-byte committed vars.chkpt header and an independently missing trace
+checkpoint. A constructor marker makes the boundary directly observable. Fresh
+coordinator startup prints one GENERAL containing EOF, then its existing source
+missing-server finally failure escapes as tool failure. No server constructor,
+recovery-start, FP registration, initialization, publication, summary or FINISHED
+is reached. Two fresh LSB hosts stay empty, with no recovery marker. The parent
+explicitly exits and joins those hosts because no coordinator was constructed
+to own them. All remote committed snapshot and retained coordinator checkpoint
+bytes remain unchanged; the missing trace is not regenerated. No production
+change, timer alteration, Java transport machinery or original-method credit.
+Later intern-record corruption is outside this receipt; inventory stays 37/41.
+
+New TestNativeDistributedRemoteCheckpointTruncatedIntern passes in
+distributed-remote-intern-corruption.log, terminal fcd845, status 0,
+6.521 seconds. Existing truncated-queue and truncated-trace process controls
+pass with unchanged assertions in distributed-remote-intern-corruption-controls.log,
+terminal 935be2, status 0, 13.221 seconds. Both selected entries ran. No full
+suite, race or unchanged full-model completion rerun. All handles terminal and
+git diff --check passes.

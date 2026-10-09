@@ -14536,3 +14536,22 @@ same task and runtime cancellation path as StartKeepAlive. It does not prove
 the next scheduled period, suppression during actual model computation, process
 death or arbitrary network partitions. No production behavior changed and no
 direct original Java timer test exists; original distributed credit stays 37/41.
+
+
+### Intern-header failure before distributed server construction
+
+Fresh-process native recovery coverage now corrupts the actual committed
+vars.chkpt header from a mid-run N=7 checkpoint while independently removing
+the trace checkpoint. Application creation reports the intern EOF before the
+server constructor can execute. The source main's existing missing-server
+finally failure then escapes; the helper exits with tool failure. No model
+recovery-start, FP registration, initialization, publication, final statistics
+or FINISHED event is emitted.
+
+Two fresh LSB hosts are already listening for this attempt. Inspection finds
+both empty with no accepted recovery call, and every remote committed snapshot
+and retained coordinator checkpoint remains byte-identical. Since no server
+was constructed to own those hosts, the fixture parent explicitly exits and
+joins them. This preserves startup failure precedence and does not manufacture
+a recovered model, change CLI registration order or prove later intern-record
+corruption behavior. No production change or original-method credit is added.
