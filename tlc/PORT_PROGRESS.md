@@ -28291,3 +28291,68 @@ runtime-module-targets-final-broad-originals.log, terminal 5c0dee, status 0,
 180.025 seconds. Translated Java assertions and workload bounds remain unchanged.
 The same full off-heap random session remains live beyond 402 million iterations;
 no completion credit. Git diff --check passes.
+
+
+Runtime invariant processor phase and retained action identity (2026-10-09)
+
+Previous goal turn made authoritative progress in 6071903. Revalidated the clean
+worktree and polled the same live full off-heap random session 77502. Audited
+ParameterizedSpecObj.RuntimeInvariantTemplate/getInvariants and SpecProcessor's
+runtime override merge after ordinary config checks and before constraints.
+The Go bridge had appended only to Tool after all processor config processing.
+
+SpecProcessor now invokes the existing native frontend compiler through an
+explicit callback during that source phase. The bridge callback uses the running
+tool, actual processor root module and null source location. The processor creates
+internal Actions and appends their actions/default names to its own invariant
+vectors. ApplyToTool transfers those same pointers normally. Removed the later
+tool-only append path. A source audit of Assert.fail(code, Throwable) also found
+that compilation failures should retain their cause: the new catch uses
+NewTLCRuntimeExceptionWithCause rather than flattening the error to a parameter.
+A null compiler result keeps the source null failure.
+
+Focused original debugger/scoped-identifier/trace and existing runtime postcondition
+checks pass in runtime-invariant-phase-focused.log, terminal 27d8fd, status 0,
+8.441 seconds. Focused processor/config/getter/parameter checks pass in
+runtime-invariant-phase-processor-checks.log, terminal 100d27, status 0,
+0.019 seconds. Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME
+and trace selection passes in runtime-invariant-phase-broad-originals.log,
+terminal e9075a, status 0, 180.464 seconds; this precedes the final cause-preserving
+catch refinement. Final focused verification is recorded below.
+
+A bounded standalone Java/Go observation uses unchanged BasicMultiTrace/MCInv
+fixture data and its actual Inv operator as a runtime template. Java classes are
+from the read-only checkout, whose HEAD is verified as the pinned
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Both Java and corrected Go expose two
+invariants in tool and processor. The ordinary action is not internal; the runtime
+action is internal. Both retain source body identity, names and init=false, and
+tool/processor getters retain the same action pointers. Baseline Go has two tool
+invariants but only one processor invariant, losing the runtime action there.
+Receipts: runtime-invariant-phase-java-observation.log, terminal 929dc3;
+runtime-invariant-phase-go-observation.log, terminal d1e367; and
+runtime-invariant-phase-before-observation.log, terminal 4fe7d9; all status 0.
+An initial Java probe compile required correcting its import and Set ambiguity;
+that compile failure earns no verification credit.
+
+The same observation also compares the fixture's original invariant body
+~(depth = 2), exercising generated debugger wrapper compilation rather than
+only direct operator reuse. Java and Go counts and both metadata rows agree after
+normalizing generated numeric wrapper suffixes. Receipts:
+runtime-invariant-phase-java-body-observation.log, terminal 0f8f0d, and
+runtime-invariant-phase-go-body-observation.log, terminal 4ac35d; both status 0.
+These are manual observations, not invented persistent tests, fixtures, translated
+Java assertions or original-method credit. General runtime template/config-error
+ordering, source generation, mutation sharing and native INSTANCE fallback parity
+remain unproven. Next audit: accumulated native config failures versus immediate
+Java aborts before runtime template compilation.
+
+No full-workspace or XML/ApalacheIR sweep, race instrumentation, email work or
+long-workload restart. The original full off-heap random log exceeds 416 million
+of 2,147,483,648 iterations in its same live session; completion credit is pending.
+
+Final focused original debugger/scoped-identifier/trace and existing runtime
+postcondition checks pass after the cause-preserving catch refinement:
+runtime-invariant-phase-final-focused.log, terminal 6f6ca5, status 0,
+8.164 seconds. Translated Java assertions and workload bounds are unchanged.
+The same full off-heap random session remains live; no completion credit.
+Git diff --check passes.

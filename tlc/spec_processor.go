@@ -228,7 +228,8 @@ type SpecProcessor struct {
 	RootDefinitions      *InsMap[string, *OpDefNode]
 
 	// Runtime targets resolve against ModuleTbl when their source phase runs.
-	RuntimeParameters RuntimeParameters
+	RuntimeParameters        RuntimeParameters
+	RuntimeInvariantCompiler func(string) (*OpDefNode, error)
 
 	Variables         []*UniqueString
 	VariablesNodes    []*SymbolNode
@@ -351,6 +352,21 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.processConfigPostConditions()
 	p.processMissingInitNextConfig()
 	p.processSpecPropertyTautologyWarning()
+	for _, invariant := range p.RuntimeParameters.Invariants {
+		if p.RuntimeInvariantCompiler == nil {
+			panic(NewTLCRuntimeException(ECTLCParsingFailed2, "runtime invariant expression compiler is not configured"))
+		}
+		definition, err := p.RuntimeInvariantCompiler(invariant.Expression)
+		if err != nil {
+			panic(NewTLCRuntimeExceptionWithCause(ECTLCParsingFailed2, err))
+		}
+		if definition == nil {
+			panic(NewNullPointerException())
+		}
+		action := NewActionFromOpDef(definition.Body, EmptyContext, definition, false, true)
+		p.Invariants = append(p.Invariants, action)
+		p.InvariantNames = append(p.InvariantNames, action.GetNameOfDefault())
+	}
 	for _, constraint := range p.RuntimeParameters.Constraints {
 		definition := p.runtimeModuleDefinition(constraint.Module, constraint.Operator)
 		p.Defns.Put(definition.Name, definition)

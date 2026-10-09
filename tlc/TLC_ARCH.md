@@ -11031,9 +11031,27 @@ On existing original proof/trace methods and the existing runtime postcondition
 bridge check, 3,940 operator lookups across 15 builds match actual module OpDefs,
 13 observed theorem entries are excluded, and all nine observed runtime
 postcondition bodies/metadata match. These observations do not prove every
-runtime-parameter combination. Runtime invariant templates still append only to
-Tool after processor config/constraint processing; their processor visibility and
-source phase ordering remain to reconcile.
+runtime-parameter combination.
+
+Runtime invariant templates now compile during processor config processing, after
+ordinary config checks and before model/action constraints. A native callback
+keeps the frontend expression compiler outside package tlc while using the running
+tool, actual root module and null source location. The processor creates internal
+Actions and merges their names/actions into its own invariant vectors; normal
+ApplyToTool transfer retains those same Action objects. The later tool-only append
+path is removed. Compilation failures use Assert.fail(code, cause)'s native
+exception overload, preserving the cause; a null compiler result retains the
+source null failure.
+
+A bounded manual comparison against Java classes in the pinned checkout uses
+existing BasicMultiTrace/MCInv data and both its Inv operator and original body
+`~(depth = 2)`. Java and corrected Go both retain two invariant actions in tool
+and processor, with matching names, action identity across getters, source bodies
+and internal/init flags. The baseline exposed two tool actions but one processor
+action. Generated wrapper name suffixes are normalized for comparison. These
+observations do not establish general runtime-template or configuration-error
+ordering parity; the native processor still accumulates config failures where
+Java can abort immediately, which needs a separate audit.
 
 An overlay on unchanged original Test219 observes 648 root traces, all matching
 exactly, including all 371 initial-context events, without alias/null failures.

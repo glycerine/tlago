@@ -345,7 +345,6 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installConfigConstants()
 	bridge.installInstanceAliases()
 	bridge.installModelTargets()
-	bridge.installRuntimeParameters()
 	bridge.tool.AssignActionIDs()
 	return bridge.tool, bridge.diags
 }
@@ -943,28 +942,10 @@ func (b *tlcBridge) installModelTargets() {
 	}
 	if b.processor != nil {
 		b.processor.RuntimeParameters = b.runtime
+		b.processor.RuntimeInvariantCompiler = func(expression string) (*tlc.OpDefNode, error) {
+			return b.parseDebuggerExpression(b.tool, b.processor.RootModule, tlc.NullSourceLocation, expression)
+		}
 		b.processor.ApplyToTool(b.tool)
-	}
-}
-
-func (b *tlcBridge) installRuntimeParameters() {
-	if b == nil {
-		return
-	}
-	for _, inv := range b.runtime.Invariants {
-		// RuntimeInvariantTemplate uses the same expression compiler as Java's
-		// TLCDebuggerExpression, with the root module and null source location.
-		op, err := b.parseDebuggerExpression(b.tool, b.moduleNodes[b.spec.Root], tlc.NullSourceLocation, inv.Expression)
-		if err != nil {
-			// SpecProcessor catches parsing/semantic failures and calls Assert.fail.
-			panic(tlc.NewTLCRuntimeException(tlc.ECTLCParsingFailed2, err.Error()))
-		}
-		if op == nil {
-			panic(tlc.NewNullPointerException())
-		}
-		action := tlc.NewActionFromOpDef(op.Body, tlc.EmptyContext, op, false, true)
-		b.tool.Invariants = append(b.tool.Invariants, action)
-		b.tool.InvariantNames = append(b.tool.InvariantNames, action.GetNameOfDefault())
 	}
 }
 

@@ -72,8 +72,10 @@ Generated theorem and assumption lookup aliases now bind canonical theorem
 definitions, preserving INSTANCE substitutions and formals. Source theorem
 symbol caches and early conversion now retain the canonical source symbols.
 Runtime constraint/view/postcondition targets now use external module OpDefs and
-processor configuration/getter paths. Next: reconcile runtime invariant template
-visibility in the processor and ordering before constraint processing.
+processor configuration/getter paths. Runtime invariant templates now compile and
+merge in the processor before constraint processing. Next: audit accumulated
+config failures versus Java's immediate aborts around runtime template compilation;
+general source generation, mutation sharing and native INSTANCE fallback remain.
 
 ## Verification baseline and test credit
 
