@@ -25,7 +25,16 @@ func TestDistributedPoolBackgroundFailureExit(t *testing.T) {
 		if phase == "reader_truncated" || phase == "writer_nil" {
 			name = filepath.Join(directory, "0")
 		}
-		if strings.HasPrefix(phase, "reader_") {
+		if phase == "cleaner_loop" {
+			link := filepath.Join(directory, "loop")
+			if err := os.Symlink(link, link); err != nil {
+				t.Fatal(err)
+			}
+			cleaner := NewStatePoolCleaner(&DiskStateQueue{diskdir: link})
+			cleaner.Start()
+			cleaner.DeleteUpTo(1)
+			<-cleaner.done
+		} else if strings.HasPrefix(phase, "reader_") {
 			if phase == "reader_truncated" {
 				if err := os.WriteFile(name, []byte{0}, 0600); err != nil {
 					t.Fatal(err)
@@ -46,7 +55,7 @@ func TestDistributedPoolBackgroundFailureExit(t *testing.T) {
 		fmt.Fprintln(os.Stdout, "POOL_FAILURE_RETURNED")
 		return
 	}
-	for _, phase := range []string{"reader_missing", "reader_truncated", "writer_missing", "writer_nil"} {
+	for _, phase := range []string{"reader_missing", "reader_truncated", "writer_missing", "writer_nil", "cleaner_loop"} {
 		t.Run(phase, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -58,7 +67,9 @@ func TestDistributedPoolBackgroundFailureExit(t *testing.T) {
 				t.Fatalf("pool failure should exit 1: %v\n%s", err, output)
 			}
 			code := ECSystemErrorWritingPool
-			if strings.HasPrefix(phase, "reader_") {
+			if phase == "cleaner_loop" {
+				code = ECSystemErrorCleaningPool
+			} else if strings.HasPrefix(phase, "reader_") {
 				code = ECSystemErrorReadingPool
 			}
 			text := string(output)

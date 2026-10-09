@@ -12875,3 +12875,23 @@ process-exit behavior. Synchronous write/dequeue/peek checks force actual
 missing-file errors and verify codes, parameters, runtime classification and
 unchanged states, counts, buffer indices and pool indices. No queue operation
 is retried or completed after the failure.
+
+### Obsolete pool deletion diagnostics
+
+DiskStateQueue's cleaner reports SYSTEM_ERROR_CLEANING_POOL warnings whenever
+an obsolete file cannot be deleted, including an already missing file. Warnings
+use canonical paths, resolving symlinks before reducing dot components. Failed
+deletion is optional cleanup: the cleaner continues through later pools and
+advances the attempted range, preserving blocked contents.
+
+Linux canonicalization reuses the existing native filesystem boundary, which
+resolves existing prefixes while retaining unresolved missing suffixes. Other
+platforms use native existing-ancestor resolution; their broader source-provider
+parity remains unproved. Ordinary failures in canonicalization/cleaner work
+instead follow the source catch: error diagnostic with the cause and native
+exit status 1. Fatal categories escape the ordinary catch.
+
+Direct and symlink/.. cases verify ordered missing/blocked warnings, canonical
+names, continued successful deletion and range advancement. A child process
+forces a parent symlink loop and verifies the canonicalization failure exit
+without a production hook. Only the short cleaner cases receive race checking.

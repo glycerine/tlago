@@ -23916,3 +23916,24 @@ disk queue methods pass (terminal a586e6, status 0, 0.018 seconds). No enabled
 original method directly tests this catch boundary; native checks add no
 original-method credit. No full suite, long model or race workload ran.
 All check handles are terminal.
+
+### Disk queue cleaner deletion warnings and canonical paths
+
+Source cleaner warns when File.delete returns false, including missing files,
+and uses getCanonicalPath. Go ignored nonexistent files and printed absolute,
+lexically cleaned names. Native direct/symlink cases reproduce missing warnings
+and wrong paths (terminal c4cb9d, status 1, 0.012 seconds). Corrected deletion
+warning handling and canonical resolution. Linux reuses the existing filesystem
+boundary; other native providers resolve existing ancestors, without claiming
+their broader Java-provider parity. Ordinary cleaner/canonicalization failures
+now use the source error diagnostic and native exit 1; fatal categories escape.
+
+Initial fixed cleaner/original pool-writer/constructor/path checks pass (terminal
+c8c20f, status 0, 0.038 seconds). Expanded final checks include a real parent
+symlink-loop canonicalization failure in a subprocess, plus synchronous and
+background pool boundaries (terminal e94135, status 0, 0.107 seconds). Only the
+two short cleaner cases run with race instrumentation and pass (terminal
+825668, status 0, 1.034 seconds). Failed deletion retains blocked contents,
+continues later deletion and advances the attempted range. No direct enabled
+original method tests these cleaner failures; native checks add no completion
+credit. No full suite or long model ran. All check handles are terminal.

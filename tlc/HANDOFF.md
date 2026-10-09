@@ -140,6 +140,9 @@ propagate close errors; native failure cleanup closes the stream only once.
 Disk queue synchronous pool failures become the source coded reading/writing
 states runtime assertions. Detail text and prior mutations remain; fatal
 categories escape the ordinary catch and no extra cause is attached.
+The disk queue cleaner warns on every failed deletion, including missing files,
+using canonical paths, and continues through later pools. Canonicalization
+failures follow the source error diagnostic and native process exit status 1.
 Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
 storage. The manager warns once, continues to the next registration and leaves
 routing intact; the broken connection does not replay the completed recovery.
