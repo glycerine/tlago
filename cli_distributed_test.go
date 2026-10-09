@@ -18,6 +18,21 @@ func TestDistributedCLIHelp(t *testing.T) {
 					t.Fatalf("%v: missing %q in help", args, required)
 				}
 			}
+			for _, required := range []string{
+				"TLCServer.expectedFPSetCount=1", "tlago fpserver coordinator-host",
+				"tlago worker-fpserver coordinator-host", "rejects remote fingerprint registrations",
+			} {
+				if !strings.Contains(out.String(), required) {
+					t.Fatalf("%v: missing remote-storage setup %q", args, required)
+				}
+			}
+			if role != "worker" {
+				for _, required := range []string{"FPSet.impl=NAME", "default tlc2.tool.fp.MSBDiskFPSet", "TLAGO_MAX_DIRECT_MEMORY", "coordinator -fpmem and -fpbits do not configure them", "Remote off-heap named checkpoints are unsupported"} {
+					if !strings.Contains(out.String(), required) {
+						t.Fatalf("%v: missing storage explanation %q", args, required)
+					}
+				}
+			}
 			if role == "server" && (!strings.Contains(out.String(), "-recover DIR") || strings.Contains(out.String(), "-simulate")) {
 				t.Fatal("coordinator help must describe its actual source option subset")
 			}

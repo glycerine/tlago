@@ -284,6 +284,11 @@ verification receipts, source or vectors during disk cleanup.
 Persistent fixtures belong in `tlc/test_vectors/`, never a directory named
 `testdata`. CLI TLC arguments are Java's flags by default; direct arguments and
 `modelcheck`/`mc` use the same runner. Do not restore `--tlc` or the bounded CLI.
+Distributed role help includes local/remote storage launch sequences, the
+original backend selector property, storage-owner option placement and native
+heap/direct-memory settings. Default coordinator storage rejects remote FP
+registrations; the remote example sets `expectedFPSetCount=1`. Remote off-heap
+named-checkpoint limitations remain explicit.
 Both checker and server `-fpmem` deprecation warnings give Go memory-budget
 guidance (`GOMEMLIMIT`), preserving the source option's acceptance and allocation.
 

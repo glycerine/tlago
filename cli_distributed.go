@@ -166,6 +166,23 @@ func printDistributedCLIHelp(w io.Writer, role string) {
 		fmt.Fprintln(w, "COORDINATOR_HOST is the server hostname. Model options belong on the coordinator, not the worker/FP command.")
 		fmt.Fprintln(w, "IPv6 coordinator hosts may be bare or bracketed (for example ::1 or [::1]); scoped hosts retain their %zone suffix.")
 	}
-	fmt.Fprintln(w, "\nExample: tlago server -config Spec.cfg Spec.tla")
-	fmt.Fprintln(w, "         tlago worker -Dtlc2.tool.distributed.TLCWorker.threadCount=4 coordinator-host")
+	if role != "worker" {
+		fmt.Fprintln(w, "\nFingerprint storage:")
+		fmt.Fprintln(w, "  -Dtlc2.tool.fp.FPSet.impl=NAME                    Select the native Go fingerprint backend; default tlc2.tool.fp.MSBDiskFPSet.")
+		fmt.Fprintln(w, "Supported disk choices are tlc2.tool.fp.MSBDiskFPSet, tlc2.tool.fp.LSBDiskFPSet and tlc2.tool.fp.OffHeapDiskFPSet.")
+		fmt.Fprintln(w, "These original Java property values select Go implementations; they do not load Java classes or use RMI.")
+		fmt.Fprintln(w, "Set this property on the process owning storage: server for coordinator storage, fpserver or worker-fpserver for remote storage.")
+		fmt.Fprintln(w, "Standalone fingerprint servers use their own memory budget and two storage partitions; coordinator -fpmem and -fpbits do not configure them.")
+		fmt.Fprintln(w, "Go memory settings: GOMEMLIMIT supplies the heap budget; TLAGO_MAX_DIRECT_MEMORY supplies the off-heap budget (for example 256m).")
+		fmt.Fprintln(w, "Remote off-heap named checkpoints are unsupported, matching Java; MSB and LSB storage support them.")
+	}
+	fmt.Fprintln(w, "\nCoordinator storage example (run commands in separate terminals):")
+	fmt.Fprintln(w, "  tlago server -config Spec.cfg Spec.tla")
+	fmt.Fprintln(w, "  tlago worker -Dtlc2.tool.distributed.TLCWorker.threadCount=4 coordinator-host")
+	fmt.Fprintln(w, "\nRemote storage example (one fingerprint server and one worker process):")
+	fmt.Fprintln(w, "  tlago server -Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=1 -config Spec.cfg Spec.tla")
+	fmt.Fprintln(w, "  tlago fpserver coordinator-host")
+	fmt.Fprintln(w, "  tlago worker coordinator-host")
+	fmt.Fprintln(w, "Replace the last two commands with tlago worker-fpserver coordinator-host to combine their roles.")
+	fmt.Fprintln(w, "The coordinator waits for expectedFPSetCount registrations before starting; its default local-storage mode rejects remote fingerprint registrations.")
 }

@@ -27350,3 +27350,31 @@ actual port objective. All mapped files alone still do not prove completion.
 No new test run: this chunk only audits source/inventory and edits prose; reuse
 the existing focused receipts and user's green full-suite baseline. No long or
 race workload and no new original-method credit. git diff --check passes.
+
+
+### October 9, 2026: distributed CLI storage setup help
+
+Reviewed role dispatch, property extraction, worker/FP argument forwarding and
+command ownership against original launch paths. No algorithmic omission found.
+The manual-use help did omit the existing fingerprint-backend selector and gave
+only a default local-storage example even for standalone FP roles. That example
+would reject FP registrations unless users separately discovered the expected
+count setting. Expanded the existing role help without changing runtime behavior.
+
+Help now supplies both local-storage and remote-storage command sequences,
+including expectedFPSetCount=1 and the combined worker-fpserver substitution.
+Explains that original FPSet.impl names select native Go storage, where to place
+the property, default MSB/other disk choices, standalone process budgets/two
+partitions, and why coordinator -fpmem/-fpbits do not configure remote hosts.
+Describes GOMEMLIMIT/TLAGO_MAX_DIRECT_MEMORY and the confirmed source limitation
+on remote off-heap named checkpoints. These statements were checked against Go
+FP configuration/factory/server construction and Java factory/FP launch behavior.
+No RMI, Java class loading or rpc25519 work introduced.
+
+Extended the existing native CLI help check for both help entry forms and all
+four roles. Help and invalid-startup checks pass:
+distributed-cli-storage-help.log, terminal e848ae, status 0, 0.017 seconds.
+No source Java test exists for native role help, so no original-method credit
+added. Updated HANDOFF; git diff --check passes. No network test, long workload,
+full suite or race run. Upstream-defect policy question remains pending and
+source behavior is unchanged.
