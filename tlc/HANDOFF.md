@@ -532,7 +532,9 @@ from `go test -c`, Linux/amd64 ptrace permission and GDB; see `TLC_ARCH.md`.
    LSB/MSB child snapshots, plus a missing direct memory-store snapshot.
    A truncated coordinator queue from a real N=7 checkpoint stops recovery
    before either remote host is recovered or workers are published; all roles
-   join with retained checkpoint bytes unchanged.
+   join with retained checkpoint bytes unchanged. A truncated trace plus missing
+   queue reports the trace EOF first, confirming trace-before-queue recovery in
+   the same real-checkpoint/fresh-role path.
    Keep the fresh-process remote-FP CLI limitation separate:
    Java recovers before publication/registration while its dynamic manager is
    empty. Do not reorder startup to manufacture support.

@@ -25954,3 +25954,30 @@ shutdown/incomplete-request/callback-drain and response-flush checks pass
 (distributed-listener-failure-race.log, terminal fa27fa, status 0, 1.040 seconds).
 All handles are terminal. No full suite or long model/race workload was run;
 original distributed method completion counts remain unchanged at 37/41.
+
+
+### October 9, 2026: trace recovery failure precedes a missing queue
+
+Extended the real N=7 checkpoint/fresh nested-LSB role fixture to truncated trace
+metadata. The pinned TLCTrace.recover reads saved file position and last pointer
+before seeking; TLCServer.recover invokes it before queue and remote FP recovery.
+The test truncates MC06.st.chkpt to one byte and renames the intact queue to
+queue.chkpt.unreached. An independently missing queue would produce a file-open
+error if recovery were reordered; requiring the trace EOF proves which phase
+wins without a production hook or timing assumption.
+
+The generalized coordinator-failure assertions preserve the corrupt queue row:
+one GENERAL EOF and recovery-start, no later recovery/publication/init/final
+messages, neither host recovered, both fresh hosts empty, all roles joined and
+all retained coordinator/remote snapshot bytes unchanged. The renamed queue is
+also checked byte-for-byte, and its missing original pathname is not recreated.
+No new production defect was exposed; the existing Go ordering matches Java.
+No original Java method directly exercises this failure combination.
+
+Both real-checkpoint corrupt queue and truncated trace rows pass
+(distributed-remote-corrupt-trace.log, terminal 2feb89, status 0, 13.066 seconds;
+trace row 6.54 seconds). Focused trace owner/read ordering, partial queue mutation,
+publication failure and all seven original simulation trace methods pass
+(distributed-remote-corrupt-trace-focused.log, terminal c9e27c, status 0,
+0.041 seconds). All handles are terminal. No full suite or race run;
+original distributed completion remains 37/41 with four Reconcile contexts.

@@ -1929,7 +1929,10 @@ errors on coordinator/worker role owners. They add no original-method credit.
 Native corrupt-queue recovery checks use a real N=7 checkpoint and fresh nested
 LSB hosts. EOF stops startup before remote recovery or worker publication; hosts
 remain empty, all roles join and retained snapshots stay unchanged. This adds
-native phase coverage without original-method completion credit.
+native phase coverage without original-method completion credit. The truncated
+trace variant makes the queue checkpoint independently unavailable and requires
+the trace EOF, verifying trace-before-queue ordering with the same shutdown and
+retained-snapshot assertions.
 
 Native response-flush checks also require a failed server write to close the
 transport, unblock the peer and server reader, drain accepted-reply accounting

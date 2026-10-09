@@ -14053,3 +14053,14 @@ This supplements existing partial queue mutation and publication unit checks
 with a real checkpoint and fresh-process failure/shutdown path. It adds no
 original Java test credit, successful model-restart guarantee or support for
 fresh CLI remote recovery before registration. Production code is unchanged.
+
+
+TestNativeDistributedRemoteCheckpointTruncatedTrace extends this fixture to the
+earlier trace recovery phase. It truncates MC06.st.chkpt to one byte and renames
+the intact queue checkpoint to queue.chkpt.unreached. The independent missing
+queue would produce a file-open error if startup recovered it first. Requiring
+the trace EOF therefore distinguishes the source trace-before-queue ordering.
+The same failure/shutdown assertions apply: neither host receives recovery,
+publication does not occur, all roles join and retained snapshots (including the
+renamed queue) remain byte-identical. The missing queue is not regenerated.
+Production code and original-method credit remain unchanged.
