@@ -1692,6 +1692,13 @@ distinct states, an empty queue and FINISHED, with no GENERAL in any role. Other
 roles retain their no-EOF assertions. This native supplement leaves all four
 disabled original methods missing.
 
+The lookup-reply-loss full model also covers LSB/MSB hosts. Both child files
+flush before lookup, and positive disk read counters are required before the
+answer is held and the process killed. Existing N=7 bounds, source failover,
+229,884 slot-counted final states, empty queue and diagnostic checks remain.
+Both hosts must report the requested two-child backend. No original-method
+credit is added.
+
 Full MC06 N=7 coverage also runs two workers in one native process, exercising
 the source shared application, fingerprint manager, executor and exit latch.
 Both worker identities must share one listener, each must report actual sent

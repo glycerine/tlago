@@ -56,6 +56,8 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "fingerprint_put_reply_loss_lsb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintBackend: "LSBDiskFPSet"},
 		{name: "fingerprint_put_reply_loss_msb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintBackend: "MSBDiskFPSet"},
 		{name: "fingerprint_lookup_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintLookupReplyLoss: true},
+		{name: "fingerprint_lookup_reply_loss_lsb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintLookupReplyLoss: true, fingerprintBackend: "LSBDiskFPSet"},
+		{name: "fingerprint_lookup_reply_loss_msb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintLookupReplyLoss: true, fingerprintBackend: "MSBDiskFPSet"},
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
 		{name: "mid_run_checkpoint_recovery", recovering: true, midRunCheckpoint: true},
@@ -515,6 +517,12 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					completed := regexp.MustCompile(`NATIVE_FP_LOOKUP_COMPLETED_COUNT=(\d+) MISSING=(\d+)`).FindStringSubmatch(failedFingerprint.output.String())
 					if len(completed) != 3 || completed[1] == "0" {
 						t.Fatal("fingerprint host did not complete a nonempty lookup before reply loss")
+					}
+					if scenario.fingerprintBackend != "" {
+						failedOutput := failedFingerprint.output.String()
+						if !regexp.MustCompile(`NATIVE_FP_DISK_FLUSHED_CHILDREN=2 COUNT=[1-9][0-9]*`).MatchString(failedOutput) || !regexp.MustCompile(`NATIVE_FP_DISK_LOOKUP_READS=[1-9][0-9]*`).MatchString(failedOutput) {
+							t.Fatal("disk lookup reply was held without flushed child files and actual disk reads")
+						}
 					}
 					t.Logf("killed first fingerprint host after looking up %s fingerprints (%s missing), before returning the reply", completed[1], completed[2])
 				} else {

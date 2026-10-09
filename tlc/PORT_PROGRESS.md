@@ -24256,3 +24256,29 @@ This verifies disk-host death after actual insertion/flush and before its reply,
 not recovery of the dead host's files or arbitrary partitions. No enabled
 original method directly covers this fault; the four disabled model methods
 remain missing. No full suite or race workload ran. All check handles are terminal.
+
+### 2026-10-09: Full-model disk lookup reply loss
+
+Extended the completed lookup-reply-loss MC06 N=7 scenario to production
+two-child LSB/MSB fingerprint hosts. Source ContainsBlockCallable retains its
+warning, reassignment and callable retry; native transport does not replay calls.
+The endpoint runs the real store invariant check before lookup to flush both
+children, then delegates ContainsBlock and verifies positive readDiskFP counter
+deltas before withholding its answer. The parent requires exact flush/read
+markers and both hosts' configured child implementation reports before accepting
+the fault scenario. No production code or original workload bound changed.
+
+Both rows flush 8,192 fingerprints, perform 6,984 disk fingerprint reads and
+complete a 10,176-fingerprint lookup with 2,048 missing before the host is killed.
+Worker and coordinator independently converge on the survivor. Existing final
+229,884 slot-counted states, empty queue, FINISHED, exact EOF/failover diagnostics,
+registration alias identity and no-GENERAL assertions remain intact. The native
+64MiB FP-host memory budget is inherited from the disk insertion scenarios.
+
+Both full-model rows pass (disk-lookup-reply-loss.log, terminal d2d42b, status 0,
+99.114 seconds; LSB 49.08 and MSB 50.01 seconds). All surviving processes exit
+normally and every child is joined. This covers completed disk lookup reply loss,
+not arbitrary partitions or dead-host recovery. No enabled original method
+directly covers this fault; original-method credit and the four disabled model
+methods remain unchanged. No full suite or race workload ran. All handles are
+terminal.

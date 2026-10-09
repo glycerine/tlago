@@ -330,6 +330,9 @@ independently reassigns its publication endpoint. Both retain the surviving host
 and the run finishes with 229,884 slot-counted distinct states and an empty queue.
 This covers lookup reply loss, not arbitrary partitions, and adds no original
 method completion credit.
+LSB/MSB lookup-loss rows flush both children before lookup and require actual
+disk fingerprint reads before holding the reply. Both hosts retain their source
+two-child factory layout; final failover/count/diagnostic assertions are unchanged.
 
 Fresh-process local recovery covers the complete 16,384-state initial frontier,
 a mid-run checkpoint and interruptions before queue commit, after queue commit,

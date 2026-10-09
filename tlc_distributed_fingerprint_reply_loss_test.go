@@ -16,13 +16,28 @@ type nativeFingerprintHeldPutReply struct {
 
 type nativeFingerprintHeldLookupReply struct {
 	tlc.DistributedFingerprintEndpoint
-	once sync.Once
+	once  sync.Once
+	flush func() error
+	disk  *tlc.MultiFPSet
 }
 
 func (e *nativeFingerprintHeldLookupReply) ContainsBlock(fps *tlc.LongVec) (*tlc.BitVector, error) {
+	if e.flush != nil && fps != nil && fps.Size() != 0 {
+		if err := e.flush(); err != nil {
+			return nil, err
+		}
+	}
+	before := nativeFingerprintDiskReadCount(e.disk)
 	result, err := e.DistributedFingerprintEndpoint.ContainsBlock(fps)
 	if err != nil || result == nil || fps.Size() == 0 {
 		return result, err
+	}
+	if e.disk != nil {
+		reads := nativeFingerprintDiskReadCount(e.disk) - before
+		if reads == 0 {
+			return nil, fmt.Errorf("completed fingerprint lookup did not read disk fingerprints")
+		}
+		fmt.Printf("NATIVE_FP_DISK_LOOKUP_READS=%d\n", reads)
 	}
 	e.once.Do(func() {
 		fmt.Printf("NATIVE_FP_LOOKUP_COMPLETED_COUNT=%d MISSING=%d\n", fps.Size(), result.TrueCount())
@@ -31,6 +46,20 @@ func (e *nativeFingerprintHeldLookupReply) ContainsBlock(fps *tlc.LongVec) (*tlc
 		<-make(chan struct{})
 	})
 	return result, nil
+}
+
+func nativeFingerprintDiskReadCount(store *tlc.MultiFPSet) uint64 {
+	var count uint64
+	if store != nil {
+		for _, child := range store.Sets {
+			stats := child.(interface {
+				GetDiskSeekCnt() uint64
+				GetDiskSeekCache() uint64
+			})
+			count += stats.GetDiskSeekCnt() + stats.GetDiskSeekCache()
+		}
+	}
+	return count
 }
 
 func (e *nativeFingerprintHeldPutReply) PutBlock(fps *tlc.LongVec) (*tlc.BitVector, error) {
@@ -80,7 +109,7 @@ func nativeDistributedFingerprintLostReply(args []string, lookup bool) error {
 				if _, disk := multi.Sets[0].(interface{ GetDiskWriteCnt() uint64 }); disk {
 					put.flush = func() error {
 						if !multi.CheckInvariant() {
-							return fmt.Errorf("disk fingerprint invariant failed before withholding insertion reply")
+							return fmt.Errorf("disk fingerprint invariant failed before withholding reply")
 						}
 						var count int64
 						for _, child := range multi.Sets {
@@ -102,7 +131,11 @@ func nativeDistributedFingerprintLostReply(args []string, lookup bool) error {
 		}
 		var held tlc.DistributedFingerprintEndpoint = put
 		if lookup {
-			held = &nativeFingerprintHeldLookupReply{DistributedFingerprintEndpoint: endpoint}
+			get := &nativeFingerprintHeldLookupReply{DistributedFingerprintEndpoint: endpoint, flush: put.flush}
+			if put.flush != nil {
+				get.disk = endpoint.(*tlc.LocalFingerprintEndpoint).Set.(*tlc.MultiFPSet)
+			}
+			held = get
 		}
 		if err := network.Host.RegisterFingerprint(name, held); err != nil {
 			return err

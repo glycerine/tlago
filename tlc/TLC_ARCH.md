@@ -12587,6 +12587,14 @@ lookup's single EOF diagnostic; other roles retain no-EOF checks and all roles
 reject GENERAL. This native coverage does not translate the four disabled Java
 model methods or establish arbitrary network-partition behavior.
 
+The same lookup-loss scenario also runs with LSB/MSB hosts using the production
+two-child factory. The endpoint flushes both child files before delegating the
+lookup. Positive disk seek/cache counter deltas prove readDiskFP was used rather
+than only memory or index answers. The parent requires both flush/read markers
+before killing the host, and validates both hosts' actual backend reports.
+GOMEMLIMIT=64MiB applies only to native FP host budgets. Original model bounds,
+worker/coordinator failover and final count/diagnostic assertions remain intact.
+
 ### Native shared worker process death
 
 The full-model worker-loss matrix includes two worker endpoints sharing one
