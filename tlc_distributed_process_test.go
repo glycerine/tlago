@@ -924,10 +924,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				} else {
 					status = ExitOK
 				}
-			} else if len(args) > 0 && (args[0] == "fpserver-check-io-returned" || args[0] == "fpserver-check-io-panicked" || args[0] == "fpserver-check-reply-loss") {
+			} else if len(args) > 0 && (args[0] == "fpserver-check-io-returned" || args[0] == "fpserver-check-io-panicked" || args[0] == "fpserver-check-reply-loss" || args[0] == "fpserver-check-survivor") {
 				failure := strings.TrimPrefix(args[0], "fpserver-check-io-")
 				if args[0] == "fpserver-check-reply-loss" {
 					failure = "reply-loss"
+				} else if args[0] == "fpserver-check-survivor" {
+					failure = "survivor"
 				}
 				if err := nativeDistributedFinalFingerprintCheckHost(args[1:], failure); err != nil {
 					fmt.Fprintln(os.Stderr, err)

@@ -14631,3 +14631,29 @@ limitation, not a successful process recovery check or a native lock deadlock.
 No process test that waits indefinitely for this source failure is enabled.
 Fixing the reporting algorithm would be an explicit deviation from pinned Java;
 header EOF coverage remains separate and green.
+
+
+### Final fingerprint reply loss with a surviving host
+
+A native full N=7 EWD840/MC06 case registers two Mem fingerprint hosts in fixed
+slot order. The first completes its actual final distance check and is killed
+before its accepted reply. The second executes its real partition check. The
+coordinator emits exactly one GENERAL for the lost reply, then one failover
+warning when the subsequent statistics query encounters that failed first slot.
+It does not report exhaustion. Both actual partition sizes sum to 114,942; final
+statistics retain that pre-failure distinct count with zero queued states.
+
+The source manager skips the failed statistics slot after reassignment instead
+of retrying it. The surviving second slot receives one actual final states-seen
+query. The test independently checks the resulting optimistic probability using
+that count plus the manager's initial-state offset, and the actual probability
+using the survivor's distance. The fixed model's reciprocal is away from a
+half-rounding tie; existing signed-distance checks retain decimal HALF_UP edge
+coverage. Aliased registration wrappers cause only one actual survivor Exit,
+with cleanup true and its stored partition size unchanged. Surviving coordinator,
+worker and FP processes join normally after FINISHED. The killed host has no
+post-check statistics/exit calls and its check is not replayed.
+
+This supplements the sole-host final-check loss case. It does not prove disk
+final-check loss or arbitrary partitions and adds no original-method completion
+credit. Existing Java manager and ordinary native trace assertions remain intact.

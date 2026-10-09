@@ -94,6 +94,7 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 	if checkFailure != "" && (!remote || sourceHarness || model != "EWD840") {
 		t.Fatal("final-check fault requires the native remote EWD840 model")
 	}
+	survivingCheckHost := checkFailure == "reply-loss-survivor"
 	directory, err := filepath.Abs(filepath.Join("tlc/test_vectors/models", model))
 	if err != nil {
 		t.Fatal(err)
@@ -153,13 +154,17 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 	}
 	serverArgs := []string{"-tool", "-deadlock", "-metadir", t.TempDir(), spec}
 	if remote {
-		serverArgs = append([]string{"-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=1"}, serverArgs...)
+		count := 1
+		if survivingCheckHost {
+			count = 2
+		}
+		serverArgs = append([]string{fmt.Sprintf("-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=%d", count)}, serverArgs...)
 	}
 	if sourceHarness {
 		start("worker", "127.0.0.1")
 	}
 	server := start("server", serverArgs...)
-	var fingerprint *nativeDistributedTestProcess
+	var fingerprint, survivor *nativeDistributedTestProcess
 	if remote {
 		if sourceHarness {
 			start("fpserver", "127.0.0.1")
@@ -167,17 +172,27 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 			role := "fpserver"
 			if checkFailure != "" {
 				role = "fpserver-check-io-" + checkFailure
-				if checkFailure == "reply-loss" {
+				if checkFailure == "reply-loss" || survivingCheckHost {
 					role = "fpserver-check-reply-loss"
 				}
 			}
 			fingerprint = start(role, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 		}
 	}
+	if survivingCheckHost {
+		// Fix slot order before starting the second host. The source statistics
+		// loop skips a failed slot after reassignment rather than retrying it.
+		waitForNativeDistributedMarker(t, ctx, server, "first fingerprint registration", func() bool {
+			return len(nativeDistributedMessages(server.output.String(), tlc.ECTLCDistributedServerFPSetRegistered)) == 1
+		})
+		survivor = start("fpserver-check-survivor", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+	}
 	if !sourceHarness {
 		start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 	}
-	if checkFailure == "reply-loss" {
+	if survivingCheckHost {
+		waitForNativeFinalFingerprintCheckPartition(t, ctx, server, fingerprint)
+	} else if checkFailure == "reply-loss" {
 		waitForNativeFinalFingerprintCheck(t, ctx, server, fingerprint)
 	}
 	for _, process := range roles {
@@ -198,7 +213,7 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 		}
 		messages := nativeDistributedMessages(output, tlc.ECGeneral)
 		expectedFailure := nativeFinalFingerprintCheckFailure
-		if checkFailure == "reply-loss" {
+		if checkFailure == "reply-loss" || survivingCheckHost {
 			expectedFailure = "unexpected EOF"
 		}
 		if len(messages) != expectedGeneral || (expectedGeneral == 1 && !strings.Contains(messages[0], expectedFailure)) {
@@ -216,13 +231,16 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 			}
 		}
 		expectedEOF := 0
-		if checkFailure == "reply-loss" && process == server {
+		if (checkFailure == "reply-loss" || survivingCheckHost) && process == server {
 			expectedEOF = 1
 		}
 		if strings.Count(output, "unexpected EOF") != expectedEOF {
 			t.Fatalf("%s lost an unexpected RPC reply", process.output.role)
 		}
 		t.Logf("%s exited normally", process.output.role)
+	}
+	if survivingCheckHost {
+		return server.output.String() + "\n" + survivor.output.String() + "\n" + fingerprint.output.String()
 	}
 	return server.output.String()
 }

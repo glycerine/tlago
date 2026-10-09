@@ -26922,3 +26922,50 @@ native protection for its mutable table/counter, not a claim of identical Java
 lock identity. Updated HANDOFF with the reporting limitation. No production
 algorithm changed; original distributed inventory remains 37/41. All tool
 handles terminal and git diff --check passes.
+
+
+### October 9, 2026: final fingerprint reply loss with a survivor
+
+Extended the existing native full N=7 EWD840/MC06 final-check fault harness to
+two actual Mem hosts. The first registration is observed before the second is
+started, fixing slot order without changing the model or coordinator algorithm.
+The first host completes its real distance check and is killed before its reply;
+the second completes its real partition check and remains available. There is
+no direct original Java test for this failure phase. Original-method credit
+remains 37/41; ordinary/source-harness zero-GENERAL assertions remain unchanged.
+
+Compared FPSetManager.checkFPs, CheckFPsCallable, getStatesSeen and close with the
+pinned source. The lost check emits one GENERAL and supplies Long.MAX_VALUE to
+the minimum. Only the later statistics query reassigns the failed first slot;
+that loop does not retry it. The surviving second slot supplies one final
+states-seen value plus the manager's initial-state offset. Final reporting uses
+the survivor's actual distance and retains the distinct count captured before
+host death. Close deduplicates aliased wrappers and calls the survivor Exit once.
+No production correction was needed and no transport replay was introduced.
+
+The test requires partition sizes 57,468 + 57,474 = 114,942, zero queued states,
+exact failure/warning/success/stats/FINISHED order, no exhaustion warning, no
+post-check calls to the killed host and joined surviving roles. It independently
+checks both displayed probabilities from actual survivor counters/distance,
+without calling the production reporter. The observed reciprocal is away from
+a decimal half-rounding tie; existing signed-distance controls retain that edge
+coverage. Every survivor final statistics call is logged, so a retry or duplicate
+slot query cannot hide behind a first-call-only marker.
+
+Initial full case passes in distributed-final-check-survivor.log, terminal
+41e806, status 0, 53.671 seconds. Added partition-sum and actual-probability
+assertions; distributed-final-check-survivor-final.log, terminal 54cb2d, status 0,
+52.565 seconds. Made the survivor fixture count every final statistics call;
+final distributed-final-check-survivor-counted.log, terminal 635fdc, status 0,
+53.038 seconds. Repeated runs followed stronger assertions/fixture observations,
+not unchanged-model sweeps. All preserve the complete source model bounds.
+
+Short original DynamicFPSetManager reassignment/scalar failover, native check-I/O
+TCP/catches, close/traversal ownership and signed-distance/optimistic-subtraction
+controls pass in distributed-final-check-survivor-controls.log, terminal 36c7fa,
+status 0, 0.034 seconds. The ordinary native DieHard standalone-fingerprint model
+retains its original seven-state trace and zero-GENERAL gates in
+distributed-final-check-survivor-model-control.log, terminal 734ebf, status 0,
+12.190 seconds. No race or full-suite run. All handles terminal and
+git diff --check passes. Updated HANDOFF and architecture limits: disk final-check
+loss and arbitrary partitions are still unproved.
