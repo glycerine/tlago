@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -724,16 +723,13 @@ func (s *MemFPSet) RecoverFile(fname string) (err error) {
 			err = closeErr
 		}
 	}()
-	reader := bufio.NewReader(file)
-	in := NewValueInputStreamWithoutHandles(reader)
-
-	for {
-		if _, err := reader.Peek(1); err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
+	// The source refills eagerly, including inside the read of the last
+	// fingerprint in each buffer, before that fingerprint is inserted.
+	in, err := NewBufferedDataInputStream(file)
+	if err != nil {
+		return err
+	}
+	for !in.AtEOF() {
 		fp, err := in.ReadLong()
 		if errors.Is(err, io.EOF) {
 			return NewTLCRuntimeException(ECSystemDiskIOErrorForFile, "checkpoints")
@@ -745,6 +741,7 @@ func (s *MemFPSet) RecoverFile(fname string) (err error) {
 			return err
 		}
 	}
+	return nil
 }
 
 func (s *MemFPSet) RecoverTrace(trace *TLCTrace) error {
@@ -1316,15 +1313,11 @@ func (s *MemFPSet2) RecoverFile(fname string) (err error) {
 			err = closeErr
 		}
 	}()
-	reader := bufio.NewReader(file)
-	in := NewValueInputStreamWithoutHandles(reader)
-	for {
-		if _, err := reader.Peek(1); err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
+	in, err := NewBufferedDataInputStream(file)
+	if err != nil {
+		return err
+	}
+	for !in.AtEOF() {
 		fp, err := in.ReadLong()
 		if errors.Is(err, io.EOF) {
 			return NewIOException("MemFPSet2.recover: failed.")
@@ -1336,6 +1329,7 @@ func (s *MemFPSet2) RecoverFile(fname string) (err error) {
 			return err
 		}
 	}
+	return nil
 }
 
 func (s *MemFPSet2) RecoverTrace(trace *TLCTrace) error {

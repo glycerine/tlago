@@ -13239,3 +13239,25 @@ write failure, final flush failure and close failure. They require 8192/8-byte
 write boundaries, no replay, one close, exact completed file bytes, old checkpoint
 preservation, no failed promotion, healthy continuation and unchanged membership.
 Generic buffer Close semantics remain unchanged. No original-method credit added.
+
+### Buffered memory recovery preserves eager refill before insertion
+
+MemFPSet and MemFPSet2 recovery now use the existing BufferedDataInputStream
+port, with its eager initial read and 8192-byte buffer. The previous lazy
+4096-byte bufio reader changed the partial membership visible after file I/O
+failure. Source readLong refills after consuming the buffer, before returning
+the fingerprint to put; failure therefore leaves that fingerprint uninserted.
+
+The source atEOF loop and storage-specific EOF catch remain explicit. Truncated
+MemFPSet input produces the coded checkpoint runtime assertion; MemFPSet2 input
+produces its checked I/O message. Other read failures use the existing stream's
+I/O conversion. Native raw-file cleanup is installed before stream construction,
+closes once even on initial-read failure, and preserves an earlier failure.
+
+Eight Linux syscall cases cover both stores with success and EIO at each of
+three reads for 1025 fingerprints. They require 8192-byte read requests and
+retain exactly 0, 1023 or 1024 new fingerprints on the respective failures,
+plus preexisting membership. Normal input retains all 1025. Warnings, healthy
+continuation, endpoint availability and final close are required. Existing
+truncation, duplicate, startup and close checks retain their source assertions.
+No original method directly covers these read I/O failures; no credit added.

@@ -1771,6 +1771,13 @@ Exact prefixes, no write replay, one close, old checkpoint preservation and
 healthy continuation are required. No dedicated original method covers this
 boundary; inventory remains 37 port complete and four Missing.
 
+Buffered memory recovery now uses the source eager 8192-byte input stream,
+preserving refill failure before the current fingerprint's insertion. Eight
+Linux syscall cases cover both stores, initial/refill I/O failure and success,
+exact membership prefixes, one close and healthy continuation. Existing original
+buffered-input/manager tests and local/TCP partial/duplicate/close/startup checks
+remain unchanged. No original-method credit is added.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

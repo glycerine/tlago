@@ -173,6 +173,10 @@ The buffered `MemFPSet` and `MemFPSet2` writers likewise close the raw owner on
 failure, without replaying the failed buffer. Their source flush boundaries and
 I/O conversion remain intact; syscall checks verify full-buffer/final-flush and
 close failures, retained prefixes and skipped promotion.
+Those two stores also use the source's eager 8 KiB input buffer during recovery.
+Refill belongs to the current fingerprint read, before insertion; failure must
+retain that ordering. Syscall checks cover constructor and both refill failures,
+exact membership prefixes, one file close and manager continuation.
 Coordinator startup checks retain recovered trace/queue state before fingerprint
 failure. Runtime failures prevent publication; packed-memory truncation warns,
 continues healthy recovery and prints actual recovery counts before publication.

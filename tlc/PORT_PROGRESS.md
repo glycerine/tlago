@@ -24719,3 +24719,37 @@ zero with both replacement worker endpoints doing work and normal role exits.
 No full suite or race workload ran. No dedicated original method covers this
 native cleanup boundary; distributed inventory remains 37 complete and four
 Missing. All handles are terminal.
+
+### October 9, 2026: preserve eager memory recovery refill boundaries
+
+MemFPSet and MemFPSet2 source recovery use BufferedDataInputStream, with eager
+initial/refill reads and an 8192-byte buffer. Go used lazy 4096-byte bufio reads.
+This changed which fingerprints survived a read failure: source readLong refills
+before returning the last fingerprint in a buffer, so refill failure prevents
+its insertion. The second-read EIO reproduction retained only 512 new Go
+fingerprints instead of the source's 1023 (buffered-memory-recovery-red.log,
+terminal 877146, status 1, 0.080 seconds). Syscalls prove 4096-byte requests.
+
+Both recovery methods now use the existing BufferedDataInputStream port and
+source atEOF loop. EOF still maps to the original coded runtime assertion for
+MemFPSet and checked I/O text for MemFPSet2. Other read failures follow the
+existing stream conversion. Native raw-file cleanup remains installed before
+construction, closes once and preserves earlier failure. No buffering/runtime
+emulation, new filesystem provider or production fault hook added.
+
+Eight Linux syscall cases cover both stores, normal input and EIO at each of
+three reads. They require 8192-byte requests, exact 0/1023/1024 new-fingerprint
+prefixes on failure, prior membership, one close, warning, healthy continuation
+and unchanged registrations. Matrix passes (buffered-memory-recovery-green.log,
+terminal 1d55ad, status 0, 0.414 seconds). Related local/TCP truncation, duplicate,
+close, startup and MemFPSet1 cases plus unchanged original buffered-input,
+dynamic-manager and MultiFPSet methods pass (buffered-memory-recovery-related.log,
+terminal ad4fcb, status 0, 3.038 seconds).
+
+The unchanged full N=7 two-worker mid-run checkpoint/recovery row passes normally
+(buffered-memory-recovery-model.log, terminal 8f5f42, status 0, 43.900 seconds).
+It recovers 24,576 examined states and 8,192 queued states, completes actual work
+on both replacement endpoints, reaches 114,942 distinct states with an empty
+queue and exits normally. No full suite or race workload ran. No dedicated
+original method covers these read I/O failures; native checks earn no credit.
+Distributed inventory remains 37 complete and four Missing. All handles terminal.
