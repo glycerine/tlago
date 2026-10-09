@@ -23165,3 +23165,30 @@ traversal checks also pass (remote-checkpoint-reply-loss-related.log, terminal
 a4795b, status 0, 0.039 seconds). All handles are terminal. No full suite or race
 workload was run. This native failure coverage adds no Java method completion
 credit and does not establish checkpoint atomicity or incomplete-commit recovery.
+
+### October 8, 2026: completed remote begin reply loss
+
+Audited worker computation and fingerprint manager traversal against the source;
+no new production shortcut was identified. Extended failure-boundary coverage
+with an actual named begin whose completed reply is lost on TCP. Mem, LSB and
+MSB cases require one begin, no commit or replay, the exact source warning and
+unchanged registration identities/availability. Real pending snapshot files
+retain the original fingerprints and nested high-bit partition identity.
+
+After closing and reopening storage, recovery must not promote pending files.
+Java manager Checkpoint.run catches direct Mem missing-file I/O and proceeds to
+the healthy registration; MultiFPSet.recover wraps child I/O, which propagates
+and stops before the next registration. Both source contracts are verified over
+actual native TCP calls, with unchanged pending bytes and retained availability.
+No production behavior or hook changed; this is short storage/transport coverage,
+not full-model incomplete-snapshot recovery or original-method completion credit.
+
+Initial fixture compilation failed because FPSet.Close has no return value
+(terminal aed731, status 1); corrected the fixture calls. Initial three-backend
+run passes (checkpoint-begin-reply-loss.log, terminal 1b025f, status 0,
+0.033 seconds). Final focused normal checks, including accepted checkpoint
+connection loss and nested checkpoint/recovery contracts, pass (checkpoint-
+begin-reply-loss-verified.log, terminal 3fa9e5, status 0, 0.070 seconds).
+Only the new short three-backend test ran with race instrumentation and passes
+(checkpoint-begin-reply-loss-race.log, terminal 285b6a, status 0, 1.127 seconds).
+All handles are terminal. No full model or full suite was repeated.

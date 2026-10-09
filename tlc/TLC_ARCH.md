@@ -12429,3 +12429,19 @@ recovered partition membership before replacement evaluation. Mem, LSB and MSB
 rows then finish the original N=7 model at 114,942 distinct states and zero queued
 states. No production fault hook, retry protocol, RMI or atomicity guarantee is
 introduced. These native checks do not complete disabled Java model methods.
+
+### Remote checkpoint begin with a lost reply
+
+The short native fixture completes the actual named begin before closing TCP.
+The manager reports the I/O failure without replay, commit or reassignment, then
+checkpoints the healthy registration. Pending snapshot bytes retain exact
+fingerprints and nested partition identity. Fresh storage recovers only committed
+files; pending files remain unchanged and are never promoted by recovery.
+
+The source failure distinction is retained: direct MemFPSet missing-file I/O is
+caught by manager Checkpoint.run, which prints its checkpoint warning even during
+recovery and proceeds to the next registration. MultiFPSet.recover wraps child
+I/O failures as operation failures, so they propagate through the native RPC
+error graph and manager recovery stops before the healthy registration. These
+checks verify the storage/transport boundary, not full-model incomplete-snapshot
+recovery or checkpoint atomicity. Production algorithms are unchanged.

@@ -244,6 +244,13 @@ distinct available registrations. Fresh processes restore the committed files
 and exact partition membership before resuming the original N=7 model. This
 covers completed-commit reply loss, not incomplete remote commits or atomicity.
 
+Short native checks also lose the reply after a real named begin. They require
+one begin, no commit or replay, unchanged registrations and exact pending file
+contents. Fresh storage leaves those files unpromoted. Missing committed Mem
+snapshots print the source warning and let the manager recover the healthy host;
+nested disk child I/O failures propagate and stop before the later host. This
+storage-specific behavior must not be replaced by an atomic recovery assumption.
+
 ## Remaining distributed work
 
 1. Extend restart/recovery coverage beyond the verified complete-checkpoint,

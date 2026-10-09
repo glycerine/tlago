@@ -1596,6 +1596,12 @@ two-host availability, committed snapshot files after crashes, exact recovered
 membership before workers start and the ordinary full N=7 completion counts.
 This is native transport failure coverage, with no original-method credit.
 
+Short completed-begin reply-loss checks cover Mem/LSB/MSB storage, real pending
+snapshot membership, skipped commit, retained registrations and fresh-store
+recovery without pending-file promotion. They verify the source distinction
+between ignored direct Mem recovery I/O and propagated nested disk recovery
+failures. No original-method completion credit is added.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,
