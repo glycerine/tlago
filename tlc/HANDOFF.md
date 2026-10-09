@@ -95,7 +95,11 @@ command body; earlier command diagnostics remain visible. Native discovery accep
 bare or bracketed IPv6 hosts and escapes zone suffixes for URLs, restoring them
 for TCP dialing. Coordinator and callback advertisements normalize IP brackets,
 retain scoped hosts and actual bound ports, and reject all wildcard spellings.
-IPv6 loopback discovery/status and worker callbacks have focused coverage;
+Native worker construction/publication formats validated TCP addresses with
+Go URLs, carrying that address through the registration runnable. Scoped
+interface names with hyphens are supported and zones are URL-escaped. The
+existing source-construction URI fixtures remain intact. IPv6 loopback
+discovery/status and worker callbacks have focused coverage;
 scoped link-local routing across real interfaces remains outside that coverage.
 
 Use [DISTRIBUTED_PORT_MAP.md](DISTRIBUTED_PORT_MAP.md) to find implementation

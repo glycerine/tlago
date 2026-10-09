@@ -25,6 +25,7 @@ type DistributedWorkerEnvironment struct {
 	RegisterWorker         func(DistributedServerEndpoint, *DistributedWorker) error
 	PublishWorker          func(*DistributedWorker) error
 	ReadyDate              func() string
+	workerAddress          *DistributedWorkerAddress // Already bound and validated by native networking.
 }
 
 // DistributedWorkerProcess owns TLCWorker's static resolver, current runnable
@@ -139,7 +140,7 @@ func (p *DistributedWorkerProcess) start(serverName string, count int, env Distr
 	p.Runtime.keepAliveMu.Unlock()
 	group.started.Store(true)
 	for i := range group.runnables {
-		runnable := &DistributedWorkerRunnable{threadID: i, server: server, app: app, manager: manager, runtime: p.Runtime, done: make(chan struct{}), localHost: env.LocalCanonicalHostName, register: env.RegisterWorker, publish: env.PublishWorker}
+		runnable := &DistributedWorkerRunnable{threadID: i, server: server, app: app, manager: manager, runtime: p.Runtime, done: make(chan struct{}), localHost: env.LocalCanonicalHostName, address: env.workerAddress, register: env.RegisterWorker, publish: env.PublishWorker}
 		p.Runtime.keepAliveMu.Lock()
 		group.runnables[i] = runnable
 		p.Runtime.keepAliveMu.Unlock()

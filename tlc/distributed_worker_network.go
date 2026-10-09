@@ -57,12 +57,13 @@ func NewDistributedWorkerNetwork(listenAddress, advertisedAddress string) (*Dist
 	if strings.Contains(host, ":") {
 		uriHost = "[" + host + "]"
 	}
-	n := &DistributedWorkerNetwork{Host: NewDistributedRPCServer(), Discovery: NewDistributedNetworkDiscovery(), Address: advertisedAddress, workerAddress: DistributedWorkerAddress{Hostname: uriHost, Port: port}, done: make(chan error, 1)}
+	n := &DistributedWorkerNetwork{Host: NewDistributedRPCServer(), Discovery: NewDistributedNetworkDiscovery(), Address: advertisedAddress, workerAddress: DistributedWorkerAddress{Hostname: uriHost, Port: port, nativeAddress: advertisedAddress}, done: make(chan error, 1)}
 	go func() { n.done <- n.Host.Serve(listener) }()
 	return n, nil
 }
 func (n *DistributedWorkerNetwork) Environment(base DistributedWorkerEnvironment) DistributedWorkerEnvironment {
 	base.Lookup = n.Discovery.Lookup
+	base.workerAddress = &n.workerAddress
 	base.LocalCanonicalHostName = func() (string, error) { return n.workerAddress.Hostname, nil }
 	base.PublishWorker = func(worker *DistributedWorker) error {
 		name := n.Host.generatedEndpointName(fmt.Sprintf("worker-%d", worker.ID), n.sequence.Add(1))

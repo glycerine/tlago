@@ -14657,3 +14657,32 @@ post-check statistics/exit calls and its check is not replayed.
 This supplements the sole-host final-check loss case. It does not prove disk
 final-check loss or arbitrary partitions and adds no original-method completion
 credit. Existing Java manager and ordinary native trace assertions remain intact.
+
+
+### Native worker endpoint URLs and scoped interface names
+
+Native worker networking validates an advertised TCP address and now carries it
+through the worker command's registration runnable before worker construction.
+That constructor and subsequent publication format the native endpoint using
+net/url, rather than applying the source Java URI scope grammar to a Go address.
+For example, `fe80::1%br-tlc` is a valid Go scoped host; a network-owned worker
+now publishes `tcp://[fe80::1%25br-tlc]:PORT/OBJECT`. Previously it panicked with
+an illegal-scope-character error before publication. The endpoint reference
+continues to carry the raw TCP zone spelling for dialing. Bound ports, generated
+endpoint identity and captured display host are retained.
+
+Unbound library addresses continue to use the existing source-construction URI
+contract and all 232 frozen URI fixtures remain unchanged. No new URI parser,
+RMI transport, JVM service or serialization machinery was introduced. The
+native command path uses Go's URL formatting for addresses it already owns.
+
+Focused native checks cover bare/bracketed hyphenated scopes and a dotted scope,
+real publication and TCP IsAlive/GetURI calls. A command-bootstrap check carries
+the scoped address through actual asynchronous registration and verifies remote
+exit, endpoint removal and executor shutdown. Its coordinator settings/discovery
+use TCP; its callback reference explicitly uses the actual IPv4 loopback listener
+while the worker reports its scoped advertisement. This verifies construction,
+publication and startup wiring, not routing over a fabricated link-local
+interface. Existing IPv6 loopback callbacks, ordinary bootstrap, advertised-port
+checks and a native DieHard seven-state trace also remain green. No direct
+original Java method tests native addresses; original inventory stays 37/41.

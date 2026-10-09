@@ -26969,3 +26969,46 @@ distributed-final-check-survivor-model-control.log, terminal 734ebf, status 0,
 12.190 seconds. No race or full-suite run. All handles terminal and
 git diff --check passes. Updated HANDOFF and architecture limits: disk final-check
 loss and arbitrary partitions are still unproved.
+
+
+### October 9, 2026: native scoped worker URLs through command bootstrap
+
+Source comparison of scheduling/worker failure handling found no additional
+algorithm correction in those paths. Native network address review then found a
+concrete boundary defect: NewDistributedWorkerNetwork accepted the Go-valid
+scoped host fe80::1%br-tlc, but NewDistributedWorker applied the source Java URI
+scope mask and panicked before publication. A focused actual-listener test
+reproduced Illegal character in scope id at index 17. Receipt:
+distributed-worker-native-uri-before.log, terminal bef813, status 1, 0.014 seconds.
+
+Network-owned worker addresses now retain their validated raw TCP address.
+The command environment passes that captured address through each registration
+runnable before construction. Constructor and publication format its tcp URL
+with net/url, which escapes the zone percent sign and supports native interface
+names. Raw endpoint references retain the dialing spelling. Source-construction
+library addresses retain their prior URI grammar and all 232 frozen source URI
+fixtures remain unchanged. No RMI/JVM or rpc25519 machinery was added.
+
+No original Java method tests this native feature. New focused checks cover bare
+and bracketed hyphenated scope names and a dotted scope, actual publication and
+TCP IsAlive/GetURI. An additional worker-main bootstrap check performs actual
+TCP discovery/settings and asynchronous registration, verifies the scoped
+reported URI, then remote exit, endpoint removal and executor shutdown. Its
+callback reference explicitly routes over the actual IPv4 loopback listener;
+it does not claim link-local routing on a nonexistent br-tlc interface. The
+fixture releases its own resolver directory after process shutdown.
+
+Initial fix plus ordinary bootstrap/port/IPv6 callbacks and all source URI
+fixtures passes in distributed-worker-native-uri-fixed.log, terminal 78d07e,
+status 0, 0.035 seconds. Added command-bootstrap coverage:
+distributed-worker-native-uri-bootstrap.log, terminal 638fa9, status 0,
+0.043 seconds. Final fixture cleanup and focused selection:
+distributed-worker-native-uri-final.log, terminal 487134, status 0,
+0.045 seconds. Root helper compilation/control passes in
+distributed-worker-native-uri-root-compile.log, terminal 431078, status 0,
+0.016 seconds. Production worker startup also retains the native DieHard
+standalone-FP model's original seven-state trace and zero-GENERAL assertions in
+distributed-worker-native-uri-model-control.log, terminal 23b53b, status 0.
+No race, full-suite or long N=7 rerun. All handles terminal and
+git diff --check passes. Updated HANDOFF/architecture; original distributed
+inventory remains 37/41.

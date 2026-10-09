@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,6 +18,9 @@ import (
 type DistributedWorkerAddress struct {
 	Hostname string
 	Port     int
+	// Native networking supplies its validated TCP address before construction.
+	// Keep endpoint URLs within Go's address/URL grammar, including zone names.
+	nativeAddress string
 }
 
 type distributedWorkerURIValue struct {
@@ -102,6 +106,11 @@ func newDistributedWorkerURI(address DistributedWorkerAddress, threadID int) *di
 }
 
 func newDistributedWorkerEndpointURI(address DistributedWorkerAddress, object string) *distributedWorkerURIValue {
+	if address.nativeAddress != "" {
+		host := address.Hostname
+		raw := (&url.URL{Scheme: "tcp", Host: address.nativeAddress, Path: "/" + object}).String()
+		return &distributedWorkerURIValue{raw: raw, host: &host}
+	}
 	raw := fmt.Sprintf("tcp://%s:%d/%s", address.Hostname, address.Port, object)
 	parser := workerURIParser{raw: raw, chars: utf16.Encode([]rune(raw))}
 	host, err := parser.parse()
