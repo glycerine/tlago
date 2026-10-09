@@ -12759,10 +12759,18 @@ block routing do not increment child block counters or change membership.
 
 MultiFPSet inherits the base addThread no-op. Native endpoint AddThread calls
 therefore leave child disk reader arrays intact. IncWorkers remains the separate
-source override that visits each child and allocates its worker readers. Local
-and TCP checks use real LSB/MSB disk children: AddThread retains one reader each,
-then IncWorkers(2) produces three each. The former Go forwarding AddThread
-incorrectly allocated child readers and could introduce child open failures.
+source override that visits each child. DiskFPSet, HeapBasedDiskFPSet and LSB/MSB
+do not override FPSet.incWorkers's no-op, so heap child reader arrays remain
+unchanged after both calls. OffHeapDiskFPSet instead overrides worker registration
+for its shared eviction barrier. The earlier claim that IncWorkers allocated
+three heap child readers was incorrect and encoded a Go-only shortcut.
+
+Direct DiskFPSet.addThread opens one reader before publishing the new array. An
+open failure retains all original readers. Local/TCP checks use real LSB/MSB
+stores, preserving old reader identity, pooled readers and cursor across no-op
+registration, failed addition and successful single-reader addition. A separate
+native dispatch check requires MultiFPSet to call each child once with the exact
+worker count; fixing heap children must not erase that source override.
 
 ### Fingerprint invariant overload dispatch
 

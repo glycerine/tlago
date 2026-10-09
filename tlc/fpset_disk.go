@@ -495,21 +495,9 @@ func (s *DiskFPSet) AddThread() error {
 	return nil
 }
 
-func (s *DiskFPSet) IncWorkers(num int) {
-	if num <= 0 {
-		return
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for i := 0; i < num; i++ {
-		raf, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
-		if err != nil {
-			panic(err)
-		}
-		s.braf = append(s.braf, raf)
-		s.publishBRAFReaders()
-	}
-}
+// DiskFPSet inherits FPSet.incWorkers's no-op. Reader growth belongs to
+// addThread; OffHeapDiskFPSet overrides worker registration separately.
+func (s *DiskFPSet) IncWorkers(num int) {}
 
 func (s *DiskFPSet) Exit(cleanup bool) error {
 	fpSetBaseExit(s)

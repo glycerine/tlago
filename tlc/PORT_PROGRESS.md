@@ -23998,3 +23998,31 @@ pass unchanged (terminal 8cb69c, status 0, 0.520 seconds). The source has no
 direct enabled nil-batch method, so native checks add no original completion
 credit. No full suite, full model, large index workload or race selection ran.
 All check handles are terminal.
+
+### 2026-10-09: Heap fingerprint worker registration inheritance
+
+Audited FPSet, DiskFPSet, HeapBasedDiskFPSet and LSB/MSB source inheritance.
+Only OffHeapDiskFPSet overrides base worker registration; heap disk stores
+inherit FPSet.incWorkers's no-op. Go instead opened `num` additional readers.
+The older native nested-registration test and current architectural notes
+mistakenly encoded this invented allocation. This entry supersedes that earlier
+claim; the source-directed correction is not removal of a Java assertion.
+
+Corrected the native nested expectation and added real LSB/MSB local/TCP checks
+for negative/zero/positive no-op registration, missing-path non-access, failed
+AddThread retention, successful single-reader addition, pool identity/cursor and
+native reader-snapshot publication. Before production correction all six rows
+fail (terminal cf3b3c, status 1, 0.033 seconds). DiskFPSet.IncWorkers is now the
+inherited no-op; AddThread and off-heap registration are unchanged. Added an
+independent native check that MultiFPSet still invokes both children once with
+the unchanged worker count.
+
+Initial corrected selection with adjacent reader recovery/off-heap endpoint
+checks passes (terminal 4dc5bd, status 0, 0.608 seconds). Final registration,
+reader selection and both original MultiFPSet normal/off-heap getFPSet methods
+pass (terminal 37923b, status 0, 1.790 seconds). Original InitEvalOrderBasic model
+also passes through ModelChecker's worker-registration startup call (terminal
+e4baa9, status 0, 0.279 seconds). No original method directly tests these
+registration boundaries, so native checks earn no new original-method credit.
+Current handoff, architecture and inventory claims are corrected. No full suite,
+long model or race selection ran. All check handles are terminal.

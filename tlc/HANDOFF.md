@@ -119,8 +119,10 @@ minima, empty reductions and invariant short-circuiting retain source behavior.
 Nested size statistics also sum children concurrently, preserving long overflow.
 `MultiFPSet.GetStatesSeen` returns the parent lookup counter only; child counters
 are independent and must not be added to the distributed manager's count.
-Nested `AddThread` inherits the source no-op. Only `IncWorkers` forwards reader
-allocation to children; local/TCP checks verify this distinction.
+Nested `AddThread` inherits the source no-op. `IncWorkers` visits children,
+but heap disk children also inherit a no-op; off-heap children register with the
+shared eviction barrier. Only a direct disk `AddThread` adds a reader. Local/TCP
+checks verify successful/failed reader addition and retained pool ownership.
 Memory and nested expected-count invariant overloads inherit the base true
 result. Nested no-argument checks visit children; disk overloads enforce counts.
 Memory recovery retains complete prefixes and prior membership on truncated or

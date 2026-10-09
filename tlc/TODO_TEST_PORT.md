@@ -1455,8 +1455,12 @@ parent-counter checks. Original MultiFPSet getFPSet and manager nested-partition
 methods remain green. No original method directly tests parent/child counter
 isolation or the parallel size boundary; these native checks add no credit.
 Native local/TCP nested thread-registration checks verify inherited `AddThread`
-is a no-op while `IncWorkers` allocates child readers. Related original nested
-methods remain green; no direct original test exists, so no credit is added.
+is a no-op while `IncWorkers` visits children. Heap disk children inherit the
+same worker-registration no-op; direct disk `AddThread` separately adds one
+reader and retains existing reader/pool ownership on open failure. Corrected an
+earlier native assertion and Go implementation that incorrectly allocated heap
+readers from `IncWorkers`. Related original nested methods remain green; no
+direct original test exists, so no credit is added.
 Native invariant-overload checks cover local/TCP memory, nested and LSB/MSB
 stores. Memory/nested expected-count calls inherit the base true result; disk
 calls enforce counts and nested no-argument checks visit children. Related
