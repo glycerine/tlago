@@ -144,6 +144,9 @@ Finite `OpRcdValue` domain-row containers and result arrays retain constructor
 sharing with other operators and model-data attachments. Native `[][]Value`
 attachments use that row graph; receiver updates affect shared operator
 application without reaching the sender. Invalid row references fail explicitly.
+Finite operator evaluation rejects nil argument arrays/rows, and initialization
+rejects nil rows, arguments and results. Real empty argument rows remain valid;
+null inputs must not become zero-argument matches or silently initialized values.
 Mixed `[]any` and `map[string]any` attachments retain supported scalars, bytes,
 TLC values, typed containers and recursive mixed-container graphs with the same
 ownership guarantees. Their compact entries share the scalar data tags; peers

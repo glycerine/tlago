@@ -429,6 +429,9 @@ func (v *OpRcdValue) Eval(args []Value, control int) (resultValue Value, err err
 	defer catchValueFailure(v, &err)
 	_ = control
 	for i, vals := range v.Domain {
+		if args == nil || vals == nil {
+			panic(NewNullPointerException())
+		}
 		if len(args) != len(vals) {
 			return nil, v.unsupported("Attempted to apply the operator %s\nwith wrong number of arguments.", ValuesPPR(v))
 		}
@@ -447,7 +450,11 @@ func (v *OpRcdValue) Eval(args []Value, control int) (resultValue Value, err err
 			return v.Values[i], nil
 		}
 	}
-	return nil, v.unsupported("Attempted to apply operator:\n%s\nto arguments (%s), which is undefined.", ValuesPPR(v), joinValueStrings(args, ", "))
+	operator := ValuesPPR(v)
+	if args == nil {
+		panic(NewNullPointerException())
+	}
+	return nil, v.unsupported("Attempted to apply operator:\n%s\nto arguments (%s), which is undefined.", operator, joinValueStrings(args, ", "))
 }
 
 func (v *OpRcdValue) IsDefined() bool {

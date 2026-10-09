@@ -12516,3 +12516,22 @@ updates through one shared operator affect its sibling's application while
 sender state stays unchanged. Peers need the updated native payload schema.
 No Java Vect runtime or serialization protocol is introduced. There is no direct
 original Java test for this network boundary; native checks add no method credit.
+
+### Finite operator null-array validation
+
+OpRcdValue.eval dereferences its argument array and each domain row in Java.
+The Go port previously used len(nil) and range(nil), allowing null rows to match
+empty argument lists and allowing null arguments/outputs to initialize silently.
+Evaluation now retains those null failures. With an empty domain, it formats the
+operator before checking the argument array, preserving the source's undefined-
+application message construction order. Initialization checks each row, then
+each argument and result in source order. Real empty argument arrays still
+evaluate and initialize normally. The general InitializeValue(nil) helper
+contract is unchanged; the checks apply at the finite operator's dereferences.
+
+Native round-trip checks retain null rows until evaluation/initialization and
+then require the source null-failure category. Actual local/TCP worker evaluation
+retains WorkerException predecessor identity, cause, call-stack flag and finally
+statistics, rather than manufacturing an empty successor set. There is no direct
+original Java test of this distributed boundary, so these checks add no method
+completion credit. Existing original value-initialization methods remain green.

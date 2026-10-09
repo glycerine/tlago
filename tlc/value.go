@@ -98,8 +98,17 @@ func InitializeValue(value Value) Value {
 		// OpRcdValue.initialize initializes each argument and output; the
 		// operator itself has no normalization or fingerprint definition.
 		for i, arguments := range operator.Domain {
+			if arguments == nil {
+				panic(NewNullPointerException())
+			}
 			for j, argument := range arguments {
+				if argument == nil {
+					panic(NewNullPointerException())
+				}
 				operator.Domain[i][j] = InitializeValue(argument)
+			}
+			if operator.Values[i] == nil {
+				panic(NewNullPointerException())
 			}
 			operator.Values[i] = InitializeValue(operator.Values[i])
 		}

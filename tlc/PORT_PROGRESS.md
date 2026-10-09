@@ -23303,3 +23303,32 @@ and TCP checks ran under race instrumentation and pass (operator-sharing-race.lo
 terminal e2fce2, status 0, 1.050 seconds). No direct upstream operator networking
 method exists, so native checks add no original-method completion credit. All
 handles are terminal. No full model or full suite was repeated.
+
+### October 8, 2026: finite operator null-array failures
+
+The finite operator audit found another concrete shortcut: Go len(nil) and
+range(nil) allowed null argument rows to match empty argument arrays and allowed
+null rows, arguments and outputs to initialize silently. Java OpRcdValue.eval
+and initialize dereference those arrays/values. Added focused native round-trip
+checks before changing production; all six null cases fail as expected
+(operator-null-rows-before.log, terminal 63f614, status 1, 0.013 seconds).
+
+Evaluation now rejects null arrays in source order; on an empty domain it formats
+the operator before the null argument failure, matching undefined-message
+construction. Initialization validates each row, argument and output at its
+source dereference. Real empty argument arrays remain valid and the general
+InitializeValue(nil) helper remains unchanged. Local and actual TCP worker checks
+retain the evaluation failure's predecessor, null cause, call-stack flag and
+statistics/finally behavior instead of returning an empty successor set.
+
+Initial fixed/null-row/constant-operator checks pass (operator-null-rows-fixed.log,
+terminal 9b5c17, status 0, 0.013 seconds). Final local/TCP worker, operator sharing,
+ModelValue and callable-state checks pass (operator-null-rows-verified.log,
+terminal 98cbdf, status 0, 0.027 seconds). All ten original value-initialization
+methods plus the constant/override/module configuration check pass (operator-
+null-rows-original-related.log, terminal ab5375, status 0, 0.012 seconds). Only
+the new short null-input/worker checks ran with race instrumentation and pass
+(operator-null-rows-race.log, terminal bced4b, status 0, 1.055 seconds). No direct
+upstream method tests this distributed null boundary, so new native checks add
+no original-method completion credit. All handles are terminal. No full model or
+full suite was repeated.
