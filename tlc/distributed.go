@@ -119,6 +119,14 @@ type TLCServer struct {
 }
 
 func NewTLCServer(fileName string, configName string, metadir string, manager *DistributedFPSetManager, queue StateQueue, trace *TLCTrace) *TLCServer {
+	server := newTLCServer(fileName, configName, metadir, manager, queue, trace)
+	server.BlockSelector = NewBlockSelectorFromProperties(server)
+	return server
+}
+
+// The application constructor attaches its captured fields before invoking
+// the selector factory, so extensions observe the same initialized coordinator.
+func newTLCServer(fileName string, configName string, metadir string, manager *DistributedFPSetManager, queue StateQueue, trace *TLCTrace) *TLCServer {
 	InitializeTLCServerProperties()
 	if manager == nil {
 		manager = NewDistributedFPSetManager()
@@ -140,7 +148,6 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 		threadsToWorkers:            NewInsMap[*TLCServerThread, DistributedWorkerEndpoint](),
 		FinalNumberOfDistinctStates: -1,
 	}
-	server.BlockSelector = NewBlockSelectorFromProperties(server)
 	return server
 }
 

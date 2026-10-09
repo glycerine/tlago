@@ -13315,3 +13315,24 @@ cannot load Java classes or Go code at runtime. Nine isolated native cases
 verify precedence, captured settings, construction frequency, fallback,
 panic/nil behavior, thread ownership, statistics and actual retry dispatch.
 No upstream factory test exists; these checks add no original-method credit.
+
+### Selector factories observe the initialized application
+
+The application-based coordinator constructor attaches Tool, TLCApp, its captured
+deadlock flag and checkpoint name before invoking the native selector factory.
+This follows Java TLCServer's assignment of work and metadata before queue,
+trace, manager and selector construction. The host-side NewTLCServer wrapper
+retains its existing general construction contract through shared field setup.
+
+Previously the application constructor called that general wrapper, causing
+factory invocation before the application fields were attached. Extensions saw
+nil application/tool and the default true deadlock flag even when the captured
+application disabled deadlock checks. Initialization now invokes the factory
+once at its source position, before transferring resource ownership.
+
+Four isolated cases use real local disk storage or a dynamic distributed manager
+and check successful/failed factory callbacks. They retain original app/tool
+identity, false deadlock, metadata, initialized queue/trace/manager and base-before-
+subclass registration ordering. Callback failure preserves its panic identity,
+joins queue workers, closes descriptors and keeps trace/fingerprint files.
+No dedicated upstream factory test covers this boundary; no credit is added.

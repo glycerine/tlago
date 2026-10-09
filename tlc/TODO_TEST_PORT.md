@@ -1786,6 +1786,12 @@ built-in and nine original smart-proxy contexts remain intact. No original
 factory test exists; distributed inventory remains 37 port complete and four
 Missing.
 
+Four native factory-startup cases also exercise real application constructors
+with local disk or distributed fingerprint managers. They preserve app/tool/flag
+visibility before selection, subclass registration order and resource rollback
+after callback panic. Existing constructor ownership checks remain unchanged;
+no dedicated original factory test exists and no method credit is added.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

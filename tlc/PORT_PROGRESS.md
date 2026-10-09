@@ -24820,3 +24820,38 @@ The unchanged N=7 two-worker model passes normally
 race workload ran. No upstream selector-factory test exists; native checks earn
 no original-method credit. Inventory remains 37 complete and four Missing.
 All handles are terminal.
+
+### October 9, 2026: attach the application before selector creation
+
+Java TLCServer assigns its work and metadata before constructing queue, trace,
+manager and selector. Go's application constructor instead called the generic
+host constructor, which invoked the newly supported custom selector before
+attaching Tool, TLCApp, deadlock flag and checkpoint name. A real local disk
+constructor reproduces nil tool/app, deadlock true instead of the captured false,
+and absent checkpoint metadata (selector-coordinator-startup-red.log,
+terminal 4d549e, status 1, 0.029 seconds).
+
+Extracted shared coordinator field/resource initialization. The generic host
+constructor retains its selector creation; the application constructor attaches
+its original application fields, then invokes the selector factory once at the
+source point before transferring resource ownership. Existing failure cleanup
+still owns queue/trace/fingerprint storage if a factory callback panics. The
+distributed subclass assigns registration state after base factory creation.
+
+Four isolated native cases exercise actual local disk and distributed manager
+constructors with successful/panicking factories. They record fields during the
+callback, require original tool/app identity and false deadlock, initialized
+queue/trace/manager/names, checkpoint metadata and base-before-subclass ordering.
+Successful constructors retain the observed coordinator/policy; failure retains
+the original panic. Queue workers join and descriptors close without deleting
+trace or fingerprint files. Test cleanup runs once.
+
+The matrix plus existing constructor rollback/transfer, native factory, selector,
+startup, statistics, ownership and original smart-proxy checks pass
+(selector-coordinator-startup-green.log, terminal c9e5f9, status 0,
+0.276 seconds). Root CLI help/startup and worker app endpoint-order checks pass
+(selector-coordinator-startup-cli.log, terminal e82f02, status 0, 0.016 seconds).
+No dedicated upstream factory method exists; no original-method credit added.
+Inventory remains 37 complete and four Missing. No full suite, long model or
+race workload ran; unchanged model behavior retains the preceding receipt.
+All handles are terminal.

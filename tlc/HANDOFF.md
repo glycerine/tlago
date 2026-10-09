@@ -476,6 +476,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
    `RegisterBlockSelectorFactory`, with the original startup property. The
    coordinator and threads retain the returned `BlockSelection` policy. Keep
    source fallback/panic boundaries; do not add a JVM loader.
+   The application constructor attaches its original tool, application and
+   flags before calling the factory. Failed callbacks retain native resource
+   rollback; subclass registration setup still follows base factory creation.
 5. Reconcile opaque custom data and evaluator metadata against actual source
    transferability. Preserve explicit rejection until a faithful native contract
    is established. No Java object serialization or reflection runtime is wanted.

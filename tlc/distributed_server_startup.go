@@ -145,11 +145,12 @@ func newTLCServerFromApp(app *TLCApp, distributed bool) (*TLCServer, error) {
 		}
 		manager = NewNonDistributedFPSetManager(set, hostname, trace)
 	}
-	server := NewTLCServer(app.GetFileName(), app.GetConfigName(), metadir, manager, queue, trace)
+	server := newTLCServer(app.GetFileName(), app.GetConfigName(), metadir, manager, queue, trace)
 	server.Tool = app.Tool
 	server.app = app
 	server.checkDeadlock = &app.checkDeadlock
 	server.checkpointName = &checkpointName
+	server.BlockSelector = NewBlockSelectorFromProperties(server)
 	transferred = true
 	return server, nil
 }
