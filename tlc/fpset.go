@@ -1563,12 +1563,7 @@ func (s *MultiFPSet) BeginChkpt() error {
 }
 
 func (s *MultiFPSet) BeginChkptFile(fname string) error {
-	for i, set := range s.Sets {
-		if err := set.BeginChkptFile(fmt.Sprintf("%s_%d", fname, i)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.namedCheckpoint("begin checkpoint", fname, func(set FPSet, name string) error { return set.BeginChkptFile(name) })
 }
 
 func (s *MultiFPSet) CommitChkpt() error {
@@ -1581,12 +1576,7 @@ func (s *MultiFPSet) CommitChkpt() error {
 }
 
 func (s *MultiFPSet) CommitChkptFile(fname string) error {
-	for i, set := range s.Sets {
-		if err := set.CommitChkptFile(fmt.Sprintf("%s_%d", fname, i)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.namedCheckpoint("commit checkpoint", fname, func(set FPSet, name string) error { return set.CommitChkptFile(name) })
 }
 
 func (s *MultiFPSet) Recover() error {
@@ -1594,9 +1584,48 @@ func (s *MultiFPSet) Recover() error {
 }
 
 func (s *MultiFPSet) RecoverFile(fname string) error {
+	return s.namedCheckpoint("recover checkpoint", fname, func(set FPSet, name string) error { return set.RecoverFile(name) })
+}
+
+// Named checkpoint operations run independently across children, matching the
+// source's parallel traversal. Join native goroutines before returning or
+// propagating a panic so no storage operation outlives its caller. A child IO
+// failure is an operation failure here, rather than a remote-server outage that
+// the fingerprint manager may report and ignore. Keep its cause with Go's %w.
+func (s *MultiFPSet) namedCheckpoint(operation, fname string, call func(FPSet, string) error) error {
+	type result struct {
+		err        error
+		panicValue any
+	}
+	results := make([]result, len(s.Sets))
+	var pending sync.WaitGroup
+	pending.Add(len(s.Sets))
 	for i, set := range s.Sets {
-		if err := set.RecoverFile(fmt.Sprintf("%s_%d", fname, i)); err != nil {
-			return err
+		go func(i int, set FPSet) {
+			defer pending.Done()
+			defer func() {
+				if value := recover(); value != nil {
+					if err, ok := value.(error); ok && isJavaIOException(err) {
+						results[i].err = fmt.Errorf("%s %s_%d: %w", operation, fname, i, err)
+					} else {
+						results[i].panicValue = value
+					}
+				}
+			}()
+			err := call(set, fmt.Sprintf("%s_%d", fname, i))
+			if isJavaIOException(err) {
+				err = fmt.Errorf("%s %s_%d: %w", operation, fname, i, err)
+			}
+			results[i].err = err
+		}(i, set)
+	}
+	pending.Wait()
+	for _, result := range results {
+		if result.panicValue != nil {
+			panic(result.panicValue)
+		}
+		if result.err != nil {
+			return result.err
 		}
 	}
 	return nil

@@ -12137,6 +12137,14 @@ support for fresh-process remote-FP CLI recovery, whose empty dynamic manager is
 still the pinned-source limitation. Disk-backend full-model restart, additional
 failure phases and checkpoint atomicity remain unproved.
 
+Named MultiFPSet begin/commit/recovery follows the source parallel child
+traversal using native goroutines and a join. Each child receives the original
+name suffixed with its index. Returned or panicked child I/O errors become
+operation failures with Go %w wrapping, retaining errors.Is/As cause inspection
+while preventing the manager from ignoring them as remote outages. Other child
+panics propagate after joining. No RMI, ForkJoin exception copying or JVM runtime
+is introduced. Unnamed begin/commit remains sequential as in Java.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

@@ -1405,6 +1405,10 @@ partition membership, disk queue counts, no regenerated initialization and final
 library lifecycle; ordinary Java CLI startup still recovers before registration.
 No production startup change or disabled-harness method credit is added. Other
 storage backends/failure phases and general network partitions remain open.
+Named nested-store checkpoint traversal now has native concurrency/join and
+failure-boundary checks, plus fresh-store Mem/LSB/MSB recovery checks preserving
+both high-bit partitions. The source MultiFPSetTest has no corresponding named
+checkpoint methods; this adds no original-method completion credit.
 Short native worker reply-loss cases additionally retain fully computed but
 unreceived results behind a gate, close TCP and require source coordinator
 retry/requeue/deregistration before releasing the old reply. They verify no

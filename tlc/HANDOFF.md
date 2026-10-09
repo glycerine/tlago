@@ -90,6 +90,11 @@ use an exit-only trait, allowing shutdown to visit later registrations. Prior
 closed clients and insertion/checkpoint failures remain reportable. The obsolete
 `UnmarshalException` carrier and RMI-specific exit branch are removed.
 
+Named `MultiFPSet` checkpoint and recovery operations run child stores
+concurrently and join before returning. Child I/O failures propagate as operation
+failures with native Go error wrapping; the manager must not ignore them as remote
+server outages. Unnamed begin/commit operations retain source sequential ordering.
+
 State/result payloads retain identity and nil/empty distinctions across states,
 values, strings, predecessor graphs, caches, byte buffers and partition vectors.
 Symbolic values follow the source materialization rules. Unsupported opaque

@@ -22549,3 +22549,34 @@ fingerprint RPC recovery and all original dynamic-manager cases pass
 race run was performed. No original assertion/bound changed, and this library-
 lifecycle coverage adds no disabled-harness method credit. Disk-backend full-model
 restart, additional failure phases, partitions and atomicity remain unproved.
+
+### October 8, 2026: native nested checkpoint concurrency and failure boundary
+
+Auditing the disk-host restart path found a source mismatch in MultiFPSet's
+named begin, commit and recovery operations: Java traverses independent child
+stores in parallel and promotes child IOException to an operation failure. Go
+previously traversed sequentially and returned raw I/O errors, allowing the
+distributed manager to report and ignore a failed nested checkpoint/recovery.
+These three operations now use native goroutines with a join, indexed child
+filenames and Go %w wrapping for child I/O failures. Underlying causes remain
+inspectable, while the manager propagates the operation failure. Other panics
+propagate after the join. No RMI, JVM runtime or ForkJoin exception copying is
+introduced. Unnamed begin/commit remains source-sequential.
+
+No original MultiFPSetTest method covers named checkpoint traversal. New native
+checks gate both children to prove concurrency, required joining, child filenames
+and success/I/O/panicked-I/O/other-panic behavior across all three phases. Actual
+Mem/LSB/MSB nested stores checkpoint both high-bit partitions, reopen fresh and
+recover only committed fingerprints. Missing recovery files must propagate
+through the real manager rather than be ignored as a remote outage.
+
+Initial concurrency plus related original checks pass (nested-named-checkpoint.log,
+terminal 0fba9f, status 0, 7.069 seconds). The first added storage fixture incorrectly
+replayed into populated stores; Java MemFPSet.recover explicitly rejects duplicate
+fingerprints and disk recovery retains live table state. That fixture fails
+(nested-named-checkpoint-final.log, terminal 74e754, status 1). Correcting the
+fixture to use the source fresh-store lifecycle passes all native checks, nested
+trace recovery, manager checkpoint error checks and original MultiFPSet routing
+and Put methods (nested-named-checkpoint-verified.log, terminal 38aef2, status 0,
+5.331 seconds). No original assertions or bounds changed; no original-method
+credit added. No full suite or race run. Full-model disk-host restart remains next.
