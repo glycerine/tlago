@@ -514,10 +514,7 @@ func (s *DiskFPSet) IncWorkers(num int) {
 func (s *DiskFPSet) Exit(cleanup bool) error {
 	fpSetBaseExit(s)
 	s.Close()
-	if cleanup && s.metadir != "" {
-		return os.RemoveAll(s.metadir)
-	}
-	return nil
+	return completeFingerprintExit(s.metadir, cleanup)
 }
 
 func (s *DiskFPSet) BeginChkpt() error {

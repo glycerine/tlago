@@ -43,6 +43,21 @@ func (f *fpSetLifecycle) wait(monitor *distributedServerMonitor, duration time.D
 	return nil
 }
 
+// Source concrete stores ignore the cleanup helper's boolean return, then
+// resolve the host and report completion. Native role ownership handles process
+// lifetime; library exits must not terminate their caller's process.
+func completeFingerprintExit(metadir string, cleanup bool) error {
+	if cleanup {
+		deleteDirLikeJava(metadir, true)
+	}
+	hostname, err := distributedLocalHostName()
+	if err != nil {
+		return err
+	}
+	PrintMessage(ECTLCFPCompleted, hostname)
+	return nil
+}
+
 func fpSetBaseExit(set FPSet) {
 	ShutdownDistributedFPServer()
 	lifecycle, monitor := fpSetLifecycleAndMonitor(set)

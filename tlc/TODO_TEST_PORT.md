@@ -1440,6 +1440,11 @@ completion credit. Six native LSB/MSB initializer cases now retain filename
 assignments before negative-array failure, reader allocation before failed open,
 source metadata across reinitialization and native old-reader retirement. No
 original method directly covers these partial mutations; they add no credit.
+Fingerprint completion diagnostics now have 20 local/TCP Mem/1/2/LSB/MSB exit
+cases covering retained/removed files and exact host/message records. A native
+failed-directory-removal case retains the source's ignored cleanup result and
+completion. No enabled original method directly covers this exit diagnostic;
+these checks add no original-method credit.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

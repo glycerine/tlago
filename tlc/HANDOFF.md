@@ -128,6 +128,10 @@ Disk initialization assigns paths before checking a negative worker count and
 allocates worker/pool reader slots before opening storage. Reinitialization
 retains source membership/index metadata; replaced native reader owners close,
 and failed opens retain allocated slots while releasing partial handles.
+Concrete memory and disk fingerprint exits now report `TLC_FP_COMPLETED` with
+the native local host after optional cleanup. Source-ignored directory-removal
+failure does not suppress that diagnostic. Go role ownership retains process
+lifetime; accepted TCP exit replies still drain before host closure.
 
 Failed coordinator construction stops and joins its queue workers and closes
 owned trace/fingerprint handles, preserving files and the original failure.

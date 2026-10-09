@@ -574,10 +574,7 @@ func (s *MemFPSet) IncWorkers(num int) {}
 
 func (s *MemFPSet) Exit(cleanup bool) error {
 	fpSetBaseExit(s)
-	if cleanup && s.metadir != "" {
-		return os.RemoveAll(s.metadir)
-	}
-	return nil
+	return completeFingerprintExit(s.metadir, cleanup)
 }
 
 func (s *MemFPSet) CheckInvariant(expectFPs ...uint64) bool {
@@ -973,10 +970,7 @@ func (s *MemFPSet1) IncWorkers(num int) {}
 
 func (s *MemFPSet1) Exit(cleanup bool) error {
 	fpSetBaseExit(s)
-	if cleanup && s.metadir != "" {
-		return os.RemoveAll(s.metadir)
-	}
-	return nil
+	return completeFingerprintExit(s.metadir, cleanup)
 }
 
 func (s *MemFPSet1) CheckInvariant(expectFPs ...uint64) bool {
@@ -1195,10 +1189,7 @@ func (s *MemFPSet2) IncWorkers(num int) {}
 
 func (s *MemFPSet2) Exit(cleanup bool) error {
 	fpSetBaseExit(s)
-	if cleanup && s.metadir != "" {
-		return os.RemoveAll(s.metadir)
-	}
-	return nil
+	return completeFingerprintExit(s.metadir, cleanup)
 }
 
 func (s *MemFPSet2) CheckInvariant(expectFPs ...uint64) bool {

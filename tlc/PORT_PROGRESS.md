@@ -23683,3 +23683,36 @@ unchanged 99,999 limit, membership assertions and default settings
 No original method directly checks these initializer partial mutations; native
 supplements add no original-method credit. No full suite, full model or race
 workload ran. All handles are terminal.
+
+### October 8, 2026: fingerprint exit completion diagnostics
+
+Rechecked coordinator checkpoint-name selection; its captured name matches the
+source. The subsequent concrete fingerprint exit audit found a missing console
+diagnostic: MemFPSet/1/2 and DiskFPSet resolve the host and print TLC_FP_COMPLETED
+after cleanup, but Go returned without that message. Added 20 local/TCP cases
+for Mem/1/2/LSB/MSB with cleanup enabled/disabled. All fail before the fix with
+no completion records (fingerprint-completion-before.log, terminal edd92b,
+status 1).
+
+Added the shared source completion sequence after native role shutdown and
+optional cleanup. Source concrete exits ignore FileUtil's deletion boolean;
+failed removal therefore does not become a new exit I/O failure or suppress
+completion. Disk handles still close natively. Host resolution errors retain
+earlier mutations. No System.exit, RMI or JVM process emulation was introduced;
+Go role owners retain lifetime and reply-drain responsibility.
+
+The 20 cases pass (fingerprint-completion-fixed.log, terminal ac4b3b, status 0,
+0.033 seconds). Related completed-exit reply loss, graceful reply drain, native
+FP registration/rejection/storage ownership and existing MultiFPSet cleanup
+delegation checks pass (fingerprint-completion-verified.log, terminal dc1377,
+status 0, 0.061 seconds). Added one controlled empty-directory literal-dot
+removal failure; source completion continues despite that false/error result.
+Final new cases pass (fingerprint-completion-final.log, terminal c3445b,
+status 0, 0.038 seconds).
+
+One unchanged full MC06 N=7 model with two TCP fingerprint hosts passes normally
+with 114,942 distinct states, zero queued states, completion diagnostics from
+both hosts and normal coordinator/worker/FP exits (fingerprint-completion-full-
+model.log, terminal a2f3f4, status 0, 50.979 seconds). No enabled original method
+directly tests this diagnostic; native checks add no original-method credit.
+No full suite or race workload ran. All handles are terminal.

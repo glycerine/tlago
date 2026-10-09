@@ -12708,3 +12708,16 @@ preserving the allocated arrays and source field mutations. Opening already
 allocated slots is shared with the existing merge-reader helper; that helper
 retains its own rollback cleanup. These changes do not reproduce JVM descriptor
 leaks or promise concurrent initialization of an active fingerprint store.
+
+### Fingerprint exit completion reporting
+
+Concrete MemFPSet/1/2 and DiskFPSet exits signal native fingerprint-role shutdown,
+perform optional metadata cleanup, resolve the native local host and report
+`TLC_FP_COMPLETED` using the source message and host parameter. Cleanup's boolean
+failure is ignored by the source concrete exits and does not suppress completion.
+Host resolution failure remains an error after those earlier mutations.
+Disk descriptors close through native ownership. Child store exits retain the
+same reporting behavior during native MultiFPSet traversal; library calls do
+not terminate the Go process. Process lifetime remains with the role owner,
+which drains accepted RPC replies before closing its host. Short local/TCP
+checks cover exact records/text and cleanup for all five storage forms.
