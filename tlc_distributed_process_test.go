@@ -619,37 +619,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			// FINISHED, STATS distinct=114942 and queue=0, no GENERAL.
 			output := server.output.String()
 			if scenario.workerThreads > 1 {
-				registered := nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)
-				stats := nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerStats)
-				if len(registered) != scenario.workerThreads || len(stats) != scenario.workerThreads {
-					t.Fatal("worker group did not register and report every worker")
-				}
-				endpoints := make(map[string]bool)
-				var host string
-				for _, message := range registered {
-					// Registration text ends with the date. Its URI identifies
-					// distinct workers on the one native process listener.
-					match := regexp.MustCompile(`tcp://[^\s]+`).FindString(message)
-					endpoint, err := url.Parse(match)
-					if err != nil || match == "" || endpoints[match] || endpoint.Host == "" || endpoint.Path == "" {
-						t.Fatalf("worker group endpoint identity is invalid: %q", message)
-					}
-					endpoints[match] = true
-					if host != "" && host != endpoint.Host {
-						t.Fatal("worker group did not share its process listener")
-					}
-					host = endpoint.Host
-				}
-				for _, message := range stats {
-					endpoint := regexp.MustCompile(`tcp://[^\s]+`).FindString(message)
-					counts := regexp.MustCompile(`Sent: (\d+) Rcvd: (\d+)`).FindStringSubmatch(message)
-					// Ensure this row exercised every shared-app worker, rather
-					// than merely registering an idle second endpoint.
-					if !endpoints[endpoint] || len(counts) != 3 || counts[1] == "0" || counts[2] == "0" {
-						t.Fatalf("worker group statistics lack actual work or identity: %q", message)
-					}
-					delete(endpoints, endpoint)
-				}
+				checkNativeDistributedWorkerGroup(t, output, scenario.workerThreads)
 				for _, process := range roles {
 					roleOutput := process.output.String()
 					if len(nativeDistributedMessages(roleOutput, tlc.ECGeneral)) != 0 || strings.Contains(roleOutput, "unexpected EOF") {
@@ -766,6 +736,41 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				t.Fatal("native process shutdown lost an accepted RPC reply")
 			}
 		})
+	}
+}
+
+func checkNativeDistributedWorkerGroup(t *testing.T, output string, count int) {
+	t.Helper()
+	registered := nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)
+	stats := nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerStats)
+	if len(registered) != count || len(stats) != count {
+		t.Fatal("worker group did not register and report every worker")
+	}
+	endpoints := make(map[string]bool)
+	var host string
+	for _, message := range registered {
+		// Registration text ends with the date. Its URI identifies
+		// distinct workers on the one native process listener.
+		match := regexp.MustCompile(`tcp://[^\s]+`).FindString(message)
+		endpoint, err := url.Parse(match)
+		if err != nil || match == "" || endpoints[match] || endpoint.Host == "" || endpoint.Path == "" {
+			t.Fatalf("worker group endpoint identity is invalid: %q", message)
+		}
+		endpoints[match] = true
+		if host != "" && host != endpoint.Host {
+			t.Fatal("worker group did not share its process listener")
+		}
+		host = endpoint.Host
+	}
+	for _, message := range stats {
+		endpoint := regexp.MustCompile(`tcp://[^\s]+`).FindString(message)
+		counts := regexp.MustCompile(`Sent: (\d+) Rcvd: (\d+)`).FindStringSubmatch(message)
+		// Ensure this row exercised every shared-app worker, rather
+		// than merely registering an idle second endpoint.
+		if !endpoints[endpoint] || len(counts) != 3 || counts[1] == "0" || counts[2] == "0" {
+			t.Fatalf("worker group statistics lack actual work or identity: %q", message)
+		}
+		delete(endpoints, endpoint)
 	}
 }
 

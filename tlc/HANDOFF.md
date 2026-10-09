@@ -187,7 +187,8 @@ application and runtime. Fresh coordinator and two replacement workers restore
 the persisted frontier and finish with the original 114,942 distinct states.
 Both producer registrations, both replacement statistics and actual work by
 each replacement worker are required. This does not establish remote multi-worker
-restart or checkpoint atomicity.
+restart by itself; see the remote matrix below. Checkpoint atomicity remains
+unproved.
 
 Short process checks kill MemFPSet, LSBDiskFPSet and MSBDiskFPSet hosts after a
 committed checkpoint plus later insertion/pending snapshot. Fresh hosts recover
@@ -197,13 +198,17 @@ full-model remote restart/recovery or checkpoint atomicity.
 
 `tlc_distributed_remote_recovery_test.go` now covers a complete mid-run checkpoint
 with two remote hosts using Mem, LSB or MSB storage, followed by loss of the
-original coordinator, worker and both hosts. Disk hosts use the source factory's
-two-child MultiFPSet layout. Empty replacement stores retain committed files and
+original coordinator, worker and both hosts. It runs with either one worker or
+two workers sharing one application/runtime in each worker process. Disk hosts
+use the source factory's two-child MultiFPSet layout. Empty replacement stores
+retain committed files and
 are registered before source recovery. Their exact partition membership and the
 disk queue count must match the snapshot before replacement worker startup.
 The recovered N=7 model requires 114,942 distinct states, an empty queue, one
-recovery and no GENERAL. This verifies the registered-endpoint library lifecycle;
-it does not add CLI startup support or establish checkpoint atomicity.
+recovery and no GENERAL. Two-worker rows require distinct endpoints on one
+listener and actual work/statistics from both replacement workers. This verifies
+the registered-endpoint library lifecycle. It does not add CLI startup support
+or establish checkpoint atomicity.
 
 ## Remaining distributed work
 

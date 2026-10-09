@@ -25,11 +25,17 @@ import (
 // credit for its assumption-disabled distributed model harness.
 func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
 	for _, backend := range []string{"mem", "lsb", "msb"} {
-		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend) })
+		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 1) })
 	}
 }
 
-func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string) {
+func TestNativeDistributedRemoteCheckpointRestartMultipleWorkers(t *testing.T) {
+	for _, backend := range []string{"mem", "lsb", "msb"} {
+		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 2) })
+	}
+}
+
+func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int) {
 	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +119,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string)
 	hosts, addresses := startHosts("original")
 	environment := []string{"TLAGO_REGISTERED_FP_ENDPOINTS=" + strings.Join(addresses, ",")}
 	producer := start("checkpoint-producer", "checkpoint-mid-run", environment, "-tool", "-deadlock", "-metadir", t.TempDir(), "MC06")
-	worker := start("original-worker", "worker", nil, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+	worker := start("original-worker", "worker", nil, fmt.Sprintf("-Dtlc2.tool.distributed.TLCWorker.threadCount=%d", workerThreads), "127.0.0.1")
 	if err := <-producer.done; err != nil {
 		producer.joined = true
 		t.Fatalf("checkpoint producer failed: %v\n%s", err, producer.output.String())
@@ -133,7 +139,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string)
 	if distinct <= 16384 || queued <= 0 || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointEnd)) != 1 || len(nativeDistributedMessages(output, tlc.ECGeneral)) != 0 || len(nativeDistributedMessages(output, tlc.ECTLCFinished)) != 0 {
 		t.Fatal("producer did not checkpoint an unfinished successor frontier")
 	}
-	if len(nativeDistributedMessages(output, tlc.ECTLCCheckpointStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)) != 1 {
+	if len(nativeDistributedMessages(output, tlc.ECTLCCheckpointStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)) != workerThreads {
 		t.Fatal("producer checkpoint/registration sequence differs from the real two-store model")
 	}
 	queueFile, err := os.Open(filepath.Join(path[1], "queue.chkpt"))
@@ -236,7 +242,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string)
 		t.Fatal("restarted stores did not recover exactly committed membership before worker startup")
 	}
 	t.Log("restarted empty stores recovered committed membership; starting actual successor evaluation")
-	replacement := start("replacement-worker", "worker", nil, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+	replacement := start("replacement-worker", "worker", nil, fmt.Sprintf("-Dtlc2.tool.distributed.TLCWorker.threadCount=%d", workerThreads), "127.0.0.1")
 	for _, process := range append([]*nativeDistributedTestProcess{server, replacement}, restarted...) {
 		if err := <-process.done; err != nil {
 			process.joined = true
@@ -248,6 +254,9 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string)
 		}
 	}
 	output = server.output.String()
+	if workerThreads > 1 {
+		checkNativeDistributedWorkerGroup(t, output, workerThreads)
+	}
 	stats := nativeDistributedMessages(output, tlc.ECTLCStats)
 	if len(nativeDistributedMessages(output, tlc.ECTLCFinished)) != 1 || len(stats) != 1 || !regexp.MustCompile(`^\d+ states generated, 114942 distinct states found, 0 states left on queue\.$`).MatchString(stats[0]) || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverEnd)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
 		t.Fatal("recovered model lacks original completion/count assertions")

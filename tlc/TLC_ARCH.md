@@ -12291,3 +12291,24 @@ statistics record, while final distinct/queue assertions remain 114,942/zero
 with FINISHED and no GENERAL or unexpected EOF. This local-store case complements
 single-worker remote-store restart checks, without proving their multi-worker
 combination or adding source assumption-disabled method credit.
+
+### Remote fingerprint restart with multiple workers
+
+The existing complete remote checkpoint/restart harness now has separate
+single-worker and two-worker matrices for Mem, LSB and MSB storage. The latter
+shares each worker process's application, manager and runtime across two actual
+workers, before and after restart. Two remote hosts retain source manager routing;
+disk hosts keep two nested high-bit storage partitions per host. Source model
+bounds, storage budgets and all existing queue/file/membership assertions are
+unchanged. No production implementation change was required.
+
+After a complete checkpoint the original coordinator, worker process and both
+hosts are gone. Empty replacement stores reload exact committed membership before
+replacement workers start, including high-bit reconstruction for disk snapshots.
+Both replacement identities must share one listener and have distinct statistics
+with nonzero work. Final results remain 114,942 distinct states and zero queued
+states, with one recovery and FINISHED and no GENERAL. Shared worker-group
+assertions are reused by local and remote process checks. This verifies the
+previously unproved multi-worker/remote-store combination. It does not change
+source CLI startup order or establish checkpoint atomicity and arbitrary failure
+phase correctness.

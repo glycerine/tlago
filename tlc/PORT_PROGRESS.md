@@ -22912,3 +22912,34 @@ checks pass (multiple-worker-checkpoint-related.log, terminal fe39a1, status 0,
 0.059 seconds). Both coordinator/worker generations are terminal and joined.
 No full suite or race workload was run. Remote multi-worker restart and broader
 interruption/partition cases remain unproved.
+
+### October 8, 2026: remote fingerprint restart with multiple workers
+
+Extended the actual complete-checkpoint remote restart harness with a separate
+two-worker matrix across Mem, LSB and MSB storage. Existing single-worker cases
+retain their settings and assertions. Both worker-process generations share one
+application, fingerprint manager, executor and latch across two workers. The
+two remote hosts retain independent registration/partition routing; disk hosts
+keep their source two-child high-bit storage layout and existing native budgets.
+No production change or model bound change was required.
+
+The producer checkpoints an unfinished successor frontier, then exits abruptly;
+the worker and both fingerprint hosts are killed and joined. Committed bytes must
+stay unchanged. Empty replacement hosts recover every exact committed fingerprint
+in its original partition before replacement worker startup. Persisted queue
+counts and recovery diagnostics must agree. Both replacement worker identities
+share one listener and each must report actual sent/received work. Factored these
+unchanged identity/work assertions into a shared process-test helper rather than
+duplicating the existing local checks. Final assertions remain 114,942 distinct
+states, an empty queue, one recovery, FINISHED and no GENERAL.
+
+The complete new matrix passes (remote-multiple-worker-restart.log, terminal
+e4a539, status 0, 133.387 seconds): Mem 46.26 seconds, LSB 43.32 seconds and MSB
+43.79 seconds. Each recovers 24,576 fingerprints and 8,192 queued states. Focused
+assigned-block checkpoint and complete original concurrent-manager/nested-routing
+checks pass (remote-multiple-worker-related.log, terminal 6b6a19, status 0,
+0.077 seconds). No original-method credit is added; disabled methods stay Missing.
+The previous remote multi-worker coverage gap is now verified. Java's CLI
+recovery-before-registration limitation, checkpoint atomicity and broader failure
+phases remain unchanged/unproved. All processes are terminal and joined.
+No full suite or race workload was run.
