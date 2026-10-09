@@ -8439,6 +8439,14 @@ before queue resume leave the queue suspended like Java; completion messages
 retain the source's recorder arguments. TLCApp restores interning before tool
 construction, separately from TLCServer's trace/queue/FP recovery method.
 
+Focused late-commit checks use real files and a TCP fingerprint endpoint. If
+intern promotion fails after deleting its old destination, queue and trace
+remain committed. Local FP retains its older committed snapshot and new pending
+file; remote FP has already promoted the new snapshot during manager checkpoint.
+If final local FP promotion fails, the new intern snapshot remains committed.
+Neither failure emits checkpoint completion or changes live FP membership.
+These checks verify phase ordering, not full-model recovery or atomicity.
+
 Worker construction retains immutable raw URI metadata in the native form
 `tcp://hostname:port/threadId`. Native publication replaces the default thread
 path with its unique published object name and supplies its actual listener

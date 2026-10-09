@@ -27188,3 +27188,32 @@ partition-bound control pass: distributed-worker-constraint-order.log, terminal
 cc5036, status 0, 0.049 seconds. No race, full-suite or long model rerun.
 No new original-method credit; distributed inventory remains 37/41. Updated
 HANDOFF/architecture; git diff --check passes.
+
+
+### October 9, 2026: later coordinator checkpoint commit failures
+
+Reviewed the combined launcher and coordinator shutdown guard/catches against
+pinned Java; the existing native implementation retains the source behavior.
+No RMI runtime or Java serialization work is required or introduced. Compared
+TLCServer.checkpoint, InternTable.commitChkpt and local/remote manager commits.
+No production mismatch found. Existing coordinator failure checks stopped at
+queue/trace phases; added actual-file coverage for the later intern and final
+local FP phases, with a real TCP endpoint for the remote-manager distinction.
+
+Each case first commits a baseline, then changes both intern and FP contents.
+Removing the selected pending file after real queue commit causes the actual
+owner to fail promotion. Assert exact I/O category/message, prior destination
+deletion, retained earlier queue/trace commits, resumed queue, no completion
+event and unchanged live FP membership. Intern failure retains older local FP
+plus its new pending bytes, while remote FP is already newly committed. Final
+local FP failure retains the new intern commit and deletes the older FP file
+before its failed rename. No production injection hook or weakened assertion.
+
+Initial default-sandbox run: distributed-late-checkpoint-commit.log, terminal
+0a613a, status 1, 0.020 seconds; local cases pass, remote listener forbidden by
+sandbox. Repeated with local networking allowed, together with existing
+queue/trace commit, owner file mutation, manager I/O catches and all nine
+original short StateQueue methods: distributed-late-checkpoint-commit-verified.log,
+terminal 4d1b49, status 0, 0.038 seconds. Three new cases pass. No full suite,
+long model or race workload. This native supplement earns no original-method
+credit; distributed inventory remains 37/41. Updated handoff and architecture.
