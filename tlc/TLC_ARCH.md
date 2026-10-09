@@ -12371,3 +12371,18 @@ direct `Host.RegisterFingerprint` callers retain their own storage ownership.
 Worker runtime and evaluator shutdown remain separate. Native disk-handle and
 blocked-lookup tests supplement unchanged source manager tests without adding
 original method completion credit.
+
+### Fingerprint startup before registration
+
+`runDistributedFPServer` retains ownership of the newly allocated fingerprint
+store until registration begins. Failures during nested disk initialization,
+instance announcement, hostname resolution or the required coordinator access
+close allocated native handles while retaining files and the originating failure.
+The source allocation and announcement order remain unchanged. A registration
+attempt may complete remotely before returning a failure, so its store is not
+closed by startup rollback. Reporting failures likewise leave storage with its
+native host or caller; that owner drains calls and releases it independently.
+The registration/reporting controls use actual disk membership to verify this
+boundary. LSB/MSB startup fixtures use isolated processes with `GOMEMLIMIT=64MiB`,
+the unchanged ratio-one factory configuration and its two nested children. These
+are native ownership checks, with no additional original test-method credit.

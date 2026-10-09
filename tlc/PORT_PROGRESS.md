@@ -23071,3 +23071,35 @@ distinct states, an empty queue, FINISHED and clean role exits
 (fp-storage-ownership-model.log, terminal c654ee, status 0, 61.326 seconds).
 No direct original method tests native host storage ownership, so supplements
 add no method completion credit. No full suite or long race workload was run.
+
+### Fingerprint startup rollback before registration
+
+Closed the separate pre-registration ownership gap identified in the preceding
+audit. `runDistributedFPServer` now closes its allocated store when startup fails
+before registration starts. This includes partial nested initialization and
+hostname/coordinator failures. Files and the original failure remain intact;
+source allocation, announcement, flush and validation order are unchanged.
+Once registration is attempted its result may be ambiguous, so startup does not
+close storage on registration or later reporting failure. Native host/caller
+ownership still supplies the eventual release and accepted-call drain.
+
+There is no direct original test method for this native lifetime boundary.
+Supplemental fixtures run the actual source-ratio-one disk factory in isolated
+LSB/MSB processes with a native 64 MiB configured heap. Both children initialize
+normally; the partial-init row fails one child against a directory while requiring
+the successful sibling file to remain. Hostname return/panic rows observe actual
+open disk descriptors before failing, then require closed handles and identical
+failure objects. A missing coordinator fails after hostname resolution. Source
+type/readiness/progress announcement precedence and flush decisions are checked.
+
+Initial eight-context startup selection passes (fp-startup-cleanup.log, terminal
+d3ab60, status 0, 0.142 seconds). Added registration/reporting failure controls
+that require actual live disk membership and handles until explicit owner close.
+The complete twelve-context matrix passes (fp-startup-cleanup-verified.log,
+terminal f63ff7, status 0, 0.205 seconds). The matrix plus native published-store
+ownership, successful FP command/shutdown, shared-host rejection and unchanged
+original manager constructor/concurrent-order checks pass together
+(fp-startup-cleanup-related.log, terminal b4166d, status 0, 0.227 seconds).
+All children and runs are joined/terminal. Native supplements earn no original
+method credit. No full model, full suite or race workload was repeated; normal
+registered-model behavior remains covered by the preceding unchanged-path run.

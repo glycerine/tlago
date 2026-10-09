@@ -118,6 +118,9 @@ unpublication and registration errors. Host shutdown drains accepted replies,
 then closes each owned storage object once without invoking Exit or deleting
 files. Direct `Host` publications remain caller-owned; worker runtime shutdown
 is still separate.
+Before registration begins, FP startup failures close allocated storage handles
+without deleting files or replacing the failure. Once registration starts,
+startup/reporting errors retain storage for the native host or caller to release.
 
 State/result payloads retain identity and nil/empty distinctions across states,
 values, strings, predecessor graphs, caches, byte buffers and partition vectors.
@@ -250,8 +253,7 @@ or establish checkpoint atomicity.
    delete the old checkpoint before failing; that is a different failure boundary.
 4. Finish the source ownership/constructor and native cleanup audit where evidence
    identifies actual remaining shortcuts. Consult prior audits before repeating
-   completed checks. Fingerprint startup failures before publication still need
-   ownership review. Missing-component behavior alone cannot prove full parity.
+   completed checks. Missing-component behavior alone cannot prove full parity.
 5. Reconcile opaque custom data and evaluator metadata against actual source
    transferability. Preserve explicit rejection until a faithful native contract
    is established. No Java object serialization or reflection runtime is wanted.

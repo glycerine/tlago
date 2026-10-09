@@ -1529,6 +1529,12 @@ files, deduplicates repeated publication and rejects late registration. Existing
 original manager constructor/concurrent-order tests remain unchanged. No original
 method tests native host ownership; these checks add no method completion credit.
 
+Native pre-registration FP startup checks now cover LSB/MSB partial initialization,
+returned/panicked hostname failure and a missing coordinator. Disk handles close
+while files, failure identity and announcement order remain intact. Registration
+and reporting failures retain live storage until its owner closes it. These
+isolated native checks add no original-method completion credit.
+
 Repeated registration of the same native worker now has full MC06 N=7 coverage:
 two coordinator threads share one worker identity, final distinct states remain
 114,942, and the queue is empty. Two worker statistics and the source second-exit

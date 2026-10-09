@@ -93,6 +93,16 @@ func runDistributedFPServer(serverName string, env DistributedFPServerEnvironmen
 	config := NewFPSetConfigurationWithRatio(1)
 	config.SetFPBits(1)
 	set := NewFPSet(config)
+	registrationAttempted := false
+	defer func() {
+		// No remote owner can refer to this store before registration starts.
+		// Preserve files and the startup failure while releasing native handles.
+		// After registration starts, its outcome may be ambiguous; the native
+		// network owner must drain calls before closing published storage.
+		if !registrationAttempted && set != nil {
+			set.Close()
+		}
+	}()
 	filename := "FPSet" + fmtInt64(env.CurrentTimeMillis())
 	if set == nil {
 		return true, NewNullPointerException()
@@ -111,6 +121,7 @@ func runDistributedFPServer(serverName string, env DistributedFPServerEnvironmen
 	if server == nil {
 		return true, NewNullPointerException()
 	}
+	registrationAttempted = true
 	if err := invokeDistributedFPRegistration(env.RegisterFPSet, server, set, hostname); err != nil {
 		if isDistributedFPRegistrationRejected(err) {
 			unpublishDistributedFPSet(set, false, env)
