@@ -1192,6 +1192,14 @@ signed zero, extrema, subnormals, infinities and NaN. Integer IEEE payload bits
 fix negative-zero loss in the former float64 field. No enabled upstream method
 directly tests this boundary; these checks add no original-method credit.
 
+Primitive-array attachment transfer now covers nine native slice types: bool,
+int/int8/int16/int32/int64, uint16 and float32/float64. Gob and worker TCP checks
+retain exact element types/bits, shared references through mixed containers,
+separate equal arrays, typed nil/empty slices and isolated receiver mutation.
+Malformed kinds, references and narrow representations are rejected. The
+existing complete ModelValueTest translation remains green; these supplemental
+transport checks add no original-method credit.
+
 Accepted native checkpoint calls now have connection-loss coverage for begin,
 commit and recovery. The source I/O catch must warn once, continue to the healthy
 store and leave partition registrations/availability unchanged. Queue/trace

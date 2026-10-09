@@ -24282,3 +24282,26 @@ not arbitrary partitions or dead-host recovery. No enabled original method
 directly covers this fault; original-method credit and the four disabled model
 methods remain unchanged. No full suite or race workload ran. All handles are
 terminal.
+
+### 2026-10-09: Native primitive-array attachments
+
+ModelValue.java retains an ordinary non-transient Object data field. Primitive
+array data previously failed the native payload type switch. Added finite native
+Go slice support for bool, int/int8/int16/int32/int64, uint16 and float32/float64,
+with typed references, isolated receiver storage and shared nonempty backing
+arrays across direct and mixed-container attachments. Integer payload bits retain
+negative zero and NaN payloads without Java serialization or JVM machinery.
+Decoder rejects unknown/mismatched kinds, invalid references and out-of-range
+narrow element representations. Typed nil and initialized empty remain distinct.
+
+New focused gob and actual worker TCP checks cover all nine types, extrema,
+surrogate code units, float exceptional values, graph identity and mutation
+ownership. Thirteen malformed-payload cases exercise decoder rejection. The
+original ModelValueTest translation remains unchanged and green. No original
+method directly covers this transport boundary; no completion credit added.
+
+Initial local array/validation/original ModelValue selection passes (terminal
+9dd971, status 0, 0.013 seconds). Final focused selection includes the new TCP
+checks, existing byte/scalar/mixed-object/state-payload checks and ModelValueTest
+(terminal 21c697, status 0, 0.031 seconds). No full suite or race workload ran.
+All handles are terminal.

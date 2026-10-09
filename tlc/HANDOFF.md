@@ -207,6 +207,11 @@ existing lazy-transfer failure before supplier checks.
 
 Attached model-value data supports native `[]Value` through the same array graph,
 preserving cycles, shared backing storage and typed nil/empty arrays across RPC.
+Primitive attachments also support `[]bool`, signed integer slices, `[]uint16`
+and both floating-point slice widths. Native array references preserve sharing,
+separate equal arrays, typed nil/empty slices and receiver isolation. Integer bit
+payloads retain signed zero and NaN bits; invalid kinds, references and narrow
+representations fail explicitly. These finite Go types require updated peers.
 Attached `*TLCStateMut` objects reuse root/predecessor state identities, including
 attached-only states, cache/value back-references and native map keys. Decoder
 states are allocated before attachments are resolved. Typed nil references and

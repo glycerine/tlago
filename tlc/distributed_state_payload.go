@@ -12,23 +12,24 @@ import (
 // remain shared after decoding; receiver objects do not alias sender objects.
 // State levels use the in-memory int32 range, not the short disk-queue format.
 type DistributedStatePayload struct {
-	Nil           bool
-	Roots         []int
-	RootsArray    int
-	States        []DistributedStateNode
-	StateArrays   [][]int
-	Values        []DistributedValueNode
-	Strings       []DistributedStringNode
-	ByteArrays    [][]byte
-	ValueArrays   [][]int
-	ValueRows     [][]int
-	ValueVectors  []DistributedValueVectorNode
-	NameArrays    [][]int
-	StateCaches   [][]DistributedStateCacheEntry
-	ValueMaps     [][]DistributedValueMapEntry
-	ObjectArrays  [][]DistributedObjectDataNode
-	ObjectMaps    [][]DistributedObjectMapEntry
-	ObjectKeyMaps [][]DistributedObjectKeyMapEntry
+	Nil             bool
+	Roots           []int
+	RootsArray      int
+	States          []DistributedStateNode
+	StateArrays     [][]int
+	Values          []DistributedValueNode
+	Strings         []DistributedStringNode
+	ByteArrays      [][]byte
+	ValueArrays     [][]int
+	ValueRows       [][]int
+	ValueVectors    []DistributedValueVectorNode
+	NameArrays      [][]int
+	StateCaches     [][]DistributedStateCacheEntry
+	ValueMaps       [][]DistributedValueMapEntry
+	ObjectArrays    [][]DistributedObjectDataNode
+	ObjectMaps      [][]DistributedObjectMapEntry
+	ObjectKeyMaps   [][]DistributedObjectKeyMapEntry
+	PrimitiveArrays []DistributedPrimitiveArrayNode
 }
 
 // Mixed attachment entries carry the same tags as scalar model data without
@@ -151,30 +152,32 @@ type DistributedValueNode struct {
 }
 
 type distributedPayloadEncoder struct {
-	payload           *DistributedStatePayload
-	states            map[*TLCStateMut]int
-	stateArrays       map[distributedByteArrayKey]int
-	stateArrayRoots   [][]*TLCStateMut
-	values            map[Value]int
-	strings           map[*UniqueString]int
-	bytes             map[distributedByteArrayKey]int
-	arrays            map[distributedByteArrayKey]int
-	arrayRoots        [][]Value // Keep address-keyed backing storage alive while encoding.
-	rows              map[distributedByteArrayKey]int
-	rowRoots          [][][]Value
-	vectors           map[*ValueVec]int
-	nameArrays        map[distributedByteArrayKey]int
-	nameRoots         [][]*UniqueString
-	caches            map[uintptr]int
-	cacheRoots        []map[int]Value // Retain address-keyed maps throughout encoding.
-	valueMaps         map[uintptr]int
-	valueMapRoots     []map[string]Value
-	objectArrays      map[distributedByteArrayKey]int
-	objectRoots       [][]any
-	objectMaps        map[uintptr]int
-	objectMapRoots    []map[string]any
-	objectKeyMaps     map[uintptr]int
-	objectKeyMapRoots []map[any]any
+	payload             *DistributedStatePayload
+	states              map[*TLCStateMut]int
+	stateArrays         map[distributedByteArrayKey]int
+	stateArrayRoots     [][]*TLCStateMut
+	values              map[Value]int
+	strings             map[*UniqueString]int
+	bytes               map[distributedByteArrayKey]int
+	arrays              map[distributedByteArrayKey]int
+	arrayRoots          [][]Value // Keep address-keyed backing storage alive while encoding.
+	rows                map[distributedByteArrayKey]int
+	rowRoots            [][][]Value
+	vectors             map[*ValueVec]int
+	nameArrays          map[distributedByteArrayKey]int
+	nameRoots           [][]*UniqueString
+	caches              map[uintptr]int
+	cacheRoots          []map[int]Value // Retain address-keyed maps throughout encoding.
+	valueMaps           map[uintptr]int
+	valueMapRoots       []map[string]Value
+	objectArrays        map[distributedByteArrayKey]int
+	objectRoots         [][]any
+	objectMaps          map[uintptr]int
+	objectMapRoots      []map[string]any
+	objectKeyMaps       map[uintptr]int
+	objectKeyMapRoots   []map[any]any
+	primitiveArrays     map[distributedPrimitiveArrayKey]int
+	primitiveArrayRoots []any
 }
 
 type distributedByteArrayKey struct {
@@ -611,6 +614,29 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		node.DataKind, node.DataFloatBits = "float64", math.Float64bits(v)
 	case float32:
 		node.DataKind, node.DataFloatBits = "float32", uint64(math.Float32bits(v))
+	case []bool:
+		encodeDistributedPrimitiveArray(e, node, v, "boolArray", func(v bool) uint64 {
+			if v {
+				return 1
+			}
+			return 0
+		})
+	case []int:
+		encodeDistributedPrimitiveArray(e, node, v, "intArray", func(v int) uint64 { return uint64(v) })
+	case []int8:
+		encodeDistributedPrimitiveArray(e, node, v, "int8Array", func(v int8) uint64 { return uint64(v) })
+	case []int16:
+		encodeDistributedPrimitiveArray(e, node, v, "int16Array", func(v int16) uint64 { return uint64(v) })
+	case []int32:
+		encodeDistributedPrimitiveArray(e, node, v, "int32Array", func(v int32) uint64 { return uint64(v) })
+	case []int64:
+		encodeDistributedPrimitiveArray(e, node, v, "int64Array", func(v int64) uint64 { return uint64(v) })
+	case []uint16:
+		encodeDistributedPrimitiveArray(e, node, v, "uint16Array", func(v uint16) uint64 { return uint64(v) })
+	case []float32:
+		encodeDistributedPrimitiveArray(e, node, v, "float32Array", func(v float32) uint64 { return uint64(math.Float32bits(v)) })
+	case []float64:
+		encodeDistributedPrimitiveArray(e, node, v, "float64Array", math.Float64bits)
 	case []byte:
 		node.DataKind = "bytes"
 		if v != nil {
@@ -824,19 +850,21 @@ func (e *distributedPayloadEncoder) valueMap(values map[string]Value) (int, erro
 }
 
 type distributedPayloadDecoder struct {
-	states        []*TLCStateMut
-	stateArrays   [][]*TLCStateMut
-	values        []Value
-	strings       []*UniqueString
-	bytes         [][]byte
-	arrays        [][]Value
-	rows          [][][]Value
-	vectors       []*ValueVec
-	nameArrays    [][]*UniqueString
-	valueMaps     []map[string]Value
-	objectArrays  [][]any
-	objectMaps    []map[string]any
-	objectKeyMaps []map[any]any
+	states              []*TLCStateMut
+	stateArrays         [][]*TLCStateMut
+	values              []Value
+	strings             []*UniqueString
+	bytes               [][]byte
+	arrays              [][]Value
+	rows                [][][]Value
+	vectors             []*ValueVec
+	nameArrays          [][]*UniqueString
+	valueMaps           []map[string]Value
+	objectArrays        [][]any
+	objectMaps          []map[string]any
+	objectKeyMaps       []map[any]any
+	primitiveArrays     []any
+	primitiveArrayKinds []string
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -862,6 +890,15 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 	for i, data := range payload.ByteArrays {
 		decoder.bytes[i] = make([]byte, len(data))
 		copy(decoder.bytes[i], data)
+	}
+	decoder.primitiveArrays = make([]any, len(payload.PrimitiveArrays))
+	decoder.primitiveArrayKinds = make([]string, len(payload.PrimitiveArrays))
+	for i, node := range payload.PrimitiveArrays {
+		array, err := decodeDistributedPrimitiveArray(node, false)
+		if err != nil {
+			return nil, fmt.Errorf("primitive array %d: %w", i+1, err)
+		}
+		decoder.primitiveArrays[i], decoder.primitiveArrayKinds[i] = array, node.Kind
 	}
 	for i, name := range payload.Strings {
 		decoder.strings[i] = &UniqueString{s: name.Text, tok: name.Token, loc: name.Location, unregistered: name.Unregistered}
@@ -1451,6 +1488,17 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return nil, fmt.Errorf("model float32 data outside 32-bit representation")
 		}
 		return math.Float32frombits(uint32(node.DataFloatBits)), nil
+	case "boolArray", "intArray", "int8Array", "int16Array", "int32Array", "int64Array", "uint16Array", "float32Array", "float64Array":
+		if node.DataArray < 0 || node.DataArray > len(d.primitiveArrays) {
+			return nil, fmt.Errorf("invalid primitive array reference %d", node.DataArray)
+		}
+		if node.DataArray == 0 {
+			return decodeDistributedPrimitiveArray(DistributedPrimitiveArrayNode{Kind: node.DataKind}, true)
+		}
+		if d.primitiveArrayKinds[node.DataArray-1] != node.DataKind {
+			return nil, fmt.Errorf("primitive array kind mismatch: %s", node.DataKind)
+		}
+		return d.primitiveArrays[node.DataArray-1], nil
 	case "bytes":
 		if node.DataBytes < 0 || node.DataBytes > len(d.bytes) {
 			return nil, fmt.Errorf("invalid model byte data reference %d", node.DataBytes)

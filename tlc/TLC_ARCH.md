@@ -13034,3 +13034,22 @@ or remote checkpoint atomicity claim. The exact gap between method calls remains
 unproved: the verified stop is inside intern commit before any file mutation.
 This native Linux check skips when strace is unavailable and earns no original
 method completion credit.
+
+### Native primitive-array model attachments
+
+Java ModelValue's ordinary data field can carry primitive arrays. The native Go
+payload now supports []bool, []int, []int8, []int16, []int32, []int64, []uint16,
+[]float32 and []float64 alongside the existing []byte representation. This is a
+finite native data contract, without Java serialization or runtime emulation.
+Each nonnil slice receives a typed array-table entry. Nonempty slices share IDs
+by backing address, length and type, including references from mixed containers;
+strong source roots keep address-keyed storage alive throughout encoding.
+Distinct equal arrays remain separate. Zero references retain typed nil; empty
+entries allocate initialized empty slices. Receiver storage is independently owned.
+
+Elements use integer bit payloads: signed integers retain their two's-complement
+representation, uint16 retains every code unit and floats retain signed zero,
+subnormals, infinities and NaN payloads. Decode allocates these arrays before graph
+population and validates kinds, references, native int range and narrow element
+representations. The updated tags require updated peers. Focused gob/TCP checks
+cover requests and results; no original test directly covers this boundary.
