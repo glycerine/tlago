@@ -27321,3 +27321,32 @@ lifecycle cases pass: distributed-worker-invocation-timestamp.log, terminal
 1a82a5, status 0. No full suite, long workload or race run; no original-method
 credit change. Source comparison, not the short runtime alone, establishes the
 long-computation implication. All handles terminal and git diff --check passes.
+
+
+### October 9, 2026: remaining distributed scope revalidation
+
+Enumerated the pinned distributed source tree and original test annotations
+directly: 35 source files, none absent from DISTRIBUTED_PORT_MAP; 11 test
+classes, 41 methods. Compared the four Reconcile model bodies to Go helpers:
+DieHard retains FINISHED/no-GENERAL/BEHAVIOR/STATE_PRINT2 and all seven exact
+trace states; local and remote EWD840 retain FINISHED/114942-distinct/zero-queue/
+no-GENERAL; TSnapShot retains FINISHED/zero-queue/no-GENERAL/BEHAVIOR. Ordinary
+entries preserve shared setup's exact unconditional false assumption before
+roles start, while opt-in diagnostics explicitly bypass it. No inventory credit
+changed: body translation, source skip and executed body pass remain distinct.
+
+Rechecked the source off-heap flusher selector: below its partition threshold
+it returns the existing flusher, matching Go's retained executor behavior. This
+is an upstream limitation rather than an identified Go implementation omission.
+The other known upstream limitation is incomplete-intern-record GENERAL message
+formatting. Asked the user whether to preserve these behaviors or permit fixes
+as documented divergences. Pending that decision, retain strict source behavior;
+no production change or diagnostic assertion weakening is authorized by silence.
+
+Clarified HANDOFF and map evidence/open-work text: general additional fault
+phases/topologies are confidence boundaries, not independently identified
+missing Java features. They must not become an unbounded replacement for the
+actual port objective. All mapped files alone still do not prove completion.
+No new test run: this chunk only audits source/inventory and edits prose; reuse
+the existing focused receipts and user's green full-suite baseline. No long or
+race workload and no new original-method credit. git diff --check passes.

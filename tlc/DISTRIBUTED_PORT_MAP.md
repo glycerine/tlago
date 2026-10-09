@@ -116,8 +116,10 @@ their completeness.
 
 ## Evidence and open work
 
-The current original distributed inventory is 41 method contexts: 37 complete
-and four Reconcile. The ordinary `TestJava...` entries preserve the exact source
+Direct enumeration of the pinned source confirms 35 distributed Java files,
+all represented in this map, and 11 test classes containing 41 test methods.
+This is inventory coverage only. The current original distributed inventory is
+41 method contexts: 37 complete and four Reconcile. The ordinary `TestJava...` entries preserve the exact source
 setup assumption; their assertion helpers remain unchanged. Separately named
 `TestDiagnosticJava...` entries bypass the assumption behind
 `tlago_disabled_distributed_tests`, retaining the Ant profile. On the
@@ -172,6 +174,14 @@ The remaining assignments are maintained in
    New custom-data support needs a concrete producer and native contract.
 5. Resolve the four original model-test dispositions without manufacturing a
    green gate or completion credit.
+
+The four model bodies are already translated; all inherit the source's same
+unconditional setup assumption. Their open status concerns source-disabled
+execution and the known retained-flusher failure, rather than absent body code.
+The arbitrary additional fault phases/topologies above are evidence boundaries,
+not independently identified unimplemented Java features. Keep verification tied
+to concrete source contracts instead of treating every untested topology as a
+new porting requirement.
 
 No missing distributed Java file was identified by this mapping. Method bodies,
 failure boundaries and the open assignments still require evidence before the

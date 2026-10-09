@@ -224,6 +224,16 @@ restart or checkpoint atomicity. See architecture notes for their exact limits.
 
 ## Remaining distributed work
 
+The source inventory is fully mapped, but mapping is not proof of parity. The
+four model reconciliations have translated assertion bodies and preserve Java's
+shared unconditional skip; they are not four absent implementations. The known
+off-heap retained-flusher failure and intern-error formatting hang are upstream
+behaviors. Changing either requires a deliberate decision about divergence.
+Further failure-phase and partition checks below are verification gaps, not
+identified missing source features. Choose concrete source behavior and consult
+existing receipts before adding scenarios; do not turn this into an unbounded
+fault-testing project. Original-method credit remains unchanged.
+
 1. Extend recovery coverage to additional failure phases beyond the matrix above.
    Intern-header, trace and queue startup failure ordering is verified; other
    phases remain open. The reproduced intern-record GENERAL-formatting hang is
