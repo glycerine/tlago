@@ -544,6 +544,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
    Extended copies now reapply the predecessor setter and its depth limit.
    A shallow copy without a predecessor starts at the initial level; a deep
    copy retains the old level. Do not replace these with direct field copies.
+   State caches belong only to extended mutable states. Ordinary MC states,
+   functional bindings and print wrappers retain the base no-op accessors;
+   native transfer fixtures must not invent caches on those base-state kinds.
 6. Reconcile the four opt-in original model bodies with the upstream disabled
    harness and its retained-flusher failure. The source-profile failure is now
    located; staged bodies and native coverage earn no completion credit.

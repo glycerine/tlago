@@ -8,7 +8,11 @@ import (
 
 // The source state cache is a non-transient Map<Integer, Value>. No direct
 // upstream transfer tests exist; native graph checks add no method credit.
-func stateCachePayloadStates() []*TLCStateMut {
+func stateCachePayloadStates(t *testing.T) []*TLCStateMut {
+	t.Helper()
+	oldPolicy := statePreserveMetadata
+	statePreserveMetadata = true // Only TLCStateMutExt owns a state cache.
+	t.Cleanup(func() { statePreserveMetadata = oldPolicy })
 	cycle := NewTupleValue(make([]Value, 1))
 	cycle.Elems[0] = cycle
 	shared := map[int]Value{math.MinInt32: cycle, math.MaxInt32: nil}
@@ -54,7 +58,7 @@ func requireStateCachePayloadGraph(t *testing.T, original, copied []*TLCStateMut
 }
 
 func TestDistributedStateCachePayloadGraph(t *testing.T) {
-	original := stateCachePayloadStates()
+	original := stateCachePayloadStates(t)
 	requireStateCachePayloadGraph(t, original, distributedPayloadRoundTrip(t, original))
 }
 
@@ -94,7 +98,7 @@ func TestWorkerRPCStateCachePayloadGraph(t *testing.T) {
 		return NewNextStateResult([]*StateVec{NewStateVecFrom(states)}, []*LongVec{NewLongVec()}, 1, 7), nil
 	}}
 	_, client := startWorkerRPC(t, worker)
-	original := stateCachePayloadStates()
+	original := stateCachePayloadStates(t)
 	result, err := client.GetNextStates(original)
 	if err != nil || result == nil || len(result.NextStates) != 1 {
 		t.Fatalf("native cache graph result = %v/%v", result, err)

@@ -25543,3 +25543,30 @@ it inherits Serializable from TLCState; populated bindings fail because they
 retain semantic SymbolNodes, not because the subclass lacks a declaration.
 No Java runtime implementation is added. No full suite, long model or race run;
 all handles are terminal and original-method completion counts are unchanged.
+
+
+### October 9, 2026: cache access belongs to extended mutable states
+
+Coordinator recovery/completion/init comparison identified no new mismatch.
+Follow-up state transfer comparison found that base TLCState.getCached/setCached
+return null, while only TLCStateMutExt overrides them with storage. Go had
+allocated/returned caches on ordinary model-checking states, functional bindings
+and RecordValue.PrintTLCState wrappers too. The new native four-kind accessor
+check fails on all three base kinds before correction
+(distributed-state-cache-mode-red.log, terminal 9e8f30, status 1).
+
+Go cache accessors now retain the base no-op in those cases. This also preserves
+state-level TLCCache's nil-return operator fallback in ordinary distributed MC.
+The native cache graph fixture now explicitly selects extended mode. Print-state
+graph fixtures require an absent wrapper cache and place the shared cached record
+on a separate extended mutable state; record/value/cache identity and receiver
+isolation assertions remain enforced. No source accessor test exists.
+
+Focused accessor/cache/print graph, native TCP, existing state and seven original
+simulation trace checks pass (distributed-state-cache-mode-green.log, terminal
+effbd4, status 0, 0.021 seconds). Existing original ConstantContextTLCCache and
+TLCExt model test ports also pass with their unchanged assertions
+(distributed-state-cache-original-models.log, terminal ce9510, status 0).
+Documentation and inventory notes distinguish actual cache owners from supported
+transfer graph structure. Original-method counts remain unchanged. No full suite,
+long distributed model or race run. All handles are terminal.

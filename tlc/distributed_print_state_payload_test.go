@@ -7,30 +7,37 @@ import "testing"
 func printStatePayloadStates(t *testing.T) ([]*TLCStateMut, *UniqueString) {
 	t.Helper()
 	oldVariables, oldTool, oldCount := stateVariables, stateTool, UniqueStringVariableCount()
+	oldPolicy := statePreserveMetadata
 	t.Cleanup(func() {
 		stateVariables, stateTool = oldVariables, oldTool
+		statePreserveMetadata = oldPolicy
 		SetUniqueStringVariableCount(oldCount)
 	})
 	field := &UniqueString{s: "payloadField", tok: 717, loc: 0}
 	extra := &UniqueString{s: "extra", tok: 718, loc: -1}
 	stateVariables = []StateVariable{{Name: field}}
 	stateTool = nil
+	statePreserveMetadata = true
 	SetUniqueStringVariableCount(1)
 	record := NewRecordValue([]*UniqueString{field, extra}, []Value{NewIntValue(42), NewIntValue(7)}, true)
 	first, second := record.ToState(), record.ToState()
 	first.UID, first.level = 31, 4
 	first.SetCached(1, record)
-	ordinary := &TLCStateMut{level: 5, values: []Value{record}}
-	return []*TLCStateMut{first, second, ordinary, first}, extra
+	if first.GetCached(1) != nil || first.cached != nil {
+		t.Fatal("source print wrapper inherits the base no-op cache")
+	}
+	mutable := &TLCStateMut{level: 5, values: []Value{record}}
+	mutable.SetCached(1, record) // A separate extended mutable state owns this cache.
+	return []*TLCStateMut{first, second, mutable, first}, extra
 }
 
 func requirePrintStatePayloadGraph(t *testing.T, original, copied []*TLCStateMut, extra *UniqueString) {
 	t.Helper()
 	if len(copied) != 4 || copied[0] == original[0] || copied[0] != copied[3] || copied[0].printRecord == nil || copied[0].printRecord != copied[1].printRecord || copied[0].printRecord == original[0].printRecord || copied[2].printRecord != nil {
-		t.Fatal("print state lost record sharing, ordinary-state distinction or receiver isolation")
+		t.Fatal("print state lost record sharing, mutable-state distinction or receiver isolation")
 	}
 	record := copied[0].printRecord
-	if record != copied[0].GetCached(1) || record != copied[2].values[0] || record.Values[0] != copied[0].values[0] || copied[0].UID != 31 || copied[0].Level() != 4 {
+	if copied[0].GetCached(1) != nil || copied[0].cached != nil || record != copied[2].GetCached(1) || record != copied[2].values[0] || record.Values[0] != copied[0].values[0] || copied[0].UID != 31 || copied[0].Level() != 4 {
 		t.Fatal("print state lost record/value/cache sharing or stored metadata")
 	}
 	want := "/\\ payloadField = 42\n/\\ extra = 7\n"

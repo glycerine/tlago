@@ -2,6 +2,34 @@ package tlc
 
 import "testing"
 
+// No upstream method directly tests the base/extended state cache boundary.
+func TestStateCacheRespectsSourceStateKind(t *testing.T) {
+	oldPolicy := statePreserveMetadata
+	t.Cleanup(func() { statePreserveMetadata = oldPolicy })
+	for _, kind := range []string{"ordinary", "extended", "print", "functional"} {
+		t.Run(kind, func(t *testing.T) {
+			statePreserveMetadata = kind != "ordinary"
+			state := &TLCStateMut{level: TLCStateInitLevel}
+			if kind == "print" {
+				state.printRecord = EmptyRecord
+			}
+			state.functional = kind == "functional"
+			value := NewIntValue(17)
+			stored := state.SetCached(3, value)
+			if kind == "extended" {
+				if stored != value || state.GetCached(3) != value {
+					t.Fatal("extended state did not cache value")
+				}
+				if state.SetCached(3, nil) != nil || state.GetCached(3) != nil {
+					t.Fatal("null cache replacement did not retain source behavior")
+				}
+			} else if stored != nil || state.GetCached(3) != nil || state.cached != nil {
+				t.Fatal("base state allocated or returned a cache")
+			}
+		})
+	}
+}
+
 func TestTLCStateUnassignedVariablesAreLexicographic(t *testing.T) {
 	UniqueStringInitialize()
 	SetStateVariables([]string{"z", "a", "m"})

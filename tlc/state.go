@@ -324,7 +324,7 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 }
 
 func (s *TLCStateMut) GetCached(key int) Value {
-	if s == nil || s.cached == nil {
+	if s == nil || !statePreserveMetadata || s.functional || s.printRecord != nil || s.cached == nil {
 		return nil
 	}
 	return s.cached[key]
@@ -333,6 +333,11 @@ func (s *TLCStateMut) GetCached(key int) Value {
 func (s *TLCStateMut) SetCached(key int, value Value) Value {
 	if s == nil {
 		return value
+	}
+	// Base TLCState methods return null without allocating. Only the
+	// extended mutable implementation overrides them with a cache.
+	if !statePreserveMetadata || s.functional || s.printRecord != nil {
+		return nil
 	}
 	if s.cached == nil {
 		s.cached = make(map[int]Value)

@@ -1966,6 +1966,12 @@ now reapply the source predecessor setter rather than copying its fields. No
 direct upstream copyExt test exists; existing state/vector/alias and seven
 original simulation trace checks pass. Original-method counts are unchanged.
 
+Native cache-mode checks now cover ordinary, extended mutable, functional and
+print states. Only extended mutable states store values. Native cache graph
+fixtures explicitly select that mode; print graph fixtures retain their cache
+on a separate mutable state rather than inventing a wrapper cache. No direct
+upstream accessor test exists; this adds no original-method completion credit.
+
 Full N=7 coverage also pauses TCP traffic to one of two fingerprint hosts while
 keeping connections open. Separate cases hold both directions, only requests
 or only replies; markers require the selected direction and reject an opposite

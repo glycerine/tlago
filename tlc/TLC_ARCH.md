@@ -11780,6 +11780,16 @@ upstream predecessor-transfer tests exist; native checks add no method credit.
 
 ### Native cached-state map transfer
 
+Only extended mutable states own this cache in the source. Ordinary model-checking
+states, functional bindings and print wrappers inherit base methods that return
+null without allocation. The Go cache accessors now preserve that distinction.
+Returning nil from the ordinary setter also retains TLCCache's original operator
+fallback instead of accidentally enabling state-level caching in distributed MC.
+Native cache graph fixtures explicitly enable extended mode. Print-state graph
+fixtures attach their shared cache to a separate extended mutable state, keeping
+the wrapper cache absent as in Java, while preserving record/value/cache alias
+and receiver-isolation assertions.
+
 TLCStateMutExt’s non-transient cache is Map<Integer, Value>. The native graph
 now has a StateCaches table and a one-based cache reference per state node.
 Zero denotes a nil cache; a referenced empty table denotes a non-nil empty map.
