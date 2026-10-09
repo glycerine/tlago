@@ -2214,6 +2214,10 @@ decimal rounding. Focused native checks cover local checked-I/O `-1`, MinInt64,
 decimal ties and adjacent large integers, plus zero-distance failure and the
 empty-model bypass. No direct original method tests this calculation; these
 checks do not alter the inventory count.
+Local-manager constructor checks also preserve delayed missing-reference failure,
+valid counts/empty batches and worker transfer without fabricated endpoint
+publication. Existing local lifecycle checks now use the real constructor.
+No direct original method covers this boundary; the inventory is unchanged.
 
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Reconcile**: `testSpec`.
   Source setup/body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go). The ordinary entry preserves the exact upstream unconditional skip. Explicit body diagnostic: [tlc_distributed_java_diagnostic_test.go](../tlc_distributed_java_diagnostic_test.go), build tag `tlago_disabled_distributed_tests`. All seven trace states, ordinal/action-label checks, FINISHED, BEHAVIOR and no GENERAL are staged; the source Ant-profile run passes with 48 workers. The restored source assumption is separate from diagnostic execution; no passing-body or completion credit is added.

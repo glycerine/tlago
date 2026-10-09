@@ -133,6 +133,9 @@ Collision reporting interprets fingerprint-distance bits as a signed long and
 rounds the exact reciprocal to two decimal significant digits, half up, before
 floating-point conversion. Preserve local `-1` and MinInt64 distances, the
 nonempty zero-distance failure and the source empty-model bypass.
+The local fingerprint-manager constructor retains a missing reference until
+use; counts and empty batches remain valid. The ordinary distributed constructor
+still rejects it immediately, as its source evaluates the reference's string.
 
 ## Checkpoint and recovery contracts
 

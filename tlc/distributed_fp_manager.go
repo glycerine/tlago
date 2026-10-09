@@ -71,7 +71,14 @@ func NewDistributedFPSetManagerFromFPSet(set FPSet) *DistributedFPSetManager {
 }
 
 func NewNonDistributedFPSetManager(set FPSet, hostname string, trace *TLCTrace) *DistributedFPSetManager {
-	m := &DistributedFPSetManager{Mask: math.MaxInt64, fpSets: []*distributedFPSets{{set: NewLocalFingerprintEndpoint(set), hostname: hostname, available: true}}}
+	// Unlike FPSetManager(FPSetRMI), the source local constructor stores its
+	// reference without dereferencing it. Preserve a missing endpoint until
+	// an operation actually uses it; counts and empty batches remain valid.
+	var endpoint DistributedFingerprintEndpoint
+	if set != nil {
+		endpoint = NewLocalFingerprintEndpoint(set)
+	}
+	m := &DistributedFPSetManager{Mask: math.MaxInt64, fpSets: []*distributedFPSets{{set: endpoint, hostname: hostname, available: true}}}
 	m.NonDistributed, m.Description, m.Trace = true, hostname, trace
 	return m
 }

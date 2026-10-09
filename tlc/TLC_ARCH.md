@@ -14415,3 +14415,23 @@ manager I/O fallback and both zero-distance paths. The unchanged formatting
 helper intentionally drops a positive fraction's leading zero; negative values
 retain it. No direct original test covers this reportSuccess calculation, so
 these checks add no original-method credit.
+
+
+### Local fingerprint-manager construction retains a missing reference
+
+NonDistributedFPSetManager's Java constructor stores its fingerprint reference,
+hostname and trace without dereferencing them. Go incorrectly invoked
+NewLocalFingerprintEndpoint(nil), which rejected a missing reference immediately.
+The local manager now retains a nil endpoint in its registration. A real store
+still gets the same local adapter. The ordinary distributed constructor keeps
+its immediate missing-reference failure, matching source fpSet.toString().
+
+A native API check exercises the actual local constructor, reference-independent
+counts/routing/mask/hostname and empty batches. A nonempty insertion then fails
+at access with the typed null failure, without checked-I/O warnings or failover.
+The manager payload transfers the missing reference without publication or
+resolution and omits the coordinator trace; the receiver retains the same
+query/failure distinction. Existing four local checkpoint/commit/recovery/close
+checks now construct the manager through the public constructor instead of
+bypassing it with a struct literal. No direct original method covers the local
+constructor boundary; original-method credit remains unchanged.

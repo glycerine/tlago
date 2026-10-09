@@ -75,7 +75,7 @@ func TestDistributedFingerprintCloseNullEndpointContinues(t *testing.T) {
 func TestNonDistributedFingerprintLifecycleNullEndpoint(t *testing.T) {
 	for _, operation := range []string{"checkpoint", "commit", "recover", "close"} {
 		t.Run(operation, func(t *testing.T) {
-			manager := &DistributedFPSetManager{NonDistributed: true, fpSets: []*distributedFPSets{{hostname: "null", available: true}}}
+			manager := NewNonDistributedFPSetManager(nil, "null", nil)
 			err := invokeDistributedServerOperation(func() error {
 				switch operation {
 				case "checkpoint":

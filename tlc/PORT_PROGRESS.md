@@ -26602,3 +26602,30 @@ distributed-signed-collision-model-control.log, terminal 9d9d8d, status 0,
 Only that named model row ran. Original distributed inventory stays 37/41.
 No full-suite rerun or race workload. All handles terminal; git diff --check
 passes.
+
+
+### October 9, 2026: local manager retains missing reference until use
+
+Source constructor comparison found NewNonDistributedFPSetManager eagerly
+rejected a missing fingerprint store through its local-adapter constructor.
+Java NonDistributedFPSetManager merely stores the reference; counts, routing
+metadata and empty batches remain valid before an operation accesses it. Go
+now stores a nil endpoint for that input and preserves the real-store adapter
+path. The ordinary distributed constructor's source toString dereference and
+immediate failure remain unchanged. This is a concrete constructor mismatch,
+not evidence of a missing-store producer in ordinary model checking.
+
+After implementing the feature, added a native API/manager-transfer check for
+valid queries/empty batches, delayed typed null failure, no warning/failover,
+no fabricated endpoint publication/resolution and coordinator trace omission.
+Existing four local lifecycle null checks now use the actual constructor
+instead of a struct literal, preserving all assertions. No direct original
+method covers this constructor boundary; original inventory stays 37/41.
+
+Focused constructor/lifecycle, nullable graph/validation, worker snapshot and
+local checked-I/O reporting checks pass: distributed-local-manager-constructor.log,
+terminal 96e559, status 0, 0.017 seconds. Existing original dynamic constructors,
+indices and nested partition tests plus native TCP nullable-manager failover
+control pass: distributed-local-manager-constructor-controls.log, terminal
+73ffb5, status 0. No full model, full suite or race rerun was needed for this
+missing-reference-only change. All handles terminal and git diff --check passes.
