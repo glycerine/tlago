@@ -128,9 +128,10 @@ hide that source limitation.
 Focused evidence includes original manager and smart-proxy tests, native TCP
 operations, full EWD840 model runs, worker/FP host loss, complete/partial insertion
 reply loss, controlled transport stalls and registered-endpoint checkpoint
-restarts. These receipts have different scopes; none establishes complete
-distributed parity alone. Use the detailed entries in the progress log rather
-than rerunning unchanged long workloads.
+restarts, including completed recovery followed by lost acknowledgement and
+source size-query failover. These receipts have different scopes; none establishes
+complete distributed parity alone. Use the detailed entries in the progress log
+rather than rerunning unchanged long workloads.
 
 The remaining assignments are maintained in
 [HANDOFF.md](HANDOFF.md#remaining-distributed-work):

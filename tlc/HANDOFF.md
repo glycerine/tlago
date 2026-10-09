@@ -489,11 +489,21 @@ before releasing the old handler, without replay or reassignment. Accepted work
 then finishes with exact child snapshot bytes/membership; committed snapshots
 also reopen in fresh stores. This covers transport loss, not host death.
 
+The full-model recovery-reply-loss fixture restores both checkpoint partitions
+before dropping the first host's acknowledgement. Recovery warns and continues;
+the next size query reassigns the broken connection without retrying its slot.
+Fresh connections inspect exact restored membership before workers start. The
+disowned host is then crashed and joined. The survivor must finish the unchanged
+N=7 model with 114,942 stored fingerprints and an empty queue; source statistics
+count its two aliased routing slots as 229,884. This adds native transport
+coverage without changing original-test credit or introducing automatic replay.
+
 ## Remaining distributed work
 
 1. Extend restart/recovery coverage to other failure phases. Verified cases use
    two-host Mem/LSB/MSB registered endpoints and cover complete checkpoints,
-   completed-commit reply loss and missing committed LSB/MSB child snapshots.
+   completed-commit and completed-recovery reply loss, and missing committed
+   LSB/MSB child snapshots.
    Keep the fresh-process remote-FP CLI limitation separate:
    Java recovers before publication/registration while its dynamic manager is
    empty. Do not reorder startup to manufacture support.

@@ -12833,6 +12833,18 @@ through a fresh host permits membership reads without another recovery.
 This checks the library transport boundary, not full-model recovery after a
 network partition or fresh-process CLI registration ordering.
 
+The native full-model restart fixture also drops the first host's reply after
+its committed snapshot has been restored. Recovery itself warns and continues
+without replay or reassignment. The following size query reassigns the broken
+connection but does not retry that slot, so its first result counts only the
+original survivor slot. Fresh observer connections verify exact membership in
+both restored stores before replacement workers start. The disowned host is
+then crashed and joined; it cannot receive coordinator-owned shutdown anymore.
+The surviving store completes the unchanged N=7 model at 114,942 fingerprints.
+Final source statistics count both aliased routing slots as 229,884, with no
+states left on the queue. This covers Mem and two-child LSB/MSB stores through
+native TCP. It does not add transport redial or change CLI registration order.
+
 ### Explicit empty fingerprint filenames
 
 MemFPSet/1/2, MemFPIntSet and DiskFPSet named checkpoint operations preserve an

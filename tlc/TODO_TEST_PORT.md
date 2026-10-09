@@ -1887,6 +1887,14 @@ two-host availability, committed snapshot files after crashes, exact recovered
 membership before workers start and the ordinary full N=7 completion counts.
 This is native transport failure coverage, with no original-method credit.
 
+The full N=7 remote restart fixture additionally loses the first host's reply
+after completed recovery. Both restored partitions retain exact checkpoint
+membership before worker startup. The following size call triggers source
+failover without replay; after the disowned host is crashed and joined, the
+survivor completes at 114,942 stored fingerprints, with 229,884 reported across
+the two aliased routing slots and an empty queue. Mem/LSB/MSB coverage adds no
+original-method credit and preserves the ordinary recovery-row assertions.
+
 Short completed-begin reply-loss checks cover Mem/LSB/MSB storage, real pending
 snapshot membership, skipped commit, retained registrations and fresh-store
 recovery without pending-file promotion. They verify the source distinction

@@ -57,12 +57,23 @@ func TestNativeDistributedRemoteCheckpointCommitReplyLossMultipleWorkers(t *test
 	}
 }
 
+// Lose the acknowledgement after storage restores its committed checkpoint.
+// The following size query triggers source failover before workers reconnect.
+func TestNativeDistributedRemoteCheckpointRecoverReplyLoss(t *testing.T) {
+	for _, backend := range []string{"mem", "lsb", "msb"} {
+		t.Run(backend, func(t *testing.T) {
+			checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, nativeRemoteCheckpointRecoverReplyLoss)
+		})
+	}
+}
+
 type nativeRemoteCheckpointFault int
 
 const (
 	nativeRemoteCheckpointNone nativeRemoteCheckpointFault = iota
 	nativeRemoteCheckpointCommitReplyLoss
 	nativeRemoteCheckpointMissingDiskSnapshot
+	nativeRemoteCheckpointRecoverReplyLoss
 )
 
 func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
@@ -75,6 +86,7 @@ func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
 
 func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, fault nativeRemoteCheckpointFault) {
 	commitReplyLoss := fault == nativeRemoteCheckpointCommitReplyLoss
+	recoverReplyLoss := fault == nativeRemoteCheckpointRecoverReplyLoss
 	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 	if err != nil {
 		t.Fatal(err)
@@ -139,6 +151,9 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			environment := []string{"TLAGO_CHECKPOINT_FP_DIRECTORY=" + directory, "TLAGO_CHECKPOINT_FP_STORAGE=" + backend}
 			if commitReplyLoss && prefix == "original" && i == 0 {
 				environment = append(environment, "TLAGO_CHECKPOINT_COMMIT_REPLY_LOSS=1")
+			}
+			if recoverReplyLoss && prefix == "restarted" && i == 0 {
+				environment = append(environment, "TLAGO_CHECKPOINT_RECOVER_REPLY_LOSS=1")
 			}
 			host := start(fmt.Sprintf("%s-fp-%d", prefix, i), "checkpoint-fp-host", environment)
 			waitMarker(host, "NATIVE_CHECKPOINT_FP_READY=")
@@ -343,7 +358,23 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	}
 	waitMarker(server, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd))
 	output = server.output.String()
-	if !strings.Contains(output, fmt.Sprintf("Recovery completed. %d states examined. %d states on queue.", distinct, queued)) || len(nativeDistributedMessages(output, tlc.ECTLCComputingInit)) != 0 {
+	reportedDistinct := distinct
+	if recoverReplyLoss {
+		var survivorSnapshotSize int
+		for _, snapshot := range snapshots[1] {
+			survivorSnapshotSize += len(snapshot.data) / 8
+		}
+		// Recovery catches I/O without reassignment. The following size call
+		// aliases the failed slot to the survivor, but does not retry that slot.
+		// This first count therefore includes only the original survivor slot.
+		reportedDistinct = survivorSnapshotSize
+		marker := "NATIVE_CHECKPOINT_FP_RECOVER_REPLY_LOST=" + filepath.Base(filepath.Clean(path[1]))
+		const warning = "Error: Failed to checkpoint the fingerprint server at checkpoint-host-0. This server might be down."
+		if strings.Count(restarted[0].output.String(), marker+"\n") != 1 || strings.Count(output, warning) != 1 || strings.Count(restarted[0].output.String(), "NATIVE_CHECKPOINT_FP_RECOVER=") != 1 || !strings.Contains(output, "to the fp server at checkpoint-host-0.") {
+			t.Fatal("completed recovery reply loss was replayed, unreported or failed to reach source size failover")
+		}
+	}
+	if !strings.Contains(output, fmt.Sprintf("Recovery completed. %d states examined. %d states on queue.", reportedDistinct, queued)) || len(nativeDistributedMessages(output, tlc.ECTLCComputingInit)) != 0 {
 		t.Fatal("registered remote recovery counts differ or initialization was regenerated")
 	}
 	var recovered uint64
@@ -372,6 +403,18 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		t.Fatal("restarted stores did not recover exactly committed membership before worker startup")
 	}
 	t.Log("restarted empty stores recovered committed membership; starting actual successor evaluation")
+	if recoverReplyLoss {
+		// No transport redial: the manager no longer owns the failed endpoint.
+		// Its restored membership was observed above through a fresh connection.
+		if err := restarted[0].command.Process.Kill(); err != nil {
+			t.Fatal(err)
+		}
+		if err := <-restarted[0].done; err == nil {
+			t.Fatal("retained recovered host did not crash")
+		}
+		restarted[0].joined = true
+		restarted = restarted[1:]
+	}
 	replacement := start("replacement-worker", "worker", nil, fmt.Sprintf("-Dtlc2.tool.distributed.TLCWorker.threadCount=%d", workerThreads), "127.0.0.1")
 	for _, process := range append([]*nativeDistributedTestProcess{server, replacement}, restarted...) {
 		if err := <-process.done; err != nil {
@@ -388,22 +431,64 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		checkNativeDistributedWorkerGroup(t, output, workerThreads)
 	}
 	stats := nativeDistributedMessages(output, tlc.ECTLCStats)
-	if len(nativeDistributedMessages(output, tlc.ECTLCFinished)) != 1 || len(stats) != 1 || !regexp.MustCompile(`^\d+ states generated, 114942 distinct states found, 0 states left on queue\.$`).MatchString(stats[0]) || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverEnd)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
+	finalDistinct := 114942
+	if recoverReplyLoss {
+		finalDistinct *= 2 // Source statistics count both aliased partition slots.
+	}
+	if len(nativeDistributedMessages(output, tlc.ECTLCFinished)) != 1 || len(stats) != 1 || !regexp.MustCompile(fmt.Sprintf(`^\d+ states generated, %d distinct states found, 0 states left on queue\.$`, finalDistinct)).MatchString(stats[0]) || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverEnd)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
 		t.Fatal("recovered model lacks original completion/count assertions")
 	}
 }
 
 type nativeCheckpointFingerprintEndpoint struct {
 	*tlc.LocalFingerprintEndpoint
-	exited          chan struct{}
-	once            sync.Once
-	commitReplyLoss *tlc.DistributedRPCServer
-	commitOnce      sync.Once
+	exited           chan struct{}
+	once             sync.Once
+	commitReplyLoss  *tlc.DistributedRPCServer
+	commitOnce       sync.Once
+	recoverReplyLoss func()
+	recoverOnce      sync.Once
 }
 
 func (e *nativeCheckpointFingerprintEndpoint) RecoverFile(name string) error {
 	fmt.Println("NATIVE_CHECKPOINT_FP_RECOVER=" + name)
-	return e.LocalFingerprintEndpoint.RecoverFile(name)
+	if err := e.LocalFingerprintEndpoint.RecoverFile(name); err != nil {
+		return err
+	}
+	if e.recoverReplyLoss != nil {
+		e.recoverOnce.Do(func() {
+			fmt.Println("NATIVE_CHECKPOINT_FP_RECOVER_REPLY_LOST=" + name)
+			e.recoverReplyLoss()
+		})
+	}
+	return nil
+}
+
+// Keep storage/listening alive for observation while discarding the accepted
+// recovery's reply. Existing coordinator clients are never redialed or replayed.
+type nativeCheckpointConnectionListener struct {
+	net.Listener
+	mu          sync.Mutex
+	connections []net.Conn
+}
+
+func (l *nativeCheckpointConnectionListener) Accept() (net.Conn, error) {
+	connection, err := l.Listener.Accept()
+	if err == nil {
+		l.mu.Lock()
+		l.connections = append(l.connections, connection)
+		l.mu.Unlock()
+	}
+	return connection, err
+}
+
+func (l *nativeCheckpointConnectionListener) closeConnections() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, connection := range l.connections {
+		_ = connection.Close()
+	}
+	l.connections = nil
 }
 
 func (e *nativeCheckpointFingerprintEndpoint) CommitChkptFile(name string) error {
@@ -469,6 +554,11 @@ func nativeCheckpointFingerprintHost() error {
 		return err
 	}
 	done := make(chan error, 1)
+	if os.Getenv("TLAGO_CHECKPOINT_RECOVER_REPLY_LOSS") == "1" {
+		tracked := &nativeCheckpointConnectionListener{Listener: listener}
+		listener = tracked
+		endpoint.recoverReplyLoss = tracked.closeConnections
+	}
 	go func() { done <- host.Serve(listener) }()
 	fmt.Println("NATIVE_CHECKPOINT_FP_READY=" + listener.Addr().String())
 	<-endpoint.exited

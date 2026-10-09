@@ -25690,3 +25690,32 @@ and testReadSeekNoLength methods; it passes
 (distributed-trace-negative-location-final.log, terminal b443c0, status 0).
 No direct source trace test covers this boundary. No full suite, long model or
 race run; all handles are terminal and original-method counts are unchanged.
+
+
+### October 9, 2026: full-model completed recovery reply loss
+
+Extended the native registered-endpoint restart fixture with lost acknowledgement
+after real fingerprint recovery. Test-only accepted-connection closure leaves
+storage/listening alive for fresh observer membership checks; no production
+transport redial, operation replay, RMI or Java serialization was introduced.
+Both restored partitions match committed snapshots before worker startup. The
+manager's subsequent size query reassigns the broken connection, omitting that
+slot from the first count. The disowned host is then crashed and joined. The
+survivor completes the unchanged N=7 model with 114,942 stored fingerprints;
+source statistics count both aliased slots as 229,884, with an empty queue.
+
+The initial memory row failed because the new fixture incorrectly expected the
+first size call to count both slots (distributed-recover-reply-loss-memory.log,
+terminal 9a22e4, status 1). Comparing FPSetManager.size confirmed that Java
+reassigns without retrying the failed slot. Corrected only this new fixture's
+expectation; the production Go implementation already preserves that sequence.
+Existing ordinary recovery assertions remain unchanged.
+
+All Mem/LSB/MSB reply-loss rows pass (distributed-recover-reply-loss-all.log,
+terminal aeb175, status 0, 235.622 seconds). Ordinary memory remote restart passes
+(distributed-recover-reply-loss-baseline.log, terminal fe26ba, status 0,
+52.123 seconds). Short completed-recovery TCP checks and the original dynamic
+manager/nested-partition tests pass (distributed-recover-reply-loss-focused.log,
+terminal fc30e9, status 0, 0.075 seconds). All process handles are terminal.
+No full suite or race run. Original distributed counts remain 37 complete and
+four Reconcile; this native fault coverage earns no original-method credit.
