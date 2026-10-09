@@ -12763,3 +12763,18 @@ source override that visits each child and allocates its worker readers. Local
 and TCP checks use real LSB/MSB disk children: AddThread retains one reader each,
 then IncWorkers(2) produces three each. The former Go forwarding AddThread
 incorrectly allocated child readers and could introduce child open failures.
+
+### Fingerprint invariant overload dispatch
+
+FPSet.checkInvariant(long) returns true independently of checkInvariant().
+MemFPSet, MemFPSet1, MemFPSet2 and MultiFPSet inherit this overload; Go must not
+invent count validation or child traversal for these expected-count calls.
+MultiFPSet overrides only the no-argument overload, which retains its parallel
+child invariant checks. DiskFPSet overrides both overloads and validates its
+storage before comparing size to the supplied count.
+
+The Go variadic method selects these source overload contracts explicitly.
+Local/TCP native checks cover populated memory stores with a mismatched count,
+a nested child that fails its no-argument check and forbids size access, and
+LSB/MSB stores with matching and mismatched counts. This preserves the source
+dispatch without Java runtime machinery or a changed distributed algorithm.

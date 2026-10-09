@@ -578,7 +578,7 @@ func (s *MemFPSet) Exit(cleanup bool) error {
 }
 
 func (s *MemFPSet) CheckInvariant(expectFPs ...uint64) bool {
-	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+	return true
 }
 
 func (s *MemFPSet) Contains(fp uint64) bool {
@@ -974,7 +974,7 @@ func (s *MemFPSet1) Exit(cleanup bool) error {
 }
 
 func (s *MemFPSet1) CheckInvariant(expectFPs ...uint64) bool {
-	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+	return true
 }
 
 func (s *MemFPSet1) CheckFPs() uint64 {
@@ -1193,7 +1193,7 @@ func (s *MemFPSet2) Exit(cleanup bool) error {
 }
 
 func (s *MemFPSet2) CheckInvariant(expectFPs ...uint64) bool {
-	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+	return true
 }
 
 func (s *MemFPSet2) CheckFPs() uint64 {
@@ -1528,6 +1528,11 @@ func (s *MultiFPSet) CheckFPs() uint64 {
 }
 
 func (s *MultiFPSet) CheckInvariant(expectFPs ...uint64) bool {
+	// Only the no-argument overload is overridden by MultiFPSet in the source.
+	// The inherited expected-count overload returns true without child checks.
+	if len(expectFPs) != 0 {
+		return true
+	}
 	var stopped atomic.Bool
 	for _, valid := range parallelNestedFPSetCalls(s.Sets, "check invariant", true, func(set FPSet) bool {
 		// Source allMatch may skip work not started when a false result is
@@ -1545,7 +1550,7 @@ func (s *MultiFPSet) CheckInvariant(expectFPs ...uint64) bool {
 			return false
 		}
 	}
-	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+	return true
 }
 
 // Source child size/check calls use parallel streams. Only check lambdas wrap

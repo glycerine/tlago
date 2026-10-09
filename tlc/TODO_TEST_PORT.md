@@ -1457,6 +1457,10 @@ isolation or the parallel size boundary; these native checks add no credit.
 Native local/TCP nested thread-registration checks verify inherited `AddThread`
 is a no-op while `IncWorkers` allocates child readers. Related original nested
 methods remain green; no direct original test exists, so no credit is added.
+Native invariant-overload checks cover local/TCP memory, nested and LSB/MSB
+stores. Memory/nested expected-count calls inherit the base true result; disk
+calls enforce counts and nested no-argument checks visit children. Related
+original methods remain green; no direct original overload test earns credit.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

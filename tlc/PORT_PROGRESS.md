@@ -23782,3 +23782,19 @@ and manager nested-partition methods pass (terminal 88f1ed, status 0,
 1.817 seconds). No direct original addThread test exists; native checks add no
 completion credit. No full suite, long model or race workload ran. All check
 handles are terminal.
+
+### Fingerprint invariant overload dispatch
+
+Audited the base checkInvariant(long) and subclass overrides. Memory stores and
+MultiFPSet inherit the always-true expected-count overload. Removed invented
+Go memory count validation and nested child/count validation for that overload.
+Kept nested no-argument traversal and DiskFPSet's count-validating override.
+New local/TCP memory/nested cases reproduce all eight mismatches (terminal
+68c9ce, status 1, 0.035 seconds). Initial focused fixed checks and original nested
+methods pass (terminal b24434, status 0, 2.652 seconds). Expanded native cases
+also verify LSB/MSB mismatched/matching counts. Final expanded selection, related
+manager failure checks and original nested methods pass (terminal 513ac2,
+status 0, 1.085 seconds). Two test compilation errors in constructor/factory
+arguments were corrected before these final checks. No direct original test
+covers inherited overload dispatch, so native checks add no completion credit.
+No full suite, long model or race workload ran. All check handles are terminal.
