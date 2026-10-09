@@ -25483,3 +25483,35 @@ this verified local boundary from unproved full-model/remote interruption.
 No production hook, source reordering, arbitrary instruction delay, full suite,
 long workload or race run. No direct original test exists and inventory remains
 37 complete and four Reconcile. All handles are terminal.
+
+
+### October 9, 2026: ordinary states ignore deferred callables
+
+Audited actual metadata producers in pinned Java source
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Core TLC and its tests contain
+only Value.setData/ModelValue.setData definitions, with no callers. Default
+distributed TLCApp constructs a model-checking FastTool; ordinary state action
+and callable setters are no-ops. Populated extended actions retain evaluator
+objects that do not implement the source transfer contract. Documented these
+boundaries rather than expanding arbitrary object codecs or Java machinery.
+
+Found a concrete mismatch during that audit: Go SetCallable retained closures
+even on ordinary states. TLCDefer could therefore turn an otherwise transferable
+distributed state into an unsupported executable payload. The focused new mode
+check fails before the correction (distributed-callable-mode-red.log, terminal
+f1bb4e, status 1). SetCallable now stores only under the existing extended-state
+policy. The check verifies ordinary no-op/transfer and extended execution/explicit
+transfer rejection. The earlier callable execution fixture now explicitly uses
+executor mode instead of relying on ordinary states executing callbacks.
+
+No direct original callable test was found in test/tlc2. The new native mode
+check adds no original-method credit. Existing application and payload checks
+passed before the fix (distributed-transfer-scope-audit.log, terminal 24f5a6,
+status 0, 0.027 seconds). Final focused verification includes original simulation
+trace tests; its receipt follows below. No full suite or race workload.
+
+Final callable-mode, callable-value, seven original simulation trace methods,
+application and local/TCP payload selection passes
+(distributed-callable-mode-green.log, terminal 8395c9, status 0, 0.029 seconds).
+All handles are terminal. Distributed inventory remains 37 complete and four
+Reconcile; no unsupported transfer was silently dropped or Java service added.

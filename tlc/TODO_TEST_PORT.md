@@ -1953,6 +1953,13 @@ array/element IDs, conflicting root forms and unsupported state metadata fail
 explicitly. Existing legacy root/result payloads and original ModelValue methods
 remain green; new native checks add no original-method completion credit.
 
+The native callable-mode check verifies that ordinary model-checking states
+ignore `TLCDefer` callbacks and remain transferable, while extended states execute
+them and reject executable metadata transfer. This corrected an unconditional
+Go setter; no direct original callable test exists. Seven existing original
+simulation-trace test ports and focused payload/application checks pass unchanged.
+This adds no original-method completion credit.
+
 Full N=7 coverage also pauses TCP traffic to one of two fingerprint hosts while
 keeping connections open. Separate cases hold both directions, only requests
 or only replies; markers require the selected direction and reject an opposite

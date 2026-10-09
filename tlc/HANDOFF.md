@@ -531,9 +531,16 @@ also reopen in fresh stores. This covers transport loss, not host death.
    assertion without advancing work.
    Failed raw writes close native files without reflushing or publishing the
    checkpoint marker. Original writer wake/finish and stream tests remain green.
-5. Reconcile opaque custom data and evaluator metadata against actual source
-   transferability. Preserve explicit rejection until a faithful native contract
-   is established. No Java object serialization or reflection runtime is wanted.
+5. The core metadata-transfer audit is complete for the pinned source. Neither
+   core TLC nor its tests call `Value.setData` or `ModelValue.setData`; ordinary
+   distributed tools use model-checking states with no stored action. Populated
+   extended actions retain non-transferable evaluator objects. Keep unsupported
+   custom data explicit errors. Extend this boundary only for a concrete producer
+   and native transfer contract, not arbitrary Java objects. See the metadata
+   producer audit in `TLC_ARCH.md`.
+   Ordinary states now ignore deferred callables, matching the source base state;
+   extended states retain execution. This avoids an artificial transfer failure
+   from `TLCDefer` during distributed model checking.
 6. Reconcile the four opt-in original model bodies with the upstream disabled
    harness and its retained-flusher failure. The source-profile failure is now
    located; staged bodies and native coverage earn no completion credit.

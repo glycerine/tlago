@@ -12459,6 +12459,46 @@ owners, so their explicit codec rejection remains justified. No Java serializer,
 reflection handles or runtime is introduced. Mixed attachment checks supplement
 the original ModelValue test ports without adding original-method completion credit.
 
+### Metadata producer audit for distributed workers
+
+The October 9 audit of pinned source `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`
+finds only the definitions of `Value.setData` and `ModelValue.setData` under
+`src/tlc2` and `test/tlc2`, with no callers. The public attachment facility is
+therefore an extension point, not evidence that core distributed checking needs
+an arbitrary object codec. Existing supported native attachment graphs remain
+available; opaque objects fail explicitly. A future extension must identify its
+actual producer and specify its Go transfer representation.
+
+`TLCApp` constructs `FastTool` through the default `Mode.MC` constructor.
+`Tool` selects ordinary `TLCStateMut` unless an explicit extended-state property
+is enabled. `TLCState.setAction` and `setCallable` are no-ops for ordinary states;
+the Go setters likewise retain these fields only in extended mode. Source
+`setPredecessor` still updates the ordinary state's level, which the native
+payload preserves. This does not justify sending the evaluator to every worker.
+
+This comparison exposed a Go shortcut: `SetCallable` previously stored a closure
+in every state. It now follows the same extended-state policy as `SetAction`.
+Consequently `TLCDefer` on ordinary distributed model-checking states returns
+TRUE without retaining executable metadata or preventing native transfer.
+Extended states still execute the deferred callback and reject transferring it.
+The existing callable-value execution fixture now explicitly selects executor
+mode, matching the source state type required by its execution assertion.
+
+Extended `TLCStateMutExt` retains action and predecessor fields. Its ordinary
+populated `Action` holds `SemanticNode`, `Context` and `CostModel.DO_NOT_RECORD`
+without transient exclusions. Those owners do not implement the source transfer
+contract. `Action`'s own Serializable declaration does not make its reachable
+graph transferable. `TLCStateFun` similarly does not implement that contract.
+The native codec preserves supported predecessor graphs and rejects populated
+evaluator metadata instead of dropping it. This is not a claim that every
+possible custom Action or attachment is non-transferable.
+
+Existing focused application and local/TCP payload checks pass after this
+audit, including predecessor sharing/cycles, supported model-data graphs and
+unsupported-data error handling. No new Java runtime support or original test
+completion credit follows from this audit. Do not reopen this as an unbounded
+serializer task without evidence of a missing core TLC producer.
+
 ### Remote checkpoint commit with a lost reply
 
 Java FPSetManager.Checkpoint.run invokes named begin and commit, reports I/O

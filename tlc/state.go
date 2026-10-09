@@ -333,7 +333,9 @@ func (s *TLCStateMut) SetCached(key int, value Value) Value {
 }
 
 func (s *TLCStateMut) SetCallable(callable func() (any, error)) {
-	if s != nil {
+	// Ordinary TLCStateMut inherits the source no-op. Only extended states
+	// retain deferred execution, just as they retain action metadata.
+	if s != nil && statePreserveMetadata {
 		s.callable = callable
 	}
 }

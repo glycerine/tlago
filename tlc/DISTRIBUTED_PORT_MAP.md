@@ -145,7 +145,8 @@ The remaining assignments are maintained in
    inside intern commit and proves a different control-flow boundary.
 4. Continue ownership/cleanup comparison where concrete source evidence reveals
    a shortcut. Consult prior receipts before repeating completed audits.
-5. Reconcile opaque data/evaluator metadata against actual source transferability.
+5. Core metadata producers and transferability are audited; see `TLC_ARCH.md`.
+   New custom-data support needs a concrete producer and native contract.
 6. Resolve the four original model-test dispositions without manufacturing a
    green gate or completion credit.
 
