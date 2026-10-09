@@ -36,6 +36,33 @@ type DistributedRPCServer struct {
 	closeReadsErr       error // guarded by mu; forced close need not wait for read interruption
 	closeResourcesOnce  sync.Once
 	closeResourcesErr   error
+	connectionCloseErr  error // guarded by mu; retained after connections leave tracking
+}
+
+// net/rpc, the serving goroutine and host shutdown can all release the same
+// accepted connection. Close the descriptor once and retain its original error
+// even when the serving goroutine subsequently removes it from host tracking.
+type distributedServerConnection struct {
+	net.Conn
+	server    *DistributedRPCServer
+	closeOnce sync.Once
+	closeErr  error
+}
+
+func (c *distributedServerConnection) Close() error {
+	c.closeOnce.Do(func() {
+		c.closeErr = c.Conn.Close()
+		c.server.recordConnectionCloseFailure(c.closeErr)
+	})
+	return c.closeErr
+}
+
+func (s *DistributedRPCServer) recordConnectionCloseFailure(err error) {
+	if !distributedCloseIsBenign(err) {
+		s.mu.Lock()
+		s.connectionCloseErr = errors.Join(s.connectionCloseErr, err)
+		s.mu.Unlock()
+	}
 }
 
 func NewDistributedRPCServer() *DistributedRPCServer {
@@ -133,6 +160,7 @@ func (s *DistributedRPCServer) Serve(listener net.Listener) error {
 			}
 			return nil
 		}
+		conn = &distributedServerConnection{Conn: conn, server: s}
 		s.connections[conn] = struct{}{}
 		s.mu.Unlock()
 		go func() {
@@ -209,16 +237,19 @@ func (s *DistributedRPCServer) close(graceful bool) error {
 			resourceFailures = append(resourceFailures, err)
 		}
 		for _, conn := range connections {
-			if err := conn.Close(); !distributedCloseIsBenign(err) {
-				resourceFailures = append(resourceFailures, err)
+			err := conn.Close()
+			// Accepted owners record their failure exactly once. Also retain
+			// errors from directly owned connections without duplicating it.
+			if owner, ok := conn.(*distributedServerConnection); !ok || owner.server != s {
+				s.recordConnectionCloseFailure(err)
 			}
 		}
 		s.closeResourcesErr = errors.Join(resourceFailures...)
 	})
 	s.mu.Lock()
-	readErr := s.closeReadsErr
+	readErr, connectionErr := s.closeReadsErr, s.connectionCloseErr
 	s.mu.Unlock()
-	return errors.Join(s.closeListenersErr, readErr, s.closeResourcesErr)
+	return errors.Join(s.closeListenersErr, readErr, s.closeResourcesErr, connectionErr)
 }
 
 // Exported request/reply fields are the native Go wire format, not Java object

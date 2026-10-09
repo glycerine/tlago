@@ -26280,3 +26280,34 @@ distributed-serve-shutdown-focused.log, terminal 2eebc2, status 0,
 0.341 seconds. Isolated short new admission checks pass with race instrumentation:
 distributed-serve-shutdown-race.log, terminal 098bb1, status 0. No long models
 or full-suite run; all handles terminal. git diff --check passes.
+
+
+### October 9, 2026: accepted connection cleanup retains its original result
+
+Found a native ownership gap beyond late admission: net/rpc and the serving
+goroutine both closed accepted descriptors, discarding close errors. Once the
+goroutine removed a connection from tracking, later host shutdown could report
+success despite a real release failure. Four cases reproduce peer/host initiated
+closure with closed-only/mixed causes; the old code closed descriptors two or
+three times and lost the peer-initiated failure after tracking removal.
+
+Each admitted connection now has a shared native close owner. It closes once
+and records non-benign failure under the host mutex before tracking removal.
+Later forced/graceful closes retain original causes; closed-only results remain
+benign. Shared host teardown also records directly owned connection failures
+without duplicating errors already recorded by accepted owners. Request/reply
+formats, accepted-reply draining, TLC retries and storage ownership are unchanged.
+The new tests require one raw close, completed tracking removal and original
+causes on later host closes. No direct original Java test exists for this native
+resource boundary; distributed credit remains 37/41.
+
+Red: distributed-accepted-connection-ownership-red.log, terminal 53280d,
+status 1, 0.016 seconds. Green:
+distributed-accepted-connection-ownership-green.log, terminal 668cf5,
+status 0, 0.016 seconds. Focused coordinator/worker/fingerprint RPC operations
+and shutdown ownership checks pass:
+distributed-accepted-connection-ownership-focused.log, terminal a04774,
+status 0, 0.402 seconds. Isolated short accepted/listener/callback ownership
+race checks pass: distributed-accepted-connection-ownership-race.log,
+terminal 3b706c, status 0, 1.343 seconds. No long model or full-suite run; all
+handles terminal. git diff --check passes.

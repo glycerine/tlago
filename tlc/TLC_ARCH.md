@@ -14206,3 +14206,21 @@ likewise propagates. These paths neither admit/replay requests nor close the
 listener twice. Existing coordinator/worker owners retain non-benign Serve
 results through their joined shutdown. Six focused native cases distinguish
 closed-only from mixed failures; no original Java transport test covers them.
+
+
+### Accepted connection ownership survives tracking removal
+
+Serve wraps every admitted connection in a native close owner shared by its
+codec, serving goroutine and host shutdown. Descriptor close runs once; all
+callers receive its original result. A non-benign close result is recorded once
+under the host mutex before the serving goroutine removes the connection from
+tracking. Later forced/graceful host closes retain that result even when no
+accepted connection remains. Closed-only causes stay benign; real causes and
+context survive. Directly owned connections also retain their close failures
+through the host's shared teardown without duplicating accepted-owner errors.
+
+Four native cases cover peer/host initiation with closed-only/mixed results,
+requiring one underlying close, tracking removal and retained failures on later
+closes. The native owner changes neither RPC payloads nor request replay,
+accepted-reply draining or fingerprint-storage ownership. No direct Java test
+exists for this Go resource boundary; original-method credit is unchanged.
