@@ -14141,3 +14141,13 @@ Six native cases cover closed-only and wrapped joined failures at those three
 boundaries; this native transport ownership has no original Java test method.
 The change preserves accepted-reply draining, forced interruption and storage
 ownership. It adds no original-method completion credit.
+
+Listener release and graceful read interruption now also execute once per host,
+retaining their failures after Serve removes listeners or connections leave
+tracking. Concurrent closes join listener shutdown; they cannot return success
+while its original caller is still releasing a listener. Graceful callers share
+read interruption and still drain accepted replies. Forced close does not wait
+for graceful read interruption or reply draining; it closes transport through
+the shared resource owner. Read-interruption errors become visible to subsequent
+closes once recorded, under the host mutex. Five further native cases verify
+retained failures, joined listener release and this forced-close boundary.

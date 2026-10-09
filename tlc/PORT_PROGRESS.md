@@ -26123,3 +26123,35 @@ checks pass (distributed-host-mixed-close-focused.log, terminal 4e60f0, status 0
 0.274 seconds). Isolated short host-close checks with race instrumentation pass
 (distributed-host-mixed-close-race.log, terminal 2b9198, status 0). No long model
 or full suite was rerun; all handles are terminal. git diff --check passes.
+
+
+### October 9, 2026: join listener shutdown and retain earlier host failures
+
+Followed the native close ownership comparison beyond mixed-error classification.
+Listener shutdown and graceful read interruption were still per-call, unlike
+cached connection teardown. A later Close lost an earlier listener failure once
+Serve removed it from tracking, and lost a prior read-interruption error after
+forced closure. Concurrent closes could release the same listener again and
+return success before the original release completed. Four new native cases
+reproduced those failures without sockets or long models.
+
+The host now releases listeners once and shares the result across closes.
+Graceful read interruption also runs once and records its failure under the
+host mutex. Later closes retain that result even after tracking maps change.
+Forced close continues to enter shared resource teardown independently of
+graceful read interruption/reply draining. A fifth gated check verifies forced
+close can finish while read interruption is blocked; after it is released,
+graceful and later forced closes retain the real interruption failure. All
+spawned close calls join test cleanup. No TLC retry, storage or checkpoint
+algorithm changes; no direct original Java test exists for this native ownership.
+
+Red: distributed-host-close-ownership-red.log, terminal 26445a, status 1,
+0.012 seconds (four failing subcases). Initial green: distributed-host-close-
+ownership-green.log, terminal dceca8, status 0, 0.113 seconds. Final focused
+selection, including all five new cases, existing reply-drain/forced/partial-body
+shutdown, mixed cleanup, response-flush and original manager/smart-proxy checks,
+passes (distributed-host-close-ownership-focused.log, terminal 608b27, status 0,
+0.396 seconds). Isolated short host ownership/callback join race checks pass
+(distributed-host-close-ownership-race.log, terminal 546cc4, status 0,
+1.339 seconds). All handles terminal; no long workload or full suite rerun.
+git diff --check passes. Original distributed credit remains 37/41.

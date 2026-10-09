@@ -30,6 +30,10 @@ type DistributedRPCServer struct {
 	coordinatorSequence uint64
 	fingerprintSequence uint64
 	outbound            distributedConnections
+	closeListenersOnce  sync.Once
+	closeListenersErr   error
+	closeReadsOnce      sync.Once
+	closeReadsErr       error // guarded by mu; forced close need not wait for read interruption
 	closeResourcesOnce  sync.Once
 	closeResourcesErr   error
 }
@@ -160,22 +164,33 @@ func (s *DistributedRPCServer) close(graceful bool) error {
 		connections = append(connections, conn)
 	}
 	s.mu.Unlock()
-	var failures []error
-	for _, listener := range listeners {
-		if err := listener.Close(); !distributedCloseIsBenign(err) {
-			failures = append(failures, err)
+	// Listener ownership ends once, even when another caller observes the
+	// closed admission gate before the first caller has released listeners.
+	s.closeListenersOnce.Do(func() {
+		var failures []error
+		for _, listener := range listeners {
+			if err := listener.Close(); !distributedCloseIsBenign(err) {
+				failures = append(failures, err)
+			}
 		}
-	}
+		s.closeListenersErr = errors.Join(failures...)
+	})
 	if graceful {
 		// A decoded header is tracked before net/rpc reads its body. Stop
 		// incomplete reads as well as idle readers, or a peer withholding the
 		// body can prevent reply draining forever. Read deadlines leave
 		// accepted handlers and their response writes undisturbed.
-		for _, conn := range connections {
-			if err := conn.SetReadDeadline(time.Now()); !distributedCloseIsBenign(err) {
-				failures = append(failures, err)
+		s.closeReadsOnce.Do(func() {
+			var failures []error
+			for _, conn := range connections {
+				if err := conn.SetReadDeadline(time.Now()); !distributedCloseIsBenign(err) {
+					failures = append(failures, err)
+				}
 			}
-		}
+			s.mu.Lock()
+			s.closeReadsErr = errors.Join(failures...)
+			s.mu.Unlock()
+		})
 		s.replies.Wait()
 	}
 	// A closed admission gate or an empty reply count does not mean resource
@@ -193,8 +208,10 @@ func (s *DistributedRPCServer) close(graceful bool) error {
 		}
 		s.closeResourcesErr = errors.Join(resourceFailures...)
 	})
-	failures = append(failures, s.closeResourcesErr)
-	return errors.Join(failures...)
+	s.mu.Lock()
+	readErr := s.closeReadsErr
+	s.mu.Unlock()
+	return errors.Join(s.closeListenersErr, readErr, s.closeResourcesErr)
 }
 
 // Exported request/reply fields are the native Go wire format, not Java object
