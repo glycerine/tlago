@@ -249,7 +249,7 @@ func (v *LazySupplierValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLC
 	_ = pstate
 	_ = control
 	if v.Supplier == nil {
-		return ValUndef, nil
+		panic(NewNullPointerException())
 	}
 	return v.Supplier(), nil
 }

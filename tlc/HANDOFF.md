@@ -129,6 +129,12 @@ startup/reporting errors retain storage for the native host or caller to release
 
 State/result payloads retain identity and nil/empty distinctions across states,
 values, strings, predecessor graphs, caches, byte buffers and partition vectors.
+Cached nil-supplier `LazySupplierValue` objects retain their supplier type and
+cache graph. Nil-supplier evaluation fails even with a cached value. Executable
+Go suppliers are explicitly rejected at transfer without invocation, rather
+than silently becoming ordinary lazy values. Uncached wrappers retain the
+existing lazy-transfer failure before supplier checks.
+
 Attached model-value data supports native `[]Value` through the same array graph,
 preserving cycles, shared backing storage and typed nil/empty arrays across RPC.
 Native `map[string]Value` attachments also preserve shared map identity, cycles,

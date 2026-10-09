@@ -12581,3 +12581,20 @@ the new nameArray attachment tag require the updated native payload build.
 Direct payload, TCP result and WorkerException-context checks verify these
 contracts. No direct original Java method tests this network attachment, so no
 original-method completion credit is added.
+
+### Lazy supplier type and evaluation
+
+LazySupplierValue.getValue calls the supplier independently of its cached Val.
+The native nil supplier therefore raises a null failure rather than returning
+Undef. Payload transfer must not replace the supplier wrapper with LazyValue:
+their evaluation behavior differs. Cached nil-supplier wrappers have a distinct
+native lazySupplier tag and retain shared wrapper/cache identities in requests,
+results and WorkerException context. Receiver storage remains isolated.
+Uncached wrappers fail the existing lazy-transfer assertion before the supplier
+field is examined. A nonnil executable Go supplier is rejected explicitly and
+never called for transfer; code and captured evaluator state are not serialized.
+Cache reference arity and graph IDs are validated before population. Peers
+carrying the new wrapper tag need the updated native payload build. Short direct
+and TCP checks cover these contracts, and existing original TRACE/TRACE-alias
+methods remain green. No direct original supplier-network test exists, so this
+work adds no original-method completion credit.

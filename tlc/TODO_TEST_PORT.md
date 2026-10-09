@@ -1654,6 +1654,15 @@ empty rows remain valid. Local/TCP worker checks retain the evaluation failure
 context. Original value-initialization methods remain green; native checks add
 no original-method completion credit.
 
+Lazy supplier native checks now reject type erasure during transfer. Cached
+nil-supplier wrappers retain their own type and shared cached-value graph across
+direct payloads, TCP results and WorkerException context. Nil-supplier evaluation
+fails in source order regardless of cache contents. Executable Go suppliers are
+rejected explicitly without evaluation or worker dispatch; uncached wrappers
+keep the source lazy-transfer assertion. Invalid cache references fail decoding.
+Original TRACE/TRACE-alias tests remain green. There is no direct original
+supplier-network method, so these checks add no original-method completion credit.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,

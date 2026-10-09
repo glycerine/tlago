@@ -23409,3 +23409,31 @@ and pass (model-data-name-arrays-race.log, terminal f78072, status 0,
 1.045 seconds). No direct original method tests this network array boundary, so
 native checks add no original-method completion credit. All handles are terminal;
 no full model or full suite was repeated.
+
+### October 8, 2026: preserve lazy supplier behavior
+
+Compared LazySupplierValue.getValue and its retained supplier field with the
+native codec. Found two production shortcuts: nil suppliers returned Undef
+instead of failing, and cached supplier wrappers became ordinary LazyValue
+objects during transfer, silently discarding supplier behavior. Four new direct
+and actual TCP checks reproduce these defects before changes (lazy-supplier-
+before.log, terminal a84a95, status 1, 0.019 seconds).
+
+Nil-supplier evaluation now raises the source null-failure category regardless
+of cached value. Cached nil-supplier wrappers retain their distinct native type,
+shared wrapper/cache graph and isolated receiver storage. Executable Go supplier
+functions are explicitly rejected without invocation or worker dispatch; they
+cannot be flattened into cached data. Uncached wrappers retain their existing
+lazy-transfer failure precedence. Native decoding validates the cache reference
+shape before population. Peers transferring the new tag need an updated build.
+
+Focused supplier/materialization/lazy checks pass (lazy-supplier-verified.log,
+terminal 20512e, status 0, 0.019 seconds). Exact existing codec-failure and
+pairwise/distributed alias checks pass (lazy-supplier-related.log, terminal
+0d5d47, status 0, 0.589 seconds). Both original TRACE/TRACE-alias methods pass
+(lazy-supplier-original-trace.log, terminal e66f57, status 0, 0.653 seconds).
+Only the new short supplier/TCP/malformed-payload checks ran with race
+instrumentation and pass (lazy-supplier-race.log, terminal 013561, status 0,
+1.041 seconds). No direct original supplier-network method exists, so native
+checks add no original-method completion credit. All handles are terminal; no
+full distributed model or full suite was repeated.

@@ -432,7 +432,10 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 		if v.Val == nil || v.Val == ValUndef {
 			return 0, distributedLazySerializationFailure(v.GetSource())
 		}
-		node.Kind, children = "lazy", []Value{v.Val}
+		if v.Supplier != nil {
+			return 0, fmt.Errorf("unsupported network lazy supplier function")
+		}
+		node.Kind, children = "lazySupplier", []Value{v.Val}
 	case *LazyValue:
 		if v.Val == nil || v.Val == ValUndef {
 			return 0, distributedLazySerializationFailure(v.GetSource())
@@ -1018,6 +1021,8 @@ func allocateDistributedValue(node DistributedValueNode) (Value, error) {
 		return &FcnLambdaValue{BaseValue: base}, nil
 	case "lazy":
 		return &LazyValue{BaseValue: base}, nil
+	case "lazySupplier":
+		return &LazySupplierValue{LazyValue: &LazyValue{BaseValue: base}}, nil
 	case "predicate":
 		return &SetPredValue{BaseValue: base, Converted: true}, nil
 	case "product":
@@ -1181,7 +1186,7 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 	// Constructors with a fixed arity must not index malformed wire arrays.
 	want := -1
 	switch node.Kind {
-	case "lambda", "lazy", "predicate", "subset", "kSubset", "union", "counterexample", "sequences":
+	case "lambda", "lazy", "lazySupplier", "predicate", "subset", "kSubset", "union", "counterexample", "sequences":
 		want = 1
 	case "functionSet", "cup", "cap", "difference":
 		want = 2
@@ -1259,6 +1264,8 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 	case *FcnLambdaValue:
 		v.FcnRcd, err = distributedValueCast[*FcnRcdValue](refs[0])
 	case *LazyValue:
+		v.Val = refs[0]
+	case *LazySupplierValue:
 		v.Val = refs[0]
 	case *SetPredValue:
 		v.InVal = refs[0]
