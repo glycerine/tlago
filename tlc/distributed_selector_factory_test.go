@@ -161,7 +161,8 @@ func checkDistributedNativeSelectorFactory(t *testing.T, scenario string) {
 			return nil, workerComputationFailure("native test memory failure", NewOutOfMemoryError(), true)
 		}})
 		thread.setStates([]*TLCStateMut{{UID: 1}, {UID: 2}})
-		retryQueue := NewMemStateQueue()
+		retryQueue := NewDiskStateQueue(t.TempDir())
+		t.Cleanup(retryQueue.FinishAll)
 		if result, retry := thread.computeBlock(retryQueue); result != nil || !retry || retryQueue.Size() != 2 || policy.maximum != 1 {
 			t.Fatal("smaller-batch retry did not requeue before updating the custom policy")
 		}

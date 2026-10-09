@@ -66,7 +66,8 @@ func TestWorkerRPCStateCodecFailures(t *testing.T) {
 				recorder := &MemoryRecorder{}
 				AddMessageRecorder(recorder)
 				t.Cleanup(func() { RemoveMessageRecorder(recorder) })
-				queue := NewMemStateQueue()
+				queue := NewDiskStateQueue(t.TempDir())
+				t.Cleanup(queue.FinishAll)
 				server := &TLCServer{StateQueue: queue}
 				thread := &TLCServerThread{Server: server, Worker: NewDistributedWorkerSmartProxy(client), URI: "native-codec-worker"}
 				thread.cleanupGlobals.Store(true)

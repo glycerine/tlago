@@ -184,7 +184,7 @@ func TestStateDequeSDequeueManyUpdatesSizeLikeJavaStateQueue(t *testing.T) {
 	}
 }
 
-func TestMemStateQueueSEnqueueVecSkipsNilStatesLikeJavaStateVecPath(t *testing.T) {
+func TestMemStateQueueSEnqueueVecUsesJavaLengthDependentSlots(t *testing.T) {
 	initTLCCheckerTest(t)
 	q := NewMemStateQueue()
 	first := checkerTestState(1)
@@ -194,11 +194,53 @@ func TestMemStateQueueSEnqueueVecSkipsNilStatesLikeJavaStateVecPath(t *testing.T
 	if q.Size() != 2 {
 		t.Fatalf("size after SEnqueueVec with nil = %d, want 2", q.Size())
 	}
-	if got := q.Dequeue(); got != first {
-		t.Fatalf("first dequeue = %p, want first state %p", got, first)
-	}
+	// StateQueue publishes len after the loop, while MemStateQueue.enqueueInner
+	// uses that unchanged len for its slot. Thus the second non-null state
+	// overwrites the first; the source counts two entries but stores just one.
 	if got := q.Dequeue(); got != second {
-		t.Fatalf("second dequeue = %p, want second state %p", got, second)
+		t.Fatalf("first dequeue = %p, want source's overwritten slot %p", got, second)
+	}
+	if got := q.Dequeue(); got != nil {
+		t.Fatalf("second dequeue = %p, want source's unfilled slot", got)
+	}
+}
+
+func TestStateDequeBulkEnqueueRetainsIndependentStorage(t *testing.T) {
+	for _, batch := range []string{"array", "vector"} {
+		t.Run(batch, func(t *testing.T) {
+			q := NewStateDeque()
+			states := make([]*TLCStateMut, memStateQueueInitialSize+3)
+			for i := range states {
+				states[i] = &TLCStateMut{UID: int64(i)}
+			}
+			if batch == "array" {
+				q.SEnqueueAll(states)
+			} else {
+				q.SEnqueueVec(NewStateVecFrom(states))
+			}
+			if q.Size() != int64(len(states)) {
+				t.Fatalf("batch size = %d, want %d", q.Size(), len(states))
+			}
+			for i := len(states) - 1; i >= 0; i-- {
+				if got := q.Dequeue(); got != states[i] {
+					t.Fatalf("dequeue %d = %p, want %p", i, got, states[i])
+				}
+			}
+			if q.stored != 0 || q.Size() != 0 {
+				t.Fatal("dequeue did not empty both storage and logical count")
+			}
+		})
+	}
+	q := NewStateDeque()
+	initial, prefix := &TLCStateMut{UID: 1}, &TLCStateMut{UID: 2}
+	q.Enqueue(initial)
+	var failure any
+	func() {
+		defer func() { failure = recover() }()
+		q.SEnqueueAll([]*TLCStateMut{prefix, nil})
+	}()
+	if failure == nil || q.Size() != 1 || q.stored != 2 || q.peekInner() != prefix {
+		t.Fatalf("failed batch lost ArrayDeque prefix/count contract: failure=%v size=%d stored=%d", failure, q.Size(), q.stored)
 	}
 }
 

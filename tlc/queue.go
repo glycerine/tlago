@@ -196,8 +196,8 @@ func (q *MemStateQueue) SEnqueueAll(states []*TLCStateMut) {
 	defer q.mu.Unlock()
 	for _, state := range states {
 		q.enqueueInner(state)
-		q.len++
 	}
+	q.len += int64(len(states))
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
@@ -209,12 +209,14 @@ func (q *MemStateQueue) SEnqueueVec(states *StateVec) {
 	if states == nil {
 		return
 	}
+	var count int64
 	for i := 0; i < states.Size(); i++ {
 		if state := states.At(i); state != nil {
 			q.enqueueInner(state)
-			q.len++
+			count++
 		}
 	}
+	q.len += count
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
@@ -491,6 +493,7 @@ type StateDeque struct {
 	states     []*TLCStateMut
 	start      int
 	len        int64
+	stored     int // ArrayDeque occupancy is independent of StateQueue.len.
 	numWaiting atomic.Int32
 	finish     atomic.Bool
 	stop       bool
@@ -533,8 +536,8 @@ func (q *StateDeque) SEnqueueAll(states []*TLCStateMut) {
 	defer q.mu.Unlock()
 	for _, state := range states {
 		q.enqueueInner(state)
-		q.len++
 	}
+	q.len += int64(len(states))
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
@@ -546,12 +549,14 @@ func (q *StateDeque) SEnqueueVec(states *StateVec) {
 	if states == nil {
 		return
 	}
+	var count int64
 	for i := 0; i < states.Size(); i++ {
 		if state := states.At(i); state != nil {
 			q.enqueueInner(state)
-			q.len++
+			count++
 		}
 	}
+	q.len += count
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
@@ -731,17 +736,22 @@ func (q *StateDeque) enqueueInner(state *TLCStateMut) {
 	if state == nil {
 		panic("nil state")
 	}
-	if q.len == int64(len(q.states)) {
+	if q.stored == len(q.states) {
 		q.grow()
 	}
 	q.start = (q.start - 1 + len(q.states)) % len(q.states)
 	q.states[q.start] = state
+	q.stored++
 }
 
 func (q *StateDeque) dequeueInner() *TLCStateMut {
+	if q.stored == 0 {
+		return nil
+	}
 	state := q.states[q.start]
 	q.states[q.start] = nil
 	q.start = (q.start + 1) % len(q.states)
+	q.stored--
 	return state
 }
 

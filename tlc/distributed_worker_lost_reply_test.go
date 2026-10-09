@@ -40,7 +40,8 @@ func TestWorkerRPCLostComputedReplyRetainsAssignedWork(t *testing.T) {
 			endpoint := &heldWorkerReply{LocalWorkerEndpoint: NewLocalWorkerEndpoint(worker),
 				computed: make(chan struct{}), release: make(chan struct{}), finished: make(chan struct{})}
 			host, client := startWorkerRPC(t, endpoint)
-			queue := NewMemStateQueue()
+			queue := NewDiskStateQueue(t.TempDir())
+			t.Cleanup(queue.FinishAll)
 			states := []*TLCStateMut{{UID: 31, level: 4}, {UID: 32, level: 5}}[:count]
 			queue.SEnqueueAll(states)
 			trace := NewTLCTrace(t.TempDir(), "Spec")

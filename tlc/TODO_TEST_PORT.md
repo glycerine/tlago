@@ -1967,6 +1967,14 @@ closed unused references, failed-client retention and idempotent closure. The
 original smart-proxy methods remain unchanged; these native boundary checks add
 no original-method completion credit.
 
+Bulk queue accounting now follows the source post-loop length update. Native
+checks cover partial disk-spill failures and independent deque occupancy/growth.
+The Go-only memory-vector check now preserves the source's overwritten-slot
+quirk; distributed retry/worker-loss fixtures use the actual disk queue with
+their state identity/order assertions unchanged. The nine original StateQueue
+methods and nine inherited disk methods remain unchanged. These native cases
+add no original-method credit.
+
 Native coordinator read checks in `distributed_server_file_path_test.go` verify
 relative/absolute symlink traversal, exact directory/open-failure diagnostics
 and retained nested file-open causes. Absolute diagnostics now preserve dot

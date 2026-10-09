@@ -3,7 +3,7 @@ package tlc
 import "testing"
 
 type retryFailureQueue struct {
-	*MemStateQueue
+	StateQueue
 	failure error
 }
 
@@ -29,7 +29,8 @@ func TestDistributedRetryRequiresQueueBeforeLimitUpdate(t *testing.T) {
 			thread.cleanupGlobals.Store(true)
 			states := []*TLCStateMut{{UID: 1}, {UID: 2}}
 			thread.setStates(states)
-			memoryQueue := NewMemStateQueue()
+			diskQueue := NewDiskStateQueue(t.TempDir())
+			t.Cleanup(diskQueue.FinishAll)
 			var queue StateQueue
 			var failure error
 			switch kind {
@@ -40,16 +41,16 @@ func TestDistributedRetryRequiresQueueBeforeLimitUpdate(t *testing.T) {
 			case "fatal":
 				failure = NewOutOfMemoryError("requeue failed")
 			case "healthy":
-				queue = memoryQueue
+				queue = diskQueue
 			}
 			if failure != nil {
-				queue = &retryFailureQueue{MemStateQueue: memoryQueue, failure: failure}
+				queue = &retryFailureQueue{StateQueue: diskQueue, failure: failure}
 			}
 			var result *NextStateResult
 			var proceed bool
 			err := invokeDistributedServerOperation(func() error { result, proceed = thread.computeBlock(queue); return nil })
 			if kind == "healthy" {
-				if err != nil || result != nil || !proceed || selector.getMaximum() != 1 || memoryQueue.Size() != 2 || memoryQueue.SDequeue() != states[0] || memoryQueue.SDequeue() != states[1] {
+				if err != nil || result != nil || !proceed || selector.getMaximum() != 1 || diskQueue.Size() != 2 || diskQueue.SDequeue() != states[0] || diskQueue.SDequeue() != states[1] {
 					t.Fatalf("healthy retry changed: %v/%v, error %v", result, proceed, err)
 				}
 			} else {
@@ -57,7 +58,7 @@ func TestDistributedRetryRequiresQueueBeforeLimitUpdate(t *testing.T) {
 					if _, ok := err.(*NullPointerException); !ok {
 						t.Fatalf("missing queue suppressed failure: %T/%v", err, err)
 					}
-				} else if err != failure || memoryQueue.Size() != 1 || memoryQueue.SDequeue() != states[0] {
+				} else if err != failure || diskQueue.Size() != 1 || diskQueue.SDequeue() != states[0] {
 					t.Fatalf("requeue failure changed identity or preceding mutation: %T/%v", err, err)
 				}
 				if proceed || result != nil || selector.getMaximum() != 100 {

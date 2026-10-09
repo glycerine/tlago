@@ -25033,3 +25033,37 @@ retaining 114,942 distinct states, an empty queue, real work/statistics from bot
 workers and normal shutdown. No dedicated upstream array-transfer method exists;
 no original-method credit added. Inventory remains 37 complete and four Missing.
 No full suite or race workload ran. All handles are terminal.
+
+### October 9, 2026: publish bulk queue counts after insertion
+
+Source `StateQueue.sEnqueue` and `ByteArrayQueue.sEnqueue` update logical length
+only after the complete insertion loop. Go had incremented after each entry,
+publishing a partial count when a later spill failed. Four focused native cases
+(state/byte storage, array/vector batch) reproduce this with an existing
+directory used as a pending pool output file. Each fails before the production
+fix with size two instead of the original one (bulk-queue-red.log, terminal
+cce2aa, status 1, 0.012 seconds). Successfully inserted prefixes remain in the
+buffer; no source rollback is invented.
+
+All four concrete queues now add the batch count after their insertion loop.
+Deque storage tracks physical occupancy separately, as Java's ArrayDeque does;
+native checks retain growth across the initial capacity and the prefix/count
+after a rejected null entry. Source MemStateQueue uses unchanged logical length
+to select each bulk slot, overwriting earlier entries. The existing Go-only
+vector test had incorrectly assumed FIFO behavior; its corrected assertions
+retain the source overwrite and following unfilled slot. Original Java test
+assertions are unchanged. Distributed retry, codec-failure and worker-loss
+fixtures now use the actual disk queue with all existing identity/order/count
+and cleanup assertions retained, joining background pool workers in cleanup.
+
+Final verbose queue/vector/selector/retry/worker TCP checks pass
+(bulk-queue-final.log, terminal 74d0b6, status 0, 0.413 seconds), including the
+nine original StateQueue methods. The nine inherited original disk methods
+pass separately without selecting the long growth method
+(bulk-queue-original-disk.log, terminal b5dc77, status 0, 0.017 seconds).
+Unchanged N=7 two-worker model passes normally (bulk-queue-model.log, terminal
+b8a528, status 0, 38.266 seconds), retaining 114,942 distinct states, an empty
+queue, real work/statistics from both workers and normal shutdown. No dedicated
+upstream bulk-spill method exists; these native checks add no original-method
+credit. Inventory remains 37 complete and four Missing. No full suite, long
+growth workload or race run. All handles are terminal.

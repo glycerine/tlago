@@ -13,7 +13,8 @@ func TestDistributedConcurrentWorkerLossRequeuesOnce(t *testing.T) {
 	defer SetNumWorkers(oldWorkers)
 	for iteration := 0; iteration < 32; iteration++ {
 		SetNumWorkers(2)
-		queue := NewMemStateQueue()
+		queue := NewDiskStateQueue(t.TempDir())
+		t.Cleanup(queue.FinishAll)
 		states := []*TLCStateMut{{UID: 11, level: 2}, {UID: 22, level: 3}}
 		thread := &TLCServerThread{Server: &TLCServer{StateQueue: queue}, keepAliveDone: make(chan struct{})}
 		thread.cleanupGlobals.Store(true)

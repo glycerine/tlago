@@ -72,7 +72,8 @@ func TestDistributedThreadRetryRequiresSelectorAfterRequeue(t *testing.T) {
 	})}
 	states := []*TLCStateMut{{UID: 1}, {UID: 2}}
 	thread.setStates(states)
-	queue := NewMemStateQueue()
+	queue := NewDiskStateQueue(t.TempDir())
+	t.Cleanup(queue.FinishAll)
 	err := invokeDistributedServerOperation(func() error { thread.computeBlock(queue); return nil })
 	if _, ok := err.(*NullPointerException); !ok {
 		t.Fatalf("missing retry selector suppressed failure: %T/%v", err, err)

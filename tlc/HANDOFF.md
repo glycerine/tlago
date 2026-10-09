@@ -501,6 +501,11 @@ also reopen in fresh stores. This covers transport loss, not host death.
 6. Keep the four disabled original methods missing until their actual harness
    contracts have a justified translation. Native coverage earns no such credit.
 
+Bulk queues publish their logical length after the whole enqueue loop. Failed
+disk spills retain the inserted prefix without counting it. Deque storage tracks
+occupancy independently. The source memory queue's bulk slot-overwrite quirk is
+preserved; distributed retry fixtures use the actual disk queue.
+
 The production checkpoint order is queue begin, trace begin, FP begin, queue
 resume, intern begin, queue commit, trace commit, intern commit, FP commit.
 Mixed files after interruption are source behavior, not an atomic transaction.

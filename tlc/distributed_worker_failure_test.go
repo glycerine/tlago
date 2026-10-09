@@ -64,7 +64,8 @@ func TestDistributedWorkerComputationFailure(t *testing.T) {
 						thread := &TLCServerThread{Selector: selector, Worker: NewDistributedWorkerSmartProxy(endpoint)}
 						states := []*TLCStateMut{{UID: 31}, {UID: 32}}
 						thread.setStates(states)
-						queue := NewMemStateQueue()
+						queue := NewDiskStateQueue(t.TempDir())
+						t.Cleanup(queue.FinishAll)
 						result, proceed := thread.computeBlock(queue)
 						if result != nil || !proceed || queue.Size() != 2 || queue.SDequeue() != states[0] || queue.SDequeue() != states[1] || selector.getMaximum() != 1 {
 							t.Fatal("native worker failure lost smaller-batch retry or requeued states")

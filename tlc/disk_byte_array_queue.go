@@ -100,8 +100,8 @@ func (q *DiskByteArrayQueue) SEnqueueAll(states []*TLCStateMut) {
 	defer q.mu.Unlock()
 	for _, state := range raw {
 		q.enqueueRaw(state)
-		q.len++
 	}
+	q.len += int64(len(raw))
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
@@ -123,8 +123,8 @@ func (q *DiskByteArrayQueue) SEnqueueVec(states *StateVec) {
 	defer q.mu.Unlock()
 	for _, state := range raw {
 		q.enqueueRaw(state)
-		q.len++
 	}
+	q.len += int64(len(raw))
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}

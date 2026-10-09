@@ -13457,3 +13457,33 @@ their malformed references through the array tables; original Java assertions
 remain unchanged. This is a finite Go container contract; matching native builds
 are required and no Java serializer/runtime is added. No dedicated original
 array-transfer method exists, so original-method credit remains unchanged.
+
+### Bulk queue length publication and physical storage
+
+`StateQueue.sEnqueue` inserts the whole array or the non-null vector entries
+before adding their count to `len`. `ByteArrayQueue` first serializes outside
+the monitor, inserts the entire raw batch, then adds its length. All four Go
+queues now preserve that ordering. A failed disk spill leaves the successfully
+inserted prefix in the enqueue buffer while logical length stays unchanged;
+neither rollback nor partial count publication is part of the source contract.
+Byte-array vector reversal and null raw slots remain unchanged.
+
+Java's `StateDeque` delegates storage to `ArrayDeque`, whose occupancy is
+independent of `StateQueue.len`. The Go ring now tracks its physical occupancy
+separately, so batches grow correctly before count publication and a failed
+null insertion retains its prefix. Conversely, `MemStateQueue.enqueueInner`
+uses the unchanged logical length as its slot offset. Multiple entries in a
+bulk call overwrite the same slot even though the final count includes all of
+them. This upstream quirk is preserved explicitly. The existing Go-only vector
+check previously asserted FIFO behavior unsupported by the source; it now
+checks the overwritten slot and the following unfilled slot. No original Java
+test assertion changed. Native retry/worker-loss fixtures now use the actual
+disk queue rather than substituting memory storage, preserving all identity,
+order, count, retry and cleanup assertions. Background disk workers are joined
+with test cleanup before temporary directories are removed.
+
+Four focused spill cases fail before the fix with a published prefix count of
+two instead of the unchanged one. The same cases pass afterward, alongside
+deque growth/null failure, original queue methods and native worker checks.
+There is no dedicated upstream bulk-spill test; these native checks add no
+original-method completion credit.

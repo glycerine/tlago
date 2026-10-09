@@ -74,7 +74,8 @@ func TestDistributedBatchMissingTimerRequeuesAssignedWork(t *testing.T) {
 	recorder := &MemoryRecorder{}
 	AddMessageRecorder(recorder)
 	defer RemoveMessageRecorder(recorder)
-	queue := NewMemStateQueue()
+	queue := NewDiskStateQueue(t.TempDir())
+	t.Cleanup(queue.FinishAll)
 	server := &TLCServer{StateQueue: queue}
 	server.WorkerStatesGenerated.Store(19)
 	states := []*TLCStateMut{{UID: 7}, {UID: 8}}

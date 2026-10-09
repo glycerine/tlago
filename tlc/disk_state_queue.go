@@ -97,8 +97,8 @@ func (q *DiskStateQueue) SEnqueueAll(states []*TLCStateMut) {
 	defer q.mu.Unlock()
 	for _, state := range states {
 		q.enqueueInner(state)
-		q.len++
 	}
+	q.len += int64(len(states))
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
@@ -110,13 +110,15 @@ func (q *DiskStateQueue) SEnqueueVec(states *StateVec) {
 	if states == nil {
 		return
 	}
+	var count int64
 	for i := 0; i < states.Size(); i++ {
 		state := states.At(i)
 		if state != nil {
 			q.enqueueInner(state)
-			q.len++
+			count++
 		}
 	}
+	q.len += count
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}

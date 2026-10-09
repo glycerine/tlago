@@ -240,7 +240,8 @@ func TestWorkerRPCCoordinatorRetryAndLoss(t *testing.T) {
 				failure = workerConnectionFailure(net.ErrClosed)
 			}
 			_, client := startWorkerRPC(t, &rpcTestWorker{next: func([]*TLCStateMut) (*NextStateResult, error) { return nil, failure }})
-			queue := NewMemStateQueue()
+			queue := NewDiskStateQueue(t.TempDir())
+			t.Cleanup(queue.FinishAll)
 			selector := &BlockSelector{Mode: BlockSelectorLimiting, Maximum: 100}
 			thread := &TLCServerThread{Server: &TLCServer{StateQueue: queue}, Worker: NewDistributedWorkerSmartProxy(client), Selector: selector, URI: "tcp://worker/primary", keepAliveDone: make(chan struct{})}
 			thread.cleanupGlobals.Store(true)
