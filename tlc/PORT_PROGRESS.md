@@ -24305,3 +24305,28 @@ Initial local array/validation/original ModelValue selection passes (terminal
 checks, existing byte/scalar/mixed-object/state-payload checks and ModelValueTest
 (terminal 21c697, status 0, 0.031 seconds). No full suite or race workload ran.
 All handles are terminal.
+
+### 2026-10-09: Asymmetric full-model fingerprint traffic stalls
+
+Extended the existing raw TCP byte relay to hold request or reply traffic
+independently, retaining the bidirectional case. Added two full-model rows with
+the unchanged MC06 N=7 model and two real fingerprint hosts. The relay forwards
+the original bytes and keeps sockets open. Each asymmetric case requires its
+selected direction's actual blocked-write marker and rejects an opposite-direction
+marker before release. A reply marker observes bytes produced by the real backend.
+No production transport, retry, deadline or storage behavior changed.
+
+All three rows inspect the original 16,384-state initial frontier, then require
+responsive coordinator status/manager and worker alive/cache probes while traffic
+is held, unfinished work and distinct fingerprint routing. Releasing traffic
+retains FINISHED, 114,942 distinct states and an empty queue, with no GENERAL,
+unexpected EOF or failover warnings. Normal shutdown drains backend replies,
+joins both relay copy directions and joins all coordinator/worker/FP processes.
+
+Focused full-model selection passes (directional-transport-stalls.log, terminal
+802a33, status 0, 154.633 seconds; bidirectional 51.83, request-only 51.17 and
+reply-only 51.61 seconds). Existing original dynamic-manager and smart-proxy
+translations pass (terminal d06d0c, status 0, 0.050 seconds). No original enabled
+method directly tests these native stalls; no original-method credit added.
+Arbitrary packet loss/blackholes and other partition topologies remain unproved.
+No full suite or race workload ran. All handles are terminal.

@@ -79,9 +79,10 @@ forced connection closure remains independent of computation/storage lifetime.
 Short TCP checks also hold a worker's accepted fingerprint lookup open while
 keepalive/cache/exit calls use the same worker connection. Control calls remain
 responsive; exit rejects new calls and lets the accepted computation finish.
-The full N=7 model also holds bidirectional TCP relay traffic to one of two FP
-hosts without closing connections. Coordinator status/manager and worker
-alive/cache probes remain responsive; routing stays distinct and no failover is
+The full N=7 model also holds TCP relay traffic to one of two FP hosts, with
+separate bidirectional, request-only and reply-only cases, without closing
+connections. Coordinator status/manager and worker alive/cache probes remain
+responsive; routing stays distinct and no failover is
 reported. Releasing traffic restores the original 114,942-state result. This
 controlled byte-relay stall does not prove arbitrary network blackholes.
 
@@ -405,8 +406,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
    partitions. Forced TCP closure/reply loss is covered; it does not prove every
    partition or stalled-connection case. One gated accepted fingerprint lookup
    verifies worker control responsiveness and orderly exit. A controlled
-   full-model TCP relay stall is also verified; arbitrary network blackholes and
-   other partition topologies remain unproved.
+   full-model TCP relay stall covers both directions together and each direction
+   independently; arbitrary network blackholes and other partition topologies
+   remain unproved.
 3. Exact interruption between the trace and intern method calls remains unproved.
    Short local Linux syscall checks now kill before intern-file mutation, inside
    intern commit at deletion entry. Queue/trace promote their new generations;

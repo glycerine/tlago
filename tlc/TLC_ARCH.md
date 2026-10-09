@@ -12355,11 +12355,15 @@ phase correctness.
 
 ### Full-model controlled fingerprint TCP stall
 
-A test-owned byte relay now pauses traffic in both directions to one of two
-fingerprint hosts, after inspecting the complete initial model frontier. It keeps
+A test-owned byte relay pauses traffic in both directions together, requests
+only or replies only to one of two fingerprint hosts in three separate cases,
+after inspecting the complete initial model frontier. It keeps
 connections open and forwards the original bytes unchanged; no TLC RPC request,
 result or storage operation is replaced. An actual blocked-write marker proves
-traffic reached the gate before independent control probes run. Coordinator
+traffic reached the gate before independent control probes run. Test assertions
+require the selected direction's marker and reject the opposite direction's
+marker in asymmetric cases. A reply marker observes actual backend response
+bytes before forwarding, rather than replacing the endpoint's result. Coordinator
 status reports unfinished work, its manager retains distinct partitions, and
 worker alive/cache calls remain responsive. Five-second control-probe deadlines
 bound the test only; production timeout and retry policy are unchanged.

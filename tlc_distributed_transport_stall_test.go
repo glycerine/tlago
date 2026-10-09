@@ -18,22 +18,31 @@ import (
 	"github.com/glycerine/tlago/tlc"
 )
 
-// A test-owned byte relay holds traffic in both directions without closing
+// A test-owned byte relay holds selected traffic directions without closing
 // either TCP connection or decoding/replacing TLC requests and answers.
 type nativeFingerprintTrafficGate struct {
-	path string
-	once sync.Once
+	path      string
+	direction string
+	once      [2]sync.Once
 }
 
 type nativeGatedTCPWriter struct {
 	net.Conn
-	gate *nativeFingerprintTrafficGate
+	gate      *nativeFingerprintTrafficGate
+	direction string
 }
 
 func (w nativeGatedTCPWriter) Write(data []byte) (int, error) {
+	if w.gate.direction != "" && w.gate.direction != w.direction {
+		return w.Conn.Write(data)
+	}
 	if _, err := os.Stat(w.gate.path + ".block"); err == nil {
 		if _, err := os.Stat(w.gate.path); errors.Is(err, os.ErrNotExist) {
-			w.gate.once.Do(func() { fmt.Println("NATIVE_FP_TCP_TRAFFIC_BLOCKED") })
+			index := 0
+			if w.direction == "reply" {
+				index = 1
+			}
+			w.gate.once[index].Do(func() { fmt.Println("NATIVE_FP_TCP_TRAFFIC_BLOCKED=" + w.direction) })
 			if err := nativeDistributedWaitForFile(w.gate.path); err != nil {
 				return 0, err
 			}
@@ -49,6 +58,10 @@ func (w nativeGatedTCPWriter) Write(data []byte) (int, error) {
 func nativeFingerprintTransportStallHost(args []string, releasePath string) error {
 	if releasePath == "" {
 		return fmt.Errorf("TCP gate path missing")
+	}
+	direction := os.Getenv("TLAGO_NATIVE_FP_STALL_DIRECTION")
+	if direction != "" && direction != "request" && direction != "reply" {
+		return fmt.Errorf("unknown TCP gate direction %q", direction)
 	}
 	args, err := tlc.ExtractDistributedStartupProperties(args)
 	if err != nil {
@@ -72,7 +85,7 @@ func nativeFingerprintTransportStallHost(args []string, releasePath string) erro
 	if err != nil {
 		return err
 	}
-	gate := &nativeFingerprintTrafficGate{path: releasePath}
+	gate := &nativeFingerprintTrafficGate{path: releasePath, direction: direction}
 	var copies sync.WaitGroup
 	accepted := make(chan struct{})
 	go func() {
@@ -95,8 +108,11 @@ func nativeFingerprintTransportStallHost(args []string, releasePath string) erro
 					_ = server.Close()
 				}()
 				returned := make(chan struct{})
-				go func() { _, _ = io.Copy(nativeGatedTCPWriter{Conn: server, gate: gate}, client); close(returned) }()
-				_, _ = io.Copy(nativeGatedTCPWriter{Conn: client, gate: gate}, server)
+				go func() {
+					_, _ = io.Copy(nativeGatedTCPWriter{Conn: server, gate: gate, direction: "request"}, client)
+					close(returned)
+				}()
+				_, _ = io.Copy(nativeGatedTCPWriter{Conn: client, gate: gate, direction: "reply"}, server)
 				_ = client.Close()
 				_ = server.Close()
 				<-returned
@@ -131,11 +147,12 @@ func nativeFingerprintTransportStallHost(args []string, releasePath string) erro
 	return nil
 }
 
-func checkNativeFingerprintTransportStall(t *testing.T, ctx context.Context, coordinator, fingerprint *nativeDistributedTestProcess, port int, releasePath string) {
+func checkNativeFingerprintTransportStall(t *testing.T, ctx context.Context, coordinator, fingerprint *nativeDistributedTestProcess, port int, releasePath, direction string) {
 	t.Helper()
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
-	for !strings.Contains(fingerprint.output.String(), "NATIVE_FP_TCP_TRAFFIC_BLOCKED") || len(nativeDistributedMessages(coordinator.output.String(), tlc.ECTLCDistributedWorkerRegistered)) != 1 {
+	marker := "NATIVE_FP_TCP_TRAFFIC_BLOCKED=" + direction
+	for !strings.Contains(fingerprint.output.String(), marker) || len(nativeDistributedMessages(coordinator.output.String(), tlc.ECTLCDistributedWorkerRegistered)) != 1 {
 		select {
 		case err := <-fingerprint.done:
 			fingerprint.joined = true
@@ -146,6 +163,15 @@ func checkNativeFingerprintTransportStall(t *testing.T, ctx context.Context, coo
 		case <-ctx.Done():
 			t.Fatal("TCP stall watchdog expired")
 		case <-ticker.C:
+		}
+	}
+	if direction != "" {
+		opposite := "reply"
+		if direction == "reply" {
+			opposite = "request"
+		}
+		if strings.Contains(fingerprint.output.String(), "NATIVE_FP_TCP_TRAFFIC_BLOCKED="+opposite) {
+			t.Fatal("relay blocked the unselected traffic direction")
 		}
 	}
 	// These deadlines bound test control probes only; production connections
@@ -190,5 +216,5 @@ func checkNativeFingerprintTransportStall(t *testing.T, ctx context.Context, coo
 	if err := os.WriteFile(releasePath, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Log("fingerprint TCP traffic held; coordinator and worker control calls respond; relay released")
+	t.Logf("fingerprint TCP traffic held (%q, empty means both); coordinator and worker control calls respond; relay released", direction)
 }

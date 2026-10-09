@@ -33,6 +33,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		workerReplyLoss                            bool
 		duplicateWorkerRegistration                bool
 		fingerprintStall                           bool
+		fingerprintStallDirection                  string
 		fingerprintReplyLoss                       bool
 		fingerprintLookupReplyLoss                 bool
 		fingerprintLoss                            bool
@@ -51,6 +52,8 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "standalone_fingerprints", remoteFP: true},
 		{name: "partitioned_fingerprints", remoteFP: true, fingerprintServers: 2},
 		{name: "fingerprint_transport_stall", remoteFP: true, fingerprintServers: 2, fingerprintStall: true},
+		{name: "fingerprint_request_stall", remoteFP: true, fingerprintServers: 2, fingerprintStall: true, fingerprintStallDirection: "request"},
+		{name: "fingerprint_reply_stall", remoteFP: true, fingerprintServers: 2, fingerprintStall: true, fingerprintStallDirection: "reply"},
 		{name: "fingerprint_server_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true},
 		{name: "fingerprint_put_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true},
 		{name: "fingerprint_put_reply_loss_lsb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintBackend: "LSBDiskFPSet"},
@@ -104,6 +107,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
 				if role == "worker-fingerprint-loss" || role == "worker-reply-loss" || role == "worker-register-twice" || role == "fpserver-transport-stall" {
 					command.Env = append(command.Env, "TLAGO_NATIVE_WORKER_RELEASE="+releaseWorker)
+				}
+				if role == "fpserver-transport-stall" {
+					command.Env = append(command.Env, "TLAGO_NATIVE_FP_STALL_DIRECTION="+scenario.fingerprintStallDirection)
 				}
 				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-lookup-reply-loss" || role == "fpserver-transport-stall") {
 					// These roles represent separate hosts. Give each private
@@ -464,7 +470,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				start(workerRole, fmt.Sprintf("-Dtlc2.tool.distributed.TLCWorker.threadCount=%d", max(1, scenario.workerThreads)), "127.0.0.1")
 			}
 			if scenario.fingerprintStall {
-				checkNativeFingerprintTransportStall(t, ctx, server, failedFingerprint, port, releaseWorker)
+				checkNativeFingerprintTransportStall(t, ctx, server, failedFingerprint, port, releaseWorker, scenario.fingerprintStallDirection)
 			}
 			if scenario.fingerprintLoss {
 				workerRole := "worker-fingerprint-loss"
