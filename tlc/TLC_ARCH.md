@@ -12970,3 +12970,24 @@ fingerprint count, later middle-fingerprint disk I/O failure, repeated close and
 zero remaining descriptors. Existing host ownership checks retain accepted-call
 draining before storage release; startup rollback and reader-recovery checks
 remain green. No direct original test covers post-close endpoint calls.
+
+### Native checkpoint interruption before intern-file mutation
+
+A Linux syscall check uses concrete MemStateQueue, TLCTrace, InternTable,
+MemFPSet and the production TLCServer.Checkpoint order. Its child commits one
+generation, adds a second frontier/trace record/fingerprint/intern string, then
+checkpoints again on one locked native thread. `strace` substitutes a nonmutating
+syscall and injects SIGKILL at the third unlinkat: after successful queue and trace
+deletions/promotions, at old vars.chkpt deletion entry. No production provider,
+lifecycle hook, artificial path obstruction or timing race is introduced.
+
+The parent verifies the exact syscall entry/thread, authoritative SIGKILL exit,
+new queue/trace files with promoted temporaries, byte-identical old intern/FP
+snapshots and distinct unpromoted new temporaries. Fresh concrete owners recover
+the two-state frontier/new trace pointer and the old intern/fingerprint generation.
+A complete control recovers the second generation for every owner. The child has
+zero registered workers; this is short local recovery coverage, not a full model
+or remote checkpoint atomicity claim. The exact gap between method calls remains
+unproved: the verified stop is inside intern commit before any file mutation.
+This native Linux check skips when strace is unavailable and earns no original
+method completion credit.

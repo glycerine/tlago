@@ -382,10 +382,14 @@ storage-specific behavior must not be replaced by an atomic recovery assumption.
    verifies worker control responsiveness and orderly exit. A controlled
    full-model TCP relay stall is also verified; arbitrary network blackholes and
    other partition topologies remain unproved.
-3. Isolate interruption after trace commit and before intern commit. Trace and
-   intern owners are concrete. Do not add a production test-only hook, reorder
-   commits or use a timing race. Removing `vars.tmp` causes intern commit to
-   delete the old checkpoint before failing; that is a different failure boundary.
+3. Exact interruption between the trace and intern method calls remains unproved.
+   Short local Linux syscall checks now kill before intern-file mutation, inside
+   intern commit at deletion entry. Queue/trace promote their new generations;
+   intern/fingerprint snapshots retain the old generations and pending files.
+   This requires `strace` and does not establish full-model/remote recovery at
+   that boundary. Do not add a production hook, reorder commits or use a timing
+   race. Removing `vars.tmp` deletes the old checkpoint before failing and tests
+   a different boundary.
 4. Finish the source ownership/constructor and native cleanup audit where evidence
    identifies actual remaining shortcuts. Consult prior audits before repeating
    completed checks. Missing-component behavior alone cannot prove full parity.

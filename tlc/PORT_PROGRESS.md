@@ -24075,3 +24075,39 @@ checking; they pass (terminal 1a51b7, status 0, 1.106 seconds). No direct enable
 original method covers post-close endpoint behavior, so native cases add no
 original-method credit. No full suite, full model or long race workload ran.
 All check handles are terminal.
+
+### 2026-10-09: Native syscall interruption after trace promotion
+
+Added a Linux strace child-process check using concrete memory queue, trace,
+intern table, memory fingerprints and production TLCServer.Checkpoint. One
+generation commits completely. After adding a second frontier/trace record,
+fingerprint and intern string, syscall substitution plus SIGKILL stops the
+second checkpoint at old vars.chkpt deletion entry. Runtime.LockOSThread keeps
+the source checkpoint operations on one native thread; the fixture has no
+registered workers. No production hook, path obstruction, timing race, source
+commit reorder or JVM machinery is introduced.
+
+The exact third unlink entry follows successful queue/trace deletes on the same
+thread. Parent checks authoritative SIGKILL status and actual snapshot bytes:
+new queue/trace promoted, old intern/FP retained, distinct new intern/FP temporary
+files unpromoted. Fresh concrete owners recover the two-state frontier/new trace
+pointer and old intern/fingerprint contents. A noninterrupted control recovers
+the new generation for every owner. Process-group cancellation and a 30-second
+watchdog bound native tracing failures without leaving child processes running.
+
+Initial trace receipt 49856a failed the supplemental assumption that a killed
+syscall prints the completed-fault INJECTED annotation. Actual SIGKILL entry
+prints '= ?'; exact entry/ordering plus bytes replace that assumption. Check
+98733e passes (status 0, 0.098 seconds). Suppressing unrelated signal-log
+interleaving also suppresses killed-process log text, so a54c87 failed that
+supplemental log assumption; authoritative wait status now proves SIGKILL.
+Corrected placement of that assertion after process completion following a
+compile error. Final boundary, adjacent commit failures and nine original short
+StateQueue methods pass (terminal b2ae83, status 0, 0.119 seconds).
+
+No production change was needed. This is local Linux coverage inside intern
+commit before file mutation; exact between-method interruption and full-model
+or remote recovery remain unproved. The check skips if strace is unavailable.
+No enabled original method directly covers this boundary, so native coverage
+earns no original-method credit. No full suite, full model or race workload ran.
+All check handles are terminal.

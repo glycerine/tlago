@@ -1472,6 +1472,15 @@ without reopening storage. Corrected public Close's reuse of the array-clearing
 rollback helper. Host draining, startup rollback, reader recovery and original
 nested-store methods remain green. No direct original post-close endpoint method
 exists, so no credit is added.
+
+A short native Linux syscall check now kills a concrete checkpoint child at
+intern deletion entry, after queue/trace promotion and before intern-file
+mutation. File bytes, pending generations and fresh queue/trace/intern/FP
+recovery are checked against a complete control. It requires strace and uses no
+production hook or timing race. This covers a local syscall boundary inside the
+intern commit method; exact between-method interruption and full-model/remote
+recovery remain unproved. No direct enabled original method exists, so no credit
+is added.
 Native invariant-overload checks cover local/TCP memory, nested and LSB/MSB
 stores. Memory/nested expected-count calls inherit the base true result; disk
 calls enforce counts and nested no-argument checks visit children. Related
