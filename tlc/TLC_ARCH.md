@@ -14151,3 +14151,22 @@ for graceful read interruption or reply draining; it closes transport through
 the shared resource owner. Read-interruption errors become visible to subsequent
 closes once recorded, under the host mutex. Five further native cases verify
 retained failures, joined listener release and this forced-close boundary.
+
+
+### Real-model nested disk snapshot ordering failures
+
+The registered-endpoint N=7 checkpoint fixture now covers duplicate and descending
+records with both two-child LSB and MSB hosts. After the actual checkpoint and
+loss of all original roles, the parent replaces only the third record of the
+first child's committed snapshot, retaining its file length and other records.
+The original first three records must be strictly ordered before corruption.
+
+Fresh recovery must report the source SYSTEM_INDEX_ERROR once, outside the
+manager's checked-I/O warning/failover catch. It joins sibling reconstruction,
+stops before the later host and publishes neither recovery-end nor workers.
+The failed child retains the source full-file counter assigned before reading;
+its backing file retains the first three writes, including the offending record.
+Both hosts join caught-failure shutdown. Corrupted/healthy committed snapshots
+and coordinator checkpoints remain byte-identical to their retained inputs.
+This supplements short storage checks with real checkpoint/fresh-role coverage;
+it adds no original-method credit or checkpoint atomicity claim.

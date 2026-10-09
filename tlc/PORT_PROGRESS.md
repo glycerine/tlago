@@ -26155,3 +26155,37 @@ passes (distributed-host-close-ownership-focused.log, terminal 608b27, status 0,
 (distributed-host-close-ownership-race.log, terminal 546cc4, status 0,
 1.339 seconds). All handles terminal; no long workload or full suite rerun.
 git diff --check passes. Original distributed credit remains 37/41.
+
+
+### October 9, 2026: real checkpoint disk ordering failures before publication
+
+Compared the worker compute/publish and coordinator run failure paths with the
+pinned Java source; no production correction was justified in those inspected
+paths. Extended a concrete remaining recovery boundary through the existing
+real N=7 checkpoint/fresh-role fixture instead. Four new cases use two-child
+LSB/MSB hosts and duplicate/descending third records. Only that record changes;
+the parent first verifies the original first three records are strictly ordered.
+All original roles have died before replacement recovery begins.
+
+Fresh recovery reports exactly one source Index error TLCRuntimeException, joins
+the sibling, and stops before the healthy host, recovery-end, initialization,
+worker publication, summary or FINISHED. No checked-I/O warning/failover catch
+suppresses it. Failed-child file count retains the entire checkpoint length
+assigned before reads, while its actual backing file retains the three writes
+including the offending record. The sibling's count contributes to host exit
+size; the later host stays empty. All fresh roles join source caught-failure
+shutdown with checkpoint bytes retained, including the deliberately corrupted
+committed input. No production algorithm or original Java assertion changed.
+
+New four-row verification passes: distributed-remote-disk-ordering.log, terminal
+5bb19e, status 0, 22.074 seconds. Existing 40-row local/TCP direct/nested disk
+startup corruption and original manager/partition checks pass:
+distributed-remote-disk-ordering-focused.log, terminal 561825, status 0,
+0.162 seconds. An initial root baseline selector matched no tests and earns
+no verification credit. Corrected slash-separated selection executes both
+existing LSB begin-loss and missing-child cases unchanged:
+distributed-remote-disk-ordering-baseline-final.log, terminal 536523, status 0,
+12.982 seconds. No full suite or race workload; all handles terminal.
+git diff --check passes. Original distributed completion remains 37/41; this
+adds native fresh-process corruption coverage, not checkpoint atomicity or
+successful restart from out-of-order data.
