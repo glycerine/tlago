@@ -900,6 +900,9 @@ func (t *Tool) GetPostConditionSpecs() []*Action {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetPostConditionSpecs()
+	}
 	return append([]*Action(nil), t.PostConditionSpecs...)
 }
 

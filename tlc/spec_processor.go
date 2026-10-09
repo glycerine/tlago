@@ -227,6 +227,9 @@ type SpecProcessor struct {
 	ConstantDeclarations []*SymbolNode
 	RootDefinitions      *InsMap[string, *OpDefNode]
 
+	// Runtime targets resolve against ModuleTbl when their source phase runs.
+	RuntimeParameters RuntimeParameters
+
 	Variables         []*UniqueString
 	VariablesNodes    []*SymbolNode
 	ProcessedDefs     *InsMap[*OpDefNode, struct{}]
@@ -348,12 +351,31 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.processConfigPostConditions()
 	p.processMissingInitNextConfig()
 	p.processSpecPropertyTautologyWarning()
+	for _, constraint := range p.RuntimeParameters.Constraints {
+		definition := p.runtimeModuleDefinition(constraint.Module, constraint.Operator)
+		p.Defns.Put(definition.Name, definition)
+		p.Config.constraints = append(p.Config.constraints, definition.Name.String())
+	}
 	p.ModelConstraints = p.constraintNodesFromConfigNames(p.Config.GetConstraints(), "constraint", ECTLCConfigIDRequiresNoArg, ECTLCConfigSpecifiedNotDefined, ECTLCConfigIDHasValue)
+	for _, constraint := range p.RuntimeParameters.ActionConstraints {
+		definition := p.runtimeModuleDefinition(constraint.Module, constraint.Operator)
+		p.Defns.Put(definition.Name, definition)
+		p.Config.actionConstraints = append(p.Config.actionConstraints, definition.Name.String())
+	}
 	p.ActionConstraints = p.constraintNodesFromConfigNames(p.Config.GetActionConstraints(), "action constraint", ECTLCConfigIDRequiresNoArg, ECTLCConfigSpecifiedNotDefined, ECTLCConfigIDHasValue)
 	p.RLReward = p.optionalOpBodyFromConfigName(p.Config.GetRLReward(), "rlreward", p.preConstantDefinitions())
 	p.Periodic = p.optionalOpBodyFromConfigName(p.Config.GetPeriodic(), "periodic", p.preConstantDefinitions())
 	p.processConfigPossible()
 	p.ViewSpec = p.optionalOpBodyFromConfigName(p.Config.GetView(), "view function", p.Defns)
+	if p.Config.GetView() == "" && p.RuntimeParameters.View != nil {
+		view := p.RuntimeParameters.View
+		definition := p.runtimeModuleDefinition(view.Module, view.Operator)
+		if definition.Arity() != 0 {
+			p.addConfigError(ECTLCConfigIDRequiresNoArg, "view function", definition.Name.String())
+		} else {
+			p.ViewSpec = definition.Body
+		}
+	}
 	p.AliasNode = p.optionalOpBodyFromConfigName(p.AliasSpecName, "alias", p.Defns)
 }
 
@@ -418,7 +440,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.ModelConstraints = append([]SemanticNode(nil), p.ModelConstraints...)
 	tool.ActionConstraints = append([]SemanticNode(nil), p.ActionConstraints...)
 	tool.ConfigErrors = append([]*ConfigError(nil), p.ConfigErrors...)
-	tool.PostConditionSpecs = append([]*Action(nil), p.PossiblePostConds...)
+	tool.PostConditionSpecs = p.GetPostConditionSpecs()
 	tool.Assumptions = append([]SemanticNode(nil), p.Assumptions...)
 	tool.AssumptionIsAxiom = append([]bool(nil), p.AssumptionIsAxiom...)
 	tool.RLReward = p.RLReward
@@ -588,7 +610,27 @@ func (p *SpecProcessor) GetPostConditionSpecs() []*Action {
 	if p == nil {
 		return nil
 	}
-	return append([]*Action(nil), p.PossiblePostConds...)
+	result := make([]*Action, 0, len(p.RuntimeParameters.PostConditions)+len(p.PossiblePostConds))
+	for _, post := range p.RuntimeParameters.PostConditions {
+		definition := p.runtimeModuleDefinition(post.Module, post.Operator)
+		result = append(result, NewAction(definition.Body, EmptyContext, post.Operator))
+	}
+	return append(result, p.PossiblePostConds...)
+}
+
+// ParameterizedSpecObj resolves only external modules and their actual OpDefs.
+// Lookup aliases, named theorems and inner modules are not substitutes for a
+// definition in the requested module's source Context.
+func (p *SpecProcessor) runtimeModuleDefinition(module, operator string) *OpDefNode {
+	node := p.ModuleTbl.GetModuleNode(UniqueStringOf(module))
+	if node == nil {
+		panic(NewTLCRuntimeException(ECGeneral, "Could not find module: "+module))
+	}
+	definition := node.GetOpDef(UniqueStringOf(operator))
+	if definition == nil {
+		panic(NewTLCRuntimeException(ECGeneral, "Could not find operator: "+operator+" in module: "+module))
+	}
+	return definition
 }
 
 func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {

@@ -63,7 +63,7 @@ C == choose(6, 2) + factorial[3]
 	}
 }
 
-func TestBitwiseStandardModuleKeepsLocalHelpersUnexported(t *testing.T) {
+func TestBitwiseStandardModuleUsesRecursiveDeclarationLocality(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "BitwiseBridge.tla")
 	writeFile(t, root, `---- MODULE BitwiseBridge ----
@@ -89,8 +89,12 @@ C == B!shiftR(8, 1) + B!Not(5) + (6 & 3)
 	if _, ok := tool.DefnsByName[tlc.UniqueStringOf("B!&")].(*tlc.OpDefNode); !ok {
 		t.Fatalf("B!& = %T, want exported TLA OpDefNode", tool.DefnsByName[tlc.UniqueStringOf("B!&")])
 	}
-	if got := tool.DefnsByName[tlc.UniqueStringOf("B!And")]; got != nil {
-		t.Fatalf("B!And = %T, want no alias for LOCAL helper", got)
+	// Generator.processRecursive creates a public declaration. Completing its
+	// body with LOCAL retains that declaration's locality, including in INSTANCE.
+	if got := tool.DefnsByName[tlc.UniqueStringOf("B!And")]; got == nil {
+		t.Fatal("B!And absent, want the public recursive declaration's native override")
+	} else if _, ok := got.(*tlc.MethodValue); !ok {
+		t.Fatalf("B!And = %T, want native MethodValue", got)
 	}
 }
 

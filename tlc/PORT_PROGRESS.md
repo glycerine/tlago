@@ -28214,3 +28214,80 @@ trace-expression selection passes: runtime-canonical-theorem-symbol-complete-ori
 terminal d066ff, status 0, 180.959 seconds. Original assertions and workload
 bounds remain unchanged. The full off-heap random log exceeds 373 million
 iterations in its same live session; no completion credit. Git diff --check passes.
+
+
+Source module lookup and processor lifecycle for runtime targets (2026-10-09)
+
+Previous goal turn made authoritative progress in 34d0614. Revalidated the clean
+worktree and polled the same live full off-heap random session 77502. Audited
+ParameterizedSpecObj.getConstraints0/getView/getPostConditionSpecs, Spec.getViewSpec
+and SpecProcessor's runtime constraint registration and postcondition getter.
+
+The bridge now passes native RuntimeParameters to SpecProcessor. Runtime targets
+resolve only through the external module table and actual module OpDefs, preserving
+source definition identity. Missing modules/operators raise GENERAL with Java's
+messages. Theorems, inner modules and synthetic AST aliases are not alternatives.
+Removed the now-unused qualified AST runtime-target conversion helpers.
+
+Runtime model/action constraints register source definitions and append config
+names at their respective processor phases, using the existing arity/body/coverage
+logic. Runtime views honor config precedence, check zero arity and retain the
+actual source body without adding a constraint tool object. Processor postcondition
+getters build fresh named Actions without OpDef metadata, with runtime entries
+before config/possible entries. Tool delegates to its processor when present;
+standalone copied-slice getter behavior remains. Initial eagerly resolved target
+lists were replaced before final verification so lookup occurs at the source's
+processing/getter phase rather than ahead of config processing.
+
+Focused verification exposed a pre-existing native bridge assertion that
+Bitwise's B!And must be absent because its body says LOCAL. The committed baseline
+also fails: runtime-module-targets-bitwise-baseline.log, terminal 4e8c75, status 1.
+Pinned Generator.processRecursive creates the declaration with localness false;
+completion retains that declaration. Bitwise.java provides a four-argument native
+And override. Source graph observations showed B!And already in the canonical
+root Context, then installed as a runtime OpDef/native alias. The existing SANY
+locality subcase confirms the source contract. Removed an ineffective exploratory
+native export filter and corrected/renamed the existing native bridge assertion
+to require that public recursive override. No translated Java assertions changed.
+
+The corrected focused bridge/trace checks pass in
+runtime-module-targets-processor-focused.log, terminal 0efc67, status 0,
+4.223 seconds. Focused processor/config/getter/Bitwise/postcondition checks pass
+in runtime-module-targets-final-processor-checks.log, terminal 021823, status 0,
+0.022 seconds. The single existing recursive-locality SANY subcase passes in
+runtime-module-targets-recursive-locality.log, terminal 37a6d0, status 0,
+0.045 seconds; this is not an XML corpus sweep. Original simulation-worker state
+and action constraint methods pass unchanged in
+runtime-module-targets-constraint-originals.log, terminal fa8ee4, status 0,
+0.087 seconds, retaining both 100-by-100 workload bounds.
+
+An ignored source observation on existing proof/trace methods and the existing
+runtime postcondition bridge check matches 3,940 operator lookups across 15
+builds, excludes 13 represented theorem entries and matches all nine runtime
+postcondition bodies and source action metadata. Receipt:
+runtime-module-targets-final-source-observation.log, terminal ac06da, status 0,
+5.779 seconds. Its native lookup adapter exists only in the ignored overlay.
+The first diagnostic deliberately constructed caught GENERAL failures for theorem
+targets; those constructions affected the original message recorder, so that run
+fails and earns no execution credit. The final observation checks theorem exclusion
+without constructing failures or changing original assertions. No new persistent
+tests, fixtures or original-method credit.
+
+An initial broader original selection passes before the final processor lifecycle
+refinement: runtime-module-targets-broad-originals.log, terminal 3cce90, status 0,
+177.933 seconds. Final broader verification is recorded below. General source
+generation, mutation sharing and remaining native INSTANCE lowering stay pending.
+Next concrete gap: runtime invariant templates are still appended only to Tool,
+after processor config/constraint processing, unlike Java's processor merge before
+constraint processing. Audit processor visibility and ordering next.
+
+No full-workspace or XML/ApalacheIR sweep, race instrumentation or email work.
+The full off-heap random session remains live beyond 399 million of its unchanged
+2,147,483,648 iterations; no restart or completion credit.
+
+Final broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and
+trace-expression selection passes after the processor lifecycle refinement:
+runtime-module-targets-final-broad-originals.log, terminal 5c0dee, status 0,
+180.025 seconds. Translated Java assertions and workload bounds remain unchanged.
+The same full off-heap random session remains live beyond 402 million iterations;
+no completion credit. Git diff --check passes.

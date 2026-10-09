@@ -942,6 +942,7 @@ func (b *tlcBridge) installModelTargets() {
 		return
 	}
 	if b.processor != nil {
+		b.processor.RuntimeParameters = b.runtime
 		b.processor.ApplyToTool(b.tool)
 	}
 }
@@ -964,30 +965,6 @@ func (b *tlcBridge) installRuntimeParameters() {
 		action := tlc.NewActionFromOpDef(op.Body, tlc.EmptyContext, op, false, true)
 		b.tool.Invariants = append(b.tool.Invariants, action)
 		b.tool.InvariantNames = append(b.tool.InvariantNames, action.GetNameOfDefault())
-	}
-	for _, constraint := range b.runtime.Constraints {
-		if node := b.nodeForModuleDefinition(constraint.Module, constraint.Operator, "runtime constraint"); node != nil {
-			b.tool.ModelConstraints = append(b.tool.ModelConstraints, node)
-		}
-	}
-	for _, constraint := range b.runtime.ActionConstraints {
-		if node := b.nodeForModuleDefinition(constraint.Module, constraint.Operator, "runtime action constraint"); node != nil {
-			b.tool.ActionConstraints = append(b.tool.ActionConstraints, node)
-		}
-	}
-	if b.cfg == nil || b.cfg.GetView() == "" {
-		if view := b.runtime.View; view != nil {
-			b.tool.ViewSpec = b.nodeForModuleDefinition(view.Module, view.Operator, "runtime view")
-		}
-	}
-	runtimePosts := make([]*tlc.Action, 0, len(b.runtime.PostConditions))
-	for _, post := range b.runtime.PostConditions {
-		if action := b.actionFromModuleDefinition(post.Module, post.Operator, false); action != nil {
-			runtimePosts = append(runtimePosts, action)
-		}
-	}
-	if len(runtimePosts) != 0 {
-		b.tool.PostConditionSpecs = append(runtimePosts, b.tool.PostConditionSpecs...)
 	}
 }
 
@@ -1017,35 +994,6 @@ func (b *tlcBridge) defineRuntimeStringConstant(name string, value string) {
 			}
 		}
 	}
-}
-
-func (b *tlcBridge) nodeForModuleDefinition(module string, operator string, slot string) tlc.SemanticNode {
-	name := moduleQualifiedName(module, operator)
-	if name == "" {
-		b.diags = append(b.diags, errorAt(Position{}, "E7018", "%s requires a module and operator", slot))
-		return nil
-	}
-	return b.nodeForDefinition(name)
-}
-
-func (b *tlcBridge) actionFromModuleDefinition(module string, operator string, init bool) *tlc.Action {
-	name := moduleQualifiedName(module, operator)
-	if name == "" {
-		b.diags = append(b.diags, errorAt(Position{}, "E7019", "runtime postcondition requires a module and operator"))
-		return nil
-	}
-	action := b.actionFromDefinition(name, init)
-	if action != nil {
-		action.Name = operator
-	}
-	return action
-}
-
-func moduleQualifiedName(module string, operator string) string {
-	if module == "" || operator == "" {
-		return ""
-	}
-	return module + "!" + operator
 }
 
 func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, root *tlc.ModuleNode, location tlc.SourceLocation, expression string) (*tlc.OpDefNode, error) {
@@ -1210,28 +1158,6 @@ func (b *tlcBridge) unusedDebuggerName(format string, used func(string) bool) st
 	}
 }
 
-func (b *tlcBridge) actionFromDefinition(name string, init bool) *tlc.Action {
-	def := b.defs[name]
-	if def == nil {
-		b.diags = append(b.diags, errorAt(Position{}, "E7005", "model operator %s not found", name))
-		return nil
-	}
-	if len(def.Params) != 0 {
-		b.diags = append(b.diags, errorAt(def.Pos, "E7006", "model operator %s must be zero-arity", name))
-		return nil
-	}
-	opDef := b.convertDefinitionAs(name, def)
-	if opDef == nil {
-		return nil
-	}
-	// Reuse the body converted in the definition's module scope. Converting
-	// it again here loses bindings to that module's LOCAL operators.
-	action := tlc.NewActionFromOpDef(opDef.Body, tlc.EmptyContext, opDef, init, false)
-	action.Name = name
-	action.CM = tlc.NewCostModel(opDef.Body)
-	return action
-}
-
 func (b *tlcBridge) actionFromExpr(name string, expr Expr, opDef *tlc.OpDefNode, init bool) *tlc.Action {
 	pred := b.convertExpr(expr)
 	if pred == nil {
@@ -1241,24 +1167,6 @@ func (b *tlcBridge) actionFromExpr(name string, expr Expr, opDef *tlc.OpDefNode,
 	action.Name = name
 	action.CM = tlc.NewCostModel(pred)
 	return action
-}
-
-func (b *tlcBridge) nodeForDefinition(name string) tlc.SemanticNode {
-	def := b.defs[name]
-	if def == nil {
-		b.diags = append(b.diags, errorAt(Position{}, "E7007", "operator %s not found", name))
-		return nil
-	}
-	if len(def.Params) != 0 {
-		b.diags = append(b.diags, errorAt(def.Pos, "E7008", "operator %s must be zero-arity in this TLC model slot", name))
-		return nil
-	}
-	opDef := b.convertDefinitionAs(name, def)
-	if opDef == nil {
-		return nil
-	}
-	tlc.SetSemanticToolObjectForTool(b.tool, opDef.Body, opDef)
-	return opDef.Body
 }
 
 func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDefNode {

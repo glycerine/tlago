@@ -71,8 +71,9 @@ order, excluding implicit trace helpers from inheritance membership.
 Generated theorem and assumption lookup aliases now bind canonical theorem
 definitions, preserving INSTANCE substitutions and formals. Source theorem
 symbol caches and early conversion now retain the canonical source symbols.
-Next: reconcile runtime constraint/view/postcondition targets with Java's
-external module `getOpDef` lookup instead of the bridge's AST alias index.
+Runtime constraint/view/postcondition targets now use external module OpDefs and
+processor configuration/getter paths. Next: reconcile runtime invariant template
+visibility in the processor and ordering before constraint processing.
 
 ## Verification baseline and test credit
 

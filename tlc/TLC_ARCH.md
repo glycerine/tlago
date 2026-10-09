@@ -11009,11 +11009,31 @@ models compare three source theorem symbols both before and after module-table
 installation: identity, cached pointer, syntax and location now agree in all
 six phase comparisons. Source-less AST fallback remains.
 
-Runtime constraint, action-constraint, view and postcondition targets still need
-reconciliation. Java ParameterizedSpecObj resolves their external ModuleNode
-and calls getOpDef; the Go bridge instead consults its qualified AST alias index
-and can lower a theorem into a synthetic OpDef. The runtime-only alias index is
-not the authoritative source module lookup contract.
+Runtime constraint, action-constraint, view and postcondition targets now resolve
+against the external module table and that module's actual OpDefs, as Java
+ParameterizedSpecObj does. Missing modules/operators raise GENERAL with the
+source messages; theorem definitions and inner modules are not fallback targets.
+The bridge passes native RuntimeParameters to SpecProcessor instead of converting
+qualified AST aliases into synthetic operators. Dead AST-only runtime target
+conversion helpers have been removed.
+
+The processor registers runtime constraint definitions and appends their names
+to the corresponding config vectors at model/action-constraint processing time.
+Existing constraint processing retains source body identity, arity diagnostics and
+coverage ownership. Runtime views honor config precedence, require zero arity and
+return the actual source body without setting a constraint tool object on it.
+Postcondition getters construct fresh named Actions with no OpDef metadata, put
+runtime actions before config/possible actions and preserve the existing possible
+Action objects. Tool forwards postcondition requests to its processor when present;
+standalone tools retain their ordinary copied-slice getter.
+
+On existing original proof/trace methods and the existing runtime postcondition
+bridge check, 3,940 operator lookups across 15 builds match actual module OpDefs,
+13 observed theorem entries are excluded, and all nine observed runtime
+postcondition bodies/metadata match. These observations do not prove every
+runtime-parameter combination. Runtime invariant templates still append only to
+Tool after processor config/constraint processing; their processor visibility and
+source phase ordering remain to reconcile.
 
 An overlay on unchanged original Test219 observes 648 root traces, all matching
 exactly, including all 371 initial-context events, without alias/null failures.
