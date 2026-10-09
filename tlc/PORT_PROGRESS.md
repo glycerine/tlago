@@ -26877,3 +26877,48 @@ checks and short native returned-failure/snapshot/TCP failure-graph controls
 pass in distributed-manager-hostname-controls.log, terminal a49b69, status 0.
 No race, long-model or full-suite rerun. All handles terminal and
 git diff --check passes.
+
+
+### October 9, 2026: incomplete intern records and upstream reporting hang
+
+Audited InternTable.recover's record-loop EOF catch separately from header EOF.
+A real mid-run N=7 checkpoint with 732 complete intern records and the final
+string shortened by one byte stopped a fresh native coordinator before server
+construction. Captured its SIGQUIT stack: it was repeatedly replacing %1% in
+GENERAL reporting, not blocked on the recovery mutex. The exploratory process
+check was deliberately terminated after diagnosis and removed from the enabled
+suite; it must not be credited as passing. Receipt:
+distributed-remote-intern-record-corruption.log, terminal 61ed7e, status 1.
+Its fresh host processes were canceled/joined by the harness cleanup.
+
+Pinned Java InternTable.recover catches record EOF and calls Assert.fail with
+EOFException's null detail. MP preserves that parameter as null and leaves %1%
+in the corruption message. TLCServer.main then supplies that message to the
+GENERAL template; MP.replaceString replaces %1% repeatedly, including its own
+replacement. A bounded standalone probe against the existing upstream classes
+confirmed code 2126, null parameter, complete prefix token 41, literal marker and
+BEFORE_GENERAL without AFTER_GENERAL. Receipt:
+distributed-intern-record-java-oracle.log, terminal 96a325, timeout status 124.
+This establishes a source limitation; no algorithm workaround or Java/JVM
+emulation was added to Go. The scratch probe is ignored, not a permanent test.
+
+Added a focused native test, since no original direct InternTable method tests
+this path. All 15 incomplete lengths of a token/location/length/string record
+must throw runtime checkpoint corruption with the null parameter and unchanged
+source message. The saved count and complete earlier record survive, an existing
+entry retains identity, the incomplete record is absent, the next allocation
+uses the recovered counter and committed bytes remain unchanged. Initial check
+incorrectly used VarLoc(), which consults the global variable count, to inspect
+a private table's raw location; corrected that assertion to inspect the stored
+location rather than altering production. Initial receipt:
+distributed-intern-record-recovery.log, terminal 32cb38, status 1.
+Final focused record, FIFO header-lock, checkpoint-error and all original MP
+checks pass in distributed-intern-record-recovery-fixed.log, terminal eb9413,
+status 0, 0.016 seconds. No full-suite, race or unchanged long-model run.
+
+Corrected comments/architecture that conflated Java's instance recovery monitor
+with its class put(String) monitor. Go's shared per-table mutex is an intentional
+native protection for its mutable table/counter, not a claim of identical Java
+lock identity. Updated HANDOFF with the reporting limitation. No production
+algorithm changed; original distributed inventory remains 37/41. All tool
+handles terminal and git diff --check passes.

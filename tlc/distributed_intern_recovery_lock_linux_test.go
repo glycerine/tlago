@@ -13,8 +13,8 @@ import (
 
 // There is no original direct InternTable recovery test. A FIFO handshake
 // proves recovery has opened its input while its header read is still blocked,
-// without a timing sleep or production hook. The source synchronized method
-// must already own the interning lock at this point.
+// without a timing sleep or production hook. Native recovery must already
+// own the interning lock at this point; Java uses distinct instance/class locks.
 func TestDistributedInternRecoveryLocksBeforeHeaderRead(t *testing.T) {
 	for _, truncated := range []bool{false, true} {
 		name := "complete"

@@ -12248,9 +12248,11 @@ while preventing the manager from ignoring them as remote outages. Other child
 panics propagate after joining. No RMI, ForkJoin exception copying or JVM runtime
 is introduced. Unnamed begin/commit remains sequential as in Java.
 
-InternTable recovery owns the native interning mutex for the entire operation,
-matching the source synchronized method. File opening and header reads must not
-precede lock acquisition: concurrent token allocation cannot interleave with a
+InternTable recovery owns the native interning mutex for the entire operation.
+Java synchronizes recovery on its instance but put(String) on InternTable.class;
+these are distinct source monitors. Go deliberately shares its per-table mutex
+with token allocation to protect mutable storage. File opening and header reads
+must not precede native lock acquisition: token allocation cannot interleave with a
 blocked header read and then be overwritten by the saved token counter. Header
 failure leaves the old counter intact and releases the mutex. Linux FIFO tests
 use an actual reader/writer handshake to inspect this boundary without sleeps
@@ -14604,3 +14606,28 @@ insertion and live-host count. Updating the shared cache affects subsequent
 ordinary/worker-snapshot queries while the local manager keeps its owner name.
 Original manager test ports and short native failure/snapshot controls pass.
 No direct original Java hostname method exists; original credit is unchanged.
+
+
+### Incomplete intern records and source reporting limitation
+
+InternTable.recover publishes the saved token counter before replay. An EOF
+inside a record becomes a runtime checkpoint-corruption failure with a null
+message parameter. Complete prior records and existing entries remain present;
+the incomplete record is absent. Focused native checks cover every incomplete
+byte length of a token/location/length/string record, verify retained raw
+location and identity, allocate the next token from the recovered counter, and
+require unchanged checkpoint bytes. There is no direct original Java test and
+no additional original-method completion credit.
+
+The null parameter leaves a literal `%1%` in the source corruption message.
+TLCServer.main reports that exception through MP's GENERAL template, whose own
+placeholder is `%1%`. MP.replaceString repeatedly replaces the same marker,
+including the marker introduced by its replacement, so this path never finishes
+formatting. A bounded Java probe reproduced the null parameter, complete prefix
+and marker before timing out in GENERAL reporting. A fresh Go coordinator
+recovering a real truncated mid-run intern record likewise stopped in formatting;
+its SIGQUIT stack showed repeated string replacement. This is a source reporting
+limitation, not a successful process recovery check or a native lock deadlock.
+No process test that waits indefinitely for this source failure is enabled.
+Fixing the reporting algorithm would be an explicit deviation from pinned Java;
+header EOF coverage remains separate and green.

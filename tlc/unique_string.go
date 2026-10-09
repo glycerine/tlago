@@ -251,8 +251,9 @@ func (t *InternTable) Recover(metadir string) error {
 	if t == nil {
 		panic(NewNullPointerException())
 	}
-	// Source recover is synchronized across opening, header reads and replay.
-	// Do not allow new token allocation while recovery is waiting on file I/O.
+	// Own native recovery across opening, header reads and replay. Java uses
+	// an instance monitor here but a class monitor for put(String); Go also
+	// excludes token allocation to protect its mutable table and saved counter.
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	file, err := os.Open(uniqueStringChkptName(metadir, "chkpt"))

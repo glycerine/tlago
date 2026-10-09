@@ -158,7 +158,11 @@ phase; their final manager commit is a no-op. Local fingerprints commit in the
 final phase. Mixed generations after interruption are source behavior. Do not
 turn these checkpoints into an atomic transaction or promote pending files.
 Application creation restores intern tokens before parsing and server construction;
-a truncated header fails before trace/queue/FP recovery or publication. Server
+a truncated header fails before trace/queue/FP recovery or publication. Incomplete
+intern records retain the recovered counter and complete prefix, then throw
+checkpoint corruption. Their null error parameter exposes a reproduced upstream
+GENERAL-formatting loop; do not count this as green process recovery. See the
+architecture notes on incomplete intern records. Server
 recovery runs trace, queue, then fingerprints. Intern recovery holds its mutex
 from before open through token publication/replay.
 
@@ -211,7 +215,9 @@ restart or checkpoint atomicity. See architecture notes for their exact limits.
 
 1. Extend recovery coverage to additional failure phases beyond the matrix above.
    Intern-header, trace and queue startup failure ordering is verified; other
-   phases remain open. Keep the CLI empty-manager limitation separate from
+   phases remain open. The reproduced intern-record GENERAL-formatting hang is
+   also an upstream limitation requiring an explicit decision before diverging.
+   Keep the CLI empty-manager limitation separate from
    registered-endpoint library recovery. Do not claim checkpoint atomicity from
    successful restarts.
 2. Cover additional full-model fingerprint failure phases and general network

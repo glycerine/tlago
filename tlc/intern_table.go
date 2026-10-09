@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-// InternSource is the InternRMI call used when an absent worker string needs
-// the server's token. Cached strings never call the source again.
+// InternSource obtains a coordinator token for an absent worker string.
+// Cached strings never call the source again.
 type InternSource interface {
 	Intern(string) (*UniqueString, error)
 }
 
 // InternTable preserves Java's linear probing, growth, and slot iteration.
-// Its monitor also represents the interning monitor of an isolated worker JVM.
+// Its native mutex serializes token allocation within a worker context.
 type InternTable struct {
 	mu           sync.Mutex
 	dataMu       sync.RWMutex
