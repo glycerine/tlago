@@ -26560,3 +26560,45 @@ including TCP I/O, unchecked completions and null boundaries, passed in
 distributed-final-check-io-focused.log, terminal d1dad4, status 0,
 0.028 seconds. No race or full-suite run. All handles are terminal and
 git diff --check passes. Native TCP only; no RMI/JVM emulation.
+
+
+### October 9, 2026: preserve signed distance and decimal collision probability
+
+The final-reporting source comparison found a production shortcut after the
+previous remote-check chunk: ReportSuccessCountsDistance divided by the
+unsigned bits converted to float64. Java AbstractChecker.reportSuccess divides
+by the exact signed long with MathContext(2) before double conversion. The local
+manager's checked-I/O -1 fallback consequently printed a tiny positive value
+in Go rather than -1.0. Premature binary denominator rounding also changed
+800000000000000001 from the source 1.2E-18 to 1.3E-18.
+
+Implemented exact signed reciprocal rounding with native math/big integer
+quotient/remainder and rational-to-double conversion. MathContext(2) defaults
+to HALF_UP, confirmed with a small temporary JDK calculation using the source
+expression. Signed MinInt64 magnitude remains intact. Zero distance raises
+ArithmeticException: Division by zero before success is printed; the existing
+empty-model bypass remains. No Java arithmetic runtime, RMI or serialization
+emulation was added, and TLC fingerprint insertion/failover is unchanged.
+
+No original method directly tests this calculation. Added native unit output
+checks after implementing the feature: 17 signed-distance/decimal-boundary
+rows, nonempty/empty zero-distance cases and local-manager checked-I/O fallback.
+Initial new output assertions incorrectly kept the positive fraction's leading
+zero; inspection of source ProbabilityToString confirmed that it intentionally
+omits it. Corrected those expectations only; no production formatting change.
+The format-only failure receipt is distributed-signed-collision-reporting-format.log,
+terminal 922273, status 1. Initial corrected checks passed in
+distributed-signed-collision-reporting.log, terminal d0d319, status 0,
+0.014 seconds. Final expanded checks and existing signed-distance/check-callable
+controls passed in distributed-signed-collision-final-focused.log, terminal
+380607, status 0, 0.024 seconds. Temporary JDK expression receipts are
+distributed-collision-probability-java.log and
+distributed-collision-probability-java-boundary.log, terminals 181795/88eaf5,
+both status 0; these are calculation evidence, not original test-suite credit.
+
+Unchanged complete N=7 standalone fingerprint process control passed in
+distributed-signed-collision-model-control.log, terminal 9d9d8d, status 0,
+55.247 seconds: 114,942 distinct, zero queued, no GENERAL and all roles joined.
+Only that named model row ran. Original distributed inventory stays 37/41.
+No full-suite rerun or race workload. All handles terminal; git diff --check
+passes.

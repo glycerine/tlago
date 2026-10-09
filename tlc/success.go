@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -35,8 +36,43 @@ func ReportSuccessCountsDistance(numDistinct uint64, actualDistance uint64, numG
 		return
 	}
 	optimistic := "val = " + probabilityToString(CalculateOptimisticProbability(numDistinct, numGenerated), 2)
-	actual := "val = " + probabilityToString(1/float64(actualDistance), 2)
+	actual := "val = " + probabilityToString(fingerprintCollisionProbability(actualDistance), 2)
 	PrintMessage(ECTLCSuccess, optimistic, actual)
+}
+
+// AbstractChecker divides 1 by the signed long distance with two significant
+// decimal digits and half-up rounding before converting the result to double.
+// Round the exact fraction here; binary division followed by display rounding
+// loses signed failure sentinels and skips the source decimal rounding stage.
+func fingerprintCollisionProbability(distanceBits uint64) float64 {
+	distance := int64(distanceBits)
+	if distance == 0 {
+		panic(NewArithmeticException("Division by zero"))
+	}
+	magnitude := uint64(distance)
+	if distance < 0 {
+		magnitude = -magnitude // Also retains the magnitude of MinInt64.
+	}
+	// A signed-long magnitude is at most 2^63, so the next power of ten
+	// fits uint64. Its multiple of ten needs the wider integer below.
+	power := uint64(1)
+	for power < magnitude {
+		power *= 10
+	}
+	numerator := new(big.Int).SetUint64(power)
+	numerator.Mul(numerator, big.NewInt(10))
+	denominator := new(big.Int).SetUint64(magnitude)
+	quotient, remainder := new(big.Int), new(big.Int)
+	quotient.QuoRem(numerator, denominator, remainder)
+	comparison := remainder.Lsh(remainder, 1).Cmp(denominator)
+	if comparison >= 0 {
+		quotient.Add(quotient, big.NewInt(1))
+	}
+	if distance < 0 {
+		quotient.Neg(quotient)
+	}
+	probability, _ := new(big.Rat).SetFrac(quotient, numerator).Float64()
+	return probability
 }
 
 func probabilityToString(val float64, significantDigits int) string {

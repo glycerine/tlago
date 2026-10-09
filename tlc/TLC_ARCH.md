@@ -14388,3 +14388,30 @@ this failure branch, so original inventory stays 37/41. This does not establish
 behavior after final-check reply loss, host death, unchecked task failure or
 multiple failed final-check hosts. Native Go TCP remains the transport; no RMI
 or Java serialization machinery is introduced.
+
+
+### Signed fingerprint distances and exact decimal collision reporting
+
+AbstractChecker.reportSuccess receives a signed Java long distance, divides
+BigDecimal.valueOf(1d) by its exact integer value with MathContext(2), then
+converts that rounded decimal to double for ProbabilityToString. The precision
+constructor defaults to HALF_UP. Go previously divided by float64(uint64 bits),
+which lost negative sentinels/overflow distances and rounded large denominators
+before division. The local manager's checked-I/O -1 result printed a tiny
+positive probability instead of -1.0. For distance 800000000000000001, premature
+binary conversion printed 1.3E-18 instead of the source 1.2E-18.
+
+The reporting helper now recovers the signed distance and uses math/big integer
+quotient/remainder arithmetic to round the exact reciprocal to two decimal
+significant digits, half up, then converts the resulting rational to float64.
+Its power-of-ten bound covers all signed-long magnitudes, including MinInt64.
+No Java numeric runtime or transport emulation is introduced. A zero distance
+raises the source Division by zero arithmetic failure before success is printed;
+the original zero-generated/zero-distinct branch still bypasses division.
+
+Focused native output checks cover positive decimal ties, adjacent integers at
+the large-denominator boundary, signed -1/negative/MinInt64 distances, local
+manager I/O fallback and both zero-distance paths. The unchanged formatting
+helper intentionally drops a positive fraction's leading zero; negative values
+retain it. No direct original test covers this reportSuccess calculation, so
+these checks add no original-method credit.

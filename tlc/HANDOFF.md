@@ -129,6 +129,11 @@ cannot be transferred. Unsupported opaque/custom data remains an explicit error.
 Extend transfer only for an actual producer and a native contract, not arbitrary
 Java objects. See the metadata producer audit in `TLC_ARCH.md`.
 
+Collision reporting interprets fingerprint-distance bits as a signed long and
+rounds the exact reciprocal to two decimal significant digits, half up, before
+floating-point conversion. Preserve local `-1` and MinInt64 distances, the
+nonempty zero-distance failure and the source empty-model bypass.
+
 ## Checkpoint and recovery contracts
 
 Preserve this production order:
