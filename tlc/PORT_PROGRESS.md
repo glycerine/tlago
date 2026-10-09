@@ -27820,3 +27820,93 @@ beyond 235 million of its original 2,147,483,648 iterations; no restart or
 completion credit. Original-method counts unchanged. No race instrumentation,
 full-workspace or XML/ApalacheIR sweep, invented tests or email work.
 Git diff --check passes.
+
+## 2026-10-09: Resolve runtime operators and INSTANCE exports by source identity
+
+Previous goal turn made authoritative progress in 1c5bc0e. Revalidated a clean
+worktree and polled the same live full off-heap random session 77502. Continued
+the concrete alias gaps from the strict explorer observation.
+
+Diagnostic overlays on unchanged original Test219 locate applications whose
+runtime operators were name-only placeholders while their SANY applications
+already referenced actual definitions. Retained applications and operator
+arguments now use canonicalSymbol on that actual source operator, publishing
+the expression shell before conversion can recurse into its definition. Named
+function specifications retain their source expression and actual builtin
+definition instead of replacing the operator with a fresh symbol.
+
+That change initially exposed an original EWD998TraceDebugger failure: nested
+token record fields appeared in constructor order rather than the retained
+expected normalized order. No assertion was changed. Overlay isolation confirms
+that disabling operator adaptation avoids the failure, while disabling function
+expression retention does not. Investigated two real identity boundaries.
+Debugger compilation used CheckSpec to regenerate all running dependencies;
+Java TLCDebuggerExpression generates only the new wrapper or dependency against
+its existing external table. Changed both debugger paths to single-module
+generation/level checking and retain successful new dependencies in the source
+table as well as the runtime table. This correction alone did not fix EWD998.
+
+INSTANCE exports still used independently reconstructed runtime clones with
+different UIDs, substitutions and cached values. Module definition enumeration
+and convertInstanceDefinition now resolve the actual source Context export and
+adapt that node. Generator's source reuse, formal parameters and substitutions
+are preserved; native reconstruction remains only when a represented symbol is
+absent. With both corrections, the original EWD998 debugger test and all focused
+original selector/LET/cyclic/ASSUME cases pass. Compared the debugger lifecycle
+with pinned Java TLCDebuggerExpression.generate/resolveDependencies.
+
+Receipts under .codex-gotmp: runtime-alias-baseline.log, terminal b7afa7,
+status 0, records the original alias/OpDef mismatch observation.
+runtime-alias-first-originals.log, terminal 3464f8, status 1, records EWD998's
+failure with operator adaptation alone. runtime-alias-ewd-no-operator.log,
+terminal 34351b, status 0, and runtime-alias-ewd-no-function.log, terminal 086e44,
+status 1, isolate that behavior. runtime-alias-incremental-originals.log,
+terminal 54d8e5, status 1, confirms that single-module debugger generation alone
+does not fix it. Final focused original checks pass:
+runtime-alias-instance-originals.log, terminal f9ddf1, status 0, 6.215 seconds.
+Scoped-identifier rows and original SANY builtin, selector, incremental-semantic
+and operator checks pass: runtime-alias-scope-sany-originals.log, terminal
+da1421, status 0, 0.089 seconds. Original assertions and bounds remain intact.
+
+Final Test219 subgraph observation now visits 648 roots because actual INSTANCE
+conversion exposes more source graphs. Of those, 620 entry/exit traces match
+exactly, including the 371-event initial context; there are no alias or null
+failures. All 28 remaining first mismatches are synthetic $Pair applications
+with unrelated runtime UIDs. Their seven distinct locations are TLC line 121,
+test219a lines 152, 164, 167 and 181, _JsonTrace line 14 and _TLCTrace line 24.
+Receipts: runtime-alias-instance-observation.log, terminal c8595d, status 0;
+runtime-alias-application-observation.log, terminal 945a8a, status 0. Overlays
+remain under runtime-alias-observation, runtime-alias-isolation and
+runtime-alias-ewd-observation; none are production code or new test entries.
+The changed root inventory is not a fixed coverage denominator or full parity
+proof. Synthetic children, complete module Context/body conversion, mutation
+sharing and remaining native INSTANCE fallback lowering stay required work.
+
+Updated architecture and current handoff. Original-method counts unchanged.
+The same full off-heap random process remains live beyond 262 million of its
+original 2,147,483,648 iterations; no restart or completion credit. No race,
+full-workspace or XML/ApalacheIR sweep, invented tests or email work.
+
+The broader original selection first failed only TestJavaOCoverage:
+runtime-alias-final-originals.log, terminal 164178, status 1, 180.414 seconds.
+The canonical INSTANCE adapter lacked Action.getDeclaration's syntax-based
+declaration location, so I!Step reported the entire INSTANCE range. Java reads
+the first child of the syntax node's one array. The adapter now retains that
+actual name range. Focused original O coverage/EWD998/Test219 checks pass:
+runtime-alias-declaration-originals.log, terminal 0d37f7, status 0, 1.659 seconds.
+
+Prepared an ignored overlay for the next source-body conversion pass. It makes
+convertExpr adapt an available generated source graph directly, retaining the
+AST path when none exists. Existing focused selector/debugger/LET/cyclic/ASSUME
+originals pass: runtime-source-body-probe.log, terminal aec1c2, status 0.
+The overlay is under runtime-source-body-probe and is not production code.
+A second overlay combines that change with the existing trace observation:
+all 648 observed Test219 root traces match exactly, with no alias/null failures
+or first mismatches. Receipt: runtime-source-body-trace-probe.log, terminal
+544289, status 0. Broader behavior still needs verification before adoption;
+the production synthetic-pair gap is not credited as complete.
+
+Final broader original legacy/debugger/EWD998/coverage/LET/cyclic selection
+passes after the declaration-range correction: runtime-alias-complete-originals.log,
+terminal b86643, status 0, 180.707 seconds. Original assertions and workload
+bounds remain unchanged. Git diff --check passes.

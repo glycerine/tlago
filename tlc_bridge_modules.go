@@ -274,6 +274,12 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 }
 
 func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextEntry) *tlc.OpDefNode {
+	// The actual Context also resolves inherited and nested INSTANCE exports.
+	if mod.semanticNode != nil {
+		if source, ok := mod.semanticNode.context.getSymbol(entry.name).(*sanySemOpDefNode); ok {
+			return b.canonicalGraph(source).(*tlc.OpDefNode)
+		}
+	}
 	if entry.instance == nil && entry.module != nil {
 		// A source module's qualified lookup key can also be a named INSTANCE
 		// export in the root. Its context must still retain the original node.

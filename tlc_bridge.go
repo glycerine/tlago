@@ -1116,7 +1116,10 @@ func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, root *tlc.ModuleNode
 		return nil, debuggerSemanticError(location, "Semantic error while parsing breakpoint expression \"%s\"", expression)
 	}
 	wrapped := b.debuggerSpec(mod)
-	if diagnostics := CheckSpec(wrapped); diagnostics.HasErrors() {
+	// Java generates only the debugger wrapper against the running external
+	// table. Regenerating its dependencies replaces live semantic identities
+	// and loses their config bindings and cached values.
+	if diagnostics := checkModule(mod, wrapped); diagnostics.HasErrors() {
 		semanticFailure, _ := debuggerDiagnosticFailures(diagnostics)
 		phase := "Level-checking"
 		if semanticFailure {
@@ -1406,6 +1409,14 @@ func (b *tlcBridge) reusesInstanceSource(inst Instance, def *Definition) bool {
 }
 
 func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, binding *tlcBridgeInstance) *tlc.OpDefNode {
+	// Generator has already chosen the export's source reuse, substitutions
+	// and formal parameters. Share that node instead of rebuilding a clone.
+	if binding.owner.semanticNode != nil {
+		member := strings.TrimPrefix(name, binding.owner.Name+"!")
+		if source, ok := binding.owner.semanticNode.context.getSymbol(member).(*sanySemOpDefNode); ok {
+			return b.canonicalGraph(source).(*tlc.OpDefNode)
+		}
+	}
 	if clone := binding.defs[def]; clone != nil {
 		return clone
 	}
@@ -1990,7 +2001,7 @@ func (b *tlcBridge) callNode(e *CallExpr) tlc.SemanticNode {
 	for _, arg := range e.Args {
 		if ident, ok := arg.(*IdentExpr); ok {
 			if symbol := b.exprSymbol(ident.Name); symbol.Arity > 0 {
-				args = append(args, b.withExprLocation(arg, tlc.NewOpArgNode(symbol)))
+				args = append(args, b.retainCanonicalExpression(arg, tlc.NewOpArgNode(symbol)))
 				continue
 			}
 		}
@@ -2224,13 +2235,13 @@ func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc
 		}()
 	}
 	node := b.functionNode(e).(*tlc.OpApplNode)
-	node.Operator = tlc.NewSymbolNode(op.String())
+	node.Operator = b.builtinDefinition(op.String()).Symbol
 	if self != nil {
 		node.UnbdedQuantSymbols = []*tlc.SymbolNode{self}
 	}
 	// SANY function specifications cover the whole definition, unlike |->
 	// constructor expressions whose location is the bracketed expression.
-	return b.withPositionLocation(def.SourcePosition(), b.withSyntaxNode(def.Syntax, node))
+	return b.retainCanonicalExpression(e, b.withPositionLocation(def.SourcePosition(), b.withSyntaxNode(def.Syntax, node)))
 }
 
 func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {

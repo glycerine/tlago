@@ -19,14 +19,23 @@ func (b *tlcBridge) retainCanonicalExpression(expr Expr, node tlc.SemanticNode) 
 		if b.canonicalGraphs == nil {
 			b.canonicalGraphs = map[sanySemanticGraphNode]tlc.SemanticNode{}
 		}
+		// Publish before adapting the operator: its definition can refer back
+		// to this application through recursive or mutually recursive bodies.
+		b.canonicalGraphs[source] = node
 		if owner, ok := source.(interface{ runtimeSemanticBase() *tlc.SemanticNodeBase }); ok {
 			base := owner.runtimeSemanticBase()
 			if source.Kind() == tlc.SemanticKindOf(node) {
 				switch node := node.(type) {
 				case *tlc.OpApplNode:
 					node.SemanticNodeBase = base
+					if source, ok := source.(*sanySemOpApplNode); ok && source.operator != nil {
+						node.Operator = b.canonicalSymbol(source.operator)
+					}
 				case *tlc.OpArgNode:
 					node.SemanticNodeBase = base
+					if source, ok := source.(*sanySemOpArgNode); ok && source.operator != nil {
+						node.Op = b.canonicalSymbol(source.operator)
+					}
 				case *tlc.LabelNode:
 					node.SemanticNodeBase = base
 					if source, ok := source.(*sanySemLabelNode); ok {
@@ -41,7 +50,6 @@ func (b *tlcBridge) retainCanonicalExpression(expr Expr, node tlc.SemanticNode) 
 				}
 			}
 		}
-		b.canonicalGraphs[source] = node
 	}
 	return node
 }
@@ -138,6 +146,11 @@ func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNod
 		}
 		b.canonicalDefinitions[source] = node
 		node.Symbol.Data = node
+		// Action.getDeclaration uses the first child of the syntax node's
+		// one array, including the name of a named INSTANCE declaration.
+		if tree, ok := source.TreeNode.(*SanySyntaxNode); ok && tree != nil && len(tree.One) > 0 {
+			node.SetDeclarationLocation(b.sourceLocationForPosition(sanyNodePosition(tree.One[0])))
+		}
 		node.Local, node.InRecursive = source.semLocal(), source.inRecursive
 		node.CompoundID = source.compoundID
 		if origin := source.getSource(); origin != source {

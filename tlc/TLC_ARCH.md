@@ -10951,14 +10951,31 @@ as Java does.
 The existing `isDefinedWith`/`substituteFor` adapter shares this traversal engine,
 while retaining native lookup aliases, nil-array tolerance and AST-only
 LET/module fallback memberships. The strict explorer requires actual semantic
-declarations. An overlay on unchanged original Test219 matches 276 of 292
-observed root traces, including all 371 initial-context events; 13 roots reach
-lookup aliases without semantic declarations and three have differing operator
-definition views. Observed alias names include `Len`, `\o`, `JsonDeserialize`,
-`ToTrace`, `Trace` and `$RecursiveFcnSpec`. These are concrete conversion gaps,
-not source null failures to suppress in the strict walker.
+declarations.
 
-This is not full runtime graph parity. Complete module/body conversion,
+Retained application and operator-argument views now use their actual resolved
+SANY operator, published after the expression shell so recursive bodies retain
+identity. Named function specifications retain their source expression and
+builtin definition. INSTANCE conversion and module definition enumeration use
+the actual source Context export, preserving Generator's choice of reuse,
+substitutions and formals. The older native reconstruction remains only when
+the represented source symbol is absent.
+
+Debugger compilation generates only the new wrapper or dependency against the
+retained source external table, as Java does. It does not regenerate running
+dependencies and replace their semantic identities or cached/config bindings.
+New dependencies are retained in both source and runtime external tables;
+temporary expression wrappers remain separate from the running root.
+
+An overlay on unchanged original Test219 now observes 648 root traces: 620
+match exactly, including all 371 initial-context events, and none fail on a
+lookup alias. All 28 first mismatches are synthetic `$Pair` applications still
+allocated by AST conversion with unrelated UIDs. Their observed locations are
+TLC line 121, test219a lines 152, 164, 167 and 181, _JsonTrace line 14 and
+_TLCTrace line 24. Adapting actual INSTANCE exports expands the observed roots;
+the earlier smaller trace inventory is not a fixed coverage denominator.
+
+This is not full runtime graph parity. Complete module Context/body conversion,
 source-to-runtime mutation sharing and remaining native INSTANCE lowering still
 need reconciliation with canonical source nodes.
 The listed original test receipts establish retained behavior and loading of the

@@ -55,10 +55,13 @@ AST fallback retention remains until complete generation is established across
 source forms. Builtin adapters now share their actual SANY bases and formal
 parameters, preserving source identity across frontend reinitialization.
 The runtime now exposes UID-based entry/exit traversal, including Context and
-substitution records. Strict traversal of original Test219 still identifies
-lookup aliases without semantic declarations and differing operator views.
-Complete module/body conversion, mutation sharing and native INSTANCE lowering
-remain pending; see `TLC_ARCH.md` for the concrete alias names and observations.
+substitution records. Retained expressions use actual resolved operators;
+INSTANCE exports share SANY's chosen definitions, substitutions and formals.
+Debugger compilation preserves the running source module table. Strict
+traversal of original Test219 now reaches more INSTANCE subgraphs without alias
+failures; remaining first mismatches are synthetic `$Pair` children created by
+AST conversion. Complete module Context/body conversion, mutation sharing and
+remaining native INSTANCE fallback lowering remain pending; see `TLC_ARCH.md`.
 
 ## Verification baseline and test credit
 

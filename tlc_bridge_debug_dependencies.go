@@ -50,7 +50,9 @@ func (b *tlcBridge) resolveDebuggerDependencies(dependencies []string) (bool, er
 				continue
 			}
 			candidate := b.debuggerSpec(dependency)
-			diagnostics = CheckSpec(candidate)
+			// Compile the new dependency against the retained source table,
+			// preserving the already running modules and their semantic nodes.
+			diagnostics = checkModule(dependency, candidate)
 			semanticFailure, levelFailure := debuggerDiagnosticFailures(diagnostics)
 			if semanticFailure {
 				failed = true
@@ -68,6 +70,7 @@ func (b *tlcBridge) resolveDebuggerDependencies(dependencies []string) (bool, er
 			node := convert.moduleNodes[dependency]
 			b.processor.ProcessConstantsDynamicExtendee(node)
 			b.processor.ModuleTbl.Put(tlc.UniqueStringOf(name), node.Context, node)
+			candidate.semanticModules.put(name, dependency.semanticNode.context, dependency.semanticNode)
 			// Retain the original AST root and semantic root while keeping the
 			// newly compiled dependency and its source/instance identities.
 			candidate.Root = b.spec.Root
