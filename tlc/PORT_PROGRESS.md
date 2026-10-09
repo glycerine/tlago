@@ -22580,3 +22580,32 @@ trace recovery, manager checkpoint error checks and original MultiFPSet routing
 and Put methods (nested-named-checkpoint-verified.log, terminal 38aef2, status 0,
 5.331 seconds). No original assertions or bounds changed; no original-method
 credit added. No full suite or race run. Full-model disk-host restart remains next.
+
+### October 8, 2026: full-model remote LSB/MSB checkpoint restart
+
+Extended TestNativeDistributedRemoteCheckpointRestart into Mem, LSB and MSB
+subtests, retaining the unchanged EWD840/MC06 N=7 model and final assertions.
+The Mem fixture remains a primitive MemFPSet. Disk hosts use the source
+DistributedFPSet.main factory layout: ratio 1, FPBits 1, two nested children per
+host. The native fixture budgets storage at one MiB per host without limiting
+model exploration. Java's prefixBits constant is zero, so its 1+prefixBits is
+the same one-bit nested routing. No production startup/storage behavior changed.
+
+Each disk host writes two indexed checkpoint files. The parent reads every file,
+requires exact aggregate committed counts and byte-identical snapshots after
+killing/joining the original hosts. Disk words retain low 63 bits; the child-file
+index reconstructs each original high bit for actual RPC ContainsBlock checks
+against fresh recovered hosts. Every committed fingerprint must be present in
+its original host, with exact host counts, before replacement worker startup.
+Queue checkpoint counts and recovery diagnostics must match the captured
+frontier; initialization must not repeat. Fresh coordinators use the existing
+pre-registration library lifecycle, preserving Java's remote CLI limitation.
+
+All three full-model cases pass (remote-model-disk-restart.log, terminal d913c7,
+status 0, package time 152.793 seconds): Mem 52.84 seconds, LSB 51.05 seconds,
+MSB 48.88 seconds. Each restores 20,480 distinct fingerprints and 12,288 queued
+states, then finishes with 114,942 distinct states and an empty queue, one recovery,
+FINISHED and no GENERAL. All child processes are terminal and joined; captured
+logs were inspected. No full suite, race run or original-method completion credit.
+Additional failure phases, general network partitions, isolated trace-commit
+interruption and checkpoint atomicity remain open.

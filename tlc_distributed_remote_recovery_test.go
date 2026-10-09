@@ -24,6 +24,12 @@ import (
 // It does not change Java's CLI recovery-before-registration limitation or earn
 // credit for its assumption-disabled distributed model harness.
 func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
+	for _, backend := range []string{"mem", "lsb", "msb"} {
+		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend) })
+	}
+}
+
+func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string) {
 	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +91,7 @@ func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
 		var hosts []*nativeDistributedTestProcess
 		var addresses []string
 		for i, directory := range directories {
-			host := start(fmt.Sprintf("%s-fp-%d", prefix, i), "checkpoint-fp-host", []string{"TLAGO_CHECKPOINT_FP_DIRECTORY=" + directory})
+			host := start(fmt.Sprintf("%s-fp-%d", prefix, i), "checkpoint-fp-host", []string{"TLAGO_CHECKPOINT_FP_DIRECTORY=" + directory, "TLAGO_CHECKPOINT_FP_STORAGE=" + backend})
 			waitMarker(host, "NATIVE_CHECKPOINT_FP_READY=")
 			match := regexp.MustCompile(`NATIVE_CHECKPOINT_FP_READY=([^\s]+)`).FindStringSubmatch(host.output.String())
 			if len(match) != 2 {
@@ -144,15 +150,37 @@ func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
 	if readErr != nil || closeErr != nil || int(queueCount) != queued {
 		t.Fatalf("persisted queue count differs from checkpoint frontier: %d/%v/%v", queueCount, readErr, closeErr)
 	}
-	snapshots := make([][]byte, len(hosts))
-	filename := filepath.Base(filepath.Clean(path[1])) + ".fp.chkpt"
+	type snapshot struct {
+		filename string
+		data     []byte
+		highBits uint64
+	}
+	snapshots := make([][]snapshot, len(hosts))
+	basename := filepath.Base(filepath.Clean(path[1]))
+	var committed int
 	for i, directory := range directories {
-		snapshots[i], err = os.ReadFile(filepath.Join(directory, filename))
-		if err != nil || len(snapshots[i]) == 0 || len(snapshots[i])%8 != 0 {
-			t.Fatalf("remote committed snapshot: %v/%d", err, len(snapshots[i]))
+		children := 1
+		if backend != "mem" {
+			children = 2
+		}
+		for child := 0; child < children; child++ {
+			filename := basename + ".fp.chkpt"
+			var highBits uint64
+			if backend != "mem" {
+				filename = fmt.Sprintf("%s_%d.fp.chkpt", basename, child)
+				// Disk children store normalized low 63 bits. Their MultiFPSet
+				// child index preserves the original fingerprint's high bit.
+				highBits = uint64(child) << 63
+			}
+			data, err := os.ReadFile(filepath.Join(directory, filename))
+			if err != nil || len(data) == 0 || len(data)%8 != 0 {
+				t.Fatalf("remote committed snapshot %s: %v/%d", filename, err, len(data))
+			}
+			snapshots[i] = append(snapshots[i], snapshot{filename, data, highBits})
+			committed += len(data) / 8
 		}
 	}
-	if (len(snapshots[0])+len(snapshots[1]))/8 != distinct {
+	if committed != distinct {
 		t.Fatal("committed remote membership differs from checkpoint frontier")
 	}
 	for _, process := range append(hosts, worker) {
@@ -168,9 +196,11 @@ func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
 	}
 	t.Logf("committed frontier %d/%d; original coordinator, worker and both fingerprint hosts are gone", distinct, queued)
 	for i, directory := range directories {
-		data, err := os.ReadFile(filepath.Join(directory, filename))
-		if err != nil || !bytes.Equal(data, snapshots[i]) {
-			t.Fatal("process crash changed committed fingerprint bytes")
+		for _, snapshot := range snapshots[i] {
+			data, err := os.ReadFile(filepath.Join(directory, snapshot.filename))
+			if err != nil || !bytes.Equal(data, snapshot.data) {
+				t.Fatal("process crash changed committed fingerprint bytes")
+			}
 		}
 	}
 	restarted, addresses := startHosts("restarted")
@@ -188,12 +218,16 @@ func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
 		}
 		size, failure := client.Size()
 		fingerprints := tlc.NewLongVec()
-		for offset := 0; offset < len(snapshots[i]); offset += 8 {
-			fingerprints.AddElement(int64(binary.BigEndian.Uint64(snapshots[i][offset : offset+8])))
+		var expectedSize uint64
+		for _, snapshot := range snapshots[i] {
+			expectedSize += uint64(len(snapshot.data) / 8)
+			for offset := 0; offset < len(snapshot.data); offset += 8 {
+				fingerprints.AddElement(int64(binary.BigEndian.Uint64(snapshot.data[offset:offset+8]) | snapshot.highBits))
+			}
 		}
 		missing, membershipErr := client.ContainsBlock(fingerprints)
 		_ = client.CloseConnection()
-		if failure != nil || size != uint64(len(snapshots[i])/8) || membershipErr != nil || missing == nil || missing.TrueCount() != 0 {
+		if failure != nil || size != expectedSize || membershipErr != nil || missing == nil || missing.TrueCount() != 0 {
 			t.Fatalf("restarted partition %d did not retain its complete snapshot: size %d/%v, membership %v/%v", i, size, failure, missing, membershipErr)
 		}
 		recovered += size
@@ -238,7 +272,24 @@ func nativeCheckpointFingerprintHost() error {
 	if directory == "" {
 		return fmt.Errorf("fingerprint directory missing")
 	}
-	storage := tlc.NewMemFPSet()
+	var storage tlc.FPSet
+	switch backend := os.Getenv("TLAGO_CHECKPOINT_FP_STORAGE"); backend {
+	case "", "mem":
+		storage = tlc.NewMemFPSet()
+	case "lsb", "msb":
+		implementation := "tlc2.tool.fp.LSBDiskFPSet"
+		if backend == "msb" {
+			implementation = "tlc2.tool.fp.MSBDiskFPSet"
+		}
+		config := tlc.NewFPSetConfigurationWithRatioAndImplementation(1, implementation)
+		config.SetFPBits(1) // Source DistributedFPSet.main factory layout.
+		// Budget storage explicitly for this native fixture; model bounds
+		// and the source factory's nested routing remain unchanged.
+		config.SetMemory(1 << 20)
+		storage = tlc.NewFPSet(config)
+	default:
+		return fmt.Errorf("unknown checkpoint fingerprint storage %q", backend)
+	}
 	storage.Init(1, directory, "MC06")
 	defer storage.Close()
 	endpoint := &nativeCheckpointFingerprintEndpoint{LocalFingerprintEndpoint: tlc.NewLocalFingerprintEndpoint(storage), exited: make(chan struct{})}

@@ -12123,7 +12123,11 @@ checks join all accepted handlers and require one exit plus later registration
 shutdown; lost insertion replies explicitly retain non-ignorable errors.
 
 Full-model registered-endpoint recovery now checkpoints a real mid-run N=7
-frontier across two remote MemFPSet processes, then retires all original roles.
+frontier across two remote processes using Mem, LSB or MSB storage, then retires
+all original roles. Disk hosts use the source factory's two-child MultiFPSet
+layout with one high-bit routing bit. Disk checkpoint words contain only the low
+63 fingerprint bits; the committed child-file index restores the high bit for
+membership checks against the recovered host.
 Both fingerprint hosts are killed and joined; committed checkpoint bytes remain
 identical. Replacement hosts initialize empty live tables on the same files and
 are registered through the public server API before ModelCheck calls recovery.
@@ -12134,8 +12138,8 @@ frontier without initialization. Final model assertions remain 114,942 distinct
 states, empty queue, FINISHED, one recovery and no GENERAL. FP host shutdown joins
 accepted RPC replies before returning. This is a library-lifecycle fixture, not
 support for fresh-process remote-FP CLI recovery, whose empty dynamic manager is
-still the pinned-source limitation. Disk-backend full-model restart, additional
-failure phases and checkpoint atomicity remain unproved.
+still the pinned-source limitation. Additional failure phases and checkpoint
+atomicity remain unproved.
 
 Named MultiFPSet begin/commit/recovery follows the source parallel child
 traversal using native goroutines and a join. Each child receives the original

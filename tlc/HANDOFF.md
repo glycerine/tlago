@@ -164,19 +164,20 @@ committed bytes and no pending-snapshot promotion. These checks do not establish
 full-model remote restart/recovery or checkpoint atomicity.
 
 `tlc_distributed_remote_recovery_test.go` now covers a complete mid-run checkpoint
-with two remote MemFPSet hosts, followed by loss of the original coordinator,
-worker and both hosts. Empty replacement stores retain the committed files and
+with two remote hosts using Mem, LSB or MSB storage, followed by loss of the
+original coordinator, worker and both hosts. Disk hosts use the source factory's
+two-child MultiFPSet layout. Empty replacement stores retain committed files and
 are registered before source recovery. Their exact partition membership and the
 disk queue count must match the snapshot before replacement worker startup.
 The recovered N=7 model requires 114,942 distinct states, an empty queue, one
 recovery and no GENERAL. This verifies the registered-endpoint library lifecycle;
-it does not add CLI startup support, disk-backend full-model coverage or atomicity.
+it does not add CLI startup support or establish checkpoint atomicity.
 
 ## Remaining distributed work
 
 1. Extend restart/recovery coverage beyond the verified complete-checkpoint,
-   two-MemFPSet registered-endpoint case, including other failure phases and
-   storage backends. Keep the fresh-process remote-FP CLI limitation separate:
+   two-host Mem/LSB/MSB registered-endpoint cases, including other failure phases.
+   Keep the fresh-process remote-FP CLI limitation separate:
    Java recovers before publication/registration while its dynamic manager is
    empty. Do not reorder startup to manufacture support.
 2. Cover additional full-model fingerprint failure phases and general network

@@ -1398,13 +1398,15 @@ slots after failover, so this separate failure row requires 229,884 reported
 states; existing ordinary model rows keep their 114,942 assertions. This adds
 native failure coverage, not completion credit for the disabled Java harness.
 The native N=7 model now covers a complete mid-run checkpoint across two remote
-MemFPSet hosts followed by loss of all original roles and recovery with empty
-replacement stores registered before source recovery. It verifies committed
+hosts with Mem, LSB or MSB storage, followed by loss of all original roles and
+recovery with empty replacement stores registered before source recovery. It verifies committed
 partition membership, disk queue counts, no regenerated initialization and final
 114,942-distinct/empty-queue completion without GENERAL. This uses the existing
 library lifecycle; ordinary Java CLI startup still recovers before registration.
 No production startup change or disabled-harness method credit is added. Other
-storage backends/failure phases and general network partitions remain open.
+failure phases and general network partitions remain open. Disk hosts retain the
+source two-child MultiFPSet layout and restore fingerprint high bits from each
+child's committed file when checking complete recovered membership.
 Named nested-store checkpoint traversal now has native concurrency/join and
 failure-boundary checks, plus fresh-store Mem/LSB/MSB recovery checks preserving
 both high-bit partitions. The source MultiFPSetTest has no corresponding named
