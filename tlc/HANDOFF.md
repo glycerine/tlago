@@ -483,6 +483,13 @@ does not recover the later host. Source main prints one GENERAL and closes with
 cleanup disabled; its caught failure does not change process status. Retained
 coordinator/remote checkpoint bytes survive, and the missing child stays absent.
 
+The direct MemFPSet missing-snapshot row uses the same fresh-process lifecycle.
+It requires one warning, no routing failover, an empty first store and exact
+healthy-host membership before replacement workers start. Recovery must not
+recreate the missing snapshot. The original N=7 model then completes with
+114,942 distinct states and an empty queue. This source-supported continuation
+does not establish general checkpoint integrity or atomicity.
+
 Accepted-request connection-loss checks cover begin, commit and recovery with
 memory and two-child LSB/MSB stores. The manager continues to the healthy host
 before releasing the old handler, without replay or reassignment. Accepted work
@@ -503,7 +510,7 @@ coverage without changing original-test credit or introducing automatic replay.
 1. Extend restart/recovery coverage to other failure phases. Verified cases use
    two-host Mem/LSB/MSB registered endpoints and cover complete checkpoints,
    completed-commit and completed-recovery reply loss, and missing committed
-   LSB/MSB child snapshots.
+   LSB/MSB child snapshots, plus a missing direct memory-store snapshot.
    Keep the fresh-process remote-FP CLI limitation separate:
    Java recovers before publication/registration while its dynamic manager is
    empty. Do not reorder startup to manufacture support.

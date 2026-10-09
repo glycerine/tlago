@@ -13710,6 +13710,17 @@ actual coordinator cleanup calls. LSB and MSB cases pass without a production
 change or weakening any existing successful-recovery assertion. This adds native
 failure-phase evidence, not original-method credit or atomic recovery semantics.
 
+The same fresh-process fixture removes the direct MemFPSet committed snapshot
+in a separate row. Its file-open failure remains checked I/O across native TCP,
+so source manager recovery warns once and proceeds to the healthy registration
+without replay or routing failover. Fresh membership queries require every
+first-host checkpoint fingerprint to be absent and every healthy-host checkpoint
+fingerprint to be present before any replacement worker starts. The reported
+recovery count includes only the healthy store; the persisted queue count is
+unchanged, and recovery does not recreate the missing file. The unchanged N=7
+model then finishes with the ordinary 114,942-state result and no GENERAL. This
+demonstrates this model's continuation, not arbitrary missing-checkpoint safety.
+
 ### Native scalar character attachments
 
 `ModelValue.data` is a non-transient Object, and Character is serializable. Its

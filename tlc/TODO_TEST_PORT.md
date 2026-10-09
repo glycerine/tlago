@@ -2111,6 +2111,13 @@ successful recovery/model completion assertions remain unchanged. This native
 failure coverage does not translate the disabled distributed model harness and
 adds no original-method credit.
 
+A separate direct MemFPSet missing-snapshot row verifies the source's checked-I/O
+continuation through fresh processes. It requires one warning, unchanged routing,
+empty damaged-host membership, exact healthy-host membership, no replacement of
+the missing file and unchanged persisted queue count before workers start. The
+full N=7 model must finish at 114,942 states with an empty queue and no GENERAL.
+This native failure-phase coverage adds no original-method completion credit.
+
 Native scalar character attachments now preserve `uint16` alongside character
 arrays. Direct transfer checks all 65,536 code units; TCP result/error-context
 checks preserve typed character map keys, and malformed ranges are rejected.

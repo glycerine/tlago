@@ -25719,3 +25719,31 @@ manager/nested-partition tests pass (distributed-recover-reply-loss-focused.log,
 terminal fc30e9, status 0, 0.075 seconds). All process handles are terminal.
 No full suite or race run. Original distributed counts remain 37 complete and
 four Reconcile; this native fault coverage earns no original-method credit.
+
+
+### October 9, 2026: fresh-process missing memory checkpoint continuation
+
+Compared worker computation and coordinator result-publication paths with the
+pinned distributed sources. The reviewed holder ordering, validation before
+constraints, fingerprint-before-trace/queue publication and failure boundaries
+match; this is scoped comparison, not a complete parity claim.
+
+Extended the existing native remote restart fixture with removal of the first
+host's direct MemFPSet committed snapshot after a real unfinished N=7 checkpoint
+and loss of all original roles. Java FPSetManager.Checkpoint.run catches direct
+checked I/O, warns and continues to the healthy registration. The native row
+requires exactly that warning and one recovery invocation per host, without
+routing failover or replay. Fresh membership checks require all damaged-host
+checkpoint fingerprints absent and all healthy-host fingerprints present before
+replacement workers start. Recovery retains the persisted queue count and does
+not recreate the missing file. The unchanged model finishes at 114,942 distinct
+states with an empty queue, no GENERAL and all role processes joined.
+
+The new row passes (distributed-missing-memory-recovery.log, terminal 1e5fd4,
+status 0, 55.578 seconds). The existing missing nested LSB child row also passes
+unchanged (distributed-missing-memory-disk-baseline.log, terminal 0674af,
+status 0, 6.461 seconds), retaining its stop-before-publication behavior. The
+production implementation required no change. Unchanged original manager tests
+retain their prior green receipt; no full-suite or race run. Both live handles
+are terminal. Native integration coverage adds no original-method credit; the
+four original distributed model contexts remain Reconcile.

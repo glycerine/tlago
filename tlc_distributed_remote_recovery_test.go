@@ -74,7 +74,14 @@ const (
 	nativeRemoteCheckpointCommitReplyLoss
 	nativeRemoteCheckpointMissingDiskSnapshot
 	nativeRemoteCheckpointRecoverReplyLoss
+	nativeRemoteCheckpointMissingMemSnapshot
 )
+
+// Unlike nested disk recovery, a direct memory-store I/O failure is reported
+// and ignored by the source manager before recovering the next registration.
+func TestNativeDistributedRemoteCheckpointMissingMemSnapshot(t *testing.T) {
+	checkNativeDistributedRemoteCheckpointRestart(t, "mem", 1, nativeRemoteCheckpointMissingMemSnapshot)
+}
 
 func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
 	for _, backend := range []string{"lsb", "msb"} {
@@ -87,6 +94,7 @@ func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
 func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, fault nativeRemoteCheckpointFault) {
 	commitReplyLoss := fault == nativeRemoteCheckpointCommitReplyLoss
 	recoverReplyLoss := fault == nativeRemoteCheckpointRecoverReplyLoss
+	missingMemSnapshot := fault == nativeRemoteCheckpointMissingMemSnapshot
 	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 	if err != nil {
 		t.Fatal(err)
@@ -278,9 +286,13 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		}
 	}
 	missingDiskSnapshot := fault == nativeRemoteCheckpointMissingDiskSnapshot
-	if missingDiskSnapshot {
+	if missingDiskSnapshot || missingMemSnapshot {
 		if backend == "mem" {
-			t.Fatal("missing disk snapshot case requires nested disk storage")
+			if !missingMemSnapshot {
+				t.Fatal("missing disk snapshot case requires nested disk storage")
+			}
+		} else if missingMemSnapshot {
+			t.Fatal("missing memory snapshot case requires direct memory storage")
 		}
 		if err := os.Remove(filepath.Join(directories[0], snapshots[0][0].filename)); err != nil {
 			t.Fatal(err)
@@ -359,6 +371,18 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	waitMarker(server, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd))
 	output = server.output.String()
 	reportedDistinct := distinct
+	if missingMemSnapshot {
+		reportedDistinct = len(snapshots[1][0].data) / 8
+		const warning = "Error: Failed to checkpoint the fingerprint server at checkpoint-host-0. This server might be down."
+		if strings.Count(output, warning) != 1 || strings.Contains(output, "Warning: Failed to connect") {
+			t.Fatal("missing memory snapshot did not retain source warning and routing")
+		}
+		for _, process := range restarted {
+			if strings.Count(process.output.String(), "NATIVE_CHECKPOINT_FP_RECOVER="+basename+"\n") != 1 {
+				t.Fatal("missing memory snapshot was replayed or stopped later recovery")
+			}
+		}
+	}
 	if recoverReplyLoss {
 		var survivorSnapshotSize int
 		for _, snapshot := range snapshots[1] {
@@ -392,14 +416,28 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 				fingerprints.AddElement(int64(binary.BigEndian.Uint64(snapshot.data[offset:offset+8]) | snapshot.highBits))
 			}
 		}
+		var expectedMissing int
+		if missingMemSnapshot && i == 0 {
+			expectedSize = 0
+			expectedMissing = fingerprints.Size()
+		}
 		missing, membershipErr := client.ContainsBlock(fingerprints)
 		_ = client.CloseConnection()
-		if failure != nil || size != expectedSize || membershipErr != nil || missing == nil || missing.TrueCount() != 0 {
+		if failure != nil || size != expectedSize || membershipErr != nil || missing == nil || missing.TrueCount() != expectedMissing {
 			t.Fatalf("restarted partition %d did not retain its complete snapshot: size %d/%v, membership %v/%v", i, size, failure, missing, membershipErr)
 		}
 		recovered += size
 	}
-	if recovered != uint64(distinct) {
+	if missingMemSnapshot {
+		if _, err := os.Stat(filepath.Join(directories[0], snapshots[0][0].filename)); !os.IsNotExist(err) {
+			t.Fatal("recovery recreated the missing committed memory snapshot")
+		}
+	}
+	expectedRecovered := distinct
+	if missingMemSnapshot {
+		expectedRecovered = reportedDistinct
+	}
+	if recovered != uint64(expectedRecovered) {
 		t.Fatal("restarted stores did not recover exactly committed membership before worker startup")
 	}
 	t.Log("restarted empty stores recovered committed membership; starting actual successor evaluation")
