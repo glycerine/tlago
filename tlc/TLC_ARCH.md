@@ -14703,3 +14703,20 @@ processes use GOMEMLIMIT=64MiB without reducing model bounds.
 This verifies nested LSB final-check loss and surviving-host completion, not
 MSB/off-heap final-check loss or arbitrary network partitions. No production
 algorithm changed and no additional original Java method credit is claimed.
+
+
+### Nested MSB final fingerprint reply loss with a surviving host
+
+The full-model survivor scenario now also uses two MSBDiskFPSet children per
+host. Java DiskFPSet.checkFPs and the Go implementation both flush storage
+before scanning the file for the minimum signed nonnegative distance. The
+fixture checks the actual MSB child types and the same physical file/table
+invariants used for LSB. The two completed disk partitions contain 57,468 and
+57,474 fingerprints. After the first host dies before replying, the healthy
+host supplies its actual distance 2,906,609,224,184. The unchanged shared checks
+verify captured final counts, source reporting order, probabilities, one final
+statistics call and one cleanup Exit. All surviving processes join.
+
+The three focused declared Java MSB checks for getLast and high fingerprints
+also pass. This adds native failure-phase evidence, not original method credit
+or proof of off-heap final-check loss. No production algorithm was changed.

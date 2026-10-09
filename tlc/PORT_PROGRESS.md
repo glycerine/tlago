@@ -27032,3 +27032,22 @@ distributed-final-disk-check-controls.log, terminal 9375bf, status 0,
 0.035 seconds. All processes joined; no race or full-suite run. No production
 change or original Java method credit; inventory remains 37/41. MSB/off-heap
 final-check loss and arbitrary partitions remain open.
+
+
+### October 9, 2026: nested MSB final-check reply loss and survivor
+
+Compared source DiskFPSet.checkFPs with native flush/read/minimum handling, then
+extended the existing full N=7 survivor scenario to two actual MSB children per
+host. The shared physical flush assertions require positive file counts equal
+to membership and empty in-memory tables. The failed/surviving hosts contain
+57,468/57,474 fingerprints; survivor distance is 2,906,609,224,184. Existing
+Mem/LSB reporting, probability, single statistics call and cleanup assertions
+are retained unchanged. No production functionality needed correction.
+
+Full model: distributed-final-msb-check-survivor.log, terminal d79570, status 0,
+48.156 seconds. All surviving processes joined normally. Focused mechanically
+ported Java MSB testGetLast, testHighFingerprint1 and testHighFingerprint2:
+distributed-final-msb-check-controls.log, terminal 46acc2, status 0,
+0.015 seconds. No race or full-suite run. Original distributed inventory remains
+37/41; off-heap final-check loss remains unproved. Updated HANDOFF/architecture
+and git diff --check passes.

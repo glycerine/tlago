@@ -94,10 +94,12 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 	if checkFailure != "" && (!remote || sourceHarness || model != "EWD840") {
 		t.Fatal("final-check fault requires the native remote EWD840 model")
 	}
-	survivingCheckHost := checkFailure == "reply-loss-survivor" || checkFailure == "reply-loss-survivor-lsb"
+	survivingCheckHost := checkFailure == "reply-loss-survivor" || checkFailure == "reply-loss-survivor-lsb" || checkFailure == "reply-loss-survivor-msb"
 	fingerprintImplementation := "tlc2.tool.fp.MemFPSet"
 	if checkFailure == "reply-loss-survivor-lsb" {
 		fingerprintImplementation = "tlc2.tool.fp.LSBDiskFPSet"
+	} else if checkFailure == "reply-loss-survivor-msb" {
+		fingerprintImplementation = "tlc2.tool.fp.MSBDiskFPSet"
 	}
 	directory, err := filepath.Abs(filepath.Join("tlc/test_vectors/models", model))
 	if err != nil {

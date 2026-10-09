@@ -247,18 +247,22 @@ func nativeDistributedFinalFingerprintCheckHost(args []string, failure string) (
 // The first host is lost after its real final check; the second completes the
 // same full model's partition check and remains available for final statistics.
 func TestNativeDistributedFinalFingerprintCheckReplyLossSurvivor(t *testing.T) {
-	checkNativeDistributedFinalFingerprintSurvivor(t, false)
+	checkNativeDistributedFinalFingerprintSurvivor(t, "")
 }
 
 func TestNativeDistributedFinalFingerprintCheckDiskReplyLossSurvivor(t *testing.T) {
-	checkNativeDistributedFinalFingerprintSurvivor(t, true)
+	checkNativeDistributedFinalFingerprintSurvivor(t, "LSB")
 }
 
-func checkNativeDistributedFinalFingerprintSurvivor(t *testing.T, disk bool) {
+func TestNativeDistributedFinalFingerprintCheckMSBDiskReplyLossSurvivor(t *testing.T) {
+	checkNativeDistributedFinalFingerprintSurvivor(t, "MSB")
+}
+
+func checkNativeDistributedFinalFingerprintSurvivor(t *testing.T, disk string) {
 	t.Helper()
 	mode := "reply-loss-survivor"
-	if disk {
-		mode += "-lsb"
+	if disk != "" {
+		mode += "-" + strings.ToLower(disk)
 	}
 	output := runNativeDistributedModelWithCheckFailure(t, "EWD840", true, false, mode)
 	stats := nativeDistributedMessages(output, tlc.ECTLCStats)
@@ -281,15 +285,15 @@ func checkNativeDistributedFinalFingerprintSurvivor(t *testing.T, disk bool) {
 	if err != nil || lostCount+count != 114942 {
 		t.Fatalf("real final partitions do not cover the captured distinct count: %q/%q", lost, check)
 	}
-	if disk {
+	if disk != "" {
 		for _, size := range []uint64{lostCount, count} {
 			marker := fmt.Sprintf("NATIVE_FINAL_FP_DISK_CHECK_CHILDREN=2 COUNT=%d\n", size)
 			if strings.Count(output, marker) != 1 {
 				t.Fatalf("actual nested disk flush missing or repeated: %q", marker)
 			}
 		}
-		if strings.Count(output, "...with nested instance type: tlc2.tool.fp.LSBDiskFPSet") != 4 {
-			t.Fatal("final check did not use two physical LSB children on each host")
+		if strings.Count(output, "...with nested instance type: tlc2.tool.fp."+disk+"DiskFPSet") != 4 {
+			t.Fatalf("final check did not use two physical %s children on each host", disk)
 		}
 	}
 	distance, err := strconv.ParseUint(check[2], 10, 64)
@@ -371,8 +375,13 @@ func (e *nativeFinalFingerprintCheckEndpoint) reportDiskCheck(count uint64) erro
 	}
 	var total uint64
 	for _, child := range multi.Sets {
-		disk, ok := child.(*tlc.LSBDiskFPSet)
-		if !ok {
+		var disk *tlc.DiskFPSet
+		switch child := child.(type) {
+		case *tlc.LSBDiskFPSet:
+			disk = child.DiskFPSet
+		case *tlc.MSBDiskFPSet:
+			disk = child.DiskFPSet
+		default:
 			return fmt.Errorf("unexpected final-check child %T", child)
 		}
 		if disk.GetFileCnt() <= 0 || uint64(disk.GetFileCnt()) != disk.Size() || disk.GetTblCnt() != 0 {
