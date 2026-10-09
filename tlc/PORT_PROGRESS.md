@@ -26224,3 +26224,30 @@ distributed-remote-empty-disk-snapshot-msb.log, terminal 097cbe, status 0,
 6.448 seconds. Reuse unchanged short storage/original-manager receipts from the
 preceding entry. No race or full-suite run; all handles terminal.
 git diff --check passes.
+
+
+### October 9, 2026: complete remote model after trailing partial disk record
+
+Extended the real N=7 checkpoint/fresh-role fixture to the source-supported
+trailing-partial-record case for two-child LSB and MSB hosts. After all original
+roles die, append three bytes to the first child's real committed snapshot,
+retaining every complete fingerprint. Java DiskFPSet.recover(String) catches
+the incomplete primitive as EOF after its index check; the current Go port
+already matches that boundary. No production change was needed.
+
+Before replacement workers start, require the original complete partition
+membership, exact queue frontier/recovery counts and no initialization replay.
+The rebuilt backing file contains exactly the complete records; every committed
+FP snapshot retains its exact input bytes, including the partial tail, and
+coordinator checkpoint bytes remain unchanged. No warning/failover path is
+allowed. Fixture membership decoding now visits complete eight-byte records
+only; all ordinary snapshots retain their unchanged count/membership assertions.
+
+Both replacement evaluations finish with 114,942 distinct states, an empty
+queue, one recovery, FINISHED, no GENERAL and joined roles. The two-row normal
+workload passes: distributed-remote-trailing-disk-snapshot.log, terminal 733776,
+status 0, 102.457 seconds (LSB 50.70; MSB 51.74). Reuse unchanged source storage
+and original-manager receipts. No race instrumentation or full-suite rerun.
+git diff --check passes. Original distributed credit remains 37/41. This
+verifies the successful EOF boundary, not successful recovery from empty or
+out-of-order snapshots and not checkpoint atomicity.

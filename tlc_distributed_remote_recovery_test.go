@@ -82,6 +82,7 @@ const (
 	nativeRemoteCheckpointDuplicateDiskSnapshot
 	nativeRemoteCheckpointDescendingDiskSnapshot
 	nativeRemoteCheckpointEmptyDiskSnapshot
+	nativeRemoteCheckpointTrailingDiskSnapshot
 )
 
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
@@ -113,6 +114,16 @@ func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
 	for _, backend := range []string{"lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
 			checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, nativeRemoteCheckpointMissingDiskSnapshot)
+		})
+	}
+}
+
+// Source disk recovery catches a trailing partial primitive as EOF after
+// restoring all complete fingerprints; the unchanged model must still finish.
+func TestNativeDistributedRemoteCheckpointTrailingDiskSnapshot(t *testing.T) {
+	for _, backend := range []string{"lsb", "msb"} {
+		t.Run(backend, func(t *testing.T) {
+			checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, nativeRemoteCheckpointTrailingDiskSnapshot)
 		})
 	}
 }
@@ -153,6 +164,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	corruptDiskOrdering := fault == nativeRemoteCheckpointDuplicateDiskSnapshot || fault == nativeRemoteCheckpointDescendingDiskSnapshot
 	emptyDiskSnapshot := fault == nativeRemoteCheckpointEmptyDiskSnapshot
 	invalidDiskSnapshot := corruptDiskOrdering || emptyDiskSnapshot
+	trailingDiskSnapshot := fault == nativeRemoteCheckpointTrailingDiskSnapshot
 	var debugger, debuggerScript string
 	if traceToIntern {
 		var err error
@@ -444,6 +456,17 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			t.Fatal(err)
 		}
 	}
+	if trailingDiskSnapshot {
+		if backend == "mem" {
+			t.Fatal("trailing disk snapshot requires nested disk storage")
+		}
+		// Keep every complete fingerprint, adding only an incomplete long.
+		data := append(bytes.Clone(snapshots[0][0].data), 0x91, 0x27, 0xe3)
+		if err := os.WriteFile(filepath.Join(directories[0], snapshots[0][0].filename), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		snapshots[0][0].data = data
+	}
 	if emptyDiskSnapshot {
 		if backend == "mem" {
 			t.Fatal("empty disk snapshot requires nested disk storage")
@@ -696,7 +719,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		var expectedSize uint64
 		for _, snapshot := range snapshots[i] {
 			expectedSize += uint64(len(snapshot.data) / 8)
-			for offset := 0; offset < len(snapshot.data); offset += 8 {
+			for offset := 0; offset+8 <= len(snapshot.data); offset += 8 {
 				fingerprints.AddElement(int64(binary.BigEndian.Uint64(snapshot.data[offset:offset+8]) | snapshot.highBits))
 			}
 		}
@@ -731,6 +754,30 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	}
 	if recovered != uint64(expectedRecovered) {
 		t.Fatal("restarted stores did not recover exactly committed membership before worker startup")
+	}
+	if trailingDiskSnapshot {
+		if strings.Contains(output, "Failed to checkpoint the fingerprint server") || strings.Contains(output, "Warning: Failed to connect") {
+			t.Fatal("trailing partial record entered a warning or failover path")
+		}
+		for i, directory := range directories {
+			for _, snapshot := range snapshots[i] {
+				data, err := os.ReadFile(filepath.Join(directory, snapshot.filename))
+				if err != nil || !bytes.Equal(data, snapshot.data) {
+					t.Fatal("recovery rewrote a committed snapshot including its partial tail")
+				}
+			}
+		}
+		data := snapshots[0][0].data
+		live, err := os.ReadFile(filepath.Join(directories[0], "MC06_0.fp"))
+		if err != nil || !bytes.Equal(live, data[:len(data)/8*8]) {
+			t.Fatal("recovery did not write exactly the complete fingerprint records")
+		}
+		for filename, expected := range coordinatorSnapshots {
+			actual, err := os.ReadFile(filepath.Join(path[1], filename))
+			if err != nil || !bytes.Equal(actual, expected) {
+				t.Fatalf("recovery changed coordinator checkpoint %s: %v", filename, err)
+			}
+		}
 	}
 	if traceToIntern {
 		pending, err := os.ReadFile(filepath.Join(path[1], "vars.tmp"))

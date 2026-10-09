@@ -137,7 +137,9 @@ or publication, retaining pending files unpromoted. Duplicate/descending records
 in real committed disk snapshots likewise stop fresh recovery at the source
 index assertion, retaining partial writes and joined sibling reconstruction.
 Empty committed child snapshots also stop there, retaining zero failed-child
-count/writes after fresh initialization truncates the live backing file. These receipts have
+count/writes after fresh initialization truncates the live backing file. Trailing
+partial records retain complete membership without warning/failover; fresh
+LSB/MSB roles must finish the unchanged N=7 model at 114,942 states. These receipts have
 different scopes; none establishes complete distributed parity alone. Use the detailed entries in the progress log
 rather than rerunning unchanged long workloads.
 

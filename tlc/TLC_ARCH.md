@@ -14180,3 +14180,16 @@ restore an empty successful checkpoint or recover old live membership. The
 backing file remains empty, the sibling finishes reconstruction, and the later
 host/publication phases remain untouched. The empty committed input and all
 other coordinator/remote checkpoint bytes survive caught-failure shutdown.
+
+
+Trailing partial disk records have a separate successful-recovery contract.
+The real N=7 checkpoint fixture appends three bytes to the first child's
+committed snapshot, preserving every complete fingerprint. Source named recovery
+catches the incomplete long as EOF, retains the last complete fingerprint in
+the final index slot and restores the floor-divided file count. Both LSB/MSB
+rows require exact partition membership and queue frontier before workers start,
+a live backing file containing exactly the complete records, unchanged committed
+inputs including their tails, unchanged coordinator checkpoints, and no warning
+or failover. Replacement evaluation must finish at 114,942 states with an empty
+queue and joined roles. This does not extend that EOF rule to empty/out-of-order
+snapshots, which retain their source failures, or prove checkpoint atomicity.
