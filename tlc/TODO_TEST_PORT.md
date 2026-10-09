@@ -1618,6 +1618,12 @@ equal distinct names, typed nil values/keys and invalid IDs in direct payloads,
 TCP results and WorkerException contexts. Original ModelValue/StringHelper tests
 remain green; these networking checks add no original-method completion credit.
 
+Finite operator container checks retain shared domain rows and result arrays
+across operators and model-data attachments. Receiver updates change the sibling
+operator's application without affecting the sender. Direct/TCP/failure-context
+checks cover malformed references and nil/empty rows. These native checks add no
+original-method completion credit.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,

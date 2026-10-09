@@ -12495,3 +12495,24 @@ results and WorkerException contexts use this representation. No interning call,
 Java serialization or evaluator codec is added. Peers carrying attached names
 need the updated payload schema. Original ModelValue/StringHelper ports remain
 green; supplemental networking checks add no original-method completion credit.
+
+### Shared finite operator containers
+
+The source OpRcdValue constructor retains its supplied domain and result Vect
+objects. The native constructor retains [][]Value and []Value slices, but the
+network codec previously rebuilt both containers independently for each operator.
+This lost sharing and changed application after a receiver updated a shared row
+or result. Domain row containers now have native graph IDs, and result arrays
+reuse the existing value-array graph. The decoder allocates row containers from
+shared inner-array references before populating values. Legacy inline domain
+nodes remain readable; conflicting inline/null/array forms fail explicitly.
+
+Native [][]Value attachments use the same row containers. Operators, attached
+rows and attached result arrays preserve identity and receiver isolation. Nil
+and empty outer/inner rows remain distinct; invalid outer/inner references are
+rejected. Ordinary operator application, cyclic values and the operator type
+remain unchanged. Direct graph, request/result and WorkerException checks verify
+updates through one shared operator affect its sibling's application while
+sender state stays unchanged. Peers need the updated native payload schema.
+No Java Vect runtime or serialization protocol is introduced. There is no direct
+original Java test for this network boundary; native checks add no method credit.

@@ -140,6 +140,10 @@ evaluated or fingerprinted to sort them. Peers need the updated payload schema.
 Attached `*UniqueString` values and keys share the existing name graph with
 value fields. Text, token, location, identity and typed nil references survive;
 equal distinct names are not re-interned or merged.
+Finite `OpRcdValue` domain-row containers and result arrays retain constructor
+sharing with other operators and model-data attachments. Native `[][]Value`
+attachments use that row graph; receiver updates affect shared operator
+application without reaching the sender. Invalid row references fail explicitly.
 Mixed `[]any` and `map[string]any` attachments retain supported scalars, bytes,
 TLC values, typed containers and recursive mixed-container graphs with the same
 ownership guarantees. Their compact entries share the scalar data tags; peers

@@ -23272,3 +23272,34 @@ Only the new short attachment/TCP checks ran under race instrumentation and pass
 original method tests attached-name networking, so these checks add no original
 method completion credit. All handles are terminal; no full model or full suite
 was repeated.
+
+### October 8, 2026: preserve shared finite operator containers
+
+Compared OpRcdValue's retained domain/result Vect fields with the native
+constructor and payload. Found a real transfer shortcut: each operator's outer
+domain rows and result array were rebuilt independently, losing constructor
+sharing. Corrected the initial fixture's Go symbol/method names after its compile
+failure (terminal e987cb, status 1), then reproduced the lost sharing before
+changing production code (operator-sharing-before.log, terminal e1b057,
+status 1, 0.013 seconds).
+
+Added native row-container IDs and reused the existing value-array graph for
+operator results. Native [][]Value model-data attachments share those same rows.
+Reserved encoder identities and retained sender roots preserve recursive graphs;
+decoder row allocation precedes value population. Nil/empty rows survive and
+invalid/conflicting references fail explicitly. Legacy inline domain nodes remain
+readable. Shared receiver mutations now affect sibling operator application,
+including through attachments, while leaving the sender unchanged. Requests,
+results and WorkerException contexts preserve the same graph. No Java Vect
+runtime or serializer is added; peers need the updated native payload schema.
+
+Initial production fix and existing constant-operator checks pass (operator-
+sharing-fixed.log, terminal 324f27, status 0, 0.013 seconds). Expanded direct/TCP/
+invalid-input checks pass (operator-sharing-verified.log, terminal 291480,
+status 0, 0.016 seconds). Final existing state/result/attachment formats, original
+ModelValue methods and callable-state checks pass (operator-sharing-related-
+verified.log, terminal 33cb95, status 0, 0.038 seconds). Only the new short graph
+and TCP checks ran under race instrumentation and pass (operator-sharing-race.log,
+terminal e2fce2, status 0, 1.050 seconds). No direct upstream operator networking
+method exists, so native checks add no original-method completion credit. All
+handles are terminal. No full model or full suite was repeated.

@@ -19,6 +19,7 @@ type DistributedStatePayload struct {
 	Strings       []DistributedStringNode
 	ByteArrays    [][]byte
 	ValueArrays   [][]int
+	ValueRows     [][]int
 	ValueVectors  []DistributedValueVectorNode
 	NameArrays    [][]int
 	StateCaches   [][]DistributedStateCacheEntry
@@ -109,39 +110,40 @@ type DistributedValueReferences struct {
 // Function/predicate/lazy wrappers use the same materialization contracts as
 // their source network serialization, without serializing evaluator machinery.
 type DistributedValueNode struct {
-	Kind              string
-	OperatorDomain    []DistributedValueReferences
-	OperatorDomainNil bool
-	References        []int
-	ReferencesArray   int
-	ReferencesNil     bool
-	Domain            []int
-	DomainArray       int
-	DomainNil         bool
-	Names             []int
-	NamesArray        int
-	NamesNil          bool
-	Flag              bool
-	Cache             int
-	Dummy             bool
-	Integer           int64
-	Low               int32
-	High              int32
-	String            int
-	ModelIndex        int
-	ModelType         rune
-	CollectionPresent bool
-	Vector            int
-	DataKind          string
-	DataString        string
-	DataName          int
-	DataInteger       int64
-	DataFloatBits     uint64
-	DataBool          bool
-	DataBytes         int
-	DataValue         int
-	DataArray         int
-	DataMap           int
+	Kind                string
+	OperatorDomain      []DistributedValueReferences
+	OperatorDomainNil   bool
+	OperatorDomainArray int
+	References          []int
+	ReferencesArray     int
+	ReferencesNil       bool
+	Domain              []int
+	DomainArray         int
+	DomainNil           bool
+	Names               []int
+	NamesArray          int
+	NamesNil            bool
+	Flag                bool
+	Cache               int
+	Dummy               bool
+	Integer             int64
+	Low                 int32
+	High                int32
+	String              int
+	ModelIndex          int
+	ModelType           rune
+	CollectionPresent   bool
+	Vector              int
+	DataKind            string
+	DataString          string
+	DataName            int
+	DataInteger         int64
+	DataFloatBits       uint64
+	DataBool            bool
+	DataBytes           int
+	DataValue           int
+	DataArray           int
+	DataMap             int
 }
 
 type distributedPayloadEncoder struct {
@@ -152,6 +154,8 @@ type distributedPayloadEncoder struct {
 	bytes             map[distributedByteArrayKey]int
 	arrays            map[distributedByteArrayKey]int
 	arrayRoots        [][]Value // Keep address-keyed backing storage alive while encoding.
+	rows              map[distributedByteArrayKey]int
+	rowRoots          [][][]Value
 	vectors           map[*ValueVec]int
 	nameArrays        map[distributedByteArrayKey]int
 	nameRoots         [][]*UniqueString
@@ -416,14 +420,12 @@ func (e *distributedPayloadEncoder) value(value Value) (int, error) {
 		// contains only finite argument rows and result values. Keep it an
 		// operator; converting it to a function would change application rules.
 		node.Kind, children, node.OperatorDomainNil = "operatorRecord", v.Values, v.Domain == nil
-		node.OperatorDomain = make([]DistributedValueReferences, len(v.Domain))
-		for i, row := range v.Domain {
-			array, err := e.array(row)
-			if err != nil {
-				return 0, err
-			}
-			node.OperatorDomain[i] = DistributedValueReferences{Nil: row == nil, Array: array}
+		rows, err := e.valueRows(v.Domain)
+		if err != nil {
+			return 0, err
 		}
+		node.OperatorDomainArray = rows
+		sharedChildren = true
 	case *FcnLambdaValue:
 		node.Kind, children = "lambda", []Value{v.ToFcnRcd()}
 	case *LazySupplierValue:
@@ -569,6 +571,12 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 			return err
 		}
 		node.DataKind, node.DataArray = "valueArray", id
+	case [][]Value:
+		id, err := e.valueRows(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataArray = "valueRows", id
 	case map[string]Value:
 		id, err := e.valueMap(v)
 		if err != nil {
@@ -603,6 +611,33 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		return fmt.Errorf("unsupported network model-value data %T", data)
 	}
 	return nil
+}
+
+func (e *distributedPayloadEncoder) valueRows(rows [][]Value) (int, error) {
+	if rows == nil {
+		return 0, nil
+	}
+	if e.rows == nil {
+		e.rows = make(map[distributedByteArrayKey]int)
+	}
+	key := distributedByteArrayKey{reflect.ValueOf(rows).Pointer(), len(rows)}
+	if id := e.rows[key]; id != 0 && len(rows) != 0 {
+		return id, nil
+	}
+	id := len(e.payload.ValueRows) + 1
+	e.rows[key] = id
+	e.rowRoots = append(e.rowRoots, rows)
+	e.payload.ValueRows = append(e.payload.ValueRows, nil)
+	entries := make([]int, len(rows))
+	for i, row := range rows {
+		array, err := e.array(row)
+		if err != nil {
+			return 0, err
+		}
+		entries[i] = array
+	}
+	e.payload.ValueRows[id-1] = entries
+	return id, nil
 }
 
 func (e *distributedPayloadEncoder) objectArray(values []any) (int, error) {
@@ -735,6 +770,7 @@ type distributedPayloadDecoder struct {
 	strings       []*UniqueString
 	bytes         [][]byte
 	arrays        [][]Value
+	rows          [][][]Value
 	vectors       []*ValueVec
 	nameArrays    [][]*UniqueString
 	valueMaps     []map[string]Value
@@ -801,6 +837,18 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, fmt.Errorf("value array %d: %w", i+1, err)
 		}
 		decoder.arrays[i] = values
+	}
+	decoder.rows = make([][][]Value, len(payload.ValueRows))
+	for i, entries := range payload.ValueRows {
+		rows := make([][]Value, len(entries))
+		for j, id := range entries {
+			row, err := decoder.arrayRefs(nil, id == 0, id)
+			if err != nil {
+				return nil, fmt.Errorf("value rows %d row %d: %w", i+1, j, err)
+			}
+			rows[j] = row
+		}
+		decoder.rows[i] = rows
 	}
 	decoder.vectors = make([]*ValueVec, len(payload.ValueVectors))
 	for i, node := range payload.ValueVectors {
@@ -1184,7 +1232,15 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 		}
 		v.Domain, v.Values = domain, refs
 	case *OpRcdValue:
-		if node.OperatorDomainNil {
+		if node.OperatorDomainArray != 0 {
+			if node.OperatorDomainNil || len(node.OperatorDomain) != 0 {
+				return fmt.Errorf("operator domain array conflicts with inline or null rows")
+			}
+			v.Domain, err = d.valueRows(node.OperatorDomainArray)
+			if err != nil {
+				return err
+			}
+		} else if node.OperatorDomainNil {
 			if len(node.OperatorDomain) != 0 {
 				return fmt.Errorf("null operator domain contains rows")
 			}
@@ -1233,6 +1289,16 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 		}
 	}
 	return err
+}
+
+func (d *distributedPayloadDecoder) valueRows(id int) ([][]Value, error) {
+	if id < 0 || id > len(d.rows) {
+		return nil, fmt.Errorf("invalid value-row array reference %d", id)
+	}
+	if id == 0 {
+		return nil, nil
+	}
+	return d.rows[id-1], nil
 }
 
 func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, error) {
@@ -1287,6 +1353,8 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 		return d.value(node.DataValue)
 	case "valueArray":
 		return d.arrayRefs(nil, node.DataArray == 0, node.DataArray)
+	case "valueRows":
+		return d.valueRows(node.DataArray)
 	case "valueMap":
 		if node.DataMap < 0 || node.DataMap > len(d.valueMaps) {
 			return nil, fmt.Errorf("invalid model value-map reference %d", node.DataMap)
