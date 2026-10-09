@@ -14104,3 +14104,25 @@ coverage to existing short Mem/LSB/MSB checks; it does not claim successful nest
 disk recovery from missing committed children or checkpoint atomicity. No direct
 original Java test covers the acknowledgement boundary, and method credit stays
 unchanged. Production algorithms and transport retry policy are unchanged.
+
+
+The full-model checkpoint-begin loss entry now has mem/lsb/msb rows. Nested LSB
+and MSB hosts use the source two-child factory layout. A completed begin leaves
+both child pending files and no committed children; captured pending and healthy
+committed membership still equals the saved coordinator frontier. No file is
+deleted to manufacture the missing committed generation.
+
+Fresh nested recovery joins its child operations and propagates a missing-child
+operation failure to source main. Unlike direct MemFPSet's checked I/O, it must
+not enter the manager's warning/continue or failover catch. Assertions accept a
+diagnostic naming one of the actually missing committed children, require one
+GENERAL and recovery-start, and forbid recovery-end, init, publication, summary
+or FINISHED. The failed host receives exactly one recovery; the healthy host
+receives none. Both hosts exit empty, every pending/committed/coordinator byte
+is retained, missing committed files stay absent, and all fresh roles join.
+
+Existing single-missing-child LSB/MSB rows retain their stricter exact missing
+filename and partial sibling-membership assertions. Those rows additionally
+check that no checked-I/O warning or failover path suppresses the failure.
+The successful direct-memory full-model receipt remains separate from these
+failed-startup receipts. Original Java method credit is unchanged.

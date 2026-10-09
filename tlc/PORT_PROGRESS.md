@@ -26044,3 +26044,37 @@ the existing short corrupt coordinator queue row passes through the shared
 fixture (distributed-remote-begin-reply-loss-baseline.log, terminal 44b237,
 status 0, 4.561 seconds). All handles are terminal; no full suite or race workload.
 Original distributed completion remains 37/41 with four Reconcile contexts.
+
+
+### October 9, 2026: nested-store begin reply loss stops fresh recovery
+
+Extended the existing real N=7 checkpoint-begin acknowledgement-loss test into
+mem/lsb/msb rows. The new nested LSB/MSB rows use source factory two-child storage,
+complete real BeginChkptFile on the first host, lose its reply before commit and
+retain both pending children with no committed files. The healthy host commits;
+captured pending plus committed membership equals the saved queue frontier.
+No checkpoint is deleted by the parent to simulate the failure.
+
+Pinned MultiFPSet.recover wraps checked child I/O as an operation failure. Fresh
+recovery must therefore propagate to main, rather than follow direct MemFPSet's
+warning/continue path. Assertions require one GENERAL naming an actually missing
+committed child, one recovery-start and no later recovery/init/publication/final
+phase. The failed host receives one recovery, the healthy host none; both exit
+empty. All pending, healthy committed and coordinator checkpoint bytes remain
+unchanged, missing committed children remain absent, and all fresh roles join
+with source caught-failure exit status. The diagnostic permits either missing
+child when both are absent, consistent with source parallel failure selection.
+
+Original single-missing-child LSB/MSB assertions retain their exact filename and
+partial sibling restoration. Strengthened all nested failure rows to reject any
+checked-I/O warning or failover catch that incorrectly suppresses the operation
+failure. Production algorithms and original-method completion credit are unchanged.
+
+Initial new nested rows pass (distributed-remote-begin-reply-loss-nested.log,
+terminal 9c7967, status 0, 9.005 seconds). With the stronger catch assertions,
+both new nested rows and both existing missing-child rows pass
+(distributed-remote-begin-reply-loss-nested-final.log, terminal 797481,
+status 0, 19.935 seconds). Reuse the unchanged direct-memory full evaluation and
+short storage/manager receipts from the preceding entry. No full suite or race
+workload; all handles are terminal. Original distributed completion remains
+37/41 with four source-disabled harness contexts requiring reconciliation.

@@ -131,9 +131,10 @@ reply loss, controlled transport stalls and registered-endpoint checkpoint
 restarts, including completed recovery followed by lost acknowledgement and
 source size-query failover. A full N=7 direct-memory checkpoint-begin reply loss
 also leaves the pending snapshot unpromoted, skips commit and completes fresh
-recovery/evaluation at 114,942 states with an empty queue. These receipts have
-different scopes; none establishes
-complete distributed parity alone. Use the detailed entries in the progress log
+recovery/evaluation at 114,942 states with an empty queue. Corresponding nested
+LSB/MSB cases propagate missing committed-child failure before the healthy host
+or publication, retaining pending files unpromoted. These receipts have
+different scopes; none establishes complete distributed parity alone. Use the detailed entries in the progress log
 rather than rerunning unchanged long workloads.
 
 The exact trace-to-intern caller boundary is verified by external GDB/disassembly

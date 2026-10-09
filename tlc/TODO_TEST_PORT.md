@@ -1908,7 +1908,11 @@ original-method credit and preserves the ordinary recovery-row assertions.
 A full N=7 direct-memory completed-begin reply-loss row now also passes: the
 failed host receives no commit, pending bytes survive unpromoted, fresh recovery
 warns/continues with that host empty, and replacement evaluation finishes at
-114,942 states with an empty queue. This adds no original-method credit.
+114,942 states with an empty queue. Nested LSB/MSB begin-loss rows instead stop
+fresh recovery before the healthy host/publication, preserving both pending
+children without promotion and all retained checkpoints. Checked-I/O warning and
+failover catches must not swallow this nested operation failure. These rows add
+no original-method credit.
 
 Short completed-begin reply-loss checks cover Mem/LSB/MSB storage, real pending
 snapshot membership, skipped commit, retained registrations and fresh-store
