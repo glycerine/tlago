@@ -26699,3 +26699,36 @@ checkpoint, duplicate runtime-failure, object/lifecycle and nullable-local
 constructor checks pass in distributed-rpc-nil-trace-controls.log, terminal
 6437bb, status 0. No full-model, full-suite or race rerun was needed for this
 previously rejected argument. All handles terminal and git diff --check passes.
+
+
+### October 9, 2026: discovery joins cached coordinator cleanup
+
+Found a concrete outer-owner gap after the prior endpoint close fixes:
+DistributedNetworkDiscovery.Close returned nil on its closed flag before
+currently owned coordinator cleanup completed or after that cleanup failed.
+Wrapped the existing sorted/detached cache teardown in sync.Once and retained
+its result. New lookup rejection stays before release and raw close calls stay
+outside the mutex. This covers currently cached resources, not arbitrary
+in-flight dials or candidate disposal outside the cache. No TLC algorithm,
+retry, wire or Java transport machinery changed.
+
+No original Java test covers this native owner. A gated codec check requires
+concurrent close joining, lookup shutdown while blocked, primary-before-callback
+release, both original causes for concurrent/repeated callers, one raw release,
+zero RPC writes and joined fixture goroutines. The earlier raw-primary-closed
+callback control now requires its retained cause on repeated discovery close,
+strengthening its old nil expectation; no original Java assertion was changed.
+Original distributed inventory stays 37/41.
+
+Initial default-sandbox selection could not run its two TCP controls:
+distributed-discovery-close-join-sandbox.log, terminal 825416, status 1,
+0.113 seconds, socket operation not permitted. Its two codec checks passed.
+Reran the focused checks with loopback permission after strengthening the
+repeated-close assertion. New discovery join, coordinator-view join, earlier/
+raw callback failures and normal discovery binding/retry, unreachable/interruption,
+concurrent lookup and worker bootstrap checks pass in
+distributed-discovery-close-join.log, terminal 3420eb, status 0, 0.129 seconds.
+Only the two short gated discovery/coordinator close tests ran with race:
+distributed-discovery-close-join-race.log, terminal 7292d6, status 0,
+1.135 seconds. No long model or full-suite rerun. All handles terminal and
+git diff --check passes.

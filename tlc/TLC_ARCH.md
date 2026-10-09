@@ -14492,3 +14492,28 @@ checkpoints. The fixture observes exactly one accepted nil recovery; rejecting
 a non-null trace must not reach storage or disable later size calls. Existing
 seven local trace-recovery cases remain unchanged. No original method directly
 covers this remote null-argument boundary; original inventory remains 37/41.
+
+
+### Discovery shutdown joins its cached coordinator release
+
+DistributedNetworkDiscovery.Close previously detached its cache and set closed
+before releasing coordinator connections. Concurrent and repeated callers
+returned nil immediately, even while primary release blocked or after its
+callback cleanup failed. That outer owner could therefore report success
+despite the connection owners already retaining the actual release failures.
+
+Discovery now runs its existing sorted cache teardown through sync.Once and
+retains the joined result. Lookup admission still closes before cache detachment;
+raw releases remain outside the discovery mutex. Concurrent closes join the
+same teardown, and later closes return the same non-benign causes. Existing
+primary-before-callback order and benign-only classification remain unchanged.
+This joins currently cached resources; it does not claim to join arbitrary
+in-flight dials or late candidate disposal outside that cache.
+
+The gated native codec check observes primary release, requires another
+discovery close to wait, verifies new lookups return shutdown while release is
+blocked, then checks both primary/callback causes for concurrent and repeated
+callers. Reader/close goroutines join, each raw resource closes once and no RPC
+is written. The existing raw-primary-closed callback test now requires its
+callback failure on repeated discovery close rather than accepting lost state.
+No original Java test covers this native Go owner; original credit is unchanged.

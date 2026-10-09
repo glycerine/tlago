@@ -70,8 +70,8 @@ func TestDistributedDiscoveryCloseRetainsCallbackFailure(t *testing.T) {
 	if err := discovery.Close(); !errors.Is(err, failure) {
 		t.Fatalf("discovery discarded callback failure beside primary shutdown: %v", err)
 	}
-	if err := discovery.Close(); err != nil {
-		t.Fatal(err)
+	if err := discovery.Close(); !errors.Is(err, failure) {
+		t.Fatalf("repeated discovery close lost callback failure: %v", err)
 	}
 }
 

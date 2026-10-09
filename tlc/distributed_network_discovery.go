@@ -57,10 +57,12 @@ func (s *DistributedRPCServer) UnregisterCoordinator(name string) {
 // repeated keepalive lookups. Failed binding probes reuse a reachable listener;
 // failed connections are discarded. Lookup never retries or sleeps itself.
 type DistributedNetworkDiscovery struct {
-	mu      sync.Mutex
-	closed  bool
-	clients map[string]*NetworkServerEndpoint
-	views   map[distributedCoordinatorViewKey]*NetworkServerEndpoint
+	closeOnce sync.Once
+	closeErr  error
+	mu        sync.Mutex
+	closed    bool
+	clients   map[string]*NetworkServerEndpoint
+	views     map[distributedCoordinatorViewKey]*NetworkServerEndpoint
 }
 
 type distributedCoordinatorViewKey struct {
@@ -151,27 +153,26 @@ func (d *DistributedNetworkDiscovery) Lookup(location string) (DistributedServer
 	return view, nil
 }
 func (d *DistributedNetworkDiscovery) Close() error {
-	d.mu.Lock()
-	if d.closed {
+	d.closeOnce.Do(func() {
+		d.mu.Lock()
+		d.closed = true
+		clients := d.clients
+		d.clients = nil
+		d.views = nil
 		d.mu.Unlock()
-		return nil
-	}
-	d.closed = true
-	clients := d.clients
-	d.clients = nil
-	d.views = nil
-	d.mu.Unlock()
-	var failures []error
-	keys := make([]string, 0, len(clients))
-	for key := range clients {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		client := clients[key]
-		if err := client.CloseConnection(); !distributedCloseIsBenign(err) {
-			failures = append(failures, err)
+		var failures []error
+		keys := make([]string, 0, len(clients))
+		for key := range clients {
+			keys = append(keys, key)
 		}
-	}
-	return errors.Join(failures...)
+		sort.Strings(keys)
+		for _, key := range keys {
+			client := clients[key]
+			if err := client.CloseConnection(); !distributedCloseIsBenign(err) {
+				failures = append(failures, err)
+			}
+		}
+		d.closeErr = errors.Join(failures...)
+	})
+	return d.closeErr
 }
