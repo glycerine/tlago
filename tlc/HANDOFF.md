@@ -536,6 +536,9 @@ Byte queue reads extract raw entries under the queue lock and decode afterward.
 A decode failure retains the complete batch removal and published length.
 Null raw entries retain the source peek/dequeue/assertion boundaries; oversized
 bulk requests retain the source wrapper's post-removal access failure.
+Byte-state conversion rejects nil input rather than allocating an empty state.
+Array conversion finishes before queue publication, so a failed conversion
+cannot enqueue its valid prefix, including in zero-variable models.
 
 The production checkpoint order is queue begin, trace begin, FP begin, queue
 resume, intern begin, queue commit, trace commit, intern commit, FP commit.

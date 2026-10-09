@@ -25287,3 +25287,20 @@ methods pass (byte-queue-decode-final.log, terminal 5875fb, status 0,
 0.141 seconds). No original direct decode-boundary method exists. Inventory
 remains 37 complete and four Missing; no new original-method credit is claimed.
 No full suite, full-model workload or race run. All handles are terminal.
+
+### October 9, 2026: reject absent states before byte queue publication
+
+Source ByteArrayQueue.toBytes dereferences its supplied state. The native helper
+instead allocated an empty substitute for nil. Eight new native rows reproduce
+acceptance in zero-variable models and misleading incomplete-state errors in
+one-variable models (byte-queue-encode-red.log, terminal e48018, status 1,
+0.011 seconds). Removed the substitution; the existing writer's missing-state
+error now propagates before publication. The array's valid prefix is not queued
+when a later conversion fails. Checks retain prior work and subsequent use.
+
+All eight rows, related byte-queue/batch/spill checks and all 15 unchanged
+original DiskPoolWriter, BufferedDataInputStream and ValueInputOutputStream
+methods pass (byte-queue-encode-green.log, terminal abe6b8, status 0,
+0.065 seconds). No direct original null-state method exists and no new credit
+is claimed. Inventory remains 37 complete and four Missing. No full suite,
+full-model workload or race run. All handles are terminal.

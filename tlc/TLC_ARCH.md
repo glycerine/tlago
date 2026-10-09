@@ -13652,3 +13652,16 @@ Eight native rows cover malformed peek/single/batch reads, null raw entries and
 exact/oversized requests. Existing writer, buffered-input and value-stream Java
 methods pass unchanged. No original direct decode-boundary method exists and
 no original-method completion credit is added.
+
+### Byte queue input conversion
+
+Source ByteArrayQueue.toBytes invokes write on the supplied state. The Go
+helper no longer replaces nil input with NewEmptyState; the existing state
+writer reports the missing state before any queue mutation. Previously the
+substitute became work in zero-variable models and produced an unrelated
+incomplete-state error in ordinary models. Array enqueue converts the entire
+batch before publication, retaining no valid prefix when a later input is nil.
+Eight native rows cover direct conversion, ordinary/synchronized enqueue and
+array conversion in zero/one-variable contexts, including continued queue use.
+The existing 15 writer/stream Java methods remain unchanged and green. No direct
+original null-state method exists and no original-method credit is added.

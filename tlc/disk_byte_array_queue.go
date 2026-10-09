@@ -846,9 +846,6 @@ func (w *ByteArrayPoolWriter) run() {
 func mustStateToBytes(state *TLCStateMut) []byte {
 	var buf bytes.Buffer
 	out := NewValueOutputStreamWithoutHandles(&buf)
-	if state == nil {
-		state = NewEmptyState()
-	}
 	if err := state.Write(out); err != nil {
 		panic(err)
 	}
