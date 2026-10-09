@@ -14016,3 +14016,25 @@ supplemental native check skips; original model-test dispositions are unchanged.
 The receipt covers this model/layout and precise caller boundary, not arbitrary
 checkpoint atomicity or all interruption points. Ordinary LSB restart assertions
 also pass after the fixture extension.
+
+
+### Corrupt coordinator queue before remote recovery
+
+TestNativeDistributedRemoteCheckpointTruncatedQueue creates a real mid-run N=7
+EWD840 checkpoint with two nested LSB hosts, joins/crashes the original roles,
+and truncates only queue.chkpt to one byte. This leaves an incomplete serialized
+length; trace, intern and both hosts' committed fingerprint snapshots stay intact.
+Fresh empty hosts are registered before the existing recovery entry is invoked.
+
+The pinned TLCServer.recover orders trace, queue, then fingerprint recovery;
+DiskStateQueue.recover reads the queue length before the other header fields.
+The EOF must therefore stop recovery before either remote RecoverFile call.
+Assertions require one recovery-start and GENERAL EOF report, no recovery-end,
+initialization, running/worker publication, final summary or FINISHED. Both fresh
+hosts exit empty without recovery calls; all roles join with source caught-error
+exit status, and every retained coordinator/remote checkpoint byte is unchanged.
+
+This supplements existing partial queue mutation and publication unit checks
+with a real checkpoint and fresh-process failure/shutdown path. It adds no
+original Java test credit, successful model-restart guarantee or support for
+fresh CLI remote recovery before registration. Production code is unchanged.

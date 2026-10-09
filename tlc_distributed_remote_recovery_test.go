@@ -76,12 +76,18 @@ const (
 	nativeRemoteCheckpointRecoverReplyLoss
 	nativeRemoteCheckpointMissingMemSnapshot
 	nativeRemoteCheckpointTraceToIntern
+	nativeRemoteCheckpointTruncatedQueue
 )
 
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
 // and ignored by the source manager before recovering the next registration.
 func TestNativeDistributedRemoteCheckpointMissingMemSnapshot(t *testing.T) {
 	checkNativeDistributedRemoteCheckpointRestart(t, "mem", 1, nativeRemoteCheckpointMissingMemSnapshot)
+}
+
+// Queue recovery precedes every remote fingerprint recovery and publication.
+func TestNativeDistributedRemoteCheckpointTruncatedQueue(t *testing.T) {
+	checkNativeDistributedRemoteCheckpointRestart(t, "lsb", 1, nativeRemoteCheckpointTruncatedQueue)
 }
 
 func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
@@ -97,6 +103,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	recoverReplyLoss := fault == nativeRemoteCheckpointRecoverReplyLoss
 	missingMemSnapshot := fault == nativeRemoteCheckpointMissingMemSnapshot
 	traceToIntern := fault == nativeRemoteCheckpointTraceToIntern
+	truncatedQueue := fault == nativeRemoteCheckpointTruncatedQueue
 	var debugger, debuggerScript string
 	if traceToIntern {
 		var err error
@@ -373,6 +380,13 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			t.Fatal(err)
 		}
 	}
+	if truncatedQueue {
+		// Retain only part of the serialized queue length. Do not regenerate
+		// any state or alter trace/intern/fingerprint checkpoint generations.
+		if err := os.Truncate(filepath.Join(path[1], "queue.chkpt"), 1); err != nil {
+			t.Fatal(err)
+		}
+	}
 	coordinatorSnapshots := make(map[string][]byte)
 	entries, err := os.ReadDir(path[1])
 	if err != nil {
@@ -389,6 +403,44 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	}
 	restarted, addresses := startHosts("restarted")
 	server := start("recovered-coordinator", "registered-fp-recovery", []string{"TLAGO_REGISTERED_FP_ENDPOINTS=" + strings.Join(addresses, ",")}, "-tool", "-deadlock", "-recover", path[1], "MC06")
+	if truncatedQueue {
+		for _, process := range append([]*nativeDistributedTestProcess{server}, restarted...) {
+			err := <-process.done
+			process.joined = true
+			if err != nil {
+				t.Fatalf("%s failed caught-recovery shutdown: %v\n%s", process.output.role, err, process.output.String())
+			}
+		}
+		output := server.output.String()
+		failure := nativeDistributedMessages(output, tlc.ECGeneral)
+		if len(failure) != 1 || !strings.Contains(failure[0], "EOF") || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
+			t.Fatalf("truncated queue lost its recovery failure: %s", output)
+		}
+		for _, code := range []int{tlc.ECTLCCheckpointRecoverEnd, tlc.ECTLCComputingInit, tlc.ECTLCDistributedServerRunning, tlc.ECTLCDistributedWorkerRegistered, tlc.ECTLCFinished, tlc.ECTLCStats} {
+			if len(nativeDistributedMessages(output, code)) != 0 {
+				t.Fatalf("queue recovery failure crossed phase %d: %s", code, output)
+			}
+		}
+		for i, process := range restarted {
+			if strings.Contains(process.output.String(), "NATIVE_CHECKPOINT_FP_RECOVER=") || strings.Count(process.output.String(), "NATIVE_CHECKPOINT_FP_EXIT_SIZE=0\n") != 1 || len(nativeDistributedMessages(process.output.String(), tlc.ECGeneral)) != 0 {
+				t.Fatalf("queue failure reached fingerprint recovery or broke shutdown: %s", process.output.String())
+			}
+			for _, snapshot := range snapshots[i] {
+				data, err := os.ReadFile(filepath.Join(directories[i], snapshot.filename))
+				if err != nil || !bytes.Equal(data, snapshot.data) {
+					t.Fatal("queue recovery failure changed a remote committed snapshot")
+				}
+			}
+		}
+		for filename, expected := range coordinatorSnapshots {
+			data, err := os.ReadFile(filepath.Join(path[1], filename))
+			if err != nil || !bytes.Equal(data, expected) {
+				t.Fatalf("queue recovery failure changed checkpoint %s: %v", filename, err)
+			}
+		}
+		t.Log("corrupt queue stops before remote recovery and publication; all roles join and checkpoint bytes survive")
+		return
+	}
 	if missingDiskSnapshot {
 		// Source main reports this failure and closes the server with cleanup=false;
 		// it does not turn the caught exception into a process failure status.

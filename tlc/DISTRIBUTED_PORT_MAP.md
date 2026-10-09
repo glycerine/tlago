@@ -142,7 +142,9 @@ Neither receipt establishes atomic checkpointing.
 The remaining assignments are maintained in
 [HANDOFF.md](HANDOFF.md#remaining-distributed-work):
 
-1. Other remote restart/recovery failure phases remain unproved. Fresh CLI
+1. A corrupt coordinator queue now stops real-model checkpoint startup before
+   remote fingerprint recovery/publication, with joined roles and unchanged
+   retained checkpoint bytes. Other failure phases remain unproved. Fresh CLI
    remote recovery before registration has the source's empty-manager limitation.
 2. Additional full-model fingerprint failure phases and general partitions
    remain unproved beyond the recorded loss and controlled-stall cases.

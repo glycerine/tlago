@@ -528,6 +528,9 @@ from `go test -c`, Linux/amd64 ptrace permission and GDB; see `TLC_ARCH.md`.
    two-host Mem/LSB/MSB registered endpoints and cover complete checkpoints,
    completed-commit and completed-recovery reply loss, and missing committed
    LSB/MSB child snapshots, plus a missing direct memory-store snapshot.
+   A truncated coordinator queue from a real N=7 checkpoint stops recovery
+   before either remote host is recovered or workers are published; all roles
+   join with retained checkpoint bytes unchanged.
    Keep the fresh-process remote-FP CLI limitation separate:
    Java recovers before publication/registration while its dynamic manager is
    empty. Do not reorder startup to manufacture support.

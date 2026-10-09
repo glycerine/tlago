@@ -25890,3 +25890,34 @@ The new short isolated race selection also passes
 (distributed-response-flush-race.log, terminal 2c1dd7, status 0, 1.036 seconds).
 All handles are terminal. No long model, broad race or full suite was run;
 original distributed method credit remains unchanged at 37/41.
+
+
+### October 9, 2026: corrupt coordinator queue stops remote model recovery
+
+Compared worker generation/cache/partition/check/constraint/UID ordering and
+coordinator publication against the pinned Java implementation; no additional
+behavioral mismatch was identified in those inspected paths. Added concrete
+coverage for a remaining remote recovery phase rather than claiming broad parity.
+
+TestNativeDistributedRemoteCheckpointTruncatedQueue uses the real unchanged
+N=7 EWD840 mid-run checkpoint with two nested LSB hosts. After original role
+termination it truncates only queue.chkpt to one byte, restarts empty hosts and
+invokes recovery with registered endpoints. Java TLCServer.recover orders trace,
+queue and fingerprint recovery; DiskStateQueue.recover reads the length first.
+The EOF therefore precedes every remote RecoverFile call and publication.
+
+Assertions require one GENERAL EOF and recovery-start, no recovery-end/init/
+running/worker-registration/summary/FINISHED, zero membership and no recovery
+calls on both fresh hosts, all roles joined with source caught-failure exit
+status, and byte-identical retained coordinator and remote snapshots. Existing
+source-profile limitations and ordinary successful-restart assertions remain
+unchanged. There is no direct original Java test of this failure boundary;
+production code and original-method completion counts are unchanged.
+
+The new real-model checkpoint failure check passes
+(distributed-remote-corrupt-queue.log, terminal c0c025, status 0, 6.528 seconds).
+Short partial queue mutation, recovery-before-publication and missing-owner
+ordering checks pass (distributed-remote-corrupt-queue-focused.log, terminal
+9540b0, status 0, 0.035 seconds). The unchanged missing nested LSB snapshot row
+also passes (distributed-remote-corrupt-queue-baseline.log, terminal e091e3,
+status 0, 6.621 seconds). All handles are terminal; no full suite or race run.
