@@ -8,10 +8,13 @@ import (
 	"sync/atomic"
 )
 
+var errNilStateQueueBatch = errors.New("cannot enqueue a nil state batch")
+
 type StateQueue interface {
 	Enqueue(state *TLCStateMut)
 	Dequeue() *TLCStateMut
 	SEnqueue(state *TLCStateMut)
+	// Bulk enqueue rejects nil batches; explicit empty batches are valid.
 	SEnqueueAll(states []*TLCStateMut)
 	SEnqueueVec(states *StateVec)
 	SPeek() *TLCStateMut
@@ -194,6 +197,9 @@ func (q *MemStateQueue) SEnqueue(state *TLCStateMut) {
 func (q *MemStateQueue) SEnqueueAll(states []*TLCStateMut) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	if states == nil {
+		panic(errNilStateQueueBatch)
+	}
 	for _, state := range states {
 		q.enqueueInner(state)
 	}
@@ -207,7 +213,7 @@ func (q *MemStateQueue) SEnqueueVec(states *StateVec) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if states == nil {
-		return
+		panic(errNilStateQueueBatch)
 	}
 	var count int64
 	for i := 0; i < states.Size(); i++ {
@@ -534,6 +540,9 @@ func (q *StateDeque) SEnqueue(state *TLCStateMut) {
 func (q *StateDeque) SEnqueueAll(states []*TLCStateMut) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	if states == nil {
+		panic(errNilStateQueueBatch)
+	}
 	for _, state := range states {
 		q.enqueueInner(state)
 	}
@@ -547,7 +556,7 @@ func (q *StateDeque) SEnqueueVec(states *StateVec) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if states == nil {
-		return
+		panic(errNilStateQueueBatch)
 	}
 	var count int64
 	for i := 0; i < states.Size(); i++ {

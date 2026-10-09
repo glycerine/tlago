@@ -86,6 +86,9 @@ func (q *DiskByteArrayQueue) SEnqueue(state *TLCStateMut) {
 }
 
 func (q *DiskByteArrayQueue) SEnqueueAll(states []*TLCStateMut) {
+	if states == nil {
+		panic(errNilStateQueueBatch)
+	}
 	raw := make([][]byte, 0, len(states))
 	for _, state := range states {
 		raw = append(raw, mustStateToBytes(state))
@@ -102,7 +105,10 @@ func (q *DiskByteArrayQueue) SEnqueueAll(states []*TLCStateMut) {
 }
 
 func (q *DiskByteArrayQueue) SEnqueueVec(states *StateVec) {
-	if states == nil || states.Size() == 0 {
+	if states == nil {
+		panic(errNilStateQueueBatch)
+	}
+	if states.Size() == 0 {
 		return
 	}
 	raw := make([][]byte, states.Size())

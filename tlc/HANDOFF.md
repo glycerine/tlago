@@ -523,6 +523,10 @@ Bulk queues publish their logical length after the whole enqueue loop. Failed
 disk spills retain the inserted prefix without counting it. Deque storage tracks
 occupancy independently. The source memory queue's bulk slot-overwrite quirk is
 preserved; distributed retry fixtures use the actual disk queue.
+All four queues reject nil array/vector batches before mutation using an ordinary
+Go error. Explicit empty batches remain valid; rejection releases queue locks
+and preserves existing work. Original queue tests and native TCP retry/loss
+checks pass without changing their assertions.
 
 Raw byte-queue checkpoint/pool files retain literal symlink traversal and never
 create missing parents. Recovery preserves inactive slots, publishes allocations

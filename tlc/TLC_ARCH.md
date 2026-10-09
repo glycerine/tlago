@@ -13614,3 +13614,19 @@ failure state context. All 44 original ModelValue assertions remain unchanged;
 no original character-attachment test exists and no credit is added. Peers
 carrying this new tag need updated native payload builds. Opaque evaluator
 metadata and arbitrary custom objects remain explicitly unsupported.
+
+### Queue batch argument boundaries
+
+Source StateQueue.sEnqueue dereferences array/vector arguments under the queue
+monitor before enqueueing. ByteArrayQueue dereferences them before conversion
+and monitor acquisition. The four Go queues now reject nil batches at those
+same boundaries with an ordinary Go error, preserving deferred lock release.
+Nil no longer silently means an empty batch. Non-nil empty arrays/vectors remain
+valid, including ByteArrayQueue's empty-vector early return. Existing states,
+length and subsequent queue use survive rejection. This requires no JVM
+exception machinery, transport change or new retry policy.
+
+Eight native cases verify both batch forms on each queue. All nine original
+StateQueue methods and nine inherited disk methods remain unchanged and green;
+native worker-loss, partial-spill and actual TCP coordinator retry/loss checks
+also pass. No original null-batch test exists and no new test credit is claimed.

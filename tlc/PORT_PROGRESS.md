@@ -25228,3 +25228,33 @@ result and WorkerException context. Peers carrying the new scalar tag need the
 updated native build. No arbitrary-object codec/runtime emulation or original
 test credit is added. Inventory remains 37 complete and four Missing. No full
 suite, full-model workload or race run. All handles are terminal.
+
+### October 9, 2026: reject missing work-queue batches
+
+Source StateQueue.sEnqueue and ByteArrayQueue.sEnqueue dereference supplied
+array/vector batches before mutation. All four native queues instead silently
+accepted nil batches as empty. Added eight native boundary cases; each fails
+before the fix because no error occurs (queue-nil-batch-red.log, terminal
+64a2ce, status 1, 0.016 seconds). A preliminary draft had an invalid state lookup
+API and was corrected before this reproduction.
+
+Nil arrays/vectors now panic with an ordinary Go error at the source access
+boundary, preserving deferred unlock for synchronized queues and pre-conversion
+rejection for the byte queue. Explicit empty batches remain valid. Checks verify
+existing work/length, lock release and subsequent queue use. The byte fixture
+uses nonnegative trace UIDs, required by the existing disk header format; an
+initial green attempt used an unwritten state's negative UID and failed decode.
+No serialization functionality was changed to accommodate that invalid fixture.
+
+Related queue, bulk spill, worker-loss and all nine original StateQueue methods
+pass (queue-nil-batch-green.log, terminal 856e64, status 0, 0.028 seconds).
+Final native queue/worker-loss/retry checks pass (queue-nil-batch-final.log,
+terminal 4dafba, status 0, 0.029 seconds). All nine inherited disk methods pass
+unchanged, excluding the unrelated full two-billion-state growth workload
+(queue-nil-batch-inherited.log, terminal a99413, status 0, 0.018 seconds). The
+first inherited selection matched no tests; this corrected selection has nine
+individual PASS receipts. Actual TCP coordinator retry/loss passes unchanged
+(queue-nil-batch-tcp.log, terminal cfcfc5, status 0, 0.021 seconds).
+No original null-batch test exists and no original-method credit is added.
+Distributed inventory remains 37 complete and four Missing. No full suite,
+long workload or race run. All handles are terminal.
