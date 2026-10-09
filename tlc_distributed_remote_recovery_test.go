@@ -25,13 +25,17 @@ import (
 // credit for its assumption-disabled distributed model harness.
 func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
 	for _, backend := range []string{"mem", "lsb", "msb"} {
-		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, false) })
+		t.Run(backend, func(t *testing.T) {
+			checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, nativeRemoteCheckpointNone)
+		})
 	}
 }
 
 func TestNativeDistributedRemoteCheckpointRestartMultipleWorkers(t *testing.T) {
 	for _, backend := range []string{"mem", "lsb", "msb"} {
-		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 2, false) })
+		t.Run(backend, func(t *testing.T) {
+			checkNativeDistributedRemoteCheckpointRestart(t, backend, 2, nativeRemoteCheckpointNone)
+		})
 	}
 }
 
@@ -39,17 +43,38 @@ func TestNativeDistributedRemoteCheckpointRestartMultipleWorkers(t *testing.T) {
 // Recovery must use those files, even though the coordinator never got the reply.
 func TestNativeDistributedRemoteCheckpointCommitReplyLoss(t *testing.T) {
 	for _, backend := range []string{"mem", "lsb", "msb"} {
-		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, true) })
+		t.Run(backend, func(t *testing.T) {
+			checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, nativeRemoteCheckpointCommitReplyLoss)
+		})
 	}
 }
 
 func TestNativeDistributedRemoteCheckpointCommitReplyLossMultipleWorkers(t *testing.T) {
 	for _, backend := range []string{"mem", "lsb", "msb"} {
-		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 2, true) })
+		t.Run(backend, func(t *testing.T) {
+			checkNativeDistributedRemoteCheckpointRestart(t, backend, 2, nativeRemoteCheckpointCommitReplyLoss)
+		})
 	}
 }
 
-func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, commitReplyLoss bool) {
+type nativeRemoteCheckpointFault int
+
+const (
+	nativeRemoteCheckpointNone nativeRemoteCheckpointFault = iota
+	nativeRemoteCheckpointCommitReplyLoss
+	nativeRemoteCheckpointMissingDiskSnapshot
+)
+
+func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
+	for _, backend := range []string{"lsb", "msb"} {
+		t.Run(backend, func(t *testing.T) {
+			checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, nativeRemoteCheckpointMissingDiskSnapshot)
+		})
+	}
+}
+
+func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, fault nativeRemoteCheckpointFault) {
+	commitReplyLoss := fault == nativeRemoteCheckpointCommitReplyLoss
 	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 	if err != nil {
 		t.Fatal(err)
@@ -237,8 +262,85 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			}
 		}
 	}
+	missingDiskSnapshot := fault == nativeRemoteCheckpointMissingDiskSnapshot
+	if missingDiskSnapshot {
+		if backend == "mem" {
+			t.Fatal("missing disk snapshot case requires nested disk storage")
+		}
+		if err := os.Remove(filepath.Join(directories[0], snapshots[0][0].filename)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	coordinatorSnapshots := make(map[string][]byte)
+	entries, err := os.ReadDir(path[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".chkpt") {
+			data, err := os.ReadFile(filepath.Join(path[1], entry.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			coordinatorSnapshots[entry.Name()] = data
+		}
+	}
 	restarted, addresses := startHosts("restarted")
 	server := start("recovered-coordinator", "registered-fp-recovery", []string{"TLAGO_REGISTERED_FP_ENDPOINTS=" + strings.Join(addresses, ",")}, "-tool", "-deadlock", "-recover", path[1], "MC06")
+	if missingDiskSnapshot {
+		// Source main reports this failure and closes the server with cleanup=false;
+		// it does not turn the caught exception into a process failure status.
+		for _, process := range append([]*nativeDistributedTestProcess{server}, restarted...) {
+			err := <-process.done
+			process.joined = true
+			if err != nil {
+				t.Fatalf("%s did not follow source caught-failure shutdown: %v\n%s", process.output.role, err, process.output.String())
+			}
+		}
+		output := server.output.String()
+		failure := nativeDistributedMessages(output, tlc.ECGeneral)
+		if len(failure) != 1 || !strings.Contains(failure[0], snapshots[0][0].filename) || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
+			t.Fatalf("missing disk child did not report its recovery failure: %s", output)
+		}
+		for _, code := range []int{tlc.ECTLCCheckpointRecoverEnd, tlc.ECTLCComputingInit, tlc.ECTLCDistributedServerRunning, tlc.ECTLCDistributedWorkerRegistered, tlc.ECTLCFinished, tlc.ECTLCStats} {
+			if len(nativeDistributedMessages(output, code)) != 0 {
+				t.Fatalf("failed recovery crossed phase %d: %s", code, output)
+			}
+		}
+		marker := "NATIVE_CHECKPOINT_FP_RECOVER=" + basename + "\n"
+		if strings.Count(restarted[0].output.String(), marker) != 1 || strings.Contains(restarted[1].output.String(), marker) {
+			t.Fatal("nested disk failure retried or recovered a later host")
+		}
+		for i, process := range restarted {
+			var expected int
+			if i == 0 {
+				// Native child ownership joins the sibling's recovery before
+				// propagating the failed child's operation error.
+				expected = len(snapshots[0][1].data) / 8
+			}
+			if strings.Count(process.output.String(), fmt.Sprintf("NATIVE_CHECKPOINT_FP_EXIT_SIZE=%d\n", expected)) != 1 || len(nativeDistributedMessages(process.output.String(), tlc.ECGeneral)) != 0 {
+				t.Fatalf("failed recovery changed partial storage/shutdown for host %d: %s", i, process.output.String())
+			}
+			for child, snapshot := range snapshots[i] {
+				data, err := os.ReadFile(filepath.Join(directories[i], snapshot.filename))
+				if i == 0 && child == 0 {
+					if !os.IsNotExist(err) {
+						t.Fatal("failed recovery recreated the missing committed child")
+					}
+				} else if err != nil || !bytes.Equal(data, snapshot.data) {
+					t.Fatal("failed recovery changed a retained committed child")
+				}
+			}
+		}
+		for filename, expected := range coordinatorSnapshots {
+			data, err := os.ReadFile(filepath.Join(path[1], filename))
+			if err != nil || !bytes.Equal(data, expected) {
+				t.Fatalf("failed recovery changed coordinator checkpoint %s: %v", filename, err)
+			}
+		}
+		t.Log("missing committed disk child stops recovery before publication; later host remains empty and all retained checkpoints survive")
+		return
+	}
 	waitMarker(server, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd))
 	output = server.output.String()
 	if !strings.Contains(output, fmt.Sprintf("Recovery completed. %d states examined. %d states on queue.", distinct, queued)) || len(nativeDistributedMessages(output, tlc.ECTLCComputingInit)) != 0 {
@@ -299,6 +401,11 @@ type nativeCheckpointFingerprintEndpoint struct {
 	commitOnce      sync.Once
 }
 
+func (e *nativeCheckpointFingerprintEndpoint) RecoverFile(name string) error {
+	fmt.Println("NATIVE_CHECKPOINT_FP_RECOVER=" + name)
+	return e.LocalFingerprintEndpoint.RecoverFile(name)
+}
+
 func (e *nativeCheckpointFingerprintEndpoint) CommitChkptFile(name string) error {
 	if err := e.LocalFingerprintEndpoint.CommitChkptFile(name); err != nil {
 		return err
@@ -317,6 +424,7 @@ func (e *nativeCheckpointFingerprintEndpoint) CommitChkptFile(name string) error
 }
 
 func (e *nativeCheckpointFingerprintEndpoint) Exit(cleanup bool) error {
+	fmt.Printf("NATIVE_CHECKPOINT_FP_EXIT_SIZE=%d\n", e.Set.Size())
 	if err := e.LocalFingerprintEndpoint.Exit(cleanup); err != nil {
 		return err
 	}

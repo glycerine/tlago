@@ -25169,3 +25169,38 @@ status 0, 1.036 seconds). No long workload was combined with race; no full suite
 or full-model workload reran. No dedicated upstream cleaner method exists;
 native checks add no original-method credit. Distributed inventory remains
 37 complete and four Missing. All handles are terminal.
+
+### October 9, 2026: failed fresh-process recovery of a missing disk child
+
+Extended the remote registered-endpoint checkpoint fixture beyond complete
+snapshots and completed commit reply loss. Source nested disk recovery wraps a
+child I/O failure as an operation error; FPSetManager stops before the later
+host. TLCServer recovers before coordinator publication, and its main catches
+the failure, prints GENERAL, closes without cleanup and returns normally.
+
+New LSB/MSB process cases checkpoint the unchanged N=7 EWD840 model after real
+successor evaluation, stop the coordinator, crash the worker/two hosts and then
+remove the first host's child-zero committed snapshot. Both hosts restart empty
+and receive their normal registrations before production recovery. Source
+failure reporting must occur before recovery-end, initialization, publication,
+worker registration, completion or final stats. Test-only endpoint markers
+verify one first-host recovery call and no later-host recovery. Native ownership
+joins the successful sibling (5,120 fingerprints here); the later host remains
+empty. Actual source cleanup exits both remote hosts while retaining all
+remaining coordinator/remote checkpoint bytes and leaving the missing child
+absent. No replacement worker starts on this failure path.
+
+Both new cases pass with no production change
+(remote-checkpoint-missing-disk.log, terminal 470767, status 0, 13.220 seconds;
+LSB 6.61 seconds, MSB 6.59 seconds). Each source producer committed a real
+20,480-distinct-state frontier with 12,288 queued states before the fault.
+The existing two-worker MSB completed-commit-reply-loss recovery case also passes
+with its original 114,942 distinct states, empty queue, exact restored membership
+and real work/statistics from both replacement workers
+(remote-checkpoint-missing-disk-related.log, terminal cbdda1,
+status 0, 41.566 seconds). Existing successful cases only replace their boolean
+fault selector with a named native test-fixture enum; no assertion or model
+bound is weakened. No dedicated upstream failure-phase method exists, and these
+native process cases add no original-method credit. Distributed inventory remains
+37 complete and four Missing. No full suite or race workload ran. All handles
+are terminal.

@@ -454,6 +454,13 @@ snapshots print the source warning and let the manager recover the healthy host;
 nested disk child I/O failures propagate and stop before the later host. This
 storage-specific behavior must not be replaced by an atomic recovery assumption.
 
+Fresh-process LSB/MSB checks also remove one committed child snapshot from the
+first host after a real mid-run checkpoint and role crashes. Recovery reports
+the missing child before publication, joins the sibling's native recovery and
+does not recover the later host. Source main prints one GENERAL and closes with
+cleanup disabled; its caught failure does not change process status. Retained
+coordinator/remote checkpoint bytes survive, and the missing child stays absent.
+
 Accepted-request connection-loss checks cover begin, commit and recovery with
 memory and two-child LSB/MSB stores. The manager continues to the healthy host
 before releasing the old handler, without replay or reassignment. Accepted work
@@ -462,9 +469,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
 
 ## Remaining distributed work
 
-1. Extend restart/recovery coverage beyond the verified complete-checkpoint,
-   two-host Mem/LSB/MSB registered-endpoint cases and completed-commit reply loss,
-   including other failure phases.
+1. Extend restart/recovery coverage to other failure phases. Verified cases use
+   two-host Mem/LSB/MSB registered endpoints and cover complete checkpoints,
+   completed-commit reply loss and missing committed LSB/MSB child snapshots.
    Keep the fresh-process remote-FP CLI limitation separate:
    Java recovers before publication/registration while its dynamic manager is
    empty. Do not reorder startup to manufacture support.

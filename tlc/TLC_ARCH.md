@@ -13568,3 +13568,30 @@ symlink-loop case verifies source error severity, code, single event and exit
 without caller continuation. Existing raw reader/writer child checks now also
 require error severity. Original DiskPoolWriter assertions remain unchanged.
 No direct original cleaner method exists, so original-method credit is unchanged.
+
+### Fresh-process remote recovery with a missing disk child snapshot
+
+Extended the existing registered-endpoint restart fixture with a distinct
+missing-committed-disk-child phase. The unchanged N=7 EWD840 producer first
+checkpoints a real unfinished successor frontier to two independent nested
+fingerprint hosts. The coordinator stops, and the worker/both hosts are crashed.
+Only then is the first host's child-zero committed snapshot removed. Both hosts
+restart empty, and the production recovery path runs with their registrations
+already supplied, preserving the source CLI recovery-before-publication order.
+
+Source MultiFPSet wraps child I/O as an operation failure, so the manager must
+stop at the first host rather than warn/continue as for a checked remote I/O
+outage. Source server main reports GENERAL, calls close(false), shuts down its
+executor and returns normally. This caught failure is therefore verified through
+diagnostics and phase boundaries rather than inventing a nonzero process status.
+Recovery-start appears once; recovery-end, initialization, server publication,
+worker registration, completion and final statistics must all remain absent.
+
+Test-only endpoint observations record actual recovery calls and pre-exit store
+sizes. The first host is called once; its surviving sibling's native operation
+is joined before failure propagates. The later host is never recovered and
+exits empty. All retained remote/coordinator checkpoint bytes remain unchanged;
+the removed child is not recreated. Both fresh hosts exit normally through the
+actual coordinator cleanup calls. LSB and MSB cases pass without a production
+change or weakening any existing successful-recovery assertion. This adds native
+failure-phase evidence, not original-method credit or atomic recovery semantics.

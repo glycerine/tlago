@@ -1994,6 +1994,14 @@ later successful deletion and range progress. Raw canonicalization errors now
 have child-process coverage for one error-severity event and process exit.
 Original writer tests remain unchanged; these native cases add no test credit.
 
+Fresh-process remote recovery now also covers a missing first-host committed
+child snapshot with LSB/MSB storage. It checks source failure reporting before
+publication, no later-host recovery, joined sibling storage, caught-failure
+shutdown without cleanup, and unchanged retained checkpoint bytes. Existing
+successful recovery/model completion assertions remain unchanged. This native
+failure coverage does not translate the disabled distributed model harness and
+adds no original-method credit.
+
 Native coordinator read checks in `distributed_server_file_path_test.go` verify
 relative/absolute symlink traversal, exact directory/open-failure diagnostics
 and retained nested file-open causes. Absolute diagnostics now preserve dot
