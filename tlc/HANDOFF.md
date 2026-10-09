@@ -158,6 +158,9 @@ child I/O propagates after child joins and stops later registrations/publication
 recovery requires the actual trace. Preserve partial recovered membership, file mutation,
 close-error precedence and source existence/delete/rename order, including old
 checkpoint symlinks. Runtime recovery failures prevent worker publication.
+Native TCP permits a nil trace argument and delegates it to storage: direct Mem
+recovers its own named checkpoint, while replay stores retain their null failure.
+Non-null traces remain coordinator-owned and cannot cross the transport.
 
 Fresh CLI remote recovery still has the source limitation: recovery precedes
 publication/registration, so the dynamic manager is empty. Registered-endpoint

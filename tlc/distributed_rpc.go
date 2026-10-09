@@ -338,6 +338,10 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 		failure = endpoint.CommitChkptFile(request.Filename)
 	case "recoverFile":
 		failure = endpoint.RecoverFile(request.Filename)
+	case "recoverTrace":
+		// Trace objects own coordinator-local descriptors. A nil argument can
+		// still be sent, and the storage implementation decides what it needs.
+		failure = endpoint.RecoverTrace(nil)
 	default:
 		failure = fmt.Errorf("unknown fingerprint operation %q", request.Operation)
 	}
@@ -517,8 +521,11 @@ func (e *NetworkFingerprintEndpoint) CommitChkptFile(name string) error {
 func (e *NetworkFingerprintEndpoint) RecoverFile(name string) error {
 	return e.operation("recoverFile", name, false)
 }
-func (e *NetworkFingerprintEndpoint) RecoverTrace(*TLCTrace) error {
-	return errors.New("trace recovery runs at the coordinator; remote recovery uses a checkpoint file")
+func (e *NetworkFingerprintEndpoint) RecoverTrace(trace *TLCTrace) error {
+	if trace != nil {
+		return errors.New("trace recovery runs at the coordinator; remote recovery uses a checkpoint file")
+	}
+	return e.operation("recoverTrace", "", false)
 }
 
 var _ DistributedFingerprintEndpoint = (*NetworkFingerprintEndpoint)(nil)

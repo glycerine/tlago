@@ -14465,3 +14465,30 @@ diagnostic. No original method directly covers final-check reply loss, so the
 original inventory remains 37/41. No production change was needed in this phase.
 Coverage is one Mem host; surviving-host reassignment during final reporting,
 disk final-check loss and other phases remain outside this receipt.
+
+
+### Native fingerprint transport permits an absent recovery trace
+
+NetworkFingerprintEndpoint.RecoverTrace previously rejected every call with
+the assertion that trace recovery runs only at the coordinator. That was too
+broad: the source remote interface accepts a null trace, and direct MemFPSet
+ignores it and recovers the checkpoint named by its initialized store. A worker
+copy of NonDistributedFPSetManager also omits its transient coordinator trace,
+so its library recovery call can carry that absent argument. Ordinary worker
+startup does not perform recovery; this does not add a new restart workflow.
+
+The Go endpoint now sends a recoverTrace operation for nil only. The native
+server delegates RecoverTrace(nil) to the real storage implementation. It does
+not reinterpret the request as RecoverFile with a caller-selected name, invent
+a trace, transfer coordinator descriptors or reconstruct storage behavior in
+the transport. Non-null traces retain the explicit local-ownership rejection.
+
+Four short native TCP cases use actual committed memory/direct LSB/direct MSB/
+nested Mem snapshots and a fresh receiving store. Direct Mem restores both
+known fingerprints through the local-manager API despite a deliberately
+unrelated manager recovery filename. Replay stores preserve unchecked null
+failure and zero recovered membership rather than falling back to named
+checkpoints. The fixture observes exactly one accepted nil recovery; rejecting
+a non-null trace must not reach storage or disable later size calls. Existing
+seven local trace-recovery cases remain unchanged. No original method directly
+covers this remote null-argument boundary; original inventory remains 37/41.

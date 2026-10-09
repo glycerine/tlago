@@ -2223,6 +2223,11 @@ Mem host after its real CheckFPs completes and before its reply. It preserves
 GENERAL, later states-seen exhaustion warnings, captured distinct/queue counts,
 source success fallback and joined surviving roles. This native fault case does
 not weaken the original zero-GENERAL model assertions or add original credit.
+Native fingerprint RPC now delegates trace recovery with a nil argument instead
+of rejecting it unconditionally. Four short memory/disk/nested cases preserve
+actual checkpoint recovery or the source unchecked missing-trace failure, plus
+one accepted call and continued connection use. Non-null traces stay local.
+No direct original method covers this transport boundary; credit is unchanged.
 
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Reconcile**: `testSpec`.
   Source setup/body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go). The ordinary entry preserves the exact upstream unconditional skip. Explicit body diagnostic: [tlc_distributed_java_diagnostic_test.go](../tlc_distributed_java_diagnostic_test.go), build tag `tlago_disabled_distributed_tests`. All seven trace states, ordinal/action-label checks, FINISHED, BEHAVIOR and no GENERAL are staged; the source Ant-profile run passes with 48 workers. The restored source assumption is separate from diagnostic execution; no passing-body or completion credit is added.

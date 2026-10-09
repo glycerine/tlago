@@ -26671,3 +26671,31 @@ seven-state trace/zero-GENERAL control passed in
 distributed-final-check-reply-loss-control.log, terminal 38fd45, status 0,
 12.201 seconds. Reruns followed fixture ownership/assertion changes; no race
 or full-suite rerun. All handles terminal and git diff --check passes.
+
+
+### October 9, 2026: native TCP delegates nil-trace fingerprint recovery
+
+Source file/startup comparison led to an explicit remaining recovery shortcut:
+NetworkFingerprintEndpoint.RecoverTrace rejected nil as well as real traces.
+The source remote method accepts null; MemFPSet.recover(TLCTrace) ignores its
+argument and invokes recovery with the store's own initialized filename. Go
+now sends a recoverTrace request for nil and delegates it to the actual remote
+endpoint. Non-null coordinator traces remain explicitly nontransferable. No
+Java object/RMI serialization or alternate rpc25519 work is introduced.
+
+After implementing the feature, added four native TCP checks over real
+committed snapshots/fresh stores. Mem recovers its actual two fingerprints via
+a local-manager view with an unrelated supplied filename; direct LSB/MSB and
+nested Mem retain unchecked missing-trace failure without checkpoint fallback.
+Exactly one accepted nil argument is observed. Non-null rejection stays before
+remote storage access, and size calls verify the same connection remains usable.
+The existing seven local trace-recovery controls keep their original assertions.
+No original Java method directly covers this boundary, so credit stays 37/41.
+
+New TCP and existing local trace-recovery checks pass in
+distributed-rpc-nil-trace-recovery.log, terminal 4ea99c, status 0,
+0.089 seconds. Existing scalar/batch, disconnect, checkpoint/recovery, corrupt
+checkpoint, duplicate runtime-failure, object/lifecycle and nullable-local
+constructor checks pass in distributed-rpc-nil-trace-controls.log, terminal
+6437bb, status 0. No full-model, full-suite or race rerun was needed for this
+previously rejected argument. All handles terminal and git diff --check passes.
