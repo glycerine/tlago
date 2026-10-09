@@ -105,7 +105,7 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 			// ModuleNode.copyTopLevel shares inherited assumptions, theorems
 			// and instances. Definition nodes come from the imported Context.
 			var inherited []sanyLevelCheck
-			for _, name := range mod.Extends {
+			for _, name := range sourceModuleExtends(mod) {
 				if parent := spec.levelChecks[spec.Modules[name]]; parent != nil {
 					inherited = append(inherited, parent.topLevel...)
 				}
@@ -514,7 +514,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 	}
 	extendees := make([]*sanySemModuleNode, 0, len(mod.Extends))
-	for depIndex, dep := range mod.Extends {
+	for depIndex, dep := range sourceModuleExtends(mod) {
 		extendee := mod.symbolTable.resolveModule(dep)
 		if extendee == nil {
 			diagnostic := sanyRegistrationDiagnostic(sanyExtendeePosition(mod, depIndex), "E4003", "Could not find module %s", tlc.UniqueStringOf(dep))
@@ -1437,7 +1437,7 @@ func transitiveExtendedModules(spec *Spec, mod *Module, seen map[string]bool) []
 		return nil
 	}
 	var modules []*Module
-	for _, dep := range mod.Extends {
+	for _, dep := range sourceModuleExtends(mod) {
 		if seen[dep] {
 			continue
 		}
@@ -2321,7 +2321,7 @@ func semanticModuleParameterFree(mod *Module, spec *Spec, visiting map[*Module]b
 	if len(mod.Declarations) > 0 {
 		return false
 	}
-	for _, ext := range mod.Extends {
+	for _, ext := range sourceModuleExtends(mod) {
 		if !semanticModuleParameterFree(spec.Modules[ext], spec, visiting) {
 			return false
 		}
@@ -2399,7 +2399,7 @@ func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []
 	}()
 
 	byName := map[string]semanticExportedSymbol{}
-	for _, ext := range mod.Extends {
+	for _, ext := range sourceModuleExtends(mod) {
 		for _, symbol := range semanticModuleExports(spec.Modules[ext], spec, visiting) {
 			// Context.mergeExtendContext retains the existing binding.
 			if _, exists := byName[symbol.name]; !exists {

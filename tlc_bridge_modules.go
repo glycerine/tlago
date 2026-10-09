@@ -152,6 +152,17 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 		var base *tlc.SemanticNodeBase
 		if mod.semanticNode != nil {
 			base = mod.semanticNode.SemanticNodeBase
+			// Module traversal and imported graph references share the view of
+			// this actual source Context, including any earlier retained view.
+			if b.canonicalContexts == nil {
+				b.canonicalContexts = map[*sanyContext]*tlc.SemanticContext{}
+			}
+			if retained := b.canonicalContexts[mod.semanticNode.context]; retained != nil {
+				context = retained
+				context.ModuleTable = table
+			} else {
+				b.canonicalContexts[mod.semanticNode.context] = context
+			}
 		}
 		node := tlc.NewModuleNodeWithBase(mod.Name, context, base)
 		position := mod.Pos
@@ -214,6 +225,13 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 			if symbol != nil {
 				node.Context.AddSymbolToContext(key, symbol)
 			}
+		}
+		if mod.semanticNode != nil {
+			// Preserve the source Pair history and exact Hashtable topology,
+			// rather than reconstructing them from the filtered AST entries.
+			node.Context.ImportState(mod.semanticNode.context.runtimeState(func(symbol sanySemSymbol) tlc.SemanticNode {
+				return b.canonicalGraph(symbol.(sanySemanticGraphNode))
+			}))
 		}
 		if outer[mod] == nil && (publishRoot || mod != b.spec.Root) {
 			table.Put(node.Name, node.Context, node)

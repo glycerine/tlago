@@ -1,6 +1,10 @@
 package tlago
 
-import "github.com/glycerine/tlago/tlc"
+import (
+	"slices"
+
+	"github.com/glycerine/tlago/tlc"
+)
 
 type Spec struct {
 	levelChecks      map[*Module]*sanyModuleLevelChecks
@@ -40,6 +44,21 @@ type Module struct {
 	Nested           []*Module
 
 	ImplicitExtends []string // Runtime additions, absent from the source module context.
+}
+
+// Runtime helper modules are loaded as dependencies without becoming imports
+// in the user's source namespace. Explicit EXTENDS entries remain visible.
+func sourceModuleExtends(module *Module) []string {
+	if len(module.ImplicitExtends) == 0 {
+		return module.Extends
+	}
+	names := make([]string, 0, len(module.Extends))
+	for _, name := range module.Extends {
+		if !slices.Contains(module.ImplicitExtends, name) {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 type Instance struct {

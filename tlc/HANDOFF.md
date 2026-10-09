@@ -59,10 +59,12 @@ substitution records. Retained expressions use actual resolved operators;
 INSTANCE exports share SANY's chosen definitions, substitutions and formals.
 Debugger compilation preserves the running source module table. Available
 generated expressions now adapt their actual child graphs, closing the observed
-synthetic `$Pair` identity gap. All 648 observed Test219 subgraph traces match;
-whole-module traces still differ at reconstructed Contexts. Complete module
-Context conversion, general source-generation completeness, mutation sharing
-and remaining native INSTANCE fallback lowering remain pending; see `TLC_ARCH.md`.
+synthetic `$Pair` identity gap. Module Context views now import the source Pair
+history and Hashtable topology, sharing the canonical source Context identity.
+Runtime helper dependencies stay outside user source imports. All 12 observed
+Test219 whole-module traces and 60 getter arrays match. General source-generation
+completeness, mutation sharing and remaining native INSTANCE fallback lowering
+remain pending; see `TLC_ARCH.md`.
 
 ## Verification baseline and test credit
 

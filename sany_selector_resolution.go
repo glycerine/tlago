@@ -110,7 +110,7 @@ func (r *sanySelectorResolver) scope(mod *Module) map[string]sanySelectorDefinit
 		return out
 	}
 	r.visiting[mod] = true
-	for _, name := range mod.Extends {
+	for _, name := range sourceModuleExtends(mod) {
 		for key, ref := range r.scope(r.spec.Modules[name]) {
 			if !ref.def.Local {
 				out[key] = ref
@@ -185,7 +185,7 @@ func (r *sanySelectorResolver) moduleGenerator(mod *Module) *sanyModuleSelectorG
 	// later definition can otherwise report selector errors before Java even
 	// has that operator in SymbolTable.
 	inherited := map[string]Position{}
-	for _, name := range mod.Extends {
+	for _, name := range sourceModuleExtends(mod) {
 		for key, ref := range r.scope(r.spec.Modules[name]) {
 			if !ref.def.Local {
 				inherited[key] = ref.def.DeclarationPosition()

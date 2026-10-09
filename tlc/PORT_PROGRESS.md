@@ -27958,3 +27958,44 @@ passes: runtime-source-body-final-originals.log, terminal fec937, status 0,
 177.025 seconds. Original assertions and workload bounds remain unchanged.
 The full off-heap random log exceeds 291 million iterations and the same session
 is still live. Git diff --check passes.
+
+
+Canonical module Context adoption and runtime-only import correction
+(2026-10-09)
+
+Resumed the uncommitted Context work after the interruption. Module allocation
+registers the actual source Context's runtime view and reuses an earlier view
+where present. Final population imports its complete Pair history and Hashtable
+topology. AST-only modules retain their existing fallback.
+
+Initial broader original verification exposed two real regressions: Debug02
+observed _JsonTraceFile instead of val, and EWD998Chan saw seven constants instead
+of six. Source generation had merged runtime-only ExtraModules into user scopes;
+the older filtered bridge Context had hidden this defect. Added shared
+sourceModuleExtends filtering to source inheritance, transitive imports, exports,
+parameter-free analysis, selector lookup and bridge Context reconstruction.
+Dependency loading still includes the helpers, and explicit EXTENDS remains
+visible. No original assertions were changed.
+
+Focused original debugger, Test219 and scoped-identifier checks pass in
+runtime-module-context-implicit-originals.log, terminal 8a4854, status 0,
+5.239 seconds. Final broader original legacy/debugger/EWD998/coverage/LET/cyclic
+selection passes in runtime-module-context-complete-originals.log, terminal
+55750a, status 0, 175.264 seconds. Original SANY builtin, selector, incremental-semantic, operator
+and scoped-identifier checks pass in runtime-module-context-complete-sany-originals.log,
+status 0, 0.094 seconds. The short sany_tests package passes in
+runtime-module-context-sany-package.log, terminal 99a506, status 0, 2.665 seconds.
+
+Ignored observation overlays on unchanged original Test219 match all 12 module
+entry/exit traces, including 9,200 root events, and all 60 getter arrays in actual
+source identity and order. Receipts: runtime-module-context-complete-traces.log,
+terminal 72af9e, and runtime-module-context-complete-vectors.log, terminal 46b4d2;
+both status 0. These are bounded observations, not general parity or additional
+original-method credit. General source generation, mutation sharing and native
+INSTANCE fallback lowering remain pending.
+
+The original full off-heap random session 77502 remains live beyond 317 million
+of 2,147,483,648 iterations, with unchanged bounds, default direct-memory budget
+and no race instrumentation. No restart or completion credit. No full-workspace
+or XML/ApalacheIR sweep, invented tests or email work. Updated architecture and
+current handoff; detailed chronology stays here.

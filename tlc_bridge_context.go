@@ -1,7 +1,6 @@
 package tlago
 
 import (
-	"slices"
 	"sort"
 	"unicode/utf16"
 
@@ -110,10 +109,7 @@ func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool)
 			put(tlcBridgeContextEntry{name: builtin.name, initial: true}, false)
 		}
 	}
-	for _, ext := range mod.Extends {
-		if slices.Contains(mod.ImplicitExtends, ext) {
-			continue
-		}
+	for _, ext := range sourceModuleExtends(mod) {
 		for _, entry := range tlcBridgeContextEntries(spec, spec.Modules[ext], visiting) {
 			if !entry.local {
 				entry.initial = false

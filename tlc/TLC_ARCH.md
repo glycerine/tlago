@@ -10975,14 +10975,25 @@ source-generation completeness is still unproven.
 
 An overlay on unchanged original Test219 observes 648 root traces, all matching
 exactly, including all 371 initial-context events, without alias/null failures.
-This closes the observed synthetic `$Pair` identity gap. Whole-module traversal
-still differs at the separately reconstructed module Contexts: all 12 observed
-modules have different Context views and event counts. This subgraph observation
-does not prove module traversal parity or a fixed corpus coverage denominator.
+This closes the observed synthetic `$Pair` identity gap.
 
-This is not full runtime graph parity. Complete module Context/body conversion,
-source-to-runtime mutation sharing and remaining native INSTANCE lowering still
-need reconciliation with canonical source nodes.
+Module allocation now registers and reuses each actual source Context's runtime
+view. After population, it imports the complete source Pair history and Hashtable
+topology rather than retaining a reconstruction from filtered AST entries.
+Runtime helper dependencies still load, but `sourceModuleExtends` excludes them
+from source imports, inherited semantic contexts, export and parameter-free
+analysis, selector lookup and native Context reconstruction. Explicit `EXTENDS`
+entries remain visible. This corrects the hidden trace-helper declarations that
+original debugger tests exposed when canonical Context state became authoritative.
+
+The unchanged Test219 whole-module observation now matches all 12 modules,
+including 9,200 root entry/exit events. All 60 observed getter arrays also match
+in source identity and order: Context and Module operator definitions, theorem
+or assumption definitions, constants and variables for each module. These
+observations do not establish full runtime graph parity or a fixed corpus
+coverage denominator. General source-generation completeness, source-to-runtime
+mutation sharing and remaining native INSTANCE lowering still need reconciliation
+with canonical source nodes.
 The listed original test receipts establish retained behavior and loading of the
 represented proof graphs; they do not prove every visitor contract or complete
 source generation. Preserve source identities when extending these adapters.
