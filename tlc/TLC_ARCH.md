@@ -14835,3 +14835,23 @@ statistics and computing-finally state are asserted. Rejected successors retain
 their prior UID; no worker case inserts fingerprints. These supplement existing
 source proxy and vector/failure tests; no direct original Java worker method
 exists for this matrix, so no original-method completion credit is added.
+
+
+### Missing committed intern file stops fresh distributed startup
+
+TLCApp.create restores intern tokens from the committed file before parsing or
+constructing TLCServer. The native remote checkpoint harness now also removes
+that committed name while retaining its complete bytes as vars.tmp. It removes
+the trace checkpoint independently, so the first failure must still identify
+intern file opening, rather than later trace recovery. The actual producer uses
+the unchanged N=7 MC06 model and two remote nested LSB stores, then all original
+roles join before fresh roles start.
+
+Fresh startup reports FileNotFoundException, never reaches server construction,
+registration, recovery-start, initialization, publication, statistics or FINISHED.
+The source process finally's null-server failure retains its precedence and
+failure exit status. Parent-owned fresh FP hosts remain empty and are explicitly
+exited/joined. All remote committed snapshots, earlier coordinator snapshots and
+the complete pending intern bytes remain identical; the committed intern and
+trace files remain absent. This verifies a failed restart, not successful
+recovery, checkpoint atomicity or new original-method completion credit.

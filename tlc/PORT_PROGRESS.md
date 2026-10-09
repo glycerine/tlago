@@ -27243,3 +27243,30 @@ terminal e2e069, status 0, 0.024 seconds. Expected caught failure stack output
 is retained in that log. No full suite, long model or race run; no original-test
 credit change (37/41). This bounded audit verifies the listed paths only and
 does not close remaining recovery/partition or disabled-model reconciliation.
+
+
+### October 9, 2026: missing intern commit and fresh process recovery
+
+Extended the existing full-model remote recovery harness with a missing committed
+intern-file case, following the late commit failure audit. Compared Java
+TLCApp.create's early intern recovery and InternTable's committed-name open.
+The original N=7 MC06 producer commits a real unfinished frontier with two nested
+LSB hosts; bounds and model assertions are unchanged. Before restart, preserve
+complete intern bytes as vars.tmp and remove the trace name independently.
+
+Fresh production application startup must report FileNotFoundException before
+parsing/server construction, never register/recover remote stores or emit later
+startup/completion events. Source finally's null-server failure and tool-failure
+exit are retained. Fresh FP hosts remain empty and the parent exits/joins both.
+Assert byte-identical remote/coordinator snapshots and pending intern candidate,
+with no committed intern or trace regeneration. No production change needed.
+This is failed-restart coverage, not successful recovery or atomic checkpointing.
+
+Initial missing-file case: distributed-missing-intern-recovery.log, terminal
+a8025b, status 0, 6.534 seconds. Strengthened pending-file preservation and ran
+the missing and adjacent truncated intern cases together:
+distributed-missing-intern-recovery-verified.log, terminal 183af6, status 0,
+13.077 seconds (6.44 and 6.62 seconds). All child roles joined. No full suite or
+race run. No direct original Java method covers this boundary; native checks
+earn no original-method credit and the distributed inventory remains 37/41.
+Updated HANDOFF and architecture; git diff --check passes.

@@ -163,7 +163,8 @@ phase; their final manager commit is a no-op. Local fingerprints commit in the
 final phase. Mixed generations after interruption are source behavior. Do not
 turn these checkpoints into an atomic transaction or promote pending files.
 Application creation restores intern tokens before parsing and server construction;
-a truncated header fails before trace/queue/FP recovery or publication. Incomplete
+a missing committed file or truncated header fails before trace/queue/FP recovery
+or publication. A complete pending intern file is retained without promotion. Incomplete
 intern records retain the recovered counter and complete prefix, then throw
 checkpoint corruption. Their null error parameter exposes a reproduced upstream
 GENERAL-formatting loop; do not count this as green process recovery. See the

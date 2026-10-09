@@ -88,6 +88,7 @@ const (
 	nativeRemoteCheckpointTruncatedLaterMemSnapshot
 	nativeRemoteCheckpointDuplicateLaterMemSnapshot
 	nativeRemoteCheckpointTruncatedIntern
+	nativeRemoteCheckpointMissingIntern
 )
 
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
@@ -119,6 +120,13 @@ func TestNativeDistributedRemoteCheckpointTruncatedTrace(t *testing.T) {
 // the server. An independent missing trace must not obscure that first failure.
 func TestNativeDistributedRemoteCheckpointTruncatedIntern(t *testing.T) {
 	checkNativeDistributedRemoteCheckpointRestart(t, "lsb", 1, nativeRemoteCheckpointTruncatedIntern)
+}
+
+// Failed intern promotion can delete the old snapshot before rename fails.
+// Fresh application startup must stop at that missing file, without promoting
+// pending files or contacting already started fingerprint hosts.
+func TestNativeDistributedRemoteCheckpointMissingIntern(t *testing.T) {
+	checkNativeDistributedRemoteCheckpointRestart(t, "lsb", 1, nativeRemoteCheckpointMissingIntern)
 }
 
 func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
@@ -200,6 +208,8 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	truncatedQueue := fault == nativeRemoteCheckpointTruncatedQueue
 	truncatedTrace := fault == nativeRemoteCheckpointTruncatedTrace
 	truncatedIntern := fault == nativeRemoteCheckpointTruncatedIntern
+	missingIntern := fault == nativeRemoteCheckpointMissingIntern
+	invalidIntern := truncatedIntern || missingIntern
 	corruptCoordinator := truncatedQueue || truncatedTrace
 	corruptDiskOrdering := fault == nativeRemoteCheckpointDuplicateDiskSnapshot || fault == nativeRemoteCheckpointDescendingDiskSnapshot
 	emptyDiskSnapshot := fault == nativeRemoteCheckpointEmptyDiskSnapshot
@@ -586,8 +596,15 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		}
 	}
 	coordinatorSnapshots := make(map[string][]byte)
-	if truncatedIntern {
-		if err := os.Truncate(filepath.Join(path[1], "vars.chkpt"), 1); err != nil {
+	if invalidIntern {
+		internPath := filepath.Join(path[1], "vars.chkpt")
+		if missingIntern {
+			// Retain a complete pending candidate. Recovery must open the
+			// committed filename rather than silently promoting this file.
+			if err := os.Rename(internPath, filepath.Join(path[1], "vars.tmp")); err != nil {
+				t.Fatal(err)
+			}
+		} else if err := os.Truncate(internPath, 1); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Rename(filepath.Join(path[1], "MC06.st.chkpt"), filepath.Join(path[1], "MC06.st.chkpt.unreached")); err != nil {
@@ -599,7 +616,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if strings.HasSuffix(entry.Name(), ".chkpt") || strings.HasSuffix(entry.Name(), ".chkpt.unreached") {
+		if strings.HasSuffix(entry.Name(), ".chkpt") || strings.HasSuffix(entry.Name(), ".chkpt.unreached") || (missingIntern && entry.Name() == "vars.tmp") {
 			data, err := os.ReadFile(filepath.Join(path[1], entry.Name()))
 			if err != nil {
 				t.Fatal(err)
@@ -609,7 +626,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	}
 	restarted, addresses := startHosts("restarted")
 	server := start("recovered-coordinator", "registered-fp-recovery", []string{"TLAGO_REGISTERED_FP_ENDPOINTS=" + strings.Join(addresses, ",")}, "-tool", "-deadlock", "-recover", path[1], "MC06")
-	if truncatedIntern {
+	if invalidIntern {
 		err := <-server.done
 		server.joined = true
 		var exit *exec.ExitError
@@ -618,7 +635,11 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		}
 		output := server.output.String()
 		failure := nativeDistributedMessages(output, tlc.ECGeneral)
-		if len(failure) != 1 || !strings.Contains(failure[0], "EOF") || !strings.Contains(output, "NullPointerException") || strings.Contains(output, "NATIVE_REGISTERED_FP_SERVER_CREATE") {
+		wantFailure := "EOF"
+		if missingIntern {
+			wantFailure = "FileNotFoundException"
+		}
+		if len(failure) != 1 || !strings.Contains(failure[0], wantFailure) || !strings.Contains(output, "NullPointerException") || strings.Contains(output, "NATIVE_REGISTERED_FP_SERVER_CREATE") {
 			t.Fatalf("intern recovery did not fail before construction with source finally precedence: %s", output)
 		}
 		for _, code := range []int{tlc.ECTLCCheckpointRecoverStart, tlc.ECTLCCheckpointRecoverEnd, tlc.ECTLCDistributedServerFPSetRegistered, tlc.ECTLCComputingInit, tlc.ECTLCDistributedServerRunning, tlc.ECTLCDistributedWorkerRegistered, tlc.ECTLCFinished, tlc.ECTLCStats} {
@@ -661,7 +682,12 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		if _, err := os.Stat(filepath.Join(path[1], "MC06.st.chkpt")); !os.IsNotExist(err) {
 			t.Fatal("intern startup failure regenerated the missing trace checkpoint")
 		}
-		t.Log("intern EOF precedes parsing/server construction and missing trace recovery; fresh remote stores remain empty and all roles join")
+		if missingIntern {
+			if _, err := os.Stat(filepath.Join(path[1], "vars.chkpt")); !os.IsNotExist(err) {
+				t.Fatal("failed startup regenerated the missing intern checkpoint")
+			}
+		}
+		t.Logf("intern %s precedes parsing/server construction and missing trace recovery; fresh remote stores remain empty and all roles join", wantFailure)
 		return
 	}
 	if corruptCoordinator {
