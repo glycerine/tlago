@@ -255,7 +255,7 @@ func (q *DiskByteArrayQueue) IsEmpty() bool {
 	return q.len < 1
 }
 
-func (q *DiskByteArrayQueue) BeginChkpt() error {
+func (q *DiskByteArrayQueue) BeginChkpt() (err error) {
 	if q.cleaner != nil {
 		q.cleaner.FinishAndWait()
 	}
@@ -265,27 +265,38 @@ func (q *DiskByteArrayQueue) BeginChkpt() error {
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
+	closed := false
+	defer func() {
+		if !closed {
+			if closeErr := file.Close(); err == nil {
+				err = bufferedRandomAccessFileIOError(closeErr)
+			}
+		}
+	}()
+	out := NewBufferedDataOutputStream(file)
 	if err := out.WriteLong(q.len); err != nil {
-		_ = out.Close()
 		return err
 	}
 	for _, value := range []int{q.loPool, q.hiPool, q.enqIndex, q.deqIndex} {
 		if err := out.WriteInt(int32(value)); err != nil {
-			_ = out.Close()
 			return err
 		}
 	}
 	if err := writeByteArrayEntries(out, q.enqBuf[:q.enqIndex]); err != nil {
-		_ = out.Close()
 		return err
 	}
 	if err := writeByteArrayEntries(out, q.deqBuf[q.deqIndex:]); err != nil {
-		_ = out.Close()
 		return err
 	}
+	if err := out.Flush(); err != nil {
+		return err
+	}
+	closed = true
+	if err := file.Close(); err != nil {
+		return bufferedRandomAccessFileIOError(err)
+	}
 	q.newLastLoPool = q.loPool - 1
-	return out.Close()
+	return nil
 }
 
 func (q *DiskByteArrayQueue) CommitChkpt() error {
@@ -396,7 +407,8 @@ func (q *DiskByteArrayQueue) peekRaw() []byte {
 	return q.deqBuf[q.deqIndex]
 }
 
-func (q *DiskByteArrayQueue) fillDequeueBuffer() error {
+func (q *DiskByteArrayQueue) fillDequeueBuffer() (err error) {
+	defer catchDiskQueuePoolFailure(ECSystemErrorReadingStates, &err)
 	if q.loPool+1 <= q.hiPool {
 		if q.loPool+1 >= q.hiPool && q.writer != nil {
 			if err := q.writer.EnsureWritten(); err != nil {
@@ -442,7 +454,8 @@ func (q *DiskByteArrayQueue) fillDequeueBuffer() error {
 	return nil
 }
 
-func (q *DiskByteArrayQueue) spillEnqueueBuffer() error {
+func (q *DiskByteArrayQueue) spillEnqueueBuffer() (err error) {
+	defer catchDiskQueuePoolFailure(ECSystemErrorWritingStates, &err)
 	buf, err := q.writer.DoWork(q.enqBuf, q.poolName(q.hiPool))
 	if err != nil {
 		return err
@@ -602,7 +615,6 @@ type ByteArrayPoolReader struct {
 	isFull   bool
 	canRead  bool
 	finished bool
-	err      error
 }
 
 func NewByteArrayPoolReader(bufSize int, file string) *ByteArrayPoolReader {
@@ -632,9 +644,6 @@ func (r *ByteArrayPoolReader) Restart(file string, canRead bool) {
 func (r *ByteArrayPoolReader) DoWork(deqBuf [][]byte, file string) ([][]byte, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.err != nil {
-		return nil, r.err
-	}
 	if r.isFull {
 		out := r.buf
 		r.buf = deqBuf
@@ -662,9 +671,6 @@ func (r *ByteArrayPoolReader) DoWork(deqBuf [][]byte, file string) ([][]byte, er
 func (r *ByteArrayPoolReader) GetCache(deqBuf [][]byte, file string) ([][]byte, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.err != nil {
-		return nil, r.err
-	}
 	if r.isFull {
 		out := r.buf
 		r.buf = deqBuf
@@ -692,6 +698,14 @@ func (r *ByteArrayPoolReader) SetFinished() {
 }
 
 func (r *ByteArrayPoolReader) run() {
+	defer func() {
+		if failure := recover(); failure != nil {
+			r.mu.Lock()
+			name := r.poolFile
+			r.mu.Unlock()
+			statePoolFailureExit(ECSystemErrorReadingPool, name, failure)
+		}
+	}()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for {
@@ -702,9 +716,7 @@ func (r *ByteArrayPoolReader) run() {
 			r.cond.Wait()
 		}
 		if err := readByteArrayPoolFile(r.poolFile, r.buf); err != nil {
-			r.err = err
-			r.cond.Broadcast()
-			return
+			panic(err)
 		}
 		r.poolFile = ""
 		r.isFull = true
@@ -718,7 +730,6 @@ type ByteArrayPoolWriter struct {
 	poolFile string
 	reader   *ByteArrayPoolReader
 	finished bool
-	err      error
 }
 
 func NewByteArrayPoolWriter(bufSize int, reader *ByteArrayPoolReader) *ByteArrayPoolWriter {
@@ -732,9 +743,6 @@ func (w *ByteArrayPoolWriter) Start() { go w.run() }
 func (w *ByteArrayPoolWriter) DoWork(enqBuf [][]byte, file string) ([][]byte, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.err != nil {
-		return nil, w.err
-	}
 	if w.poolFile != "" {
 		if err := writeByteArrayPoolFile(w.poolFile, w.buf); err != nil {
 			return nil, err
@@ -753,7 +761,7 @@ func (w *ByteArrayPoolWriter) EnsureWritten() error {
 	for w.poolFile != "" {
 		w.cond.Wait()
 	}
-	return w.err
+	return nil
 }
 
 func (w *ByteArrayPoolWriter) SetFinished() {
@@ -764,6 +772,11 @@ func (w *ByteArrayPoolWriter) SetFinished() {
 }
 
 func (w *ByteArrayPoolWriter) run() {
+	defer func() {
+		if failure := recover(); failure != nil {
+			statePoolFailureExit(ECSystemErrorWritingPool, "", failure)
+		}
+	}()
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	for {
@@ -774,9 +787,7 @@ func (w *ByteArrayPoolWriter) run() {
 			w.cond.Wait()
 		}
 		if err := writeByteArrayPoolFile(w.poolFile, w.buf); err != nil {
-			w.err = err
-			w.cond.Broadcast()
-			return
+			panic(err)
 		}
 		w.poolFile = ""
 		w.cond.Broadcast()
@@ -806,17 +817,22 @@ func mustBytesToState(raw []byte) *TLCStateMut {
 	return state
 }
 
-func writeByteArrayPoolFile(name string, entries [][]byte) error {
+func writeByteArrayPoolFile(name string, entries [][]byte) (err error) {
 	file, err := os.Create(name)
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
+	// Release the native file once without reflushing failed buffered writes.
+	defer func() {
+		if closeErr := file.Close(); err == nil {
+			err = bufferedRandomAccessFileIOError(closeErr)
+		}
+	}()
+	out := NewBufferedDataOutputStream(file)
 	if err := writeByteArrayEntries(out, entries); err != nil {
-		_ = out.Close()
 		return err
 	}
-	return out.Close()
+	return out.Flush()
 }
 
 func readByteArrayPoolFile(name string, entries [][]byte) error {
@@ -842,15 +858,15 @@ func readByteArrayPoolFile(name string, entries [][]byte) error {
 	return in.Close()
 }
 
-func writeByteArrayEntries(out *ValueOutputStream, entries [][]byte) error {
-	for i, entry := range entries {
+func writeByteArrayEntries(out *BufferedDataOutputStream, entries [][]byte) error {
+	for _, entry := range entries {
 		if entry == nil {
-			return fmt.Errorf("byte-array queue write encountered nil entry at slot %d", i)
+			panic(NewNullPointerException())
 		}
 		if err := out.WriteInt(int32(len(entry))); err != nil {
 			return err
 		}
-		if _, err := out.WriteRaw(entry); err != nil {
+		if _, err := out.Write(entry); err != nil {
 			return err
 		}
 	}

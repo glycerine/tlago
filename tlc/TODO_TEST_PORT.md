@@ -1981,6 +1981,13 @@ slot retention and source short-final-read behavior. The original DiskPoolWriter
 wake/finish methods and buffered/value stream methods pass unchanged. No direct
 original raw queue storage method exists; these cases add no completion credit.
 
+Native raw-pool failure checks now require process exit and one source pool
+diagnostic for background I/O/allocation/nil-entry failures. Synchronous queue
+checks preserve coded errors, nil causes, detail fallback and unchanged work.
+Failed checkpoint buffering/marker publication is checked directly. Existing
+original DiskPoolWriter and stream methods remain unchanged and green; these
+native failure cases add no original-method credit.
+
 Native coordinator read checks in `distributed_server_file_path_test.go` verify
 relative/absolute symlink traversal, exact directory/open-failure diagnostics
 and retained nested file-open causes. Absolute diagnostics now preserve dot

@@ -44,7 +44,12 @@ func TestDistributedByteQueueDoesNotCreateStorageParents(t *testing.T) {
 					t.Fatal("failed pending pool write advanced spill state")
 				}
 			}
-			if !isJavaIOException(err) {
+			if phase == "spill" {
+				coded, ok := err.(*TLCError)
+				if !ok || !coded.Runtime || coded.Code != ECSystemErrorWritingStates || coded.Cause != nil {
+					t.Fatalf("missing-parent spill lost source coded assertion: %v", err)
+				}
+			} else if !isJavaIOException(err) {
 				t.Fatalf("missing-parent %s = %v, want I/O failure", phase, err)
 			}
 			if _, err := os.Stat(parent); !os.IsNotExist(err) {

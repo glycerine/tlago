@@ -13515,3 +13515,33 @@ and buffered/value stream assertions remain unchanged. These checks add no
 original-method credit. The separate raw-pool background catch still needs its
 source diagnostic/process-exit behavior and synchronous queue assertion mapping;
 stored errors cannot stand in for that behavior.
+
+### Raw pool failure catches and buffered write cleanup
+
+The following chunk completes those raw-pool catches. Reader/writer loops now
+use the same source diagnostic/process-exit handler as state pools; I/O and
+ordinary runtime failures report exactly one pool event, with the reader's pool
+basename, then call `os.Exit(1)`. Stored error fields and later-call shortcuts
+are removed. This preserves process termination rather than silently retiring
+a goroutine with pending work and live waiters. Fatal error categories retain
+the shared handler's existing escape boundary.
+
+Raw queue fill/spill methods now use the common source coded-assertion mapping.
+Synchronous failures preserve the `queue` parameter, detail-message fallback,
+nil attached cause and pre-failure buffer/counter mutations. Nil raw entries
+retain null-dereference classification; negative allocation lengths retain
+their existing runtime classification. No Java runtime facility is introduced.
+
+Raw pool/checkpoint output now uses the existing buffered data stream directly.
+Failure closes the owned native file once without closing/reflushing a failed
+buffer. Successful pool output flushes then closes, preserving the primary
+write error over cleanup errors. Checkpoint begin publishes `newLastLoPool`
+only after flushing and closing successfully. A null entry before flush leaves
+the pending file empty and its old marker intact, as the source does.
+
+Five child-process failure cases verify status 1, exact pool event count/code,
+reader basename and bypassed caller/deferred continuation. Five synchronous
+cases cover I/O reads/peek/writes plus nil and negative-length runtime failures.
+One direct checkpoint case verifies buffered-prefix/marker behavior. Existing
+original writer wake/finish and buffered/value stream methods remain unchanged.
+No dedicated upstream raw failure method exists; completion credit is unchanged.

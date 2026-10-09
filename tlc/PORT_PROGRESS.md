@@ -25105,3 +25105,37 @@ their goroutine rather than print the source diagnostic and exit the process;
 pending writer waiters can remain blocked. Its synchronous queue pool catches
 also lack the source coded assertions. Preserve native Go transport and failure
 handling while porting these source boundaries, without runtime emulation.
+
+### October 9, 2026: raw pool failures report and terminate correctly
+
+Source DiskByteArrayQueue background reader/writer catches print their pool
+diagnostic and exit 1. Go stored errors and returned, retaining pending work
+that could leave waiters blocked. Synchronous queue catches also exposed plain
+filesystem errors instead of the source coded assertion. Five child-process
+cases and three initial synchronous cases reproduce these gaps
+(byte-pool-failure-red.log, terminal c87d9b, status 1, 0.078 seconds).
+
+Reader/writer loops now reuse the existing state-pool diagnostic/exit handler,
+including reader basename and fatal-category escape. Removed stored error fields
+and delayed-error shortcuts. Fill/spill reuse the existing coded queue catch,
+retaining detail fallback, nil cause and unchanged preceding work. Nil raw
+entries now raise the source null-dereference category. No native transport or
+Java runtime emulation was added. Initial focused failure checks pass
+(byte-pool-failure-green.log, terminal 6f0853, status 0, 0.069 seconds).
+
+Raw pool/checkpoint writers now use BufferedDataOutputStream directly and close
+the owned file without reflushing on failure. Successful output flushes before
+raw close; earlier errors remain primary. Checkpoint newLastLoPool publication
+follows successful flush and close. Added direct null-entry checkpoint coverage
+for the unflushed pending file and unchanged marker, plus synchronous nil-entry
+and negative-allocation cases. The prior missing-parent spill check now asserts
+the stronger source coded runtime error; its no-directory-creation assertion
+remains unchanged.
+
+Final verbose native raw/state pool, queue storage/checkpoint and unchanged
+original DiskPoolWriter, BufferedDataInputStream and ValueInputOutputStream
+checks pass (byte-pool-failure-final.log, terminal 0ed9c1, status 0,
+0.210 seconds). Five fatal child cases, five synchronous catches and one direct
+checkpoint failure case add no original-method credit. Distributed inventory
+remains 37 complete and four Missing. No full suite, long workload or race run.
+All handles are terminal.
