@@ -277,7 +277,9 @@ func (service *distributedServerService) Call(request DistributedServerRequest, 
 type NetworkServerEndpoint struct {
 	client          *rpc.Client
 	Address, Object string
-	children        *distributedConnections
+	// The primary client is the first owned connection; callbacks follow it.
+	// Discovery views share this owner and therefore the whole close result.
+	children *distributedConnections
 }
 
 func DialServerEndpoint(address, object string) (*NetworkServerEndpoint, error) {
@@ -285,10 +287,15 @@ func DialServerEndpoint(address, object string) (*NetworkServerEndpoint, error) 
 	if err != nil {
 		return nil, workerConnectionFailure(err)
 	}
-	return &NetworkServerEndpoint{client: client, Address: address, Object: object, children: &distributedConnections{}}, nil
+	return newNetworkServerEndpoint(client, address, object), nil
 }
+
+func newNetworkServerEndpoint(client *rpc.Client, address, object string) *NetworkServerEndpoint {
+	return &NetworkServerEndpoint{client: client, Address: address, Object: object, children: &distributedConnections{clients: []io.Closer{client}}}
+}
+
 func (e *NetworkServerEndpoint) CloseConnection() error {
-	return errors.Join(e.client.Close(), e.children.close())
+	return e.children.close()
 }
 func (e *NetworkServerEndpoint) call(request DistributedServerRequest) (DistributedServerReply, error) {
 	request.Object = e.Object

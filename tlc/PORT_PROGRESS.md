@@ -26489,3 +26489,37 @@ failed-client race checks pass: distributed-endpoint-close-join-final-race.log,
 terminal 9042c3, status 0. Earlier race also passed (0b3125, 1.136 seconds)
 but final receipts supersede it. No long model or full-suite rerun. All handles
 terminal and git diff --check passes.
+
+
+### October 9, 2026: coordinator views join primary release before callbacks
+
+Found the analogous coordinator gap: CloseConnection invoked rpc.Client.Close
+outside its shared callback owner. When one view blocked releasing the primary,
+another view got ErrShutdown and could release callbacks early, return before
+primary cleanup and lose the primary failure. The new constructor puts the
+primary client first in the existing distributedConnections owner; acquired
+callbacks follow it. Every view delegates its entire close to that shared owner,
+retaining one release and the same joined primary/callback result for later
+discovery shutdown. No additional per-view locks, changed TLC retries or wire
+protocol changes. Entirely benign primary closure retains its existing
+classification; real joined errors remain reportable.
+
+No original Java test covers native coordinator release ownership. A gated
+ClientCodec test with distinct captured endpoint identities sharing one owner
+requires view joining, primary-before-callback release, both original causes
+for both callers and later discovery close, one raw primary/callback release,
+zero request writes and joined reader/close goroutines. Original credit stays
+37/41; no model-body completion claim.
+
+Red: distributed-coordinator-close-join-red.log, terminal c433a6, status 1,
+0.012 seconds; other view returned before primary release. Green:
+distributed-coordinator-close-join-green.log, terminal 3eefa7, status 0,
+0.064 seconds. Existing normal discovery/retry/concurrent lookup, worker
+bootstrap/callback, coordinator settings/files/interning/snapshot/registration/
+failure/concurrent snapshot, generated endpoint address reuse and earlier
+callback-error retention checks pass: distributed-coordinator-close-join-focused.log,
+terminal 893773, status 0, 0.049 seconds. Isolated short coordinator-view,
+worker/FP endpoint and shared callback-owner race checks pass:
+distributed-coordinator-close-join-race.log, terminal ab5642, status 0.
+No long model or full-suite rerun. All handles terminal and git diff --check
+passes.

@@ -14337,3 +14337,28 @@ their successful cleanup requirement after transport failure already closed
 the client: entirely benign closed results normalize to success. All fixture
 goroutines join. No original Java test covers
 native Go client resource ownership; no original-method credit is added.
+
+
+### Coordinator views share primary and callback close ownership
+
+NetworkServerEndpoint.CloseConnection previously closed its primary rpc.Client
+outside the shared callback owner. A direct close blocked in codec release
+allowed another discovery view to see ErrShutdown, close callbacks ahead of
+that release, and return without its primary failure. The coordinator client
+constructor now places its primary rpc.Client first in distributedConnections,
+followed by acquired fingerprint callbacks. CloseConnection delegates the
+entire release to that existing once/join owner. Discovered views already share
+the owner, so they require no additional per-view lock or connection copy.
+Primary-before-callback ordering, all original non-benign causes and one raw
+release survive concurrent and later closes. Closed-only primary results are
+classified before the callback result is joined.
+
+The native gated-codec test uses two captured endpoint identities sharing one
+connection/owner. It requires the second view to wait for primary release,
+callbacks to remain untouched until that release completes, both close callers
+to retain primary and callback failures, and later discovery shutdown to retain
+both. The RPC reader and close goroutines join; primary/callback release each
+occurs once and no requests are written. Existing native discovery, worker
+bootstrap, coordinator snapshots and address-reuse checks cover normal paths.
+No original Java test covers native Go connection release; distributed original
+inventory stays 37/41. No TLC mutation/retry or wire protocol change.
