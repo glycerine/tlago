@@ -13352,3 +13352,29 @@ manually start an assigned thread register it explicitly at the source point.
 The lost-computed-reply fixture retains all original queue/publication/retry/loss
 assertions. No upstream constructor test exists; native ownership checks add
 no original-method credit.
+
+### Coordinator discovery retains endpoint identity
+
+The native host keeps discovery names separately from coordinator endpoints.
+Each endpoint receives an ID containing the host's random identity and a local
+sequence. Multiple names for the same local coordinator share that ID. Lookup
+returns it without invoking coordinator settings; subsequent worker/bootstrap
+calls use the captured ID. Rebinding a name affects later lookups, while an
+existing reference still reaches its original coordinator. Unbinding removes
+only the name. Explicit coordinator removal deletes its names and endpoint ID;
+already accepted calls can finish and replacement coordinators remain available.
+
+This preserves the upstream worker runnable's retained coordinator reference and
+the timer's deliberate fresh discovery. It fixes an earlier Go shortcut where
+every call resolved a mutable name and could reach a different checking run.
+Explicit by-name administrative RPCs remain available. Native lookup replies now
+require an Object ID; peers must run matching builds. No Java transport or runtime
+is involved.
+
+Discovery caches immutable views by connection and endpoint ID, preserving shared
+concurrent lookup ownership. Views share the connection's fingerprint-callback
+cleanup owner; no RPC runs under discovery/publication locks. A failed connection
+evicts its cached views without retargeting references held by callers. Existing
+native publication and concurrent discovery checks cover replacement, fresh
+lookup, alias identity, unbind, removal and shared cleanup. There is no dedicated
+original method for this boundary, so test inventory credit is unchanged.

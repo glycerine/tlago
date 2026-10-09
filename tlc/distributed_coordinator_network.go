@@ -74,7 +74,7 @@ func (n *DistributedCoordinatorNetwork) createRegistry(port int) (*TLCServerRegi
 			if n.Host.closed {
 				return net.ErrClosed
 			}
-			n.Host.coordinators[name] = distributedCoordinatorBinding{endpoint: endpoint, address: n.Address}
+			n.Host.bindCoordinatorLocked(name, endpoint, n.Address)
 			return nil
 		},
 		Unbind: func(name string) error {
@@ -135,6 +135,11 @@ func (n *DistributedCoordinatorNetwork) Publication() TLCServerPublication {
 			for name, binding := range n.Host.coordinators {
 				if endpoint, ok := binding.endpoint.(*LocalServerEndpoint); ok && endpoint.Server == server {
 					delete(n.Host.coordinators, name)
+				}
+			}
+			for object, binding := range n.Host.coordinatorObjects {
+				if endpoint, ok := binding.endpoint.(*LocalServerEndpoint); ok && endpoint.Server == server {
+					delete(n.Host.coordinatorObjects, object)
 				}
 			}
 			return true, nil

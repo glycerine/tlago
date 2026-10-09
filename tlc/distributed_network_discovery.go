@@ -13,7 +13,10 @@ import (
 
 // Lookup tests binding presence without calling any coordinator setting/status
 // method. A listener can be reachable before either TLC binding is published.
-type DistributedCoordinatorLookupReply struct{ Present bool }
+type DistributedCoordinatorLookupReply struct {
+	Present bool
+	Object  string
+}
 
 // DistributedLocationError distinguishes invalid native coordinator locations
 // from connection loss. Keepalive logs this category and continues, matching
@@ -39,7 +42,8 @@ func isDistributedMalformedLocation(err error) bool {
 
 func (service *distributedServerService) Lookup(name string, reply *DistributedCoordinatorLookupReply) error {
 	service.server.mu.Lock()
-	_, reply.Present = service.server.coordinators[name]
+	binding, present := service.server.coordinators[name]
+	reply.Present, reply.Object = present, binding.object
 	service.server.mu.Unlock()
 	return nil
 }
@@ -56,10 +60,16 @@ type DistributedNetworkDiscovery struct {
 	mu      sync.Mutex
 	closed  bool
 	clients map[string]*NetworkServerEndpoint
+	views   map[distributedCoordinatorViewKey]*NetworkServerEndpoint
+}
+
+type distributedCoordinatorViewKey struct {
+	client *NetworkServerEndpoint
+	object string
 }
 
 func NewDistributedNetworkDiscovery() *DistributedNetworkDiscovery {
-	return &DistributedNetworkDiscovery{clients: make(map[string]*NetworkServerEndpoint)}
+	return &DistributedNetworkDiscovery{clients: make(map[string]*NetworkServerEndpoint), views: make(map[distributedCoordinatorViewKey]*NetworkServerEndpoint)}
 }
 func (d *DistributedNetworkDiscovery) Lookup(location string) (DistributedServerEndpoint, error) {
 	u, err := url.Parse(location)
@@ -110,6 +120,11 @@ func (d *DistributedNetworkDiscovery) Lookup(location string) (DistributedServer
 		if d.clients[key] == client {
 			delete(d.clients, key)
 		}
+		for viewKey := range d.views {
+			if viewKey.client == client {
+				delete(d.views, viewKey)
+			}
+		}
 		d.mu.Unlock()
 		_ = client.CloseConnection()
 		return nil, workerConnectionFailure(err)
@@ -117,7 +132,23 @@ func (d *DistributedNetworkDiscovery) Lookup(location string) (DistributedServer
 	if !reply.Present {
 		return nil, coordinatorBindingMissingFailure(name)
 	}
-	return client, nil
+	if reply.Object == "" {
+		return nil, workerConnectionFailure(errors.New("coordinator lookup returned no endpoint identity"))
+	}
+	// Each lookup captures the currently bound object. Only the connection and
+	// its owned fingerprint callbacks are shared with the discovery cache.
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.closed {
+		return nil, workerConnectionFailure(rpc.ErrShutdown)
+	}
+	viewKey := distributedCoordinatorViewKey{client: client, object: reply.Object}
+	view := d.views[viewKey]
+	if view == nil {
+		view = &NetworkServerEndpoint{client: client.client, Address: client.Address, Object: reply.Object, children: client.children}
+		d.views[viewKey] = view
+	}
+	return view, nil
 }
 func (d *DistributedNetworkDiscovery) Close() error {
 	d.mu.Lock()
@@ -128,6 +159,7 @@ func (d *DistributedNetworkDiscovery) Close() error {
 	d.closed = true
 	clients := d.clients
 	d.clients = nil
+	d.views = nil
 	d.mu.Unlock()
 	var failures []error
 	keys := make([]string, 0, len(clients))

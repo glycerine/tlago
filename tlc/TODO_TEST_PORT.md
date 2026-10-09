@@ -1771,6 +1771,14 @@ Exact prefixes, no write replay, one close, old checkpoint preservation and
 healthy continuation are required. No dedicated original method covers this
 boundary; inventory remains 37 port complete and four Missing.
 
+Native coordinator discovery checks now preserve endpoint identity across name
+replacement: old references stay with their coordinator, fresh lookups resolve
+the replacement, unbind retains existing references and removal invalidates them.
+Concurrent publication and connection cleanup remain covered. The earlier native
+assertion that a captured reference follows a rebind was a transport shortcut;
+it now requires the source behavior. No original method covers this boundary and
+no original-method credit is added.
+
 Buffered memory recovery now uses the source eager 8192-byte input stream,
 preserving refill failure before the current fingerprint's insertion. Eight
 Linux syscall cases cover both stores, initial/refill I/O failure and success,

@@ -76,6 +76,10 @@ manager snapshots and keepalive are wired into the production CLI. Roles are
 listener and waits for both lifetimes. Signal shutdown occurs at the source
 shutdown-hook boundary. Accepted replies drain before orderly host shutdown;
 forced connection closure remains independent of computation/storage lifetime.
+Discovery captures a stable native coordinator endpoint ID. Rebinding a name
+affects fresh lookups; existing references retain their original coordinator.
+Unbinding removes discovery only; explicit coordinator removal invalidates its
+references. Lookup replies now include the ID, so roles must use matching builds.
 Concurrent host closes join the same callback/accepted-connection teardown and
 retain its cleanup error. A closed admission gate or an empty reply count alone
 cannot let a later close return before cleanup. Forced close can still interrupt

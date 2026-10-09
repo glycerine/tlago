@@ -26,6 +26,8 @@ type DistributedRPCServer struct {
 	fingerprints        map[string]DistributedFingerprintEndpoint
 	workers             map[string]DistributedWorkerEndpoint
 	coordinators        map[string]distributedCoordinatorBinding
+	coordinatorObjects  map[string]distributedCoordinatorBinding
+	coordinatorSequence uint64
 	fingerprintSequence uint64
 	outbound            distributedConnections
 	closeResourcesOnce  sync.Once
@@ -40,10 +42,11 @@ func NewDistributedRPCServer() *DistributedRPCServer {
 	s := &DistributedRPCServer{
 		identity: hex.EncodeToString(identity[:]),
 		rpc:      rpc.NewServer(), listeners: make(map[net.Listener]struct{}),
-		connections:  make(map[net.Conn]struct{}),
-		fingerprints: make(map[string]DistributedFingerprintEndpoint),
-		workers:      make(map[string]DistributedWorkerEndpoint),
-		coordinators: make(map[string]distributedCoordinatorBinding),
+		connections:        make(map[net.Conn]struct{}),
+		fingerprints:       make(map[string]DistributedFingerprintEndpoint),
+		workers:            make(map[string]DistributedWorkerEndpoint),
+		coordinators:       make(map[string]distributedCoordinatorBinding),
+		coordinatorObjects: make(map[string]distributedCoordinatorBinding),
 	}
 	if err := s.rpc.RegisterName("Fingerprint", &distributedFingerprintService{server: s}); err != nil {
 		panic(err)

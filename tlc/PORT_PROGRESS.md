@@ -24885,3 +24885,39 @@ ownership remain intact. No long workload was selected for race testing.
 No full suite or long model ran. No dedicated original constructor test exists;
 native checks add no original-method credit. Inventory remains 37 complete and
 four Missing. All handles are terminal.
+
+### October 9, 2026: retain discovered coordinator endpoint identity
+
+Upstream TLCWorkerRunnable retains its supplied coordinator reference, while
+TLCTimerTask deliberately performs fresh discovery. The native transport instead
+sent every call to a mutable discovery name. Rebinding that name silently
+retargeted existing worker references to a different checking run. The corrected
+native lifecycle assertion reproduces this shortcut
+(coordinator-reference-red.log, terminal a32a35, status 1, 0.015 seconds).
+
+Separated coordinator endpoint IDs from discovery names. IDs use the existing
+native random host identity and a sequence; aliases for one local coordinator
+share an ID. Lookup replies return it without probing settings. Rebind affects
+fresh lookups, unbind removes only discovery, and explicit coordinator removal
+invalidates the original ID without affecting a replacement. Explicit by-name
+administrative calls remain available. No Java transport/runtime is introduced;
+native roles must use matching builds for the updated lookup reply.
+
+Discovery views share their connection and fingerprint-callback cleanup owner.
+The first focused run found the existing concurrent-lookup identity assertion;
+fixed production caching by connection and endpoint ID rather than weakening it.
+Failed connections evict their cached views without retargeting caller-held
+references. Extended native lifecycle/concurrent publication assertions verify
+original/replacement settings, alias identity, fresh lookup, unbind and removal.
+No dedicated original method covers this transport boundary and no method credit
+is added; inventory remains 37 complete and four Missing.
+
+Focused native publication, discovery, bootstrap, coordinator RPC and joined
+callback cleanup checks pass (coordinator-reference-green.log,
+terminal 3d11d8, status 0, 0.271 seconds). The unchanged N=7 two-worker model passes
+normally (coordinator-reference-model.log, terminal 297881, status 0,
+39.128 seconds), retaining 114,942 distinct states, an empty queue, work/statistics
+from both workers and normal shutdown. After that workload finished, the exact
+short publication, concurrent lookup and callback cleanup selection passes with
+race instrumentation (coordinator-reference-race.log, terminal fe3313,
+status 0, 1.263 seconds). No full suite ran. All handles are terminal.

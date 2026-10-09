@@ -84,6 +84,29 @@ func distributedCloseIsBenign(err error) bool {
 type distributedCoordinatorBinding struct {
 	endpoint DistributedServerEndpoint
 	address  string
+	object   string
+}
+
+// Names are discovery aliases. A reference obtained from a name retains the
+// original endpoint until explicit removal, even after rebind or unbind.
+// The caller holds s.mu; no endpoint operation runs under this lock.
+func (s *DistributedRPCServer) bindCoordinatorLocked(name string, endpoint DistributedServerEndpoint, address string) {
+	for _, binding := range s.coordinatorObjects {
+		equal := reflect.TypeOf(endpoint).Comparable() && endpoint == binding.endpoint
+		if local, ok := endpoint.(*LocalServerEndpoint); ok {
+			if existing, ok := binding.endpoint.(*LocalServerEndpoint); ok {
+				equal = local.Server == existing.Server
+			}
+		}
+		if equal {
+			s.coordinators[name] = binding
+			return
+		}
+	}
+	s.coordinatorSequence++
+	binding := distributedCoordinatorBinding{endpoint: endpoint, address: address, object: s.generatedEndpointName("coordinator", s.coordinatorSequence)}
+	s.coordinatorObjects[binding.object] = binding
+	s.coordinators[name] = binding
 }
 
 // address is the externally reachable address of this host's TCP listener.
@@ -99,7 +122,7 @@ func (s *DistributedRPCServer) RegisterCoordinator(name string, endpoint Distrib
 	if _, exists := s.coordinators[name]; exists {
 		return fmt.Errorf("coordinator %q is already registered", name)
 	}
-	s.coordinators[name] = distributedCoordinatorBinding{endpoint: endpoint, address: address}
+	s.bindCoordinatorLocked(name, endpoint, address)
 	return nil
 }
 func (s *DistributedRPCServer) fingerprintReference(endpoint DistributedFingerprintEndpoint, address string) (DistributedEndpointReference, error) {
@@ -175,7 +198,12 @@ func (service *distributedServerService) Call(request DistributedServerRequest, 
 		}
 	}()
 	service.server.mu.Lock()
-	binding := service.server.coordinators[request.Object]
+	binding, found := service.server.coordinatorObjects[request.Object]
+	if !found {
+		// Explicit by-name calls remain available for host administration.
+		// Worker discovery always supplies the immutable object reference.
+		binding = service.server.coordinators[request.Object]
+	}
 	service.server.mu.Unlock()
 	endpoint := binding.endpoint
 	if endpoint == nil {
@@ -243,7 +271,7 @@ func (service *distributedServerService) Call(request DistributedServerRequest, 
 type NetworkServerEndpoint struct {
 	client          *rpc.Client
 	Address, Object string
-	children        distributedConnections
+	children        *distributedConnections
 }
 
 func DialServerEndpoint(address, object string) (*NetworkServerEndpoint, error) {
@@ -251,7 +279,7 @@ func DialServerEndpoint(address, object string) (*NetworkServerEndpoint, error) 
 	if err != nil {
 		return nil, workerConnectionFailure(err)
 	}
-	return &NetworkServerEndpoint{client: client, Address: address, Object: object}, nil
+	return &NetworkServerEndpoint{client: client, Address: address, Object: object, children: &distributedConnections{}}, nil
 }
 func (e *NetworkServerEndpoint) CloseConnection() error {
 	return errors.Join(e.client.Close(), e.children.close())

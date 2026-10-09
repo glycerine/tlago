@@ -48,6 +48,13 @@ func TestNativeCoordinatorPublicationLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	primaryView, err := discovery.Lookup(location + TLCServerName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if primaryView.(*NetworkServerEndpoint).Object != workerView.(*NetworkServerEndpoint).Object {
+		t.Fatal("two names for the same coordinator returned different endpoint identities")
+	}
 	if name, err := workerView.GetSpecFileName(); err != nil || name != "first" {
 		t.Fatalf("first binding = %q/%v", name, err)
 	}
@@ -55,8 +62,15 @@ func TestNativeCoordinatorPublicationLifecycle(t *testing.T) {
 	if err := registry.Rebind(TLCServerWorkerName, replacement); err != nil {
 		t.Fatal(err)
 	}
-	if name, err := workerView.GetSpecFileName(); err != nil || name != "second" {
-		t.Fatalf("rebind failed to replace endpoint: %q/%v", name, err)
+	if name, err := workerView.GetSpecFileName(); err != nil || name != "first" {
+		t.Fatalf("rebind retargeted an existing coordinator reference: %q/%v", name, err)
+	}
+	replacementView, err := discovery.Lookup(location + TLCServerWorkerName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if name, err := replacementView.GetSpecFileName(); err != nil || name != "second" {
+		t.Fatalf("fresh lookup did not resolve the replacement: %q/%v", name, err)
 	}
 	if local, err := registry.Lookup(TLCServerName); err != nil || local != server {
 		t.Fatalf("local shutdown lookup = %p/%v", local, err)
@@ -67,11 +81,20 @@ func TestNativeCoordinatorPublicationLifecycle(t *testing.T) {
 	if _, err := discovery.Lookup(location + TLCServerName); err == nil {
 		t.Fatal("coordinator remained published")
 	}
+	if _, err := workerView.GetSpecFileName(); !isDistributedRemoteFailure(err) {
+		t.Fatalf("removed coordinator reference remained callable: %v", err)
+	}
+	if name, err := replacementView.GetSpecFileName(); err != nil || name != "second" {
+		t.Fatalf("removing the original coordinator affected its replacement: %q/%v", name, err)
+	}
 	if _, err := discovery.Lookup(location + TLCServerWorkerName); err != nil {
 		t.Fatalf("unpublishing one server removed another: %v", err)
 	}
 	if err := registry.Unbind(TLCServerWorkerName); err != nil {
 		t.Fatal(err)
+	}
+	if name, err := replacementView.GetSpecFileName(); err != nil || name != "second" {
+		t.Fatalf("removing a discovery name removed the coordinator endpoint: %q/%v", name, err)
 	}
 	if err := registry.Unbind(TLCServerWorkerName); err == nil {
 		t.Fatal("missing unbind succeeded")
@@ -139,7 +162,10 @@ func TestNativeCoordinatorConcurrentPublication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &TLCServer{InternTable: NewInternTable(16)}
+	server := &TLCServer{FileName: "first", InternTable: NewInternTable(16)}
+	replacement := &TLCServer{FileName: "second", InternTable: NewInternTable(16)}
+	discovery := NewDistributedNetworkDiscovery()
+	defer discovery.Close()
 	var group sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		group.Add(1)
@@ -152,6 +178,27 @@ func TestNativeCoordinatorConcurrentPublication(t *testing.T) {
 			}
 			if value, err := registry.Lookup(name); err != nil || value != server {
 				t.Errorf("lookup = %p/%v", value, err)
+			}
+			location := "tcp://" + network.Address + "/" + name
+			captured, err := discovery.Lookup(location)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if err := registry.Rebind(name, replacement); err != nil {
+				t.Error(err)
+				return
+			}
+			if spec, err := captured.GetSpecFileName(); err != nil || spec != "first" {
+				t.Errorf("existing reference retargeted: %q/%v", spec, err)
+			}
+			current, err := discovery.Lookup(location)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if spec, err := current.GetSpecFileName(); err != nil || spec != "second" {
+				t.Errorf("new reference = %q/%v", spec, err)
 			}
 			if err := registry.Unbind(name); err != nil {
 				t.Error(err)
