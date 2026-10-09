@@ -23978,3 +23978,23 @@ selection passes (terminal 0add6a, status 0, 0.478 seconds). Both original LSB/M
 original method directly covers this named corrupt-snapshot startup matrix,
 so no original-method completion credit is added. No full suite, full model or
 race workload ran. All check handles are terminal.
+
+### 2026-10-09: Off-heap batch rejection before storage access
+
+Source OffHeapDiskFPSet inherits FPSet's input-vector dereference, while Go's
+overrides silently accepted nil as an empty batch. Extended the existing
+uninitialized-store matrix and added actual initialized local/TCP continuation
+checks. Before the fix both off-heap matrix rows and both endpoint rows fail
+(terminal 4d7be8, status 1, 0.031 seconds). Both production methods now reject
+nil before counters or storage access; empty vectors remain valid. Corrected
+the supplemental TCP assertion to use the existing native null-failure category
+rather than assume concrete source exception reconstruction (intermediate
+terminal f8c53e, status 1, 0.045 seconds).
+
+Final nil/empty/continuation and existing RPC batch/failure-graph checks pass
+(terminal 6f3df7, status 0, 0.049 seconds). Four original ShortDiskFPSet batch
+methods and 18 short original OffHeapDiskFPSet insertion/eviction/merge methods
+pass unchanged (terminal 8cb69c, status 0, 0.520 seconds). The source has no
+direct enabled nil-batch method, so native checks add no original completion
+credit. No full suite, full model, large index workload or race selection ran.
+All check handles are terminal.

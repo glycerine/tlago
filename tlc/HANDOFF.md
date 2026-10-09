@@ -411,6 +411,10 @@ or publication. Trailing partial records after two complete fingerprints follow
 the source EOF catch and complete recovery. These checks add native coverage,
 not original-method credit or full-model restart guarantees.
 
+Off-heap batch operations now reject nil vectors before storage access, matching
+the inherited source FPSet contract. Local/TCP checks distinguish nil from empty
+batches, retain membership/seen counts and verify normal calls after rejection.
+
 ## Testing, commits and documentation
 
 Implement the feature faithfully, then port its original Java tests. Preserve

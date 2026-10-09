@@ -303,6 +303,7 @@ func TestFPSetNullBlocksRejectBeforeStorageAccess(t *testing.T) {
 		{"memory1", &MemFPSet1{}},
 		{"memory2", &MemFPSet2{}},
 		{"disk", &DiskFPSet{}},
+		{"offheap", &OffHeapDiskFPSet{}},
 		{"multi", &MultiFPSet{}},
 		{"noop", &NoopFPSet{}},
 	} {
@@ -322,5 +323,65 @@ func TestFPSetNullBlocksRejectBeforeStorageAccess(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestFingerprintOffHeapBatchFailureAndContinuation(t *testing.T) {
+	for _, remote := range []bool{false, true} {
+		t.Run(map[bool]string{false: "local", true: "tcp"}[remote], func(t *testing.T) {
+			config := NewFPSetConfiguration()
+			config.SetMemory(1 << 20)
+			storage := NewOffHeapDiskFPSet(config)
+			storage.Init(1, t.TempDir(), "offheap")
+			t.Cleanup(storage.Close)
+			var endpoint DistributedFingerprintEndpoint = NewLocalFingerprintEndpoint(storage)
+			if remote {
+				_, endpoint = startFingerprintRPC(t, endpoint)
+			}
+			if found, err := endpoint.Put(11); err != nil || found {
+				t.Fatalf("initial insertion = %v/%v", found, err)
+			}
+			if bits, err := endpoint.ContainsBlock(NewLongVecFrom([]int64{11})); err != nil || bits == nil || bits.TrueCount() != 0 {
+				t.Fatalf("initial lookup = %v/%v", bits, err)
+			}
+			for _, put := range []bool{true, false} {
+				call := func(batch *LongVec) (*BitVector, error) {
+					return invokeFingerprintEndpoint(func() (*BitVector, error) {
+						if put {
+							return endpoint.PutBlock(batch)
+						}
+						return endpoint.ContainsBlock(batch)
+					})
+				}
+				bits, err := call(nil)
+				if !isDistributedNullFailure(err) || isJavaIOException(err) || isDistributedRemoteFailure(err) || bits != nil {
+					t.Fatalf("nil batch (put=%v) = %v/%T, want rejection before storage", put, bits, err)
+				}
+				bits, err = call(NewLongVec())
+				if err != nil || bits == nil || bits.TrueCount() != 0 {
+					t.Fatalf("empty batch (put=%v) = %v/%v", put, bits, err)
+				}
+				if count, err := endpoint.Size(); err != nil || count != 1 {
+					t.Fatalf("nil/empty batch changed membership: %d/%v", count, err)
+				}
+				if seen, err := endpoint.GetStatesSeen(); err != nil || seen != 1 {
+					t.Fatalf("nil/empty batch changed seen count: %d/%v", seen, err)
+				}
+			}
+			bits, err := endpoint.PutBlock(NewLongVecFrom([]int64{41, 41, 43}))
+			if err != nil || bits == nil || bits.TrueCount() != 2 || !bits.Get(0) || bits.Get(1) || !bits.Get(2) {
+				t.Fatalf("ordinary insertion after rejection = %v/%v", bits, err)
+			}
+			bits, err = endpoint.ContainsBlock(NewLongVecFrom([]int64{41, 97, 43}))
+			if err != nil || bits == nil || bits.TrueCount() != 1 || bits.Get(0) || !bits.Get(1) || bits.Get(2) {
+				t.Fatalf("ordinary lookup after rejection = %v/%v", bits, err)
+			}
+			if count, err := endpoint.Size(); err != nil || count != 3 {
+				t.Fatalf("ordinary batch membership = %d/%v", count, err)
+			}
+			if seen, err := endpoint.GetStatesSeen(); err != nil || seen != 4 {
+				t.Fatalf("ordinary lookup count = %d/%v", seen, err)
+			}
+		})
 	}
 }

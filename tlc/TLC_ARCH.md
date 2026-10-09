@@ -12931,3 +12931,16 @@ trace/queue mutations, disk statistics/index/reader ownership, sibling joining,
 independent expected recovery counts and exact lifecycle boundaries. No
 production change was needed. These checks do not prove checkpoint atomicity,
 full-model restart or completion of disabled original model methods.
+
+### Off-heap fingerprint batch nil contract
+
+Java OffHeapDiskFPSet inherits FPSet's batch methods: dereference the input vector
+before reading storage or updating statesSeen. Go's off-heap overrides had
+converted nil to an empty successful answer. Both now reject nil before storage,
+like the other Go stores; actual empty vectors still return an empty bit vector.
+The uninitialized-store matrix includes off-heap ownership, and initialized
+local/TCP checks retain preexisting membership and seen counts across rejection
+and empty calls, then verify ordinary duplicate insertion and lookup answers.
+TCP preserves the native null-failure category without class reconstruction.
+No original Java method directly covers the nil boundary; existing original
+batch and short off-heap storage methods remain unchanged and green.
