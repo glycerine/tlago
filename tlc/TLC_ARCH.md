@@ -14126,3 +14126,18 @@ filename and partial sibling-membership assertions. Those rows additionally
 check that no checked-I/O warning or failover path suppresses the failure.
 The successful direct-memory full-model receipt remains separate from these
 failed-startup receipts. Original Java method credit is unchanged.
+
+
+### Native host shutdown retains mixed failures
+
+`DistributedRPCServer.close` now applies the existing all-causes benign-close
+classification to listener close, read-deadline interruption and accepted
+connection close. Matching `net.ErrClosed` anywhere in an error graph is
+insufficient: an accompanying real failure must remain reportable, with its
+original context and `errors.Is`/`errors.As` causes. Closed-only errors remain
+benign. Cached connection teardown retains mixed failures on later host closes.
+
+Six native cases cover closed-only and wrapped joined failures at those three
+boundaries; this native transport ownership has no original Java test method.
+The change preserves accepted-reply draining, forced interruption and storage
+ownership. It adds no original-method completion credit.

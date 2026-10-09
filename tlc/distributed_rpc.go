@@ -162,7 +162,7 @@ func (s *DistributedRPCServer) close(graceful bool) error {
 	s.mu.Unlock()
 	var failures []error
 	for _, listener := range listeners {
-		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+		if err := listener.Close(); !distributedCloseIsBenign(err) {
 			failures = append(failures, err)
 		}
 	}
@@ -172,7 +172,7 @@ func (s *DistributedRPCServer) close(graceful bool) error {
 		// body can prevent reply draining forever. Read deadlines leave
 		// accepted handlers and their response writes undisturbed.
 		for _, conn := range connections {
-			if err := conn.SetReadDeadline(time.Now()); err != nil && !errors.Is(err, net.ErrClosed) {
+			if err := conn.SetReadDeadline(time.Now()); !distributedCloseIsBenign(err) {
 				failures = append(failures, err)
 			}
 		}
@@ -187,7 +187,7 @@ func (s *DistributedRPCServer) close(graceful bool) error {
 			resourceFailures = append(resourceFailures, err)
 		}
 		for _, conn := range connections {
-			if err := conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			if err := conn.Close(); !distributedCloseIsBenign(err) {
 				resourceFailures = append(resourceFailures, err)
 			}
 		}

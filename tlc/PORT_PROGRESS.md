@@ -26096,3 +26096,30 @@ This is documentation-only. Checked local Markdown link targets and required
 restart sections, and ran git diff --check. Reused existing code/test receipts;
 no full suite, model workload or race selection was rerun. Appended this entry
 without rewriting the progress log's mixed line endings.
+
+
+### October 9, 2026: retain mixed native host shutdown failures
+
+Found a remaining native ownership shortcut in DistributedRPCServer.close:
+listener close, read-deadline interruption and connection close used errors.Is
+on net.ErrClosed to suppress the whole error. A wrapped errors.Join containing
+both that benign cause and an actual cleanup failure was silently discarded.
+The existing callback/role cleanup classifier already requires every cause to
+be benign; the host now uses it at all three boundaries too. Original error
+graphs remain intact and closed-only cleanup remains successful. Native reply
+draining, forced interruption, storage ownership and retry policy are unchanged.
+
+Added six focused native cases (three ownership boundaries, each with closed-only
+and wrapped mixed causes). They reproduced all three mixed failures before the
+production change; the connection case also checks retained failure on a later
+close. This Go transport ownership has no direct original Java test method.
+Original distributed completion stays 37/41 with four Reconcile contexts.
+
+Red receipt: distributed-host-mixed-close-red.log, terminal 58ba69, status 1,
+0.013 seconds. Green: distributed-host-mixed-close-green.log, terminal a69ef0,
+status 0, 0.014 seconds. Focused existing shutdown, partial-request, response-flush,
+listener/callback cleanup, original manager/nested partition and smart-proxy
+checks pass (distributed-host-mixed-close-focused.log, terminal 4e60f0, status 0,
+0.274 seconds). Isolated short host-close checks with race instrumentation pass
+(distributed-host-mixed-close-race.log, terminal 2b9198, status 0). No long model
+or full suite was rerun; all handles are terminal. git diff --check passes.

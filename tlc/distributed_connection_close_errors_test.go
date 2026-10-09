@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/rpc"
 	"testing"
+	"time"
 )
 
 // Native ownership has no upstream Java test. Already-closed components must
@@ -71,5 +72,74 @@ func TestDistributedDiscoveryCloseRetainsCallbackFailure(t *testing.T) {
 	}
 	if err := discovery.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The native host owns listener shutdown, read interruption and connection
+// cleanup. An already-closed cause must not hide a different failure at any of
+// those boundaries. There is no corresponding upstream Java transport test.
+type distributedCloseFailureConn struct {
+	net.Conn
+	closeFailure    error
+	deadlineFailure error
+}
+
+func (c *distributedCloseFailureConn) Close() error {
+	return errors.Join(c.Conn.Close(), c.closeFailure)
+}
+
+func (c *distributedCloseFailureConn) SetReadDeadline(deadline time.Time) error {
+	return errors.Join(c.Conn.SetReadDeadline(deadline), c.deadlineFailure)
+}
+
+func TestDistributedRPCHostCloseRetainsMixedFailures(t *testing.T) {
+	for _, boundary := range []string{"listener", "read_deadline", "connection"} {
+		for _, mixed := range []bool{false, true} {
+			name := boundary + "/closed_only"
+			if mixed {
+				name = boundary + "/closed_and_failure"
+			}
+			t.Run(name, func(t *testing.T) {
+				host := NewDistributedRPCServer()
+				failure := errors.New("native host cleanup failed")
+				closeErr := error(net.ErrClosed)
+				if mixed {
+					closeErr = fmt.Errorf("native shutdown: %w", errors.Join(net.ErrClosed, failure))
+				}
+				if boundary == "listener" {
+					listener := &distributedFailingListener{closeFailure: closeErr}
+					host.listeners[listener] = struct{}{}
+				} else {
+					conn, peer := net.Pipe()
+					t.Cleanup(func() { _ = conn.Close(); _ = peer.Close() })
+					owned := &distributedCloseFailureConn{Conn: conn}
+					if boundary == "connection" {
+						owned.closeFailure = closeErr
+					} else {
+						owned.deadlineFailure = closeErr
+					}
+					host.connections[owned] = struct{}{}
+				}
+				err := host.CloseGracefully()
+				if mixed {
+					if !errors.Is(err, failure) || !errors.Is(err, net.ErrClosed) {
+						t.Fatalf("host lost mixed %s cleanup causes: %v", boundary, err)
+					}
+				} else if err != nil {
+					t.Fatalf("host reported benign %s shutdown: %v", boundary, err)
+				}
+				// Connection cleanup is cached by the host and must not lose
+				// its failure on a later close either.
+				if boundary == "connection" {
+					err = host.Close()
+					if mixed && !errors.Is(err, failure) {
+						t.Fatalf("repeated host close lost connection failure: %v", err)
+					}
+					if !mixed && err != nil {
+						t.Fatalf("repeated host close reported benign failure: %v", err)
+					}
+				}
+			})
+		}
 	}
 }
