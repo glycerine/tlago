@@ -249,6 +249,10 @@ existing lazy-transfer failure before supplier checks.
 
 Attached model-value data supports native `[]Value` through the same array graph,
 preserving cycles, shared backing storage and typed nil/empty arrays across RPC.
+Scalar character attachments now use `uint16`, retaining every UTF-16 code unit
+and distinct map-key type. Out-of-range payloads fail. Peers carrying this new
+scalar tag need updated native builds; opaque evaluator objects remain rejected.
+
 Primitive attachments also support `[]bool`, signed integer slices, `[]uint16`
 and both floating-point slice widths. Native array references preserve sharing,
 separate equal arrays, typed nil/empty slices and receiver isolation. Integer bit

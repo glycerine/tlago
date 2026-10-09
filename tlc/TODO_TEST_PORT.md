@@ -2002,6 +2002,12 @@ successful recovery/model completion assertions remain unchanged. This native
 failure coverage does not translate the disabled distributed model harness and
 adds no original-method credit.
 
+Native scalar character attachments now preserve `uint16` alongside character
+arrays. Direct transfer checks all 65,536 code units; TCP result/error-context
+checks preserve typed character map keys, and malformed ranges are rejected.
+All 44 original ModelValue methods remain unchanged and green. There is no
+dedicated upstream character-attachment test, so original credit is unchanged.
+
 Native coordinator read checks in `distributed_server_file_path_test.go` verify
 relative/absolute symlink traversal, exact directory/open-failure diagnostics
 and retained nested file-open causes. Absolute diagnostics now preserve dot

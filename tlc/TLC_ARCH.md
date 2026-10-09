@@ -13595,3 +13595,22 @@ the removed child is not recreated. Both fresh hosts exit normally through the
 actual coordinator cleanup calls. LSB and MSB cases pass without a production
 change or weakening any existing successful-recovery assertion. This adds native
 failure-phase evidence, not original-method credit or atomic recovery semantics.
+
+### Native scalar character attachments
+
+`ModelValue.data` is a non-transient Object, and Character is serializable. Its
+single 16-bit code unit has a finite Go representation independent of evaluator
+objects or runtime emulation. The codec already carried `[]uint16` character
+arrays but rejected standalone `uint16`. It now uses a `uint16` data tag with
+an integer payload in [0, 65535], decoding to the same native unsigned type.
+This preserves zero, high-bit values and unpaired surrogate units without
+Unicode scalar conversion or sign extension. Negative and oversized values
+fail before conversion. Mixed objects and map keys reuse the scalar contract,
+keeping character keys distinct from signed-short keys with the same value.
+
+Direct graph transfer verifies all 65,536 code units. Existing scalar/TCP and
+general-map checks now include character units and key types, including worker
+failure state context. All 44 original ModelValue assertions remain unchanged;
+no original character-attachment test exists and no credit is added. Peers
+carrying this new tag need updated native payload builds. Opaque evaluator
+metadata and arbitrary custom objects remain explicitly unsupported.

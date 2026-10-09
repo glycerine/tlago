@@ -25204,3 +25204,27 @@ bound is weakened. No dedicated upstream failure-phase method exists, and these
 native process cases add no original-method credit. Distributed inventory remains
 37 complete and four Missing. No full suite or race workload ran. All handles
 are terminal.
+
+### October 9, 2026: transfer scalar character code units
+
+Reviewed actual state/value fields and core ModelValue.setData producers. No
+new evaluator object contract was established; existing explicit rejection is
+retained. A finite scalar gap remains: character arrays use []uint16, but a
+standalone uint16 is rejected. ModelValue.data is an ordinary Object, and local
+JDK javap confirms Character implements Serializable. Added character samples
+to existing native scalar/map checks and a complete 65,536-code-unit direct
+graph round trip. These checks fail before the fix with unsupported uint16
+(character-data-red.log, terminal da1759, status 1, 0.018 seconds).
+
+Added the native uint16 scalar tag and strict unsigned 16-bit decode bounds.
+Types and bits survive mixed objects and map keys, including NUL, surrogate and
+high-bit code units without sign extension or Unicode scalar conversion.
+Negative/oversized payloads fail. Initial related graph/scalar/TCP checks pass
+(character-data-green.log, terminal db75f4, status 0, 0.094 seconds).
+Final related state/result/model-data graph and actual TCP checks plus all
+44 unchanged original ModelValue methods pass (character-data-final.log,
+terminal 76265a, status 0, 0.127 seconds). Existing general-map RPC checks include
+result and WorkerException context. Peers carrying the new scalar tag need the
+updated native build. No arbitrary-object codec/runtime emulation or original
+test credit is added. Inventory remains 37 complete and four Missing. No full
+suite, full-model workload or race run. All handles are terminal.

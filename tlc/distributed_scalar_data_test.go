@@ -10,6 +10,8 @@ func distributedScalarData() []any {
 	return []any{
 		int8(math.MinInt8), int8(0), int8(math.MaxInt8),
 		int16(math.MinInt16), int16(0), int16(math.MaxInt16),
+		uint16(0), uint16(0x7f), uint16(0xff), uint16(0x8000),
+		uint16(0xd800), uint16(0xdc00), uint16(0xdfff), uint16(math.MaxUint16),
 		float32(0), math.Float32frombits(1 << 31), float32(0.1),
 		float32(math.MaxFloat32), math.Float32frombits(1),
 		float32(math.Inf(1)), float32(math.Inf(-1)), float32(math.NaN()),
@@ -40,7 +42,7 @@ func requireDistributedScalarData(t *testing.T, got, want any) {
 }
 
 // ModelValue.data is an ordinary non-transient Object in Java. Its boxed byte,
-// short and float data are transferable; native Go must retain their scalar
+// short, character and float data are transferable; Go must retain their scalar
 // types too. No enabled upstream test directly covers this transport boundary.
 func TestDistributedModelScalarData(t *testing.T) {
 	for _, data := range distributedScalarData() {
@@ -98,6 +100,7 @@ func TestDistributedModelNarrowIntegerBounds(t *testing.T) {
 	}{
 		{"int8", math.MinInt8 - 1}, {"int8", math.MaxInt8 + 1},
 		{"int16", math.MinInt16 - 1}, {"int16", math.MaxInt16 + 1},
+		{"uint16", -1}, {"uint16", math.MaxUint16 + 1},
 	} {
 		payload := &DistributedStatePayload{
 			Roots: []int{1}, States: []DistributedStateNode{{Level: 1, Values: []int{1}}},
@@ -106,5 +109,21 @@ func TestDistributedModelNarrowIntegerBounds(t *testing.T) {
 		if _, err := DecodeDistributedStates(payload); err == nil {
 			t.Fatalf("out-of-range %s data %d accepted", test.kind, test.integer)
 		}
+	}
+}
+
+func TestDistributedModelCharacterUnits(t *testing.T) {
+	data := make([]any, 1<<16)
+	for i := range data {
+		data[i] = uint16(i)
+	}
+	state := &TLCStateMut{level: 1, values: []Value{&ModelValue{Data: data}}}
+	copied := distributedPayloadRoundTrip(t, []*TLCStateMut{state})
+	got := copied[0].values[0].(*ModelValue).Data.([]any)
+	if len(got) != len(data) {
+		t.Fatal("character-unit range changed length")
+	}
+	for i := range data {
+		requireDistributedScalarData(t, got[i], data[i])
 	}
 }

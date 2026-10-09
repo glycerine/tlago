@@ -9,6 +9,7 @@ import (
 func modelDataKeyStates() []*TLCStateMut {
 	first, second := &ModelValue{Val: UniqueStringOf("keyFirst")}, &ModelValue{Val: UniqueStringOf("keySecond")}
 	data := map[any]any{nil: "nil", int(1): "int", int32(1): "int32", true: []byte{17}, float64(1.25): "float64", float32(1.25): "float32"}
+	data[uint16(65)], data[int16(65)], data[uint16(0xd800)] = "character", "short", "surrogate"
 	data[first], data[second], data["self"] = first, data, data
 	data["array"] = []any{data, first}
 	first.Data, second.Data = data, data
@@ -18,8 +19,11 @@ func modelDataKeyStates() []*TLCStateMut {
 func checkModelDataKeyStates(states []*TLCStateMut) error {
 	first, second := states[0].values[0].(*ModelValue), states[0].values[1].(*ModelValue)
 	data := first.Data.(map[any]any)
-	if len(data) != 10 || data[nil] != "nil" || data[int(1)] != "int" || data[int32(1)] != "int32" || data[true].([]byte)[0] != 17 || data[float64(1.25)] != "float64" || data[float32(1.25)] != "float32" || data[first] != first {
+	if len(data) != 13 || data[nil] != "nil" || data[int(1)] != "int" || data[int32(1)] != "int32" || data[true].([]byte)[0] != 17 || data[float64(1.25)] != "float64" || data[float32(1.25)] != "float32" || data[first] != first {
 		return fmt.Errorf("general map key type, membership or value identity changed")
+	}
+	if data[uint16(65)] != "character" || data[int16(65)] != "short" || data[uint16(0xd800)] != "surrogate" {
+		return fmt.Errorf("character and signed-short map keys were merged or changed")
 	}
 	identity := reflect.ValueOf(data).Pointer()
 	for _, shared := range []any{second.Data, data[second], data["self"], data["array"].([]any)[0]} {

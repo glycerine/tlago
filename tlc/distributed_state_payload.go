@@ -641,6 +641,8 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		node.DataKind, node.DataInteger = "int8", int64(v)
 	case int16:
 		node.DataKind, node.DataInteger = "int16", int64(v)
+	case uint16:
+		node.DataKind, node.DataInteger = "uint16", int64(v)
 	case int32:
 		node.DataKind, node.DataInteger = "int32", int64(v)
 	case int64:
@@ -1624,6 +1626,11 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return nil, fmt.Errorf("model data outside int16 range")
 		}
 		return int16(node.DataInteger), nil
+	case "uint16":
+		if node.DataInteger < 0 || node.DataInteger > math.MaxUint16 {
+			return nil, fmt.Errorf("model data outside uint16 range")
+		}
+		return uint16(node.DataInteger), nil
 	case "int64":
 		return node.DataInteger, nil
 	case "float64":
