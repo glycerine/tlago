@@ -78,12 +78,18 @@ const (
 	nativeRemoteCheckpointTraceToIntern
 	nativeRemoteCheckpointTruncatedQueue
 	nativeRemoteCheckpointTruncatedTrace
+	nativeRemoteCheckpointBeginReplyLoss
 )
 
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
 // and ignored by the source manager before recovering the next registration.
 func TestNativeDistributedRemoteCheckpointMissingMemSnapshot(t *testing.T) {
 	checkNativeDistributedRemoteCheckpointRestart(t, "mem", 1, nativeRemoteCheckpointMissingMemSnapshot)
+}
+
+// The pending memory snapshot must not become committed after begin reply loss.
+func TestNativeDistributedRemoteCheckpointBeginReplyLoss(t *testing.T) {
+	checkNativeDistributedRemoteCheckpointRestart(t, "mem", 1, nativeRemoteCheckpointBeginReplyLoss)
 }
 
 // Queue recovery precedes every remote fingerprint recovery and publication.
@@ -107,7 +113,8 @@ func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
 func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, fault nativeRemoteCheckpointFault, debuggerSetup ...func(*exec.Cmd)) {
 	commitReplyLoss := fault == nativeRemoteCheckpointCommitReplyLoss
 	recoverReplyLoss := fault == nativeRemoteCheckpointRecoverReplyLoss
-	missingMemSnapshot := fault == nativeRemoteCheckpointMissingMemSnapshot
+	beginReplyLoss := fault == nativeRemoteCheckpointBeginReplyLoss
+	missingMemSnapshot := fault == nativeRemoteCheckpointMissingMemSnapshot || beginReplyLoss
 	traceToIntern := fault == nativeRemoteCheckpointTraceToIntern
 	truncatedQueue := fault == nativeRemoteCheckpointTruncatedQueue
 	truncatedTrace := fault == nativeRemoteCheckpointTruncatedTrace
@@ -215,6 +222,9 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			if commitReplyLoss && prefix == "original" && i == 0 {
 				environment = append(environment, "TLAGO_CHECKPOINT_COMMIT_REPLY_LOSS=1")
 			}
+			if beginReplyLoss && prefix == "original" && i == 0 {
+				environment = append(environment, "TLAGO_CHECKPOINT_BEGIN_REPLY_LOSS=1")
+			}
 			if recoverReplyLoss && prefix == "restarted" && i == 0 {
 				environment = append(environment, "TLAGO_CHECKPOINT_RECOVER_REPLY_LOSS=1")
 			}
@@ -298,11 +308,17 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	if len(nativeDistributedMessages(output, tlc.ECTLCCheckpointStart)) != expectedStarts || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)) != workerThreads {
 		t.Fatal("producer checkpoint/registration sequence differs from the real two-store model")
 	}
-	if commitReplyLoss {
+	if commitReplyLoss || beginReplyLoss {
 		const diagnostic = "Error: Failed to checkpoint the fingerprint server at checkpoint-host-0. This server might be down."
 		marker := "NATIVE_CHECKPOINT_FP_COMMIT_REPLY_LOST=" + filepath.Base(filepath.Clean(path[1]))
+		if beginReplyLoss {
+			marker = "NATIVE_CHECKPOINT_FP_BEGIN_REPLY_LOST=" + filepath.Base(filepath.Clean(path[1]))
+			if strings.Contains(hosts[0].output.String(), "NATIVE_CHECKPOINT_FP_COMMIT=") {
+				t.Fatal("lost begin acknowledgement was followed by a commit")
+			}
+		}
 		if strings.Count(output, diagnostic) != 1 || strings.Count(hosts[0].output.String(), marker+"\n") != 1 {
-			t.Fatalf("completed commit must lose exactly one reply and report its original host\n%s\n%s", output, hosts[0].output.String())
+			t.Fatalf("completed checkpoint phase must lose exactly one reply and report its original host\n%s\n%s", output, hosts[0].output.String())
 		}
 		if strings.Count(output, "NATIVE_CHECKPOINT_ALIVE_FINGERPRINTS=2\n") != 1 {
 			t.Fatalf("checkpoint I/O failure must preserve both registrations\n%s", output)
@@ -329,7 +345,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	}
 	snapshots := make([][]snapshot, len(hosts))
 	basename := filepath.Base(filepath.Clean(path[1]))
-	var committed int
+	var captured int
 	for i, directory := range directories {
 		children := 1
 		if backend != "mem" {
@@ -344,16 +360,22 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 				// child index preserves the original fingerprint's high bit.
 				highBits = uint64(child) << 63
 			}
+			if beginReplyLoss && i == 0 {
+				if _, err := os.Stat(filepath.Join(directory, filename)); !os.IsNotExist(err) {
+					t.Fatal("lost begin reply published a committed snapshot")
+				}
+				filename = strings.TrimSuffix(filename, ".chkpt") + ".tmp"
+			}
 			data, err := os.ReadFile(filepath.Join(directory, filename))
 			if err != nil || len(data) == 0 || len(data)%8 != 0 {
-				t.Fatalf("remote committed snapshot %s: %v/%d", filename, err, len(data))
+				t.Fatalf("remote checkpoint snapshot %s: %v/%d", filename, err, len(data))
 			}
 			snapshots[i] = append(snapshots[i], snapshot{filename, data, highBits})
-			committed += len(data) / 8
+			captured += len(data) / 8
 		}
 	}
-	if committed != distinct {
-		t.Fatal("committed remote membership differs from checkpoint frontier")
+	if captured != distinct {
+		t.Fatal("captured remote membership differs from checkpoint frontier")
 	}
 	for _, process := range append(hosts, worker) {
 		killErr := process.command.Process.Kill()
@@ -366,7 +388,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			t.Fatal("original fingerprint host did not crash")
 		}
 	}
-	t.Logf("committed frontier %d/%d; original coordinator, worker and both fingerprint hosts are gone", distinct, queued)
+	t.Logf("checkpoint frontier %d/%d; original coordinator, worker and both fingerprint hosts are gone", distinct, queued)
 	for i, directory := range directories {
 		for _, snapshot := range snapshots[i] {
 			data, err := os.ReadFile(filepath.Join(directory, snapshot.filename))
@@ -376,7 +398,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		}
 	}
 	missingDiskSnapshot := fault == nativeRemoteCheckpointMissingDiskSnapshot
-	if missingDiskSnapshot || missingMemSnapshot {
+	if missingDiskSnapshot || (missingMemSnapshot && !beginReplyLoss) {
 		if backend == "mem" {
 			if !missingMemSnapshot {
 				t.Fatal("missing disk snapshot case requires nested disk storage")
@@ -579,7 +601,15 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		recovered += size
 	}
 	if missingMemSnapshot {
-		if _, err := os.Stat(filepath.Join(directories[0], snapshots[0][0].filename)); !os.IsNotExist(err) {
+		filename := snapshots[0][0].filename
+		if beginReplyLoss {
+			data, err := os.ReadFile(filepath.Join(directories[0], filename))
+			if err != nil || !bytes.Equal(data, snapshots[0][0].data) {
+				t.Fatal("recovery changed or promoted the pending memory snapshot")
+			}
+			filename = strings.TrimSuffix(filename, ".tmp") + ".chkpt"
+		}
+		if _, err := os.Stat(filepath.Join(directories[0], filename)); !os.IsNotExist(err) {
 			t.Fatal("recovery recreated the missing committed memory snapshot")
 		}
 	}
@@ -677,6 +707,8 @@ type nativeCheckpointFingerprintEndpoint struct {
 	*tlc.LocalFingerprintEndpoint
 	exited           chan struct{}
 	once             sync.Once
+	beginReplyLoss   *tlc.DistributedRPCServer
+	beginOnce        sync.Once
 	commitReplyLoss  *tlc.DistributedRPCServer
 	commitOnce       sync.Once
 	recoverReplyLoss func()
@@ -724,7 +756,23 @@ func (l *nativeCheckpointConnectionListener) closeConnections() {
 	l.connections = nil
 }
 
+func (e *nativeCheckpointFingerprintEndpoint) BeginChkptFile(name string) error {
+	if err := e.LocalFingerprintEndpoint.BeginChkptFile(name); err != nil {
+		return err
+	}
+	if e.beginReplyLoss != nil {
+		e.beginOnce.Do(func() {
+			fmt.Println("NATIVE_CHECKPOINT_FP_BEGIN_REPLY_LOST=" + name)
+			if err := e.beginReplyLoss.Close(); err != nil {
+				panic(err)
+			}
+		})
+	}
+	return nil
+}
+
 func (e *nativeCheckpointFingerprintEndpoint) CommitChkptFile(name string) error {
+	fmt.Println("NATIVE_CHECKPOINT_FP_COMMIT=" + name)
 	if err := e.LocalFingerprintEndpoint.CommitChkptFile(name); err != nil {
 		return err
 	}
@@ -776,6 +824,9 @@ func nativeCheckpointFingerprintHost() error {
 	defer storage.Close()
 	endpoint := &nativeCheckpointFingerprintEndpoint{LocalFingerprintEndpoint: tlc.NewLocalFingerprintEndpoint(storage), exited: make(chan struct{})}
 	host := tlc.NewDistributedRPCServer()
+	if os.Getenv("TLAGO_CHECKPOINT_BEGIN_REPLY_LOSS") == "1" {
+		endpoint.beginReplyLoss = host
+	}
 	if os.Getenv("TLAGO_CHECKPOINT_COMMIT_REPLY_LOSS") == "1" {
 		endpoint.commitReplyLoss = host
 	}

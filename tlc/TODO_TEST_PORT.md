@@ -1905,6 +1905,11 @@ survivor completes at 114,942 stored fingerprints, with 229,884 reported across
 the two aliased routing slots and an empty queue. Mem/LSB/MSB coverage adds no
 original-method credit and preserves the ordinary recovery-row assertions.
 
+A full N=7 direct-memory completed-begin reply-loss row now also passes: the
+failed host receives no commit, pending bytes survive unpromoted, fresh recovery
+warns/continues with that host empty, and replacement evaluation finishes at
+114,942 states with an empty queue. This adds no original-method credit.
+
 Short completed-begin reply-loss checks cover Mem/LSB/MSB storage, real pending
 snapshot membership, skipped commit, retained registrations and fresh-store
 recovery without pending-file promotion. They verify the source distinction

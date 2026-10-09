@@ -532,6 +532,9 @@ from `go test -c`, Linux/amd64 ptrace permission and GDB; see `TLC_ARCH.md`.
    two-host Mem/LSB/MSB registered endpoints and cover complete checkpoints,
    completed-commit and completed-recovery reply loss, and missing committed
    LSB/MSB child snapshots, plus a missing direct memory-store snapshot.
+   Full-model direct memory begin-acknowledgement loss leaves pending bytes
+   unpromoted, skips that host's commit and recovers through the source warning
+   path; replacement evaluation finishes at 114,942 states with an empty queue.
    A truncated coordinator queue from a real N=7 checkpoint stops recovery
    before either remote host is recovered or workers are published; all roles
    join with retained checkpoint bytes unchanged. A truncated trace plus missing

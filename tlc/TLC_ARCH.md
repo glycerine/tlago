@@ -14076,3 +14076,31 @@ The existing constructor check now requires both type and detail for all three
 inputs; valid shift-wrap, zero-fingerprint, hit/miss and ratio checks are intact.
 A direct Java array-construction check confirms those failure details. No direct
 upstream SimpleCache test exists, so this adds no original-method credit.
+
+
+### Full-model checkpoint begin acknowledgement loss
+
+TestNativeDistributedRemoteCheckpointBeginReplyLoss extends the existing
+registered-endpoint N=7 EWD840 fixture with two direct MemFPSet hosts. Host zero
+executes real BeginChkptFile, then closes its transport before acknowledging.
+The coordinator emits exactly one checkpoint warning, retains both registration
+wrappers and completes queue/trace/intern checkpointing. The failed host receives
+no commit; its nonempty pending fingerprint snapshot remains, while the healthy
+host commits. Captured pending plus committed membership equals the saved frontier.
+
+After the original roles are gone, fresh empty hosts recover by committed name.
+The missing direct-memory committed snapshot follows the source warning/continue
+path. Its pending bytes remain unchanged and unpromoted, all its captured
+fingerprints are absent, and the healthy host restores exact membership before
+worker publication. Recovery reports only healthy membership with the exact
+saved queue count. Replacement evaluation finishes at 114,942 fingerprints and
+an empty queue; all roles join without GENERAL. No source feature or assertion
+was weakened to tolerate the incomplete fingerprint snapshot.
+
+The model/configuration remains unchanged; the parent does not delete a committed
+snapshot to simulate this loss. The missing commit results from the actual
+completed-begin/lost-reply control flow. This adds full-model direct-memory
+coverage to existing short Mem/LSB/MSB checks; it does not claim successful nested
+disk recovery from missing committed children or checkpoint atomicity. No direct
+original Java test covers the acknowledgement boundary, and method credit stays
+unchanged. Production algorithms and transport retry policy are unchanged.

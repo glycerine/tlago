@@ -26008,3 +26008,39 @@ network permission, all cache, locale/ratio, worker computation-failure and
 original smart-proxy checks pass (distributed-cache-constructor-final.log,
 terminal bdcac9, status 0). No race or full-suite run; all handles are terminal.
 Original distributed method completion remains unchanged at 37/41.
+
+
+### October 9, 2026: full-model checkpoint begin acknowledgement loss
+
+Reviewed batch error handling against FPSetManager executeCallablesAndCollect and
+CheckFPsCallable/CheckInvariantCallable. Existing native categories preserve
+checked-I/O catches, failed-task collection and manager retry decisions in the
+inspected paths. Extended a concrete remaining recovery boundary to the full
+unchanged N=7 EWD840 model with two direct memory fingerprint hosts.
+
+Host zero executes real BeginChkptFile and closes transport before returning its
+reply. Parent assertions require exactly one source checkpoint warning, unchanged
+registration availability, no commit on that host, nonempty pending bytes and no
+committed file. The healthy host commits normally; pending plus committed
+membership equals the captured queue frontier. The parent does not delete a
+snapshot to manufacture this case. Original roles are gone before fresh recovery.
+
+Fresh empty hosts restore only committed snapshots. Missing direct memory I/O
+warns and continues without reassignment, recovery replay or pending promotion.
+The failed host is empty and all captured pending fingerprints are absent; the
+healthy host restores exact membership and recovery reports its actual count
+with the saved queue length. Pending bytes remain identical. Replacement
+model evaluation finishes at 114,942 states with an empty queue and no GENERAL;
+all roles are joined. Production algorithm and transport retry policy are
+unchanged. This does not establish successful missing-child nested disk recovery
+or checkpoint atomicity, and earns no original-method completion credit.
+
+The full-model case passes (distributed-remote-begin-reply-loss.log, terminal
+5253e2, status 0, 55.953 seconds). Existing short completed-begin loss checks for
+Mem/LSB/MSB, checkpoint catch/fatal behavior and original dynamic manager/nested
+partition tests pass (distributed-remote-begin-reply-loss-focused.log, terminal
+78feb8, status 0, 0.079 seconds). After clarifying snapshot counter/log names,
+the existing short corrupt coordinator queue row passes through the shared
+fixture (distributed-remote-begin-reply-loss-baseline.log, terminal 44b237,
+status 0, 4.561 seconds). All handles are terminal; no full suite or race workload.
+Original distributed completion remains 37/41 with four Reconcile contexts.
