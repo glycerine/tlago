@@ -26392,3 +26392,27 @@ all four selected subtests have RUN/PASS receipts. Shared disk branches retain
 the default first-host index and equivalent call-count checks; no storage or
 transport production code changed. No full-suite rerun or race instrumentation.
 git diff --check passes. Distributed original-method credit remains 37/41.
+
+
+### October 9, 2026: distributed CLI reports network cleanup failures
+
+Worker/FP and combined command comparison retains source startup order,
+independent role lifetimes and FP registration failure boundaries. Found a
+concrete native CLI shortcut: both coordinator and worker network.Close results
+were discarded by defer, hiding real failures preserved by host/discovery
+owners. Both command branches now defer closeDistributedCLINetwork against a
+named return status. Real cleanup errors reach stderr and ExitToolFailure,
+including after successful command completion; successful cleanup retains the
+body result and earlier diagnostics remain visible. Native owner classification
+continues to ignore only entirely benign closed causes. Source command catch
+semantics, RPC/retry algorithms and model bounds are unchanged.
+
+No original Java test covers native Go network lifetime. New four-case native
+CLI shutdown checks plus existing help/startup checks pass:
+distributed-cli-close-result.log, terminal e944c1, status 0, 0.016 seconds.
+Existing short mixed/closed-only callback/discovery/host owner controls pass:
+distributed-cli-close-owner-controls.log, terminal 02bb2a, status 0,
+0.013 seconds. Full unchanged DieHard distributed diagnostic passes:
+distributed-cli-close-diehard-diagnostic.log, terminal af81ce, status 0.
+No full-suite rerun or race instrumentation. All handles terminal and
+git diff --check passes. Distributed original-method credit stays 37/41.

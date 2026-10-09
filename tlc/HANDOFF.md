@@ -89,7 +89,9 @@ Production roles are `server`, `worker`, `fpserver` and `worker-fpserver`; the
 combined role shares a listener and waits for both lifetimes. Discovery,
 publication, file loading, interning, settings, registration, manager snapshots
 and keepalive are wired into the CLI. Upstream RMI names identify source files
-only. They are not Go implementation requirements.
+only. They are not Go implementation requirements. Native network shutdown errors
+reach CLI stderr and a failure exit status, including after a successful TLC
+command body; earlier command diagnostics remain visible.
 
 Use [DISTRIBUTED_PORT_MAP.md](DISTRIBUTED_PORT_MAP.md) to find implementation
 files, and [the distributed architecture](TLC_ARCH.md#distributed-tlc-architecture)

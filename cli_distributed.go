@@ -18,7 +18,7 @@ func isDistributedCLICommand(command string) bool {
 // Each invocation owns one process role. FP64 and interning startup are
 // process-wide, just as in the original distributed commands; run coordinator
 // and workers in separate OS processes rather than sharing evaluator globals.
-func runDistributedCLI(role string, args []string, stdout, stderr io.Writer) int {
+func runDistributedCLI(role string, args []string, stdout, stderr io.Writer) (status int) {
 	args, err := tlc.ExtractDistributedStartupProperties(args)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -34,7 +34,7 @@ func runDistributedCLI(role string, args []string, stdout, stderr io.Writer) int
 	advertiseHost := tlc.DistributedSystemProperty("tlago.distributed.advertiseHost", "")
 	if role == "server" {
 		network := tlc.NewDistributedCoordinatorNetwork(bindHost, advertiseHost)
-		defer network.Close()
+		defer closeDistributedCLINetwork(network, stderr, &status)
 		process := tlc.NewDistributedServerProcess()
 		var stopSignals func()
 		defer func() {
@@ -78,7 +78,7 @@ func runDistributedCLI(role string, args []string, stdout, stderr io.Writer) int
 			fmt.Fprintln(stderr, openErr)
 			return ExitToolFailure
 		}
-		defer network.Close()
+		defer closeDistributedCLINetwork(network, stderr, &status)
 		worker := func(args []string) error {
 			process := tlc.NewDistributedWorkerProcess()
 			_, failure := RunDistributedWorker(process, args, network.Environment(tlc.DistributedWorkerEnvironment{ToolOut: stdout, SystemErr: stderr}), tlc.RuntimeParameters{})
@@ -115,6 +115,16 @@ func runDistributedCLI(role string, args []string, stdout, stderr io.Writer) int
 		return ExitToolFailure
 	}
 	return ExitOK
+}
+
+// Native networking belongs to the command invocation. Its shutdown result
+// must reach the caller even when the TLC command body completed successfully.
+// Network owners already classify benign closure and retain real failure causes.
+func closeDistributedCLINetwork(network io.Closer, stderr io.Writer, status *int) {
+	if err := network.Close(); err != nil {
+		fmt.Fprintln(stderr, err)
+		*status = ExitToolFailure
+	}
 }
 
 func printDistributedCLIHelp(w io.Writer, role string) {

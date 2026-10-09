@@ -14267,3 +14267,23 @@ roles join without rewriting checkpoint bytes. This verifies FPSetManager's
 sequential checkpointInner contract across prior success: it supplies no
 rollback of a host already reconstructed. No production changes, checkpoint
 atomicity claim or original-method completion credit.
+
+
+### Distributed CLI retains native network shutdown failures
+
+The coordinator and worker/FP command paths previously deferred network.Close
+without inspecting its result. This discarded real cleanup failures retained by
+the native host and discovery owners and could return success to the shell.
+`runDistributedCLI` now returns a named status and defers
+`closeDistributedCLINetwork` at both ownership sites. A real returned close
+error is printed to the command's stderr and sets ExitToolFailure; a successful
+close retains the command result. Owners still classify benign closure before
+returning their result. Earlier command diagnostics are retained, cleanup runs
+once, and source TLC command catch regions remain unchanged.
+
+No original Java method tests native Go network ownership. Four focused native
+checks cover successful/failed command bodies crossed with successful/failed
+cleanup, including a real failure joined with net.ErrClosed. Existing owner
+checks retain mixed causes and suppress closed-only results. The full unchanged
+DieHard distributed diagnostic exercises successful coordinator/worker CLI
+teardown and retains every source assertion. No original-method credit is added.
