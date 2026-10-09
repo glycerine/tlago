@@ -14,7 +14,9 @@ import (
 type DistributedStatePayload struct {
 	Nil           bool
 	Roots         []int
+	RootsArray    int
 	States        []DistributedStateNode
+	StateArrays   [][]int
 	Values        []DistributedValueNode
 	Strings       []DistributedStringNode
 	ByteArrays    [][]byte
@@ -151,6 +153,8 @@ type DistributedValueNode struct {
 type distributedPayloadEncoder struct {
 	payload           *DistributedStatePayload
 	states            map[*TLCStateMut]int
+	stateArrays       map[distributedByteArrayKey]int
+	stateArrayRoots   [][]*TLCStateMut
 	values            map[Value]int
 	strings           map[*UniqueString]int
 	bytes             map[distributedByteArrayKey]int
@@ -195,7 +199,42 @@ func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePa
 		}
 		payload.Roots[i] = id
 	}
+	// Only an attached alias needs an explicit root-container reference.
+	// Keep the ordinary inline root format for all other invocations.
+	if len(states) != 0 {
+		key := distributedByteArrayKey{reflect.ValueOf(states).Pointer(), len(states)}
+		if id := encoder.stateArrays[key]; id != 0 {
+			payload.RootsArray, payload.Roots = id, nil
+		}
+	}
 	return payload, nil
+}
+
+func (e *distributedPayloadEncoder) stateArray(states []*TLCStateMut) (int, error) {
+	if states == nil {
+		return 0, nil
+	}
+	key := distributedByteArrayKey{reflect.ValueOf(states).Pointer(), len(states)}
+	if id := e.stateArrays[key]; id != 0 && len(states) != 0 {
+		return id, nil
+	}
+	if e.stateArrays == nil {
+		e.stateArrays = make(map[distributedByteArrayKey]int)
+	}
+	id := len(e.payload.StateArrays) + 1
+	e.stateArrays[key] = id
+	e.stateArrayRoots = append(e.stateArrayRoots, states)
+	e.payload.StateArrays = append(e.payload.StateArrays, nil)
+	refs := make([]int, len(states))
+	for i, state := range states {
+		ref, err := e.state(state)
+		if err != nil {
+			return 0, err
+		}
+		refs[i] = ref
+	}
+	e.payload.StateArrays[id-1] = refs
+	return id, nil
 }
 
 func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
@@ -550,6 +589,12 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 			return err
 		}
 		node.DataKind, node.DataState = "state", id
+	case []*TLCStateMut:
+		id, err := e.stateArray(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataArray = "stateArray", id
 	case bool:
 		node.DataKind, node.DataBool = "bool", v
 	case int:
@@ -780,6 +825,7 @@ func (e *distributedPayloadEncoder) valueMap(values map[string]Value) (int, erro
 
 type distributedPayloadDecoder struct {
 	states        []*TLCStateMut
+	stateArrays   [][]*TLCStateMut
 	values        []Value
 	strings       []*UniqueString
 	bytes         [][]byte
@@ -803,8 +849,14 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 	if payload == nil {
 		return nil, fmt.Errorf("missing distributed state payload")
 	}
-	if payload.Nil && len(payload.Roots) != 0 {
+	if payload.Nil && (len(payload.Roots) != 0 || payload.RootsArray != 0) {
 		return nil, fmt.Errorf("null distributed state array contains roots")
+	}
+	if payload.RootsArray < 0 || payload.RootsArray > len(payload.StateArrays) {
+		return nil, fmt.Errorf("invalid distributed root array reference %d", payload.RootsArray)
+	}
+	if payload.RootsArray != 0 && len(payload.Roots) != 0 {
+		return nil, fmt.Errorf("root array reference conflicts with inline roots")
 	}
 	decoder := &distributedPayloadDecoder{values: make([]Value, len(payload.Values)), strings: make([]*UniqueString, len(payload.Strings)), bytes: make([][]byte, len(payload.ByteArrays))}
 	for i, data := range payload.ByteArrays {
@@ -834,6 +886,19 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 	decoder.states = make([]*TLCStateMut, len(payload.States))
 	for i := range decoder.states {
 		decoder.states[i] = &TLCStateMut{}
+	}
+	decoder.stateArrays = make([][]*TLCStateMut, len(payload.StateArrays))
+	for i, refs := range payload.StateArrays {
+		array := make([]*TLCStateMut, len(refs))
+		for j, id := range refs {
+			if id < 0 || id > len(decoder.states) {
+				return nil, fmt.Errorf("state array %d: invalid state reference %d", i+1, id)
+			}
+			if id != 0 {
+				array[j] = decoder.states[id-1]
+			}
+		}
+		decoder.stateArrays[i] = array
 	}
 	decoder.valueMaps = make([]map[string]Value, len(payload.ValueMaps))
 	for i, entries := range payload.ValueMaps {
@@ -993,6 +1058,9 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 	}
 	if payload.Nil {
 		return nil, nil
+	}
+	if payload.RootsArray != 0 {
+		return decoder.stateArrays[payload.RootsArray-1], nil
 	}
 	states = make([]*TLCStateMut, len(payload.Roots))
 	for i, id := range payload.Roots {
@@ -1343,6 +1411,14 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return (*TLCStateMut)(nil), nil
 		}
 		return d.states[node.DataState-1], nil
+	case "stateArray":
+		if node.DataArray < 0 || node.DataArray > len(d.stateArrays) {
+			return nil, fmt.Errorf("invalid model state-array reference %d", node.DataArray)
+		}
+		if node.DataArray == 0 {
+			return []*TLCStateMut(nil), nil
+		}
+		return d.stateArrays[node.DataArray-1], nil
 	case "bool":
 		return node.DataBool, nil
 	case "int":

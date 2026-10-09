@@ -1670,6 +1670,14 @@ receiver isolation; invalid graph references and unsupported attached evaluator
 metadata still fail explicitly. Original ModelValue methods remain green. These
 new networking checks add no original-method completion credit.
 
+Native attached `[]*TLCStateMut` checks retain shared slice backing storage,
+including aliases of invocation roots, nested containers and recursive state
+references. Typed nil/empty arrays, null entries, independent equal arrays and
+receiver isolation survive direct/TCP/result/WorkerException transfer. Malformed
+array/element IDs, conflicting root forms and unsupported state metadata fail
+explicitly. Existing legacy root/result payloads and original ModelValue methods
+remain green; new native checks add no original-method completion credit.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,

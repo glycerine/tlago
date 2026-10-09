@@ -12616,3 +12616,23 @@ objects do not alias sender storage. Invalid state IDs and invalid attached-stat
 metadata fail explicitly. Peers transferring this attachment require the updated
 native payload build. No Java serializer or runtime is introduced, and these
 native networking checks add no original-method completion credit.
+
+### Attached native state arrays and root aliases
+
+ModelValue data can reference native []*TLCStateMut slices, including the worker
+invocation's input slice. A state-array table records shared backing-container
+identities before traversing contained states, retaining state/value/array cycles.
+Encoder roots use an explicit container ID only when an attachment aliases their
+nonempty slice; ordinary invocations keep the existing inline root format.
+
+Decoder state arrays resolve already allocated state identities before mixed
+attachments and value population. Explicit root-container references return the
+same decoded slice used by attachments. Independent equal-content slices retain
+separate storage; nil slices retain native type, empty slices remain nonnil and
+null entries remain null. Receiver replacement of a root array entry affects its
+attached aliases without changing the sender. TCP results and WorkerException
+contexts retain attachment-container and state identities even when their outer
+root collections are separately constructed. Invalid array/element IDs, null or
+inline conflicts with root IDs and unsupported state metadata fail explicitly.
+Peers transferring these graphs require the updated native payload build. No
+Java serialization or original-method completion credit is introduced.

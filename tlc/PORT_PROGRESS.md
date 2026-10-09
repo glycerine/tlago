@@ -23471,3 +23471,32 @@ zero queued states, FINISHED, no GENERAL/EOF and normal role exits
 No full suite ran. There is no direct original attached-state network method,
 so native checks add no original-method completion credit. All handles are
 terminal.
+
+### October 8, 2026: attached state arrays and invocation root aliases
+
+Followed the individual-state attachment audit through native state collections.
+Attached []*TLCStateMut slices were still rejected. Added direct/TCP checks
+before changing production; both reproduce that rejection (model-data-state-
+arrays-before.log, terminal 09bd24, status 1, 0.013 seconds).
+
+A state-array table now reserves container identities before traversing states,
+retaining recursive state/value/array graphs. Decoder arrays reference states
+allocated before attachment population. Attached slices can share backing
+storage with invocation roots; explicit root-container IDs are emitted only for
+that alias, preserving the existing ordinary inline root representation.
+Checks retain shared nested arrays, separate equal arrays, typed nil/empty arrays,
+null entries and receiver isolation across requests, results and WorkerException
+contexts. Replacing a receiver root entry changes its attached aliases without
+changing the sender or an independent array. Malformed IDs, conflicting root
+forms and unsupported attached state metadata fail explicitly. Peers using this
+graph require the updated native payload build.
+
+Initial fixed state/result/attachment and original ModelValue checks pass
+(model-data-state-arrays-fixed.log, terminal 2d30e7, status 0, 0.026 seconds).
+Final expanded malformed/root/state/result checks and original ModelValue methods
+pass (model-data-state-arrays-verified.log, terminal fc6dd4, status 0,
+0.028 seconds). Only the new short graph/TCP/malformed-input checks ran with
+race instrumentation and pass (model-data-state-arrays-race.log, terminal
+abb545, status 0, 1.046 seconds). No direct original array-network method exists,
+so native checks add no original-method completion credit. All handles are
+terminal; no full model or full suite was repeated.

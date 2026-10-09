@@ -141,6 +141,10 @@ Attached `*TLCStateMut` objects reuse root/predecessor state identities, includi
 attached-only states, cache/value back-references and native map keys. Decoder
 states are allocated before attachments are resolved. Typed nil references and
 receiver isolation survive; attached states retain the existing metadata checks.
+Attached `[]*TLCStateMut` slices preserve backing storage and can alias the
+invocation's root slice. A state-array table reserves identities before following
+cycles; ordinary unaliased roots retain their existing inline representation.
+Typed nil/empty arrays, null entries and independent equal arrays survive.
 Native `map[string]Value` attachments also preserve shared map identity, cycles,
 nil entries and typed nil/empty maps in requests, results and failure contexts.
 Native `map[any]any` attachments additionally retain supported scalar and value
