@@ -12157,6 +12157,17 @@ failure leaves the old counter intact and releases the mutex. Linux FIFO tests
 use an actual reader/writer handshake to inspect this boundary without sleeps
 or a production hook; complete and truncated headers cover lock release.
 
+Attached ModelValue data supports native []Value arrays using the existing
+ValueArrays graph, shared with state and tuple backing storage. The source
+ModelValue data field is retained during network transfer; arrays of transferable
+values do not require evaluator or opaque-object machinery. Reserving array IDs
+before element traversal and allocating receiver arrays before value population
+preserves cycles through ModelValue.Data and shared backing storage. Zero array
+ID denotes a typed nil []Value, while an allocated empty array stays non-nil.
+Negative/out-of-range IDs fail explicitly. Worker requests and results use this
+same native representation; no Java serialization or generic JVM object codec is
+introduced. Opaque custom data remains explicitly rejected.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

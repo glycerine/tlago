@@ -97,6 +97,8 @@ server outages. Unnamed begin/commit operations retain source sequential orderin
 
 State/result payloads retain identity and nil/empty distinctions across states,
 values, strings, predecessor graphs, caches, byte buffers and partition vectors.
+Attached model-value data supports native `[]Value` through the same array graph,
+preserving cycles, shared backing storage and typed nil/empty arrays across RPC.
 Symbolic values follow the source materialization rules. Unsupported opaque
 custom data and evaluator metadata fail explicitly; they are not silently
 removed. Audit actual source transferability before extending the codec:

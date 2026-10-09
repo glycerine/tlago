@@ -22641,3 +22641,32 @@ status 0, 51.365 seconds): restored 20,480 fingerprints/12,288 queued states,
 complete membership before worker startup, final 114,942 distinct/empty queue,
 FINISHED and no GENERAL. Logs inspected, all processes joined and terminal.
 No full suite or race run. Existing original assertions and bounds unchanged.
+
+### October 8, 2026: attached model-value data arrays over native RPC
+
+Distributed payload audit found that ModelValue's attached []Value data was
+rejected despite the corresponding source value array being transferable. The
+source ModelValue data field is not transient, Value implements Serializable,
+and its original test has no attached-data transport method. Go now represents
+these arrays using its existing native ValueArrays graph rather than implementing
+Java object serialization. Existing array reservation/allocation order retains
+self-references and sharing with other model data, tuple elements and state values.
+Typed nil arrays, non-nil empty arrays and null elements stay distinct. Invalid
+negative/out-of-range array IDs fail explicitly. Opaque custom objects remain
+rejected; this does not resolve the broader metadata/transferability audit.
+
+New native payload checks verify cycles, shared backing-array mutation, sender
+isolation, nil/empty arrays and rejected IDs. A real TCP worker echoes the graph
+through request and result encoding, mutating its received array to verify both
+sharing and caller isolation. The initial build referenced StateVec's generic
+storage as concrete states (model-data-arrays.log, terminal 1156dd, status 1);
+corrected to the existing At accessor. The next malformed-ID fixture chose 2,
+which is a valid attached-array ID because state values occupy the first array
+(model-data-arrays-fixed.log, terminal a227c3, status 1). Corrected that fixture
+to an out-of-range ID; no production validation or existing assertion was weakened.
+
+All new checks, existing state/result graph cases, worker state/result lifecycle
+and original Java ModelValue methods pass (model-data-arrays-verified.log,
+terminal 952a2f, status 0, 0.026 seconds). Logs inspected and all processes terminal.
+No original-method completion credit, full suite or race run. This slice extends
+the native Go payload for TLC values and does not introduce RMI/JVM machinery.

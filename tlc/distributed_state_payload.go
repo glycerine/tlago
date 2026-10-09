@@ -93,6 +93,7 @@ type DistributedValueNode struct {
 	DataBool          bool
 	DataBytes         int
 	DataValue         int
+	DataArray         int
 }
 
 type distributedPayloadEncoder struct {
@@ -504,6 +505,12 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 			}
 			node.DataBytes = id
 		}
+	case []Value:
+		id, err := e.array(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataArray = "valueArray", id
 	case Value:
 		id, err := e.value(v)
 		if err != nil {
@@ -996,6 +1003,8 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 		return d.bytes[node.DataBytes-1], nil
 	case "value":
 		return d.value(node.DataValue)
+	case "valueArray":
+		return d.arrayRefs(nil, node.DataArray == 0, node.DataArray)
 	default:
 		return nil, fmt.Errorf("unknown model data kind %q", node.DataKind)
 	}

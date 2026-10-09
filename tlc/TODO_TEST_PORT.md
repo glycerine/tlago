@@ -1415,6 +1415,12 @@ Intern-table recovery now locks before opening/reading its checkpoint, matching
 the whole source synchronized method. Short Linux FIFO cases prove the blocked
 header boundary and lock release on success/truncation. No direct original
 InternTable recovery test exists, so these native checks add no method credit.
+Attached model-value `[]Value` data now transfers through the native array graph.
+Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
+state and tuple backing arrays, receiver ownership and invalid array references.
+Original ModelValue methods remain green; no original attached-data transport
+method exists, so this native supplement adds no completion credit. Opaque custom
+data and other evaluator metadata remain a separate transferability audit.
 Short native worker reply-loss cases additionally retain fully computed but
 unreceived results behind a gate, close TCP and require source coordinator
 retry/requeue/deregistration before releasing the old reply. They verify no
