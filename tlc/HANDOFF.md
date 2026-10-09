@@ -88,6 +88,8 @@ controlled byte-relay stall does not prove arbitrary network blackholes.
 Coordinator file requests use a fresh resolver, observing current default
 library and user directories and owning separate temporary resource copies.
 Explicit search overrides remain captured; worker basename caching is unchanged.
+Read diagnostics preserve dot components, including symlink traversal, in the
+absolute pathname rather than reporting a lexically collapsed location.
 Upstream RMI names describe source references only, not a Go transport requirement.
 
 Transport does not redial or replay ambiguous fingerprint mutations. Manager

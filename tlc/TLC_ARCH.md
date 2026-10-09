@@ -8323,6 +8323,9 @@ precedence. Failed InJar copies fall back to Simple; failed Simple copies
 return the attempted file. Server reads keep
 the directory/Integer.MAX_VALUE checks, single-read zero-filled buffer, and
 nested RuntimeException wrapping with FileNotFoundException/IOException causes.
+Absolute diagnostic paths retain dot components; cleaning a symlink followed by
+`..` can identify a different location from the file actually read. The existing
+native pathname helper preserves this source contract without resolving links.
 `LoadDistributedWorkerTool` parses configuration first and routes all module
 loads through the worker resolver using the existing parser, semantic checker,
 and TLC bridge. It now installs a fresh worker interning context before any

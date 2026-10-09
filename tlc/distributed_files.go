@@ -186,7 +186,9 @@ func (s *TLCServer) GetFile(file string) ([]byte, error) {
 }
 
 func readDistributedServerFile(file string) []byte {
-	abs, err := filepath.Abs(file)
+	// Preserve dot components just as the source file's absolute pathname does.
+	// Cleaning a symlink/.. path can name a different file in diagnostics.
+	abs, err := metadataAbsolutePath(file)
 	if err != nil {
 		abs = file
 	}

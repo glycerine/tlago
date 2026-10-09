@@ -24111,3 +24111,25 @@ or remote recovery remain unproved. The check skips if strace is unavailable.
 No enabled original method directly covers this boundary, so native coverage
 earns no original-method credit. No full suite, full model or race workload ran.
 All check handles are terminal.
+
+### 2026-10-09: Coordinator file-read diagnostic pathname fidelity
+
+Source TLCServer.read uses the file's absolute pathname without collapsing dot
+components. Go used filepath.Abs, which lexically cleans symlink/.. traversal
+and can report a different location from the file actually read. Reused the
+existing native absolute-path helper; file access and source error wrapping
+remain intact. No RMI or Java transport machinery is introduced.
+
+Added native relative/absolute symlink fixtures with distinct collapsed and
+traversed file contents, exact directory and missing-file diagnostic checks,
+and retained nested file-open causes. Before the fix both pathname rows fail
+the directory diagnostic assertion (terminal fae63f, status 1, 0.013 seconds).
+Corrected checks pass (terminal be551c, status 0, 0.012 seconds). Adjacent native
+TCP coordinator search-refresh, resource ownership and worker basename-cache
+checks also pass (terminal be5cfd, status 0, 0.026 seconds). Strengthened the
+file-open cause assertion to require its original category; final focused check
+passes (terminal f2210b, status 0, 0.012 seconds).
+
+No original distributed Java method directly tests this diagnostic boundary;
+native coverage earns no original-method credit. No full suite, full model or
+race workload ran. All check handles are terminal.
