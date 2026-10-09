@@ -2,6 +2,15 @@
 
 Updated: October 9, 2026. Active branch: `master`.
 
+Current continuation status: blocked on the user's upstream-defect policy
+choice, requested after the remaining-scope audit. Preserve Java behavior until
+answered. The choices are strict parity with the documented source limitations,
+or explicit Go fixes for the retained off-heap flusher and checkpoint-error
+formatting hang. Four original model methods remain Reconcile; no skipped body
+is counted as passing. Resume independent implementation work if a concrete new
+port gap is identified; do not manufacture more fault scenarios to avoid this
+reconciliation decision.
+
 This is the current restart guide. Detailed audit history and verification
 receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md); implementation contracts
 belong in [TLC_ARCH.md](TLC_ARCH.md). Older handoffs remain in Git history and

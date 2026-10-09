@@ -27378,3 +27378,28 @@ No source Java test exists for native role help, so no original-method credit
 added. Updated HANDOFF; git diff --check passes. No network test, long workload,
 full suite or race run. Upstream-defect policy question remains pending and
 source behavior is unchanged.
+
+
+### October 9, 2026: distributed reconciliation blocked on source-defect policy
+
+Revalidated clean worktree, current handoff, test inventory and recent receipts.
+The upstream-defect policy question raised during the remaining-scope audit is
+still unanswered. That condition remained open through the independently useful
+CLI help chunk and this continuation (three consecutive goal turns). No live
+verification process is pending. No specific additional implementation omission
+was identified in the reviewed source paths; inventing further fault matrices
+would not resolve the existing original-model reconciliation.
+
+All four original model entries inherit Java's unconditional skip and already
+have translated assertion bodies. Their completion credit stays unchanged.
+Bypassing the source assumption exposes the documented local EWD840 retained
+closed-flusher failure. Incomplete intern records also expose the reproduced
+upstream GENERAL-formatting hang. Strict Java behavior and correcting those
+upstream defects are different end states; user direction is required before
+changing that contract. This is not a claim that mapping proves completion,
+that arbitrary partitions are verified, or that source skips are body passes.
+
+Updated the handoff with the pending choice and will mark the active goal
+blocked under the three-turn rule. No production/test changes, new test run,
+full suite, long workload or race run. Existing changes are committed and the
+worktree is clean apart from this status record before its commit.
