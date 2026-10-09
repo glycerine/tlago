@@ -1450,6 +1450,10 @@ minimum, empty-result and child-failure checks. TCP verifies that child I/O is
 wrapped as an operation failure and reaches the manager's failed-task path.
 The existing original MultiFPSet getFPSet method remains green; no original
 method directly checks this concurrency/failure boundary, so no credit is added.
+Nested size/statistics now have native joined concurrency, overflow and local/TCP
+parent-counter checks. Original MultiFPSet getFPSet and manager nested-partition
+methods remain green. No original method directly tests parent/child counter
+isolation or the parallel size boundary; these native checks add no credit.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

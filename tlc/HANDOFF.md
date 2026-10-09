@@ -116,6 +116,9 @@ Nested fingerprint-distance and invariant checks also run children concurrently
 and join started work. Child I/O failures become operation failures with retained
 causes; the manager does not treat them as callable I/O fallback results. Signed
 minima, empty reductions and invariant short-circuiting retain source behavior.
+Nested size statistics also sum children concurrently, preserving long overflow.
+`MultiFPSet.GetStatesSeen` returns the parent lookup counter only; child counters
+are independent and must not be added to the distributed manager's count.
 Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
 storage. The manager warns once, continues to the next registration and leaves
 routing intact; the broken connection does not replay the completed recovery.

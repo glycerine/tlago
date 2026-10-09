@@ -12739,3 +12739,18 @@ graph preserves the boundary, so the manager's callable I/O catch does not turn
 it into GENERAL/false. Instead, failed task completions are diagnosed and the
 manager retains its source reduction behavior. This uses Go concurrency and
 error graphs, not Java streams or exception-runtime emulation.
+
+### Nested fingerprint size and lookup statistics
+
+MultiFPSet size uses concurrent child calls and joins before summing results or
+propagating failure, matching the source parallel long sum. The native bitwise
+sum retains signed-long overflow; empty child arrays sum to zero. Size calls
+retain their failure identity, without the extra I/O wrapping used specifically
+by source fingerprint/invariant check lambdas.
+
+Source MultiFPSet inherits FPSet.getStatesSeen, which returns only the parent's
+containsBlock counter. It does not sum child counters. Native local/TCP checks
+perform separate child block lookups before a parent lookup: child counters
+remain two and three, while the parent reports four. The distributed manager's
+source initial one produces five. Child scalar membership lookups during parent
+block routing do not increment child block counters or change membership.

@@ -1453,8 +1453,8 @@ func (s *MultiFPSet) Init(numThreads int, metadir string, filename string) FPSet
 
 func (s *MultiFPSet) Size() uint64 {
 	var total uint64
-	for _, set := range s.Sets {
-		total += set.Size()
+	for _, value := range parallelNestedFPSetCalls(s.Sets, "size", false, func(set FPSet) uint64 { return set.Size() }) {
+		total += value
 	}
 	return total
 }
@@ -1509,11 +1509,7 @@ func (s *MultiFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 }
 
 func (s *MultiFPSet) GetStatesSeen() uint64 {
-	total := s.statesSeen.Load()
-	for _, set := range s.Sets {
-		total += set.GetStatesSeen()
-	}
-	return total
+	return s.statesSeen.Load()
 }
 
 func (s *MultiFPSet) GetConfiguration() *FPSetConfiguration {
@@ -1525,7 +1521,7 @@ func (s *MultiFPSet) GetConfiguration() *FPSetConfiguration {
 
 func (s *MultiFPSet) CheckFPs() uint64 {
 	dis := uint64(1<<63 - 1)
-	for _, value := range checkNestedFPSets(s.Sets, "check fingerprints", func(set FPSet) uint64 { return set.CheckFPs() }) {
+	for _, value := range parallelNestedFPSetCalls(s.Sets, "check fingerprints", true, func(set FPSet) uint64 { return set.CheckFPs() }) {
 		dis = javaLongMinBits(dis, value)
 	}
 	return dis
@@ -1533,7 +1529,7 @@ func (s *MultiFPSet) CheckFPs() uint64 {
 
 func (s *MultiFPSet) CheckInvariant(expectFPs ...uint64) bool {
 	var stopped atomic.Bool
-	for _, valid := range checkNestedFPSets(s.Sets, "check invariant", func(set FPSet) bool {
+	for _, valid := range parallelNestedFPSetCalls(s.Sets, "check invariant", true, func(set FPSet) bool {
 		// Source allMatch may skip work not started when a false result is
 		// already known. Work already in progress still belongs to this call.
 		if stopped.Load() {
@@ -1552,10 +1548,10 @@ func (s *MultiFPSet) CheckInvariant(expectFPs ...uint64) bool {
 	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
 }
 
-// Source child checks use parallel streams and wrap child IOException as an
-// operation failure. Keep its cause through native error wrapping, and join all
-// started storage work before returning or propagating an unchecked failure.
-func checkNestedFPSets[T any](sets []FPSet, operation string, call func(FPSet) T) []T {
+// Source child size/check calls use parallel streams. Only check lambdas wrap
+// child IOException as an operation failure. Join started storage work before
+// returning or propagating a failure, retaining causes with native wrapping.
+func parallelNestedFPSetCalls[T any](sets []FPSet, operation string, wrapIO bool, call func(FPSet) T) []T {
 	values := make([]T, len(sets))
 	failures := make([]any, len(sets))
 	var pending sync.WaitGroup
@@ -1565,7 +1561,7 @@ func checkNestedFPSets[T any](sets []FPSet, operation string, call func(FPSet) T
 			defer pending.Done()
 			defer func() {
 				if failure := recover(); failure != nil {
-					if err, ok := failure.(error); ok && isJavaIOException(err) {
+					if err, ok := failure.(error); wrapIO && ok && isJavaIOException(err) {
 						failures[i] = fmt.Errorf("%s partition %d: %w", operation, i, err)
 					} else {
 						failures[i] = failure

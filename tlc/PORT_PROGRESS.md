@@ -23749,3 +23749,23 @@ short concurrency/TCP checks ran with race instrumentation and pass
 No original method directly tests this parallel failure boundary; native checks
 add no completion credit. No full model or full suite ran. All handles are
 terminal.
+
+### Nested fingerprint size and lookup statistics
+
+Audited MultiFPSet.size and inherited FPSet.getStatesSeen against the Java
+source. Size uses parallel child calls and long sum overflow; states seen reads
+only the parent's lookup counter. Removed the Go child-counter aggregation and
+used the native joined parallel helper for size, without the I/O wrapping used
+by the source check lambdas. No Java runtime or RMI machinery is involved.
+
+New gated native checks reproduced sequential size traversal and parent totals
+of nine instead of four (nested-statistics-before.log, terminal 79fe83, status 1,
+2.023 seconds). Fixed checks pass (nested-statistics-fixed.log, terminal 919658,
+status 0, 0.020 seconds). Related local/TCP checks and original MultiFPSet and
+manager methods pass (nested-statistics-verified.log, terminal a25a32, status 0,
+0.121 seconds). Only the two new short cases ran with race instrumentation and
+pass (nested-statistics-race.log, terminal eb3ae2, status 0, 1.045 seconds).
+Revalidated the focused related/original selection before committing: terminal
+ef1648, status 0, 0.112 seconds. No source method directly covers these two
+boundaries, so native checks add no original-method credit. No full suite or
+long model ran. All check handles are terminal.
