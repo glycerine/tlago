@@ -12953,3 +12953,20 @@ and empty calls, then verify ordinary duplicate insertion and lookup answers.
 TCP preserves the native null-failure category without class reconstruction.
 No original Java method directly covers the nil boundary; existing original
 batch and short off-heap storage methods remain unchanged and green.
+
+### Public disk close retains closed reader ownership
+
+DiskFPSet.close ignores individual reader-close I/O failures, visits all worker
+and pooled readers, resets poolIndex, and retains both arrays. Go had reused its
+internal rollback helper, clearing the arrays and reader snapshot. A subsequent
+disk lookup could therefore open a new file handle rather than use the source's
+closed owner. Public close now retains slots and the native reader snapshot;
+internal allocation rollback continues clearing its temporary owners.
+
+Twelve native LSB/MSB, local/TCP cases use real named snapshot recovery to leave
+the memory table empty. They verify normal close, injected worker/pool close
+failures, all retained closed identities, reader statistics, pool reset, unchanged
+fingerprint count, later middle-fingerprint disk I/O failure, repeated close and
+zero remaining descriptors. Existing host ownership checks retain accepted-call
+draining before storage release; startup rollback and reader-recovery checks
+remain green. No direct original test covers post-close endpoint calls.

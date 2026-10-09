@@ -1466,6 +1466,12 @@ ownership, unchanged arguments and ignored replacement returns. Checked I/O
 has one operation wrapper; unchecked/fatal errors retain identity without Java
 ForkJoin copying. Original nested-store methods and actual startup rollback
 checks remain green. No direct original method exists, so no credit is added.
+Native LSB/MSB local/TCP close checks retain closed worker/pool reader identities,
+ignore individual close I/O failures and reject subsequent actual disk lookup
+without reopening storage. Corrected public Close's reuse of the array-clearing
+rollback helper. Host draining, startup rollback, reader recovery and original
+nested-store methods remain green. No direct original post-close endpoint method
+exists, so no credit is added.
 Native invariant-overload checks cover local/TCP memory, nested and LSB/MSB
 stores. Memory/nested expected-count calls inherit the base true result; disk
 calls enforce counts and nested no-argument checks visit children. Related

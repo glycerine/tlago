@@ -480,7 +480,14 @@ func (s *DiskFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 func (s *DiskFPSet) Close() {
 	s.acquireTblWriteLock()
 	defer s.releaseTblWriteLock()
-	_ = s.closeBRAFReaders()
+	// Source close releases each reader but retains its slot. Clearing these
+	// arrays would let a later lookup open a fresh reader against closed storage.
+	for _, readers := range [][]*BufferedRandomAccessFile{s.braf, s.brafPool} {
+		for _, reader := range readers {
+			_ = reader.Close()
+		}
+	}
+	s.poolIndex = 0
 }
 
 func (s *DiskFPSet) AddThread() error {

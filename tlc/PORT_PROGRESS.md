@@ -24050,3 +24050,28 @@ watchdogs to five seconds for slower remote machines; final race check passes
 tests this initialization failure boundary; native checks add no original-method
 credit. No full suite, full
 model or long race workload ran. All check handles are terminal.
+
+### 2026-10-09: Public disk close retains closed reader slots
+
+Source DiskFPSet.close retains its worker/pool arrays after closing every reader,
+ignores individual close I/O failures and resets poolIndex. Go had reused the
+internal allocation-rollback helper that cleared arrays and reader snapshots,
+allowing a later disk lookup to open a new native reader. Public Close now retains
+the closed source owners; internal rollback still clears temporary ownership.
+
+Added 12 native LSB/MSB local/TCP cases for ordinary close and actual raw worker
+or pool descriptor close failures. Real named snapshot recovery leaves an empty
+memory table, so a subsequent middle-fingerprint lookup must perform disk I/O.
+Checks retain exact closed reader identities, arrays/snapshot, reader statistics,
+fingerprint counts, pool reset and repeated close, require later I/O failure,
+and confirm zero remaining owned descriptors.
+
+Before correction all 12 rows fail the retained-slot contract (terminal c823e3,
+status 1, 0.030 seconds). Corrected close cases, native host ownership/draining,
+constructor/startup rollback, registration, reader recovery and both original
+normal/off-heap MultiFPSet getFPSet methods pass (terminal 112c9b, status 0,
+0.975 seconds). Only the short close and gated host-ownership cases receive race
+checking; they pass (terminal 1a51b7, status 0, 1.106 seconds). No direct enabled
+original method covers post-close endpoint behavior, so native cases add no
+original-method credit. No full suite, full model or long race workload ran.
+All check handles are terminal.
