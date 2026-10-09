@@ -508,17 +508,24 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	indexed := false
+	var added []*Module
 	for _, name := range names {
 		mod := b.spec.Modules[name]
 		if mod == nil || b.indexedModules[mod] {
 			continue
 		}
 		b.indexedModules[mod] = true
-		indexed = true
+		added = append(added, mod)
 		for i := range mod.Definitions {
 			b.definitionModules[&mod.Definitions[i]] = name
 		}
+	}
+	if len(added) == 0 {
+		return
+	}
+	// Canonical theorem bodies can refer to another module's definitions.
+	// Index all source owners before adapting any INSTANCE source symbols.
+	for _, mod := range added {
 		for _, inst := range mod.Instances {
 			instancee := b.spec.Modules[inst.Module]
 			if instancee == nil {
@@ -567,9 +574,6 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 				}
 			}
 		}
-	}
-	if !indexed {
-		return
 	}
 	// EXTENDS references the original definition, including native overrides.
 	// Keep a single symbol for those aliases so a module-scoped replacement
@@ -1272,6 +1276,15 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 // retain distinct identities in Java SANY. Source conversion must not route
 // back through the instancer's export table.
 func (b *tlcBridge) sourceDefinitionSymbol(_ string, def *Definition) *tlc.SymbolNode {
+	if def.TheoremLike {
+		if module := b.spec.Modules[b.definitionModules[def]]; module != nil && module.semanticNode != nil {
+			if source, ok := module.semanticNode.context.getSymbol(def.Name).(*sanySemThmOrAssumpDefNode); ok {
+				symbol := b.canonicalGraph(source).(*tlc.ThmOrAssumpDefNode).Symbol
+				b.sourceSymbols[def] = symbol
+				return symbol
+			}
+		}
+	}
 	if symbol := b.sourceSymbols[def]; symbol != nil {
 		return symbol
 	}

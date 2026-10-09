@@ -28159,3 +28159,58 @@ runtime-canonical-theorem-alias-complete-originals.log, terminal 2d1529,
 status 0, 180.233 seconds. Original assertions and workload bounds are unchanged.
 The full off-heap random log exceeds 364 million iterations in the same live
 session; no completion credit. Git diff --check passes.
+
+
+Canonical source theorem symbols and early owner indexing (2026-10-09)
+
+Previous goal turn made authoritative progress in b302eb6. Revalidated the clean
+worktree and confirmed full off-heap random session 77502 remains live. The
+source-symbol cache retained a separate placeholder for named theorems. Source
+symbol conversion now resolves the actual original module Context theorem before
+consulting that cache and retains its canonical runtime symbol. New definition
+owners are all indexed before INSTANCE symbol conversion, preserving complete
+source ownership during early theorem-body adaptation. This keeps the original
+source symbol distinct from an instantiated theorem export. Runtime theorem
+symbols also copy their actual source syntax/location into SymbolNode accessor
+fields. AST-only fallback remains.
+
+Focused original proof/debugger/scoped-identifier/ASSUME checks pass:
+runtime-canonical-theorem-symbol-originals.log, terminal d365c4, status 0,
+8.954 seconds. Existing runtime postcondition bridge checks and original SANY
+incremental-semantic/selector methods pass:
+runtime-canonical-theorem-symbol-bridge-sany.log, terminal 934994, status 0,
+0.157 seconds. No original assertions changed or persistent tests added.
+
+Ignored before/after observations on unchanged original Test207, Test208,
+Test209 and Test219 exercise conversionContextSymbol for all three represented
+source theorem definitions before and after module-table installation. The old
+cache pointers differ from the actual source symbols in all six phase comparisons.
+The corrected source conversion, cached pointer, actual syntax and location now
+match in all six. Receipts: runtime-canonical-theorem-symbol-before.log,
+terminal f1680f, and runtime-canonical-theorem-symbol-after.log, terminal 25b00e;
+both status 0. Observations do not earn original-method credit.
+
+Audited the remaining runtime target paths against Java ParameterizedSpecObj's
+getPostConditionSpecs, getView and getConstraints0. Java resolves the external
+module and calls getOpDef. Go nodeForModuleDefinition/actionFromModuleDefinition
+still consult the qualified AST alias index and can reconstruct theorem OpDefs.
+Reconcile these runtime constraint/action-constraint/view/postcondition consumers
+next. This current symbol-cache correction does not establish that separate
+lookup contract or general source generation, mutation or INSTANCE fallback parity.
+
+No full-workspace or XML/ApalacheIR sweep, race instrumentation, email work or
+long-workload restart. The full off-heap random log exceeds 372 million of its
+original 2,147,483,648 iterations; execution and method credit remain pending.
+
+Whole-module source/runtime entry/exit observation also matches all 42 represented
+module views across the four unchanged proof models, including Test219's 9,200
+root events, with no alias/null failures. Receipt:
+runtime-canonical-theorem-symbol-module-traces.log, terminal 3a3b29, status 0,
+1.608 seconds. This supplements the original checks without expanding their
+assertions or generalizing the observed denominator to the entire port.
+
+Final broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and
+trace-expression selection passes: runtime-canonical-theorem-symbol-complete-originals.log,
+terminal d066ff, status 0, 180.959 seconds. Original assertions and workload
+bounds remain unchanged. The full off-heap random log exceeds 373 million
+iterations in its same live session; no completion credit. Git diff --check passes.

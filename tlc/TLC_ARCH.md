@@ -10996,8 +10996,24 @@ theorem aliases now match their canonical source views in identity and type.
 The prior lookup mismatches affected 13 aliases and allocated three synthetic
 source OpDefs. The correction removes all three allocations and all nine
 observed synthetic-expression fallback calls in this selection. This observation
-does not establish general theorem/model-slot lookup parity: source symbol caches
-and callers that still require an OpDefNode need a separate contract audit.
+does not establish general theorem/model-slot lookup parity.
+
+Source theorem symbol conversion now resolves the original module's actual
+Context definition before using the AST-keyed symbol cache. It retains that
+canonical symbol in the cache instead of allocating a placeholder. All newly
+loaded definition owners are indexed before INSTANCE source-symbol conversion,
+so early theorem graph adaptation can find definitions from another module.
+Theorem SymbolNode views also retain actual source syntax and location in their
+separate accessor fields. Before/after observations on the same four proof
+models compare three source theorem symbols both before and after module-table
+installation: identity, cached pointer, syntax and location now agree in all
+six phase comparisons. Source-less AST fallback remains.
+
+Runtime constraint, action-constraint, view and postcondition targets still need
+reconciliation. Java ParameterizedSpecObj resolves their external ModuleNode
+and calls getOpDef; the Go bridge instead consults its qualified AST alias index
+and can lower a theorem into a synthetic OpDef. The runtime-only alias index is
+not the authoritative source module lookup contract.
 
 An overlay on unchanged original Test219 observes 648 root traces, all matching
 exactly, including all 371 initial-context events, without alias/null failures.

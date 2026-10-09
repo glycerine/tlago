@@ -165,7 +165,8 @@ func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNod
 		node := &tlc.ThmOrAssumpDefNode{SemanticNodeBase: source.SemanticNodeBase,
 			Name: tlc.UniqueStringOf(source.semName()), Params: b.canonicalParameters(source.formalNodes), Local: source.semLocal()}
 		remember(node)
-		node.Symbol = &tlc.SymbolNode{SemanticBase: source.SemanticNodeBase, Name: node.Name, Arity: source.semArity(), Data: node}
+		node.Symbol = &tlc.SymbolNode{SemanticBase: source.SemanticNodeBase, Name: node.Name, Arity: source.semArity(), Data: node,
+			Location: source.Location, TreeNode: source.TreeNode}
 		if origin := source.getSource(); origin != source {
 			node.SourceDefinition = b.canonicalGraph(origin).(*tlc.ThmOrAssumpDefNode)
 		}

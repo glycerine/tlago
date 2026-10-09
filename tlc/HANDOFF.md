@@ -69,9 +69,10 @@ remain pending; see `TLC_ARCH.md`.
 Runtime module extendees now preserve the actual source module identities and
 order, excluding implicit trace helpers from inheritance membership.
 Generated theorem and assumption lookup aliases now bind canonical theorem
-definitions, preserving INSTANCE substitutions and formals. Test207 still has a
-stale theorem placeholder in `sourceSymbols`; reconcile that cache and its
-consumers next. Model-slot consumers requiring an `OpDefNode` also need an audit.
+definitions, preserving INSTANCE substitutions and formals. Source theorem
+symbol caches and early conversion now retain the canonical source symbols.
+Next: reconcile runtime constraint/view/postcondition targets with Java's
+external module `getOpDef` lookup instead of the bridge's AST alias index.
 
 ## Verification baseline and test credit
 
