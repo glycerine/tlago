@@ -697,8 +697,10 @@ func (s *MemFPSet) CommitChkpt() error {
 func (s *MemFPSet) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
-	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return NewIOException(fmt.Sprintf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt))
+	if _, err := os.Stat(oldChkpt); err == nil {
+		if err := os.Remove(oldChkpt); err != nil {
+			return NewIOException(fmt.Sprintf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt))
+		}
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
 		return NewIOException(fmt.Sprintf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt))
@@ -1018,8 +1020,10 @@ func (s *MemFPSet1) CommitChkpt() error {
 func (s *MemFPSet1) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
-	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return NewIOException(fmt.Sprintf("MemFPSet1.commitChkpt: cannot delete %s", oldChkpt))
+	if _, err := os.Stat(oldChkpt); err == nil {
+		if err := os.Remove(oldChkpt); err != nil {
+			return NewIOException(fmt.Sprintf("MemFPSet1.commitChkpt: cannot delete %s", oldChkpt))
+		}
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
 		return NewIOException(fmt.Sprintf("MemFPSet1.commitChkpt: cannot delete %s", oldChkpt))
@@ -1279,8 +1283,10 @@ func (s *MemFPSet2) CommitChkpt() error {
 func (s *MemFPSet2) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
-	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return NewIOException(fmt.Sprintf("MemFPSet2.commitChkpt: cannot delete %s", oldChkpt))
+	if _, err := os.Stat(oldChkpt); err == nil {
+		if err := os.Remove(oldChkpt); err != nil {
+			return NewIOException(fmt.Sprintf("MemFPSet2.commitChkpt: cannot delete %s", oldChkpt))
+		}
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
 		return NewIOException(fmt.Sprintf("MemFPSet2.commitChkpt: cannot delete %s", oldChkpt))

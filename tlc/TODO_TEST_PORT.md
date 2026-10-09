@@ -1415,6 +1415,11 @@ Intern-table recovery now locks before opening/reading its checkpoint, matching
 the whole source synchronized method. Short Linux FIFO cases prove the blocked
 header boundary and lock release on success/truncation. No direct original
 InternTable recovery test exists, so these native checks add no method credit.
+Native checkpoint symlink checks now cover trace, worker, both state queues,
+intern table and all three memory fingerprint stores. They preserve the source
+existence/delete/rename sequence and target ownership on success and failure.
+These 32 cases add no original-method completion credit; the existing original
+StateQueue methods remain green.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

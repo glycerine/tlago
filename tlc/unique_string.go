@@ -236,8 +236,10 @@ func (t *InternTable) CommitChkpt(metadir string) error {
 	}
 	oldChkpt := uniqueStringChkptName(metadir, "chkpt")
 	newChkpt := uniqueStringChkptName(metadir, "tmp")
-	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return NewIOException(fmt.Sprintf("InternTable.commitChkpt: cannot delete %s", oldChkpt))
+	if _, err := os.Stat(oldChkpt); err == nil {
+		if err := os.Remove(oldChkpt); err != nil {
+			return NewIOException(fmt.Sprintf("InternTable.commitChkpt: cannot delete %s", oldChkpt))
+		}
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
 		return NewIOException(fmt.Sprintf("InternTable.commitChkpt: cannot delete %s", oldChkpt))

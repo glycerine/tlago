@@ -23500,3 +23500,25 @@ race instrumentation and pass (model-data-state-arrays-race.log, terminal
 abb545, status 0, 1.046 seconds). No direct original array-network method exists,
 so native checks add no original-method completion credit. All handles are
 terminal; no full model or full suite was repeated.
+
+### October 8, 2026: checkpoint promotion symlink ordering
+
+Compared trace, worker, both state queues, intern table and MemFPSet/1/2 commit
+methods with their source existence/delete/rename sequences. Go unconditionally
+removed an old checkpoint path; that incorrectly lost a dangling link before
+failure when the temporary checkpoint was missing. All eight source methods
+skip deletion when the link target does not exist.
+
+Added 32 short cases covering dangling/live links and successful/missing-file
+promotion. Before the fix, all eight dangling/missing-file cases fail
+(checkpoint-symlink-before.log, terminal f6427e, status 1, 0.021 seconds).
+Native Stat/delete/rename now retains source ordering and the original I/O
+category/text; link targets remain unchanged. Fixed checks plus existing commit
+failure/pool deletion/coordinator phase cases pass (checkpoint-symlink-fixed.log,
+terminal c515ef, status 0, 0.028 seconds).
+
+Final focused verification also includes the existing original StateQueue
+methods and intern/fingerprint commit error checks. It passes
+(checkpoint-symlink-verified.log, terminal 78d164, status 0, 0.032 seconds).
+The native symlink supplement adds no original-method completion credit.
+No full suite, full model or race workload ran; all handles are terminal.

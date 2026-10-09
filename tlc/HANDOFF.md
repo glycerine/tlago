@@ -335,6 +335,10 @@ storage-specific behavior must not be replaced by an atomic recovery assumption.
 The production checkpoint order is queue begin, trace begin, FP begin, queue
 resume, intern begin, queue commit, trace commit, intern commit, FP commit.
 Mixed files after interruption are source behavior, not an atomic transaction.
+Trace, worker, state queues, intern table and memory fingerprint stores follow
+the source existence/delete/rename order using native filesystem calls. A
+dangling old checkpoint link survives failed promotion; a live link is removed
+first, without changing its target. Short cases cover all eight owners.
 Disk, off-heap and nested-store trace recovery requires the existing trace; it
 cannot fall back to a named snapshot when the trace is missing. MemFPSet retains
 the source file-based recovery that deliberately ignores the trace parameter.

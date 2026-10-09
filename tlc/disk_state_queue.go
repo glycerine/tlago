@@ -331,8 +331,10 @@ func (q *DiskStateQueue) CommitChkpt() error {
 	q.lastLoPool = q.newLastLoPool
 	oldName := q.queuePath("queue.chkpt")
 	newName := q.queuePath("queue.tmp")
-	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldName))
+	if _, err := os.Stat(oldName); err == nil {
+		if err := os.Remove(oldName); err != nil {
+			return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldName))
+		}
 	}
 	if err := os.Rename(newName, oldName); err != nil {
 		return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldName))

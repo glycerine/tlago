@@ -667,8 +667,10 @@ func (w *Worker) CommitChkpt() error {
 	defer w.mu.Unlock()
 	oldChkpt := w.traceFileBase + ".chkpt"
 	newChkpt := w.traceFileBase + ".tmp"
-	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return NewIOException(fmt.Sprintf("Trace.commitChkpt: cannot delete %s", oldChkpt))
+	if _, err := os.Stat(oldChkpt); err == nil {
+		if err := os.Remove(oldChkpt); err != nil {
+			return NewIOException(fmt.Sprintf("Trace.commitChkpt: cannot delete %s", oldChkpt))
+		}
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
 		return NewIOException(fmt.Sprintf("Trace.commitChkpt: cannot delete %s", oldChkpt))

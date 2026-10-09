@@ -12636,3 +12636,17 @@ root collections are separately constructed. Invalid array/element IDs, null or
 inline conflicts with root IDs and unsupported state metadata fail explicitly.
 Peers transferring these graphs require the updated native payload build. No
 Java serialization or original-method completion credit is introduced.
+
+### Checkpoint promotion and symbolic links
+
+Trace, worker, memory/disk state queues, intern table and MemFPSet/1/2 commits
+check the old checkpoint with `os.Stat` before removing it, matching upstream
+`exists()` following symbolic links. Only successful existence checks attempt
+deletion; deletion failure stops promotion. Rename follows that check.
+A dangling old link therefore survives when the temporary file is missing;
+a live old link is removed before a failed rename. Successful rename replaces
+either link with the new regular checkpoint. Neither operation modifies the
+link target. Existing I/O error classification, text and queue pool deletion
+ordering remain intact. This uses native filesystem operations, not a Java
+filesystem runtime; interruption still does not make the multi-file checkpoint
+atomic.
