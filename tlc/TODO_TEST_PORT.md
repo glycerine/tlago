@@ -1792,6 +1792,12 @@ visibility before selection, subclass registration order and resource rollback
 after callback panic. Existing constructor ownership checks remain unchanged;
 no dedicated original factory test exists and no method credit is added.
 
+Server-thread construction now preserves source separation from registration.
+Native ownership checks require no map mutation and allow a nil underlying
+worker proxy. Existing short registration URI/wake and lost-computed-reply checks
+retain their assertions; the manually started fixture registers explicitly.
+No upstream constructor method exists and original-method totals are unchanged.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

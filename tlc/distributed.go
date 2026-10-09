@@ -551,6 +551,7 @@ func (s *TLCServer) RegisterWorker(worker DistributedWorkerEndpoint) error {
 		return err
 	}
 	thread := NewTLCServerThread(worker, uri, s, s.BlockSelector)
+	s.RegisterTLCServerThread(thread)
 	thread.Start()
 	// The second call is intentionally after registration/start. A failure
 	// here does not undo the registered thread in the Java implementation.
@@ -867,9 +868,6 @@ func NewTLCServerThread(worker DistributedWorkerEndpoint, uri string, server *TL
 	thread.TimerTask = &TLCTimerTask{Thread: thread}
 	// Java schedules keepalive during construction, before Thread.start().
 	thread.startKeepAlive()
-	if server != nil {
-		server.RegisterTLCServerThread(thread)
-	}
 	return thread
 }
 

@@ -49,6 +49,7 @@ func TestWorkerRPCLostComputedReplyRetainsAssignedWork(t *testing.T) {
 			server.WorkerStatesGenerated.Store(7)
 			selector := &BlockSelector{Server: server, Mode: BlockSelectorLimiting, Maximum: count}
 			thread := NewTLCServerThread(client, "tcp://worker/primary", server, selector)
+			server.RegisterTLCServerThread(thread)
 			recorder := &MemoryRecorder{}
 			AddMessageRecorder(recorder)
 			t.Cleanup(func() { RemoveMessageRecorder(recorder) })

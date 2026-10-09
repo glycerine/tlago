@@ -24855,3 +24855,33 @@ No dedicated upstream factory method exists; no original-method credit added.
 Inventory remains 37 complete and four Missing. No full suite, long model or
 race workload ran; unchanged model behavior retains the preceding receipt.
 All handles are terminal.
+
+### October 9, 2026: separate thread construction from registration
+
+Source TLCServerThread construction sets fields, wraps the worker and schedules
+keepalive. TLCServer.registerWorker inserts the resulting thread into its map
+after construction and before start. Go instead inserted from the constructor,
+giving standalone construction an extra coordinator mutation and rejecting a
+nil underlying worker before source usage. The ownership check reproduces the
+extra map entry (thread-construction-registration-red.log, terminal 182dce,
+status 1, 0.012 seconds).
+
+Moved insertion to RegisterWorker at the source point. The standalone constructor
+now retains a nil underlying worker proxy without registering itself. Existing
+selector retention adds a no-registration assertion; the additional nil-worker
+case retains coordinator/proxy/selector/timer ownership. The assigned lost-reply
+fixture now registers its manually constructed thread before start, keeping all
+publication, queue, retry, loss and shutdown assertions unchanged.
+
+Constructor ownership, selector/factory/startup and original smart-proxy checks
+pass (thread-construction-registration-green.log, terminal 90ffdd, status 0,
+0.188 seconds). Focused native worker, lazy callback, registration and lost-reply
+checks pass (thread-construction-registration-related.log, terminal b8d789,
+status 0, 0.224 seconds). Exact short registration URI/wake/monitor and computed
+reply-loss checks also pass under race instrumentation
+(thread-construction-registration-race.log, terminal 79ada1, status 0,
+1.052 seconds). Both URI failure boundaries, wake-before-contact and requeue
+ownership remain intact. No long workload was selected for race testing.
+No full suite or long model ran. No dedicated original constructor test exists;
+native checks add no original-method credit. Inventory remains 37 complete and
+four Missing. All handles are terminal.

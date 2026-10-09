@@ -15,6 +15,20 @@ func TestDistributedThreadRetainsSuppliedSelector(t *testing.T) {
 		if thread.Selector != selector {
 			t.Fatal("constructor substituted the supplied selector")
 		}
+		if server.GetWorkerCount() != 0 {
+			t.Fatal("thread construction changed coordinator registration before registerWorker")
+		}
+	}
+}
+
+// Source construction wraps the worker without dereferencing it; registration
+// belongs to TLCServer.registerWorker and is not a constructor side effect.
+func TestDistributedThreadConstructorRetainsNilWorker(t *testing.T) {
+	server := &TLCServer{}
+	thread := NewTLCServerThread(nil, "tcp://worker/primary", server, nil)
+	defer thread.cancelKeepAlive()
+	if thread.Worker == nil || thread.Worker.Worker != nil || thread.Server != server || thread.Selector != nil || thread.TimerTask == nil || thread.TimerTask.Thread != thread || server.GetWorkerCount() != 0 {
+		t.Fatal("constructor dereferenced the worker, changed ownership or registered itself")
 	}
 }
 

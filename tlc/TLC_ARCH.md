@@ -13336,3 +13336,19 @@ identity, false deadlock, metadata, initialized queue/trace/manager and base-bef
 subclass registration ordering. Callback failure preserves its panic identity,
 joins queue workers, closes descriptors and keeps trace/fingerprint files.
 No dedicated upstream factory test covers this boundary; no credit is added.
+
+### Server-thread construction and registration remain separate
+
+NewTLCServerThread now retains its supplied coordinator, proxy and selector and
+schedules keepalive without inserting itself into the coordinator map. Source
+TLCServer.registerWorker owns insertion after construction and before start.
+Go RegisterWorker performs that insertion explicitly. Queue wake and the first
+URI call precede construction; the second URI call follows registration/start
+and its failure still leaves the thread registered.
+
+Standalone construction can retain a nil underlying worker, as Java's smart
+proxy does, without premature registration validation. Native fixtures that
+manually start an assigned thread register it explicitly at the source point.
+The lost-computed-reply fixture retains all original queue/publication/retry/loss
+assertions. No upstream constructor test exists; native ownership checks add
+no original-method credit.

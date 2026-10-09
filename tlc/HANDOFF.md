@@ -309,6 +309,9 @@ Local `MultiFPSet` adaptation retains one endpoint to the original storage.
 Its high-bit child routing must not become the manager's low-bit server routing.
 Explicitly registered distributed servers retain their own manager routing.
 
+Thread construction retains its supplied proxy/selector and schedules keepalive;
+it does not register itself. `RegisterWorker` inserts the thread after
+construction and before Start, preserving both URI callback boundaries.
 Thread startup increments workers before coordinator queue capture, outside
 catch/finally. Worker-loss cleanup cancels keepalive, claims its one-time flag,
 removes the coordinator registration, requeues, clears assigned states, wakes
