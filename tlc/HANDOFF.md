@@ -79,6 +79,11 @@ forced connection closure remains independent of computation/storage lifetime.
 Short TCP checks also hold a worker's accepted fingerprint lookup open while
 keepalive/cache/exit calls use the same worker connection. Control calls remain
 responsive; exit rejects new calls and lets the accepted computation finish.
+The full N=7 model also holds bidirectional TCP relay traffic to one of two FP
+hosts without closing connections. Coordinator status/manager and worker
+alive/cache probes remain responsive; routing stays distinct and no failover is
+reported. Releasing traffic restores the original 114,942-state result. This
+controlled byte-relay stall does not prove arbitrary network blackholes.
 
 Transport does not redial or replay ambiguous fingerprint mutations. Manager
 failover retains the source algorithm, including its forward reassignment and
@@ -220,8 +225,9 @@ or establish checkpoint atomicity.
 2. Cover additional full-model fingerprint failure phases and general network
    partitions. Forced TCP closure/reply loss is covered; it does not prove every
    partition or stalled-connection case. One gated accepted fingerprint lookup
-   now verifies worker control responsiveness and orderly exit; arbitrary network
-   blackholes and full-model partition behavior remain unproved.
+   verifies worker control responsiveness and orderly exit. A controlled
+   full-model TCP relay stall is also verified; arbitrary network blackholes and
+   other partition topologies remain unproved.
 3. Isolate interruption after trace commit and before intern commit. Trace and
    intern owners are concrete. Do not add a production test-only hook, reorder
    commits or use a timing race. Removing `vars.tmp` causes intern commit to

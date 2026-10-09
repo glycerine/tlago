@@ -12312,3 +12312,23 @@ assertions are reused by local and remote process checks. This verifies the
 previously unproved multi-worker/remote-store combination. It does not change
 source CLI startup order or establish checkpoint atomicity and arbitrary failure
 phase correctness.
+
+### Full-model controlled fingerprint TCP stall
+
+A test-owned byte relay now pauses traffic in both directions to one of two
+fingerprint hosts, after inspecting the complete initial model frontier. It keeps
+connections open and forwards the original bytes unchanged; no TLC RPC request,
+result or storage operation is replaced. An actual blocked-write marker proves
+traffic reached the gate before independent control probes run. Coordinator
+status reports unfinished work, its manager retains distinct partitions, and
+worker alive/cache calls remain responsive. Five-second control-probe deadlines
+bound the test only; production timeout and retry policy are unchanged.
+
+The gate is released before continuing the full unchanged MC06 N=7 model. Final
+assertions retain 114,942 distinct states, an empty queue and FINISHED. Every role
+rejects GENERAL, unexpected EOF and failover warnings. The relay stops accepting,
+drains actual backend RPC replies, forwards them through EOF and joins both copy
+directions before completing shutdown. No production implementation change was
+needed. This verifies a controlled full-model TCP byte stall, rather than merely
+a blocked service callback; arbitrary packet loss/blackholes and other partition
+topologies remain unproved.

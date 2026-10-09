@@ -22943,3 +22943,35 @@ The previous remote multi-worker coverage gap is now verified. Java's CLI
 recovery-before-registration limitation, checkpoint atomicity and broader failure
 phases remain unchanged/unproved. All processes are terminal and joined.
 No full suite or race workload was run.
+
+### October 8, 2026: full-model controlled fingerprint TCP stall
+
+Audited the source completion loop against Go's monitor wait, completion
+notification, checkpoint-before-done check, reporting and baseline publication
+order. The existing implementation matches and needed no production change.
+Extended full-model failure coverage with a genuine test-owned TCP byte relay,
+rather than labeling the existing gated fingerprint service callback a network
+partition test. The relay holds both traffic directions to the first of two
+fingerprint hosts after the complete initial frontier has been inspected.
+Connections stay open and request/reply bytes remain unchanged.
+
+Actual blocked traffic is required before probing control endpoints. Coordinator
+status remains unfinished, its manager keeps distinct partitions, and worker
+alive/cache calls respond. Probe deadlines bound test observation only; production
+timeout/retry behavior is unchanged. Release resumes the full original N=7 model,
+which must finish with 114,942 distinct states and an empty queue. All roles reject
+GENERAL, unexpected EOF and failover warnings. This is a controlled relay stall;
+arbitrary packet loss/blackholes and other partition topologies remain unproved.
+
+Initial full-model selection passes (fingerprint-transport-stall.log, terminal
+c6834d, status 0, 51.194 seconds). Review then identified a possible fixture
+shutdown race: the relay could close before forwarding the final backend exit
+reply. Changed fixture cleanup to drain the actual RPC backend first, forward
+through EOF and join both copy directions. Also required unchanged manager
+routing and no source failover warning. The final model passes
+(fingerprint-transport-stall-verified.log, terminal 5d2fa2, status 0, 51.640 seconds).
+Related short stalled-lookup/control, graceful exit-reply and complete original
+manager failover-block checks pass (fingerprint-transport-stall-related.log,
+terminal 7e2624, status 0, 0.029 seconds). No original method directly tests this
+native transport fault and no method credit is added. All children are joined
+and runs terminal. No full suite or race workload was run.
