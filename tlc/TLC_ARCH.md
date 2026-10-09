@@ -13148,3 +13148,19 @@ ExportException and NotBoundException carriers and class metadata are removed.
 No transport adapter constructed these types; the manager rejection
 was the sole remaining consumer of the RMI base class. Other generic diagnostic
 carriers remain intact. Native registration fixtures advertise tcp worker URIs.
+
+### Concurrent native host closure joins resource cleanup
+
+DistributedRPCServer closes owned callbacks and accepted connections through one
+shared native teardown operation. Concurrent forced or graceful callers join it
+and receive its retained error. Admission closure and reply draining are separate
+from resource cleanup: neither a closed flag nor zero outstanding replies proves
+that a callback close has finished. Listener closure and graceful read deadlines
+still stop new/incomplete requests before draining accepted replies.
+
+Forced close can perform teardown while a graceful caller waits for replies;
+it does not acquire a lock held across that wait. Graceful callers still wait for
+accepted handlers/replies after a forced connection interruption. No call is
+replayed, and storage owners retain their existing lifetime boundaries. Short
+checks gate callback cleanup across all four forced/graceful caller combinations
+and retain cleanup failure identity through errors.Is and subsequent closure.

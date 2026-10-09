@@ -28,6 +28,8 @@ type DistributedRPCServer struct {
 	coordinators        map[string]distributedCoordinatorBinding
 	fingerprintSequence uint64
 	outbound            distributedConnections
+	closeResourcesOnce  sync.Once
+	closeResourcesErr   error
 }
 
 func NewDistributedRPCServer() *DistributedRPCServer {
@@ -140,11 +142,6 @@ func (s *DistributedRPCServer) CloseGracefully() error {
 
 func (s *DistributedRPCServer) close(graceful bool) error {
 	s.mu.Lock()
-	if s.closed && graceful {
-		s.mu.Unlock()
-		s.replies.Wait()
-		return nil
-	}
 	s.closed = true
 	listeners := make([]net.Listener, 0, len(s.listeners))
 	for listener := range s.listeners {
@@ -173,14 +170,22 @@ func (s *DistributedRPCServer) close(graceful bool) error {
 		}
 		s.replies.Wait()
 	}
-	if err := s.outbound.close(); err != nil {
-		failures = append(failures, err)
-	}
-	for _, conn := range connections {
-		if err := conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
-			failures = append(failures, err)
+	// A closed admission gate or an empty reply count does not mean resource
+	// cleanup has finished. All callers join the same teardown and retain its
+	// errors. Forced close can enter it while graceful callers drain replies.
+	s.closeResourcesOnce.Do(func() {
+		var resourceFailures []error
+		if err := s.outbound.close(); err != nil {
+			resourceFailures = append(resourceFailures, err)
 		}
-	}
+		for _, conn := range connections {
+			if err := conn.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				resourceFailures = append(resourceFailures, err)
+			}
+		}
+		s.closeResourcesErr = errors.Join(resourceFailures...)
+	})
+	failures = append(failures, s.closeResourcesErr)
 	return errors.Join(failures...)
 }
 

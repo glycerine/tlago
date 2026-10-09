@@ -1738,6 +1738,12 @@ failure checks now also retain I/O/transport categories and the rejection's
 absent cause across payload transfer. Original manager and smart-proxy assertions
 are unchanged; this cleanup adds no original-method completion credit.
 
+Native host closure checks join callback cleanup for all four combinations of
+forced/graceful callers, retain its failure and close each callback once.
+Existing TCP checks still require graceful reply delivery and forced interruption
+of a reply drain. No original Java method directly covers this native ownership
+boundary; original method totals are unchanged.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

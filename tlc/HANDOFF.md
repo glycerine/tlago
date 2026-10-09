@@ -76,6 +76,10 @@ manager snapshots and keepalive are wired into the production CLI. Roles are
 listener and waits for both lifetimes. Signal shutdown occurs at the source
 shutdown-hook boundary. Accepted replies drain before orderly host shutdown;
 forced connection closure remains independent of computation/storage lifetime.
+Concurrent host closes join the same callback/accepted-connection teardown and
+retain its cleanup error. A closed admission gate or an empty reply count alone
+cannot let a later close return before cleanup. Forced close can still interrupt
+a graceful reply drain; graceful callers continue waiting for accepted replies.
 Short TCP checks also hold a worker's accepted fingerprint lookup open while
 keepalive/cache/exit calls use the same worker connection. Control calls remain
 responsive; exit rejects new calls and lets the accepted computation finish.

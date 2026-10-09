@@ -24546,3 +24546,40 @@ the existing native worker test assertion forbidding RMI diagnostic classes.
 No new test methods or original-method credit added; the distributed inventory
 remains 37 complete and four Missing. No full suite, repeated long model or race
 workload ran. All handles are terminal.
+
+### 2026-10-09: Concurrent native host closes join callback cleanup
+
+Audited native host ownership after admission closure and accepted-reply drain.
+DistributedRPCServer returned early from a second graceful close after waiting
+only for replies; repeated forced close likewise observed an already-closed
+callback owner without waiting for its cleanup. A gated callback check reproduces
+premature nil success for all four forced/graceful caller combinations
+(rpc-close-join-red.log, terminal c9b090, status 1, 0.014 seconds).
+
+Callback and accepted-connection teardown now runs once through a native shared
+cleanup operation. Every close joins it and retains its error, including later
+calls after completion. Admission closure and graceful read deadlines remain
+separate from reply draining. Forced close can still perform teardown while a
+graceful caller waits for an accepted handler; no lock spans that wait. Calls
+are not replayed and storage ownership/lifetime remains with existing commands.
+
+New short checks retain callback failure through errors.Is, wait for gated
+cleanup, join each caller and require one callback close. The initial fixed
+check passes (rpc-close-join-green.log, terminal 0be39b, status 0, 0.214 seconds).
+The final version uses both public close entry points and passes normally
+(terminal 1a07e0, status 0, 0.213 seconds). Existing graceful/forced TCP shutdown,
+incomplete request, callback-error, storage-ownership, FP rejection and original
+manager/smart-proxy checks pass (rpc-close-join-related.log, terminal e451fa,
+status 0, 0.265 seconds). Only the new short close matrix and existing short
+reply-preservation, forced-interruption and incomplete-request checks ran with
+race instrumentation (rpc-close-join-race.log, terminal 07187a, status 0,
+1.274 seconds).
+
+The unchanged combined worker/fingerprint N=7 process model passes normally
+(rpc-close-join-model.log, terminal 9cd5b4, status 0, 54.612 seconds). It retains
+114,942 distinct states and an empty queue; the shared role reports real work,
+exits its FP loop and joins normally along with the coordinator. The harness
+rejects GENERAL and unexpected EOF. No direct original Java method covers this
+native ownership boundary, so original credit remains 37 complete and four
+Missing. No full suite ran and no long workload used race instrumentation.
+All handles are terminal.
