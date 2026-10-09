@@ -365,6 +365,7 @@ func (e *NetworkFingerprintEndpoint) call(request DistributedFingerprintRequest)
 		return reply, fingerprintConnectionFailure(err)
 	}
 	if err := client.Call("Fingerprint.Call", request, &reply); err != nil {
+		closeFailedDistributedClient(client, err)
 		return reply, fingerprintConnectionFailure(err)
 	}
 	if reply.Failure != nil {
@@ -375,6 +376,15 @@ func (e *NetworkFingerprintEndpoint) call(request DistributedFingerprintRequest)
 		return reply, failure
 	}
 	return reply, nil
+}
+
+// net/rpc fails pending calls after a transport error without closing its
+// codec. Release that transport while retaining the failed client: subsequent
+// calls must not redial or replay. A valid remote method error leaves it usable.
+func closeFailedDistributedClient(client *rpc.Client, failure error) {
+	if _, methodError := failure.(rpc.ServerError); !methodError {
+		_ = client.Close()
+	}
 }
 
 func (e *NetworkFingerprintEndpoint) Put(fp uint64) (bool, error) {

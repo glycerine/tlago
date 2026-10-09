@@ -1906,6 +1906,12 @@ errors cannot hide other callback cleanup failures, including discovery-owned
 coordinator cleanup. They preserve error causes and later-owner cleanup without
 adding original Java method completion credit.
 
+Native failed-client checks also cover coordinator, worker and fingerprint
+transports. A terminal RPC failure closes its codec promptly, preserves the
+original cause and retains the failed client without redial/replay. Method-level
+RPC errors keep the connection usable. This Go transport ownership coverage has
+no direct original Java method and adds no original-method completion credit.
+
 Native model-data payload checks now also cover map[any]any with scalar/value
 keys, exact key types, cycles and shared references through requests, results and
 WorkerException contexts. Nil/empty maps, receiver isolation and malformed keys

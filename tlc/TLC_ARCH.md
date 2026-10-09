@@ -12599,6 +12599,22 @@ error graph and manager recovery stops before the healthy registration. These
 checks verify the storage/transport boundary, not full-model incomplete-snapshot
 recovery or checkpoint atomicity. Production algorithms are unchanged.
 
+### Failed native client transport ownership
+
+Go `net/rpc` terminates pending calls on a read/protocol error without closing
+the client codec. Coordinator, worker and fingerprint endpoint adapters now
+close that codec when `Client.Call` returns a transport failure. They retain the
+same failed client and return the original categorized error/cause; later calls
+observe shutdown without redial or replay. Closing the local transport does not
+cancel already accepted remote computation or fingerprint storage operations.
+
+A valid `rpc.ServerError` is a method-level reply and leaves the connection
+usable. Decoded TLC failure payloads likewise preserve their existing behavior.
+The close attempt does not replace the original operation error. Native codec
+checks cover all three endpoint roles, one close after terminal read failure,
+no later request/redial and continued use after a method error. Existing TCP
+loss, accepted-request, shutdown and original manager assertions remain intact.
+
 ### Native connection-owner cleanup errors
 
 Distributed connection owners and coordinator discovery previously used an

@@ -288,6 +288,7 @@ func (e *NetworkServerEndpoint) call(request DistributedServerRequest) (Distribu
 	request.Object = e.Object
 	var reply DistributedServerReply
 	if err := e.client.Call("Coordinator.Call", request, &reply); err != nil {
+		closeFailedDistributedClient(e.client, err)
 		return reply, workerConnectionFailure(err)
 	}
 	if reply.Failure != nil {

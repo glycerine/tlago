@@ -205,6 +205,7 @@ func (e *NetworkWorkerEndpoint) call(request DistributedWorkerRequest) (Distribu
 		return reply, workerConnectionFailure(err)
 	}
 	if err := client.Call("Worker.Call", request, &reply); err != nil {
+		closeFailedDistributedClient(client, err)
 		return reply, workerConnectionFailure(err)
 	}
 	if reply.Failure != nil {

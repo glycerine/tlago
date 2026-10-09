@@ -25783,3 +25783,40 @@ DieHard error-trace roles and original AliasSafety/AliasSafetySimu/TLCExtTraceAl
 ports pass (distributed-disk-trace-retention-models.log, terminal ac76d7,
 status 0, 76.533 seconds). All handles are terminal. No full suite or race run;
 original-method completion counts remain unchanged.
+
+
+### October 9, 2026: promptly release failed native RPC transports
+
+Reviewed bounded queue buffers, worker registry removal and fingerprint-manager
+snapshot ownership. Found a native transport resource gap: net/rpc.Client.input
+fails pending calls and marks shutdown on read/protocol failure without closing
+its codec. Endpoint owners previously retained that open codec until role
+shutdown. Inspected the local Go implementation; no Java RMI runtime work is
+required for this cleanup.
+
+Coordinator, worker and fingerprint Call adapters now close the client after a
+transport failure while returning the original categorized failure/cause. They
+retain the failed client, so later operations observe shutdown without redial or
+replay. rpc.ServerError remains a valid method reply and preserves connection
+reuse. Decoded TLC failure payload behavior is unchanged. Already accepted remote
+work retains its independent computation/storage lifetime.
+
+The new six-case native codec test fails before correction for all three
+transport-loss roles (distributed-failed-client-red.log, terminal 78f3ed,
+status 1); method-error reuse cases already pass. Corrected the fixture's cause
+expectation to io.ErrUnexpectedEOF, which net/rpc produces from codec EOF before
+returning the operation failure. Final checks require one codec close, unchanged
+first cause, subsequent rpc.ErrShutdown with no new request, and connection reuse
+after an ordinary method failure. No corresponding original Java method exists
+for this native codec ownership boundary.
+
+Native TCP loss/accepted-work/codec/shutdown checks and unchanged original dynamic
+fingerprint-manager/nested-partition tests pass (distributed-failed-client-focused.log,
+terminal 9a4577, status 0, 0.577 seconds). Final six-case ownership checks pass
+(distributed-failed-client-final.log, terminal 5b624b, status 0, 0.012 seconds),
+as does their short isolated race selection (distributed-failed-client-final-race.log,
+terminal 0ea318, status 0, 1.030 seconds). Full unchanged N=7 fingerprint insertion
+reply loss with nested LSB storage and computed-worker reply loss both pass
+(distributed-failed-client-models.log, terminal d5e41c, status 0, 109.674 seconds).
+Those models run normally, without race instrumentation. No full suite was run;
+all handles are terminal, and original-method completion credit is unchanged.
