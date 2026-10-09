@@ -350,7 +350,6 @@ func (p *SpecProcessor) ProcessConfig() {
 		}
 	}
 	p.processConfigProperties()
-	p.processConfigPostConditions()
 	p.processMissingInitNextConfig()
 	p.processSpecPropertyTautologyWarning()
 	for _, invariant := range p.RuntimeParameters.Invariants {
@@ -467,7 +466,6 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.ModelConstraints = append([]SemanticNode(nil), p.ModelConstraints...)
 	tool.ActionConstraints = append([]SemanticNode(nil), p.ActionConstraints...)
 	tool.ConfigErrors = append([]*ConfigError(nil), p.ConfigErrors...)
-	tool.PostConditionSpecs = p.GetPostConditionSpecs()
 	tool.Assumptions = append([]SemanticNode(nil), p.Assumptions...)
 	tool.AssumptionIsAxiom = append([]bool(nil), p.AssumptionIsAxiom...)
 	tool.RLReward = p.RLReward
@@ -1168,19 +1166,6 @@ func (p *SpecProcessor) processConfigProperties() {
 			PrintWarning(ECTLCLiveFormulaStateLevel, name)
 		}
 		p.processConfigProperty(tool, name, name, def.Body, EmptyContext, EmptyList)
-	}
-}
-
-func (p *SpecProcessor) processConfigPostConditions() {
-	if p == nil || p.Config == nil {
-		return
-	}
-	for _, name := range p.Config.GetPostConditions() {
-		def, ok := p.configOpDef(name, "post condition", p.Defns)
-		if !ok {
-			continue
-		}
-		p.PossiblePostConds = append(p.PossiblePostConds, NewActionFromOpDef(def.Body, EmptyContext, def, false, false))
 	}
 }
 

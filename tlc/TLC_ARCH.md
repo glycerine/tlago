@@ -4674,11 +4674,12 @@ Port guidance:
   the config constant wins. Runtime invariant actions are appended after normal
   config processing, so the missing `INIT`/`NEXT` checks only see the static
   model config just as Java's `SpecProcessor` does.
-- Runtime postconditions follow Java `Spec.getPostConditionSpecs`: actions from
-  `ParameterizedSpecObj.getPostConditionSpecs()` come before config-file
-  `POSTCONDITION(S)`, and their user-visible action name is the unqualified
-  operator name even though the Go bridge resolves the qualified module
-  definition internally. This matters for diagnostic/postcondition output order.
+- Postconditions follow Java `Spec.getPostConditionSpecs`: runtime actions come
+  first, followed by retained `_POSSIBLE` actions and then config-file
+  `POSTCONDITION(S)`. The processor returns runtime/possible actions; the tool
+  getter resolves and appends fresh config actions. Runtime/config actions have
+  no OpDef metadata. Runtime names are the unqualified operator names. This
+  determines diagnostic order and preserves the getter's validation phase.
 - Java's `-dump class,...` loads an `IStateWriter` by reflection. Go keeps this
   concrete with `StateWriterFactory` functions registered by class name through
   `RegisterStateWriterClass`; built-in parity names cover Java's zero-argument
@@ -11022,10 +11023,22 @@ to the corresponding config vectors at model/action-constraint processing time.
 Existing constraint processing retains source body identity, arity diagnostics and
 coverage ownership. Runtime views honor config precedence, require zero arity and
 return the actual source body without setting a constraint tool object on it.
-Postcondition getters construct fresh named Actions with no OpDef metadata, put
-runtime actions before config/possible actions and preserve the existing possible
-Action objects. Tool forwards postcondition requests to its processor when present;
-standalone tools retain their ordinary copied-slice getter.
+The processor's postcondition getter constructs fresh runtime Actions with no
+OpDef metadata and appends retained possible Action objects. Tool then resolves
+config postconditions and appends fresh named Actions, also without OpDef metadata.
+Config lookup/arity failures throw the source runtime exception at getter time;
+they are not construction-time processor ConfigErrors. Eager config postcondition
+processing and construction-time runtime postcondition lookup are removed.
+Standalone tools retain their ordinary copied-slice getter.
+
+A bounded comparison uses unchanged PostConditionsTest data plus the existing
+_TLCTraceSilent runtime postcondition. Java and corrected Go expose three processor
+postconditions and six tool postconditions, ordered runtime, two possible actions,
+then three config actions. All six action names, OpDef absence, body identity and
+repeat-getter action identity agree. Baseline Go exposed six processor actions,
+put config before possible actions and reused config Actions with OpDef metadata.
+The native possible wrapper implementation remains separate from general generated
+module graph parity; this observation does not establish that broader contract.
 
 On existing original proof/trace methods and the existing runtime postcondition
 bridge check, 3,940 operator lookups across 15 builds match actual module OpDefs,

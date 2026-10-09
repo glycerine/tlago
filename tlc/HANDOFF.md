@@ -76,8 +76,12 @@ processor configuration/getter paths. Runtime invariant templates now compile an
 merge in the processor before constraint processing. Configuration phases now stop
 at their first error, retaining constant/override failures and preventing later
 runtime compilation or tool setup. The original invalid-invariant fixture matches
-Java's first error and zero compiler calls. General source generation, mutation
-sharing and native INSTANCE fallback parity remain pending.
+Java's first error and zero compiler calls. Postcondition getters now preserve
+Java's runtime, `_POSSIBLE`, then config order, creating fresh config Actions
+without OpDef metadata. Config postconditions are resolved by the tool getter.
+Next: audit eager view/alias resolution against Java's getter and state-setup
+phases. General source generation, mutation sharing and native INSTANCE fallback
+parity remain pending.
 
 ## Verification baseline and test credit
 

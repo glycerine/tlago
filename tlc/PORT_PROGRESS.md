@@ -28398,3 +28398,56 @@ sweep, email work, Java edits or workload-bound changes.
 After moving the constant-phase recovery defer below its nil guard, the same
 focused processor/config/getter selection passes again, terminal 3dd7b3,
 status 0, 0.016 seconds. Git diff --check passes.
+
+
+Postcondition getter phase, order and Action identity (2026-10-09)
+
+Previous turn committed 68fe898, a concrete configuration failure-order fix.
+Revalidated its clean workspace and polled the same live off-heap session 77502.
+The next source audit compared SpecProcessor.getPostConditionSpecs with
+Spec.getPostConditionSpecs and found native config postconditions processed too
+early and stored in PossiblePostConds. This mixed processor/tool responsibilities,
+put config actions before possible actions, retained config Action identities and
+attached OpDefs where Java creates plain named Actions. ApplyToTool also eagerly
+resolved runtime postconditions absent from the source constructor phase.
+
+Removed processConfigPostConditions and its caller, plus eager postcondition
+lookup in ApplyToTool. Tool.GetPostConditionSpecs obtains runtime/possible actions
+from the processor, then resolves config names and appends fresh NewAction objects.
+It throws source coded runtime failures for missing, constant-valued or nonzero
+arity config targets. Existing standalone-tool copied-slice behavior remains.
+No new persistent test or fixture is introduced.
+
+Existing original postcondition, possible success/failure, TLCSetInit, subseteq,
+minimal-next-state, simulation-postcondition and Github1087 selections, plus the
+existing qualified-local runtime postcondition bridge check, pass:
+postcondition-getter-originals.log, terminal 154cd0, status 0, 2.873 seconds.
+Existing processor/config/getter checks pass: postcondition-getter-processor.log,
+terminal 63c2b2, status 0, 0.015 seconds.
+
+A standalone observation uses unchanged PostConditionsTest fixture data and the
+existing _TLCTraceSilent runtime target. Pinned Java and corrected Go report
+three processor actions and six tool actions. Rows match exactly: _TLCTraceSilent,
+AtTwo, LastStep, Post1, Post2, PossibleCounts. Every row has no OpDef and retains
+body identity across repeated getters. Runtime/config Action identities are fresh;
+possible Action identities are retained. Baseline Go reports six processor actions,
+orders config before possible actions and retains config Actions with OpDefs.
+Receipts: postcondition-getter-java-observation.log, terminal 15c1aa;
+postcondition-getter-go-observation.log, terminal 1a622a; and
+postcondition-getter-before-observation.log, terminal 729a1b; all status 0.
+These observations earn no original-method credit and do not establish general
+generated possible-module graph parity.
+
+Next concrete source audit: view/alias eager resolution versus Java's getter
+and state-setup phases. General source generation, mutation sharing and native
+INSTANCE fallback remain unproven. The same full off-heap random run remains
+live beyond 440 million of 2,147,483,648 iterations; no completion credit. No
+race instrumentation, long-workload restart, full-workspace/XML/ApalacheIR sweep,
+Java edit, email work or translated assertion/workload-bound change.
+
+Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and trace
+selection passes: postcondition-getter-broad-originals.log, terminal 88581d,
+status 0, 182.291 seconds. The read-only Java checkout HEAD is reverified as
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Git diff --check passes.
+The same full off-heap random workload remains live beyond 447 million
+iterations; completion credit remains pending.

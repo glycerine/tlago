@@ -900,10 +900,30 @@ func (t *Tool) GetPostConditionSpecs() []*Action {
 	if t == nil {
 		return nil
 	}
-	if t.SpecProcessor != nil {
-		return t.SpecProcessor.GetPostConditionSpecs()
+	if t.SpecProcessor == nil {
+		return append([]*Action(nil), t.PostConditionSpecs...)
 	}
-	return append([]*Action(nil), t.PostConditionSpecs...)
+	// Spec appends freshly resolved config actions after the processor's
+	// runtime and possible actions on every getter call.
+	result := t.SpecProcessor.GetPostConditionSpecs()
+	if t.ModelConfig == nil {
+		return result
+	}
+	for _, name := range t.ModelConfig.GetPostConditions() {
+		value := t.SpecProcessor.defn(name)
+		if value == nil {
+			panic(NewTLCRuntimeException(ECTLCConfigSpecifiedNotDefined, "post condition", name))
+		}
+		definition, ok := value.(*OpDefNode)
+		if !ok {
+			panic(NewTLCRuntimeException(ECTLCConfigIDMustNotBeConstant, "post condition", name))
+		}
+		if definition.Arity() != 0 {
+			panic(NewTLCRuntimeException(ECTLCConfigIDRequiresNoArg, "post condition", name))
+		}
+		result = append(result, NewAction(definition.Body, EmptyContext, name))
+	}
+	return result
 }
 
 func (t *Tool) GetModelConstraints() []SemanticNode {
