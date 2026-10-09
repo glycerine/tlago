@@ -123,6 +123,10 @@ Nested `AddThread` inherits the source no-op. Only `IncWorkers` forwards reader
 allocation to children; local/TCP checks verify this distinction.
 Memory and nested expected-count invariant overloads inherit the base true
 result. Nested no-argument checks visit children; disk overloads enforce counts.
+Memory recovery retains complete prefixes and prior membership on truncated or
+duplicate input. Local/TCP checks cover all seven partial-long lengths: base
+memory runtime failures stop manager recovery, while packed-memory I/O failures
+warn and continue healthy registrations. Duplicates stop both without failover.
 Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
 storage. The manager warns once, continues to the next registration and leaves
 routing intact; the broken connection does not replay the completed recovery.

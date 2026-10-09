@@ -1461,6 +1461,11 @@ Native invariant-overload checks cover local/TCP memory, nested and LSB/MSB
 stores. Memory/nested expected-count calls inherit the base true result; disk
 calls enforce counts and nested no-argument checks visit children. Related
 original methods remain green; no direct original overload test earns credit.
+Native memory recovery now checks 32 local/TCP cases: base/packed storage with
+seven partial-long lengths after complete records, plus duplicates before an
+unvisited record. Source manager warning/continuation, exact runtime diagnostics,
+prefix/prior membership and unchanged registrations are verified. No enabled
+original method covers this boundary, so no completion credit is added.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

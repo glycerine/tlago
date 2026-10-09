@@ -23798,3 +23798,21 @@ status 0, 1.085 seconds). Two test compilation errors in constructor/factory
 arguments were corrected before these final checks. No direct original test
 covers inherited overload dispatch, so native checks add no completion credit.
 No full suite, long model or race workload ran. All check handles are terminal.
+
+### Partial memory recovery and manager failure boundaries
+
+Audited source MemFPSet/MemFPSet2 recover(String) and FPSetManager checkpoint
+failure handling. Existing disk reader replacement and empty-prefix corruption
+checks already cover their stated boundaries. Added native cases for complete
+prefixes followed by all seven partial-long lengths and duplicates followed by
+an unvisited record, across both memory stores and local/TCP endpoints.
+All 32 cases retain prefix and prior membership. Base memory truncation and both
+duplicate failures stop later recovery with exact source runtime text; packed
+memory truncation warns exactly once and recovers the healthy registration.
+Availability and wrapper identity remain unchanged. No production change was
+needed. Initial new cases pass (terminal bd28be, status 0, 0.060 seconds).
+Final cases with exact diagnostic assertions, related corruption/duplicate/
+reply-loss checks and the original manager nested-partition method pass
+(terminal 29583c, status 0, 0.342 seconds). No enabled original method directly
+tests this manager/partial-input boundary, so no original-method credit is added.
+No full suite, long model or race workload ran. All check handles are terminal.

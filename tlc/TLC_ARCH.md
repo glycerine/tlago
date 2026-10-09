@@ -12778,3 +12778,19 @@ Local/TCP native checks cover populated memory stores with a mismatched count,
 a nested child that fails its no-argument check and forbids size access, and
 LSB/MSB stores with matching and mismatched counts. This preserves the source
 dispatch without Java runtime machinery or a changed distributed algorithm.
+
+### Partial memory recovery through fingerprint managers
+
+MemFPSet and MemFPSet2 recover named snapshots by inserting each complete
+fingerprint before reading the next. Truncated input retains both the complete
+prefix and preexisting membership. The base memory store reports the source
+runtime disk-I/O assertion; the packed store reports IOException instead.
+FPSetManager stops on the former and warns once before recovering the next
+registration on the latter. Duplicate records produce the fingerprint-not-in-set
+runtime assertion in both stores, retain the prefix and leave later input unread.
+
+The native local/TCP matrix covers all seven incomplete-long lengths after two
+complete records and duplicate records followed by an unvisited fingerprint.
+It verifies exact runtime text, source warning text, healthy endpoint progress,
+prior/prefix membership and retained registration identity/availability. These
+are source nontransactional recovery semantics; no rollback or replay is added.
