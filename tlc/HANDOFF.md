@@ -137,6 +137,10 @@ existing lazy-transfer failure before supplier checks.
 
 Attached model-value data supports native `[]Value` through the same array graph,
 preserving cycles, shared backing storage and typed nil/empty arrays across RPC.
+Attached `*TLCStateMut` objects reuse root/predecessor state identities, including
+attached-only states, cache/value back-references and native map keys. Decoder
+states are allocated before attachments are resolved. Typed nil references and
+receiver isolation survive; attached states retain the existing metadata checks.
 Native `map[string]Value` attachments also preserve shared map identity, cycles,
 nil entries and typed nil/empty maps in requests, results and failure contexts.
 Native `map[any]any` attachments additionally retain supported scalar and value

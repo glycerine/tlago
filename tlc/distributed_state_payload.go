@@ -40,6 +40,7 @@ type DistributedObjectDataNode struct {
 	Bool      bool
 	Bytes     int
 	Value     int
+	State     int
 	Array     int
 	Map       int
 }
@@ -47,13 +48,13 @@ type DistributedObjectDataNode struct {
 func distributedObjectDataNode(node DistributedValueNode) DistributedObjectDataNode {
 	return DistributedObjectDataNode{Kind: node.DataKind, String: node.DataString, Name: node.DataName,
 		Integer: node.DataInteger, FloatBits: node.DataFloatBits, Bool: node.DataBool,
-		Bytes: node.DataBytes, Value: node.DataValue, Array: node.DataArray, Map: node.DataMap}
+		Bytes: node.DataBytes, Value: node.DataValue, State: node.DataState, Array: node.DataArray, Map: node.DataMap}
 }
 
 func (node DistributedObjectDataNode) valueNode() DistributedValueNode {
 	return DistributedValueNode{DataKind: node.Kind, DataString: node.String, DataName: node.Name,
 		DataInteger: node.Integer, DataFloatBits: node.FloatBits, DataBool: node.Bool,
-		DataBytes: node.Bytes, DataValue: node.Value, DataArray: node.Array, DataMap: node.Map}
+		DataBytes: node.Bytes, DataValue: node.Value, DataState: node.State, DataArray: node.Array, DataMap: node.Map}
 }
 
 type DistributedObjectMapEntry struct {
@@ -142,6 +143,7 @@ type DistributedValueNode struct {
 	DataBool            bool
 	DataBytes           int
 	DataValue           int
+	DataState           int
 	DataArray           int
 	DataMap             int
 }
@@ -542,6 +544,12 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		node.DataKind, node.DataName = "uniqueString", e.string(v)
 	case []*UniqueString:
 		node.DataKind, node.DataArray = "nameArray", e.nameArray(v)
+	case *TLCStateMut:
+		id, err := e.state(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataState = "state", id
 	case bool:
 		node.DataKind, node.DataBool = "bool", v
 	case int:
@@ -771,6 +779,7 @@ func (e *distributedPayloadEncoder) valueMap(values map[string]Value) (int, erro
 }
 
 type distributedPayloadDecoder struct {
+	states        []*TLCStateMut
 	values        []Value
 	strings       []*UniqueString
 	bytes         [][]byte
@@ -819,6 +828,12 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, fmt.Errorf("value %d: %w", i+1, err)
 		}
 		decoder.values[i] = value
+	}
+	// Allocate state identities before resolving attachments. A value or mixed
+	// container can point back to a root or to another attached-only state.
+	decoder.states = make([]*TLCStateMut, len(payload.States))
+	for i := range decoder.states {
+		decoder.states[i] = &TLCStateMut{}
 	}
 	decoder.valueMaps = make([]map[string]Value, len(payload.ValueMaps))
 	for i, entries := range payload.ValueMaps {
@@ -941,7 +956,7 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 		}
 		caches[i] = cache
 	}
-	objects := make([]*TLCStateMut, len(payload.States))
+	objects := decoder.states
 	for i, node := range payload.States {
 		if node.Level < 0 {
 			return nil, fmt.Errorf("negative distributed state level")
@@ -950,7 +965,7 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 		if err != nil {
 			return nil, err
 		}
-		objects[i] = &TLCStateMut{WorkerID: node.WorkerID, UID: node.UID, level: int(node.Level), values: values}
+		objects[i].WorkerID, objects[i].UID, objects[i].level, objects[i].values = node.WorkerID, node.UID, int(node.Level), values
 		record, err := decoder.value(node.PrintRecord)
 		if err != nil {
 			return nil, fmt.Errorf("state print record: %w", err)
@@ -1320,6 +1335,14 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 		return d.string(node.DataName)
 	case "nameArray":
 		return d.nameArrayRefs(nil, node.DataArray == 0, node.DataArray)
+	case "state":
+		if node.DataState < 0 || node.DataState > len(d.states) {
+			return nil, fmt.Errorf("invalid model state reference %d", node.DataState)
+		}
+		if node.DataState == 0 {
+			return (*TLCStateMut)(nil), nil
+		}
+		return d.states[node.DataState-1], nil
 	case "bool":
 		return node.DataBool, nil
 	case "int":

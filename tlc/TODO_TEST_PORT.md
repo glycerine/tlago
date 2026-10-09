@@ -1663,6 +1663,13 @@ keep the source lazy-transfer assertion. Invalid cache references fail decoding.
 Original TRACE/TRACE-alias tests remain green. There is no direct original
 supplier-network method, so these checks add no original-method completion credit.
 
+Native attached `*TLCStateMut` checks retain shared root/predecessor identities,
+attached-only states, cyclic value/cache back-references, native state map keys
+and typed nil state references. Direct/TCP/result/WorkerException checks verify
+receiver isolation; invalid graph references and unsupported attached evaluator
+metadata still fail explicitly. Original ModelValue methods remain green. These
+new networking checks add no original-method completion credit.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,

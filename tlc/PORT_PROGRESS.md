@@ -23437,3 +23437,37 @@ instrumentation and pass (lazy-supplier-race.log, terminal 013561, status 0,
 1.041 seconds). No direct original supplier-network method exists, so native
 checks add no original-method completion credit. All handles are terminal; no
 full distributed model or full suite was repeated.
+
+### October 8, 2026: attached native TLC state graphs
+
+The inventory review still leaves four unconditionally disabled original model
+methods missing. The next graph audit found a concrete production gap:
+ModelValue.Data rejected native *TLCStateMut attachments despite the existing
+state table. Source TLCState is transferable and model data is not transient.
+Direct/TCP checks reproduce the rejection before production changes
+(model-data-states-before.log, terminal 6295f4, status 1, 0.013 seconds).
+
+Attachments and compact object entries now use the same state IDs as roots and
+predecessors. Decoder state identities are allocated before attachment/value
+population and filled by the later metadata/cache/predecessor pass, preserving
+back-references rather than replacing referenced objects. Checks cover attached-
+only states, predecessor cycles, shared value arrays, cache links, native state
+map keys, typed nil references and receiver isolation. Invalid references and
+unsupported attached evaluator metadata still fail explicitly. Peers using this
+attachment require the updated native payload build; no JVM machinery is added.
+
+Initial fixed graph/payload/general-map/original ModelValue checks pass
+(model-data-states-fixed.log, terminal 446672, status 0, 0.026 seconds). Final
+attached-state, predecessor, print-record, cache, state-array and original
+ModelValue checks pass (model-data-states-related.log, terminal cbd8ad,
+status 0, 0.024 seconds). Only the new short graph/TCP/invalid-input checks ran
+with race instrumentation and pass (model-data-states-race.log, terminal
+74093f, status 0, 1.049 seconds).
+
+Because state allocation order changed, ran one unchanged full MC06 N=7 model
+normally with two TCP fingerprint hosts. It passes with 114,942 distinct states,
+zero queued states, FINISHED, no GENERAL/EOF and normal role exits
+(model-data-states-full-model.log, terminal c3278b, status 0, 51.113 seconds).
+No full suite ran. There is no direct original attached-state network method,
+so native checks add no original-method completion credit. All handles are
+terminal.

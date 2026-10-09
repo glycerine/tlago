@@ -12598,3 +12598,21 @@ carrying the new wrapper tag need the updated native payload build. Short direct
 and TCP checks cover these contracts, and existing original TRACE/TRACE-alias
 methods remain green. No direct original supplier-network test exists, so this
 work adds no original-method completion credit.
+
+### Attached native TLC states
+
+ModelValue attachments can reference native *TLCStateMut objects through the
+same state table as invocation roots and predecessors. Compact object entries
+carry a state reference too, so nested attachments and native map keys retain
+identity. Encoding uses the existing state validation and reserves identities
+before following state/value/cache cycles. It does not drop evaluator metadata.
+
+Decoding allocates all state identities before resolving mixed containers and
+populating values. The later metadata/value/cache/predecessor pass fills those
+same objects rather than replacing them. This preserves root back-references,
+attached-only states, shared value arrays, cache links and predecessor cycles.
+Typed nil state attachments remain distinct from nil interfaces; receiver
+objects do not alias sender storage. Invalid state IDs and invalid attached-state
+metadata fail explicitly. Peers transferring this attachment require the updated
+native payload build. No Java serializer or runtime is introduced, and these
+native networking checks add no original-method completion credit.
