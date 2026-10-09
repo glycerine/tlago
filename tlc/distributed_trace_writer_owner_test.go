@@ -46,7 +46,7 @@ func TestDistributedTraceWritesRequireExistingOwner(t *testing.T) {
 					t.Fatal("write replaced its file owner")
 				}
 				if scenario == "healthy-prior-error" {
-					if err != nil || trace.lastPtr != 9 || owner.curr != 21 || state.UID != 9 || len(trace.records) != 1 {
+					if err != nil || trace.lastPtr != 9 || owner.curr != 21 || state.UID != 9 || len(trace.records) != 0 {
 						t.Fatalf("existing owner write failed: %v", err)
 					}
 				} else {

@@ -25747,3 +25747,39 @@ production implementation required no change. Unchanged original manager tests
 retain their prior green receipt; no full-suite or race run. Both live handles
 are terminal. Native integration coverage adds no original-method credit; the
 four original distributed model contexts remain Reconcile.
+
+
+### October 9, 2026: release written states from source disk traces
+
+Compared TLCTrace disk writes/depth/recovery and distributed manager check
+collection with pinned Java. Found a concrete ownership mismatch: every disk
+trace write also appended its state/action to Go's native in-memory trace
+mirror. Source TLCTrace retains only RAF links/fingerprints. This kept explored
+states reachable for the lifetime of the distributed disk trace.
+
+Source-style NewTLCTrace(metadir, spec) now omits mirrored state records for
+initial, record and successor writes. Native in-memory trace adapters retain
+their separate representation. UID assignment, RAF write/error order, lastPtr,
+disk depth and checkpoint/reconstruction paths remain unchanged. The new native
+ownership check fails before correction (distributed-disk-trace-retention-red.log,
+terminal dedc40, status 1). It now checks no retained state records across all
+three write APIs, actual disk locations/fingerprints after checkpoint flushing
+and the three-state predecessor chain. No original method directly tests this
+heap ownership boundary.
+
+Updated two native fixtures that inspected the invented disk mirror. Active
+checkpoint checks now inspect actual disk depth and lastPtr, retaining their
+existing recovered-file enumeration and exact fingerprint/frontier assertions.
+Writer-owner checks retain cursor/UID/error assertions and require no mirror.
+No original Java test assertion was changed.
+
+Focused disk ownership, trace writer/read/reconstruction/failure/publication and
+native in-memory trace checks pass (distributed-disk-trace-retention-green.log,
+terminal 7c1dba, status 0, 0.637 seconds). Active assigned-block checkpoint recovery
+with local/one-host/two-host fingerprints plus all seven original simulation
+trace methods pass (distributed-disk-trace-retention-checkpoint.log, terminal
+ead61e, status 0, 0.051 seconds). Full N=7 remote memory restart, both distributed
+DieHard error-trace roles and original AliasSafety/AliasSafetySimu/TLCExtTraceAlias
+ports pass (distributed-disk-trace-retention-models.log, terminal ac76d7,
+status 0, 76.533 seconds). All handles are terminal. No full suite or race run;
+original-method completion counts remain unchanged.

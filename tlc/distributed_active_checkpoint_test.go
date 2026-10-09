@@ -162,7 +162,7 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remoteCount int) 
 	firstOnce.Do(func() { close(releaseFirst) })
 	select {
 	case frontier := <-queue.begin:
-		if frontier != 1 || manager.Size() != 2 || len(trace.Records()) != 2 {
+		if frontier != 1 || manager.Size() != 2 || trace.GetLevelForReporting() != 2 {
 			t.Fatal("checkpoint did not wait for successor publication")
 		}
 	case <-time.After(5 * time.Second):
@@ -216,7 +216,7 @@ func checkDistributedCheckpointWithAssignedBlock(t *testing.T, remoteCount int) 
 		}
 	}
 	successor := recoveredQueue.Dequeue()
-	if successor == nil || successor.UID != trace.Records()[1].State.UID || successor.Level() != 2 {
+	if successor == nil || successor.UID != trace.lastPtr || successor.Level() != 2 {
 		t.Fatal("recovered frontier does not identify the committed successor trace")
 	}
 	enumerator, err := recoveredTrace.Elements()

@@ -170,13 +170,17 @@ func (t *TLCTrace) writeState(predecessor *TLCStateMut, fp uint64, state *TLCSta
 			return TLCStateInitUID, err
 		}
 	}
-	t.records = append(t.records, TraceRecord{
-		PreviousUID: prevUID,
-		WorkerID:    0,
-		FP:          fp,
-		State:       state,
-		Action:      action,
-	})
+	// Source TLCTrace retains only its disk links/fingerprints. The native
+	// in-memory trace adapter separately owns state records for local callers.
+	if !t.rawPaths {
+		t.records = append(t.records, TraceRecord{
+			PreviousUID: prevUID,
+			WorkerID:    0,
+			FP:          fp,
+			State:       state,
+			Action:      action,
+		})
+	}
 	if state != nil {
 		state.UID = uid
 		if attachMetadata {
@@ -256,13 +260,15 @@ func (t *TLCTrace) WriteNextStateForWorker(workerID int, curState *TLCStateMut, 
 	if workerID < 0 || workerID > int(TLCStateInitWorkerID) {
 		generatedWorkerID = TLCStateInitWorkerID
 	}
-	t.records = append(t.records, TraceRecord{
-		PreviousUID: prevUID,
-		WorkerID:    predecessorWorkerID,
-		FP:          succFP,
-		State:       succState,
-		Action:      action,
-	})
+	if !t.rawPaths {
+		t.records = append(t.records, TraceRecord{
+			PreviousUID: prevUID,
+			WorkerID:    predecessorWorkerID,
+			FP:          succFP,
+			State:       succState,
+			Action:      action,
+		})
+	}
 	succState.WorkerID = generatedWorkerID
 	succState.UID = uid
 	succState.attachTraceMetadata(curState, action)

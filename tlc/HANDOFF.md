@@ -542,6 +542,9 @@ coverage without changing original-test credit or introducing automatic replay.
    Negative disk trace locations must attempt the source seek and propagate I/O
    failure, retaining the failed pointer mutation. Do not return an empty prefix;
    the coordinator catches that trace failure before behavior output.
+   Source-style disk traces retain links and fingerprints in their RAF, without
+   accumulating state/action objects in the native in-memory record mirror.
+   Preserve that ownership distinction when adding trace readers or diagnostics.
    Built-in selector arithmetic, startup capture, queue bounds, statistics and
    smart-proxy timing have a current source audit and focused green receipt.
    Custom factory selection now uses linked Go constructors registered through

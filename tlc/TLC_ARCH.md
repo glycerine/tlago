@@ -13869,6 +13869,23 @@ diagnostics. This covers partial insertion with host death, not an atomic batch
 protocol, same-store reconnect or arbitrary network partitions. No direct source
 test exists and no original-method credit is added.
 
+### Disk trace state ownership
+
+Java TLCTrace.writeState stores only predecessor locations and fingerprints in
+its RAF. Go previously also appended every state/action to the native trace
+record mirror, keeping explored states reachable for the lifetime of a disk
+trace. Source-style traces constructed with `NewTLCTrace(metadir, spec)` now omit
+that mirror for initial, record and successor writes. Disk UID assignment,
+predecessor bytes, depth traversal, checkpoints and error reconstruction retain
+their source paths. The separate native in-memory adapter still owns its records.
+
+Native ownership checks require an empty mirror after all three write APIs and
+read the actual disk positions/fingerprints after checkpoint flushing. The active
+checkpoint fixture now inspects disk depth and the saved last pointer, alongside
+its existing recovered-file enumeration, rather than relying on retained states.
+No original method directly tests disk-trace heap retention; original trace/model
+ports retain their assertions and completion counts.
+
 ### Exact local trace-to-intern checkpoint boundary
 
 An external GDB run of the existing

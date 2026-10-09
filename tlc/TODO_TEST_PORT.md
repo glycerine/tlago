@@ -2118,6 +2118,13 @@ the missing file and unchanged persisted queue count before workers start. The
 full N=7 model must finish at 114,942 states with an empty queue and no GENERAL.
 This native failure-phase coverage adds no original-method completion credit.
 
+Source-style disk traces no longer retain every written state/action in the
+native in-memory mirror. New ownership checks cover initial, record and successor
+writes, actual disk positions/fingerprints and depth traversal. The active
+checkpoint fixture uses file depth/last-pointer observations and its existing
+recovered-file enumeration. No direct original method tests this ownership
+boundary; original trace assertions and completion counts remain unchanged.
+
 Native scalar character attachments now preserve `uint16` alongside character
 arrays. Direct transfer checks all 65,536 code units; TCP result/error-context
 checks preserve typed character map keys, and malformed ranges are rejected.
