@@ -22,6 +22,12 @@ type DistributedStatePayload struct {
 	ValueVectors []DistributedValueVectorNode
 	NameArrays   [][]int
 	StateCaches  [][]DistributedStateCacheEntry
+	ValueMaps    [][]DistributedValueMapEntry
+}
+
+type DistributedValueMapEntry struct {
+	Key   string
+	Value int
 }
 
 type DistributedStateCacheEntry struct {
@@ -94,21 +100,24 @@ type DistributedValueNode struct {
 	DataBytes         int
 	DataValue         int
 	DataArray         int
+	DataMap           int
 }
 
 type distributedPayloadEncoder struct {
-	payload    *DistributedStatePayload
-	states     map[*TLCStateMut]int
-	values     map[Value]int
-	strings    map[*UniqueString]int
-	bytes      map[distributedByteArrayKey]int
-	arrays     map[distributedByteArrayKey]int
-	arrayRoots [][]Value // Keep address-keyed backing storage alive while encoding.
-	vectors    map[*ValueVec]int
-	nameArrays map[distributedByteArrayKey]int
-	nameRoots  [][]*UniqueString
-	caches     map[uintptr]int
-	cacheRoots []map[int]Value // Retain address-keyed maps throughout encoding.
+	payload       *DistributedStatePayload
+	states        map[*TLCStateMut]int
+	values        map[Value]int
+	strings       map[*UniqueString]int
+	bytes         map[distributedByteArrayKey]int
+	arrays        map[distributedByteArrayKey]int
+	arrayRoots    [][]Value // Keep address-keyed backing storage alive while encoding.
+	vectors       map[*ValueVec]int
+	nameArrays    map[distributedByteArrayKey]int
+	nameRoots     [][]*UniqueString
+	caches        map[uintptr]int
+	cacheRoots    []map[int]Value // Retain address-keyed maps throughout encoding.
+	valueMaps     map[uintptr]int
+	valueMapRoots []map[string]Value
 }
 
 type distributedByteArrayKey struct {
@@ -511,6 +520,12 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 			return err
 		}
 		node.DataKind, node.DataArray = "valueArray", id
+	case map[string]Value:
+		id, err := e.valueMap(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataMap = "valueMap", id
 	case Value:
 		id, err := e.value(v)
 		if err != nil {
@@ -523,6 +538,39 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 	return nil
 }
 
+func (e *distributedPayloadEncoder) valueMap(values map[string]Value) (int, error) {
+	if values == nil {
+		return 0, nil
+	}
+	if e.valueMaps == nil {
+		e.valueMaps = make(map[uintptr]int)
+	}
+	key := uintptr(reflect.ValueOf(values).UnsafePointer())
+	if id := e.valueMaps[key]; id != 0 {
+		return id, nil
+	}
+	id := len(e.payload.ValueMaps) + 1
+	e.valueMaps[key] = id
+	e.valueMapRoots = append(e.valueMapRoots, values)
+	// Reserve identity before traversing values that may point back to this map.
+	e.payload.ValueMaps = append(e.payload.ValueMaps, nil)
+	keys := make([]string, 0, len(values))
+	for name := range values {
+		keys = append(keys, name)
+	}
+	sort.Strings(keys)
+	entries := make([]DistributedValueMapEntry, 0, len(keys))
+	for _, name := range keys {
+		value, err := e.value(values[name])
+		if err != nil {
+			return 0, err
+		}
+		entries = append(entries, DistributedValueMapEntry{Key: name, Value: value})
+	}
+	e.payload.ValueMaps[id-1] = entries
+	return id, nil
+}
+
 type distributedPayloadDecoder struct {
 	values     []Value
 	strings    []*UniqueString
@@ -530,6 +578,7 @@ type distributedPayloadDecoder struct {
 	arrays     [][]Value
 	vectors    []*ValueVec
 	nameArrays [][]*UniqueString
+	valueMaps  []map[string]Value
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -567,6 +616,21 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, fmt.Errorf("value %d: %w", i+1, err)
 		}
 		decoder.values[i] = value
+	}
+	decoder.valueMaps = make([]map[string]Value, len(payload.ValueMaps))
+	for i, entries := range payload.ValueMaps {
+		values := make(map[string]Value, len(entries))
+		for _, entry := range entries {
+			if _, duplicate := values[entry.Key]; duplicate {
+				return nil, fmt.Errorf("value map %d has duplicate key %q", i+1, entry.Key)
+			}
+			value, err := decoder.value(entry.Value)
+			if err != nil {
+				return nil, fmt.Errorf("value map %d: %w", i+1, err)
+			}
+			values[entry.Key] = value
+		}
+		decoder.valueMaps[i] = values
 	}
 	decoder.arrays = make([][]Value, len(payload.ValueArrays))
 	for i, refs := range payload.ValueArrays {
@@ -1005,6 +1069,14 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 		return d.value(node.DataValue)
 	case "valueArray":
 		return d.arrayRefs(nil, node.DataArray == 0, node.DataArray)
+	case "valueMap":
+		if node.DataMap < 0 || node.DataMap > len(d.valueMaps) {
+			return nil, fmt.Errorf("invalid model value-map reference %d", node.DataMap)
+		}
+		if node.DataMap == 0 {
+			return map[string]Value(nil), nil
+		}
+		return d.valueMaps[node.DataMap-1], nil
 	default:
 		return nil, fmt.Errorf("unknown model data kind %q", node.DataKind)
 	}

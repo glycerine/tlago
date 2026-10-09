@@ -22798,3 +22798,29 @@ terminal 53ac2b, status 0, 46.214 seconds). Focused existing registration checks
 and the original Java smart-proxy network-overhead translation pass
 (duplicate-worker-related.log, terminal 62fdfb, status 0, 0.014 seconds).
 All processes are terminal. No full suite or race workload was run.
+
+### October 8, 2026: native model-value map attachments
+
+Audited source ModelValue's non-transient Object data field and Value's
+Serializable contract. The native encoder rejected map[string]Value attachments,
+although the equivalent source string-to-Value map transfers its full graph.
+Added a native map table with reserved IDs before recursive value encoding,
+retained map storage, deterministic key ordering and receiver-owned decoding.
+Shared map identity and cycles through ModelValues survive transfer. Typed nil
+maps, allocated empty maps, nil entries and distinct equal maps remain distinct.
+Duplicate keys and invalid map/value IDs are rejected. Arbitrary opaque data
+still fails explicitly; no Java serialization or RMI machinery is introduced.
+
+No original ModelValueTest method covers attached-map networking. New focused
+checks exercise direct payloads and real TCP requests, results and worker
+exception contexts, including receiver mutations without sender aliasing. The
+existing complete original ModelValue translation remains unchanged and green.
+No original-method completion credit is added.
+
+Initial setup failed due to an extra brace in the new test fixture
+(model-data-maps-native.log, terminal 09ca9d, status 1). Corrected the syntax;
+native map checks plus original ModelValue tests pass
+(model-data-maps-native-fixed.log, terminal ffe7c3, status 0, 0.013 seconds).
+Related payload, model-data and focused worker TCP tests also pass
+(model-data-maps-verified.log, terminal 0297cf, status 0, 0.038 seconds).
+All processes are terminal. No full suite or race workload was run.

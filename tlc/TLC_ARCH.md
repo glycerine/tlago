@@ -12217,3 +12217,23 @@ query overlapping removal may emit the source cache warning once. Other GENERAL
 events and worker-loss events are rejected. The test-owned worker host stays alive
 until the parent joins the coordinator, then drains accepted replies and closes.
 No RMI transport, Java serialization or production lifecycle hook is introduced.
+
+### Native model-value map attachments
+
+Source ModelValue has a non-transient Object data field, and Value implements
+Serializable. A serializable string-to-Value map therefore retains its entries
+and graph identity during source transfer. Native `map[string]Value` attachments
+now use a dedicated one-based map table in DistributedStatePayload. Nil map ID
+zero preserves a typed nil; allocated empty maps remain non-nil. Encoder map IDs
+are reserved before recursively encoding their values, and map backing storage
+is retained throughout encoding. Sorted string keys make native payload order
+deterministic without changing map contents.
+
+The decoder allocates Values first and resolves map entries before populating
+attached data, preserving cycles through ModelValues and shared maps. Duplicate
+keys and invalid map/value references fail explicitly. Each decoded graph owns
+its maps; equal but distinct sender maps stay distinct. Native request, result
+and worker-exception checks verify sharing, cycles, nil entries and mutations
+without sender aliasing. This supports a concrete native container and does not
+introduce arbitrary custom-object codecs or Java serialization. Peers carrying
+this new payload kind require the updated native build.
