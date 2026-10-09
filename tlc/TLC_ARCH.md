@@ -8374,7 +8374,11 @@ the RuntimeException/IOException boundary. Copying uses Java's 1024-byte loop
 and registers files for process-exit deletion. Native stream closes are
 idempotent; resources are also closed on failure rather than leaking them.
 `DistributedServerFiles` now delegates to this resolver instead of duplicating
-its search/copy algorithm. Its temporary directory is retained across requests.
+its search/copy algorithm. Each coordinator request constructs a fresh resolver,
+matching `TLCServer.getFile`: default library and user directories are read at
+request time, while explicit native search overrides remain captured. Resource
+copies have separate request-owned temporary directories, registered for native
+process-exit cleanup. Worker basename caching remains independent and unchanged.
 
 All eight upstream SimpleFilenameToStreamTest cases are ported after the
 implementation, using existing frozen standard/community fixtures under

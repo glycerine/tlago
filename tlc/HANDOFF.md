@@ -85,6 +85,11 @@ alive/cache probes remain responsive; routing stays distinct and no failover is
 reported. Releasing traffic restores the original 114,942-state result. This
 controlled byte-relay stall does not prove arbitrary network blackholes.
 
+Coordinator file requests use a fresh resolver, observing current default
+library and user directories and owning separate temporary resource copies.
+Explicit search overrides remain captured; worker basename caching is unchanged.
+Upstream RMI names describe source references only, not a Go transport requirement.
+
 Transport does not redial or replay ambiguous fingerprint mutations. Manager
 failover retains the source algorithm, including its forward reassignment and
 slot-based statistics. Workers receive independent manager snapshots with shared

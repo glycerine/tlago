@@ -124,35 +124,32 @@ type DistributedServerFiles struct {
 	Resources      fs.FS
 	ResourcePrefix string
 	Classpath      []FilenameClasspathEntry // Non-null supplies the complete class-loader roots.
-	resolverMu     sync.Mutex
-	resolver       *SimpleFilenameToStream
 }
 
 func NewDistributedServerFiles(userDirectory string, libraryPaths []string, resources fs.FS, resourcePrefix string) *DistributedServerFiles {
-	if userDirectory == "" {
-		userDirectory, _ = os.Getwd()
+	var captured []string
+	if libraryPaths != nil {
+		captured = append([]string{}, libraryPaths...)
 	}
-	if libraryPaths == nil {
-		libraryPaths = []string{}
-		if paths, ok := tlcLookupSystemProperty(TLALibraryProperty); ok {
-			libraryPaths = filenameSplitPaths(paths)
-		}
-	}
-	captured := make([]string, len(libraryPaths))
-	copy(captured, libraryPaths)
 	return &DistributedServerFiles{UserDirectory: userDirectory, LibraryPaths: captured, ModelResources: resources, Resources: resources, ResourcePrefix: resourcePrefix}
 }
 
 func (s *DistributedServerFiles) resolve(name string) string {
-	s.resolverMu.Lock()
-	defer s.resolverMu.Unlock()
-	if s.resolver == nil {
-		options := FilenameResolverOptions{UserDirectory: &s.UserDirectory, Classpath: s.filenameClasspath()}
-		s.resolver = NewSimpleFilenameToStream(s.LibraryPaths, options)
-		prefix := "/model/"
-		s.resolver.modelPrefix = &prefix
+	// TLCServer.getFile constructs InJarFilenameToStream for each call.
+	// Only explicit native search overrides are captured; defaults and resource
+	// temporary ownership belong to this request's fresh resolver.
+	options := FilenameResolverOptions{Classpath: s.filenameClasspath()}
+	if s.UserDirectory != "" {
+		options.UserDirectory = &s.UserDirectory
 	}
-	return s.resolver.Resolve(name, false).GetPath()
+	resolver := NewSimpleFilenameToStream(s.LibraryPaths, options)
+	if resolver.tmpDir != nil {
+		// Own each request's temporary directory as well as copied files.
+		registerDistributedDeleteOnExit(*resolver.tmpDir)
+	}
+	prefix := "/model/"
+	resolver.modelPrefix = &prefix
+	return resolver.Resolve(name, false).GetPath()
 }
 
 func (s *DistributedServerFiles) filenameClasspath() []FilenameClasspathEntry {

@@ -1509,6 +1509,12 @@ still ignores the trace. Native cases cover primitive/nested stores, valid
 snapshot controls and unchanged membership at failure. This boundary has no
 direct original method and earns no additional method completion credit.
 
+Coordinator file requests now use fresh resolvers. Native checks cover changing
+default library/user directories over TCP, captured explicit overrides, separate
+resource copies and directory cleanup. Existing original filename tests remain
+green on Linux, preserving the Windows platform guard. No direct original method
+covers changing coordinator defaults; original method completion credit is unchanged.
+
 Repeated registration of the same native worker now has full MC06 N=7 coverage:
 two coordinator threads share one worker identity, final distinct states remain
 114,942, and the queue is empty. Two worker statistics and the source second-exit

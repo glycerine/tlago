@@ -22975,3 +22975,25 @@ manager failover-block checks pass (fingerprint-transport-stall-related.log,
 terminal 7e2624, status 0, 0.029 seconds). No original method directly tests this
 native transport fault and no method credit is added. All children are joined
 and runs terminal. No full suite or race workload was run.
+
+### Fresh coordinator file resolution
+
+Found a production shortcut against `TLCServer.getFile`: Go retained one
+resolver and captured default search directories at construction, while the
+source constructs a fresh resolver for every request. Removed that cache.
+Defaults now resolve at request time; explicit native overrides remain copied.
+Each request owns its resource temporary directory, with native exit cleanup
+removing copied files and then directories. Worker basename caching is unchanged.
+This uses native Go TCP and filesystem handling; source RMI names are references
+only, with no RMI or JVM serialization implementation.
+
+Focused native file/default/resource/cache checks pass after the final cleanup
+assertions (coordinator-file-refresh-verified.log, terminal 7acdaf, status 0,
+0.022 seconds). The eight original filename test translations pass on Linux
+with the original Windows platform guard (coordinator-file-refresh-originals.log,
+terminal 6b44df, status 0, 0.032 seconds). Full unchanged N=7 checking with two
+worker threads passes with 114,942 distinct states, an empty queue and clean
+role exits (coordinator-file-refresh-model.log, terminal c367e6, status 0,
+39.872 seconds). No direct original method covers changing coordinator defaults;
+native supplements add no method completion credit. All runs are terminal.
+No full suite or race workload was run.
