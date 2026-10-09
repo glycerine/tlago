@@ -145,6 +145,12 @@ combined fingerprint roles require 114,942 distinct states, an empty queue,
 FINISHED and no GENERAL. Native DieHard/TSnapShot process models preserve their
 original error/trace assertions in `tlc_distributed_trace_process_test.go`.
 
+Repeated registration of one native worker preserves two coordinator threads
+and shared worker identity. The full model retains 114,942 distinct states and
+an empty queue. First exit removes the endpoint; the second receives the native
+removed-endpoint failure and the source warning. This adds no original-method
+credit and requires no RMI compatibility.
+
 Worker process death with a survivor/replacement, loss of the sole worker, and
 loss of a fully computed worker reply are covered. Sole-worker cleanup must
 finish while the coordinator remains available with unfinished work before

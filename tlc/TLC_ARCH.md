@@ -12203,3 +12203,17 @@ constraints precede fingerprinting: an in-model nil state already fails at its
 state access before FP/trace/queue publication, while excluded states still reach
 property checks. These initialization paths were verified without changing their
 implementation; the replay constructor fallback was the actual repaired mismatch.
+
+### Repeated native worker registration
+
+Coordinator registrations are keyed by coordinator thread, rather than worker
+URI. Registering the same published worker twice creates two threads whose
+computation calls use the existing worker serialization lock. A native full-model
+check retains the unchanged MC06 N=7 configuration and requires 114,942 distinct
+states, an empty queue, two identical registration messages and two worker stats.
+The first exit removes the native endpoint; the second receives its genuine
+removed-endpoint failure and emits the source dead-worker warning. A final cache
+query overlapping removal may emit the source cache warning once. Other GENERAL
+events and worker-loss events are rejected. The test-owned worker host stays alive
+until the parent joins the coordinator, then drains accepted replies and closes.
+No RMI transport, Java serialization or production lifecycle hook is introduced.

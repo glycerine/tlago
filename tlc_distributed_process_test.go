@@ -31,6 +31,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		remoteFP, recovering, workerLoss, combined bool
 		allWorkersLost                             bool
 		workerReplyLoss                            bool
+		duplicateWorkerRegistration                bool
 		fingerprintLoss                            bool
 		fingerprintServers                         int
 		midRunCheckpoint                           bool
@@ -53,6 +54,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "worker_loss", workerLoss: true},
 		{name: "all_workers_lost", workerLoss: true, allWorkersLost: true},
 		{name: "computed_worker_reply_loss", workerLoss: true, allWorkersLost: true, workerReplyLoss: true},
+		{name: "duplicate_worker_registration", duplicateWorkerRegistration: true},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
@@ -84,7 +86,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
 				command.Dir = model
 				command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
-				if role == "worker-fingerprint-loss" || role == "worker-reply-loss" {
+				if role == "worker-fingerprint-loss" || role == "worker-reply-loss" || role == "worker-register-twice" {
 					command.Env = append(command.Env, "TLAGO_NATIVE_WORKER_RELEASE="+releaseWorker)
 				}
 				if scenario.fingerprintServers > 1 && role == "fpserver" {
@@ -416,7 +418,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				}
 			}
 			if !scenario.combined && !scenario.allWorkersLost && !scenario.fingerprintLoss {
-				start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				workerRole := "worker"
+				if scenario.duplicateWorkerRegistration {
+					workerRole = "worker-register-twice"
+				}
+				start(workerRole, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 			}
 			if scenario.fingerprintLoss {
 				worker := start("worker-fingerprint-loss", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
@@ -574,6 +580,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if err != nil {
 					t.Fatalf("%s exited with %v; output:\n%s", process.output.role, err, process.output.String())
 				}
+				if scenario.duplicateWorkerRegistration && process == server {
+					if err := os.WriteFile(releaseWorker, nil, 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
 				t.Logf("%s exited normally", process.output.role)
 			}
 			// Mechanical EWD840Distributed{WithFPSet}TLCTest assertions:
@@ -650,6 +661,31 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if len(general) != 1 || general[0][1] != "3" || general[0][2] != nativeDistributedLostWorkerCacheWarning {
 					t.Fatalf("worker-loss GENERAL events differ from source cache warning: %v", general)
 				}
+			} else if scenario.duplicateWorkerRegistration {
+				registered := nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)
+				if len(registered) != 2 || registered[0] != registered[1] || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerStats)) != 2 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerLost)) != 0 {
+					t.Fatal("duplicate worker registration lost identity, coordinator threads or orderly completion")
+				}
+				general := regexp.MustCompile(fmt.Sprintf(`(?s)@!@!@STARTMSG %d:(\d+) @!@!@\n(.*?)\n@!@!@ENDMSG %d @!@!@`, tlc.ECGeneral, tlc.ECGeneral)).FindAllStringSubmatch(output, -1)
+				ignoredExit, cacheWarning := 0, 0
+				for _, message := range general {
+					if message[1] != "3" {
+						t.Fatal("duplicate registration emitted a GENERAL error")
+					}
+					switch message[2] {
+					case "Ignoring attempt to exit dead worker":
+						ignoredExit++
+					case nativeDistributedLostWorkerCacheWarning:
+						cacheWarning++
+					default:
+						t.Fatalf("unexpected duplicate-registration diagnostic %q", message[2])
+					}
+				}
+				// The second thread's final cache query can overlap the first
+				// thread's exit. Source permits that single cache warning.
+				if ignoredExit != 1 || cacheWarning > 1 {
+					t.Fatalf("duplicate exit/cache warnings %d/%d", ignoredExit, cacheWarning)
+				}
 			} else if strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECGeneral)) {
 				t.Fatal("GENERAL recorded")
 			}
@@ -672,6 +708,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 			status := ExitToolFailure
 			if len(args) > 0 && args[0] == "checkpoint-fp-host" {
 				if err := nativeCheckpointFingerprintHost(); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
+			} else if len(args) > 0 && args[0] == "worker-register-twice" {
+				if err := nativeDistributedRegisterWorkerTwice(args[1:], os.Getenv("TLAGO_NATIVE_WORKER_RELEASE")); err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				} else {
 					status = ExitOK

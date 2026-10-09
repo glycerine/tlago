@@ -22767,3 +22767,34 @@ LSB/MSB testFPSetRecovery methods then pass with all 99,998 fingerprints each
 (fingerprint-trace-owner-original-replay.log, terminal 5bd34d, status 0, 11.847
 seconds). No original workload/assertion changed; selection excludes unrelated
 repeated-flush work. All processes terminal, logs inspected. No full suite or race.
+
+### October 8, 2026: repeated native worker registration
+
+The user reaffirmed that distributed TLC must use native Go facilities, without
+RMI, Java serialization or JVM emulation. Audited successor validation and
+fingerprint filtering against the original worker: the existing ordering matches
+the source and needed no implementation change. Source registration creates a
+new coordinator thread for each call, even with the same worker identity;
+computation calls on that worker remain serialized.
+
+Added a separate-process MC06 N=7 scenario registering one actual published
+native worker twice. It requires identical registration messages, two worker
+statistics, no worker-loss event, 114,942 distinct states and an empty queue.
+First exit removes the endpoint; second exit must emit the source dead-worker
+warning. A possible single source cache warning is permitted when the final
+cache query overlaps removal; other GENERAL events are rejected. Production
+networking, lifecycle and model bounds are unchanged. No direct original method
+covers this scenario and no original-method completion credit is added.
+
+The first helper incorrectly waited for a second endpoint callback, which cannot
+occur after the native RPC host removes the endpoint on first exit. The model
+itself completed successfully but the helper waited; the run was interrupted
+(duplicate-worker-model.log, terminal 8ef44c, status 1). The worker process was
+confirmed absent afterward. Replaced that helper wait with a test-owned parent
+completion signal after joining the coordinator; the host then drains and closes.
+
+Corrected full-model selection passes (duplicate-worker-model-fixed.log,
+terminal 53ac2b, status 0, 46.214 seconds). Focused existing registration checks
+and the original Java smart-proxy network-overhead translation pass
+(duplicate-worker-related.log, terminal 62fdfb, status 0, 0.014 seconds).
+All processes are terminal. No full suite or race workload was run.
