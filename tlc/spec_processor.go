@@ -258,10 +258,7 @@ type SpecProcessor struct {
 	AssumptionIsAxiom []bool
 	RLReward          SemanticNode
 	Periodic          SemanticNode
-	ViewSpec          SemanticNode
-	AliasNode         SemanticNode
 	SymmetrySpec      string
-	AliasSpecName     string
 	SpecificationName string
 }
 
@@ -330,7 +327,6 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.resetProcessedConfig()
 	p.SpecificationName = p.Config.GetSpec()
 	p.SymmetrySpec = p.Config.GetSymmetry()
-	p.AliasSpecName = p.Config.GetAlias()
 
 	p.processConfigInvariants()
 	if p.SpecificationName != "" {
@@ -382,17 +378,6 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.RLReward = p.optionalOpBodyFromConfigName(p.Config.GetRLReward(), "rlreward", p.preConstantDefinitions())
 	p.Periodic = p.optionalOpBodyFromConfigName(p.Config.GetPeriodic(), "periodic", p.preConstantDefinitions())
 	p.processConfigPossible()
-	p.ViewSpec = p.optionalOpBodyFromConfigName(p.Config.GetView(), "view function", p.Defns)
-	if p.Config.GetView() == "" && p.RuntimeParameters.View != nil {
-		view := p.RuntimeParameters.View
-		definition := p.runtimeModuleDefinition(view.Module, view.Operator)
-		if definition.Arity() != 0 {
-			p.addConfigError(ECTLCConfigIDRequiresNoArg, "view function", definition.Name.String())
-		} else {
-			p.ViewSpec = definition.Body
-		}
-	}
-	p.AliasNode = p.optionalOpBodyFromConfigName(p.AliasSpecName, "alias", p.Defns)
 }
 
 func (p *SpecProcessor) resetProcessedConfig() {
@@ -414,8 +399,6 @@ func (p *SpecProcessor) resetProcessedConfig() {
 	p.PossiblePostConds = nil
 	p.RLReward = nil
 	p.Periodic = nil
-	p.ViewSpec = nil
-	p.AliasNode = nil
 }
 
 func (p *SpecProcessor) ApplyToTool(tool *Tool) {
@@ -470,8 +453,9 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.AssumptionIsAxiom = append([]bool(nil), p.AssumptionIsAxiom...)
 	tool.RLReward = p.RLReward
 	tool.Periodic = p.Periodic
-	tool.ViewSpec = p.ViewSpec
-	tool.AliasSpec = p.AliasNode
+	// Tool construction captures the view before state symmetry setup. Alias
+	// lookup stays lazy inside trace rendering, where its failures are caught.
+	tool.ViewSpec = tool.GetViewSpec()
 	p.processConfigSymmetry(tool)
 	tool.ConfigErrors = append([]*ConfigError(nil), p.ConfigErrors...)
 	tool.AssignActionIDs()

@@ -79,9 +79,11 @@ runtime compilation or tool setup. The original invalid-invariant fixture matche
 Java's first error and zero compiler calls. Postcondition getters now preserve
 Java's runtime, `_POSSIBLE`, then config order, creating fresh config Actions
 without OpDef metadata. Config postconditions are resolved by the tool getter.
-Next: audit eager view/alias resolution against Java's getter and state-setup
-phases. General source generation, mutation sharing and native INSTANCE fallback
-parity remain pending.
+View and alias getters now resolve current definitions and throw source runtime
+failures. View capture follows configuration and precedes symmetry setup; alias
+lookup stays inside trace rendering's error boundary. Next: trace remaining native
+INSTANCE fallback lowering against actual generated source exports. General source
+generation and mutation-sharing parity remain pending.
 
 ## Verification baseline and test credit
 

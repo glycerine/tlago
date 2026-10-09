@@ -11023,6 +11023,25 @@ to the corresponding config vectors at model/action-constraint processing time.
 Existing constraint processing retains source body identity, arity diagnostics and
 coverage ownership. Runtime views honor config precedence, require zero arity and
 return the actual source body without setting a constraint tool object on it.
+View and alias lookup now belong to Tool getters, which resolve the current
+processor definitions and throw coded runtime failures rather than recording
+processor config errors. An absent alias requested directly throws
+TLC_CONFIG_NO_STATE_TYPE. Tool construction captures the view after configuration
+and before symmetry setup, retaining the captured view for state fingerprints.
+Alias evaluation calls GetAliasSpec inside its existing EvalException/runtime
+exception catch, so lookup failures can produce _ALIASEvalError trace records.
+Removed eager processor alias/view fields and resolution. Config view precedence
+continues to suppress runtime view lookup, including runtime target arity checks.
+Standalone tools retain their explicitly configured field getters.
+
+A bounded manual comparison uses unchanged ViewMap and AliasStuttering fixtures.
+Config view body identity matches even with a runtime TLC!Print view target;
+requesting an absent alias reports error 2243 in both Java and corrected Go.
+After rebinding the shared definition table to existing vars/Next operators,
+view and alias getters return the current bodies in both implementations.
+Baseline Go returned nil for the absent alias and stale cached bodies after both
+rebindings. These observations establish those getter paths, not general semantic
+graph mutation sharing or every trace error combination.
 The processor's postcondition getter constructs fresh runtime Actions with no
 OpDef metadata and appends retained possible Action objects. Tool then resolves
 config postconditions and appends fresh named Actions, also without OpDef metadata.

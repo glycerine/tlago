@@ -28451,3 +28451,60 @@ status 0, 182.291 seconds. The read-only Java checkout HEAD is reverified as
 8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Git diff --check passes.
 The same full off-heap random workload remains live beyond 447 million
 iterations; completion credit remains pending.
+
+
+View/alias getter ownership and failure boundaries (2026-10-09)
+
+Previous goal turn committed de35e46, a concrete postcondition parity correction.
+Revalidated the clean workspace and same live full off-heap random session 77502.
+Audited Spec.getViewSpec/getAliasSpec, Tool.evalAlias and TLCStateMut/Ext.setTool.
+Java resolves the view after processor configuration, before symmetry setup; it
+resolves aliases inside trace rendering's runtime-exception catch. Native Go
+resolved both during ProcessConfig and cached their bodies for public getters.
+An invalid alias could therefore abort configuration instead of becoming a trace
+_ALIASEvalError record. Direct requests without ALIAS silently returned nil.
+
+Removed processor ViewSpec, AliasNode and AliasSpecName fields and eager lookup.
+Tool getters now resolve current definitions using a shared configGetterDefinition
+helper, also used by postconditions. Lookup failures throw source runtime
+exceptions. Missing ALIAS throws TLC_CONFIG_NO_STATE_TYPE. Config view takes
+precedence over runtime view; runtime resolution retains source external-module
+lookup and arity checks. ApplyToTool captures the view after configuration and
+before symmetry setup for the existing state fingerprint paths. evalAliasState
+calls GetAliasSpec inside its existing two-category exception recovery. Native
+standalone tool fields keep their existing getter behavior.
+
+Existing original alias safety/simulation/liveness, view/TTrace, TLCExt trace alias,
+postcondition and possible selections plus the existing runtime postcondition
+bridge check pass: view-alias-getter-originals.log, terminal 371dc8, status 0,
+4.021 seconds. Existing processor/config/getter/runtime-parameter checks pass:
+view-alias-getter-processor.log, terminal 3b6ad9, status 0, 0.013 seconds.
+
+Standalone ignored observation drivers use unchanged ViewMap and AliasStuttering
+fixtures. Config view body identity agrees with Java even when runtime View points
+to TLC!Print; config precedence suppresses runtime arity validation. Direct alias
+lookup without ALIAS reports code 2243 in both Java and corrected Go. Rebinding
+the shared public definitions to existing vars/Next operators changes the view
+and alias getter results in Java and corrected Go. Baseline Go returns nil for
+the absent alias and stale cached bodies for both rebindings. Receipts:
+view-alias-getter-java-observation.log, terminal 1374f4;
+view-alias-getter-go-observation.log, terminal 2316be; and
+view-alias-getter-before-observation.log, terminal 75f887; all status 0.
+An earlier four-row observation also passed before adding the view rebind row.
+These API observations add no original-method credit or invented persistent
+tests/fixtures. General source graph mutation sharing and trace error combinations
+remain unproven.
+
+Next concrete source audit: trace remaining convertInstanceDefinition fallback
+lowering against actual generated source exports in existing original methods.
+The same original full off-heap random session remains live beyond 454 million
+of 2,147,483,648 iterations, without completion credit. No long-workload restart,
+race instrumentation, full-workspace/XML/ApalacheIR sweep, email work, Java edit,
+translated assertion change or workload-bound reduction.
+
+Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and trace
+selection passes: view-alias-getter-broad-originals.log, terminal 326c95,
+status 0, 181.739 seconds. Java checkout HEAD is reverified as the pinned
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Git diff --check passes.
+The same full off-heap random run remains live beyond 461 million iterations;
+completion credit remains pending.

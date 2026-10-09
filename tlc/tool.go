@@ -882,7 +882,21 @@ func (t *Tool) GetViewSpec() SemanticNode {
 	if t == nil {
 		return nil
 	}
-	return t.ViewSpec
+	if t.SpecProcessor == nil || t.ModelConfig == nil {
+		return t.ViewSpec
+	}
+	if name := t.ModelConfig.GetView(); name != "" {
+		return t.configGetterDefinition(name, "view function").Body
+	}
+	view := t.SpecProcessor.RuntimeParameters.View
+	if view == nil {
+		return nil
+	}
+	definition := t.SpecProcessor.runtimeModuleDefinition(view.Module, view.Operator)
+	if definition.Arity() != 0 {
+		panic(NewTLCRuntimeException(ECTLCConfigIDRequiresNoArg, "view function", definition.Name.String()))
+	}
+	return definition.Body
 }
 
 func (t *Tool) HasAlias() bool {
@@ -893,7 +907,31 @@ func (t *Tool) GetAliasSpec() SemanticNode {
 	if t == nil {
 		return nil
 	}
-	return t.AliasSpec
+	if t.SpecProcessor == nil || t.ModelConfig == nil {
+		return t.AliasSpec
+	}
+	name := t.ModelConfig.GetAlias()
+	if name == "" {
+		panic(NewTLCRuntimeException(ECTLCConfigNoStateType))
+	}
+	return t.configGetterDefinition(name, "alias").Body
+}
+
+// Spec's view, alias and postcondition getters use the current definitions and
+// throw coded runtime exceptions at lookup time, outside processor config phases.
+func (t *Tool) configGetterDefinition(name, kind string) *OpDefNode {
+	value := t.SpecProcessor.defn(name)
+	if value == nil {
+		panic(NewTLCRuntimeException(ECTLCConfigSpecifiedNotDefined, kind, name))
+	}
+	definition, ok := value.(*OpDefNode)
+	if !ok {
+		panic(NewTLCRuntimeException(ECTLCConfigIDMustNotBeConstant, kind, name))
+	}
+	if definition.Arity() != 0 {
+		panic(NewTLCRuntimeException(ECTLCConfigIDRequiresNoArg, kind, name))
+	}
+	return definition
 }
 
 func (t *Tool) GetPostConditionSpecs() []*Action {
@@ -910,17 +948,7 @@ func (t *Tool) GetPostConditionSpecs() []*Action {
 		return result
 	}
 	for _, name := range t.ModelConfig.GetPostConditions() {
-		value := t.SpecProcessor.defn(name)
-		if value == nil {
-			panic(NewTLCRuntimeException(ECTLCConfigSpecifiedNotDefined, "post condition", name))
-		}
-		definition, ok := value.(*OpDefNode)
-		if !ok {
-			panic(NewTLCRuntimeException(ECTLCConfigIDMustNotBeConstant, "post condition", name))
-		}
-		if definition.Arity() != 0 {
-			panic(NewTLCRuntimeException(ECTLCConfigIDRequiresNoArg, "post condition", name))
-		}
+		definition := t.configGetterDefinition(name, "post condition")
 		result = append(result, NewAction(definition.Body, EmptyContext, name))
 	}
 	return result
@@ -1108,10 +1136,14 @@ func (t *Tool) evalAliasState(current *TLCStateMut, successor *TLCStateMut, ctxt
 			panic(failure)
 		}
 	}()
-	if t == nil || t.AliasSpec == nil {
+	if t == nil {
 		return current, nil
 	}
-	value, err := t.Eval(t.AliasSpec, ctxt, current, successor, EvalClear, CostModel{})
+	aliasSpec := t.GetAliasSpec()
+	if aliasSpec == nil {
+		return current, nil
+	}
+	value, err := t.Eval(aliasSpec, ctxt, current, successor, EvalClear, CostModel{})
 	if err != nil {
 		return nil, err
 	}
