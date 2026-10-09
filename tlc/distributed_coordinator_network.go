@@ -154,7 +154,7 @@ func (n *DistributedCoordinatorNetwork) Close() error {
 		n.mu.Unlock()
 		n.closeError = n.Host.Close()
 		if done != nil {
-			if serveErr := <-done; serveErr != nil && !errors.Is(serveErr, net.ErrClosed) {
+			if serveErr := <-done; !distributedCloseIsBenign(serveErr) {
 				n.closeError = errors.Join(n.closeError, serveErr)
 			}
 		}

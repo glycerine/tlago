@@ -25921,3 +25921,36 @@ ordering checks pass (distributed-remote-corrupt-queue-focused.log, terminal
 9540b0, status 0, 0.035 seconds). The unchanged missing nested LSB snapshot row
 also passes (distributed-remote-corrupt-queue-baseline.log, terminal e091e3,
 status 0, 6.621 seconds). All handles are terminal; no full suite or race run.
+
+
+### October 9, 2026: release failed native listeners and retain cleanup errors
+
+Compared coordinator construction, manager initialization and publication
+ownership with the pinned source. Native Serve had a resource gap on unexpected
+Accept failure: its deferred tracking-map removal abandoned the listener, so
+later process-owner Close could no longer release it. Serve now closes that
+listener before returning, retaining the accept failure and joining a separate
+non-benign close failure. Accepted connections retain independent ownership and
+continue serving calls; there is no retry or cancellation of accepted work.
+
+Coordinator and worker network Close now use the existing recursive benign-error
+predicate on Serve results. An errors.Is(net.ErrClosed) match previously dropped
+an unrelated failure in the same joined result. Both owners now retain the full
+mixed failure, including on repeated Close. This is native Go cleanup, without
+Java RMI machinery or changes to the distributed checking algorithm.
+
+New native checks reproduce the unclosed listener before correction
+(distributed-listener-failure-red.log, terminal 9019fa, status 1, 0.015 seconds).
+They require listener release, original accept/close causes, continued successful
+RPC on an already accepted connection, no retained listener owner, and retained
+mixed errors from both role owners. The final targeted check passes
+(distributed-listener-failure-green.log, terminal 61d3d4, status 0, 0.016 seconds).
+No original Java method directly exercises these Go ownership boundaries.
+
+Short TCP publication/concurrent-publication/startup-cleanup, mixed-error,
+shutdown/incomplete-request/callback-drain and response-flush checks pass
+(distributed-listener-failure-focused.log, terminal 4df6cb, status 0,
+0.420 seconds). The new short isolated race selection passes
+(distributed-listener-failure-race.log, terminal fa27fa, status 0, 1.040 seconds).
+All handles are terminal. No full suite or long model/race workload was run;
+original distributed method completion counts remain unchanged at 37/41.

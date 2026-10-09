@@ -12630,6 +12630,21 @@ client and serving goroutine to finish, the accepted-reply count to drain, and
 exactly one fingerprint operation and one response write. This native transport
 ownership test has no corresponding original Java method.
 
+### Failed native listener ownership
+
+If Accept fails before host shutdown, Serve closes that listener before its
+registration leaves the host's tracking map. It preserves the accept failure
+and joins any non-benign listener-close failure. Already accepted connections
+remain usable until their existing connection/host owners close them. This
+cleanup does not retry acceptance or cancel accepted computation/storage work.
+
+Coordinator and worker network Close inspect every wrapped/joined serve-error
+cause using distributedCloseIsBenign, retaining unrelated cleanup errors even
+when another cause is net.ErrClosed. Repeated Close retains the same result.
+Native checks inject accept/close failures, verify one listener release, use an
+already accepted connection successfully, and check both role owners' retained
+mixed failures. No original Java method directly tests this Go ownership boundary.
+
 ### Native connection-owner cleanup errors
 
 Distributed connection owners and coordinator discovery previously used an

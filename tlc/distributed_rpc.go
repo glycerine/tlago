@@ -109,6 +109,11 @@ func (s *DistributedRPCServer) Serve(listener net.Listener) error {
 			if closed {
 				return nil
 			}
+			// This listener leaves the host's tracking map on return. Release
+			// it now; accepted connections retain their independent lifetime.
+			if closeErr := listener.Close(); !distributedCloseIsBenign(closeErr) {
+				return errors.Join(err, closeErr)
+			}
 			return err
 		}
 		s.mu.Lock()

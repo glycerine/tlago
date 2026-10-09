@@ -1922,6 +1922,10 @@ original cause and retains the failed client without redial/replay. Method-level
 RPC errors keep the connection usable. This Go transport ownership coverage has
 no direct original Java method and adds no original-method completion credit.
 
+Native listener ownership checks cover accept failure, combined accept/close
+failure, continued use of an accepted connection, and retained mixed shutdown
+errors on coordinator/worker role owners. They add no original-method credit.
+
 Native corrupt-queue recovery checks use a real N=7 checkpoint and fresh nested
 LSB hosts. EOF stops startup before remote recovery or worker publication; hosts
 remain empty, all roles join and retained snapshots stay unchanged. This adds

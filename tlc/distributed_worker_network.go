@@ -84,7 +84,7 @@ func (n *DistributedWorkerNetwork) Environment(base DistributedWorkerEnvironment
 func (n *DistributedWorkerNetwork) Close() error {
 	n.closeOnce.Do(func() {
 		n.closeError = errors.Join(n.Host.CloseGracefully(), n.Discovery.Close())
-		if err := <-n.done; err != nil && !errors.Is(err, net.ErrClosed) {
+		if err := <-n.done; !distributedCloseIsBenign(err) {
 			n.closeError = errors.Join(n.closeError, err)
 		}
 		// Unpublication removes names, not native ownership. Close storage
