@@ -14806,3 +14806,24 @@ hosts and fresh storage owners. It is not full-model restart coverage and earns
 no original Java method credit. No production correction was needed. Management
 source comparison also confirms synchronized stop/suspend/resume and checkpoint
 forcing; these remain plain Go wrapper operations rather than a Java JMX runtime.
+
+
+### Worker lookup, invariant and constraint ordering
+
+Source TLCWorker.getNextStates generates/cache-filters holders, updates its
+overall computed count, routes fingerprints and performs containsBlock before
+checking new successors. Invariants precede model/action constraints. In
+particular, an invariant-violating successor still fails even if the model
+constraint would exclude it. Model false/error skips action constraints; only
+states accepted by both constraints receive the predecessor UID and enter
+aligned result vectors. Fingerprint insertion belongs to the coordinator.
+
+Sixteen focused native cases use actual TLCApp delegates, local or TCP worker
+and fingerprint endpoints, and real successor fingerprints. They cover already
+seen membership, false/error invariant, false/error model/action constraints
+and acceptance. Exact call order, failure cause/replay flags, predecessor and
+successor UID/fingerprint context, aligned result vectors, total-generation
+statistics and computing-finally state are asserted. Rejected successors retain
+their prior UID; no worker case inserts fingerprints. These supplement existing
+source proxy and vector/failure tests; no direct original Java worker method
+exists for this matrix, so no original-method completion credit is added.

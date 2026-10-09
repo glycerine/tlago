@@ -27162,3 +27162,29 @@ distributed-offheap-named-checkpoint.log, terminal 2f7c83, status 0,
 0.032 seconds. All hosts and storage owners drained/closed; no production
 change, full model, full-suite or race run. Original inventory remains 37/41.
 Updated HANDOFF/architecture; git diff --check passes.
+
+
+### October 9, 2026: worker lookup/invariant/constraint fidelity
+
+Compared TLCWorker.getNextStates, Holder comparison and TLCApp successor checks
+with the Go path. Generation/cache/holder ordering, signed fingerprint sorting,
+partition lookup, invariant-before-constraints, UID assignment, statistics and
+worker exception/finally boundaries match; no production correction needed.
+Added a focused correctness matrix because no original direct worker test
+covers these checks together. Sixteen local/TCP cases use actual TLCApp
+delegates and real fingerprint membership: seen, invariant false/error, model
+false/error, actions false/error, accepted. A false invariant must fail before
+a model constraint which would exclude the same state.
+
+Assertions preserve exact call ordering/short-circuiting, error cause and replay
+flag, predecessor/successor UID/fingerprint context, result-vector alignment,
+accepted-only UID rewrite, overall generated count and computing-finally state.
+Worker lookups never insert fingerprints. TCP cases exercise both coordinator-
+to-worker calls and worker-to-fingerprint lookups.
+
+All sixteen cases, all nine mechanically ported original smart-proxy methods,
+worker memory/executor failure return/panic local/TCP controls and native RPC
+partition-bound control pass: distributed-worker-constraint-order.log, terminal
+cc5036, status 0, 0.049 seconds. No race, full-suite or long model rerun.
+No new original-method credit; distributed inventory remains 37/41. Updated
+HANDOFF/architecture; git diff --check passes.
