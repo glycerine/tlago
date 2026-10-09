@@ -12639,7 +12639,8 @@ Java serialization or original-method completion credit is introduced.
 
 ### Checkpoint promotion and symbolic links
 
-Trace, worker, memory/disk state queues, intern table and MemFPSet/1/2 commits
+Trace, worker, memory/disk state queues, intern table, MemFPSet/1/2, IntQueue,
+MemObjectQueue, DiskObjectStack, DiskByteArrayQueue and MemFPIntSet commits
 check the old checkpoint with `os.Stat` before removing it, matching upstream
 `exists()` following symbolic links. Only successful existence checks attempt
 deletion; deletion failure stops promotion. Rename follows that check.
@@ -12650,3 +12651,10 @@ link target. Existing I/O error classification, text and queue pool deletion
 ordering remain intact. This uses native filesystem operations, not a Java
 filesystem runtime; interruption still does not make the multi-file checkpoint
 atomic.
+
+Supporting store commits retain I/O error classification and the source's
+error text, including copied class names. DiskByteArrayQueue pool retirement
+stops at the first failed deletion: earlier deletions remain, later pool files
+and checkpoint files remain untouched, checkpoint markers do not advance, and
+the queue mutex is released. MemObjectStack follows its distinct source
+rename-only sequence and is not changed to use delete-before-rename.

@@ -338,7 +338,10 @@ Mixed files after interruption are source behavior, not an atomic transaction.
 Trace, worker, state queues, intern table and memory fingerprint stores follow
 the source existence/delete/rename order using native filesystem calls. A
 dangling old checkpoint link survives failed promotion; a live link is removed
-first, without changing its target. Short cases cover all eight owners.
+first, without changing its target. Short cases cover those eight owners and
+five supporting integer/object/byte-array/DFID stores. Their commit errors retain
+I/O classification and source text; byte-array pool deletion keeps partial
+progress on failure without advancing checkpoint markers.
 Disk, off-heap and nested-store trace recovery requires the existing trace; it
 cannot fall back to a named snapshot when the trace is missing. MemFPSet retains
 the source file-based recovery that deliberately ignores the trace parameter.

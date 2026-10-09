@@ -10,7 +10,7 @@ import (
 // A dangling link must survive when promotion fails, whereas a live link is
 // deleted before promotion. Neither operation may change the link's target.
 func TestDistributedCheckpointCommitSymlinkOrdering(t *testing.T) {
-	for _, owner := range []string{"trace", "worker", "memory_queue", "disk_queue", "intern", "memory_fp", "memory_fp1", "memory_fp2"} {
+	for _, owner := range []string{"trace", "worker", "memory_queue", "disk_queue", "intern", "memory_fp", "memory_fp1", "memory_fp2", "integer_queue", "object_queue", "object_stack", "byte_array_queue", "memory_fp_int"} {
 		for _, live := range []bool{false, true} {
 			for _, promote := range []bool{false, true} {
 				phase := "dangling"
@@ -52,6 +52,29 @@ func TestDistributedCheckpointCommitSymlinkOrdering(t *testing.T) {
 						commit = func() error { return table.CommitChkpt(directory) }
 						oldPath, newPath = filepath.Join(directory, "vars.chkpt"), filepath.Join(directory, "vars.tmp")
 						message = "InternTable.commitChkpt: cannot delete "
+					case "integer_queue":
+						queue := NewIntQueueWithDisk(directory, "Spec", 1)
+						commit = queue.CommitChkpt
+						oldPath, newPath = queue.chkptName("chkpt"), queue.chkptName("tmp")
+						message = "MemStateQueue.commitChkpt: cannot delete "
+					case "object_queue":
+						commit = NewMemObjectQueue(directory).CommitChkpt
+						oldPath, newPath = filepath.Join(directory, "queue.chkpt"), filepath.Join(directory, "queue.tmp")
+						message = "MemStateQueue.commitChkpt: cannot delete "
+					case "object_stack":
+						stack := &DiskObjectStack{filePrefix: filepath.Join(directory, "Spec")}
+						commit = stack.CommitChkpt
+						oldPath, newPath = stack.filePrefix+".chkpt", stack.filePrefix+".tmp"
+						message = "DiskObjectStack.commitChkpt: cannot delete "
+					case "byte_array_queue":
+						commit = (&DiskByteArrayQueue{diskdir: directory}).CommitChkpt
+						oldPath, newPath = filepath.Join(directory, "queue.chkpt"), filepath.Join(directory, "queue.tmp")
+						message = "DiskStateQueue.commitChkpt: cannot delete "
+					case "memory_fp_int":
+						set := (&MemFPIntSet{}).Init(1, directory, "Spec")
+						commit = func() error { return set.CommitChkptFile("Spec") }
+						oldPath, newPath = set.chkptName("Spec", "chkpt"), set.chkptName("Spec", "tmp")
+						message = "MemFPIntSet.commitChkpt: cannot delete "
 					case "memory_fp", "memory_fp1", "memory_fp2":
 						var set FPSet
 						switch owner {
@@ -119,4 +142,38 @@ func TestDistributedCheckpointCommitSymlinkOrdering(t *testing.T) {
 			}
 		}
 	}
+}
+
+// DiskByteArrayQueue has the same source pool-retirement boundary as
+// DiskStateQueue: retain earlier deletions on failure, but do not advance the
+// checkpoint marker or promote either checkpoint file.
+func TestDistributedByteArrayQueueCommitRetainsPartialPoolDeletion(t *testing.T) {
+	directory := t.TempDir()
+	queue := &DiskByteArrayQueue{diskdir: directory, lastLoPool: 0, newLastLoPool: 3}
+	oldCheckpoint := filepath.Join(directory, "queue.chkpt")
+	temporary := filepath.Join(directory, "queue.tmp")
+	for _, path := range []string{queue.poolName(0), queue.poolName(2), oldCheckpoint, temporary} {
+		if err := os.WriteFile(path, []byte("retained"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	err := queue.CommitChkpt()
+	if !isJavaIOException(err) || err.Error() != "DiskStateQueue.commitChkpt: cannot delete "+queue.poolName(1) {
+		t.Fatalf("pool deletion failure = %T/%v", err, err)
+	}
+	if queue.lastLoPool != 0 || queue.newLastLoPool != 3 {
+		t.Fatal("failed deletion advanced pool checkpoint markers")
+	}
+	if _, err := os.Stat(queue.poolName(0)); !os.IsNotExist(err) {
+		t.Fatal("earlier deletion was rolled back")
+	}
+	for _, path := range []string{queue.poolName(2), oldCheckpoint, temporary} {
+		if data, err := os.ReadFile(path); err != nil || string(data) != "retained" {
+			t.Fatalf("later file changed: %s/%q/%v", path, data, err)
+		}
+	}
+	if !queue.mu.TryLock() {
+		t.Fatal("failed commit retained queue lock")
+	}
+	queue.mu.Unlock()
 }

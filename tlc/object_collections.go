@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"encoding/gob"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -249,11 +248,13 @@ func (q *MemObjectQueue) CommitChkpt() error {
 	}
 	oldName := filepath.Join(q.diskdir, "queue.chkpt")
 	newName := filepath.Join(q.diskdir, "queue.tmp")
-	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
+	if _, err := os.Stat(oldName); err == nil {
+		if err := os.Remove(oldName); err != nil {
+			return NewIOException(fmt.Sprintf("MemStateQueue.commitChkpt: cannot delete %s", oldName))
+		}
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
+		return NewIOException(fmt.Sprintf("MemStateQueue.commitChkpt: cannot delete %s", oldName))
 	}
 	return nil
 }
@@ -502,11 +503,13 @@ func (s *DiskObjectStack) CommitChkpt() error {
 	}
 	oldName := s.filePrefix + ".chkpt"
 	newName := s.filePrefix + ".tmp"
-	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("DiskObjectStack.commitChkpt: cannot delete %s", oldName)
+	if _, err := os.Stat(oldName); err == nil {
+		if err := os.Remove(oldName); err != nil {
+			return NewIOException(fmt.Sprintf("DiskObjectStack.commitChkpt: cannot delete %s", oldName))
+		}
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("DiskObjectStack.commitChkpt: cannot delete %s", oldName)
+		return NewIOException(fmt.Sprintf("DiskObjectStack.commitChkpt: cannot delete %s", oldName))
 	}
 	return nil
 }

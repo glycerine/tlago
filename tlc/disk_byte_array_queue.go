@@ -301,17 +301,19 @@ func (q *DiskByteArrayQueue) CommitChkpt() error {
 	for i := q.lastLoPool; i < q.newLastLoPool; i++ {
 		oldPool := q.poolName(i)
 		if err := os.Remove(oldPool); err != nil {
-			return fmt.Errorf("DiskStateQueue.commitChkpt: cannot delete %s", oldPool)
+			return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldPool))
 		}
 	}
 	q.lastLoPool = q.newLastLoPool
 	oldName := filepath.Join(q.diskdir, "queue.chkpt")
 	newName := filepath.Join(q.diskdir, "queue.tmp")
-	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("DiskStateQueue.commitChkpt: cannot delete %s", oldName)
+	if _, err := os.Stat(oldName); err == nil {
+		if err := os.Remove(oldName); err != nil {
+			return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldName))
+		}
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("DiskStateQueue.commitChkpt: cannot delete %s", oldName)
+		return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldName))
 	}
 	return nil
 }

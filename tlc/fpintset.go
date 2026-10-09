@@ -481,11 +481,13 @@ func (s *MultiFPIntSet) CommitChkpt() error {
 func (s *MemFPIntSet) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
-	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemFPIntSet.commitChkpt: cannot delete %s", oldChkpt)
+	if _, err := os.Stat(oldChkpt); err == nil {
+		if err := os.Remove(oldChkpt); err != nil {
+			return NewIOException(fmt.Sprintf("MemFPIntSet.commitChkpt: cannot delete %s", oldChkpt))
+		}
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("MemFPIntSet.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("MemFPIntSet.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	return nil
 }

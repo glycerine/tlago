@@ -23522,3 +23522,30 @@ methods and intern/fingerprint commit error checks. It passes
 (checkpoint-symlink-verified.log, terminal 78d164, status 0, 0.032 seconds).
 The native symlink supplement adds no original-method completion credit.
 No full suite, full model or race workload ran; all handles are terminal.
+
+### October 8, 2026: supporting checkpoint stores
+
+Continued the source comparison through MemIntQueue, MemObjectQueue,
+DiskObjectStack, DiskByteArrayQueue and MemFPIntSet. All five have the same
+existence/delete/rename sequence; Go had the unconditional deletion shortcut
+and returned unclassified errors for commit failures. Expanded the native
+symlink matrix with 20 cases. Before the fix, all ten missing-temporary cases
+fail I/O classification (checkpoint-helper-symlink-before.log, terminal 0eca7a,
+status 1). The prior unconditional removal also precedes that error. Kept
+MemObjectStack's distinct source rename-only sequence unchanged.
+
+Fixed the five supporting stores using native Stat/remove/rename and existing
+I/O error carriers, preserving source text. Byte-array pool-retirement failure
+now also retains its I/O category. Added a focused partial-deletion case proving
+earlier deletions remain, checkpoint markers/files and later pool files remain,
+and the queue mutex is released.
+
+Initial expanded matrix, original MemIntQueue methods and focused object/DFID
+checks pass (checkpoint-helper-symlink-fixed.log, terminal a43e23, status 0,
+0.031 seconds). Final 52-case matrix, pool failure, existing core checkpoint
+failure cases, original MemIntQueue and focused object/DFID checks pass
+(checkpoint-helper-symlink-verified.log, terminal d3cc5a, status 0,
+0.035 seconds). No direct original symlink or byte-array pool-failure method
+exists in the source test inventory; native supplements add no original-method
+completion credit. No full suite, full model or race workload ran. All handles
+are terminal.
