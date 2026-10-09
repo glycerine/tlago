@@ -23649,3 +23649,37 @@ checks negative worker count first and allocates readers after that open.
 No direct original empty-directory/DFID-parent method exists; native supplements
 add no completion credit. No full suite, full model or race workload ran. All
 handles are terminal.
+
+### October 8, 2026: disk fingerprint initializer ordering and ownership
+
+Compared DiskFPSet.init with the recorded ordering gap. Added six LSB/MSB cases
+for negative worker count, missing parent and reinitialization. All fail before
+the fix (disk-fingerprint-init-order-before.log, terminal d31b42, status 1,
+0.023 seconds): Go checked negative count before assigning paths, opened storage
+before allocating reader slots and reset existing membership/index metadata.
+Source initialization retains that metadata rather than normalizing it.
+
+Moved path assignment before negative-array failure and reader allocation/pool
+index reset before backing-file create. Removed source-incompatible membership,
+file-count and index resets. Replaced reader owners close natively; partial new
+opens close on failure while allocated arrays and field mutations remain.
+Extracted opening of already allocated slots for initialization and the existing
+merge-reader helper, preserving that helper's cleanup boundary. Six new cases
+pass (disk-fingerprint-init-order-fixed.log, terminal 5af4f7, status 0,
+0.019 seconds).
+
+A verification selector mistakenly included whole LSB/MSB source test classes.
+Identified its live process and stopped its exact test child rather than running
+unrelated methods to completion (disk-fingerprint-init-order-verified.log,
+terminal 0824cc, status 1, signal interrupt, 46.496 seconds). Separated native
+selection from exact original method selection. Focused initializer, literal
+path, reader replacement/failure and coordinator construction/ownership checks
+pass (disk-fingerprint-init-order-focused.log, terminal a91155, status 0,
+0.037 seconds). Both original LSB/MSB testFPSetRecovery methods pass with the
+unchanged 99,999 limit, membership assertions and default settings
+(disk-fingerprint-init-order-original.log, terminal fd4467, status 0,
+11.422 seconds).
+
+No original method directly checks these initializer partial mutations; native
+supplements add no original-method credit. No full suite, full model or race
+workload ran. All handles are terminal.

@@ -12692,3 +12692,19 @@ checks construct root-relative names that resolve inside temporary directories,
 covering real begin/commit/recovery operations without opening root-level files.
 DFID checkpoint begin uses a direct file create; missing parents cause an I/O
 failure without changing the directory tree or fingerprint membership.
+
+### Disk fingerprint initialization ordering
+
+DiskFPSet initialization assigns the metadir and backing/merge filenames before
+allocating worker reader slots. Negative worker count fails at that allocation,
+retaining prior reader arrays and pool index. Positive initialization allocates
+worker and five pool slots and resets pool index before creating/truncating the
+backing file. Missing-parent failure therefore retains those empty allocated
+arrays and the new filenames. Reinitialization does not clear source membership,
+file count or index metadata; backing-file truncation remains a distinct effect.
+
+Native ownership releases replaced descriptors and partial new opens on failure,
+preserving the allocated arrays and source field mutations. Opening already
+allocated slots is shared with the existing merge-reader helper; that helper
+retains its own rollback cleanup. These changes do not reproduce JVM descriptor
+leaks or promise concurrent initialization of an active fingerprint store.

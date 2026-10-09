@@ -1436,7 +1436,10 @@ Six native empty-directory checks now cover memory/disk and DFID stores using
 literal absolute paths inside temporary roots. A DFID missing-parent check
 retains direct file-open failure and verifies no directory creation or membership
 change. These source path contracts have no direct original methods and add no
-completion credit. Disk initialization allocation/mutation order remains open.
+completion credit. Six native LSB/MSB initializer cases now retain filename
+assignments before negative-array failure, reader allocation before failed open,
+source metadata across reinitialization and native old-reader retirement. No
+original method directly covers these partial mutations; they add no credit.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

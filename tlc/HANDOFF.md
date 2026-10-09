@@ -124,6 +124,10 @@ Empty fingerprint storage directories retain the literal separator prefix;
 checkpoint paths are not cleaned or redirected to a temporary directory.
 DFID checkpoint creation opens the supplied file directly without creating
 missing parent directories. Native checks keep all paths inside temporary roots.
+Disk initialization assigns paths before checking a negative worker count and
+allocates worker/pool reader slots before opening storage. Reinitialization
+retains source membership/index metadata; replaced native reader owners close,
+and failed opens retain allocated slots while releasing partial handles.
 
 Failed coordinator construction stops and joins its queue workers and closes
 owned trace/fingerprint handles, preserving files and the original failure.
@@ -338,9 +342,6 @@ storage-specific behavior must not be replaced by an atomic recovery assumption.
 4. Finish the source ownership/constructor and native cleanup audit where evidence
    identifies actual remaining shortcuts. Consult prior audits before repeating
    completed checks. Missing-component behavior alone cannot prove full parity.
-   Reconcile disk initialization mutation order: source assigns paths and reader
-   arrays before opening the backing file; Go currently allocates readers later
-   and checks negative worker count before assigning paths.
 5. Reconcile opaque custom data and evaluator metadata against actual source
    transferability. Preserve explicit rejection until a faithful native contract
    is established. No Java object serialization or reflection runtime is wanted.

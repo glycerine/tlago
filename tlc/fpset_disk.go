@@ -243,23 +243,44 @@ func diskFPSetError2Warning() bool {
 func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if numThreads < 0 {
-		panic(NewNegativeArraySizeException(fmt.Sprint(numThreads)))
-	}
 	s.metadir = diskFPSetMetadir(metadir)
 	s.filename = filename
 	base := s.metadir + string(os.PathSeparator) + filename
 	s.tmpFilename = base + ".tmp"
 	s.fpFilename = base + ".fp"
+	if numThreads < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(numThreads)))
+	}
+	previous := [][]*BufferedRandomAccessFile{s.braf, s.brafPool}
+	s.braf = make([]*BufferedRandomAccessFile, numThreads)
+	s.brafPool = make([]*BufferedRandomAccessFile, diskFPSetBRAFPoolSize)
+	s.poolIndex = 0
+	s.readers.Store(nil)
+	initialized := false
+	defer func() {
+		// Go owns these descriptors. Replacing source arrays must not leak
+		// prior handles; a failed initialization also releases partial opens
+		// while retaining its allocated arrays and source field mutations.
+		for _, readers := range previous {
+			for _, reader := range readers {
+				_ = reader.Close()
+			}
+		}
+		if !initialized {
+			for _, readers := range [][]*BufferedRandomAccessFile{s.braf, s.brafPool} {
+				for _, reader := range readers {
+					_ = reader.Close()
+				}
+			}
+		}
+	}()
 	if err := os.WriteFile(s.fpFilename, nil, 0o644); err != nil {
 		panic(diskFPSetInitIOException(s.fpFilename, err))
 	}
-	if err := s.openBRAFReaders(numThreads, diskFPSetBRAFPoolSize); err != nil {
+	if err := s.openAllocatedBRAFReaders(); err != nil {
 		panic(diskFPSetInitIOException(s.fpFilename, err))
 	}
-	atomic.StoreInt64(&s.fileCnt, 0)
-	s.index = nil
-	s.clearTable()
+	initialized = true
 	return s
 }
 
@@ -1269,19 +1290,25 @@ func (s *DiskFPSet) openBRAFReaders(numReaders int, poolSize int) error {
 		poolSize = diskFPSetBRAFPoolSize
 	}
 	s.braf = make([]*BufferedRandomAccessFile, numReaders)
+	s.brafPool = make([]*BufferedRandomAccessFile, poolSize)
+	if err := s.openAllocatedBRAFReaders(); err != nil {
+		_ = s.closeBRAFReaders()
+		return err
+	}
+	return nil
+}
+
+func (s *DiskFPSet) openAllocatedBRAFReaders() error {
 	for i := range s.braf {
 		raf, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
 		if err != nil {
-			_ = s.closeBRAFReaders()
 			return err
 		}
 		s.braf[i] = raf
 	}
-	s.brafPool = make([]*BufferedRandomAccessFile, poolSize)
 	for i := range s.brafPool {
 		raf, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
 		if err != nil {
-			_ = s.closeBRAFReaders()
 			return err
 		}
 		s.brafPool[i] = raf
