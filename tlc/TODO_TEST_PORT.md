@@ -1983,6 +1983,12 @@ owner graphs fail explicitly. Original RecordValue and Alias checks plus native
 local/remote distributed DieHard process traces pass. No direct original wrapper
 ownership/transfer method exists; original completion counts remain unchanged.
 
+State-info conversion now preserves a print wrapper's original record identity,
+including in counterexample nodes and received TCP states. Ordinary states still
+produce fresh variable records. No direct original conversion test exists; native
+identity checks and existing original record, alias and trace dump/load test ports
+pass without changing original-method completion counts.
+
 Full N=7 coverage also pauses TCP traffic to one of two fingerprint hosts while
 keeping connections open. Separate cases hold both directions, only requests
 or only replies; markers require the selected direction and reject an opposite

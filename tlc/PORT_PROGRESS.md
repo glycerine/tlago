@@ -25639,3 +25639,29 @@ Final ownership/graph validation and TCP print selection also passes after
 adding explicit malformed-wrapper cache and conflicting value-array cases
 (distributed-print-owner-final.log, terminal 9f596b, status 0). All handles
 remain terminal.
+
+
+### October 9, 2026: preserve print record identity in state-info conversion
+
+Coordinator failure-handler comparison found no new mismatch. Trace record
+comparison found TLCStateInfo.toRecordValue returns PrintTLCState.getRecord
+directly, whereas Go rebuilt a field map, losing record identity and normalization
+state in counterexample nodes. Ordinary conversion calls RecordValue(TLCState).
+Go now returns the existing print record and uses NewRecordValueFromState for
+ordinary states. No transport or payload schema change is needed.
+
+The new native identity check fails before correction
+(distributed-state-info-record-red.log, terminal 083298, status 1). It now verifies
+local and received wrapper identity, counterexample node sharing, mutation
+visibility and fresh ordinary-state snapshots. Existing native TCP result/failure
+checks also assert received state-info record identity. No direct original
+TLCStateInfo conversion method test exists in the pinned test tree.
+
+Focused conversion/counterexample/owner/validation, native TCP print transfer,
+state-info and both original RecordValue methods pass
+(distributed-state-info-record-green.log, terminal 661c66, status 0, 0.018 seconds).
+Original AliasSafety, AliasSafetySimu, TLCExtTraceAlias and
+SafetyDieHardAliasSupDumpLoadTraceJSON test ports pass unchanged
+(distributed-state-info-record-original.log, terminal e4056a, status 0, 1.091 seconds).
+No full suite, long distributed model or race run. All handles are terminal;
+original-method completion counts remain unchanged.

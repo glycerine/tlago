@@ -11842,6 +11842,16 @@ checks and existing original RecordValue, Alias safety/simulation and TLCExtTrac
 Alias tests pass, as do separate-process distributed DieHard traces with local
 and standalone fingerprint storage.
 
+`TLCStateInfo.ToRecordValue` returns the wrapper's existing record, matching the
+source PrintTLCState branch rather than rebuilding its field map. Counterexample
+nodes therefore retain that record's identity, normalization flag and subsequent
+mutation visibility. Ordinary state-info conversion constructs a fresh record
+of declared variables through `NewRecordValueFromState`. Local/received-state
+checks distinguish those two contracts; native TCP results and WorkerException
+contexts also retain the record identity at conversion. Existing original alias
+and trace dump/load checks remain green. No new payload schema is needed for
+this conversion correction.
+
 RecordValue.PrintTLCState inherits TLCState’s serializability and holds its
 record plus underlying state. The native Go state representation’s printRecord
 now refers to the existing value graph through DistributedStateNode.PrintRecord.

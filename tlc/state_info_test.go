@@ -2,6 +2,37 @@ package tlc
 
 import "testing"
 
+// No direct original test covers toRecordValue's PrintTLCState branch.
+func TestStateInfoPreservesPrintRecordIdentity(t *testing.T) {
+	states, _ := printStatePayloadStates(t)
+	for _, wrapper := range []*TLCStateMut{states[0], distributedPayloadRoundTrip(t, states[:1])[0]} {
+		record := wrapper.printRecord
+		info := NewTLCStateInfo(wrapper)
+		if info.ToRecordValue() != record {
+			t.Fatal("state info rebuilt the print record instead of returning it")
+		}
+		counterexample := NewCounterExampleFromTrace([]*TLCStateInfo{info})
+		stateSet, err := counterexample.Select(NewStringValue("state"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		node := stateSet.(*SetEnumValue).Elems.At(0).(*TupleValue)
+		if node.Elems[1] != record {
+			t.Fatal("counterexample copied the print record")
+		}
+		field := record.Names[0]
+		wrapper.Bind(field, NewIntValue(43))
+		ordinary := NewTLCStateInfo(wrapper.printState).ToRecordValue().(*RecordValue)
+		if ordinary == record || len(ordinary.Names) != len(stateVariables) || ordinary.Values[0].(*IntValue).Val != 43 || ordinary.IsNorm {
+			t.Fatal("ordinary state info did not construct a fresh variable record")
+		}
+		record.Values[0] = NewIntValue(44)
+		if node.Elems[1].(*RecordValue).Values[0].(*IntValue).Val != 44 || ordinary.Values[0].(*IntValue).Val != 43 {
+			t.Fatal("record identity did not preserve mutation visibility and snapshot distinction")
+		}
+	}
+}
+
 func TestAliasTLCStateInfoPreservesOriginalStateActionAndLevel(t *testing.T) {
 	initTLCCheckerTest(t)
 	SetTLCStateTool(NewTool().SetMode(ModeSimulation))

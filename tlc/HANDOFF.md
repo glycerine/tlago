@@ -519,6 +519,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
    retain source return identities and independent metadata; native payloads
    preserve owner sharing and reject missing, recursive-wrapper or invalid owners.
    Updated peers are required for this payload schema.
+   State-info record conversion returns a print wrapper's existing record;
+   ordinary states construct a fresh variable record. Preserve this distinction
+   when building counterexamples or exporting traces.
    Built-in selector arithmetic, startup capture, queue bounds, statistics and
    smart-proxy timing have a current source audit and focused green receipt.
    Custom factory selection now uses linked Go constructors registered through

@@ -37,6 +37,9 @@ func requirePrintStatePayloadGraph(t *testing.T, original, copied []*TLCStateMut
 		t.Fatal("print state lost record sharing, mutable-state distinction or receiver isolation")
 	}
 	record := copied[0].printRecord
+	if NewTLCStateInfo(copied[0]).ToRecordValue() != record {
+		t.Fatal("received state info lost original print record identity")
+	}
 	if copied[0].GetCached(1) != nil || copied[0].cached != nil || record != copied[2].GetCached(1) || record != copied[2].values[0] || record.Values[0] != copied[0].values[0] || copied[0].UID != 31 || copied[0].Level() != 4 {
 		t.Fatal("print state lost record/value/cache sharing or stored metadata")
 	}

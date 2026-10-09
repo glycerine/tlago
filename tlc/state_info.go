@@ -134,5 +134,8 @@ func (i *TLCStateInfo) ToRecordValue() Value {
 	if i == nil || i.State == nil {
 		return EmptyRecord
 	}
-	return NewRecordValueFromInsMap(i.State.Values())
+	if i.State.printRecord != nil {
+		return i.State.printRecord
+	}
+	return NewRecordValueFromState(i.State)
 }
