@@ -670,7 +670,19 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 		if arg == "--" {
 			args := os.Args[i+1:]
 			status := ExitToolFailure
-			if len(args) > 0 && args[0] == "checkpoint-frontier" {
+			if len(args) > 0 && args[0] == "checkpoint-fp-host" {
+				if err := nativeCheckpointFingerprintHost(); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
+			} else if len(args) > 0 && args[0] == "registered-fp-recovery" {
+				if err := nativeRegisteredFingerprintRecovery(args[1:]); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
+			} else if len(args) > 0 && args[0] == "checkpoint-frontier" {
 				if err := nativeDistributedCheckpointFrontier(args[1:]); err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				} else {
@@ -982,7 +994,13 @@ func nativeDistributedCheckpointMidRun(args []string, interruption string) error
 	process := tlc.NewDistributedServerProcess()
 	env := tlc.DistributedServerEnvironment{
 		CreateServer: func(app *tlc.TLCApp, _ int) (*tlc.TLCServer, error) {
-			server, err := tlc.NewTLCServerFromApp(app)
+			var server *tlc.TLCServer
+			var err error
+			if os.Getenv("TLAGO_REGISTERED_FP_ENDPOINTS") != "" {
+				server, err = nativeRegisteredFingerprintServer(app)
+			} else {
+				server, err = tlc.NewTLCServerFromApp(app)
+			}
 			if err == nil {
 				server.ConfigurePublication(network.Publication())
 				if interruption == "after_intern_commit" || interruption == "after_first_fingerprint_commit" {

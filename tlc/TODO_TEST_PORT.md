@@ -1397,8 +1397,14 @@ and requires completion without GENERAL. Source size() sums aliased partition
 slots after failover, so this separate failure row requires 229,884 reported
 states; existing ordinary model rows keep their 114,942 assertions. This adds
 native failure coverage, not completion credit for the disabled Java harness.
-Full-model fingerprint-server restart/recovery, other failure phases and network
-partitions remain open.
+The native N=7 model now covers a complete mid-run checkpoint across two remote
+MemFPSet hosts followed by loss of all original roles and recovery with empty
+replacement stores registered before source recovery. It verifies committed
+partition membership, disk queue counts, no regenerated initialization and final
+114,942-distinct/empty-queue completion without GENERAL. This uses the existing
+library lifecycle; ordinary Java CLI startup still recovers before registration.
+No production startup change or disabled-harness method credit is added. Other
+storage backends/failure phases and general network partitions remain open.
 Short native worker reply-loss cases additionally retain fully computed but
 unreceived results behind a gate, close TCP and require source coordinator
 retry/requeue/deregistration before releasing the old reply. They verify no

@@ -12122,6 +12122,21 @@ UnmarshalException carrier/class metadata are removed. Native lost-exit-reply
 checks join all accepted handlers and require one exit plus later registration
 shutdown; lost insertion replies explicitly retain non-ignorable errors.
 
+Full-model registered-endpoint recovery now checkpoints a real mid-run N=7
+frontier across two remote MemFPSet processes, then retires all original roles.
+Both fingerprint hosts are killed and joined; committed checkpoint bytes remain
+identical. Replacement hosts initialize empty live tables on the same files and
+are registered through the public server API before ModelCheck calls recovery.
+The source trace/queue/fingerprint recovery order is unchanged. Before a new
+worker starts, each store must contain every fingerprint in its own committed
+file and the exact per-partition count; the coordinator reports the same disk
+frontier without initialization. Final model assertions remain 114,942 distinct
+states, empty queue, FINISHED, one recovery and no GENERAL. FP host shutdown joins
+accepted RPC replies before returning. This is a library-lifecycle fixture, not
+support for fresh-process remote-FP CLI recovery, whose empty dynamic manager is
+still the pinned-source limitation. Disk-backend full-model restart, additional
+failure phases and checkpoint atomicity remain unproved.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

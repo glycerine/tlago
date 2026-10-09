@@ -1,0 +1,303 @@
+package tlago
+
+import (
+	"bytes"
+	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/glycerine/tlago/tlc"
+)
+
+// This exercises source-supported recovery with already registered endpoints.
+// It does not change Java's CLI recovery-before-registration limitation or earn
+// credit for its assumption-disabled distributed model harness.
+func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
+	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	var processes []*nativeDistributedTestProcess
+	defer func() {
+		cancel()
+		for _, process := range processes {
+			if !process.joined {
+				<-process.done
+				process.joined = true
+			}
+		}
+	}()
+	common := []string{fmt.Sprintf("-Dtlc2.tool.distributed.TLCServer.port=%d", port), "-Dtlago.distributed.bindHost=127.0.0.1", "-Dtlago.distributed.advertiseHost=127.0.0.1", "-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=2"}
+	start := func(label, role string, environment []string, args ...string) *nativeDistributedTestProcess {
+		commandArgs := append([]string{"-test.run=^TestNativeDistributedProcessHelper$", "--", role}, common...)
+		commandArgs = append(commandArgs, args...)
+		command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
+		command.Dir = model
+		command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
+		command.Env = append(command.Env, environment...)
+		output := &nativeDistributedTestLog{test: t, role: label}
+		command.Stdout, command.Stderr = output, output
+		if err := command.Start(); err != nil {
+			t.Fatal(err)
+		}
+		process := &nativeDistributedTestProcess{command: command, output: output, done: make(chan error, 1)}
+		go func() { process.done <- command.Wait() }()
+		processes = append(processes, process)
+		return process
+	}
+	waitMarker := func(process *nativeDistributedTestProcess, marker string) {
+		t.Helper()
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for !strings.Contains(process.output.String(), marker) {
+			select {
+			case err := <-process.done:
+				process.joined = true
+				t.Fatalf("%s exited before %s: %v\n%s", process.output.role, marker, err, process.output.String())
+			case <-ctx.Done():
+				t.Fatal("remote checkpoint watchdog expired")
+			case <-ticker.C:
+			}
+		}
+	}
+	directories := []string{t.TempDir(), t.TempDir()}
+	startHosts := func(prefix string) ([]*nativeDistributedTestProcess, []string) {
+		var hosts []*nativeDistributedTestProcess
+		var addresses []string
+		for i, directory := range directories {
+			host := start(fmt.Sprintf("%s-fp-%d", prefix, i), "checkpoint-fp-host", []string{"TLAGO_CHECKPOINT_FP_DIRECTORY=" + directory})
+			waitMarker(host, "NATIVE_CHECKPOINT_FP_READY=")
+			match := regexp.MustCompile(`NATIVE_CHECKPOINT_FP_READY=([^\s]+)`).FindStringSubmatch(host.output.String())
+			if len(match) != 2 {
+				t.Fatal("fingerprint readiness address absent")
+			}
+			client, err := tlc.DialFingerprintEndpoint(match[1], "primary")
+			if err != nil {
+				t.Fatal(err)
+			}
+			size, failure := client.Size()
+			_ = client.CloseConnection()
+			if failure != nil || size != 0 {
+				t.Fatalf("new fingerprint host is not empty: %d/%v", size, failure)
+			}
+			hosts, addresses = append(hosts, host), append(addresses, match[1])
+		}
+		return hosts, addresses
+	}
+	hosts, addresses := startHosts("original")
+	environment := []string{"TLAGO_REGISTERED_FP_ENDPOINTS=" + strings.Join(addresses, ",")}
+	producer := start("checkpoint-producer", "checkpoint-mid-run", environment, "-tool", "-deadlock", "-metadir", t.TempDir(), "MC06")
+	worker := start("original-worker", "worker", nil, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+	if err := <-producer.done; err != nil {
+		producer.joined = true
+		t.Fatalf("checkpoint producer failed: %v\n%s", err, producer.output.String())
+	}
+	producer.joined = true
+	output := producer.output.String()
+	path := regexp.MustCompile(`NATIVE_CHECKPOINT_PATH=([^\r\n]+)`).FindStringSubmatch(output)
+	counts := regexp.MustCompile(`NATIVE_CHECKPOINT_COUNTS=(\d+),(\d+)`).FindStringSubmatch(output)
+	if len(path) != 2 || len(counts) != 3 {
+		t.Fatal("checkpoint path/counts absent")
+	}
+	if !filepath.IsAbs(path[1]) {
+		path[1] = filepath.Join(model, path[1])
+	}
+	distinct, _ := strconv.Atoi(counts[1])
+	queued, _ := strconv.Atoi(counts[2])
+	if distinct <= 16384 || queued <= 0 || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointEnd)) != 1 || len(nativeDistributedMessages(output, tlc.ECGeneral)) != 0 || len(nativeDistributedMessages(output, tlc.ECTLCFinished)) != 0 {
+		t.Fatal("producer did not checkpoint an unfinished successor frontier")
+	}
+	if len(nativeDistributedMessages(output, tlc.ECTLCCheckpointStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)) != 1 {
+		t.Fatal("producer checkpoint/registration sequence differs from the real two-store model")
+	}
+	queueFile, err := os.Open(filepath.Join(path[1], "queue.chkpt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	queueInput, err := tlc.NewValueInputStreamWithGlobalCompression(queueFile)
+	if err != nil {
+		_ = queueFile.Close()
+		t.Fatal(err)
+	}
+	queueCount, readErr := queueInput.ReadInt()
+	closeErr := queueInput.Close()
+	if readErr != nil || closeErr != nil || int(queueCount) != queued {
+		t.Fatalf("persisted queue count differs from checkpoint frontier: %d/%v/%v", queueCount, readErr, closeErr)
+	}
+	snapshots := make([][]byte, len(hosts))
+	filename := filepath.Base(filepath.Clean(path[1])) + ".fp.chkpt"
+	for i, directory := range directories {
+		snapshots[i], err = os.ReadFile(filepath.Join(directory, filename))
+		if err != nil || len(snapshots[i]) == 0 || len(snapshots[i])%8 != 0 {
+			t.Fatalf("remote committed snapshot: %v/%d", err, len(snapshots[i]))
+		}
+	}
+	if (len(snapshots[0])+len(snapshots[1]))/8 != distinct {
+		t.Fatal("committed remote membership differs from checkpoint frontier")
+	}
+	for _, process := range append(hosts, worker) {
+		killErr := process.command.Process.Kill()
+		if killErr != nil && !errors.Is(killErr, os.ErrProcessDone) {
+			t.Fatal(killErr)
+		}
+		err := <-process.done
+		process.joined = true
+		if process != worker && (killErr != nil || err == nil) {
+			t.Fatal("original fingerprint host did not crash")
+		}
+	}
+	t.Logf("committed frontier %d/%d; original coordinator, worker and both fingerprint hosts are gone", distinct, queued)
+	for i, directory := range directories {
+		data, err := os.ReadFile(filepath.Join(directory, filename))
+		if err != nil || !bytes.Equal(data, snapshots[i]) {
+			t.Fatal("process crash changed committed fingerprint bytes")
+		}
+	}
+	restarted, addresses := startHosts("restarted")
+	server := start("recovered-coordinator", "registered-fp-recovery", []string{"TLAGO_REGISTERED_FP_ENDPOINTS=" + strings.Join(addresses, ",")}, "-tool", "-deadlock", "-recover", path[1], "MC06")
+	waitMarker(server, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd))
+	output = server.output.String()
+	if !strings.Contains(output, fmt.Sprintf("Recovery completed. %d states examined. %d states on queue.", distinct, queued)) || len(nativeDistributedMessages(output, tlc.ECTLCComputingInit)) != 0 {
+		t.Fatal("registered remote recovery counts differ or initialization was regenerated")
+	}
+	var recovered uint64
+	for i, address := range addresses {
+		client, err := tlc.DialFingerprintEndpoint(address, "primary")
+		if err != nil {
+			t.Fatal(err)
+		}
+		size, failure := client.Size()
+		fingerprints := tlc.NewLongVec()
+		for offset := 0; offset < len(snapshots[i]); offset += 8 {
+			fingerprints.AddElement(int64(binary.BigEndian.Uint64(snapshots[i][offset : offset+8])))
+		}
+		missing, membershipErr := client.ContainsBlock(fingerprints)
+		_ = client.CloseConnection()
+		if failure != nil || size != uint64(len(snapshots[i])/8) || membershipErr != nil || missing == nil || missing.TrueCount() != 0 {
+			t.Fatalf("restarted partition %d did not retain its complete snapshot: size %d/%v, membership %v/%v", i, size, failure, missing, membershipErr)
+		}
+		recovered += size
+	}
+	if recovered != uint64(distinct) {
+		t.Fatal("restarted stores did not recover exactly committed membership before worker startup")
+	}
+	t.Log("restarted empty stores recovered committed membership; starting actual successor evaluation")
+	replacement := start("replacement-worker", "worker", nil, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+	for _, process := range append([]*nativeDistributedTestProcess{server, replacement}, restarted...) {
+		if err := <-process.done; err != nil {
+			process.joined = true
+			t.Fatalf("%s exited: %v\n%s", process.output.role, err, process.output.String())
+		}
+		process.joined = true
+		if len(nativeDistributedMessages(process.output.String(), tlc.ECGeneral)) != 0 {
+			t.Fatalf("%s emitted GENERAL", process.output.role)
+		}
+	}
+	output = server.output.String()
+	stats := nativeDistributedMessages(output, tlc.ECTLCStats)
+	if len(nativeDistributedMessages(output, tlc.ECTLCFinished)) != 1 || len(stats) != 1 || !regexp.MustCompile(`^\d+ states generated, 114942 distinct states found, 0 states left on queue\.$`).MatchString(stats[0]) || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverEnd)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
+		t.Fatal("recovered model lacks original completion/count assertions")
+	}
+}
+
+type nativeCheckpointFingerprintEndpoint struct {
+	*tlc.LocalFingerprintEndpoint
+	exited chan struct{}
+	once   sync.Once
+}
+
+func (e *nativeCheckpointFingerprintEndpoint) Exit(cleanup bool) error {
+	if err := e.LocalFingerprintEndpoint.Exit(cleanup); err != nil {
+		return err
+	}
+	e.once.Do(func() { close(e.exited) })
+	return nil
+}
+func nativeCheckpointFingerprintHost() error {
+	directory := os.Getenv("TLAGO_CHECKPOINT_FP_DIRECTORY")
+	if directory == "" {
+		return fmt.Errorf("fingerprint directory missing")
+	}
+	storage := tlc.NewMemFPSet()
+	storage.Init(1, directory, "MC06")
+	defer storage.Close()
+	endpoint := &nativeCheckpointFingerprintEndpoint{LocalFingerprintEndpoint: tlc.NewLocalFingerprintEndpoint(storage), exited: make(chan struct{})}
+	host := tlc.NewDistributedRPCServer()
+	if err := host.RegisterFingerprint("primary", endpoint); err != nil {
+		return err
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+	done := make(chan error, 1)
+	go func() { done <- host.Serve(listener) }()
+	fmt.Println("NATIVE_CHECKPOINT_FP_READY=" + listener.Addr().String())
+	<-endpoint.exited
+	if err := host.CloseGracefully(); err != nil {
+		return err
+	}
+	if err := <-done; err != nil && !errors.Is(err, net.ErrClosed) {
+		return err
+	}
+	return nil
+}
+
+func nativeRegisteredFingerprintServer(app *tlc.TLCApp) (*tlc.TLCServer, error) {
+	addresses := strings.Split(os.Getenv("TLAGO_REGISTERED_FP_ENDPOINTS"), ",")
+	if len(addresses) != tlc.TLCServerExpectedFPSetCount() {
+		return nil, fmt.Errorf("registered fingerprint count mismatch")
+	}
+	server, err := tlc.NewDistributedFPSetTLCServer(app, len(addresses))
+	if err != nil {
+		return nil, err
+	}
+	for i, address := range addresses {
+		endpoint, err := tlc.DialFingerprintEndpoint(address, "primary")
+		if err != nil {
+			return nil, err
+		}
+		if err := server.RegisterFPSet(endpoint, fmt.Sprintf("checkpoint-host-%d", i)); err != nil {
+			_ = endpoint.CloseConnection()
+			return nil, err
+		}
+	}
+	return server, nil
+}
+func nativeRegisteredFingerprintRecovery(args []string) error {
+	args, err := tlc.ExtractDistributedStartupProperties(args)
+	if err != nil {
+		return err
+	}
+	network := tlc.NewDistributedCoordinatorNetwork("127.0.0.1", "127.0.0.1")
+	defer network.Close()
+	env := tlc.DistributedServerEnvironment{CreateServer: func(app *tlc.TLCApp, _ int) (*tlc.TLCServer, error) {
+		server, err := nativeRegisteredFingerprintServer(app)
+		if err == nil {
+			server.ConfigurePublication(network.Publication())
+		}
+		return server, err
+	}}
+	_, err = RunDistributedServer(tlc.NewDistributedServerProcess(), args, env, tlc.RuntimeParameters{})
+	return err
+}

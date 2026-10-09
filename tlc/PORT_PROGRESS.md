@@ -22508,3 +22508,44 @@ this documentation-only change, and the user's full-suite baseline was reused.
 Remaining full-model remote restart/recovery, additional failure/partition phases,
 isolated trace-commit interruption, ownership/cleanup audit and opaque-data
 reconciliation remain explicit. Distributed completion remains unproven.
+
+### 2026-10-08: Full-model registered remote fingerprint restart/recovery
+
+Added a separate native N=7 model check using two real remote MemFPSet hosts.
+The existing mid-run producer registers these endpoints through the public
+server API before ModelCheck, checkpoints a successor frontier and exits. The
+parent kills/joins both original FP hosts and retires the original worker.
+Committed files remain byte-identical. Fresh hosts start with empty live tables
+on those files, then a fresh coordinator registers them before source recovery.
+No production startup order or recovery implementation changed. Ordinary remote
+CLI recovery still encounters the pinned source's empty dynamic manager.
+
+The case validates the persisted disk queue count, snapshot byte counts and every
+committed fingerprint in its original recovered partition before a replacement
+worker starts. Recovery must report the captured counts without initialization;
+final assertions retain 114,942 distinct states, empty queue, FINISHED, one
+recovery and no GENERAL. Both new FP hosts exit normally after draining accepted
+RPC replies. All processes are joined on success or failure. The Java model and
+configuration are unchanged, with no exploration cutoff or race instrumentation.
+
+Initial full model passes (remote-model-restart.log, terminal process 762e0a
+status 0; package time 52.543 seconds). After adding file/membership assertions,
+the selection passes the unchanged local mid-run recovery row in 59.87 seconds
+but fails the new parent-side file check: its relative checkpoint path was read
+from the repository instead of the producer model directory (remote-model-
+restart-final.log, terminal process e8ba82 status 1; package time 66.517 seconds).
+Correcting fixture path resolution passes all stronger assertions (remote-model-
+restart-verified.log, terminal process f0d882 status 0; package time 52.714 seconds).
+
+The final producer uses the existing Java -metadir flag with Go-owned temporary
+storage. The final case passes (remote-model-restart-final-owned.log, terminal
+process 426ccb status 0; package time 52.675 seconds), recovering 20,480 distinct
+fingerprints and 12,288 queued states before completing the full model. One failed
+run's known, terminal, test-owned checkpoint directory was removed; no vectors
+or unknown state directories were deleted. Related assigned-block barriers,
+fingerprint RPC recovery and all original dynamic-manager cases pass
+(remote-model-restart-related.log, terminal process d63278 status 0; package time
+0.064 seconds). Logs were inspected; all processes are terminal. No full suite or
+race run was performed. No original assertion/bound changed, and this library-
+lifecycle coverage adds no disabled-harness method credit. Disk-backend full-model
+restart, additional failure phases, partitions and atomicity remain unproved.
