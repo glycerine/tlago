@@ -12186,6 +12186,16 @@ During ModelCheck finalization, executor shutdown precedes size lookup; missing
 ownership fails there before updating either final-count field, collecting later
 statistics, resetting rates, printing success/summary or deleting metadata.
 
+Local fingerprint recovery retains the storage implementation's source dispatch.
+DiskFPSet, OffHeapDiskFPSet and MultiFPSet consume the supplied trace and fail at
+trace enumeration when it is absent, before changing membership or reading named
+snapshots. MemFPSet deliberately ignores this argument and recovers its named
+file. The manager must not substitute a different recovery source. Native checks
+use valid named checkpoints as controls, with both nested high-bit partitions
+populated; source disk named recovery rejects an empty child file with an index
+error. Off-heap has a separate trace-only check because its named checkpoint
+methods are intentionally unsupported.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

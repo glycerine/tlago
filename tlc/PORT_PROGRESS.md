@@ -22729,3 +22729,41 @@ model translations pass (final-fingerprint-owner-original-models.log, terminal
 8f0731, status 0, 1.739 seconds). Logs inspected, all processes terminal. No full
 suite or race run, no original assertion/bound changed and no new original-method
 credit for this native missing-owner boundary.
+
+### October 8, 2026: fingerprint replay requires its actual recovery trace
+
+Registration/reassignment audit found no new mismatch in those source paths.
+The adjacent local recovery dispatch audit found a shortcut: DiskFPSet,
+OffHeapDiskFPSet and MultiFPSet replaced a missing trace with named-file recovery.
+Source disk/nested recovery immediately enumerates the supplied trace; MemFPSet
+alone deliberately ignores the argument and reads its named checkpoint. Removed
+the three fallback branches. Existing trace enumeration now supplies the required
+failure before membership mutation or named snapshot lookup.
+
+Native checks cover primitive LSB/MSB, nested Mem/LSB/MSB and primitive off-heap
+trace requirements, plus MemFPSet's file-based control. Valid named snapshots
+prove the required-trace failure is independent of file availability; membership
+stays empty on failure and explicit named recovery still restores each fingerprint.
+Both nested partitions contain committed fingerprints. Off-heap is checked
+separately because its source named checkpointing is intentionally unsupported.
+No direct original Java method covers absent traces; no method credit is added.
+
+Initial fixture failures (fingerprint-trace-owner.log, terminal e0c719, status 1,
+0.176 seconds) exposed unsupported off-heap named checkpoints and disk no-argument
+begin/commit no-ops. Corrected fixtures to named begin/commit and explicit primitive
+constructors: the source factory coerces zero disk FPBits to one/nested storage.
+Further fixture failures exposed the source empty-child checkpoint index error;
+valid controls now populate both high-bit partitions. The off-heap case also
+identified its independent fallback, which was removed from actual functionality.
+
+Two selections accidentally included whole LSB/MSB classes and their repeated
+flush workloads with an insufficient two-minute timeout. Both are terminal failures
+(fingerprint-trace-owner-verified.log, terminal 6e9e7b, package 120.453 seconds;
+fingerprint-trace-owner-final.log, terminal b4201e, package 120.399 seconds), with
+fixture failures and timeout stacks retained. They earn no whole-class run credit.
+The corrected native owner/recovery selection passes (fingerprint-trace-owner-
+native-final.log, terminal 21e155, status 0, 0.149 seconds). Targeted complete Java
+LSB/MSB testFPSetRecovery methods then pass with all 99,998 fingerprints each
+(fingerprint-trace-owner-original-replay.log, terminal 5bd34d, status 0, 11.847
+seconds). No original workload/assertion changed; selection excludes unrelated
+repeated-flush work. All processes terminal, logs inspected. No full suite or race.

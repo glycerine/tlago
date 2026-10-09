@@ -224,9 +224,6 @@ func (s *OffHeapDiskFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 }
 
 func (s *OffHeapDiskFPSet) RecoverTrace(trace *TLCTrace) error {
-	if trace == nil {
-		return s.Recover()
-	}
 	elements, err := trace.Elements()
 	if err != nil {
 		return err

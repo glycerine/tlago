@@ -558,9 +558,6 @@ func (s *DiskFPSet) RecoverFile(fname string) error {
 }
 
 func (s *DiskFPSet) RecoverTrace(trace *TLCTrace) error {
-	if trace == nil {
-		return s.Recover()
-	}
 	elements, err := trace.Elements()
 	if err != nil {
 		return err

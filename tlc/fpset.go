@@ -1632,9 +1632,6 @@ func (s *MultiFPSet) namedCheckpoint(operation, fname string, call func(FPSet, s
 }
 
 func (s *MultiFPSet) RecoverTrace(trace *TLCTrace) error {
-	if trace == nil {
-		return s.Recover()
-	}
 	elements, err := trace.Elements()
 	if err != nil {
 		return err
