@@ -1613,6 +1613,11 @@ WorkerException contexts. Nil/empty maps, receiver isolation and malformed keys
 are checked. Existing original ModelValue tests pass; general-map network checks
 add no original-method completion credit.
 
+Attached native UniqueString checks cover sharing with value fields, metadata,
+equal distinct names, typed nil values/keys and invalid IDs in direct payloads,
+TCP results and WorkerException contexts. Original ModelValue/StringHelper tests
+remain green; these networking checks add no original-method completion credit.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,

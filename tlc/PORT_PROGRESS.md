@@ -23245,3 +23245,30 @@ general-keys-verified.log, terminal 6eebed, status 0, 0.034 seconds). Only the n
 short general-key graph and TCP checks ran with race instrumentation and pass
 (model-data-general-keys-race.log, terminal 160b64, status 0, 1.055 seconds).
 All handles are terminal. No full model or full suite was repeated.
+
+### October 8, 2026: native names in model-value attachments
+
+Compared application state validation and coordinator queue publication with
+Java; the inspected paths retain source ordering and failure behavior. Found an
+attachment type gap: UniqueString is transferable in the source and has no
+readResolve/writeReplace hook, while native name objects already have a graph
+representation used by value fields. Model data previously rejected them.
+
+Added an explicit uniqueString attachment tag/name ID, reusing that existing
+graph through compact entries and root model data. Text, token, location and
+native metadata survive. Attachments and general-map keys share name identity
+with ModelValue.Val and StringValue.Val; equal distinct names remain separate.
+Typed nil name pointers survive as root data, array entries and map keys distinct
+from nil interfaces. Invalid references fail explicitly. Receiver metadata does
+not alias the sender. No re-interning, Java serialization or evaluator emulation
+was introduced. Peers carrying these attachments need the updated schema.
+
+Initial focused direct/TCP/invalid-ID checks pass (model-data-names.log, terminal
+b31ea1, status 0, 0.017 seconds). Final existing state/result and scalar/typed/
+mixed/general-key attachment checks plus original ModelValue/StringHelper ports
+pass (model-data-names-verified.log, terminal e46b5a, status 0, 0.035 seconds).
+Only the new short attachment/TCP checks ran under race instrumentation and pass
+(model-data-names-race.log, terminal 498b0f, status 0, 1.063 seconds). No direct
+original method tests attached-name networking, so these checks add no original
+method completion credit. All handles are terminal; no full model or full suite
+was repeated.

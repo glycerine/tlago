@@ -137,6 +137,9 @@ Native `map[any]any` attachments additionally retain supported scalar and value
 keys, their concrete Go types and shared references. Non-comparable decoded keys,
 duplicate keys and unsupported entries fail explicitly. General keys are not
 evaluated or fingerprinted to sort them. Peers need the updated payload schema.
+Attached `*UniqueString` values and keys share the existing name graph with
+value fields. Text, token, location, identity and typed nil references survive;
+equal distinct names are not re-interned or merged.
 Mixed `[]any` and `map[string]any` attachments retain supported scalars, bytes,
 TLC values, typed containers and recursive mixed-container graphs with the same
 ownership guarantees. Their compact entries share the scalar data tags; peers

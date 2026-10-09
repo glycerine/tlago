@@ -12478,3 +12478,20 @@ contexts use the same representation. Peers carrying these maps need the updated
 native payload schema. No Java map runtime, serializer or arbitrary custom-object
 codec is introduced. Existing original ModelValue tests remain green; these new
 networking checks have no direct original method completion credit.
+
+### Attached native UniqueString references
+
+Source UniqueString is transferable and has no readResolve/writeReplace hook
+that re-interns equal objects. Attached Go *UniqueString references now reuse the
+existing name table through an explicit uniqueString data tag and name ID.
+Compact mixed-map/array entries carry the same ID. Names therefore remain shared
+across attachments, ModelValue.Val, StringValue.Val and general map keys, while
+equal distinct objects retain their separate identity. Text, token, location and
+native unregistered metadata are retained without aliasing sender objects.
+
+Zero name IDs preserve typed nil pointers, including map keys distinct from nil
+interfaces. Invalid IDs fail explicitly in direct and nested data. Requests,
+results and WorkerException contexts use this representation. No interning call,
+Java serialization or evaluator codec is added. Peers carrying attached names
+need the updated payload schema. Original ModelValue/StringHelper ports remain
+green; supplemental networking checks add no original-method completion credit.

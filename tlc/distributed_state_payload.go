@@ -33,6 +33,7 @@ type DistributedStatePayload struct {
 type DistributedObjectDataNode struct {
 	Kind      string
 	String    string
+	Name      int
 	Integer   int64
 	FloatBits uint64
 	Bool      bool
@@ -43,13 +44,13 @@ type DistributedObjectDataNode struct {
 }
 
 func distributedObjectDataNode(node DistributedValueNode) DistributedObjectDataNode {
-	return DistributedObjectDataNode{Kind: node.DataKind, String: node.DataString,
+	return DistributedObjectDataNode{Kind: node.DataKind, String: node.DataString, Name: node.DataName,
 		Integer: node.DataInteger, FloatBits: node.DataFloatBits, Bool: node.DataBool,
 		Bytes: node.DataBytes, Value: node.DataValue, Array: node.DataArray, Map: node.DataMap}
 }
 
 func (node DistributedObjectDataNode) valueNode() DistributedValueNode {
-	return DistributedValueNode{DataKind: node.Kind, DataString: node.String,
+	return DistributedValueNode{DataKind: node.Kind, DataString: node.String, DataName: node.Name,
 		DataInteger: node.Integer, DataFloatBits: node.FloatBits, DataBool: node.Bool,
 		DataBytes: node.Bytes, DataValue: node.Value, DataArray: node.Array, DataMap: node.Map}
 }
@@ -133,6 +134,7 @@ type DistributedValueNode struct {
 	Vector            int
 	DataKind          string
 	DataString        string
+	DataName          int
 	DataInteger       int64
 	DataFloatBits     uint64
 	DataBool          bool
@@ -531,6 +533,8 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 	case nil:
 	case string:
 		node.DataKind, node.DataString = "string", v
+	case *UniqueString:
+		node.DataKind, node.DataName = "uniqueString", e.string(v)
 	case bool:
 		node.DataKind, node.DataBool = "bool", v
 	case int:
@@ -1237,6 +1241,8 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 		return nil, nil
 	case "string":
 		return node.DataString, nil
+	case "uniqueString":
+		return d.string(node.DataName)
 	case "bool":
 		return node.DataBool, nil
 	case "int":
