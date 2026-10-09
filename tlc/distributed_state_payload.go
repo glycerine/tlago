@@ -25,6 +25,7 @@ type DistributedStatePayload struct {
 	ValueRows       [][]int
 	ValueVectors    []DistributedValueVectorNode
 	LongVectors     [][]int64
+	BitVectors      []int // Primitive word-array references, retaining full storage.
 	NameArrays      [][]int
 	StateCaches     [][]DistributedStateCacheEntry
 	ValueMaps       [][]DistributedValueMapEntry
@@ -172,6 +173,7 @@ type distributedPayloadEncoder struct {
 	rowRoots            [][][]Value
 	vectors             map[*ValueVec]int
 	longVectors         map[*LongVec]int
+	bitVectors          map[*BitVector]int
 	nameArrays          map[distributedByteArrayKey]int
 	nameRoots           [][]*UniqueString
 	caches              map[uintptr]int
@@ -607,6 +609,8 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		node.DataKind, node.DataArray = "nameArray", e.nameArray(v)
 	case *LongVec:
 		node.DataKind, node.DataArray = "longVector", e.longVector(v)
+	case *BitVector:
+		node.DataKind, node.DataArray = "bitVector", e.bitVector(v)
 	case *StateVec:
 		id, err := e.stateVector(v)
 		if err != nil {
@@ -668,6 +672,8 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		encodeDistributedPrimitiveArray(e, node, v, "int32Array", func(v int32) uint64 { return uint64(v) })
 	case []int64:
 		encodeDistributedPrimitiveArray(e, node, v, "int64Array", func(v int64) uint64 { return uint64(v) })
+	case []uint64:
+		encodeDistributedPrimitiveArray(e, node, v, "uint64Array", func(v uint64) uint64 { return v })
 	case []uint16:
 		encodeDistributedPrimitiveArray(e, node, v, "uint16Array", func(v uint16) uint64 { return uint64(v) })
 	case []float32:
@@ -927,6 +933,7 @@ type distributedPayloadDecoder struct {
 	rows                [][][]Value
 	vectors             []*ValueVec
 	longVectors         []*LongVec
+	bitVectors          []*BitVector
 	stateVectors        []*StateVec
 	stateVectorArrays   [][]*StateVec
 	longVectorArrays    [][]*LongVec
@@ -985,6 +992,14 @@ func decodeDistributedStates(payload *DistributedStatePayload, decoder *distribu
 			return nil, fmt.Errorf("primitive array %d: %w", i+1, err)
 		}
 		decoder.primitiveArrays[i], decoder.primitiveArrayKinds[i] = array, node.Kind
+	}
+	decoder.bitVectors = make([]*BitVector, len(payload.BitVectors))
+	for i, id := range payload.BitVectors {
+		words, err := decoder.modelData(DistributedValueNode{DataKind: "uint64Array", DataArray: id})
+		if err != nil {
+			return nil, fmt.Errorf("bit vector %d words: %w", i+1, err)
+		}
+		decoder.bitVectors[i] = &BitVector{word: words.([]uint64)}
 	}
 	for i, name := range payload.Strings {
 		decoder.strings[i] = &UniqueString{s: name.Text, tok: name.Token, loc: name.Location, unregistered: name.Unregistered}
@@ -1565,6 +1580,14 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 		return node.DataString, nil
 	case "uniqueString":
 		return d.string(node.DataName)
+	case "bitVector":
+		if node.DataArray < 0 || node.DataArray > len(d.bitVectors) {
+			return nil, fmt.Errorf("invalid attached bit vector reference %d", node.DataArray)
+		}
+		if node.DataArray == 0 {
+			return (*BitVector)(nil), nil
+		}
+		return d.bitVectors[node.DataArray-1], nil
 	case "longVector":
 		if node.DataArray < 0 || node.DataArray > len(d.longVectors) {
 			return nil, fmt.Errorf("invalid attached long vector reference %d", node.DataArray)
@@ -1640,7 +1663,7 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return nil, fmt.Errorf("model float32 data outside 32-bit representation")
 		}
 		return math.Float32frombits(uint32(node.DataFloatBits)), nil
-	case "boolArray", "intArray", "int8Array", "int16Array", "int32Array", "int64Array", "uint16Array", "float32Array", "float64Array":
+	case "boolArray", "intArray", "int8Array", "int16Array", "int32Array", "int64Array", "uint64Array", "uint16Array", "float32Array", "float64Array":
 		if node.DataArray < 0 || node.DataArray > len(d.primitiveArrays) {
 			return nil, fmt.Errorf("invalid primitive array reference %d", node.DataArray)
 		}

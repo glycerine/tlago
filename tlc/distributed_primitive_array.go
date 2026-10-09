@@ -71,6 +71,8 @@ func decodeDistributedPrimitiveArray(node DistributedPrimitiveArrayNode, isNil b
 		return decodeDistributedPrimitiveBits(node, isNil, func(v uint64) (int32, bool) { return int32(v), int64(int32(v)) == int64(v) })
 	case "int64Array":
 		return decodeDistributedPrimitiveBits(node, isNil, func(v uint64) (int64, bool) { return int64(v), true })
+	case "uint64Array":
+		return decodeDistributedPrimitiveBits(node, isNil, func(v uint64) (uint64, bool) { return v, true })
 	case "uint16Array":
 		return decodeDistributedPrimitiveBits(node, isNil, func(v uint64) (uint16, bool) { return uint16(v), v <= math.MaxUint16 })
 	case "float32Array":

@@ -306,6 +306,10 @@ must use the updated native payload schema.
 Attached `*LongVec` objects now share the state graph's vector table with result
 fingerprints. Active elements and object aliases survive; spare capacity and
 backing-array aliases do not. Null/empty vectors and map-key identity are retained.
+Attached `*BitVector` objects retain complete word storage, including trailing
+zeros, object aliases and shared nonempty word arrays. Native `[]uint64` words
+use the primitive-array graph. Null/empty storage, pointer map keys and receiver
+isolation survive direct/TCP/error-context transfer. Peers need updated builds.
 Attached state vectors likewise share their table with result partitions,
 preserving vector/state cycles, null entries, active capacity and receiver
 ownership. Decoded vectors retain TLCStateVec's unbounded collection policy.

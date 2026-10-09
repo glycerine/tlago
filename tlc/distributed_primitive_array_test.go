@@ -17,6 +17,7 @@ func distributedPrimitiveArrayExamples() []any {
 		[]int16{math.MinInt16, 0, math.MaxInt16},
 		[]int32{math.MinInt32, 0, math.MaxInt32},
 		[]int64{math.MinInt64, 0, math.MaxInt64},
+		[]uint64{0, 1 << 63, math.MaxUint64},
 		[]uint16{0, 0xd800, 0xdfff, math.MaxUint16},
 		[]float32{1, 0, math.Float32frombits(1 << 31), math.Float32frombits(1), math.MaxFloat32, float32(math.Inf(1)), float32(math.Inf(-1)), math.Float32frombits(0x7fc01234)},
 		[]float64{1, 0, math.Float64frombits(1 << 63), math.Float64frombits(1), math.MaxFloat64, math.Inf(1), math.Inf(-1), math.Float64frombits(0x7ff8000000001234)},

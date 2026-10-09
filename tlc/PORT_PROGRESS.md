@@ -25341,3 +25341,30 @@ explicit diagnosis, with the known failing profile documented. Four Missing
 entries become Reconcile, not complete. Inventory remains 37 complete with no
 new original-method credit. No full suite or race workload ran. All handles
 are terminal.
+
+### October 9, 2026: transfer attached bit-vector storage
+
+Core application and fingerprint-result checks established no new algorithm
+gap. A concrete attachment gap remains: source BitVector is serializable with
+an ordinary long[] word field, but native model data rejects *BitVector. Direct
+reproduction fails with that unsupported-type error (attached-bit-vector-red.log,
+terminal f241cc, status 1, 0.011 seconds).
+
+Added a native bit-vector object table referencing the primitive-array graph,
+plus uint64Array storage. Complete word length/bits, trailing zeros, vector
+identity, shared nonempty backing storage, distinct equal arrays and null/empty
+forms survive. Decoder allocation precedes model-data/key population. Invalid
+vector/word IDs and wrong storage kinds fail explicitly. No arbitrary object
+codec or Java runtime/serialization machinery is added.
+
+Initial bit-vector/TCP and existing bit-vector checks pass
+(attached-bit-vector-green.log, terminal 573250, status 0, 0.018 seconds).
+Final related primitive-array/model-data/result/TCP checks, malformed references,
+both original BitVector printing assertions and all 44 original ModelValue
+methods pass unchanged (attached-bit-vector-final.log, terminal 71ee79,
+status 0, 0.043 seconds). Receiver mutation retains local aliases without reaching
+the sender, including returned worker states. Failure context retains vector
+and storage identity. Peers carrying
+the new tags/table need updated native builds. No original attachment method
+exists; inventory remains 37 complete and four Reconcile. No full suite,
+full-model workload or race run. All handles are terminal.

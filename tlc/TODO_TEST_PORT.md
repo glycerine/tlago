@@ -1821,6 +1821,14 @@ spare capacity and backing-array aliases are discarded as in the source.
 Invalid references fail explicitly. Original LongVec/GrowingLongVec methods
 remain port complete and unchanged; no transport method credit is added.
 
+BitVector attachments now retain their complete word array, trailing zero
+words, pointer identities and shared nonempty storage through the native graph.
+Direct/TCP/result/error-context checks cover map keys, nil/empty distinctions,
+receiver isolation and invalid object/word/kind references. Existing primitive
+array checks include uint64 word arrays. Both original BitVector printing
+assertions and all 44 ModelValue methods pass unchanged. There is no direct
+original attachment method, so completion counts remain unchanged.
+
 State-vector attachments now share the native graph with result partitions.
 Direct/TCP/error-context checks preserve vector/state cycles, repeated and distinct
 objects, active capacity, null/empty vectors, map keys and receiver ownership.

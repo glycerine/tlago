@@ -13691,3 +13691,23 @@ including retained rejection and fresh eligible reselection. This identifies
 an upstream-shaped limitation rather than authorizing a production workaround.
 All four original methods remain Reconcile, without completion credit. The
 tagged draft is intentionally not an ordinary green test target.
+
+### Attached bit-vector storage
+
+Source BitVector is serializable with an ordinary long[] word field and no
+custom transfer method. Its native attachment contract therefore retains the
+complete word-array length, trailing zero words and object/storage sharing,
+unlike LongVec's custom active-prefix transfer. The state graph now has a
+BitVectors table of primitive word-array references. A uint64Array primitive
+tag preserves Go's raw 64-bit words and shared nonempty backing storage; decoder
+allocation precedes model-data/key population. Null vectors, null words and
+allocated empty words remain distinct. Invalid object/word references and
+wrong primitive-array kinds fail explicitly, including in attached map keys.
+
+Direct graph and actual worker TCP/result/WorkerException checks verify identity,
+full word bits, storage length, nil/empty distinctions, mutations and receiver
+isolation. Existing primitive-array checks include uint64 words, and both
+original BitVector printing assertions plus all 44 ModelValue methods pass
+unchanged. No direct original attachment test exists and no credit is added.
+Communicating roles carrying these new tags/table need updated native builds.
+No Java object serializer, reflection runtime or arbitrary-object codec is added.
