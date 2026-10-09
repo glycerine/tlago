@@ -1602,6 +1602,11 @@ recovery without pending-file promotion. They verify the source distinction
 between ignored direct Mem recovery I/O and propagated nested disk recovery
 failures. No original-method completion credit is added.
 
+Native connection-owner checks additionally verify that joined already-closed
+errors cannot hide other callback cleanup failures, including discovery-owned
+coordinator cleanup. They preserve error causes and later-owner cleanup without
+adding original Java method completion credit.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,

@@ -46,11 +46,39 @@ func (c *distributedConnections) close() error {
 	c.mu.Unlock()
 	var failures []error
 	for _, client := range clients {
-		if err := client.Close(); err != nil && err != rpc.ErrShutdown && !errors.Is(err, net.ErrClosed) {
+		if err := client.Close(); !distributedCloseIsBenign(err) {
 			failures = append(failures, err)
 		}
 	}
 	return errors.Join(failures...)
+}
+
+// An already-closed component is harmless only when it is the entire failure.
+// errors.Is alone would also match one branch of a joined error and discard
+// unrelated callback cleanup failures alongside it. Keep those original errors
+// intact so their context and errors.Is/errors.As causes survive shutdown.
+func distributedCloseIsBenign(err error) bool {
+	if err == nil {
+		return true
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !distributedCloseIsBenign(cause) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		if cause := wrapped.Unwrap(); cause != nil {
+			return distributedCloseIsBenign(cause)
+		}
+	}
+	return err == rpc.ErrShutdown || errors.Is(err, net.ErrClosed)
 }
 
 type distributedCoordinatorBinding struct {

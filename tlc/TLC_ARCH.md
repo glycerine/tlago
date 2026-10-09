@@ -12445,3 +12445,17 @@ I/O failures as operation failures, so they propagate through the native RPC
 error graph and manager recovery stops before the healthy registration. These
 checks verify the storage/transport boundary, not full-model incomplete-snapshot
 recovery or checkpoint atomicity. Production algorithms are unchanged.
+
+### Native connection-owner cleanup errors
+
+Distributed connection owners and coordinator discovery previously used an
+errors.Is match to suppress closed-connection errors. That could match one
+branch of errors.Join and discard a different callback's cleanup failure. They
+now inspect each wrapped/joined cause and ignore the error only when every cause
+is an already-closed connection. Mixed failures retain the complete original
+error, including its context and errors.Is/errors.As identity. Cleanup still
+visits later owners and remains idempotent. This changes native resource error
+handling; source coordinator algorithms and the no-replay transport policy are
+unchanged. Focused native checks cover both raw and wrapped/joined closed errors
+and a discovery-owned coordinator with a previously closed primary connection
+and a failing callback close. There is no direct original Java method to credit.

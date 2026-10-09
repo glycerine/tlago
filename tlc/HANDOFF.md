@@ -103,6 +103,11 @@ use an exit-only trait, allowing shutdown to visit later registrations. Prior
 closed clients and insertion/checkpoint failures remain reportable. The obsolete
 `UnmarshalException` carrier and RMI-specific exit branch are removed.
 
+Native connection-owner cleanup ignores already-closed errors only when all
+causes are benign. Joined errors that also contain a real callback cleanup
+failure remain reportable through discovery and connection owners, preserving
+their original context and `errors.Is`/`errors.As` causes.
+
 Named `MultiFPSet` checkpoint and recovery operations run child stores
 concurrently and join before returning. Child I/O failures propagate as operation
 failures with native Go error wrapping; the manager must not ignore them as remote

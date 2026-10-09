@@ -137,7 +137,7 @@ func (d *DistributedNetworkDiscovery) Close() error {
 	sort.Strings(keys)
 	for _, key := range keys {
 		client := clients[key]
-		if err := client.CloseConnection(); err != nil && !errors.Is(err, rpc.ErrShutdown) {
+		if err := client.CloseConnection(); !distributedCloseIsBenign(err) {
 			failures = append(failures, err)
 		}
 	}

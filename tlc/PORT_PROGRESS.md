@@ -23192,3 +23192,29 @@ begin-reply-loss-verified.log, terminal 3fa9e5, status 0, 0.070 seconds).
 Only the new short three-backend test ran with race instrumentation and passes
 (checkpoint-begin-reply-loss-race.log, terminal 285b6a, status 0, 1.127 seconds).
 All handles are terminal. No full model or full suite was repeated.
+
+### October 8, 2026: preserve mixed native connection cleanup failures
+
+Audited distributed command/management paths against Java and reconfirmed the
+existing native model assertions for EWD840, DieHard and TSnapShot. Kept the
+explicit no-replay connection contract; no RMI reconnect behavior was added.
+Found a native ownership bug: errors.Is on an errors.Join result could match
+one already-closed component and suppress a different callback cleanup failure.
+Reproduced this in both distributedConnections.close and discovery cleanup with
+an actual coordinator client whose primary connection was already closed.
+
+Owner cleanup now recursively checks wrapped/joined causes and ignores only
+errors consisting entirely of benign closed-connection causes. Mixed failures
+retain the original error and its context/causes. Later owners still close and
+repeat cleanup does not repeat connection closes. Coordinator algorithms and
+transport replay behavior remain unchanged. Upstream has no direct native
+connection-owner method, so focused unit checks add no original-method credit.
+
+Before the fix, focused checks fail as expected (distributed-close-errors-
+before.log, terminal 4c526a, status 1, 0.012 seconds). After the fix they pass
+(distributed-close-errors-fixed.log, terminal 575638, status 0, 0.012 seconds).
+Final related short discovery, publication, coordinator RPC and cleanup checks
+pass (distributed-close-errors-verified.log, terminal afbf6c, status 0,
+0.040 seconds). Short cleanup/concurrent lookup checks pass under race
+instrumentation (distributed-close-errors-race.log, terminal 2730e5, status 0,
+1.056 seconds). All handles are terminal. No full model or full suite was run.
