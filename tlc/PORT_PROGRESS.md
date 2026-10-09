@@ -22859,3 +22859,30 @@ and smart-proxy network-overhead tests also pass (fingerprint-put-reply-loss-
 originals.log, terminal e5a3d7, status 0, 0.075 seconds). This supplemental native
 failure phase has no direct original method and adds no original-method credit.
 All child processes are joined and all runs terminal. No full suite or race.
+
+### October 8, 2026: multiple workers sharing one process application
+
+Audited source TLCWorker.main/runnables and getNextStates against native worker
+startup and computation. The existing Go ownership matches: one application,
+fingerprint manager, executor and exit latch are shared by process workers,
+with separate per-worker caches and computation locks. Initialization ordering,
+successor filtering and error handling needed no implementation change.
+
+Existing full-model rows selected one worker thread per process. Added a native
+MC06 N=7 row with two workers in one process, retaining the original model and
+state-count assertions. It requires distinct worker endpoints on the same TCP
+listener and exactly one statistics record per identity. Nonzero sent and
+received counts ensure both workers perform actual work. Both roles reject
+GENERAL and unexpected EOF; the final result must retain 114,942 distinct states,
+an empty queue and FINISHED. All children must terminate and be joined.
+
+Initial two-worker run passes (multiple-worker-threads-model.log, terminal
+305da6, status 0, 38.910 seconds), with sent/received counts 57,699/49,127 and
+57,243/49,431. Strengthened permanent assertions to require actual work and
+statistics identity for both workers; the final selection passes
+(multiple-worker-threads-verified.log, terminal 28ea53, status 0, 40.434 seconds).
+Related bootstrap, shutdown-traversal, console and complete original smart-proxy
+checks pass (multiple-worker-threads-related.log, terminal 5230fc, status 0,
+0.013 seconds). No original method directly tests this native process layout;
+the four assumption-disabled methods remain Missing and receive no credit.
+All runs are terminal and children joined. No full suite or race workload.

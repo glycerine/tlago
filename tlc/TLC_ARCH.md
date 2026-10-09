@@ -12256,3 +12256,20 @@ lost insertion reply and one source failover warning per coordinator/worker.
 Other roles retain no-EOF assertions; GENERAL and no-server warnings are rejected.
 This does not establish behavior for arbitrary network blackholes or ambiguous
 insertions on hosts that remain usable, and it introduces no retry redesign.
+
+### Multiple workers sharing one native application
+
+Source TLCWorker.main constructs its DistApp and fingerprint manager once, then
+shares them across registration runnables along with its executor and exit latch.
+Native worker startup retains that ownership: workers have separate caches and
+computation locks, while using the same application, manager and runtime. This
+audit found no implementation mismatch and made no production change.
+
+The full unchanged MC06 N=7 process harness now selects two worker threads in one
+process. It requires distinct registered URIs on one TCP listener and exactly one
+final statistics record for each URI, with nonzero sent/received counts proving
+that both workers were exercised. The ordinary 114,942 distinct-state count,
+empty queue and FINISHED assertion remain unchanged. GENERAL and unexpected EOF
+are rejected on both coordinator and worker roles. All children must exit and be
+joined. This adds native shared-runtime coverage without claiming translation of
+the source assumption-disabled harness or proving exhaustive scheduling behavior.

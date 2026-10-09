@@ -147,6 +147,11 @@ combined fingerprint roles require 114,942 distinct states, an empty queue,
 FINISHED and no GENERAL. Native DieHard/TSnapShot process models preserve their
 original error/trace assertions in `tlc_distributed_trace_process_test.go`.
 
+A two-worker process row exercises the source shared application, fingerprint
+manager, executor and exit latch. It requires distinct worker endpoints on one
+native listener, work and statistics from each worker, 114,942 distinct states,
+an empty queue and clean shutdown with no GENERAL or EOF on either role.
+
 Repeated registration of one native worker preserves two coordinator threads
 and shared worker identity. The full model retains 114,942 distinct states and
 an empty queue. First exit removes the endpoint; the second receives the native

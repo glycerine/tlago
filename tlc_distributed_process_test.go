@@ -35,6 +35,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		fingerprintReplyLoss                       bool
 		fingerprintLoss                            bool
 		fingerprintServers                         int
+		workerThreads                              int
 		midRunCheckpoint                           bool
 		checkpointInterrupted                      bool
 		checkpointInterruptedAfterQueue            bool
@@ -42,6 +43,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		checkpointInterruptedAfterFirstFP          bool
 	}{
 		{name: "coordinator_fingerprints"},
+		{name: "multiple_worker_threads", workerThreads: 2},
 		{name: "standalone_fingerprints", remoteFP: true},
 		{name: "partitioned_fingerprints", remoteFP: true, fingerprintServers: 2},
 		{name: "fingerprint_server_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true},
@@ -428,7 +430,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if scenario.duplicateWorkerRegistration {
 					workerRole = "worker-register-twice"
 				}
-				start(workerRole, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				start(workerRole, fmt.Sprintf("-Dtlc2.tool.distributed.TLCWorker.threadCount=%d", max(1, scenario.workerThreads)), "127.0.0.1")
 			}
 			if scenario.fingerprintLoss {
 				workerRole := "worker-fingerprint-loss"
@@ -615,6 +617,45 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			// Mechanical EWD840Distributed{WithFPSet}TLCTest assertions:
 			// FINISHED, STATS distinct=114942 and queue=0, no GENERAL.
 			output := server.output.String()
+			if scenario.workerThreads > 1 {
+				registered := nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)
+				stats := nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerStats)
+				if len(registered) != scenario.workerThreads || len(stats) != scenario.workerThreads {
+					t.Fatal("worker group did not register and report every worker")
+				}
+				endpoints := make(map[string]bool)
+				var host string
+				for _, message := range registered {
+					// Registration text ends with the date. Its URI identifies
+					// distinct workers on the one native process listener.
+					match := regexp.MustCompile(`tcp://[^\s]+`).FindString(message)
+					endpoint, err := url.Parse(match)
+					if err != nil || match == "" || endpoints[match] || endpoint.Host == "" || endpoint.Path == "" {
+						t.Fatalf("worker group endpoint identity is invalid: %q", message)
+					}
+					endpoints[match] = true
+					if host != "" && host != endpoint.Host {
+						t.Fatal("worker group did not share its process listener")
+					}
+					host = endpoint.Host
+				}
+				for _, message := range stats {
+					endpoint := regexp.MustCompile(`tcp://[^\s]+`).FindString(message)
+					counts := regexp.MustCompile(`Sent: (\d+) Rcvd: (\d+)`).FindStringSubmatch(message)
+					// Ensure this row exercised every shared-app worker, rather
+					// than merely registering an idle second endpoint.
+					if !endpoints[endpoint] || len(counts) != 3 || counts[1] == "0" || counts[2] == "0" {
+						t.Fatalf("worker group statistics lack actual work or identity: %q", message)
+					}
+					delete(endpoints, endpoint)
+				}
+				for _, process := range roles {
+					roleOutput := process.output.String()
+					if len(nativeDistributedMessages(roleOutput, tlc.ECGeneral)) != 0 || strings.Contains(roleOutput, "unexpected EOF") {
+						t.Fatalf("shared-worker role %s emitted GENERAL or lost a reply", process.output.role)
+					}
+				}
+			}
 			if scenario.fingerprintServers > 1 {
 				if len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
 					t.Fatal("partitioned coordinator did not accept exactly two fingerprint registrations")
