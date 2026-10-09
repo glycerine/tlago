@@ -28095,3 +28095,67 @@ runtime-source-extendees-broad-originals.log, terminal 129a71, status 0.
 Receipt: ok  	github.com/glycerine/tlago	176.596s
 The same full off-heap random session remains live; no completion credit.
 Git diff --check passes.
+
+
+Canonical theorem and assumption lookup aliases (2026-10-09)
+
+Previous goal turn made authoritative progress in f1c54bb. Revalidated the clean
+worktree and polled the same live full off-heap random session 77502. Audited
+Java's distinct theorem definition nodes, SpecProcessor's OpDef enumeration,
+the Go canonical theorem adapters and the existing evaluator's direct
+ThmOrAssumpDefNode support. Definition installation was lowering AST theorem
+views into unrelated OpDefNodes even after retaining their actual source graphs.
+
+Installation now binds generated named theorem/assumption aliases to their
+canonical ThmOrAssumpDefNode. Named INSTANCE aliases resolve the owner Context's
+actual export. An initial probe exposed a second case: qualified convenience
+aliases for unnamed instances are absent from the source Context, whose export
+is unqualified. Resolve those aliases to that actual export too. Source APSubstIn
+wrappers, parameters and identities remain intact. AST-only entries without a
+generated source theorem retain their existing fallback.
+
+Initial focused original checks pass in runtime-canonical-theorem-alias-originals.log,
+terminal 0f174f, status 0, 8.707 seconds. The initial broader legacy/debugger/EWD998/
+coverage/LET/cyclic/ASSUME/trace selection passes in
+runtime-canonical-theorem-alias-broad-originals.log, terminal 6e2d45, status 0,
+179.067 seconds. These precede the unnamed-instance alias correction. Final
+focused original checks pass in runtime-canonical-theorem-alias-final-originals.log,
+terminal fdf638, status 0, 9.040 seconds.
+
+Ignored before/after observations on unchanged original Test207, Test208, Test209
+and Test219 compare 24 theorem aliases against actual source definitions. Before
+conversion, 13 aliases had the wrong definition type and three synthetic source
+OpDefs were allocated. After both corrections all 24 aliases match in source
+identity and type; no synthetic source OpDefs or expression fallback calls remain
+in this selection. The previous observation recorded nine such fallback calls.
+Receipts: runtime-canonical-theorem-alias-final-before.log, terminal 6f7dd2,
+and runtime-canonical-theorem-alias-final-after.log, terminal 9eb2db; both status 0.
+Original assertions are unchanged. No persistent tests or method credit added.
+
+This does not prove general theorem/model-slot parity: source symbol caches and
+consumers still requiring OpDefNode remain to audit. General source generation,
+mutation sharing and remaining native INSTANCE lowering also remain pending.
+No full-workspace or XML/ApalacheIR sweep, race instrumentation or email work.
+The full off-heap random workload remains live beyond 357 million of its original
+2,147,483,648 iterations; no restart or completion credit.
+
+Whole-module source/runtime entry/exit observations also match for all 42 module
+views across those four unchanged original proof models, including Test219's
+9,200 root events, with no alias/null failures. Receipt:
+runtime-canonical-theorem-alias-module-traces.log, terminal 8f44aa, status 0,
+1.712 seconds. This verifies retained traversal for the represented models.
+
+A separate ignored source-symbol-cache observation confirms a remaining stale
+symbol for Test207's Thm: sourceSymbols still holds its earlier AST placeholder,
+although the installed alias and canonical Context use the actual theorem symbol.
+No theorem source-symbol entries are observed in the other three models after
+removing synthetic conversion. Receipt: runtime-canonical-theorem-source-symbols.log,
+terminal 097844, status 0. Reconcile that cache and its pre-module-table consumers
+next; current alias correctness does not establish this separate identity contract.
+
+Final broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and
+trace-expression selection passes after the unnamed-instance correction:
+runtime-canonical-theorem-alias-complete-originals.log, terminal 2d1529,
+status 0, 180.233 seconds. Original assertions and workload bounds are unchanged.
+The full off-heap random log exceeds 364 million iterations in the same live
+session; no completion credit. Git diff --check passes.

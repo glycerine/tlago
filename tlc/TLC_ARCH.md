@@ -10983,6 +10983,22 @@ bound expressions retain their actual source graph identities and memberships.
 The AST path remains for expressions with no generated source graph; general
 source-generation completeness is still unproven.
 
+Definition installation now recognizes AST views of named theorems and assumptions
+and binds generated lookup aliases to their actual canonical ThmOrAssumpDefNode.
+Named INSTANCE aliases resolve the owner's exported source Context entry;
+qualified convenience aliases for unnamed instances resolve the actual
+unqualified export. This retains the source's APSubstIn wrappers and formal
+parameters rather than lowering the synthetic theorem AST into an OpDefNode.
+AST-only entries without a generated theorem retain their existing fallback.
+
+On unchanged original Test207, Test208, Test209 and Test219, all 24 represented
+theorem aliases now match their canonical source views in identity and type.
+The prior lookup mismatches affected 13 aliases and allocated three synthetic
+source OpDefs. The correction removes all three allocations and all nine
+observed synthetic-expression fallback calls in this selection. This observation
+does not establish general theorem/model-slot lookup parity: source symbol caches
+and callers that still require an OpDefNode need a separate contract audit.
+
 An overlay on unchanged original Test219 observes 648 root traces, all matching
 exactly, including all 371 initial-context events, without alias/null failures.
 This closes the observed synthetic `$Pair` identity gap.

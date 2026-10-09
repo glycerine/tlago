@@ -68,8 +68,10 @@ completeness, mutation sharing and remaining native INSTANCE fallback lowering
 remain pending; see `TLC_ARCH.md`.
 Runtime module extendees now preserve the actual source module identities and
 order, excluding implicit trace helpers from inheritance membership.
-Next audit: reconcile theorem lookup AST conversion with canonical theorem
-definitions before removing the remaining synthetic-expression fallback.
+Generated theorem and assumption lookup aliases now bind canonical theorem
+definitions, preserving INSTANCE substitutions and formals. Test207 still has a
+stale theorem placeholder in `sourceSymbols`; reconcile that cache and its
+consumers next. Model-slot consumers requiring an `OpDefNode` also need an audit.
 
 ## Verification baseline and test credit
 

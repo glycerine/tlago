@@ -438,6 +438,31 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 	return nil
 }
 
+// The AST lookup index also contains theorem definitions and qualified aliases
+// for unnamed INSTANCE exports. Bind those aliases to their actual source
+// theorem definition rather than lowering a synthetic operator body.
+func (b *tlcBridge) canonicalTheoremAlias(name string, definition *Definition) *tlc.ThmOrAssumpDefNode {
+	if !definition.TheoremLike {
+		return nil
+	}
+	owner := b.spec.Modules[b.definitionModules[definition]]
+	member := definition.Name
+	if binding := b.instanceDefinitions[name]; binding != nil {
+		owner = binding.owner
+		member = strings.TrimPrefix(name, owner.Name+"!")
+		if binding.inst.exportsUnqualified() {
+			member = definition.Name
+		}
+	}
+	if owner == nil || owner.semanticNode == nil {
+		return nil
+	}
+	if source, ok := owner.semanticNode.context.getSymbol(member).(*sanySemThmOrAssumpDefNode); ok {
+		return b.canonicalGraph(source).(*tlc.ThmOrAssumpDefNode)
+	}
+	return nil
+}
+
 // Generator imports the complete ThmOrAssumpDefNode context separately from
 // OpDefNodes. Its substitution wrapper is APSubstIn, and nested instances keep
 // all earlier wrappers and the original theorem's source identity.

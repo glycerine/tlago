@@ -471,6 +471,11 @@ func (b *tlcBridge) installDefinitions() {
 		if def == nil {
 			continue
 		}
+		if theorem := b.canonicalTheoremAlias(name, def); theorem != nil {
+			b.symbols[name] = theorem.Symbol
+			b.defineAlias(name, theorem)
+			continue
+		}
 		if isNativeStandardDefinitionOverrideName(name, def) && b.installNativeStandardDefinitionOverrideAlias(name, def) {
 			continue
 		}
