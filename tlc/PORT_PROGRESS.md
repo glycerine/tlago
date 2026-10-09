@@ -22670,3 +22670,33 @@ and original Java ModelValue methods pass (model-data-arrays-verified.log,
 terminal 952a2f, status 0, 0.026 seconds). Logs inspected and all processes terminal.
 No original-method completion credit, full suite or race run. This slice extends
 the native Go payload for TLC values and does not introduce RMI/JVM machinery.
+
+### October 8, 2026: worker control calls during an accepted lookup stall
+
+Source audit confirms TLCWorker.getNextStates is synchronized, while isAlive,
+cache reporting and exit are not. Exit uses orderly executor shutdown, allowing
+accepted tasks to finish. The current Go computation mutex, atomic status/cache
+statistics, independent RPC dispatch and executor shutdown already match these
+boundaries; no production change was needed.
+
+Added two short native TCP cases using a real worker and remote fingerprint
+store. An endpoint gate holds an accepted ContainsBlock call, with the real
+worker computing flag set and successor/statistics work already done. Keepalive
+and cache calls on the same worker connection must answer before lookup release.
+The exit row additionally requires successful exit, future endpoint rejection
+and executor shutdown while computation remains active. Releasing the accepted
+lookup must still produce the complete two-successor result with predecessor UID
+31, no replay, no fingerprint insertion and finally-cleared computing flag.
+The fixture releases and joins computation/control calls on failure, then drains
+accepted replies at both hosts. No timer schedule or production deadline changed.
+This bounded service stall does not prove arbitrary blackholes or full-model
+network partitions, and there is no direct original method for this transport
+boundary. Original-method credit remains unchanged.
+
+Initial two cases pass (worker-stalled-lookup.log, terminal 6723ea, status 0,
+0.020 seconds). Final cleanup plus related short worker lifecycle/lost-reply and
+original smart-proxy cases pass (worker-stalled-lookup-verified.log, terminal
+ad5dc6, status 0, 0.036 seconds). Race instrumentation was restricted to the new
+two-case concurrency test (worker-stalled-lookup-race.log, terminal 137559,
+status 0, 1.050 seconds). Logs inspected and all processes terminal. No full
+suite or long workload/race combination; existing original assertions unchanged.

@@ -12168,6 +12168,16 @@ Negative/out-of-range IDs fail explicitly. Worker requests and results use this
 same native representation; no Java serialization or generic JVM object codec is
 introduced. Opaque custom data remains explicitly rejected.
 
+Worker GetNextStates owns the computation mutex; IsAlive, cache statistics and
+Exit do not acquire that mutex, matching the source method boundaries. Native
+RPC multiplexes independent calls on one connection. A held accepted remote
+fingerprint lookup must not block worker control calls. Exit shuts down future
+executor submissions and endpoint dispatch while letting accepted lookup tasks
+and the active computation finish. Short TCP checks verify the successful reply
+after release, unchanged predecessor UIDs, one lookup, no fingerprint insertion
+and computation-flag cleanup. This is a bounded service stall, not proof of
+arbitrary network blackholes or full-model partition behavior.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

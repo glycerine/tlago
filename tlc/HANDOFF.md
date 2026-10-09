@@ -76,6 +76,9 @@ manager snapshots and keepalive are wired into the production CLI. Roles are
 listener and waits for both lifetimes. Signal shutdown occurs at the source
 shutdown-hook boundary. Accepted replies drain before orderly host shutdown;
 forced connection closure remains independent of computation/storage lifetime.
+Short TCP checks also hold a worker's accepted fingerprint lookup open while
+keepalive/cache/exit calls use the same worker connection. Control calls remain
+responsive; exit rejects new calls and lets the accepted computation finish.
 
 Transport does not redial or replay ambiguous fingerprint mutations. Manager
 failover retains the source algorithm, including its forward reassignment and
@@ -184,7 +187,9 @@ it does not add CLI startup support or establish checkpoint atomicity.
    empty. Do not reorder startup to manufacture support.
 2. Cover additional full-model fingerprint failure phases and general network
    partitions. Forced TCP closure/reply loss is covered; it does not prove every
-   partition or stalled-connection case.
+   partition or stalled-connection case. One gated accepted fingerprint lookup
+   now verifies worker control responsiveness and orderly exit; arbitrary network
+   blackholes and full-model partition behavior remain unproved.
 3. Isolate interruption after trace commit and before intern commit. Trace and
    intern owners are concrete. Do not add a production test-only hook, reorder
    commits or use a timing race. Removing `vars.tmp` causes intern commit to
