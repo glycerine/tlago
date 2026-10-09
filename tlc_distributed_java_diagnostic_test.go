@@ -32,8 +32,8 @@ import "testing"
 
 // These diagnostics deliberately bypass Java's unconditional setup assumption.
 // They retain every original assertion and source Ant configuration. Passing a
-// diagnostic is not an enabled original-test pass. Local EWD840 retains the
-// documented final off-heap closed-flusher failure; do not weaken it here.
+// diagnostic is not an enabled original-test pass. The final off-heap flusher
+// lifecycle bug is deliberately fixed in Go; see JAVA_BUG_FOUND.md.
 func TestDiagnosticJavaDieHardDistributed(t *testing.T) {
 	checkJavaDieHardDistributed(t)
 }

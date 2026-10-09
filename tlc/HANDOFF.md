@@ -2,14 +2,12 @@
 
 Updated: October 9, 2026. Active branch: `master`.
 
-Current continuation status: blocked on the user's upstream-defect policy
-choice, requested after the remaining-scope audit. Preserve Java behavior until
-answered. The choices are strict parity with the documented source limitations,
-or explicit Go fixes for the retained off-heap flusher and checkpoint-error
-formatting hang. Four original model methods remain Reconcile; no skipped body
-is counted as passing. Resume independent implementation work if a concrete new
-port gap is identified; do not manufacture more fault scenarios to avoid this
-reconciliation decision.
+The user authorized fixing the upstream off-heap flusher lifecycle bug in Go.
+The fix and upstream report are in [JAVA_BUG_FOUND.md](../JAVA_BUG_FOUND.md);
+focused regressions and the formerly failing original-profile EWD840 diagnostic
+pass. This authorization does not cover the separate checkpoint-error formatting
+hang. Four original model methods remain Reconcile; no skipped body is counted
+as passing. Continue concrete port gaps without manufacturing fault scenarios.
 
 This is the current restart guide. Detailed audit history and verification
 receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md); implementation contracts
@@ -61,11 +59,12 @@ these separate diagnostics earn no original-method completion credit.
 
 The diagnostic runs the original Ant off-heap/512 KiB profile with CPU-derived
 workers and native process joins instead of JVM exit interception. On 48 workers,
-DieHard, remote EWD840 and TSnapShot pass; local EWD840 fails with GENERAL during
-final off-heap CheckFPs. Java's selector likewise retains a previously shut-down
-flusher when new partitions are too small. Do not reset it to hide this source
-behavior, weaken the assertions or infer completion from source-skipped entries.
-The opt-in diagnostic retains the known failure.
+DieHard, remote EWD840 and TSnapShot passed before this fix. Local EWD840 exposed
+Java's reuse of a shut-down flusher when final-check partitions become too small.
+The explicitly authorized Go correction selects the existing sequential path.
+The unchanged local EWD840 diagnostic now passes in 74.80 seconds, including
+no GENERAL and normal process exits. See [JAVA_BUG_FOUND.md](../JAVA_BUG_FOUND.md)
+for the source analysis and regression. Source-skipped entries remain separate.
 
 | Original class | Pending method |
 | --- | --- |
@@ -235,9 +234,9 @@ restart or checkpoint atomicity. See architecture notes for their exact limits.
 
 The source inventory is fully mapped, but mapping is not proof of parity. The
 four model reconciliations have translated assertion bodies and preserve Java's
-shared unconditional skip; they are not four absent implementations. The known
-off-heap retained-flusher failure and intern-error formatting hang are upstream
-behaviors. Changing either requires a deliberate decision about divergence.
+shared unconditional skip; they are not four absent implementations. The
+upstream off-heap flusher defect has an explicitly authorized Go fix. The separate
+intern-error formatting hang still requires a decision before diverging.
 Further failure-phase and partition checks below are verification gaps, not
 identified missing source features. Choose concrete source behavior and consult
 existing receipts before adding scenarios; do not turn this into an unbounded
@@ -261,10 +260,10 @@ fault-testing project. Original-method credit remains unchanged.
 4. Keep unsupported metadata explicit. Extend the completed core producer audit
    only when a concrete additional producer and native transfer contract warrant
    it. Do not invent action/cache data on ordinary states to expand codec scope.
-5. Continue reconciling the four model bodies and native harness adaptation with
-   the retained-flusher failure described above. The exact source assumption is
-   now restored, but skipped entries and opt-in diagnostics do not establish
-   passing bodies or earn completion credit.
+5. Continue reconciling the four model bodies and native harness adaptation.
+   The flusher defect is fixed and the formerly failing diagnostic passes.
+   The exact source assumption remains preserved; skipped entries and opt-in
+   diagnostics do not earn original-method completion credit.
 
 ## Testing, commits and documentation
 

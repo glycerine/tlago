@@ -14734,9 +14734,13 @@ or proof of off-heap final-check loss. No production algorithm was changed.
 
 OffHeapDiskFPSet overrides the heap disk final-check algorithm. Upstream sorts
 and scans retained in-memory entries, approximating the closest pair without
-including evicted disk entries. The Go override preserves this behavior and
-the retained flusher selection; it must not be replaced with a complete disk
-flush to satisfy a native fixture.
+including evicted disk entries. The Go override preserves this approximation;
+it must not be replaced with a complete disk flush to satisfy a native fixture.
+The user subsequently authorized correcting Java's stale flusher selection:
+ineligible parallel partitions now clear the old concurrent flusher and select
+the existing sequential path. This deliberate divergence avoids submitting to
+an executor shut down by a previous merge. See
+[JAVA_BUG_FOUND.md](../JAVA_BUG_FOUND.md) for the source lifecycle and evidence.
 
 The two-host final-check reply-loss fixture therefore distinguishes off-heap
 storage from LSB/MSB. It requires positive actual file and memory membership in
@@ -14746,7 +14750,9 @@ cover the unchanged N=7 model's 114,942 distinct fingerprints. A native
 storage and lifetime. LSB/MSB still require fully flushed files and empty tables.
 Existing final reporting, probability, single statistics query and cleanup
 assertions are shared. These native cases do not earn original-method credit
-or resolve the disabled 48-worker model's retained closed-flusher limitation.
+or themselves resolve the disabled 48-worker model's retained closed-flusher
+limitation. A subsequent explicitly authorized fix resolves that defect; the
+unchanged original-profile EWD840 diagnostic passes in 74.80 seconds.
 
 
 ### Coordinator timer requeues an accepted worker call before transport loss

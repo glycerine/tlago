@@ -123,11 +123,12 @@ This is inventory coverage only. The current original distributed inventory is
 setup assumption; their assertion helpers remain unchanged. Separately named
 `TestDiagnosticJava...` entries bypass the assumption behind
 `tlago_disabled_distributed_tests`, retaining the Ant profile. On the
-recorded 48-worker run, local EWD840 fails at final off-heap fingerprint checking;
-the source selector also retains the closed flusher in that configuration.
-The shared Java harness disables these tests. Do not weaken the assertions,
-silently count disabled methods as passing or alter the pinned algorithm to
-hide that source limitation.
+original 48-worker run, local EWD840 exposed a closed-flusher defect in the source
+selector. The user explicitly authorized fixing this defect in Go; the unchanged
+local EWD840 diagnostic now passes in 74.80 seconds. See
+[JAVA_BUG_FOUND.md](../JAVA_BUG_FOUND.md). The shared Java harness still disables
+these tests. Keep those skips separate from diagnostic passes and retain every
+original assertion.
 
 Focused evidence includes original manager and smart-proxy tests, native TCP
 operations, full EWD840 model runs, worker/FP host loss, complete/partial insertion
@@ -177,7 +178,8 @@ The remaining assignments are maintained in
 
 The four model bodies are already translated; all inherit the source's same
 unconditional setup assumption. Their open status concerns source-disabled
-execution and the known retained-flusher failure, rather than absent body code.
+execution and harness reconciliation, rather than absent body code. The known
+retained-flusher defect is now deliberately corrected in Go.
 The arbitrary additional fault phases/topologies above are evidence boundaries,
 not independently identified unimplemented Java features. Keep verification tied
 to concrete source contracts instead of treating every untested topology as a

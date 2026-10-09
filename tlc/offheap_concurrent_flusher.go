@@ -63,6 +63,13 @@ func (s *OffHeapDiskFPSet) selectOffHeapConcurrentFlusher(numThreads int) *offHe
 		}
 		s.concurrentFlusher = &offHeapConcurrentFlusher{set: s, numThreads: numThreads,
 			r: int64(s.probeLimit), insertions: atomic.LoadInt64(&s.tblCnt), length: javaDoubleToLong(length)}
+	} else {
+		// Deliberate divergence from buggy Java OffHeapDiskFPSet.getFlusher:
+		// its fallback retains a previous parallel flusher whose merge may
+		// have shut down the executor. Final CheckFPs then rejects tasks.
+		// nil selects the existing sequential preparation/merge path and
+		// also discards stale partition geometry. See ../JAVA_BUG_FOUND.md.
+		s.concurrentFlusher = nil
 	}
 	return s.concurrentFlusher
 }

@@ -27403,3 +27403,34 @@ Updated the handoff with the pending choice and will mark the active goal
 blocked under the three-turn rule. No production/test changes, new test run,
 full suite, long workload or race run. Existing changes are committed and the
 worktree is clean apart from this status record before its commit.
+
+
+### October 9, 2026: authorized correction of Java's stale off-heap flusher
+
+The user explicitly authorized documenting and fixing the discovered upstream
+off-heap lifecycle defect. Added root JAVA_BUG_FOUND.md with the pinned Java
+locations, deterministic reproduction recipe, executor lifecycle, suggested
+Java correction, impact and evidence limits. The new small regression was run
+in Go, not in an unmodified Java execution. The separate GENERAL-formatting
+hang remains unchanged and outside this authorization.
+
+Before the fix, the focused regression failed (terminal c3efbd, status 1,
+0.014 seconds): an actual merge closed the concurrent executor, and CheckFPs
+with 48 workers reused it and raised RejectedExecutionException. Selection
+boundaries at four and 48 threads also failed. The Go selector now clears the
+old concurrent flusher when parallel partitions are ineligible; nil selects
+the existing sequential path. A code comment records the deliberate divergence.
+The final distance approximation and original model assertions are unchanged.
+
+Focused regressions plus original insertion/merge controls passed (terminal
+eb400c, status 0, 0.078 seconds). The unchanged full original-profile local
+EWD840 diagnostic passed in 74.80 seconds (session 83222, terminal d7b128,
+status 0), with 114942 distinct states, zero queued, no GENERAL, and normal
+worker/server exits. Logs: .codex-gotmp/offheap-flusher-bug-before.log,
+.codex-gotmp/offheap-flusher-bug-fixed.log, and
+.codex-gotmp/offheap-flusher-ewd840-fixed.log. No full suite or race run.
+
+Updated current handoff, architecture, mapping and inventory notes. The original
+shared unconditional skip remains exact; 37 of 41 distributed original methods
+remain complete and four Reconcile. Diagnostic passes do not change that credit.
+Other long off-heap source-failing workloads were not run or declared resolved.
