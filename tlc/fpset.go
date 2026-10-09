@@ -1697,11 +1697,7 @@ func (s *MultiFPSet) Close() {
 }
 
 func (s *MultiFPSet) AddThread() error {
-	for _, set := range s.Sets {
-		if err := set.AddThread(); err != nil {
-			return err
-		}
-	}
+	// MultiFPSet inherits the base no-op; only IncWorkers visits children.
 	return nil
 }
 

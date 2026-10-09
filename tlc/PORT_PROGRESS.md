@@ -23769,3 +23769,16 @@ Revalidated the focused related/original selection before committing: terminal
 ef1648, status 0, 0.112 seconds. No source method directly covers these two
 boundaries, so native checks add no original-method credit. No full suite or
 long model ran. All check handles are terminal.
+
+### Nested fingerprint thread registration
+
+Verified MultiFPSet has no addThread override and inherits the base no-op,
+whereas its incWorkers override visits children. Removed invented Go AddThread
+forwarding. New native local/TCP checks use real LSB/MSB children and reproduced
+the extra reader allocation (terminal ad2fb5, status 1, 0.048 seconds). After the
+fix, AddThread retains one reader per child and IncWorkers(2) yields three.
+New checks, related reader/statistics checks and existing original MultiFPSet
+and manager nested-partition methods pass (terminal 88f1ed, status 0,
+1.817 seconds). No direct original addThread test exists; native checks add no
+completion credit. No full suite, long model or race workload ran. All check
+handles are terminal.

@@ -1454,6 +1454,9 @@ Nested size/statistics now have native joined concurrency, overflow and local/TC
 parent-counter checks. Original MultiFPSet getFPSet and manager nested-partition
 methods remain green. No original method directly tests parent/child counter
 isolation or the parallel size boundary; these native checks add no credit.
+Native local/TCP nested thread-registration checks verify inherited `AddThread`
+is a no-op while `IncWorkers` allocates child readers. Related original nested
+methods remain green; no direct original test exists, so no credit is added.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

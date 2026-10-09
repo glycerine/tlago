@@ -12754,3 +12754,12 @@ perform separate child block lookups before a parent lookup: child counters
 remain two and three, while the parent reports four. The distributed manager's
 source initial one produces five. Child scalar membership lookups during parent
 block routing do not increment child block counters or change membership.
+
+### Nested fingerprint thread registration
+
+MultiFPSet inherits the base addThread no-op. Native endpoint AddThread calls
+therefore leave child disk reader arrays intact. IncWorkers remains the separate
+source override that visits each child and allocates its worker readers. Local
+and TCP checks use real LSB/MSB disk children: AddThread retains one reader each,
+then IncWorkers(2) produces three each. The former Go forwarding AddThread
+incorrectly allocated child readers and could introduce child open failures.
