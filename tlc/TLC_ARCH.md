@@ -12386,3 +12386,28 @@ The registration/reporting controls use actual disk membership to verify this
 boundary. LSB/MSB startup fixtures use isolated processes with `GOMEMLIMIT=64MiB`,
 the unchanged ratio-one factory configuration and its two nested children. These
 are native ownership checks, with no additional original test-method credit.
+
+### Mixed model-value attachments
+
+`ModelValue.data` is a non-transient source Object. Native `[]any` and
+`map[string]any` attachments now preserve mixed supported scalars, byte buffers,
+TLC values, typed value arrays/maps and other mixed containers. Identity tables
+reserve container IDs before traversing entries, allowing self-references and
+cross-container/value cycles. Encoder roots retain pointer-keyed source storage
+through traversal. Sorted map keys give deterministic native entry order.
+
+Separate compact data nodes reuse the existing scalar tags without carrying
+unrelated TLC value/cache fields per attachment entry. The receiver allocates
+all containers before populating entries and values, preserving aliases while
+isolating sender storage. Null container ID zero retains its native typed nil;
+allocated empty containers remain allocated. Arrays use the same backing-storage
+and length identity contract as existing native attachment arrays. Unknown tags,
+invalid container/value references, duplicate map keys and unsupported opaque
+entries fail explicitly. Peers need the updated native payload schema.
+
+Rechecked evaluator metadata boundaries against source declarations: SemanticNode,
+Context and CostModel.DO_NOT_RECORD are not transferable objects in the Java
+implementation. Populated Action and functional-state bindings retain those
+owners, so their explicit codec rejection remains justified. No Java serializer,
+reflection handles or runtime is introduced. Mixed attachment checks supplement
+the original ModelValue test ports without adding original-method completion credit.

@@ -23,6 +23,39 @@ type DistributedStatePayload struct {
 	NameArrays   [][]int
 	StateCaches  [][]DistributedStateCacheEntry
 	ValueMaps    [][]DistributedValueMapEntry
+	ObjectArrays [][]DistributedObjectDataNode
+	ObjectMaps   [][]DistributedObjectMapEntry
+}
+
+// Mixed attachment entries carry the same tags as scalar model data without
+// allocating unrelated value representation/cache fields for every entry.
+type DistributedObjectDataNode struct {
+	Kind      string
+	String    string
+	Integer   int64
+	FloatBits uint64
+	Bool      bool
+	Bytes     int
+	Value     int
+	Array     int
+	Map       int
+}
+
+func distributedObjectDataNode(node DistributedValueNode) DistributedObjectDataNode {
+	return DistributedObjectDataNode{Kind: node.DataKind, String: node.DataString,
+		Integer: node.DataInteger, FloatBits: node.DataFloatBits, Bool: node.DataBool,
+		Bytes: node.DataBytes, Value: node.DataValue, Array: node.DataArray, Map: node.DataMap}
+}
+
+func (node DistributedObjectDataNode) valueNode() DistributedValueNode {
+	return DistributedValueNode{DataKind: node.Kind, DataString: node.String,
+		DataInteger: node.Integer, DataFloatBits: node.FloatBits, DataBool: node.Bool,
+		DataBytes: node.Bytes, DataValue: node.Value, DataArray: node.Array, DataMap: node.Map}
+}
+
+type DistributedObjectMapEntry struct {
+	Key  string
+	Data DistributedObjectDataNode
 }
 
 type DistributedValueMapEntry struct {
@@ -104,20 +137,24 @@ type DistributedValueNode struct {
 }
 
 type distributedPayloadEncoder struct {
-	payload       *DistributedStatePayload
-	states        map[*TLCStateMut]int
-	values        map[Value]int
-	strings       map[*UniqueString]int
-	bytes         map[distributedByteArrayKey]int
-	arrays        map[distributedByteArrayKey]int
-	arrayRoots    [][]Value // Keep address-keyed backing storage alive while encoding.
-	vectors       map[*ValueVec]int
-	nameArrays    map[distributedByteArrayKey]int
-	nameRoots     [][]*UniqueString
-	caches        map[uintptr]int
-	cacheRoots    []map[int]Value // Retain address-keyed maps throughout encoding.
-	valueMaps     map[uintptr]int
-	valueMapRoots []map[string]Value
+	payload        *DistributedStatePayload
+	states         map[*TLCStateMut]int
+	values         map[Value]int
+	strings        map[*UniqueString]int
+	bytes          map[distributedByteArrayKey]int
+	arrays         map[distributedByteArrayKey]int
+	arrayRoots     [][]Value // Keep address-keyed backing storage alive while encoding.
+	vectors        map[*ValueVec]int
+	nameArrays     map[distributedByteArrayKey]int
+	nameRoots      [][]*UniqueString
+	caches         map[uintptr]int
+	cacheRoots     []map[int]Value // Retain address-keyed maps throughout encoding.
+	valueMaps      map[uintptr]int
+	valueMapRoots  []map[string]Value
+	objectArrays   map[distributedByteArrayKey]int
+	objectRoots    [][]any
+	objectMaps     map[uintptr]int
+	objectMapRoots []map[string]any
 }
 
 type distributedByteArrayKey struct {
@@ -526,6 +563,18 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 			return err
 		}
 		node.DataKind, node.DataMap = "valueMap", id
+	case []any:
+		id, err := e.objectArray(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataArray = "objectArray", id
+	case map[string]any:
+		id, err := e.objectMap(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataMap = "objectMap", id
 	case Value:
 		id, err := e.value(v)
 		if err != nil {
@@ -536,6 +585,66 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		return fmt.Errorf("unsupported network model-value data %T", data)
 	}
 	return nil
+}
+
+func (e *distributedPayloadEncoder) objectArray(values []any) (int, error) {
+	if values == nil {
+		return 0, nil
+	}
+	if e.objectArrays == nil {
+		e.objectArrays = make(map[distributedByteArrayKey]int)
+	}
+	key := distributedByteArrayKey{reflect.ValueOf(values).Pointer(), len(values)}
+	if id := e.objectArrays[key]; id != 0 && len(values) != 0 {
+		return id, nil
+	}
+	id := len(e.payload.ObjectArrays) + 1
+	e.objectArrays[key] = id
+	e.objectRoots = append(e.objectRoots, values)
+	e.payload.ObjectArrays = append(e.payload.ObjectArrays, nil)
+	entries := make([]DistributedObjectDataNode, len(values))
+	for i, data := range values {
+		var node DistributedValueNode
+		if err := e.modelData(&node, data); err != nil {
+			return 0, err
+		}
+		entries[i] = distributedObjectDataNode(node)
+	}
+	e.payload.ObjectArrays[id-1] = entries
+	return id, nil
+}
+
+func (e *distributedPayloadEncoder) objectMap(values map[string]any) (int, error) {
+	if values == nil {
+		return 0, nil
+	}
+	if e.objectMaps == nil {
+		e.objectMaps = make(map[uintptr]int)
+	}
+	key := uintptr(reflect.ValueOf(values).UnsafePointer())
+	if id := e.objectMaps[key]; id != 0 {
+		return id, nil
+	}
+	id := len(e.payload.ObjectMaps) + 1
+	e.objectMaps[key] = id
+	e.objectMapRoots = append(e.objectMapRoots, values)
+	e.payload.ObjectMaps = append(e.payload.ObjectMaps, nil)
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	entries := make([]DistributedObjectMapEntry, len(keys))
+	for i, key := range keys {
+		entries[i].Key = key
+		var node DistributedValueNode
+		if err := e.modelData(&node, values[key]); err != nil {
+			return 0, err
+		}
+		entries[i].Data = distributedObjectDataNode(node)
+	}
+	e.payload.ObjectMaps[id-1] = entries
+	return id, nil
 }
 
 func (e *distributedPayloadEncoder) valueMap(values map[string]Value) (int, error) {
@@ -572,13 +681,15 @@ func (e *distributedPayloadEncoder) valueMap(values map[string]Value) (int, erro
 }
 
 type distributedPayloadDecoder struct {
-	values     []Value
-	strings    []*UniqueString
-	bytes      [][]byte
-	arrays     [][]Value
-	vectors    []*ValueVec
-	nameArrays [][]*UniqueString
-	valueMaps  []map[string]Value
+	values       []Value
+	strings      []*UniqueString
+	bytes        [][]byte
+	arrays       [][]Value
+	vectors      []*ValueVec
+	nameArrays   [][]*UniqueString
+	valueMaps    []map[string]Value
+	objectArrays [][]any
+	objectMaps   []map[string]any
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -650,6 +761,37 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 			return nil, fmt.Errorf("value vector %d: count outside backing array", i+1)
 		}
 		decoder.vectors[i] = &ValueVec{data: array[:node.Count]}
+	}
+	// Allocate all mixed containers before resolving entries. Values and
+	// attachments can point to one another or share recursive containers.
+	decoder.objectArrays = make([][]any, len(payload.ObjectArrays))
+	for i, entries := range payload.ObjectArrays {
+		decoder.objectArrays[i] = make([]any, len(entries))
+	}
+	decoder.objectMaps = make([]map[string]any, len(payload.ObjectMaps))
+	for i, entries := range payload.ObjectMaps {
+		decoder.objectMaps[i] = make(map[string]any, len(entries))
+	}
+	for i, entries := range payload.ObjectArrays {
+		for j, node := range entries {
+			data, err := decoder.modelData(node.valueNode())
+			if err != nil {
+				return nil, fmt.Errorf("object array %d entry %d: %w", i+1, j, err)
+			}
+			decoder.objectArrays[i][j] = data
+		}
+	}
+	for i, entries := range payload.ObjectMaps {
+		for _, entry := range entries {
+			if _, duplicate := decoder.objectMaps[i][entry.Key]; duplicate {
+				return nil, fmt.Errorf("object map %d has duplicate key %q", i+1, entry.Key)
+			}
+			data, err := decoder.modelData(entry.Data.valueNode())
+			if err != nil {
+				return nil, fmt.Errorf("object map %d key %q: %w", i+1, entry.Key, err)
+			}
+			decoder.objectMaps[i][entry.Key] = data
+		}
 	}
 	for i, node := range payload.Values {
 		if err := decoder.populate(decoder.values[i], node); err != nil {
@@ -1077,6 +1219,22 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return map[string]Value(nil), nil
 		}
 		return d.valueMaps[node.DataMap-1], nil
+	case "objectArray":
+		if node.DataArray < 0 || node.DataArray > len(d.objectArrays) {
+			return nil, fmt.Errorf("invalid model object-array reference %d", node.DataArray)
+		}
+		if node.DataArray == 0 {
+			return []any(nil), nil
+		}
+		return d.objectArrays[node.DataArray-1], nil
+	case "objectMap":
+		if node.DataMap < 0 || node.DataMap > len(d.objectMaps) {
+			return nil, fmt.Errorf("invalid model object-map reference %d", node.DataMap)
+		}
+		if node.DataMap == 0 {
+			return map[string]any(nil), nil
+		}
+		return d.objectMaps[node.DataMap-1], nil
 	default:
 		return nil, fmt.Errorf("unknown model data kind %q", node.DataKind)
 	}

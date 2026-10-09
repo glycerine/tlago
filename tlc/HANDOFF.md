@@ -128,6 +128,10 @@ Attached model-value data supports native `[]Value` through the same array graph
 preserving cycles, shared backing storage and typed nil/empty arrays across RPC.
 Native `map[string]Value` attachments also preserve shared map identity, cycles,
 nil entries and typed nil/empty maps in requests, results and failure contexts.
+Mixed `[]any` and `map[string]any` attachments retain supported scalars, bytes,
+TLC values, typed containers and recursive mixed-container graphs with the same
+ownership guarantees. Their compact entries share the scalar data tags; peers
+must use the updated native payload schema.
 Symbolic values follow the source materialization rules. Unsupported opaque
 custom data and evaluator metadata fail explicitly; they are not silently
 removed. Audit actual source transferability before extending the codec:

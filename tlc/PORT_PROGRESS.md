@@ -23103,3 +23103,43 @@ original manager constructor/concurrent-order checks pass together
 All children and runs are joined/terminal. Native supplements earn no original
 method credit. No full model, full suite or race workload was repeated; normal
 registered-model behavior remains covered by the preceding unchanged-path run.
+
+### Mixed model-value attachment graphs
+
+Audited state evaluator metadata against source declarations. SemanticNode and
+Context lack the transferable interface, and Action's ordinary non-transient
+CostModel.DO_NOT_RECORD is likewise not transferable. Populated Action and
+functional binding rejection remains intentional; no JVM serialization or
+reflection runtime is needed. Found a separate attached-data gap: source
+ModelValue.data is a non-transient Object and can hold mixed Object arrays/maps,
+where native Go accepted only value-typed arrays/maps and scalar/byte attachments.
+
+Implemented explicit native `[]any` and `map[string]any` graphs, retaining
+supported scalar representations and references to bytes, TLC values and typed
+containers. IDs are reserved before recursion and receiver containers allocated
+before filling, preserving cycles and sharing across maps/arrays/value objects.
+Source storage remains rooted while pointer identity is used. Map keys are sorted;
+equal separate containers remain separate. Typed nil/empty distinctions remain.
+Unsupported opaque entries, bad IDs, duplicate keys and unknown tags fail rather
+than disappear. Compact attachment nodes share scalar tags without retaining
+unrelated TLC value/cache fields per mixed entry. Peers need the updated schema.
+
+Native direct and worker TCP request/result/exception checks require recursive
+map/array identity, nested typed-value and byte graphs, distinct equal containers,
+receiver mutation ownership, typed nil/empty containers, present nil entries,
+Unicode/NUL keys and exact NaN/scalar representation. Initial mixed checks and
+unchanged original ModelValue methods pass (model-data-objects.log, terminal
+182548, status 0, 0.018 seconds). Related previous payload/typed-attachment/codec-
+failure checks pass (model-data-objects-related.log, terminal 8f8699, status 0,
+0.037 seconds); the initial focused race selection passes (model-data-objects-
+race.log, terminal 29a552, status 0, 1.051 seconds).
+
+After compacting the attachment-node schema, the final complete focused normal
+selection passes (model-data-objects-verified.log, terminal 68e482, status 0,
+0.037 seconds), including existing state/result, scalar and value-array/map
+payloads, codec-failure paths and original ModelValue methods. Final short mixed
+graph/TCP checks pass with race instrumentation (model-data-objects-verified-
+race.log, terminal 72890b, status 0, 1.058 seconds). All runs are terminal. No
+original method directly tests mixed attached-data networking, so native checks
+add no method completion credit. No full model, full suite or long race workload
+was repeated.

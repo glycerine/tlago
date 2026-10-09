@@ -1549,6 +1549,14 @@ requests, results and worker exceptions. Invalid IDs, duplicate keys and invalid
 entry references fail explicitly. Existing original ModelValue tests remain
 green; no original method covers attached-map networking and no credit is added.
 
+Mixed attached `[]any` and `map[string]any` graphs now transfer in native Go.
+Direct/TCP checks cover map/array cycles, shared identity, distinct equal containers,
+typed nil/empty containers, nil entries, Unicode/NUL keys, scalar bits and references
+to byte and TLC value/typed-container graphs. Receiver mutations cannot change
+sender storage. Invalid references, duplicate keys, unknown tags and opaque
+entries fail explicitly. Existing original ModelValue methods remain green;
+no original method directly tests mixed attachment networking, so no credit is added.
+
 A full-model fingerprint insertion-reply-loss row now verifies that a host has
 actually stored new successor fingerprints before it is killed without returning
 the putBlock answer. Native callable failover redirects to the surviving host;
