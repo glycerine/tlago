@@ -24753,3 +24753,27 @@ on both replacement endpoints, reaches 114,942 distinct states with an empty
 queue and exits normally. No full suite or race workload ran. No dedicated
 original method covers these read I/O failures; native checks earn no credit.
 Distributed inventory remains 37 complete and four Missing. All handles terminal.
+
+### October 9, 2026: bounded built-in selector and smart-proxy audit
+
+Compared BlockSelector, LimitingBlockSelector, StatisticalBlockSelector,
+StaticBlockSelector, IBlockSelector and the built-in portion of
+BlockSelectorFactory with the concrete Go selector. Checked mode priority,
+startup capture, deferred static initialization, proportional arithmetic,
+statistical fallback/NaN conversion, limits, queue bounds, actual-dequeue
+statistics and intentionally lossy overflow-preserving averages. No mismatch
+found in these built-in contracts; no production edits or new tests justified.
+
+Compared TLCWorkerSmartProxy timing/delegation and all nine original methods
+with their Go translation and DummyTLCWorker. Inputs/assertions remain faithful,
+including original integer division making MAX_ARRAY_SIZE zero. Existing
+selector, startup, average/concurrent statistics, thread selector ownership and
+original smart-proxy methods pass (distributed-selector-source-audit.log,
+terminal 1869a3, status 0, 0.106 seconds).
+
+The custom factory-name property is a separate unresolved native extension
+mapping: Java uses reflective class loading, while Go currently selects built-in
+modes. Do not claim this audit covers custom factories or implement a JVM loader.
+Keep this concrete limitation visible for subsequent port work. No full suite,
+long model or race workload ran. Distributed inventory remains 37 complete and
+four Missing; no original-method credit changed. All handles are terminal.

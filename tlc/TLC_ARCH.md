@@ -13261,3 +13261,19 @@ plus preexisting membership. Normal input retains all 1025. Warnings, healthy
 continuation, endpoint availability and final close are required. Existing
 truncation, duplicate, startup and close checks retain their source assertions.
 No original method directly covers these read I/O failures; no credit added.
+
+### Bounded selector and smart-proxy source audit
+
+The four built-in selector modes preserve source priority, independently captured
+static block size, queue request bounds, limiting setters, statistical fallback
+and lossy average updates. Signed overflow, NaN/infinity conversions and static
+average/no-clamp behavior remain deliberate source contracts. Smart-proxy timing
+retains millisecond RTT plus one, signed-long computation-time sanitization,
+positive network-time floor and division by the actual input array length.
+
+All nine original TLCWorkerSmartProxyTest contexts retain their complete inputs
+and assertions, including the source MAX_ARRAY_SIZE expression evaluating to zero.
+The bounded audit and focused checks require no production change or new tests.
+Java BlockSelectorFactory's optional factory-name property still has no native
+extension mapping. Its reflective class loading is not implemented; this audit
+establishes built-in contracts only and does not claim custom-factory support.
