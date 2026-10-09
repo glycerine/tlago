@@ -334,9 +334,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installConstantDeclarations()
 	bridge.installDefinitions()
 	bridge.installModuleTable()
-	for _, context := range bridge.canonicalContexts {
-		context.ModuleTable = bridge.processor.ModuleTbl
-	}
+	bridge.bindCanonicalGraphModules()
 	bridge.installAssumptions()
 	for _, module := range bridge.processor.ModuleTbl.GetModuleNodes() {
 		bridge.processor.ProcessConstantsDynamicExtendee(module)
@@ -839,7 +837,9 @@ func (b *tlcBridge) installModuleAssumptions(checkingRoot bool) {
 		for _, name := range module.Extends {
 			visit(b.spec.Modules[name], checking)
 			if !topLevels[module] {
-				b.moduleNodes[module].TopLevel = append(b.moduleNodes[module].TopLevel, b.moduleNodes[b.spec.Modules[name]].TopLevel...)
+				for _, assume := range b.moduleNodes[b.spec.Modules[name]].GetAssumptions() {
+					b.moduleNodes[module].AddAssumptionStatement(assume)
+				}
 			}
 		}
 		for i := range module.Assumptions {
@@ -848,6 +848,12 @@ func (b *tlcBridge) installModuleAssumptions(checkingRoot bool) {
 				continue
 			}
 			node := converted[assumption]
+			if node == nil {
+				if source, ok := assumption.semanticNode.(*sanySemAssumeNode); ok {
+					node = b.canonicalGraph(source).(*tlc.AssumeNode)
+					converted[assumption] = node
+				}
+			}
 			if node == nil {
 				var definition *tlc.ThmOrAssumpDefNode
 				if assumption.Name != "" {
@@ -872,7 +878,7 @@ func (b *tlcBridge) installModuleAssumptions(checkingRoot bool) {
 				converted[assumption] = node
 			}
 			if !topLevels[module] {
-				b.moduleNodes[module].TopLevel = append(b.moduleNodes[module].TopLevel, node)
+				b.moduleNodes[module].AddAssumptionStatement(node)
 			}
 			if checking {
 				b.processor.Assumptions = append(b.processor.Assumptions, node.Assume)
@@ -907,51 +913,17 @@ func (b *tlcBridge) installModuleTheorems() {
 	if b.theoremModules == nil {
 		b.theoremModules = map[*Module]bool{}
 	}
-	type ownedTheorem struct {
-		module *Module
-		expr   *NamedExpr
-	}
-	owned := map[*sanySemTheoremNode]ownedTheorem{}
-	for module := range b.moduleNodes {
-		for i := range module.Theorems {
-			expr := &module.Theorems[i]
-			if source, ok := expr.semanticNode.(*sanySemTheoremNode); ok {
-				owned[source] = ownedTheorem{module, expr}
-			}
-		}
-	}
 	for module, target := range b.moduleNodes {
 		if b.theoremModules[module] || module.semanticNode == nil {
 			continue
 		}
 		for _, source := range module.semanticNode.getTheorems() {
-			node := b.canonicalTheorems[source]
-			if node == nil {
-				owner, ok := owned[source]
-				if !ok {
-					panic("retained SANY theorem has no owning AST statement")
-				}
-				node = &tlc.TheoremNode{SemanticNodeBase: source.SemanticNodeBase,
-					Module: b.moduleNodes[owner.module], Proof: source.proof, Suffices: source.suffices}
-				b.canonicalTheorems[source] = node
-				if source.def != nil {
-					node.Def, _ = node.Module.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(source.def.semName())}).(*tlc.ThmOrAssumpDefNode)
-				}
-				if _, ap := source.getTheorem().(*sanySemAssumeProveNode); ap {
-					// processConstants has no ASSUME/PROVE branch in Java. Retain
-					// the statement instead of treating its goal as its body.
-					node.Theorem = source.getTheorem()
-				} else if node.Def != nil {
-					node.Theorem = node.Def.Body
-				} else {
-					previous := b.convertingModule
-					b.convertingModule = owner.module.Name
-					node.Theorem = b.convertExpr(owner.expr.Expr)
-					b.convertingModule = previous
-				}
-			}
+			node := b.canonicalGraph(source).(*tlc.TheoremNode)
 			target.AddTheoremStatement(node)
 		}
+		// The source vector interleaves theorem and assumption statements.
+		// Their separate enumeration vectors are not the walkGraph order.
+		target.TopLevel = b.canonicalGraphArray(module.semanticNode.topLevelVec)
 		b.theoremModules[module] = true
 	}
 }
@@ -1398,6 +1370,9 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 		opDef.Body = b.functionDefinitionNode(def, function)
 	} else {
 		opDef.Body = b.convertExpr(def.Expr)
+	}
+	if def.semanticNode != nil {
+		opDef.StepNode = b.canonicalGraph(def.semanticNode.stepNode)
 	}
 	if opDef.Body == nil {
 		return nil

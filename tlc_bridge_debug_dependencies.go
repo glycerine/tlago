@@ -59,6 +59,7 @@ func (b *tlcBridge) resolveDebuggerDependencies(dependencies []string) (bool, er
 			convert := b.debuggerBridge(candidate)
 			convert.prepareInstanceDefinitions()
 			convert.extendModuleTable(false)
+			convert.bindCanonicalGraphModules()
 			convert.installModuleAssumptions(false)
 			if convert.diags.HasErrors() {
 				failed = true

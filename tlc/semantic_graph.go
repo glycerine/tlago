@@ -4,8 +4,6 @@
 
 package tlc
 
-import "fmt"
-
 // Walk the represented SANY graph by semantic identity, without following
 // evaluation tool objects. Java symbols that define operators are OpDefNodes;
 // Go retains that relation in SymbolNode.Definition.
@@ -22,7 +20,14 @@ func walkSemanticGraph(roots []SemanticNode, preVisit func(SemanticNode)) {
 			}
 			if symbol.Definition != nil {
 				node = symbol.Definition
+			} else if theorem, ok := symbol.Data.(*ThmOrAssumpDefNode); ok {
+				node = theorem
 			}
+		}
+		// AtNode has no visited-table registration in the source.
+		if _, ok := node.(*AtNode); ok {
+			preVisit(node)
+			return
 		}
 		key := newSemanticNodeKey(node)
 		if seen[key] {
@@ -36,19 +41,9 @@ func walkSemanticGraph(roots []SemanticNode, preVisit func(SemanticNode)) {
 				return
 			}
 			if n.Context != nil {
-				entries := n.Context.GetContextSymbolEnumeration()
-				for entries.HasMoreElements() {
-					entry := entries.nextEntry()
-					if entry.key.Module {
-						fmt.Printf("Bug in debugging caused by inner module %s\nSANY will throw a null pointer exception.\n", entry.key.Name)
-					} else {
-						// Context.walkGraph enumerates keys, then resolves the
-						// current binding before invoking the child callback.
-						walk(n.Context.GetSymbol(entry.key))
-					}
-				}
+				n.Context.WalkGraphNodes(walk)
 			}
-			for _, top := range n.TopLevel {
+			for _, top := range n.graphStatements() {
 				walk(top)
 			}
 		case *OpDefNode:
@@ -59,6 +54,7 @@ func walkSemanticGraph(roots []SemanticNode, preVisit func(SemanticNode)) {
 				walk(param)
 			}
 			walk(n.Body)
+			walk(n.StepNode)
 		case *OpApplNode:
 			if n == nil {
 				return
@@ -110,15 +106,42 @@ func walkSemanticGraph(roots []SemanticNode, preVisit func(SemanticNode)) {
 				walk(n.Op)
 			}
 		case *LabelNode:
-			if n != nil {
-				walk(n.Body)
+			walk(n.Body)
+			for _, param := range n.Params {
+				walk(param)
 			}
 		case *ThmOrAssumpDefNode:
-			if n != nil {
-				for _, param := range n.Params {
-					walk(param)
-				}
-				walk(n.Body)
+			walk(n.Body)
+		case *AssumeProveNode:
+			for _, assume := range n.Assumes {
+				walk(assume)
+			}
+			walk(n.Prove)
+		case *NewSymbNode:
+			walk(n.Set)
+		case *AssumeNode:
+			walk(n.Assume)
+		case *TheoremNode:
+			walk(n.Theorem)
+			walk(n.Proof)
+		case *LeafProofNode:
+			for _, fact := range n.Facts {
+				walk(fact)
+			}
+		case *NonLeafProofNode:
+			for _, step := range n.Steps {
+				walk(step)
+			}
+			if n.Context != nil {
+				n.Context.WalkGraphNodes(walk)
+			}
+		case *DefStepNode:
+			for _, def := range n.Defs {
+				walk(def)
+			}
+		case *UseOrHideNode:
+			for _, fact := range n.Facts {
+				walk(fact)
 			}
 		}
 	}

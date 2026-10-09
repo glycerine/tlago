@@ -11,6 +11,7 @@ type OpDefNode struct {
 	Name                      *UniqueString
 	Params                    []*SymbolNode
 	Body                      SemanticNode
+	StepNode                  SemanticNode
 	DeclarationLocation       SourceLocation
 	InRecursive               bool
 	Local                     bool

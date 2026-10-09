@@ -252,7 +252,7 @@ func (c *SemanticContext) GetModDefs() []*ModuleNode {
 }
 
 type ModuleNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Name         *UniqueString
 	Context      *SemanticContext
 	Extendees    []*ModuleNode
@@ -265,13 +265,22 @@ type ModuleNode struct {
 	opDefs             []*OpDefNode
 	thmOrAssDefs       []*ThmOrAssumpDefNode
 	innerModules       []*ModuleNode
+	assumptionVec      []*AssumeNode
+	assumptions        []*AssumeNode
 	theoremVec         []*TheoremNode
 	theorems           []*TheoremNode
 	extendedModuleSets map[bool]*InsMap[*ModuleNode, struct{}]
 }
 
 func NewModuleNode(name string, context *SemanticContext) *ModuleNode {
-	return &ModuleNode{SemanticNodeBase: NewSemanticNodeBase(SemanticModuleKind, name), Name: UniqueStringOf(name), Context: context}
+	return NewModuleNodeWithBase(name, context, nil)
+}
+
+func NewModuleNodeWithBase(name string, context *SemanticContext, base *SemanticNodeBase) *ModuleNode {
+	if base == nil {
+		base = newSemanticNodeBasePointer(SemanticModuleKind, name)
+	}
+	return &ModuleNode{SemanticNodeBase: base, Name: UniqueStringOf(name), Context: context}
 }
 
 func (m *ModuleNode) GetName() *UniqueString { return m.Name }
@@ -289,6 +298,47 @@ func (m *ModuleNode) IsParameterFree() bool {
 	return len(m.GetConstantDecls()) == 0 && len(m.GetVariableDecls()) == 0
 }
 func (m *ModuleNode) ProcessConstantDefns() bool { return !m.IsInstantiated() || m.IsParameterFree() }
+
+// Constant processing uses the assumption vector, independently of the
+// interleaved top-level graph vector. Native AST statements can still lack a
+// generated SANY graph; they remain required runtime assumptions.
+func (m *ModuleNode) AddAssumptionStatement(node *AssumeNode) {
+	m.assumptionVec = append(m.assumptionVec, node)
+	m.TopLevel = append(m.TopLevel, node)
+}
+
+func (m *ModuleNode) GetAssumptions() []*AssumeNode {
+	if m.assumptions == nil {
+		if m.assumptionVec != nil {
+			m.assumptions = make([]*AssumeNode, len(m.assumptionVec))
+			copy(m.assumptions, m.assumptionVec)
+		} else {
+			m.assumptions = make([]*AssumeNode, 0)
+			for _, statement := range m.TopLevel {
+				if assume, ok := statement.(*AssumeNode); ok {
+					m.assumptions = append(m.assumptions, assume)
+				}
+			}
+		}
+	}
+	return m.assumptions
+}
+
+// Retain AST fallback assumptions not yet represented by the generated SANY
+// vector. Canonical statements keep their source order and identity.
+func (m *ModuleNode) graphStatements() []SemanticNode {
+	statements := append([]SemanticNode(nil), m.TopLevel...)
+	present := map[semanticNodeKey]bool{}
+	for _, statement := range statements {
+		present[newSemanticNodeKey(statement)] = true
+	}
+	for _, assume := range m.GetAssumptions() {
+		if !present[newSemanticNodeKey(assume)] {
+			statements = append(statements, assume)
+		}
+	}
+	return statements
+}
 
 // The bridge appends views of the actual retained theorem statements, including
 // EXTENDS copies. Named definition enumeration has a different membership.

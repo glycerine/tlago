@@ -44,14 +44,16 @@ parity beyond those contracts. Do not restart XML or ApalacheIR corpus sweeps.
 Other TLC test reconciliation remains visible in [TODO_TEST_PORT.md](TODO_TEST_PORT.md);
 JVM-only GC/JPF assertions are not native Go implementation requirements.
 
-Core bridge continuation: runtime LET traversal now imports the actual SANY
-Context state, preserving Pair history and Hashtable topology. Canonical graph
-views share source bases and substitution records; selected expressions use
-their generated graph. Module definitions reuse existing evaluator symbols by
-source identity so config overrides remain effective. Full runtime graph parity
-remains pending: reconcile imported theorem/module metadata, add ASSUME/PROVE
-and proof adapters, and retain the source walkGraph edges and visitor behavior.
-See `TLC_ARCH.md` for the represented classes and remaining boundaries.
+Core bridge continuation: runtime LET traversal imports SANY Context state,
+including Pair history and Hashtable topology. Canonical adapters now retain
+ASSUME/PROVE, theorem and proof graphs, source module ownership, label formals
+and OpDef step links. Module views share the original SANY base and syntax range.
+Separate assumption/theorem vectors preserve constant processing; generated
+SANY top-level graphs still omit some AST-only INSTANCE expressions, including
+original model 219's line 42 assumption. Keep those runtime assumptions and
+assertions while completing source generation. Complete visitor callbacks,
+mutation/null boundaries, builtin adapters and native INSTANCE lowering remain
+pending; see `TLC_ARCH.md` for the exact boundaries.
 
 ## Verification baseline and test credit
 

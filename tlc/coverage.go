@@ -571,6 +571,7 @@ func (c *coverageCreator) walk(node SemanticNode) {
 	case *OpDefNode:
 		c.preOpDef(n)
 		c.walk(n.Body)
+		c.walk(n.StepNode)
 		c.postOpDef(n)
 	case *OpArgNode:
 		// SANY's OpArgNode.walkGraph visits its operator, including the
@@ -580,8 +581,42 @@ func (c *coverageCreator) walk(node SemanticNode) {
 		}
 	case *LabelNode:
 		c.walk(n.Body)
+		for _, param := range n.Params {
+			c.walk(param)
+		}
 	case *ThmOrAssumpDefNode:
 		c.walk(n.Body)
+	case *AssumeProveNode:
+		for _, assume := range n.Assumes {
+			c.walk(assume)
+		}
+		c.walk(n.Prove)
+	case *NewSymbNode:
+		c.walk(n.Set)
+	case *AssumeNode:
+		c.walk(n.Assume)
+	case *TheoremNode:
+		c.walk(n.Theorem)
+		c.walk(n.Proof)
+	case *LeafProofNode:
+		for _, fact := range n.Facts {
+			c.walk(fact)
+		}
+	case *NonLeafProofNode:
+		for _, step := range n.Steps {
+			c.walk(step)
+		}
+		if n.Context != nil {
+			n.Context.WalkGraphNodes(c.walk)
+		}
+	case *DefStepNode:
+		for _, def := range n.Defs {
+			c.walk(def)
+		}
+	case *UseOrHideNode:
+		for _, fact := range n.Facts {
+			c.walk(fact)
+		}
 	}
 }
 

@@ -404,7 +404,8 @@ func SemanticLevelParams(node SemanticNode) []*SymbolNode {
 
 type LabelNode struct {
 	*SemanticNodeBase
-	Body SemanticNode
+	Body   SemanticNode
+	Params []*SymbolNode
 }
 
 func NewLabelNode(body SemanticNode) *LabelNode {
@@ -832,7 +833,7 @@ type ThmOrAssumpDefNode struct {
 }
 
 type AssumeNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Assume  SemanticNode
 	Module  *ModuleNode
 	Def     *ThmOrAssumpDefNode
@@ -840,7 +841,7 @@ type AssumeNode struct {
 }
 
 func NewAssumeNode(expr SemanticNode, module *ModuleNode, definition *ThmOrAssumpDefNode) *AssumeNode {
-	return &AssumeNode{SemanticNodeBase: NewSemanticNodeBase(SemanticAssumeKind, "ASSUME"), Assume: expr, Module: module, Def: definition}
+	return &AssumeNode{SemanticNodeBase: newSemanticNodeBasePointer(SemanticAssumeKind, "ASSUME"), Assume: expr, Module: module, Def: definition}
 }
 
 func (n *AssumeNode) GetAssume() SemanticNode     { return n.Assume }

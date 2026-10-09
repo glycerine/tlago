@@ -142,10 +142,16 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 		if outer[mod] == nil {
 			context = global.Duplicate(table)
 		}
-		node := tlc.NewModuleNode(mod.Name, context)
+		var base *tlc.SemanticNodeBase
+		if mod.semanticNode != nil {
+			base = mod.semanticNode.SemanticNodeBase
+		}
+		node := tlc.NewModuleNodeWithBase(mod.Name, context, base)
 		position := mod.Pos
 		position.File = mod.Name
-		node.SetSourceLocation(b.sourceLocationForPosition(position))
+		if base == nil {
+			node.SetSourceLocation(b.sourceLocationForPosition(position))
+		}
 		node.SetStandard(outer[mod] == nil && mod.Library)
 		nodes[mod] = node
 	}
@@ -394,6 +400,14 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 // OpDefNodes. Its substitution wrapper is APSubstIn, and nested instances keep
 // all earlier wrappers and the original theorem's source identity.
 func (b *tlcBridge) moduleContextTheorem(mod *Module, entry tlcBridgeContextEntry) *tlc.ThmOrAssumpDefNode {
+	if mod.semanticNode != nil {
+		if source, ok := mod.semanticNode.context.getSymbol(entry.name).(*sanySemThmOrAssumpDefNode); ok {
+			node := b.canonicalGraph(source).(*tlc.ThmOrAssumpDefNode)
+			node.Symbol.Data = node
+			b.define(node.Symbol, node)
+			return node
+		}
+	}
 	if b.theoremDefinitions == nil {
 		b.theoremDefinitions = map[string]*tlc.ThmOrAssumpDefNode{}
 	}

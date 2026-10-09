@@ -26,8 +26,8 @@ func (p *SpecProcessor) ProcessConstants(node SemanticNode, definitions *Defns) 
 		for _, inner := range n.GetInnerModules() {
 			process(inner)
 		}
-		for _, top := range n.TopLevel {
-			process(top)
+		for _, assume := range n.GetAssumptions() {
+			process(assume)
 		}
 		for _, theorem := range n.GetTheorems() {
 			process(theorem)

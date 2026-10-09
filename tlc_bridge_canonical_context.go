@@ -29,6 +29,9 @@ func (b *tlcBridge) retainCanonicalExpression(expr Expr, node tlc.SemanticNode) 
 					node.SemanticNodeBase = base
 				case *tlc.LabelNode:
 					node.SemanticNodeBase = base
+					if source, ok := source.(*sanySemLabelNode); ok {
+						node.Params = b.canonicalParameters(source.formalNodes)
+					}
 				case *tlc.AtNode:
 					node.SemanticNodeBase = base
 				case *tlc.SubstInNode:
@@ -65,7 +68,7 @@ func (b *tlcBridge) canonicalContext(source *sanyContext) *tlc.SemanticContext {
 // declaration lists. Adapt their actual graph identities, publishing shells
 // before following children or source-definition links.
 func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNode {
-	if source == nil {
+	if sanyExploreNull(source) {
 		return nil
 	}
 	if node := b.canonicalGraphs[source]; node != nil {
@@ -86,12 +89,26 @@ func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNod
 	case *sanySemOpDeclNode:
 		for _, module := range b.spec.Modules {
 			if module.semanticNode == source.module {
+				owned, _ := tlcBridgeOwnedDeclaration(module, source.semName())
+				if owned != source {
+					break
+				}
 				node := b.declarationSymbol(module, source.semName())
 				remember(node)
 				return node
 			}
 		}
-		panic(tlc.NewUnsupportedOperationException("runtime adapter for declaration without a source module"))
+		// Proof-local NEW declarations are distinct from same-named module
+		// declarations. They retain their own canonical declaration identity.
+		node := tlc.NewSymbolNode(source.semName())
+		node.SemanticBase, node.Arity = source.SemanticNodeBase, source.semArity()
+		if source.semKind() == sanyVariableDeclKind {
+			node.MarkVariableDecl()
+		} else if source.semKind() == sanyConstantDeclKind {
+			node.Kind = tlc.SymbolConstantDecl
+		}
+		remember(node)
+		return node
 	case *sanySemOpDefNode:
 		if node := b.canonicalDefinitions[source]; node != nil {
 			remember(node)
@@ -127,6 +144,8 @@ func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNod
 			node.SourceDefinition = b.canonicalGraph(origin).(*tlc.OpDefNode)
 		}
 		node.Body = b.canonicalGraph(source.body)
+		node.StepNode = b.canonicalGraph(source.stepNode)
+		node.OriginallyDefinedInModule = b.canonicalModuleOwner(source.module)
 		return node
 	case *sanySemThmOrAssumpDefNode:
 		node := &tlc.ThmOrAssumpDefNode{SemanticNodeBase: source.SemanticNodeBase,
@@ -137,6 +156,7 @@ func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNod
 			node.SourceDefinition = b.canonicalGraph(origin).(*tlc.ThmOrAssumpDefNode)
 		}
 		node.Body = b.canonicalGraph(source.body)
+		node.OriginallyDefinedInModule = b.canonicalModuleOwner(source.module)
 		return node
 	case *sanySemOpApplNode:
 		node := &tlc.OpApplNode{SemanticNodeBase: source.SemanticNodeBase}
@@ -192,11 +212,87 @@ func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNod
 		node := &tlc.LabelNode{SemanticNodeBase: source.SemanticNodeBase}
 		remember(node)
 		node.Body = b.canonicalGraph(source.body)
+		node.Params = b.canonicalParameters(source.formalNodes)
 		return node
 	case *sanySemAtNode:
 		node := &tlc.AtNode{SemanticNodeBase: source.SemanticNodeBase}
 		remember(node)
 		return node
+	case *sanySemAssumeProveNode:
+		node := &tlc.AssumeProveNode{SemanticNodeBase: source.SemanticNodeBase,
+			InScopeOfDecl: source.inScopeOfDecl, InProof: source.inProof, Suffices: source.suffices, IsBoxAssumeProve: source.isBoxAssumeProve}
+		remember(node)
+		node.Assumes = b.canonicalGraphArray(source.assumes)
+		node.Prove, node.Goal = b.canonicalGraph(source.prove), b.canonicalGraph(source.goal)
+		return node
+	case *sanySemNewSymbNode:
+		node := &tlc.NewSymbNode{SemanticNodeBase: source.SemanticNodeBase}
+		remember(node)
+		node.OpDecl = b.canonicalSymbol(source.opDeclNode)
+		node.Set = b.canonicalGraph(source.set)
+		return node
+	case *sanySemAssumeNode:
+		node := &tlc.AssumeNode{SemanticNodeBase: source.SemanticNodeBase, Module: b.canonicalModuleOwner(source.module), IsAxiom: source.isAxiom}
+		remember(node)
+		node.Assume = b.canonicalGraph(source.assumeExpr)
+		if source.def != nil {
+			node.Def = b.canonicalGraph(source.def).(*tlc.ThmOrAssumpDefNode)
+		}
+		return node
+	case *sanySemTheoremNode:
+		node := &tlc.TheoremNode{SemanticNodeBase: source.SemanticNodeBase, Module: b.canonicalModuleOwner(source.module), Suffices: source.suffices}
+		remember(node)
+		if b.canonicalTheorems == nil {
+			b.canonicalTheorems = map[*sanySemTheoremNode]*tlc.TheoremNode{}
+		}
+		b.canonicalTheorems[source] = node
+		node.Theorem = b.canonicalGraph(source.theoremExprOrAssumeProve)
+		if source.def != nil {
+			node.Def = b.canonicalGraph(source.def).(*tlc.ThmOrAssumpDefNode)
+		}
+		node.Proof = b.canonicalGraph(source.proof)
+		return node
+	case *sanySemLeafProofNode:
+		node := &tlc.LeafProofNode{SemanticNodeBase: source.SemanticNodeBase, Omitted: source.omitted, Only: source.isOnly}
+		remember(node)
+		node.Facts, node.Defs = b.canonicalGraphArray(source.facts), b.canonicalSymbols(source.defs)
+		return node
+	case *sanySemNonLeafProofNode:
+		node := &tlc.NonLeafProofNode{SemanticNodeBase: source.SemanticNodeBase}
+		remember(node)
+		node.Steps, node.Instances = b.canonicalGraphArray(source.steps), b.canonicalGraphArray(source.insts)
+		node.Context = b.canonicalContext(source.context)
+		return node
+	case *sanySemDefStepNode:
+		node := &tlc.DefStepNode{SemanticNodeBase: source.SemanticNodeBase, StepNumber: source.stepNumber}
+		remember(node)
+		if source.defs != nil {
+			node.Defs = make([]*tlc.OpDefNode, len(source.defs))
+			for i, def := range source.defs {
+				if def != nil {
+					node.Defs[i] = b.canonicalGraph(def).(*tlc.OpDefNode)
+				}
+			}
+		}
+		return node
+	case *sanySemUseOrHideNode:
+		node := &tlc.UseOrHideNode{SemanticNodeBase: source.SemanticNodeBase, Only: source.isOnly, StepName: source.stepName}
+		remember(node)
+		node.Facts, node.Defs = b.canonicalGraphArray(source.facts), b.canonicalSymbols(source.defs)
+		return node
+	case *sanySemInstanceNode:
+		node := &tlc.InstanceNode{SemanticNodeBase: source.SemanticNodeBase, Name: source.name, StepName: source.stepName,
+			Local: source.local, Module: b.canonicalModuleOwner(source.module)}
+		remember(node)
+		node.Params, node.Substs = b.canonicalParameters(source.params), b.canonicalSubstitutions(source.substs)
+		return node
+	case *sanySemModuleNode:
+		if node := b.canonicalModuleOwner(source); node != nil {
+			remember(node)
+			return node
+		}
+		panic(tlc.NewUnsupportedOperationException("runtime module adapter has not been installed"))
+
 	default:
 		panic(tlc.NewUnsupportedOperationException("runtime adapter for canonical context graph node"))
 	}
@@ -264,4 +360,50 @@ func (b *tlcBridge) canonicalSubstitutions(source []*sanySemSubst) []tlc.Subst {
 		nodes[i] = node
 	}
 	return nodes
+}
+
+func (b *tlcBridge) canonicalSymbols(source []sanySemSymbol) []*tlc.SymbolNode {
+	if source == nil {
+		return nil
+	}
+	nodes := make([]*tlc.SymbolNode, len(source))
+	for i, symbol := range source {
+		if !sanyExploreNull(symbol) {
+			nodes[i] = b.canonicalSymbol(symbol)
+		}
+	}
+	return nodes
+}
+
+func (b *tlcBridge) canonicalModuleOwner(source *sanySemModuleNode) *tlc.ModuleNode {
+	if source == nil {
+		return nil
+	}
+	for module, node := range b.moduleNodes {
+		if module.semanticNode == source {
+			return node
+		}
+	}
+	return nil
+}
+
+// Definitions can be adapted before runtime module shells are installed.
+func (b *tlcBridge) bindCanonicalGraphModules() {
+	for _, context := range b.canonicalContexts {
+		context.ModuleTable = b.processor.ModuleTbl
+	}
+	for source, node := range b.canonicalGraphs {
+		switch source := source.(type) {
+		case *sanySemOpDefNode:
+			node.(*tlc.OpDefNode).OriginallyDefinedInModule = b.canonicalModuleOwner(source.module)
+		case *sanySemThmOrAssumpDefNode:
+			node.(*tlc.ThmOrAssumpDefNode).OriginallyDefinedInModule = b.canonicalModuleOwner(source.module)
+		case *sanySemTheoremNode:
+			node.(*tlc.TheoremNode).Module = b.canonicalModuleOwner(source.module)
+		case *sanySemAssumeNode:
+			node.(*tlc.AssumeNode).Module = b.canonicalModuleOwner(source.module)
+		case *sanySemInstanceNode:
+			node.(*tlc.InstanceNode).Module = b.canonicalModuleOwner(source.module)
+		}
+	}
 }

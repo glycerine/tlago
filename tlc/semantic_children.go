@@ -13,7 +13,7 @@ func SemanticChildren(node SemanticNode) []SemanticNode {
 		for _, op := range n.GetOpDefs() {
 			result = append(result, op)
 		}
-		return append(result, n.TopLevel...)
+		return append(result, n.graphStatements()...)
 	case *OpDefNode:
 		return []SemanticNode{n.Body}
 	case *OpApplNode:
@@ -40,6 +40,47 @@ func SemanticChildren(node SemanticNode) []SemanticNode {
 		return []SemanticNode{n.Body}
 	case *AssumeNode:
 		return []SemanticNode{n.Assume}
+	case *TheoremNode:
+		if n.Proof == nil {
+			return []SemanticNode{n.Theorem}
+		}
+		return []SemanticNode{n.Theorem, n.Proof}
+	case *ThmOrAssumpDefNode:
+		return []SemanticNode{n.Body}
+	case *AssumeProveNode:
+		if n.Assumes == nil {
+			panic(NewNullPointerException())
+		}
+		return append(append([]SemanticNode(nil), n.Assumes...), n.Prove)
+	case *NewSymbNode:
+		if n.Set == nil {
+			return nil
+		}
+		return []SemanticNode{n.Set}
+	case *LeafProofNode:
+		return append([]SemanticNode(nil), n.Facts...)
+	case *NonLeafProofNode:
+		return append([]SemanticNode(nil), n.Steps...)
+	case *DefStepNode:
+		if n.Defs == nil {
+			panic(NewNullPointerException())
+		}
+		children := make([]SemanticNode, len(n.Defs))
+		for i, def := range n.Defs {
+			children[i] = def
+		}
+		return children
+	case *UseOrHideNode:
+		return append([]SemanticNode(nil), n.Facts...)
+	case *InstanceNode:
+		if n.Substs == nil {
+			panic(NewNullPointerException())
+		}
+		children := make([]SemanticNode, len(n.Substs))
+		for i, subst := range n.Substs {
+			children[i] = subst.Expr
+		}
+		return children
 	default:
 		return nil
 	}

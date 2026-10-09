@@ -10891,16 +10891,39 @@ the actual source semantic base. Source Subst records share fields across copied
 runtime entries; wrappers sharing a source array reuse one runtime slice. Array
 identity uses a retained typed backing-array pointer and length.
 
-This is not full runtime graph parity. The adapter explicitly rejects source
-node classes outside its represented set, including ASSUME/PROVE and proof
-bodies. Imported theorem views still need reconciliation with reconstructed
-module theorem adapters and complete original-module metadata. Label formal
-edges and OpDef proof-step edges remain absent from the runtime walker; AT and
-Context visitor callbacks still differ from the complete source explorer API.
-INSTANCE evaluation also retains its separate lowering. Preserve these limits
-when extending the adapter; do not replace source identities with name matching
-or filtered declaration replay. The focused original test receipts establish
-retained behavior, rather than proving every source context or graph shape.
+Runtime adapters now cover ASSUME/PROVE, NEW declarations, theorem/assumption
+statements, leaf and structured proofs, definition steps, USE/HIDE and INSTANCE
+nodes. They publish shells before following goal, body, proof, context or source
+links. Proof-local declarations retain their own source identities even when a
+module declaration has the same name. Canonical theorem definitions in module
+contexts reuse these adapters, including imported source links and original
+module ownership. Module views also borrow their SANY base and preserve its
+syntax range; standalone native construction still allocates its own identity.
+
+Runtime graph traversal includes label formals after the body, OpDef proof-step
+links, theorem statement/proof edges and the proof classes' source walkGraph
+edges. It excludes theorem-definition parameters, NEW declaration links,
+ASSUME/PROVE goal links and INSTANCE substitution links where the source walker
+does so. AT occurrences bypass the visited table. Syntax children remain a
+separate traversal with their source memberships.
+
+Module assumptions and theorems have separate enumeration vectors, as in Java.
+Constant processing visits assumptions first and theorems second, independently
+of the top-level graph vector. The bridge retains generated SANY top-level
+statements in source order. Some INSTANCE expressions still have only an AST
+runtime view: original model 219's line 42 assumption is one concrete example.
+The SANY top-level vector lacks those statements. Runtime assumption enumeration
+must retain them for constant processing and checking; graph and syntax traversal
+supplement the available canonical vector with those AST fallback assumptions.
+Their exact source graph/interleaving remains a generator completion requirement,
+rather than permission to omit their assertions or synthesize canonical identity.
+
+This is not full runtime graph parity. Complete Context/Subst explorer callbacks,
+mutation/null-boundary behavior, builtin formal/base adaptation and the remaining
+native INSTANCE lowering still need reconciliation with canonical source nodes.
+The listed original test receipts establish retained behavior and loading of the
+represented proof graphs; they do not prove every visitor contract or complete
+source generation. Preserve source identities when extending these adapters.
 
 ## First canonical LET and formal adapters
 

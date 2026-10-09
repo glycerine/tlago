@@ -27604,3 +27604,67 @@ original-module metadata still need reconciliation. Runtime Label/OpDef and
 AT/Context visitor behavior also need their remaining source edges/callbacks.
 Updated TLC_ARCH and the current handoff to preserve these boundaries. Inventory
 counts remain unchanged; no full-workspace rerun or race instrumentation.
+
+
+## 2026-10-09: Retain runtime theorem and proof graphs
+
+Previous goal turn made authoritative progress in e446e43. Revalidated that
+commit and a clean worktree, then polled the same live full off-heap random
+session 77502. Its original 2,147,483,648-iteration workload now exceeds
+162 million iterations with assertions intact; no restart or completion credit.
+Fingerprint production is unchanged.
+
+Added source-shaped runtime ASSUME/PROVE, NEW, leaf/structured proof, definition
+step, USE/HIDE and INSTANCE views. Canonical adaptation publishes shells before
+following body, goal, context, proof and source links. Proof-local declarations
+retain distinct canonical identity from same-named module declarations. Module
+contexts now reuse actual canonical theorem-definition adapters, including their
+source links and original module ownership. Assumption and theorem statements
+reuse these graph views. Module views borrow the canonical base and preserve its
+original syntax/location instead of overwriting it with a native start position.
+
+Runtime graph traversal now retains label formals, OpDef step nodes and statement
+and proof edges. Theorem-definition parameters, NEW declaration references,
+ASSUME/PROVE goals, proof-instance inputs and INSTANCE substitutions are excluded
+where source walkGraph excludes them. AT occurrences bypass visited registration.
+Syntax children use their separate source memberships. Complete explorer
+callbacks, mutation/null contracts and builtin adaptation remain pending.
+
+Original Test210 exercises nested ASSUME/PROVE, NEW, SUFFICES and proof bodies;
+Test216 exercises imported theorem definitions and selectors. The first original
+206/207/208/209/210/216/219, ValueSemanticsAssume and ReportCoverage01-04 selection
+passes: canonical-proof-first.log, terminal ce549b, status 0, root 5.473 seconds,
+TLC 0.011 seconds. Installing canonical statement views also passes the focused
+selection including EWD998TraceDebugger: canonical-proof-statements.log,
+terminal dedcf2, status 0, root 6.116 seconds, TLC 0.015 seconds. An intermediate
+broader legacy/debugger/coverage run passes in 204.446 seconds, terminal 5d95ed,
+canonical-proof-final-originals.log; this predates the top-level vector change.
+
+Replacing the runtime top-level vector with the retained SANY vector exposed a
+real port boundary in original Test219: the line 42 INSTANCE-expression
+assumption has an AST runtime view but no generated SANY statement. Its literals
+therefore lost constant preprocessing. Temporary Go overlays on that unchanged
+original test isolated top-level replacement and captured the unprocessed
+literal locations. Restoring the old module-location mutation did not fix it;
+omitting INSTANCE metadata adaptation did not fix it either. No diagnostic
+changes remain in production. The implementation now keeps a separate complete
+runtime assumption vector, matching SpecProcessor's getAssumptions-before-
+getTheorems traversal. Available canonical top-level statements retain source
+order; graph traversal also retains the missing AST fallback assumptions.
+Complete generation and exact source interleaving for those expressions remain
+pending, not waived. No original assertions were removed or new tests invented.
+
+The corrected focused original selector/LET/cyclic/debugger selection passes:
+canonical-proof-assumption-vector.log, terminal 87aac7, status 0, 6.037 seconds.
+Final focused native coverage, Tool, Specs and context/table checks pass:
+canonical-proof-complete-runtime.log, terminal 68e7dc, status 0, 0.022 seconds.
+The SANY package passes: canonical-proof-complete-sany.log, terminal 53d21f,
+status 0, 2.540 seconds. A mistakenly broad TestJava selection in package tlc was
+interrupted (130) and earns no receipt; it was replaced with the focused checks.
+All logs and diagnostic overlays are under .codex-gotmp. No race instrumentation
+or full-workspace run. Inventory counts unchanged. Current handoff and
+architecture document the remaining source-generation and visitor boundaries.
+Final broader original legacy/debugger/EWD998/coverage/LET/cyclic selection
+passes: canonical-proof-complete-originals.log, terminal 500ea0, status 0,
+205.380 seconds. Original assertions and bounds remain unchanged.
+Git diff --check passes.
