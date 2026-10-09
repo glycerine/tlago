@@ -28356,3 +28356,45 @@ runtime-invariant-phase-final-focused.log, terminal 6f6ca5, status 0,
 8.164 seconds. Translated Java assertions and workload bounds are unchanged.
 The same full off-heap random session remains live; no completion credit.
 Git diff --check passes.
+
+
+First configuration failure and phase ordering (2026-10-09)
+
+Resumed the uncommitted processor change after the interruption. Java
+SpecProcessor uses throwing Assert.fail calls; native addConfigError previously
+recorded errors and continued. ProcessConfig also reset errors from earlier
+constant/override processing. Configuration failures now unwind immediately,
+and public processor boundaries recover only their exact recorded ConfigError.
+Other panics retain their original propagation. ApplyToTool publishes config
+metadata early, preserves errors in a deferred native diagnostic transfer, and
+returns after a failed constant/override or ordinary config phase. Later runtime
+compilation and setup do not run after those failures.
+
+Focused existing invalid-invariant, legacy, constant-operator, error-trace,
+trace-expression and debugger checks pass: config-failure-order-focused-originals.log,
+terminal 868567, status 0, 5.678 seconds. Processor/config/getter checks pass:
+config-failure-order-processor-checks.log, terminal 98c2bc, status 0, 0.017 seconds.
+Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and trace
+selection passes: config-failure-order-broad-originals.log, terminal 571ece,
+status 0, 181.203 seconds.
+
+Ignored standalone observation drivers use the unchanged original
+LegacySuiteTestInvalidInvariant fixture and its existing Invariant expression.
+Pinned Java reports only error 2146 [Invariant], with zero runtime compiler calls.
+Baseline Go calls the compiler and records both 2146 [Invariant] and 2229
+[property Property]. Corrected Go reports only 2146 [Invariant], with no compiler
+call. Receipts: config-failure-order-java-observation.log, terminal 67c05e;
+config-failure-order-before-observation.log, terminal c1294f; and
+config-failure-order-after-observation.log, terminal d022f5; all status 0.
+These manual observations add no invented persistent tests, fixtures, translated
+assertions or original-method credit. General config-error combinations, source
+generation, mutation sharing and native INSTANCE fallback remain unproven.
+
+The original full off-heap random workload remains live in session 77502,
+beyond 432 million of 2,147,483,648 iterations. It was not restarted and has no
+completion credit. No race instrumentation, full-workspace or XML/ApalacheIR
+sweep, email work, Java edits or workload-bound changes.
+
+After moving the constant-phase recovery defer below its nil guard, the same
+focused processor/config/getter selection passes again, terminal 3dd7b3,
+status 0, 0.016 seconds. Git diff --check passes.

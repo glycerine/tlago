@@ -11049,9 +11049,20 @@ existing BasicMultiTrace/MCInv data and both its Inv operator and original body
 and processor, with matching names, action identity across getters, source bodies
 and internal/init flags. The baseline exposed two tool actions but one processor
 action. Generated wrapper name suffixes are normalized for comparison. These
-observations do not establish general runtime-template or configuration-error
-ordering parity; the native processor still accumulates config failures where
-Java can abort immediately, which needs a separate audit.
+observations do not establish general runtime-template parity.
+
+Configuration failures now unwind their phase immediately, matching Java
+Assert.fail ordering. Public processor boundaries recover only the exact recorded
+ConfigError object; unrelated panics propagate. ApplyToTool preserves the first
+constant/override error instead of clearing it in ProcessConfig, and returns
+before later runtime compilation, definition publication or tool setup. Its
+deferred transfer retains the failure in Tool.ConfigErrors for native diagnostics.
+A bounded comparison using unchanged LegacySuiteTestInvalidInvariant data and
+its existing Invariant operator as a runtime template reports error 2146 with
+parameter Invariant and zero compiler calls in both Java and corrected Go.
+Baseline Go compiled the runtime template and recorded a second, undefined-property
+error (2229). This observation proves that failure path, not every config-error
+combination.
 
 An overlay on unchanged original Test219 observes 648 root traces, all matching
 exactly, including all 371 initial-context events, without alias/null failures.

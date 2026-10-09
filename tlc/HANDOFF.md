@@ -73,9 +73,11 @@ definitions, preserving INSTANCE substitutions and formals. Source theorem
 symbol caches and early conversion now retain the canonical source symbols.
 Runtime constraint/view/postcondition targets now use external module OpDefs and
 processor configuration/getter paths. Runtime invariant templates now compile and
-merge in the processor before constraint processing. Next: audit accumulated
-config failures versus Java's immediate aborts around runtime template compilation;
-general source generation, mutation sharing and native INSTANCE fallback remain.
+merge in the processor before constraint processing. Configuration phases now stop
+at their first error, retaining constant/override failures and preventing later
+runtime compilation or tool setup. The original invalid-invariant fixture matches
+Java's first error and zero compiler calls. General source generation, mutation
+sharing and native INSTANCE fallback parity remain pending.
 
 ## Verification baseline and test credit
 

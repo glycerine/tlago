@@ -326,6 +326,7 @@ func (p *SpecProcessor) ProcessConfig() {
 	if p == nil || p.Config == nil {
 		return
 	}
+	defer p.recoverConfigFailure()
 	p.resetProcessedConfig()
 	p.SpecificationName = p.Config.GetSpec()
 	p.SymmetrySpec = p.Config.GetSymmetry()
@@ -422,8 +423,12 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	if p == nil || tool == nil {
 		return
 	}
+	p.ConfigErrors = nil
+	defer func() { tool.ConfigErrors = append([]*ConfigError(nil), p.ConfigErrors...) }()
+	defer p.recoverConfigFailure()
 	p.ToolID = tool.ID
 	tool.SpecProcessor = p
+	tool.ModelConfig = p.Config
 	names := make([]string, len(p.Variables))
 	locations := make(map[string]SourceLocation, len(p.VariablesNodes))
 	for i, variable := range p.Variables {
@@ -435,10 +440,16 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	SetStateVariablesWithLocations(names, locations)
 	p.applyDefinitionsToTool(tool)
 	p.ProcessConfigConstantsAndOverrides(tool)
+	if len(p.ConfigErrors) != 0 {
+		return
+	}
 	// Java snapshots after processSpec installs overrides, before pre-evaluation.
 	p.Snapshot = p.Defns.Snapshot()
 	p.ProcessConstantDefinitions(tool)
 	p.ProcessConfig()
+	if len(p.ConfigErrors) != 0 {
+		return
+	}
 	p.applyDefinitionsToTool(tool)
 	tool.ModelConfig = p.Config
 	tool.InitStateSpec = append([]*Action(nil), p.InitPred...)
@@ -821,6 +832,7 @@ func (p *SpecProcessor) ProcessConfigConstantsAndOverrides(tool *Tool) {
 	if p == nil || p.Config == nil || p.Defns == nil {
 		return
 	}
+	defer p.recoverConfigFailure()
 	constants := configConstantsToDefns(p.Config.GetConstants(), p)
 	for name, value := range constants.All() {
 		// Java attaches a global operator constant assignment to the root
@@ -1937,5 +1949,19 @@ func (p *SpecProcessor) addConfigError(code int, params ...string) {
 	if p == nil {
 		return
 	}
-	p.ConfigErrors = append(p.ConfigErrors, NewConfigError(code, params...))
+	failure := NewConfigError(code, params...)
+	p.ConfigErrors = append(p.ConfigErrors, failure)
+	panic(failure)
+}
+
+// Unwind exactly the configuration failure recorded by this processor. Keep
+// native diagnostics at the public boundary while Java's Assert.fail ordering
+// prevents later config phases, runtime compilation and mutations from running.
+func (p *SpecProcessor) recoverConfigFailure() {
+	if failure := recover(); failure != nil {
+		last := len(p.ConfigErrors) - 1
+		if last < 0 || failure != p.ConfigErrors[last] {
+			panic(failure)
+		}
+	}
 }
