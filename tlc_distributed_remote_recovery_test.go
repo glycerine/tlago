@@ -43,6 +43,12 @@ func TestNativeDistributedRemoteCheckpointCommitReplyLoss(t *testing.T) {
 	}
 }
 
+func TestNativeDistributedRemoteCheckpointCommitReplyLossMultipleWorkers(t *testing.T) {
+	for _, backend := range []string{"mem", "lsb", "msb"} {
+		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 2, true) })
+	}
+}
+
 func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, commitReplyLoss bool) {
 	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 	if err != nil {

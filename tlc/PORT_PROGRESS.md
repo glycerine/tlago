@@ -24359,3 +24359,31 @@ One normal unchanged N=7 two-host model verifies process integration and retains
 No full suite ran and no long workload used race instrumentation. No original
 Java method directly covers this native transport defect; no method credit added.
 All handles are terminal.
+
+### 2026-10-09: Shared-worker restart after completed commit reply loss
+
+Combined two existing source-supported layouts in the full native restart
+matrix: two workers sharing one application/runtime in each generation, and
+the first of two fingerprint hosts losing its reply after a real named commit.
+Added Mem/LSB/MSB rows using the existing unchanged MC06 N=7 workload, actual
+checkpoint files and original restart assertions. No production change needed.
+
+Each producer registers both workers, checkpoints an unfinished successor
+frontier and reports exactly one source checkpoint warning while retaining both
+fingerprint registrations. All original roles are then lost. Empty fresh stores
+recover exact committed partition membership before replacement evaluation;
+queue counts and committed bytes remain checked independently. Both replacement
+workers must perform actual work, report separate statistics and use distinct
+endpoints on one listener. Final completion retains 114,942 distinct states,
+an empty queue, one recovery, no regenerated initialization and no GENERAL.
+
+All three cases pass (multiworker-checkpoint-commit-reply-loss.log, terminal
+57d3cd, status 0, 130.649 seconds; Mem 45.43, LSB 41.58 and MSB 43.62 seconds).
+Each recovered 24,576 committed fingerprints and 8,192 queued states. All
+surviving roles exit normally and every child is joined. Related assigned-block,
+checkpoint-failure, nested named-checkpoint and original dynamic-manager checks
+initially lacked local socket permission (terminal b02274, status 1); unchanged
+checks pass with listener permission (terminal 9a8bfb, status 0, 0.096 seconds).
+This adds native combination coverage, not disabled-original-method credit,
+incomplete-commit recovery, fresh remote CLI support or atomicity guarantees.
+No full suite or race workload ran. All handles are terminal.

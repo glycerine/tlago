@@ -382,8 +382,11 @@ or establish checkpoint atomicity.
 The remote restart matrix also loses the first host's reply after its real named
 checkpoint commit. The coordinator must print the source warning and retain two
 distinct available registrations. Fresh processes restore the committed files
-and exact partition membership before resuming the original N=7 model. This
-covers completed-commit reply loss, not incomplete remote commits or atomicity.
+and exact partition membership before resuming the original N=7 model. Mem,
+LSB and MSB rows cover both one worker and two workers sharing an application
+in each generation. The two-worker cases retain actual work and separate
+statistics from both replacement workers. This covers completed-commit reply
+loss, not incomplete remote commits or atomicity.
 
 Short native checks also lose the reply after a real named begin. They require
 one begin, no commit or replay, unchanged registrations and exact pending file

@@ -12474,7 +12474,11 @@ two distinct available registrations. The existing snapshot checks require real
 committed bytes, unchanged files after crashes, persisted queue counts and exact
 recovered partition membership before replacement evaluation. Mem, LSB and MSB
 rows then finish the original N=7 model at 114,942 distinct states and zero queued
-states. No production fault hook, retry protocol, RMI or atomicity guarantee is
+states. Each backend runs with one worker and with two workers sharing one
+application/runtime before the checkpoint and in the replacement process.
+Two-worker cases require two registrations in both generations and distinct
+replacement endpoints on one listener, with nonzero sent/received statistics
+from both. No production fault hook, retry protocol, RMI or atomicity guarantee is
 introduced. These native checks do not complete disabled Java model methods.
 
 ### Remote checkpoint begin with a lost reply

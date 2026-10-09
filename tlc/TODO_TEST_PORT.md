@@ -1415,6 +1415,12 @@ No production startup change or disabled-harness method credit is added. Other
 failure phases and general network partitions remain open. Disk hosts retain the
 source two-child MultiFPSet layout and restore fingerprint high bits from each
 child's committed file when checking complete recovered membership.
+Completed remote commit reply loss now also runs with two workers sharing one
+application in both process generations, across Mem/LSB/MSB storage. Existing
+exact warning, two retained registrations, committed snapshot bytes, recovered
+membership and final model assertions remain intact; both replacement workers
+must report actual work on distinct endpoints of the same listener. These native
+combination checks add no original-method completion credit.
 Named nested-store checkpoint traversal now has native concurrency/join and
 failure-boundary checks, plus fresh-store Mem/LSB/MSB recovery checks preserving
 both high-bit partitions. The source MultiFPSetTest has no corresponding named
