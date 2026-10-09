@@ -38,10 +38,10 @@ func NewDistributedWorkerNetwork(listenAddress, advertisedAddress string) (*Dist
 	}
 	if advertisedAddress == "" {
 		advertisedAddress = listener.Addr().String()
-	} else if net.ParseIP(advertisedAddress) != nil || !strings.Contains(advertisedAddress, ":") {
+	} else if host, ip := distributedIPHost(advertisedAddress); ip || !strings.Contains(advertisedAddress, ":") {
 		// A host alone advertises the actual bound callback port, including
 		// an ephemeral port chosen by the OS. Explicit host:port stays intact.
-		advertisedAddress = net.JoinHostPort(advertisedAddress, strconv.Itoa(listener.Addr().(*net.TCPAddr).Port))
+		advertisedAddress = net.JoinHostPort(host, strconv.Itoa(listener.Addr().(*net.TCPAddr).Port))
 	}
 	host, portText, err := net.SplitHostPort(advertisedAddress)
 	if err != nil {

@@ -14555,3 +14555,24 @@ was constructed to own those hosts, the fixture parent explicitly exits and
 joins them. This preserves startup failure precedence and does not manufacture
 a recovered model, change CLI registration order or prove later intern-record
 corruption behavior. No production change or original-method credit is added.
+
+
+### Native IPv6 coordinator and callback addresses
+
+Coordinator discovery no longer concatenates bare IPv6 host operands with a
+colon and port. A native IP-host parser recognizes bare/bracketed IPv6, including
+zone suffixes, without canonicalizing the supplied spelling. net.JoinHostPort
+supplies brackets and url.URL.String escapes a zone percent sign. Discovery's
+existing URL parser restores the raw zone before TCP dialing. Worker and FP
+lookups still use their separate source bindings and capture the configured
+port once; keepalive retains the resulting lookup location. DNS/IPv4 formatting,
+retry categories, backoff and TLC algorithms are unchanged.
+
+Callback host detection uses the same native parser, permitting scoped and
+bracketed IP hosts with the actual bound callback port. Explicit host:port
+advertisements retain their existing behavior. Tests cover both source bindings
+and retained keepalive locations, actual IPv6 loopback discovery/status and a
+published worker callback over IPv6. Scoped address spelling is checked without
+claiming link-local routing on an actual interface. Existing IPv4 bootstrap and
+retry controls remain green. There is no original Java native-address test;
+original-method credit stays unchanged.

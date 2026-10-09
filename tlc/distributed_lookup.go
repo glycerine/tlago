@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
+	"net/netip"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -24,7 +28,7 @@ func LookupTLCWorkerServer(serverName string, lookup TLCServerLookup, sleep Dist
 // DiscoverTLCWorkerServer also retains the URL local used later by main's
 // keepalive task, even if Port changes while discovery/bootstrap is running.
 func DiscoverTLCWorkerServer(serverName string, lookup TLCServerLookup, sleep DistributedLookupSleep, output io.Writer) (DistributedServerEndpoint, string, error) {
-	url := "//" + serverName + ":" + fmtInt(TLCServerPort()) + "/" + TLCServerWorkerName
+	url := distributedCoordinatorLocation(serverName, TLCServerWorkerName)
 	server, err := lookupDistributedServerURL(serverName, url, lookup, sleep, output)
 	return server, url, err
 }
@@ -35,8 +39,31 @@ func LookupDistributedFPServer(serverName string, lookup TLCServerLookup, sleep 
 }
 
 func lookupDistributedServer(serverName, binding string, lookup TLCServerLookup, sleep DistributedLookupSleep, output io.Writer) (DistributedServerEndpoint, error) {
-	url := "//" + serverName + ":" + fmtInt(TLCServerPort()) + "/" + binding
+	url := distributedCoordinatorLocation(serverName, binding)
 	return lookupDistributedServerURL(serverName, url, lookup, sleep, output)
+}
+
+// Native hosts can be bare or bracketed IP literals, including IPv6 zones.
+// Retain the supplied spelling; parsing determines the address structure only.
+func distributedIPHost(host string) (string, bool) {
+	candidate := host
+	if strings.HasPrefix(candidate, "[") && strings.HasSuffix(candidate, "]") {
+		candidate = candidate[1 : len(candidate)-1]
+	}
+	if _, err := netip.ParseAddr(candidate); err != nil {
+		return host, false
+	}
+	return candidate, true
+}
+
+func distributedCoordinatorLocation(serverName, binding string) string {
+	port := fmtInt(TLCServerPort())
+	if host, ip := distributedIPHost(serverName); ip && strings.Contains(host, ":") {
+		// URL.String escapes the zone's percent sign for discovery; parsing
+		// restores the raw zone before net.Dial receives the TCP address.
+		return (&url.URL{Host: net.JoinHostPort(host, port), Path: "/" + binding}).String()
+	}
+	return "//" + serverName + ":" + port + "/" + binding
 }
 
 func lookupDistributedServerURL(serverName, url string, lookup TLCServerLookup, sleep DistributedLookupSleep, output io.Writer) (DistributedServerEndpoint, error) {

@@ -91,7 +91,11 @@ publication, file loading, interning, settings, registration, manager snapshots
 and keepalive are wired into the CLI. Upstream RMI names identify source files
 only. They are not Go implementation requirements. Native network shutdown errors
 reach CLI stderr and a failure exit status, including after a successful TLC
-command body; earlier command diagnostics remain visible.
+command body; earlier command diagnostics remain visible. Native discovery accepts
+bare or bracketed IPv6 hosts and escapes zone suffixes for URLs, restoring them
+for TCP dialing. Callback advertisements retain scoped IP hosts and actual bound
+ports. IPv6 loopback discovery/status and worker callbacks have focused coverage;
+scoped link-local routing across real interfaces remains outside that coverage.
 
 Use [DISTRIBUTED_PORT_MAP.md](DISTRIBUTED_PORT_MAP.md) to find implementation
 files, and [the distributed architecture](TLC_ARCH.md#distributed-tlc-architecture)

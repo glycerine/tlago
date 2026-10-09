@@ -26781,3 +26781,39 @@ pass with unchanged assertions in distributed-remote-intern-corruption-controls.
 terminal 935be2, status 0, 13.221 seconds. Both selected entries ran. No full
 suite, race or unchanged full-model completion rerun. All handles terminal and
 git diff --check passes.
+
+
+### October 9, 2026: native IPv6 discovery and callback addressing
+
+Found a concrete native transport shortcut while comparing fingerprint startup:
+coordinator discovery concatenated host:port, making a bare IPv6 host invalid;
+worker callback advertisement used net.ParseIP, which rejects IPv6 zone suffixes.
+Go now recognizes bare/bracketed IP literals with net/netip, uses net.JoinHostPort
+for IPv6 discovery and url.URL.String for zone escaping. Discovery's existing
+parser restores the raw zone before dialing. DNS/IPv4 and non-IP spellings remain
+unchanged. Worker/FP bindings and captured keepalive location retain the original
+TLC behavior, including unchanged retry categories and backoff. Callback hosts
+use the same parser and actual bound port, preserving explicit host:port input.
+CLI help documents native IPv6 operands; no Java RMI machinery or rpc25519 work.
+
+No direct original Java test covers native address construction. Added operand/
+zone fixtures for both bindings and captured keepalive location, plus real IPv6
+loopback discovery/status and a published worker callback. Existing advertised
+host coverage now includes bracketed and scoped literals; it still verifies the
+actual listener port via IPv4. The IPv6 TCP check skips only address-family or
+loopback-address unavailability, not permission failures. It actually passes here.
+Scoped spelling coverage does not prove link-local routing on a real interface.
+Original distributed inventory stays 37/41.
+
+Initial focused checks pass in distributed-ipv6-discovery.log, terminal e4fc25,
+status 0. After independent expected-host fixtures and actual IPv6 callbacks,
+distributed-ipv6-discovery-final.log passes, terminal 969a54, status 0.
+Capability-specific IPv4-only-host handling passes in
+distributed-ipv6-discovery-portable.log, terminal f05a5d, status 0. Review retained
+original non-IP host spellings before final verification; all new and existing
+IPv4 bootstrap/retry/address controls pass in
+distributed-ipv6-discovery-final-reviewed.log, terminal 9c1434, status 0.
+All selected TCP entries ran without skips. Existing role-help selection passes
+in distributed-ipv6-help.log, terminal 0eef23, status 0, 0.017 seconds. Reruns
+followed fixture/production edits; no full suite, long model or race run. All
+handles terminal and git diff --check passes.

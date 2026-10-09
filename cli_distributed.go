@@ -165,6 +165,7 @@ func printDistributedCLIHelp(w io.Writer, role string) {
 	} else {
 		fmt.Fprintln(w, "  -Dtlc2.tool.distributed.TLCWorker.threadCount=N    Worker threads (default available processors); applies to worker roles.")
 		fmt.Fprintln(w, "COORDINATOR_HOST is the server hostname. Model options belong on the coordinator, not the worker/FP command.")
+		fmt.Fprintln(w, "IPv6 coordinator hosts may be bare or bracketed (for example ::1 or [::1]); scoped hosts retain their %zone suffix.")
 	}
 	fmt.Fprintln(w, "\nExample: tlago server -config Spec.cfg Spec.tla")
 	fmt.Fprintln(w, "         tlago worker -Dtlc2.tool.distributed.TLCWorker.threadCount=4 coordinator-host")
