@@ -83,6 +83,8 @@ const (
 	nativeRemoteCheckpointDescendingDiskSnapshot
 	nativeRemoteCheckpointEmptyDiskSnapshot
 	nativeRemoteCheckpointTrailingDiskSnapshot
+	nativeRemoteCheckpointTruncatedMemSnapshot
+	nativeRemoteCheckpointDuplicateMemSnapshot
 )
 
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
@@ -128,6 +130,20 @@ func TestNativeDistributedRemoteCheckpointTrailingDiskSnapshot(t *testing.T) {
 	}
 }
 
+// Missing direct-memory snapshots warn and continue, but malformed records
+// raise source assertions and stop before the next store or worker publication.
+func TestNativeDistributedRemoteCheckpointCorruptMemSnapshot(t *testing.T) {
+	for _, input := range []string{"truncated", "duplicate"} {
+		t.Run(input, func(t *testing.T) {
+			fault := nativeRemoteCheckpointTruncatedMemSnapshot
+			if input == "duplicate" {
+				fault = nativeRemoteCheckpointDuplicateMemSnapshot
+			}
+			checkNativeDistributedRemoteCheckpointRestart(t, "mem", 1, fault)
+		})
+	}
+}
+
 func TestNativeDistributedRemoteCheckpointEmptyDiskSnapshot(t *testing.T) {
 	for _, backend := range []string{"lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -164,6 +180,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	corruptDiskOrdering := fault == nativeRemoteCheckpointDuplicateDiskSnapshot || fault == nativeRemoteCheckpointDescendingDiskSnapshot
 	emptyDiskSnapshot := fault == nativeRemoteCheckpointEmptyDiskSnapshot
 	invalidDiskSnapshot := corruptDiskOrdering || emptyDiskSnapshot
+	invalidMemSnapshot := fault == nativeRemoteCheckpointTruncatedMemSnapshot || fault == nativeRemoteCheckpointDuplicateMemSnapshot
 	trailingDiskSnapshot := fault == nativeRemoteCheckpointTrailingDiskSnapshot
 	var debugger, debuggerScript string
 	if traceToIntern {
@@ -456,6 +473,26 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			t.Fatal(err)
 		}
 	}
+	if invalidMemSnapshot {
+		if backend != "mem" || len(snapshots[0][0].data) < 24 {
+			t.Fatal("memory corruption requires at least three direct snapshot records")
+		}
+		data := bytes.Clone(snapshots[0][0].data)
+		if fault == nativeRemoteCheckpointTruncatedMemSnapshot {
+			// Retain every complete fingerprint, adding an incomplete long.
+			data = append(data, 0x91, 0x27, 0xe3)
+		} else {
+			if bytes.Equal(data[:8], data[8:16]) {
+				t.Fatal("original memory snapshot starts with duplicate fingerprints")
+			}
+			// Two fingerprints are inserted before the third repeats the first.
+			copy(data[16:24], data[:8])
+		}
+		if err := os.WriteFile(filepath.Join(directories[0], snapshots[0][0].filename), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		snapshots[0][0].data = data
+	}
 	if trailingDiskSnapshot {
 		if backend == "mem" {
 			t.Fatal("trailing disk snapshot requires nested disk storage")
@@ -577,7 +614,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		t.Log("corrupt coordinator snapshot stops before remote recovery and publication; all roles join and checkpoint bytes survive")
 		return
 	}
-	if missingDiskSnapshot || invalidDiskSnapshot {
+	if missingDiskSnapshot || invalidDiskSnapshot || invalidMemSnapshot {
 		// Source main reports this failure and closes the server with cleanup=false;
 		// it does not turn the caught exception into a process failure status.
 		for _, process := range append([]*nativeDistributedTestProcess{server}, restarted...) {
@@ -606,11 +643,18 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		if invalidDiskSnapshot {
 			matchesFailure = len(failure) == 1 && strings.Contains(failure[0], tlc.NewTLCRuntimeException(tlc.ECSystemIndexError).Error())
 		}
+		if invalidMemSnapshot {
+			assertion := tlc.NewTLCRuntimeException(tlc.ECSystemDiskIOErrorForFile, "checkpoints")
+			if fault == nativeRemoteCheckpointDuplicateMemSnapshot {
+				assertion = tlc.NewTLCRuntimeException(tlc.ECTLCFPNotInSet)
+			}
+			matchesFailure = len(failure) == 1 && strings.Contains(failure[0], assertion.Error())
+		}
 		if len(failure) != 1 || !matchesFailure || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
-			t.Fatalf("failed disk child did not report its recovery failure: %s", output)
+			t.Fatalf("failed fingerprint store did not report its recovery failure: %s", output)
 		}
 		if strings.Contains(output, "Failed to checkpoint the fingerprint server") || strings.Contains(output, "Warning: Failed to connect") {
-			t.Fatal("nested recovery failure entered the checked-I/O warning or failover path")
+			t.Fatal("snapshot assertion entered the checked-I/O warning or failover path")
 		}
 		for _, code := range []int{tlc.ECTLCCheckpointRecoverEnd, tlc.ECTLCComputingInit, tlc.ECTLCDistributedServerRunning, tlc.ECTLCDistributedWorkerRegistered, tlc.ECTLCFinished, tlc.ECTLCStats} {
 			if len(nativeDistributedMessages(output, code)) != 0 {
@@ -619,11 +663,16 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		}
 		marker := "NATIVE_CHECKPOINT_FP_RECOVER=" + basename + "\n"
 		if strings.Count(restarted[0].output.String(), marker) != 1 || strings.Contains(restarted[1].output.String(), marker) {
-			t.Fatal("nested disk failure retried or recovered a later host")
+			t.Fatal("snapshot failure retried or recovered a later host")
 		}
 		for i, process := range restarted {
 			var expected int
-			if i == 0 && !beginReplyLoss {
+			if i == 0 && invalidMemSnapshot {
+				expected = len(snapshots[0][0].data) / 8
+				if fault == nativeRemoteCheckpointDuplicateMemSnapshot {
+					expected = 2
+				}
+			} else if i == 0 && !beginReplyLoss {
 				// Native child ownership joins the sibling's recovery before
 				// propagating the failed child's operation error.
 				expected = len(snapshots[0][1].data) / 8
@@ -645,7 +694,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 					if _, err := os.Stat(filepath.Join(directories[i], committed)); !os.IsNotExist(err) {
 						t.Fatal("failed nested recovery recreated a missing committed child")
 					}
-				} else if i == 0 && child == 0 && !invalidDiskSnapshot {
+				} else if i == 0 && child == 0 && !invalidDiskSnapshot && !invalidMemSnapshot {
 					if !os.IsNotExist(err) {
 						t.Fatal("failed recovery recreated the missing committed child")
 					}
@@ -672,7 +721,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 				t.Fatal("fresh disk initialization or empty recovery retained old live fingerprints")
 			}
 		}
-		t.Log("failed disk child stops recovery before publication; later host remains empty and retained checkpoints survive")
+		t.Log("failed fingerprint snapshot stops before publication; partial inserts survive until shutdown, later host stays empty and checkpoint bytes survive")
 		return
 	}
 	waitMarker(server, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCCheckpointRecoverEnd))

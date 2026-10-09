@@ -26334,3 +26334,35 @@ body credit. Distributed inventory stays 37/41, with all four Reconcile.
 Existing unchanged diagnostic-model receipts remain applicable. No full-suite
 rerun or long race workload. Mechanical body comparison and git diff --check
 pass.
+
+
+### October 9, 2026: real direct-memory snapshot corruption stops recovery
+
+Added truncated/duplicate direct MemFPSet cases to the real N=7 EWD840
+checkpoint fixture. The original coordinator, workers and two remote stores
+are gone before modifying the first committed snapshot. Truncation appends
+three bytes after every original complete fingerprint; duplication replaces
+only the third fingerprint with the first. Pinned MemFPSet.java recover catches
+EOF as SYSTEM_DISK_IO_ERROR_FOR_FILE("checkpoints") and asserts
+TLC_FP_NOT_IN_SET for duplicates. Unlike a missing snapshot's checked-I/O
+warning/continue, both runtime assertions must stop fresh recovery.
+
+The fresh coordinator reports the exact source assertion once, never retries
+the operation or recovers the second host, and skips recovery-end/init/worker
+publication/final reporting. First-host storage retains every complete record
+for truncation or two distinct records for duplication until exit; the second
+host stays empty. All coordinator/remote snapshot bytes survive unchanged and
+all fresh roles join with the source caught-failure status. No production
+change was needed. These native integration checks add no original-method
+credit; distributed inventory remains 37/41.
+
+Both new cases pass: distributed-remote-corrupt-mem-snapshot-final.log,
+terminal 58d86b, status 0, 13.459 seconds (truncated 6.80; duplicate 6.64).
+Existing short memory/packed local/TCP startup matrix, all eight cases:
+distributed-corrupt-mem-startup-focused.log, terminal a844da, status 0,
+0.529 seconds. Shared failure-helper disk control, exact LSB/duplicate:
+distributed-corrupt-mem-shared-disk-control.log, terminal 6b94af, status 0,
+6.522 seconds. An earlier edit script aborted before writing; its initial
+selector ran no tests (bb97fc, distributed-remote-corrupt-mem-snapshot.log)
+and earns no verification credit. All actual selected cases have RUN/PASS
+receipts. No full-suite rerun or race instrumentation. git diff --check passes.

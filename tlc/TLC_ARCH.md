@@ -14230,3 +14230,25 @@ requiring one underlying close, tracking removal and retained failures on later
 closes. The native owner changes neither RPC payloads nor request replay,
 accepted-reply draining or fingerprint-storage ownership. No direct Java test
 exists for this Go resource boundary; original-method credit is unchanged.
+
+
+### Direct memory snapshot assertions in fresh distributed recovery
+
+`TestNativeDistributedRemoteCheckpointCorruptMemSnapshot` extends the real
+EWD840 N=7 checkpoint/restart fixture with truncated and duplicate direct
+MemFPSet snapshots. All original roles are gone before the first committed
+snapshot is modified. The truncated case retains all complete fingerprints and
+adds three bytes; MemFPSet.recover catches EOF and raises
+SYSTEM_DISK_IO_ERROR_FOR_FILE("checkpoints"). The duplicate case replaces only
+the third fingerprint with the first; TLC_FP_NOT_IN_SET stops after two distinct
+inserts. These follow MemFPSet.java's source loop and assertions, rather than
+the checked-I/O warning/continue used for a missing snapshot.
+
+Fresh coordinator/FP processes must report the exact source assertion, recover
+only the first registration once, retain the complete-prefix storage count until
+exit, leave the second registration empty, and skip recovery-end, initial-state
+computation, worker publication and final reporting. Coordinator and remote
+checkpoint bytes survive unchanged; all fresh processes join with the source
+caught-failure status. No storage or transport change was needed. This is native
+integration evidence, with no original-method completion credit or checkpoint
+atomicity claim. Distributed inventory remains 37/41.
