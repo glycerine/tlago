@@ -14312,3 +14312,28 @@ release assertion. No Java test covers native Go callback resource ownership.
 RPC method/retry behavior, storage lifetime and original inventory (37/41) are
 unchanged. Normal RPC lifecycle checks and isolated short owner race checks
 verify this chunk; no long model or full-suite rerun.
+
+
+### Worker and fingerprint explicit client close ownership
+
+Shared callback release previously still depended on worker/FP endpoint
+CloseConnection methods that returned early once connectionClosed was visible.
+When a direct endpoint close was blocked inside rpc.Client.Close, a concurrent
+callback-owner close could return success before release completed and lose the
+original codec close failure. Both endpoint methods now use sync.Once around
+closed admission and explicit client release, retaining its result for every
+caller. Client closing remains outside connectionMu; clientForCall can reject
+new calls promptly while release is blocked. No failed client is replaced or
+RPC operation replayed. This concerns explicit CloseConnection ownership; it
+does not claim that arbitrary prior codec failures or in-flight dials are joined.
+
+A test-owned gated rpc.ClientCodec exercises both endpoint types: direct close
+starts, new acquisition fails with ErrShutdown and zero request writes, callback
+owner close must wait, release unblocks its reader, both close callers retain
+the original failure, and a later endpoint close retains it without releasing
+the codec again. Its release failure is joined with ErrShutdown, so benign
+classification cannot erase a real cause. Existing lazy-callback checks retain
+their successful cleanup requirement after transport failure already closed
+the client: entirely benign closed results normalize to success. All fixture
+goroutines join. No original Java test covers
+native Go client resource ownership; no original-method credit is added.

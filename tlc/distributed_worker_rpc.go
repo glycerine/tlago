@@ -109,11 +109,13 @@ func (service *distributedWorkerService) Call(request DistributedWorkerRequest, 
 // NetworkWorkerEndpoint calls a named Go worker over TCP. It never retries a
 // call itself; the coordinator owns retry/worker-loss decisions and its queue.
 type NetworkWorkerEndpoint struct {
-	connectionMu     sync.Mutex
-	connectionClosed bool
-	client           *rpc.Client
-	Address          string
-	Object           string
+	connectionMu        sync.Mutex
+	connectionClosed    bool
+	connectionCloseOnce sync.Once
+	connectionCloseErr  error
+	client              *rpc.Client
+	Address             string
+	Object              string
 }
 
 func DialWorkerEndpoint(address, object string) (*NetworkWorkerEndpoint, error) {
@@ -124,18 +126,18 @@ func DialWorkerEndpoint(address, object string) (*NetworkWorkerEndpoint, error) 
 	return &NetworkWorkerEndpoint{client: client, Address: address, Object: object}, nil
 }
 func (e *NetworkWorkerEndpoint) CloseConnection() error {
-	e.connectionMu.Lock()
-	if e.connectionClosed {
+	e.connectionCloseOnce.Do(func() {
+		e.connectionMu.Lock()
+		e.connectionClosed = true
+		client := e.client
 		e.connectionMu.Unlock()
-		return nil
-	}
-	e.connectionClosed = true
-	client := e.client
-	e.connectionMu.Unlock()
-	if client != nil {
-		return client.Close()
-	}
-	return nil
+		if client != nil {
+			if err := client.Close(); !distributedCloseIsBenign(err) {
+				e.connectionCloseErr = err
+			}
+		}
+	})
+	return e.connectionCloseErr
 }
 
 // Registration receives an object reference. Dial only when TLC invokes the

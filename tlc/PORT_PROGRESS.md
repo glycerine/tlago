@@ -26451,3 +26451,41 @@ distributed-callback-close-join-rpc-focused.log, terminal b59e37, status 0,
 with race instrumentation: distributed-callback-close-join-race.log, terminal
 9fc8f4, status 0, 1.084 seconds. No long workload or full-suite run. All handles
 terminal; git diff --check passes.
+
+
+### October 9, 2026: worker/FP explicit endpoint close joins client release
+
+The callback-owner fix exposed another layer: NetworkWorkerEndpoint and
+NetworkFingerprintEndpoint set connectionClosed before rpc.Client.Close
+finished, so concurrent callback-owner cleanup returned success early and
+missed the direct endpoint's release failure. A gated native ClientCodec
+reproduces this on both endpoint types. Both explicit CloseConnection paths
+now use sync.Once, close admission under connectionMu, release outside it and
+retain the original non-benign result. New client acquisition fails promptly
+while release is blocked; there is no dial/replay or replacement client.
+
+The fixture joins the RPC reader and close goroutines, checks zero request
+writes during shutdown, requires the original mixed ErrShutdown/real-failure
+cause for direct, callback-owner and later endpoint closes, and requires one
+codec release. Existing lazy-worker ownership verification exposed an
+already-closed rpc.Client result after prior transport failure. Fixed explicit
+cleanup to apply the existing all-causes benign classifier, preserving the
+unchanged test's success assertion without suppressing mixed real failures.
+No original Java test covers this native client resource boundary. Original
+method credit stays 37/41. This does not claim joining arbitrary in-flight
+dials or recovering errors from independently closed codecs.
+
+Red: distributed-endpoint-close-join-red.log, terminal 4c791f, status 1,
+0.011 seconds, both callback-owner closes returned before endpoint release.
+Initial green: distributed-endpoint-close-join-green.log, terminal 8ca3d9,
+status 0, 0.113 seconds. Initial normal RPC selection passes 0.082 seconds
+(8f3a49); it named a nonexistent lazy-registration test, so no lazy credit.
+Correct exact lazy selection then fails its unchanged cleanup assertion:
+distributed-endpoint-close-join-lazy.log, terminal 65a872, status 1,
+0.026 seconds. After benign normalization, final combined normal selection
+passes all 13 top-level checks: distributed-endpoint-close-join-final-focused.log,
+terminal 0652a2, status 0, 0.194 seconds. Final isolated short new owner and
+failed-client race checks pass: distributed-endpoint-close-join-final-race.log,
+terminal 9042c3, status 0. Earlier race also passed (0b3125, 1.136 seconds)
+but final receipts supersede it. No long model or full-suite rerun. All handles
+terminal and git diff --check passes.

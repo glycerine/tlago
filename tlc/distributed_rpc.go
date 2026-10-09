@@ -350,11 +350,13 @@ func (service *distributedFingerprintService) Call(request DistributedFingerprin
 }
 
 type NetworkFingerprintEndpoint struct {
-	connectionMu     sync.Mutex
-	connectionClosed bool
-	client           *rpc.Client
-	Address          string
-	Object           string
+	connectionMu        sync.Mutex
+	connectionClosed    bool
+	connectionCloseOnce sync.Once
+	connectionCloseErr  error
+	client              *rpc.Client
+	Address             string
+	Object              string
 }
 
 func DialFingerprintEndpoint(address, object string) (*NetworkFingerprintEndpoint, error) {
@@ -368,18 +370,18 @@ func DialFingerprintEndpoint(address, object string) (*NetworkFingerprintEndpoin
 // CloseConnection closes only this client's connection, independently of the
 // remote storage Close/Exit lifecycle. No call is retried after a disconnect.
 func (e *NetworkFingerprintEndpoint) CloseConnection() error {
-	e.connectionMu.Lock()
-	if e.connectionClosed {
+	e.connectionCloseOnce.Do(func() {
+		e.connectionMu.Lock()
+		e.connectionClosed = true
+		client := e.client
 		e.connectionMu.Unlock()
-		return nil
-	}
-	e.connectionClosed = true
-	client := e.client
-	e.connectionMu.Unlock()
-	if client != nil {
-		return client.Close()
-	}
-	return nil
+		if client != nil {
+			if err := client.Close(); !distributedCloseIsBenign(err) {
+				e.connectionCloseErr = err
+			}
+		}
+	})
+	return e.connectionCloseErr
 }
 
 // Snapshot references connect on first operation. Dial is outside the lock so
