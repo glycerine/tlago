@@ -23143,3 +23143,25 @@ race.log, terminal 72890b, status 0, 1.058 seconds). All runs are terminal. No
 original method directly tests mixed attached-data networking, so native checks
 add no method completion credit. No full model, full suite or long race workload
 was repeated.
+
+### October 8, 2026: remote checkpoint commit reply loss
+
+Compared Java FPSetManager.Checkpoint.run with the Go manager: named begin and
+commit happen during manager Checkpoint; distributed CommitCheckpoint is a no-op.
+I/O failures print the registered hostname and do not reassign registrations.
+Added a test-owned endpoint that performs the actual named commit, then closes
+its TCP host before the handler can return the reply. Storage stays alive until
+the parent kills all original processes. No production behavior or hook changed.
+
+The complete Mem/LSB/MSB restart matrix passes normally, without race
+instrumentation (remote-checkpoint-commit-reply-loss.log, terminal dc33e0,
+status 0, 155.074 seconds). Each case captured 20,480 fingerprints and 12,288
+queued states, printed exactly one source checkpoint warning and retained two
+distinct available registrations. Actual committed files survived process loss;
+fresh empty hosts recovered exact partition membership before replacement worker
+startup. All three recovered N=7 models finished with 114,942 distinct states
+and an empty queue. The focused checkpoint connection-loss and live registration
+traversal checks also pass (remote-checkpoint-reply-loss-related.log, terminal
+a4795b, status 0, 0.039 seconds). All handles are terminal. No full suite or race
+workload was run. This native failure coverage adds no Java method completion
+credit and does not establish checkpoint atomicity or incomplete-commit recovery.

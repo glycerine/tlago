@@ -12411,3 +12411,21 @@ implementation. Populated Action and functional-state bindings retain those
 owners, so their explicit codec rejection remains justified. No Java serializer,
 reflection handles or runtime is introduced. Mixed attachment checks supplement
 the original ModelValue test ports without adding original-method completion credit.
+
+### Remote checkpoint commit with a lost reply
+
+Java FPSetManager.Checkpoint.run invokes named begin and commit, reports I/O
+failure using the registered hostname, and continues without reassignment. The
+Go manager preserves this behavior. Distributed CommitCheckpoint is a no-op:
+remote commits already occur during the earlier manager Checkpoint call.
+
+The native full-model restart fixture closes the first fingerprint host's TCP
+connections only after its actual named commit returns, including joined nested
+disk commits. The host retains its storage until the parent kills all original
+processes. The coordinator must report exactly one checkpoint warning and retain
+two distinct available registrations. The existing snapshot checks require real
+committed bytes, unchanged files after crashes, persisted queue counts and exact
+recovered partition membership before replacement evaluation. Mem, LSB and MSB
+rows then finish the original N=7 model at 114,942 distinct states and zero queued
+states. No production fault hook, retry protocol, RMI or atomicity guarantee is
+introduced. These native checks do not complete disabled Java model methods.

@@ -1202,6 +1202,7 @@ func nativeDistributedCheckpointMidRun(args []string, interruption string) error
 						fmt.Fprintln(os.Stderr, "mid-run checkpoint:", err)
 						os.Exit(ExitToolFailure)
 					}
+					fmt.Printf("NATIVE_CHECKPOINT_ALIVE_FINGERPRINTS=%d\n", server.FPSetManager.NumOfAliveServers())
 					fmt.Printf("NATIVE_CHECKPOINT_COUNTS=%d,%d\n", queue.distinct, queue.queued)
 					fmt.Println("NATIVE_CHECKPOINT_PATH=" + server.Metadir)
 					os.Exit(ExitOK)

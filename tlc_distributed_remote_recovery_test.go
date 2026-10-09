@@ -25,17 +25,25 @@ import (
 // credit for its assumption-disabled distributed model harness.
 func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
 	for _, backend := range []string{"mem", "lsb", "msb"} {
-		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 1) })
+		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, false) })
 	}
 }
 
 func TestNativeDistributedRemoteCheckpointRestartMultipleWorkers(t *testing.T) {
 	for _, backend := range []string{"mem", "lsb", "msb"} {
-		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 2) })
+		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 2, false) })
 	}
 }
 
-func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int) {
+// The remote store commits real checkpoint files before closing its connection.
+// Recovery must use those files, even though the coordinator never got the reply.
+func TestNativeDistributedRemoteCheckpointCommitReplyLoss(t *testing.T) {
+	for _, backend := range []string{"mem", "lsb", "msb"} {
+		t.Run(backend, func(t *testing.T) { checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, true) })
+	}
+}
+
+func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, commitReplyLoss bool) {
 	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +105,11 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		var hosts []*nativeDistributedTestProcess
 		var addresses []string
 		for i, directory := range directories {
-			host := start(fmt.Sprintf("%s-fp-%d", prefix, i), "checkpoint-fp-host", []string{"TLAGO_CHECKPOINT_FP_DIRECTORY=" + directory, "TLAGO_CHECKPOINT_FP_STORAGE=" + backend})
+			environment := []string{"TLAGO_CHECKPOINT_FP_DIRECTORY=" + directory, "TLAGO_CHECKPOINT_FP_STORAGE=" + backend}
+			if commitReplyLoss && prefix == "original" && i == 0 {
+				environment = append(environment, "TLAGO_CHECKPOINT_COMMIT_REPLY_LOSS=1")
+			}
+			host := start(fmt.Sprintf("%s-fp-%d", prefix, i), "checkpoint-fp-host", environment)
 			waitMarker(host, "NATIVE_CHECKPOINT_FP_READY=")
 			match := regexp.MustCompile(`NATIVE_CHECKPOINT_FP_READY=([^\s]+)`).FindStringSubmatch(host.output.String())
 			if len(match) != 2 {
@@ -141,6 +153,16 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	}
 	if len(nativeDistributedMessages(output, tlc.ECTLCCheckpointStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)) != workerThreads {
 		t.Fatal("producer checkpoint/registration sequence differs from the real two-store model")
+	}
+	if commitReplyLoss {
+		const diagnostic = "Error: Failed to checkpoint the fingerprint server at checkpoint-host-0. This server might be down."
+		marker := "NATIVE_CHECKPOINT_FP_COMMIT_REPLY_LOST=" + filepath.Base(filepath.Clean(path[1]))
+		if strings.Count(output, diagnostic) != 1 || strings.Count(hosts[0].output.String(), marker+"\n") != 1 {
+			t.Fatalf("completed commit must lose exactly one reply and report its original host\n%s\n%s", output, hosts[0].output.String())
+		}
+		if strings.Count(output, "NATIVE_CHECKPOINT_ALIVE_FINGERPRINTS=2\n") != 1 {
+			t.Fatalf("checkpoint I/O failure must preserve both registrations\n%s", output)
+		}
 	}
 	queueFile, err := os.Open(filepath.Join(path[1], "queue.chkpt"))
 	if err != nil {
@@ -265,8 +287,27 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 
 type nativeCheckpointFingerprintEndpoint struct {
 	*tlc.LocalFingerprintEndpoint
-	exited chan struct{}
-	once   sync.Once
+	exited          chan struct{}
+	once            sync.Once
+	commitReplyLoss *tlc.DistributedRPCServer
+	commitOnce      sync.Once
+}
+
+func (e *nativeCheckpointFingerprintEndpoint) CommitChkptFile(name string) error {
+	if err := e.LocalFingerprintEndpoint.CommitChkptFile(name); err != nil {
+		return err
+	}
+	if e.commitReplyLoss != nil {
+		e.commitOnce.Do(func() {
+			fmt.Println("NATIVE_CHECKPOINT_FP_COMMIT_REPLY_LOST=" + name)
+			// Close before returning to the RPC handler, after storage committed.
+			// Keep the storage process alive until the parent crashes it.
+			if err := e.commitReplyLoss.Close(); err != nil {
+				panic(err)
+			}
+		})
+	}
+	return nil
 }
 
 func (e *nativeCheckpointFingerprintEndpoint) Exit(cleanup bool) error {
@@ -303,6 +344,9 @@ func nativeCheckpointFingerprintHost() error {
 	defer storage.Close()
 	endpoint := &nativeCheckpointFingerprintEndpoint{LocalFingerprintEndpoint: tlc.NewLocalFingerprintEndpoint(storage), exited: make(chan struct{})}
 	host := tlc.NewDistributedRPCServer()
+	if os.Getenv("TLAGO_CHECKPOINT_COMMIT_REPLY_LOSS") == "1" {
+		endpoint.commitReplyLoss = host
+	}
 	if err := host.RegisterFingerprint("primary", endpoint); err != nil {
 		return err
 	}

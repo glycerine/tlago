@@ -238,10 +238,17 @@ listener and actual work/statistics from both replacement workers. This verifies
 the registered-endpoint library lifecycle. It does not add CLI startup support
 or establish checkpoint atomicity.
 
+The remote restart matrix also loses the first host's reply after its real named
+checkpoint commit. The coordinator must print the source warning and retain two
+distinct available registrations. Fresh processes restore the committed files
+and exact partition membership before resuming the original N=7 model. This
+covers completed-commit reply loss, not incomplete remote commits or atomicity.
+
 ## Remaining distributed work
 
 1. Extend restart/recovery coverage beyond the verified complete-checkpoint,
-   two-host Mem/LSB/MSB registered-endpoint cases, including other failure phases.
+   two-host Mem/LSB/MSB registered-endpoint cases and completed-commit reply loss,
+   including other failure phases.
    Keep the fresh-process remote-FP CLI limitation separate:
    Java recovers before publication/registration while its dynamic manager is
    empty. Do not reorder startup to manufacture support.

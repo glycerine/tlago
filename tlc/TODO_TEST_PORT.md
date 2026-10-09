@@ -1590,6 +1590,12 @@ listener and report actual work. All three unchanged N=7 models must finish at
 registered-endpoint library recovery lifecycle; Java's CLI recovery-before-FP-
 registration limitation is unchanged and disabled methods receive no credit.
 
+The same Mem/LSB/MSB remote restart matrix additionally drops one reply after the
+actual fingerprint checkpoint commit. It requires the source warning, unchanged
+two-host availability, committed snapshot files after crashes, exact recovered
+membership before workers start and the ordinary full N=7 completion counts.
+This is native transport failure coverage, with no original-method credit.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,
