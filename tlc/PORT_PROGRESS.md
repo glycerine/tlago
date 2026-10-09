@@ -23879,3 +23879,22 @@ mutex after unwinding the run lock; the writer diagnostic does not read an
 unused filename. Final focused subprocess/synchronous/original writer checks
 pass (terminal 5ad79c, status 0, 0.100 seconds). The full model receipt above
 precedes this diagnostic-only snapshot correction. No model algorithm changed.
+
+### State-pool partial destination publication
+
+Source StatePoolReader.doWork/getCache publish each new empty destination state
+before decoding fields. Go assigned the slot only after a complete read, leaving
+the old object on failure. Moved publication before decoding in the shared pool
+read helper. Native pending/direct/cache cases reproduce all nine partial-header
+mismatches, while three success controls pass (terminal 2bee4a, status 1,
+0.014 seconds). Completed reads now propagate stream-close errors. Initial
+verification exposed double-close cleanup (terminal b12898, status 1); corrected
+native cleanup to close only once while preserving failed read causes.
+
+Final twelve cases, fatal/synchronous pool boundaries, original DiskPoolWriter
+methods, queue partial recovery and coordinator constructor ownership checks pass
+(terminal 002a4c, status 0, 0.099 seconds). All nine short inherited original disk
+queue methods pass (terminal eb8b99, status 0, 0.017 seconds). No direct original
+method covers partial pool destination publication, so native checks add no
+original-method credit. No full suite, long model or race workload ran.
+All check handles are terminal.

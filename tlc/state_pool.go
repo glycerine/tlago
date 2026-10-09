@@ -238,15 +238,21 @@ func readStatePoolFile(name string, states []*TLCStateMut) error {
 		_ = file.Close()
 		return err
 	}
-	defer in.Close()
+	closed := false
+	defer func() {
+		if !closed {
+			_ = in.Close()
+		}
+	}()
 	for i := range states {
 		state := NewEmptyState()
+		states[i] = state
 		if err := state.Read(in); err != nil {
 			return err
 		}
-		states[i] = state
 	}
-	return nil
+	closed = true
+	return in.Close()
 }
 
 func writeStatePoolFile(name string, states []*TLCStateMut) error {

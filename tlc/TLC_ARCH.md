@@ -12846,3 +12846,17 @@ Subprocess checks exercise real missing-file, truncated-read and nil-write
 failures without replacing the production exit with a hook. They require exactly
 one source diagnostic, reader basename, status 1, and no return/defer markers.
 Separate synchronous checks verify returned I/O errors and retained pending work.
+
+### Pool reader partial state publication
+
+StatePoolReader pending/direct/cache reads place each newly allocated empty
+state in the supplied buffer before decoding its fields. A failed read therefore
+retains the completed prefix and the failed slot's partial header mutations.
+Unvisited later slots keep their original objects; failed reads do not advance
+pending file, canRead or isFull. The shared native read helper now preserves this
+order for synchronous reads and background prefetch.
+
+Successful reads propagate the input stream close result. Native cleanup closes
+the stream once on failure without replacing the original read error. Twelve
+native cases cover three read branches and missing worker/UID/level fields plus
+success. Relevant original queue/pool methods retain their assertions and bounds.
