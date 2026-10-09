@@ -532,6 +532,10 @@ Raw byte-queue checkpoint/pool files retain literal symlink traversal and never
 create missing parents. Recovery preserves inactive slots, publishes allocations
 before reading, and retains the source's zero-padded short final entry. Empty
 configured directories retain their source paths rather than selecting `/tmp`.
+Byte queue reads extract raw entries under the queue lock and decode afterward.
+A decode failure retains the complete batch removal and published length.
+Null raw entries retain the source peek/dequeue/assertion boundaries; oversized
+bulk requests retain the source wrapper's post-removal access failure.
 
 The production checkpoint order is queue begin, trace begin, FP begin, queue
 resume, intern begin, queue commit, trace commit, intern commit, FP commit.

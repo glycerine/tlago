@@ -13630,3 +13630,25 @@ Eight native cases verify both batch forms on each queue. All nine original
 StateQueue methods and nine inherited disk methods remain unchanged and green;
 native worker-loss, partial-spill and actual TCP coordinator retry/loss checks
 also pass. No original null-batch test exists and no new test credit is claimed.
+
+### Byte queue extraction before decoding
+
+ByteArrayQueue's synchronized peek, single dequeue and bulk dequeue helpers
+return raw byte arrays while holding the queue monitor. State decoding happens
+after that helper returns and releases the monitor. The Go byte queue now uses
+the same split, so an entire bulk prefix is physically removed and its length
+decremented before decoding starts. A malformed first state cannot leave the
+rest of that raw batch queued or its logical length unchanged.
+
+Null raw entries return nil from peek and unsynchronized dequeue; the latter
+still consumes and counts the entry. Synchronized single dequeue asserts after
+physical removal but before length decrement, using an ordinary native error.
+Bulk removal does not make that assertion. The public bulk wrapper retains the
+original requested count even if the raw helper clips it to availability:
+an oversized request therefore fails on array access after removing the available
+work. This source behavior is not replaced with the other queues' clipped result.
+
+Eight native rows cover malformed peek/single/batch reads, null raw entries and
+exact/oversized requests. Existing writer, buffered-input and value-stream Java
+methods pass unchanged. No original direct decode-boundary method exists and
+no original-method completion credit is added.

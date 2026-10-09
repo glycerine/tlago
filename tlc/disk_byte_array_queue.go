@@ -71,6 +71,9 @@ func (q *DiskByteArrayQueue) Dequeue() *TLCStateMut {
 	}
 	bytes := q.dequeueRaw()
 	q.len--
+	if bytes == nil {
+		return nil
+	}
 	return mustBytesToState(bytes)
 }
 
@@ -131,26 +134,59 @@ func (q *DiskByteArrayQueue) SEnqueueVec(states *StateVec) {
 }
 
 func (q *DiskByteArrayQueue) SPeek() *TLCStateMut {
+	raw := q.sPeekRaw()
+	if raw == nil {
+		return nil
+	}
+	return mustBytesToState(raw)
+}
+
+func (q *DiskByteArrayQueue) sPeekRaw() []byte {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if !q.isAvailLocked() {
 		return nil
 	}
-	return mustBytesToState(q.peekRaw())
+	return q.peekRaw()
 }
 
 func (q *DiskByteArrayQueue) SDequeue() *TLCStateMut {
+	raw := q.sDequeueRaw()
+	if raw == nil {
+		return nil
+	}
+	return mustBytesToState(raw)
+}
+
+func (q *DiskByteArrayQueue) sDequeueRaw() []byte {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if !q.isAvailLocked() {
 		return nil
 	}
 	raw := q.dequeueRaw()
+	if raw == nil {
+		panic(fmt.Errorf("null state found on queue"))
+	}
 	q.len--
-	return mustBytesToState(raw)
+	return raw
 }
 
 func (q *DiskByteArrayQueue) SDequeueMany(cnt int) []*TLCStateMut {
+	raw := q.sDequeueManyRaw(cnt)
+	if raw == nil {
+		return nil
+	}
+	// The source wrapper uses the requested count, even when its raw helper
+	// clips the available batch. Preserve its decode/access failure boundary.
+	out := make([]*TLCStateMut, cnt)
+	for i := range out {
+		out[i] = mustBytesToState(raw[i])
+	}
+	return out
+}
+
+func (q *DiskByteArrayQueue) sDequeueManyRaw(cnt int) [][]byte {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if cnt <= 0 {
@@ -162,9 +198,9 @@ func (q *DiskByteArrayQueue) SDequeueMany(cnt int) []*TLCStateMut {
 	if int64(cnt) > q.len {
 		cnt = int(q.len)
 	}
-	out := make([]*TLCStateMut, 0, cnt)
+	out := make([][]byte, 0, cnt)
 	for len(out) < cnt && q.len > 0 {
-		out = append(out, mustBytesToState(q.dequeueRaw()))
+		out = append(out, q.dequeueRaw())
 		q.len--
 	}
 	return out

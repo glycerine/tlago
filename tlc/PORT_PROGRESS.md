@@ -25258,3 +25258,32 @@ individual PASS receipts. Actual TCP coordinator retry/loss passes unchanged
 No original null-batch test exists and no original-method credit is added.
 Distributed inventory remains 37 complete and four Missing. No full suite,
 long workload or race run. All handles are terminal.
+
+### October 9, 2026: extract byte-queue work before state decoding
+
+ByteArrayQueue's private synchronized read helpers return raw entries before
+the public wrappers decode them. Go instead decoded while holding the queue
+lock and, for bulk reads, before decrementing length or removing later entries.
+A truncated first state's decode therefore removed one physical slot, left the
+logical length unchanged and left the rest of the requested raw batch queued.
+The native three-operation reproduction fails only its bulk row before the fix
+(byte-queue-decode-red.log, terminal 00f69a, status 1, 0.013 seconds).
+
+Split synchronized raw extraction from public state decoding. Peek retains its
+slot; single dequeue publishes its decrement first; bulk dequeue removes and
+counts the full raw prefix before decoding any state. Each raw helper releases
+the queue lock before conversion. Null raw entries now follow source peek and
+unsynchronized-dequeue nil returns. Synchronized single dequeue reports an
+ordinary native assertion error after removal and before length decrement.
+The source bulk wrapper uses the original requested count even when its helper
+clips availability; the port preserves the resulting post-removal access
+failure rather than silently returning a clipped result.
+
+Initial related checks pass (byte-queue-decode-green.log, terminal 3dd5d5,
+status 0, 0.095 seconds). Added exact/oversized and null-entry rows, for eight
+native rows total. Final byte queue/pool/batch/spill checks plus unchanged
+original DiskPoolWriter, BufferedDataInputStream and ValueInputOutputStream
+methods pass (byte-queue-decode-final.log, terminal 5875fb, status 0,
+0.141 seconds). No original direct decode-boundary method exists. Inventory
+remains 37 complete and four Missing; no new original-method credit is claimed.
+No full suite, full-model workload or race run. All handles are terminal.
