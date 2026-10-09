@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 8, 2026. Active branch: `master`.
+Updated: October 9, 2026. Active branch: `master`.
 
 This is the current restart guide. Detailed audit history and verification
 receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md); implementation contracts
@@ -127,6 +127,9 @@ Memory recovery retains complete prefixes and prior membership on truncated or
 duplicate input. Local/TCP checks cover all seven partial-long lengths: base
 memory runtime failures stop manager recovery, while packed-memory I/O failures
 warn and continue healthy registrations. Duplicates stop both without failover.
+Coordinator startup checks retain recovered trace/queue state before fingerprint
+failure. Runtime failures prevent publication; packed-memory truncation warns,
+continues healthy recovery and prints actual recovery counts before publication.
 Memory queue checkpoints open the configured literal directory directly. They
 do not create parents, choose temporary directories or clean symlink traversal.
 Disk queues now use the same source path contract through one constructor for

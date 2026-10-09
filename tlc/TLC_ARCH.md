@@ -12895,3 +12895,19 @@ Direct and symlink/.. cases verify ordered missing/blocked warnings, canonical
 names, continued successful deletion and range advancement. A child process
 forces a parent symlink loop and verifies the canonicalization failure exit
 without a production hook. Only the short cleaner cases receive race checking.
+
+### Fingerprint recovery before coordinator publication
+
+TLCServer recovery executes trace, queue and fingerprint-manager recovery before
+hostname resolution or endpoint publication, outside the initialization catch.
+Corrupt base-memory input and duplicate base/packed-memory input preserve the
+recovered trace pointer and queue contents, retain the fingerprint prefix, and
+stop before healthy fingerprint recovery/publication. No recovery-end, model
+initialization, running or completion diagnostic follows the runtime failure.
+
+Packed-memory truncation takes the manager's source I/O catch instead: warn once,
+recover the healthy endpoint and emit recovery-end statistics from actual
+partially recovered and healthy storage. A native hostname boundary deliberately
+ends the test after observing that publication is reached, without starting an
+unrelated model run. Eight local/TCP cases verify these contracts with real
+trace/queue checkpoint files and exact failure/warning/count assertions.

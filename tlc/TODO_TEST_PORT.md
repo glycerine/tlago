@@ -1466,6 +1466,11 @@ seven partial-long lengths after complete records, plus duplicates before an
 unvisited record. Source manager warning/continuation, exact runtime diagnostics,
 prefix/prior membership and unchanged registrations are verified. No enabled
 original method covers this boundary, so no completion credit is added.
+Eight native coordinator startup cases extend this through actual trace/queue
+recovery and local/TCP fingerprint endpoints. Runtime failures prevent
+publication and later recovery; packed-memory I/O reports the warning, recovers
+the healthy endpoint and emits actual recovery counts before publication.
+Related original manager methods remain green; no new completion credit added.
 Native memory queue path checks reproduce and fix invented parent creation and
 lexical path cleaning. Begin/commit/recovery now retain source literal paths;
 original state-queue methods and related active-block checkpoint checks pass.

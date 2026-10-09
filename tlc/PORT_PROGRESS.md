@@ -23937,3 +23937,22 @@ two short cleaner cases run with race instrumentation and pass (terminal
 continues later deletion and advances the attempted range. No direct enabled
 original method tests these cleaner failures; native checks add no completion
 credit. No full suite or long model ran. All check handles are terminal.
+
+### Coordinator startup after partial fingerprint recovery
+
+Added eight native local/TCP cases with real trace/queue checkpoint files and
+base/packed-memory fingerprint snapshots containing truncation or duplicates.
+The source recovery order and initialization catch boundary already match; no
+production change was needed. Runtime failures retain recovered trace pointer,
+empty queue and fingerprint prefix, prevent healthy recovery/publication and
+omit later lifecycle diagnostics. Packed-memory truncation warns exactly once,
+recovers healthy storage and reports recovery counts 3/0 before the native
+hostname boundary. The test ends at that existing boundary rather than running
+an unrelated model. Corrected a recorder method name before verification.
+
+All eight cases pass (terminal 30291e, status 0, 0.532 seconds). Expanded trace,
+queue, nested fingerprint and memory manager recovery checks plus the existing
+original manager nested-partition method pass (terminal 58a51f, status 0,
+1.510 seconds). No enabled original test directly covers this corrupt-input
+startup matrix; native checks add no original completion credit. No full suite,
+long model or race workload ran. All check handles are terminal.
