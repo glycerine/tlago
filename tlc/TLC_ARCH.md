@@ -11813,6 +11813,20 @@ transfer tests, so supplemental checks add no original-method credit.
 
 ### Native record-backed printable state transfer
 
+Print wrappers and functional states inherit the base action/callable setters
+even when the tool selects extended mutable states. Go now applies that state-kind
+distinction to those setters and to predecessor retention, using the same policy
+as cache access. Base predecessor updates still change level and retain failure
+checks. No executable callback or action is retained on a print wrapper merely
+because extended mode is enabled.
+
+Remaining ownership gap: the source wrapper holds a separate `state` object.
+Copy/deepCopy/bind/unbind delegate to that object and return its result rather
+than retaining a wrapper. The current flattened native representation does not
+yet establish those ownership/return contracts or independent wrapper/underlying
+metadata. The graph transfer checks below do not prove that behavior; implement
+the separate owner and its payload reference before claiming full wrapper parity.
+
 RecordValue.PrintTLCState inherits TLCState’s serializability and holds its
 record plus underlying state. The native Go state representation’s printRecord
 now refers to the existing value graph through DistributedStateNode.PrintRecord.

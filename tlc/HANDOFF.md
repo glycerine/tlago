@@ -515,6 +515,10 @@ also reopen in fresh stores. This covers transport loss, not host death.
 4. Finish the source ownership/constructor and native cleanup audit where evidence
    identifies actual remaining shortcuts. Consult prior audits before repeating
    completed checks. Missing-component behavior alone cannot prove full parity.
+   Concrete open state-owner gap: `RecordValue.PrintTLCState` owns a separate
+   underlying mutable state and delegates copy/bind operations to it. Go currently
+   flattens wrapper and underlying fields. Preserve their distinct metadata and
+   returned object identities when completing that port and its native payload.
    Built-in selector arithmetic, startup capture, queue bounds, statistics and
    smart-proxy timing have a current source audit and focused green receipt.
    Custom factory selection now uses linked Go constructors registered through
@@ -547,6 +551,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
    State caches belong only to extended mutable states. Ordinary MC states,
    functional bindings and print wrappers retain the base no-op accessors;
    native transfer fixtures must not invent caches on those base-state kinds.
+   Print/functional action and callable setters likewise remain base no-ops in
+   extended mode. Their predecessor setter updates the level without storing
+   the predecessor.
 6. Reconcile the four opt-in original model bodies with the upstream disabled
    harness and its retained-flusher failure. The source-profile failure is now
    located; staged bodies and native coverage earn no completion credit.

@@ -1972,6 +1972,13 @@ fixtures explicitly select that mode; print graph fixtures retain their cache
 on a separate mutable state rather than inventing a wrapper cache. No direct
 upstream accessor test exists; this adds no original-method completion credit.
 
+Native base-state metadata checks cover print/functional states in extended mode:
+action/callable setters remain no-ops, while predecessor assignment changes only
+the level. Existing state/TCP graph and seven original simulation trace checks
+pass. No direct source method tests this boundary; no original credit is added.
+Separate print-wrapper underlying ownership and delegated return values remain
+implementation work, now identified in the handoff.
+
 Full N=7 coverage also pauses TCP traffic to one of two fingerprint hosts while
 keeping connections open. Separate cases hold both directions, only requests
 or only replies; markers require the selected direction and reject an opposite

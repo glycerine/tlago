@@ -323,8 +323,14 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 	return out
 }
 
+// Functional states and record-backed print wrappers inherit TLCState's base
+// methods independently of which mutable state implementation the tool selects.
+func (s *TLCStateMut) retainsExtendedMetadata() bool {
+	return statePreserveMetadata && !s.functional && s.printRecord == nil
+}
+
 func (s *TLCStateMut) GetCached(key int) Value {
-	if s == nil || !statePreserveMetadata || s.functional || s.printRecord != nil || s.cached == nil {
+	if s == nil || !s.retainsExtendedMetadata() || s.cached == nil {
 		return nil
 	}
 	return s.cached[key]
@@ -336,7 +342,7 @@ func (s *TLCStateMut) SetCached(key int, value Value) Value {
 	}
 	// Base TLCState methods return null without allocating. Only the
 	// extended mutable implementation overrides them with a cache.
-	if !statePreserveMetadata || s.functional || s.printRecord != nil {
+	if !s.retainsExtendedMetadata() {
 		return nil
 	}
 	if s.cached == nil {
@@ -349,7 +355,7 @@ func (s *TLCStateMut) SetCached(key int, value Value) Value {
 func (s *TLCStateMut) SetCallable(callable func() (any, error)) {
 	// Ordinary TLCStateMut inherits the source no-op. Only extended states
 	// retain deferred execution, just as they retain action metadata.
-	if s != nil && statePreserveMetadata {
+	if s != nil && s.retainsExtendedMetadata() {
 		s.callable = callable
 	}
 }
@@ -627,7 +633,7 @@ func (s *TLCStateMut) SetTracePredecessor(pred TLCPredecessorState) {
 	}
 	// Extended source states store the predecessor before the base level
 	// access, including when it fails for a missing predecessor or depth limit.
-	if statePreserveMetadata {
+	if s.retainsExtendedMetadata() {
 		s.pred = pred
 	}
 	if pred == nil {
@@ -637,7 +643,7 @@ func (s *TLCStateMut) SetTracePredecessor(pred TLCPredecessorState) {
 		panic(newTLCError(ECTLCTraceTooLong, "%s", s.String()))
 	}
 	s.level = pred.Level() + 1
-	if !statePreserveMetadata {
+	if !s.retainsExtendedMetadata() {
 		s.pred = nil
 	}
 }
@@ -661,7 +667,7 @@ func (s *TLCStateMut) EvalStateLevelAlias() *TLCStateMut {
 }
 
 func (s *TLCStateMut) SetAction(action *Action) *TLCStateMut {
-	if statePreserveMetadata {
+	if s.retainsExtendedMetadata() {
 		s.action = action
 	}
 	return s

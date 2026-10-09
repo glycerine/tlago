@@ -25570,3 +25570,30 @@ TLCExt model test ports also pass with their unchanged assertions
 Documentation and inventory notes distinguish actual cache owners from supported
 transfer graph structure. Original-method counts remain unchanged. No full suite,
 long distributed model or race run. All handles are terminal.
+
+
+### October 9, 2026: base-state metadata setters remain base behavior
+
+PrintTLCState and TLCStateFun inherit TLCState's no-op action/callable setters
+independently of the mutable state factory's extended-mode choice. Go had applied
+extended retention to them based only on the global mode. The new native check
+fails for both kinds before correction
+(distributed-base-state-metadata-red.log, terminal 9f129e, status 1).
+
+A shared native state-kind policy now governs cache access, action/callable
+setters and predecessor retention. Print/functional predecessor assignment still
+updates the level and checks failure boundaries but does not retain the parent.
+The new check also requires that ignored evaluator metadata cannot prevent
+print-state encoding. No direct original test covers this state-kind boundary.
+
+Focused base/cache/callable/copy/predecessor, state/vector/alias, native TCP
+cache/print graph and seven original simulation trace checks pass
+(distributed-base-state-metadata-green.log, terminal 9acb60, status 0).
+No full suite, long model or race run; all handles are terminal.
+
+The source comparison also identifies a concrete larger ownership gap for next
+work: PrintTLCState owns a separate mutable state and delegates copy/bind/unbind
+to it, returning that owner's result. Native printRecord currently flattens
+wrapper/underlying metadata. Handoff and architecture now explicitly retain this
+implementation requirement rather than treating current transfer graph checks
+as complete wrapper parity. Original-method completion counts are unchanged.

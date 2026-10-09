@@ -2,6 +2,39 @@ package tlc
 
 import "testing"
 
+// Print wrappers and functional states inherit the source base metadata methods,
+// even when the process's mutable state factory selects TLCStateMutExt.
+func TestBaseStateMetadataInExtendedMode(t *testing.T) {
+	oldPolicy := statePreserveMetadata
+	statePreserveMetadata = true
+	t.Cleanup(func() { statePreserveMetadata = oldPolicy })
+	for _, kind := range []string{"print", "functional"} {
+		t.Run(kind, func(t *testing.T) {
+			state := NewFunctionalState()
+			if kind == "print" {
+				state = EmptyRecord.ToState()
+			}
+			calls := 0
+			state.SetAction(&Action{Name: "Ignored"})
+			state.SetCallable(func() (any, error) { calls++; return BoolTrue, nil })
+			result, err := state.ExecCallable()
+			if err != nil || result != nil || calls != 0 || state.HasAction() || state.callable != nil {
+				t.Fatal("base state retained extended action or callable behavior")
+			}
+			parent := &TLCStateMut{level: 5}
+			state.SetPredecessor(parent)
+			if state.Level() != 6 || state.TracePredecessor() != nil {
+				t.Fatal("base predecessor setter did not update only the level")
+			}
+			if kind == "print" {
+				if _, err := EncodeDistributedStates([]*TLCStateMut{state}); err != nil {
+					t.Fatalf("ignored evaluator metadata prevented print-state transfer: %v", err)
+				}
+			}
+		})
+	}
+}
+
 // No upstream method directly tests the base/extended state cache boundary.
 func TestStateCacheRespectsSourceStateKind(t *testing.T) {
 	oldPolicy := statePreserveMetadata
