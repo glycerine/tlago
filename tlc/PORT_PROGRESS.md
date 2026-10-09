@@ -27668,3 +27668,57 @@ Final broader original legacy/debugger/EWD998/coverage/LET/cyclic selection
 passes: canonical-proof-complete-originals.log, terminal 500ea0, status 0,
 205.380 seconds. Original assertions and bounds remain unchanged.
 Git diff --check passes.
+
+
+## 2026-10-09: Resolve qualified INSTANCE exports without prefix symbols
+
+Previous goal turn made authoritative progress in e0a27af. Revalidated a clean
+worktree and polled the same live native full off-heap random session 77502.
+The unchanged 2,147,483,648-iteration workload now exceeds 182 million iterations
+with assertions intact. No restart or completion credit; fingerprint production
+is unchanged.
+
+Investigated the concrete missing graph in original model 219's line 42
+assumption. Diagnostic overlays on the unchanged original test found no aborted
+named/unnamed import caused by missing definition bodies. The actual qualified
+definition was already in the SANY symbol table. canonicalInstanceSelectorSymbol
+incorrectly required every intermediate name component to resolve to a
+ModuleInstanceKind node. An unnamed INSTANCE legitimately exports qualified
+names such as Inst!Foo without the bare Inst definition. The pinned Java
+Generator.selectorToNode FindingOpName loop instead keeps accumulating names
+until a symbol resolves.
+
+Changed the helper to continue across unresolved prefixes while rejecting a
+resolved intermediate symbol of another kind. Name components use the source
+operator synonym resolver. retainCanonicalInstanceSelection now calls that same
+helper instead of maintaining a second copy of the prefix rule. Resolution
+still returns the actual qualified symbol from the formal symbol table; no
+prefix placeholders, copied declarations or name-matched canonical adapters.
+
+Temporary overlays on original Test219 demonstrate the specific state change:
+instance-assumption-graph-baseline.log reports line 42 graph <nil>, whereas
+instance-assumption-graph-overlay.log reports *sanySemOpApplNode; both original
+test runs pass their retained assertions. A second observation inventories all
+assumptions in that original model. The baseline reports missing generated
+statements on lines 42 and 57; the corrected code reports none. Receipts:
+instance-assumption-inventory-baseline.log, terminal 37f1bf, status 0, 0.925
+seconds; instance-assumption-inventory-overlay.log, terminal 84981e, status 0,
+1.020 seconds. Diagnostic overlay files remain only under .codex-gotmp and are
+not production or invented test entries.
+
+Original 206/207/208/209/210/216/219 selection passes: instance-qualified-prefix-
+originals.log, terminal e34e73, status 0, 2.803 seconds. Final focused original
+SANY selector/error-formatting/builtin/incremental/operator checks pass:
+instance-qualified-prefix-sany-originals.log, terminal 00ca5a, status 0, 0.060
+seconds. SANY package passes: instance-qualified-prefix-sany-package.log,
+terminal 4c51b1, status 0, 2.511 seconds. Logs are under .codex-gotmp.
+
+This closes the two observed model 219 assumption-generation gaps. It does not
+prove complete SANY graph generation, all prefix argument/error combinations or
+complete runtime visitor behavior. Retained AST fallbacks remain required until
+those source forms are verified. Updated architecture and current handoff;
+original-method counts unchanged. No full-workspace or XML/ApalacheIR sweep,
+new tests, race instrumentation or email work. Final broader original legacy/debugger/EWD998/coverage/LET/cyclic selection
+passes: instance-qualified-prefix-final-originals.log, terminal f4909f,
+status 0, 207.534 seconds. Original assertions and bounds remain unchanged.
+Git diff --check passes.

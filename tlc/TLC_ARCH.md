@@ -10910,13 +10910,23 @@ separate traversal with their source memberships.
 Module assumptions and theorems have separate enumeration vectors, as in Java.
 Constant processing visits assumptions first and theorems second, independently
 of the top-level graph vector. The bridge retains generated SANY top-level
-statements in source order. Some INSTANCE expressions still have only an AST
-runtime view: original model 219's line 42 assumption is one concrete example.
-The SANY top-level vector lacks those statements. Runtime assumption enumeration
-must retain them for constant processing and checking; graph and syntax traversal
-supplement the available canonical vector with those AST fallback assumptions.
-Their exact source graph/interleaving remains a generator completion requirement,
-rather than permission to omit their assertions or synthesize canonical identity.
+statements in source order. Qualified INSTANCE names now follow the source
+selectorToNode name-accumulation rule: an unresolved intermediate prefix does
+not prevent resolving a later qualified definition. Unnamed INSTANCE imports
+can export `Inst!Foo` without exporting the `Inst` ModuleInstanceKind symbol.
+Resolved intermediate symbols must still be module-instance definitions;
+operator/label selection keeps its separate path. Each name component uses the
+source operator synonym resolver, and selected applications share this lookup.
+
+This corrects the concrete model 219 gap previously recorded on lines 42 and 57.
+An observation of the unchanged original model reports both assumptions missing
+from generated SANY state before the fix and no missing assumptions after it;
+line 42 now owns an actual OpAppl graph. No placeholder prefixes or reconstructed
+canonical definitions are inserted. General source generation completeness is
+not yet proven. Runtime assumption enumeration still retains AST fallback
+statements for constant processing and checking, and graph/syntax traversal
+supplements the canonical vector where necessary. Exact source interleaving for
+any remaining fallback statements is still a completion requirement.
 
 This is not full runtime graph parity. Complete Context/Subst explorer callbacks,
 mutation/null-boundary behavior, builtin formal/base adaptation and the remaining

@@ -150,23 +150,7 @@ func (g *sanyExpressionGeneration) retainCanonicalInstanceSelection(expr Expr, o
 	if source == nil || selected == nil || source.Selector == nil || len(source.Selector.Steps) < 2 {
 		return nil
 	}
-	name := ""
-	for i, step := range source.Selector.Steps {
-		if step.Kind != SanySelectorName {
-			return nil
-		}
-		if name != "" {
-			name += "!"
-		}
-		name += step.Name
-		if i < len(source.Selector.Steps)-1 {
-			prefix := g.formalSymbolTable().resolveSymbol(name)
-			if prefix == nil || prefix.semKind() != sanyModuleInstanceKind {
-				return nil
-			}
-		}
-	}
-	symbol := g.formalSymbolTable().resolveSymbol(name)
+	symbol := g.canonicalInstanceSelectorSymbol(expr)
 	if symbol == nil {
 		return nil
 	}
@@ -208,10 +192,13 @@ func (g *sanyExpressionGeneration) canonicalInstanceSelectorSymbol(expr Expr) sa
 		if name != "" {
 			name += "!"
 		}
-		name += step.Name
+		name += sanyCanonicalOperatorImage(step.Name)
 		if i < len(source.Selector.Steps)-1 {
 			symbol := g.formalSymbolTable().resolveSymbol(name)
-			if symbol == nil || symbol.semKind() != sanyModuleInstanceKind {
+			// An unnamed INSTANCE imports qualified definitions without their
+			// ModuleInstanceKind prefix. selectorToNode accumulates unresolved
+			// name components until it finds the actual qualified symbol.
+			if symbol != nil && symbol.semKind() != sanyModuleInstanceKind {
 				return nil
 			}
 		}

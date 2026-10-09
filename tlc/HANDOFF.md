@@ -48,12 +48,12 @@ Core bridge continuation: runtime LET traversal imports SANY Context state,
 including Pair history and Hashtable topology. Canonical adapters now retain
 ASSUME/PROVE, theorem and proof graphs, source module ownership, label formals
 and OpDef step links. Module views share the original SANY base and syntax range.
-Separate assumption/theorem vectors preserve constant processing; generated
-SANY top-level graphs still omit some AST-only INSTANCE expressions, including
-original model 219's line 42 assumption. Keep those runtime assumptions and
-assertions while completing source generation. Complete visitor callbacks,
-mutation/null boundaries, builtin adapters and native INSTANCE lowering remain
-pending; see `TLC_ARCH.md` for the exact boundaries.
+Separate assumption/theorem vectors preserve constant processing. Qualified
+INSTANCE lookup now accumulates unresolved prefixes as Java does; original
+model 219's formerly missing assumption graphs on lines 42 and 57 now generate.
+AST fallback retention remains until complete generation is established across
+source forms. Complete visitor callbacks, mutation/null boundaries, builtin
+adapters and native INSTANCE lowering remain pending; see `TLC_ARCH.md`.
 
 ## Verification baseline and test credit
 
