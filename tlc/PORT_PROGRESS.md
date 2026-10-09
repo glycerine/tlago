@@ -25304,3 +25304,40 @@ methods pass (byte-queue-encode-green.log, terminal abe6b8, status 0,
 0.065 seconds). No direct original null-state method exists and no new credit
 is claimed. Inventory remains 37 complete and four Missing. No full suite,
 full-model workload or race run. All handles are terminal.
+
+### October 9, 2026: stage original distributed model harness contracts
+
+Compared all four disabled original methods and their shared setup with native
+process tests. Staged complete assertion bodies, including CommonTestCase's
+DieHard action-label/ordinal checks. All eight model/configuration/dependency
+files compared byte-for-byte with upstream are identical. Native process joins
+replace JVM exit trapping, with no artificial exit exception to filter. Source
+worker-first startup, CPU-derived worker count and zero/one standalone FP roles
+are retained. Ant additionally sets off-heap storage and a 512 KiB direct-memory
+budget; these settings are now included in the opt-in harness profile.
+
+Exploratory CLI defaults pass all four bodies: DieHard 11.248 seconds
+(distributed-original-defaults-diehard.log, terminal ef8c94, status 0), other
+three 162.697 seconds (distributed-original-defaults-models.log, terminal
+fbb0f9, status 0). These are not Ant-profile receipts. The actual source profile
+passes DieHard, remote EWD840 and TSnapShot but fails local EWD840 on GENERAL
+(distributed-original-ant-profile.log, terminal cf1758, status 1,
+178.729 seconds). All runs use 48 workers and unchanged full model bounds.
+
+Located the failure at OffHeapDiskFPSet.CheckFPs: source getFlusher returns the
+previous flusher when partitions are too small, even after a prior concurrent
+merge shuts down its executor. Go preserves that behavior. No production
+workaround or weakened assertion is introduced. Two short native selector
+checks pass (distributed-original-flusher-contract.log, terminal e7138a,
+status 0, 0.011 seconds); their initial fixture omitted its embedded disk owner
+and was corrected. Existing native local/remote DieHard checks pass unchanged
+(distributed-original-harness-related.log, terminal e4c4fe, status 0,
+23.372 seconds). The tagged draft compiles (distributed-original-draft-compile.log,
+terminal 93191d, status 0); this compile-only check is not a model pass.
+
+The original shared setup unconditionally assumes false for OffHeapDiskFPSet.
+The assertion draft is therefore behind tlago_disabled_distributed_tests for
+explicit diagnosis, with the known failing profile documented. Four Missing
+entries become Reconcile, not complete. Inventory remains 37 complete with no
+new original-method credit. No full suite or race workload ran. All handles
+are terminal.

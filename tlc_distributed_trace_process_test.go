@@ -78,6 +78,13 @@ func nativeDistributedMessages(output string, code int) []string {
 
 func runNativeDistributedTraceModel(t *testing.T, model string, remote bool) string {
 	t.Helper()
+	return runNativeDistributedModel(t, model, remote, false)
+}
+
+// Source-harness mode retains the default worker count and the original Ant
+// off-heap/512 KiB profile, and starts the worker before the coordinator.
+func runNativeDistributedModel(t *testing.T, model string, remote, sourceHarness bool) string {
+	t.Helper()
 	directory, err := filepath.Abs(filepath.Join("tlc/test_vectors/models", model))
 	if err != nil {
 		t.Fatal(err)
@@ -109,6 +116,10 @@ func runNativeDistributedTraceModel(t *testing.T, model string, remote bool) str
 		command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
 		command.Dir = directory
 		command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
+		if sourceHarness {
+			command.Env = append(command.Env, "TMPDIR="+t.TempDir(),
+				tlc.FPSetImplProperty+"=tlc2.tool.fp.OffHeapDiskFPSet", "TLAGO_MAX_DIRECT_MEMORY=512k")
+		}
 		output := &nativeDistributedTestLog{test: t, role: role}
 		command.Stdout, command.Stderr = output, output
 		if err := command.Start(); err != nil {
@@ -124,15 +135,27 @@ func runNativeDistributedTraceModel(t *testing.T, model string, remote bool) str
 	if model == "TSnapShot" {
 		spec = "MC"
 	}
+	if model == "EWD840" {
+		spec = "MC06"
+	}
 	serverArgs := []string{"-tool", "-deadlock", "-metadir", t.TempDir(), spec}
 	if remote {
 		serverArgs = append([]string{"-Dtlc2.tool.distributed.TLCServer.expectedFPSetCount=1"}, serverArgs...)
 	}
+	if sourceHarness {
+		start("worker", "127.0.0.1")
+	}
 	server := start("server", serverArgs...)
 	if remote {
-		start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+		if sourceHarness {
+			start("fpserver", "127.0.0.1")
+		} else {
+			start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+		}
 	}
-	start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+	if !sourceHarness {
+		start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+	}
 	for _, process := range roles {
 		err := <-process.done
 		process.joined = true

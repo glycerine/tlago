@@ -13665,3 +13665,29 @@ Eight native rows cover direct conversion, ordinary/synchronized enqueue and
 array conversion in zero/one-variable contexts, including continued queue use.
 The existing 15 writer/stream Java methods remain unchanged and green. No direct
 original null-state method exists and no original-method credit is added.
+
+### Disabled distributed model harness reconciliation
+
+`tlc_distributed_java_test.go` stages all four original assertion bodies under
+the explicit `tlago_disabled_distributed_tests` build tag. The source setup
+unconditionally assumes false with reason "DistributedTLCTestCase broken with
+OffHeapDiskFPSet." No replacement skip is introduced. Native child processes
+replace SecurityManager exit interception and its artificial GENERAL filtering;
+every role is joined and real GENERAL messages remain failures. Workers start
+before the coordinator. Ant's off-heap implementation and 512 KiB direct-memory
+budget are retained, as is the CPU-derived worker count. Model/configuration
+bytes, -deadlock, zero/one standalone FP roles and all method assertions remain
+intact. DieHard also retains CommonTestCase's ordinal and action-label checks.
+
+All four CLI-default exploratory runs pass. Under the actual Ant profile on
+48 workers, DieHard, remote EWD840 and TSnapShot pass; local EWD840 fails on
+GENERAL during final CheckFPs. Source OffHeapDiskFPSet.getFlusher returns its
+existing flusher when a new partition is not larger than twice PROBE_LIMIT.
+A preceding concurrent merge shuts down that flusher's executor. Final CheckFPs
+can therefore select the retained closed executor and fail. Go has the same
+contract; resetting to a sequential flusher would change the pinned algorithm.
+Two short native checks cover the exact partition boundary and 48-way case,
+including retained rejection and fresh eligible reselection. This identifies
+an upstream-shaped limitation rather than authorizing a production workaround.
+All four original methods remain Reconcile, without completion credit. The
+tagged draft is intentionally not an ordinary green test target.

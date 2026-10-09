@@ -39,11 +39,18 @@ Later distributed changes have focused receipts; they do not establish a new
 full-workspace pass. Reuse verification for unchanged code.
 
 The distributed inventory records 41 original methods: 37 port complete and
-four missing. The four model methods inherit an unconditional false assumption
-in `DistributedTLCTestCase`; do not invent replacement skips or award original
-method credit for the native process harness:
+four requiring reconciliation. Their complete assertion bodies are now staged in
+`tlc_distributed_java_test.go`, behind `tlago_disabled_distributed_tests`.
+Upstream's shared setup unconditionally assumes false for OffHeapDiskFPSet.
+The draft runs the original Ant off-heap/512 KiB profile with CPU-derived workers
+and native process joins instead of JVM exit interception. On 48 workers,
+DieHard, remote EWD840 and TSnapShot pass; local EWD840 fails with GENERAL during
+final off-heap CheckFPs. Java's selector likewise retains a previously shut-down
+flusher when the new partitions are too small. Do not reset it to hide this
+source behavior, weaken the assertion, manufacture a skip or award completion
+credit. The opt-in draft records a known failure, not an ordinary green gate.
 
-| Original class | Missing method |
+| Original class | Pending method |
 | --- | --- |
 | `DieHardDistributedTLCTest` | `testSpec` |
 | `EWD840DistributedTLCTest` | `test` |
@@ -516,8 +523,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
 5. Reconcile opaque custom data and evaluator metadata against actual source
    transferability. Preserve explicit rejection until a faithful native contract
    is established. No Java object serialization or reflection runtime is wanted.
-6. Keep the four disabled original methods missing until their actual harness
-   contracts have a justified translation. Native coverage earns no such credit.
+6. Reconcile the four opt-in original model bodies with the upstream disabled
+   harness and its retained-flusher failure. The source-profile failure is now
+   located; staged bodies and native coverage earn no completion credit.
 
 Bulk queues publish their logical length after the whole enqueue loop. Failed
 disk spills retain the inserted prefix without counting it. Deque storage tracks
