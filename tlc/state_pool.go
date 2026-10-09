@@ -15,12 +15,14 @@ type StatePoolReader struct {
 	canRead  bool
 	finished bool
 	err      error
+	done     chan struct{}
 }
 
 func NewStatePoolReader(bufSize int, file string) *StatePoolReader {
 	r := &StatePoolReader{
 		buf:      make([]*TLCStateMut, bufSize),
 		poolFile: file,
+		done:     make(chan struct{}),
 	}
 	r.cond = sync.NewCond(&r.mu)
 	return r
@@ -109,6 +111,7 @@ func (r *StatePoolReader) SetFinished() {
 }
 
 func (r *StatePoolReader) run() {
+	defer close(r.done)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for {
@@ -136,12 +139,14 @@ type StatePoolWriter struct {
 	reader   *StatePoolReader
 	finished bool
 	err      error
+	done     chan struct{}
 }
 
 func NewStatePoolWriter(bufSize int, reader *StatePoolReader) *StatePoolWriter {
 	w := &StatePoolWriter{
 		buf:    make([]*TLCStateMut, bufSize),
 		reader: reader,
+		done:   make(chan struct{}),
 	}
 	w.cond = sync.NewCond(&w.mu)
 	return w
@@ -186,6 +191,7 @@ func (w *StatePoolWriter) SetFinished() {
 }
 
 func (w *StatePoolWriter) run() {
+	defer close(w.done)
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	for {

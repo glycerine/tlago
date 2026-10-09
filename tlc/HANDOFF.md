@@ -108,6 +108,11 @@ concurrently and join before returning. Child I/O failures propagate as operatio
 failures with native Go error wrapping; the manager must not ignore them as remote
 server outages. Unnamed begin/commit operations retain source sequential ordering.
 
+Failed coordinator construction stops and joins its queue workers and closes
+owned trace/fingerprint handles, preserving files and the original failure.
+Allocation order and base-constructor error precedence remain unchanged;
+successful construction transfers resources to the coordinator.
+
 State/result payloads retain identity and nil/empty distinctions across states,
 values, strings, predecessor graphs, caches, byte buffers and partition vectors.
 Attached model-value data supports native `[]Value` through the same array graph,

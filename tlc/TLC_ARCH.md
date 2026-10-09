@@ -12336,3 +12336,18 @@ directions before completing shutdown. No production implementation change was
 needed. This verifies a controlled full-model TCP byte stall, rather than merely
 a blocked service callback; arbitrary packet loss/blackholes and other partition
 topologies remain unproved.
+
+### Coordinator construction rollback
+
+Construction preserves source queue-before-trace-before-manager allocation and
+subclass validation after base construction. Native rollback stops and joins the
+three queue goroutines and closes trace and allocated local fingerprint handles
+when construction fails. It retains created metadata files and the originating
+failure; it does not run model-completion cleanup or delete checkpoint data.
+The normal queue finish operation remains asynchronous. Reader/writer completion
+channels permit constructor-only joining, matching the cleaner's existing native
+completion channel. Successful construction transfers lifetime ownership without
+stopping queue workers or closing the trace. Negative subclass registration count
+also releases the already-constructed base resources, after the source validation
+point. Native ownership checks supplement the original pool-writer test ports;
+they do not emulate JVM lifetime leaks or earn additional original-method credit.

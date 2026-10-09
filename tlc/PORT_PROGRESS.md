@@ -22997,3 +22997,38 @@ role exits (coordinator-file-refresh-model.log, terminal c367e6, status 0,
 39.872 seconds). No direct original method covers changing coordinator defaults;
 native supplements add no method completion credit. All runs are terminal.
 No full suite or race workload was run.
+
+### Native coordinator constructor rollback
+
+Audited `TLCServer(TLCApp)` and the distributed subclass constructor. Source
+allocation order is queue, trace, manager, selector; negative subclass latch
+validation follows base construction. The Go constructor abandoned its three
+queue goroutines and opened trace on subsequent failures. Added native rollback
+without reordering validation, suppressing the originating failure, deleting
+created files or running completion cleanup. Rollback joins queue workers and
+closes the trace and allocated local fingerprint set. Negative subclass count
+also releases its completed base resources. Successful construction transfers
+ownership as before. Normal queue finish remains asynchronous; reader/writer
+completion channels support constructor-only joins.
+
+Native checks repeat trace-open, null configuration, partial nested LSB disk
+initialization, invalid manager and negative registration failures. Actual sibling
+disk initialization must occur before its handles are closed. Runtime stack
+inspection requires new queue goroutines to terminate; Linux descriptor inspection
+requires no metadata handles to survive. Created trace/fingerprint files remain.
+Success controls require all workers and trace alive, then explicitly retire them.
+The fixture initially used the default static manager count of zero, so its
+success control failed at source manager validation (distributed-constructor-
+cleanup.log, terminal dd7aa9, status 1). Corrected fixture setup to isolate and
+restore that count; production validation was not weakened.
+
+Final native checks plus both unchanged original DiskPoolWriter methods pass
+(distributed-constructor-cleanup-verified.log, terminal 75d60b, status 0,
+0.046 seconds). The same short selection passes with race instrumentation
+(distributed-constructor-cleanup-verified-race.log, terminal c504ac, status 0,
+1.066 seconds). Full unchanged N=7 checking with two worker threads passes with
+114,942 distinct states, an empty queue and clean role exits (distributed-
+constructor-cleanup-model.log, terminal e8597c, status 0, 38.684 seconds).
+No original method directly tests coordinator rollback; supplemental checks
+earn no original-method credit. All runs are terminal. No full suite was run
+and no long workload used race instrumentation.

@@ -1515,6 +1515,13 @@ resource copies and directory cleanup. Existing original filename tests remain
 green on Linux, preserving the Windows platform guard. No direct original method
 covers changing coordinator defaults; original method completion credit is unchanged.
 
+Native failed-constructor checks cover trace-open, null configuration, partial
+nested disk initialization, invalid manager count and negative registration count.
+They require joined queue workers and closed metadata handles while preserving
+files, error precedence and successful ownership transfer. The existing original
+DiskPoolWriter tests remain unchanged. No direct original method tests coordinator
+rollback; these supplements add no original method completion credit.
+
 Repeated registration of the same native worker now has full MC06 N=7 coverage:
 two coordinator threads share one worker identity, final distinct states remain
 114,942, and the queue is empty. Two worker statistics and the source second-exit

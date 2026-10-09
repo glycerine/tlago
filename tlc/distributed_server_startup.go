@@ -71,6 +71,10 @@ func NewDistributedFPSetTLCServer(app *TLCApp, expectedFPSetCount int) (*TLCServ
 	}
 	expectedFPSetCount = int(int32(expectedFPSetCount))
 	if expectedFPSetCount < 0 {
+		// The source validates the subclass count after base construction.
+		// Preserve that precedence without abandoning native resources.
+		server.StateQueue.(*DiskStateQueue).finishConstructionAndWait()
+		_ = server.Trace.Close()
 		panic(NewIllegalArgumentException("count < 0"))
 	}
 	registration := &distributedFPRegistration{expected: expectedFPSetCount, remaining: expectedFPSetCount, done: make(chan struct{})}
@@ -100,9 +104,23 @@ func newTLCServerFromApp(app *TLCApp, distributed bool) (*TLCServer, error) {
 	start := strings.LastIndex(metadir[:end], separator)
 	checkpointName := metadir[start+1 : end]
 	queue := newDiskStateQueue(metadir, true)
+	var trace *TLCTrace
+	var set FPSet
+	transferred := false
+	defer func() {
+		if !transferred {
+			queue.finishConstructionAndWait()
+			if trace != nil {
+				_ = trace.Close()
+			}
+			if set != nil {
+				set.Close()
+			}
+		}
+	}()
 	// Unlike the general host-side trace constructor, Java does not create a
 	// missing metadata directory here. Failed trace opening precedes the FPSet.
-	trace := &TLCTrace{lastPtr: 1, diskdir: metadir, rootName: app.GetFileName(), rawPaths: true, Tool: app.requireTool()}
+	trace = &TLCTrace{lastPtr: 1, diskdir: metadir, rootName: app.GetFileName(), rawPaths: true, Tool: app.requireTool()}
 	raf, err := NewBufferedRandomAccessFile(metadir+separator+app.GetFileName()+tlcTraceExt, "rw")
 	if err != nil {
 		return nil, distributedFileOpenException(metadir+separator+app.GetFileName()+tlcTraceExt, err)
@@ -116,7 +134,7 @@ func newTLCServerFromApp(app *TLCApp, distributed bool) (*TLCServer, error) {
 		if config == nil {
 			panic(NewNullPointerException())
 		}
-		set := NewFPSet(config)
+		set = NewFPSet(config)
 		if set == nil {
 			panic(NewNullPointerException())
 		}
@@ -132,6 +150,7 @@ func newTLCServerFromApp(app *TLCApp, distributed bool) (*TLCServer, error) {
 	server.app = app
 	server.checkDeadlock = &app.checkDeadlock
 	server.checkpointName = &checkpointName
+	transferred = true
 	return server, nil
 }
 

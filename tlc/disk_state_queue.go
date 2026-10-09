@@ -191,6 +191,16 @@ func (q *DiskStateQueue) FinishAll() {
 	q.suspend.signal()
 }
 
+// Failed coordinator construction has no consumer to join these owned workers.
+// Keep normal finishAll asynchronous, but finish rollback before returning the
+// constructor failure to a caller that may immediately retry.
+func (q *DiskStateQueue) finishConstructionAndWait() {
+	q.FinishAll()
+	<-q.reader.done
+	<-q.writer.done
+	<-q.cleaner.done
+}
+
 func (q *DiskStateQueue) SuspendAll() bool {
 	q.mu.Lock()
 	if q.finish.Load() {
