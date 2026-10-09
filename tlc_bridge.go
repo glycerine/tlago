@@ -1320,6 +1320,11 @@ func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, bind
 	// and formal parameters. Share that node instead of rebuilding a clone.
 	if binding.owner.semanticNode != nil {
 		member := strings.TrimPrefix(name, binding.owner.Name+"!")
+		// An unnamed INSTANCE exports the declared name; module-qualified
+		// convenience aliases are not names in its source Context.
+		if binding.inst.exportsUnqualified() {
+			member = def.Name
+		}
 		if source, ok := binding.owner.semanticNode.context.getSymbol(member).(*sanySemOpDefNode); ok {
 			return b.canonicalGraph(source).(*tlc.OpDefNode)
 		}

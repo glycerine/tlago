@@ -11014,6 +11014,16 @@ Runtime constraint, action-constraint, view and postcondition targets now resolv
 against the external module table and that module's actual OpDefs, as Java
 ParameterizedSpecObj does. Missing modules/operators raise GENERAL with the
 source messages; theorem definitions and inner modules are not fallback targets.
+Unnamed INSTANCE operator aliases resolve their declared names in the owner's
+actual source Context, even when the bridge lookup key contains the instancee's
+module qualifier. Generator.generateInstance exports odn.getName() directly;
+those convenience qualifiers must not cause source lookup to miss and rebuild
+clones. Across existing Github817/Github1244, Test219, LET, cyclic-redefinition,
+debugger and trace originals, all 544 observed conversions now return the actual
+canonical export, body and source identity. Baseline had 88 node mismatches and
+82 body mismatches from 88 fallback calls; corrected execution has zero of each
+and no unresolved source lookups. This observation does not establish source-less
+fallback parity or early alias-symbol registration identity.
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target
 conversion helpers have been removed.

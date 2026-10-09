@@ -28508,3 +28508,51 @@ status 0, 181.739 seconds. Java checkout HEAD is reverified as the pinned
 8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Git diff --check passes.
 The same full off-heap random run remains live beyond 461 million iterations;
 completion credit remains pending.
+
+
+Unnamed INSTANCE operator exports and canonical node reuse (2026-10-09)
+
+Previous goal turn committed da2f3e7, a concrete view/alias getter correction.
+Revalidated the clean workspace and polled the same live full off-heap session
+77502. An ignored source overlay traces convertInstanceDefinition fallback calls
+on existing original Github817/Github1244, Test219, LET, cyclic-redefinition,
+Debug02 and trace-expression methods. The first observation passes in
+instance-fallback-original-observation.log, terminal 4959f5, status 0,
+5.622 seconds, but exposes 88 fallback calls (86 unique rows).
+
+Source lookup stripped only the owner prefix, leaving instancee module qualifiers
+on unnamed INSTANCE convenience aliases. The source Context has the declared
+unqualified name. Java Generator.generateInstance retains odn.getName() when
+registering/reusing these exports. convertInstanceDefinition now resolves def.Name
+for unnamed instances before adapting the actual canonical graph. It no longer
+rebuilds clones for those aliases. Named-instance behavior and source-less fallback
+code remain unchanged pending their wider caller audit.
+
+A before/after ignored overlay observes every returned instance conversion against
+the actual owner Context export. All 544 rows resolve a source OpDef. Baseline has
+88 node mismatches, 82 body mismatches, zero original-source mismatches and 88
+fallback calls. Corrected execution has zero node/body/source mismatches and zero
+fallback calls. Baseline observation: instance-export-before-observation.log,
+terminal fc2d3d, status 0, 5.726 seconds. Corrected observation:
+instance-export-after-observation.log, terminal e18bfe, status 0, 5.229 seconds.
+These are observations on unchanged original methods; no persistent assertion or
+fixture is invented and no new original-method credit is claimed.
+
+The same focused original selection passes without the overlay:
+instance-export-focused-originals.log, terminal 736f0a, status 0, 5.541 seconds.
+Broader original verification is recorded below when terminal. Existing workload
+bounds and assertions are unchanged. General source generation, source-less
+fallback behavior and mutation sharing remain unproven. Next concrete audit:
+early INSTANCE alias-symbol registration against canonical generated exports.
+
+The same original full off-heap random session 77502 remains live, beyond
+461 million of 2,147,483,648 iterations, without completion credit. No workload
+restart, race instrumentation, full-workspace/XML/ApalacheIR sweep, Java edit,
+email work or translated assertion change.
+
+Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and trace
+selection passes: instance-export-broad-originals.log, terminal 8c4924, status 0,
+179.414 seconds. Java checkout HEAD is reverified as the pinned
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Git diff --check passes.
+The same original full off-heap random workload remains live beyond 469 million
+iterations; completion credit remains pending.

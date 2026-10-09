@@ -81,9 +81,12 @@ Java's runtime, `_POSSIBLE`, then config order, creating fresh config Actions
 without OpDef metadata. Config postconditions are resolved by the tool getter.
 View and alias getters now resolve current definitions and throw source runtime
 failures. View capture follows configuration and precedes symmetry setup; alias
-lookup stays inside trace rendering's error boundary. Next: trace remaining native
-INSTANCE fallback lowering against actual generated source exports. General source
-generation and mutation-sharing parity remain pending.
+lookup stays inside trace rendering's error boundary. Unnamed INSTANCE convenience
+aliases now resolve the actual unqualified source exports; all 544 observed export
+conversions match canonical nodes and bodies, with no fallback calls. Source-less
+fallback lowering remains unaudited. Next: inspect early INSTANCE alias-symbol
+registration against those canonical exports. General source generation and
+mutation-sharing parity remain pending.
 
 ## Verification baseline and test credit
 
