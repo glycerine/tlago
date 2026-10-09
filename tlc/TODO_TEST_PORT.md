@@ -1522,6 +1522,13 @@ files, error precedence and successful ownership transfer. The existing original
 DiskPoolWriter tests remain unchanged. No direct original method tests coordinator
 rollback; these supplements add no original method completion credit.
 
+Native fingerprint host ownership checks require storage to survive source
+rejection/unpublication and a registration failure reported after acceptance.
+Shutdown drains a blocked real lookup before closing disk handles, preserves
+files, deduplicates repeated publication and rejects late registration. Existing
+original manager constructor/concurrent-order tests remain unchanged. No original
+method tests native host ownership; these checks add no method completion credit.
+
 Repeated registration of the same native worker now has full MC06 N=7 coverage:
 two coordinator threads share one worker identity, final distinct states remain
 114,942, and the queue is empty. Two worker statistics and the source second-exit

@@ -13,7 +13,9 @@ import (
 // DistributedWorkerNetwork supplies native discovery, publication and callbacks
 // to the existing worker command. The command still owns initialization order,
 // evaluator/runtime lifetime, registration threads, keepalive and exit latch.
-// Close releases networking only; shut down the worker runtime separately.
+// Close drains networking and closes fingerprint storage published through
+// FPEnvironment. Shut down the worker runtime separately. Storage published
+// directly through Host remains caller-owned.
 type DistributedWorkerNetwork struct {
 	Host           *DistributedRPCServer
 	Discovery      *DistributedNetworkDiscovery
@@ -22,6 +24,8 @@ type DistributedWorkerNetwork struct {
 	sequence       atomic.Uint64
 	fingerprintsMu sync.Mutex
 	fingerprints   map[FPSet][]string
+	ownedFPSets    map[FPSet]bool
+	fpOwners       []FPSet
 	done           chan error
 	closeOnce      sync.Once
 	closeError     error
@@ -82,6 +86,17 @@ func (n *DistributedWorkerNetwork) Close() error {
 		n.closeError = errors.Join(n.Host.CloseGracefully(), n.Discovery.Close())
 		if err := <-n.done; err != nil && !errors.Is(err, net.ErrClosed) {
 			n.closeError = errors.Join(n.closeError, err)
+		}
+		// Unpublication removes names, not native ownership. Close storage
+		// only after accepted RPC calls and replies have drained. A failed
+		// registration may have completed remotely, so it retains ownership
+		// and publication until this same process-lifetime boundary.
+		n.fingerprintsMu.Lock()
+		owners := n.fpOwners
+		n.fpOwners, n.ownedFPSets, n.fingerprints = nil, nil, nil
+		n.fingerprintsMu.Unlock()
+		for _, set := range owners {
+			set.Close()
 		}
 	})
 	return n.closeError

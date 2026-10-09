@@ -34,14 +34,22 @@ func (n *DistributedWorkerNetwork) FPEnvironment(base DistributedFPServerEnviron
 			return fmt.Errorf("native fingerprint publication requires owned local storage, got %T", endpoint)
 		}
 		name := fmt.Sprintf("fingerprint-%d", n.sequence.Add(1))
+		n.fingerprintsMu.Lock()
 		if err := n.Host.RegisterFingerprint(name, endpoint); err != nil {
+			n.fingerprintsMu.Unlock()
 			return err
 		}
-		n.fingerprintsMu.Lock()
 		if n.fingerprints == nil {
 			n.fingerprints = make(map[FPSet][]string)
 		}
 		n.fingerprints[local.Set] = append(n.fingerprints[local.Set], name)
+		if n.ownedFPSets == nil {
+			n.ownedFPSets = make(map[FPSet]bool)
+		}
+		if !n.ownedFPSets[local.Set] {
+			n.ownedFPSets[local.Set] = true
+			n.fpOwners = append(n.fpOwners, local.Set)
+		}
 		n.fingerprintsMu.Unlock()
 		return coordinator.RegisterFPSetReference(DistributedEndpointReference{Address: n.Address, Object: name}, hostname)
 	}

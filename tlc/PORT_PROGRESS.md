@@ -23032,3 +23032,42 @@ constructor-cleanup-model.log, terminal e8597c, status 0, 38.684 seconds).
 No original method directly tests coordinator rollback; supplemental checks
 earn no original-method credit. All runs are terminal. No full suite was run
 and no long workload used race instrumentation.
+
+### Native fingerprint host storage release
+
+Reviewed `DistributedFPSet.main` registration/rejection/reporting against the
+native FP environment. Publication names were tracked, but unpublication lost
+native storage ownership and host Close did not close disk readers. The native
+network now tracks owned stores separately from published names. Ownership is
+recorded with successful local publication before attempting remote registration.
+Source rejection still unpublishes without stopping the shared worker host;
+registration failure retains the endpoint because acceptance can have completed.
+Host Close drains accepted replies and closes networking before closing each
+owned storage entry in publication order. Repeated publications share one owner.
+No Exit call, file deletion or registration replay is introduced. Direct Host
+publications stay caller-owned. Pre-publication FP startup failure ownership
+remains a separate audit item; this change does not claim to cover it.
+
+Native checks initialize actual LSB disk storage, require source rejection and
+failure-after-actual-registration behavior, and block a real Contains RPC across
+host Close. Storage stays open until lookup completion and reply draining. Closed
+hosts reject late publication; Linux descriptor checks require disk readers
+released and files retained. The fixture joins both call/close goroutines on
+failure too. Related original native rejection/combined-host and exit-reply
+checks pass. Initial selection passes (fp-storage-ownership.log, terminal 325db4,
+status 0, 0.029 seconds); enhanced post-registration-failure checks also pass
+with race instrumentation (fp-storage-ownership-verified-race.log, terminal
+6cd770, status 0, 1.090 seconds). Final normal selection includes both unchanged
+original manager constructor and concurrent-order methods and passes
+(fp-storage-ownership-verified.log, terminal 7e92c1, status 0, 0.034 seconds).
+
+After adding the direct-publication ownership control, the final short selection
+including both original manager methods passes with race instrumentation
+(fp-storage-ownership-final-race.log, terminal 0e9574, status 0, 1.082 seconds).
+All test runs and child processes are terminal.
+
+The unchanged full combined-worker/fingerprint N=7 model passes with 114,942
+distinct states, an empty queue, FINISHED and clean role exits
+(fp-storage-ownership-model.log, terminal c654ee, status 0, 61.326 seconds).
+No direct original method tests native host storage ownership, so supplements
+add no method completion credit. No full suite or long race workload was run.

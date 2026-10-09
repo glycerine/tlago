@@ -113,6 +113,12 @@ owned trace/fingerprint handles, preserving files and the original failure.
 Allocation order and base-constructor error precedence remain unchanged;
 successful construction transfers resources to the coordinator.
 
+The native worker/FP network owner retains local fingerprint storage through
+unpublication and registration errors. Host shutdown drains accepted replies,
+then closes each owned storage object once without invoking Exit or deleting
+files. Direct `Host` publications remain caller-owned; worker runtime shutdown
+is still separate.
+
 State/result payloads retain identity and nil/empty distinctions across states,
 values, strings, predecessor graphs, caches, byte buffers and partition vectors.
 Attached model-value data supports native `[]Value` through the same array graph,
@@ -244,7 +250,8 @@ or establish checkpoint atomicity.
    delete the old checkpoint before failing; that is a different failure boundary.
 4. Finish the source ownership/constructor and native cleanup audit where evidence
    identifies actual remaining shortcuts. Consult prior audits before repeating
-   completed checks. Missing-component behavior alone cannot prove full parity.
+   completed checks. Fingerprint startup failures before publication still need
+   ownership review. Missing-component behavior alone cannot prove full parity.
 5. Reconcile opaque custom data and evaluator metadata against actual source
    transferability. Preserve explicit rejection until a faithful native contract
    is established. No Java object serialization or reflection runtime is wanted.

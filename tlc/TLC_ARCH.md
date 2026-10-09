@@ -12351,3 +12351,23 @@ stopping queue workers or closing the trace. Negative subclass registration coun
 also releases the already-constructed base resources, after the source validation
 point. Native ownership checks supplement the original pool-writer test ports;
 they do not emulate JVM lifetime leaks or earn additional original-method credit.
+
+### Native fingerprint host storage ownership
+
+`DistributedWorkerNetwork.FPEnvironment` transfers ownership of successfully
+published local fingerprint storage to its native host. Publication names and
+storage ownership are separate: source unpublication removes names while the
+host retains the owned store. A failed coordinator registration can have completed
+remotely, so its published endpoint and storage remain usable until host shutdown.
+Source rejection still unpublishes only that store and preserves the shared worker
+host. No registration replay or new Exit/cleanup call is introduced.
+
+`Close` drains accepted RPC operations/replies and closes network clients before
+closing owned stores in publication order. Shared storage published repeatedly
+has one ownership entry. Admission and ownership recording share the ownership
+mutex, so successful publication cannot escape the shutdown snapshot. Late
+publication fails against the already-closed RPC host. Storage files remain;
+direct `Host.RegisterFingerprint` callers retain their own storage ownership.
+Worker runtime and evaluator shutdown remain separate. Native disk-handle and
+blocked-lookup tests supplement unchanged source manager tests without adding
+original method completion credit.
