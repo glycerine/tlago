@@ -3,11 +3,15 @@
 Updated: October 9, 2026. Active branch: `master`.
 
 The user authorized fixing the upstream off-heap flusher lifecycle bug in Go.
-The fix and upstream report are in [JAVA_BUG_FOUND.md](../JAVA_BUG_FOUND.md);
-focused regressions and the formerly failing original-profile EWD840 diagnostic
-pass. This authorization does not cover the separate checkpoint-error formatting
-hang. Four original model methods remain Reconcile; no skipped body is counted
-as passing. Continue concrete port gaps without manufacturing fault scenarios.
+The fix and upstream report are in [JAVA_BUG_FOUND.md](../JAVA_BUG_FOUND.md).
+The correction covers both final-check selection and direct invariant flushing
+after an executor shuts down. Focused regressions and the formerly failing
+original-profile EWD840 diagnostic pass. The original off-heap multiple-flush
+test passes behind `tlc_fp_stress`, retaining all four default rounds of
+8,388,608 insertions and exact invariant counts. This authorization does not
+cover the separate checkpoint-error formatting hang. Four original model methods remain
+Reconcile; no skipped body is counted as passing. Continue concrete port gaps
+without manufacturing fault scenarios.
 
 This is the current restart guide. Detailed audit history and verification
 receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md); implementation contracts

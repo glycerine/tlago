@@ -2578,14 +2578,17 @@ publication. Do not relax full-flush assertions to mimic the primitive test.
 `DiskFPSet.recoverFP` has exclusive access during recovery. Its off-heap virtual
 insertion starts with the source CAS/probe routine; only probe exhaustion signals
 the shared barrier and falls back to ordinary `put`. A table reaching capacity
-flushes the currently selected flusher directly, retaining its executor state
-and checked-I/O boundary. It does not select a new flusher or count an eviction.
+flushes the currently selected flusher directly, retaining its checked-I/O
+boundary. Under the authorized closed-flusher correction, an executor shut down
+by a successful previous flush falls back to sequential flushing. Failed flushes
+retain their existing failure state. This does not count an eviction.
 Duplicate recovery uses the coded runtime exception; warning mode continues to
 the same capacity check. The initial insertion deliberately follows Java's
 memory-only routine rather than adding a disk lookup.
 
-Public invariant checks share that current-flusher path. Normal eviction selects
-the flusher and wraps checked I/O, increments its growth counter even for an
+Public invariant checks share that current-flusher path and closed-executor
+fallback. Normal eviction selects the flusher and wraps checked I/O,
+increments its growth counter even for an
 empty table, and records elapsed flush time only after success. Its input/sorted
 assertion details and repeated sorted-check diagnostic evaluation follow Java.
 
@@ -13871,11 +13874,11 @@ All four CLI-default exploratory runs pass. Under the actual Ant profile on
 GENERAL during final CheckFPs. Source OffHeapDiskFPSet.getFlusher returns its
 existing flusher when a new partition is not larger than twice PROBE_LIMIT.
 A preceding concurrent merge shuts down that flusher's executor. Final CheckFPs
-can therefore select the retained closed executor and fail. Go has the same
-contract; resetting to a sequential flusher would change the pinned algorithm.
-Two short native checks cover the exact partition boundary and 48-way case,
-including retained rejection and fresh eligible reselection. This identifies
-an upstream-shaped limitation rather than authorizing a production workaround.
+can therefore select the retained closed executor and fail. The user subsequently
+authorized a Go correction: ineligible selection uses the sequential path.
+Direct invariant/recovery flushing also discards an executor closed by a prior
+successful flush. Short native checks cover the partition boundary, 48-way final
+check, and repeated invariant checks after an actual merge. See JAVA_BUG_FOUND.md.
 All four original methods remain Reconcile, without completion credit. The
 tagged draft is intentionally not an ordinary green test target.
 
@@ -14738,8 +14741,10 @@ including evicted disk entries. The Go override preserves this approximation;
 it must not be replaced with a complete disk flush to satisfy a native fixture.
 The user subsequently authorized correcting Java's stale flusher selection:
 ineligible parallel partitions now clear the old concurrent flusher and select
-the existing sequential path. This deliberate divergence avoids submitting to
-an executor shut down by a previous merge. See
+the existing sequential path. Direct invariant/recovery flushing likewise
+discards an executor closed by a successful flush before preparing the next
+table. These deliberate divergences avoid submitting to an executor shut down
+by a previous merge. See
 [JAVA_BUG_FOUND.md](../JAVA_BUG_FOUND.md) for the source lifecycle and evidence.
 
 The two-host final-check reply-loss fixture therefore distinguishes off-heap

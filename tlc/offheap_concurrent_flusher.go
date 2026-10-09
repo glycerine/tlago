@@ -53,6 +53,7 @@ type offHeapConcurrentFlusher struct {
 	r, insertions, length int64
 	offsets               []offHeapFlusherResult
 	shutdown              bool
+	flushCompleted        bool
 }
 
 func (s *OffHeapDiskFPSet) selectOffHeapConcurrentFlusher(numThreads int) *offHeapConcurrentFlusher {

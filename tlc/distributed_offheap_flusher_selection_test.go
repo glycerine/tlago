@@ -65,3 +65,31 @@ func TestDistributedOffHeapFinalCheckAfterConcurrentFlush(t *testing.T) {
 		}
 	}
 }
+
+// Public invariant checks dispatch directly through the retained flusher rather
+// than selecting one through evict or CheckFPs.
+func TestOffHeapInvariantAfterConcurrentFlush(t *testing.T) {
+	set := javaOffHeapInitialized(t, 8192)
+	for round := 0; round < 4; round++ {
+		fp := uint64(41 + round*56)
+		if set.Put(fp) {
+			t.Fatalf("new fingerprint %d already present", fp)
+		}
+		if round == 0 {
+			if err := set.evict(); err != nil {
+				t.Fatal(err)
+			}
+			if set.concurrentFlusher == nil || !set.concurrentFlusher.shutdown || !set.concurrentFlusher.flushCompleted {
+				t.Fatal("actual merge did not shut down its executor")
+			}
+		}
+		if !set.CheckInvariant(uint64(round + 1)) {
+			t.Fatalf("invariant failed after round %d", round+1)
+		}
+	}
+	for _, fp := range []uint64{41, 97, 153, 209} {
+		if !set.Contains(fp) {
+			t.Fatalf("invariant checks lost fingerprint %d", fp)
+		}
+	}
+}

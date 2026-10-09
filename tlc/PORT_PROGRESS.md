@@ -27434,3 +27434,48 @@ Updated current handoff, architecture, mapping and inventory notes. The original
 shared unconditional skip remains exact; 37 of 41 distributed original methods
 remain complete and four Reconcile. Diagnostic passes do not change that credit.
 Other long off-heap source-failing workloads were not run or declared resolved.
+
+
+### October 9, 2026: resume after power loss; direct off-heap invariant flushing
+
+Recovered a clean master at a18c284. The authorized closed-flusher correction
+covered final-check selection, but original OffHeapDiskFPSetLongTest's pending
+testMultipleFlushes calls the retained flusher directly through CheckInvariant.
+An actual successful eviction shuts down its executor; subsequent insertion and
+invariant flushing still raised RejectedExecutionException. A short native
+regression reproduced this before the change: terminal e587dd, status 1,
+0.017 seconds, offheap-invariant-flusher-before.log. No new Java execution;
+the earlier unchanged-Java failure remains the upstream execution evidence.
+
+Extended the authorized lifecycle fix to direct flushing. A concurrent flusher
+records successful whole-flush completion, including file replacement and reader
+reopening. Direct flushing discards a closed executor only after that success,
+using the existing sequential path. Failed flushes retain their source failure
+state rather than enabling another merge attempt. No eviction accounting,
+checkpoint protocol, closest-pair algorithm or original assertions changed.
+
+Ported the complete original testMultipleFlushes behind tlc_fp_stress. Retained
+the source ratio-1.0 factory, one reader, Java RNG seed 15041980, runtime-derived
+memory bound, four rounds, every put assertion and exact invariant counts. With
+the default 64 MiB direct-memory budget, all four rounds of 8,388,608 insertions
+pass, ending at 33,554,432 fingerprints. Initial full run: terminal 8373eb,
+status 0, 318.16 seconds, offheap-multiple-flushes-full.log. After restricting
+fallback to successful flushes, the unchanged full workload passes again:
+terminal 95e078, status 0, 317.29 seconds (package 317.323 seconds),
+offheap-multiple-flushes-final.log. Both full workloads ran normally, without
+race instrumentation or reduced bounds.
+
+Initial focused selection, including the original large write-index control,
+passes in 50.355 seconds, terminal f0cd00, status 0,
+offheap-invariant-flusher-fixed.log. Final short selection covers the direct
+regression, existing selector/final-check regressions, original insert/evict,
+offset and merge cases, and the existing long-class simple/collision/position
+methods: terminal 0b911d, status 0, 0.272 seconds,
+offheap-invariant-flusher-final.log. All logs are under .codex-gotmp. All live
+test handles are terminal; no full suite or race run.
+
+Updated JAVA_BUG_FOUND, architecture and the current handoff. Supplementary
+test-long inventory advances from 17/22 to 18/22 mapped methods, with four still
+pending. Main inventory and distributed 37/41 counts do not change; original
+source skips remain exact. The separate intern-error formatting hang is outside
+this authorization. git diff --check passes.

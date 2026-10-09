@@ -4,7 +4,8 @@ package tlc
 import "testing"
 
 // Original OffHeapDiskFPSetLongTest collision/position methods and inherited testSimpleFill.
-// Multiple-flush/source-executor reconciliation and both huge inherited methods remain pending.
+// The full multiple-flush method is in offheap_multiple_flushes_java_test.go
+// behind tlc_fp_stress; both huge inherited methods remain pending.
 // The source factory ignores the supplied config, selecting ratio 1.0 instead.
 func TestJavaOffHeapDiskFPSetLong(t *testing.T) {
 	newSet := func(t *testing.T) *OffHeapDiskFPSet {

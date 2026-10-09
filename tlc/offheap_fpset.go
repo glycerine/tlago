@@ -492,10 +492,19 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 }
 
 // DiskFPSet.Flusher.flushTable dispatches through the existing flusher. Recovery
-// and public invariant checks do not reselect it or count a normal eviction.
+// and public invariant checks do not count a normal eviction.
 func (s *OffHeapDiskFPSet) flushOffHeapTable() error {
 	if atomic.LoadInt64(&s.tblCnt) == 0 {
 		return nil
+	}
+	if s.concurrentFlusher != nil && s.concurrentFlusher.shutdown && s.concurrentFlusher.flushCompleted {
+		// Authorized correction of Java's closed-flusher lifecycle bug also
+		// covers direct invariant/recovery flushing, which bypasses selection.
+		// Use the sequential path rather than submitting to a closed executor
+		// with partition counts captured before the previous merge. A failed
+		// flush retains its source failure state instead of enabling a retry.
+		// See ../JAVA_BUG_FOUND.md.
+		s.concurrentFlusher = nil
 	}
 	if s.concurrentFlusher != nil {
 		s.concurrentFlusher.prepareTable()
@@ -509,6 +518,9 @@ func (s *OffHeapDiskFPSet) flushOffHeapTable() error {
 	atomic.StoreInt64(&s.tblCnt, 0)
 	s.bucketsCap = 0
 	atomic.StoreInt64(&s.tblLoad, 0)
+	if s.concurrentFlusher != nil {
+		s.concurrentFlusher.flushCompleted = true
+	}
 	return nil
 }
 
