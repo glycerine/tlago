@@ -12809,3 +12809,20 @@ Native cases verify failure without parent creation and a real symlink traversal
 where begin, commit and recovery all operate in the symlink target's parent,
 leaving the lexically cleaned location untouched. Queue formats, state ordering
 and source delete/rename failure semantics remain unchanged.
+
+### Unified disk queue filesystem contract
+
+DiskStateQueue uses one constructor for coordinator and public use. The former
+public-only convenience path replaced empty directories, cleaned file names and
+created parents before checkpoint/spill. Removed that split: source file-prefix
+concatenation now determines both checkpoint and pool paths in every entry point.
+Callers own metadata directory creation. The disk queue neither substitutes a
+temporary directory nor creates missing parents during storage operations.
+
+Native checks verify missing-parent begin failure, real symlink/.. resolution
+through begin/commit/recovery, and retained root-relative pool names for an empty
+configured directory. The empty-directory check only constructs/joins waiting
+workers and inspects their configured paths; it does not write root files.
+Coordinator cleanup and assigned-block checkpoint checks remain green, along
+with all nine short inherited original queue methods. The original long growth
+method retains its source bounds and is outside this focused verification.

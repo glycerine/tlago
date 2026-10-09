@@ -103,7 +103,7 @@ func newTLCServerFromApp(app *TLCApp, distributed bool) (*TLCServer, error) {
 	}
 	start := strings.LastIndex(metadir[:end], separator)
 	checkpointName := metadir[start+1 : end]
-	queue := newDiskStateQueue(metadir, true)
+	queue := NewDiskStateQueue(metadir)
 	var trace *TLCTrace
 	var set FPSet
 	transferred := false

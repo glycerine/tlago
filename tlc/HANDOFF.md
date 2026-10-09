@@ -129,6 +129,8 @@ memory runtime failures stop manager recovery, while packed-memory I/O failures
 warn and continue healthy registrations. Duplicates stop both without failover.
 Memory queue checkpoints open the configured literal directory directly. They
 do not create parents, choose temporary directories or clean symlink traversal.
+Disk queues now use the same source path contract through one constructor for
+public and coordinator use. Checkpoint and spill operations do not create parents.
 Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
 storage. The manager warns once, continues to the next registration and leaves
 routing intact; the broken connection does not replay the completed recovery.

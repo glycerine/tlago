@@ -23832,3 +23832,20 @@ checks real begin/commit/recovery files; it does not write root paths. No direct
 original test covers these filesystem boundaries, so native cases add no
 original-method credit. No full suite, long model or race workload ran.
 All check handles are terminal.
+
+### Unified disk queue checkpoint and pool paths
+
+Audited DiskStateQueue(String) filePrefix and checkpoint/spill operations.
+The coordinator already selected source literal paths, but the public constructor
+used an invented convenience mode. Removed the mode flag, empty-directory
+substitution, path cleaning and checkpoint/spill parent creation. Coordinator
+construction now calls the same public constructor. Native missing-parent,
+symlink/.. and empty-directory cases reproduce all three differences (terminal
+dd51ce, status 1, 0.017 seconds). Fixed cases, partial queue recovery, checkpoint
+symlink ordering and partial pool-deletion checks pass (terminal 6f5ac2,
+status 0, 0.035 seconds). All nine short inherited original DiskStateQueue
+methods pass (terminal 4c87c4, status 0, 0.018 seconds). Coordinator constructor
+rollback/transfer and assigned-block checkpoint checks pass (terminal 45637a,
+status 0, 0.047 seconds). No new original-method completion credit is added.
+The separate original two-billion-state growth method, full suite, long models
+and race workloads were not rerun. All check handles are terminal.

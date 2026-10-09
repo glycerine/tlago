@@ -1470,6 +1470,10 @@ Native memory queue path checks reproduce and fix invented parent creation and
 lexical path cleaning. Begin/commit/recovery now retain source literal paths;
 original state-queue methods and related active-block checkpoint checks pass.
 No direct original method covers these filesystem boundaries; no credit added.
+Disk queue native path checks cover missing parents, symlink traversal through
+begin/commit/recovery and empty-directory constructor paths. The nine short
+inherited original queue methods remain green; the separate two-billion-state
+growth method was not rerun. No new original-method completion credit is added.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.
