@@ -80,8 +80,12 @@ func walkSemanticGraph(roots []SemanticNode, preVisit func(SemanticNode)) {
 			}
 		case *LetInNode:
 			if n != nil {
-				for _, def := range coverageLetDefinitions(n.Lets) {
-					walk(def)
+				if n.Context != nil {
+					n.Context.WalkGraphNodes(walk)
+				} else {
+					for _, def := range coverageLetDefinitions(n.Lets) {
+						walk(def)
+					}
 				}
 				walk(n.Body)
 			}

@@ -77,6 +77,11 @@ type semanticNodeToolSlots struct {
 	values []any
 }
 
+func newSemanticNodeBasePointer(kind SemanticKind, image string) *SemanticNodeBase {
+	base := NewSemanticNodeBase(kind, image)
+	return &base
+}
+
 // NewSemanticNodeBase allocates SemanticNode's process-wide Java int UID.
 // SANY context symbols and TLC evaluator nodes share this constructor.
 func NewSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
@@ -398,16 +403,16 @@ func SemanticLevelParams(node SemanticNode) []*SymbolNode {
 }
 
 type LabelNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Body SemanticNode
 }
 
 func NewLabelNode(body SemanticNode) *LabelNode {
-	return &LabelNode{SemanticNodeBase: NewSemanticNodeBase(SemanticLabelKind, "label"), Body: body}
+	return &LabelNode{SemanticNodeBase: newSemanticNodeBasePointer(SemanticLabelKind, "label"), Body: body}
 }
 
 type OpApplNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Operator             *SymbolNode
 	Args                 []SemanticNode
 	BdedQuantSymbolLists [][]*SymbolNode
@@ -418,7 +423,7 @@ type OpApplNode struct {
 
 func NewOpApplNode(operator *SymbolNode, args ...SemanticNode) *OpApplNode {
 	out := &OpApplNode{
-		SemanticNodeBase: NewSemanticNodeBase(SemanticOpApplKind, ""),
+		SemanticNodeBase: newSemanticNodeBasePointer(SemanticOpApplKind, ""),
 		Operator:         operator,
 		Args:             append([]SemanticNode(nil), args...),
 	}
@@ -452,6 +457,7 @@ type LetInNode struct {
 	Lets     []*OpDefNode
 	Bindings []LetBinding
 	Body     SemanticNode
+	Context  *SemanticContext
 }
 
 type LetBinding struct {
@@ -478,14 +484,26 @@ func NewLetInNodeWithBase(base *SemanticNodeBase, body SemanticNode, lets ...*Op
 }
 
 type Subst struct {
+	*SubstFields
+	id uint64
+}
+
+// Copies of a substitution reference one record, as Java Subst[] entries do.
+type SubstFields struct {
 	Op   *SymbolNode
 	Expr SemanticNode
-	id   uint64
+}
+
+func NewSubst(op *SymbolNode, expr SemanticNode) Subst {
+	return Subst{SubstFields: &SubstFields{Op: op, Expr: expr}, id: nextSubstID.Add(1)}
 }
 
 var nextSubstID atomic.Uint64
 
 func ensureSubstIdentity(subst Subst) Subst {
+	if subst.SubstFields == nil {
+		subst.SubstFields = &SubstFields{}
+	}
 	if subst.id == 0 {
 		subst.id = nextSubstID.Add(1)
 	}
@@ -505,14 +523,14 @@ func copySubstsWithIdentity(substs []Subst) []Subst {
 }
 
 type SubstInNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Substs []Subst
 	Body   SemanticNode
 }
 
 func NewSubstInNode(body SemanticNode, substs ...Subst) *SubstInNode {
 	return &SubstInNode{
-		SemanticNodeBase: NewSemanticNodeBase(SemanticSubstInKind, "subst"),
+		SemanticNodeBase: newSemanticNodeBasePointer(SemanticSubstInKind, "subst"),
 		Substs:           copySubstsWithIdentity(substs),
 		Body:             body,
 	}
@@ -529,14 +547,14 @@ func NewSubstInNodeFromSource(source *SubstInNode, body SemanticNode) *SubstInNo
 }
 
 type APSubstInNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Substs []Subst
 	Body   SemanticNode
 }
 
 func NewAPSubstInNode(body SemanticNode, substs ...Subst) *APSubstInNode {
 	return &APSubstInNode{
-		SemanticNodeBase: NewSemanticNodeBase(SemanticAPSubstInKind, "ap-subst"),
+		SemanticNodeBase: newSemanticNodeBasePointer(SemanticAPSubstInKind, "ap-subst"),
 		Substs:           copySubstsWithIdentity(substs),
 		Body:             body,
 	}
@@ -754,20 +772,20 @@ func NewStringNode(value string) *StringNode {
 }
 
 type AtNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 }
 
 func NewAtNode() *AtNode {
-	return &AtNode{SemanticNodeBase: NewSemanticNodeBase(SemanticAtNodeKind, "@")}
+	return &AtNode{SemanticNodeBase: newSemanticNodeBasePointer(SemanticAtNodeKind, "@")}
 }
 
 type OpArgNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Op *SymbolNode
 }
 
 func NewOpArgNode(op *SymbolNode) *OpArgNode {
-	return &OpArgNode{SemanticNodeBase: NewSemanticNodeBase(SemanticOpArgKind, op.String()), Op: op}
+	return &OpArgNode{SemanticNodeBase: newSemanticNodeBasePointer(SemanticOpArgKind, op.String()), Op: op}
 }
 
 type PossibleTrackNode struct {
@@ -803,6 +821,7 @@ func NewPossibleCheckNode(name string) *PossibleCheckNode {
 }
 
 type ThmOrAssumpDefNode struct {
+	*SemanticNodeBase
 	Name                      *UniqueString
 	Body                      SemanticNode
 	Params                    []*SymbolNode
@@ -828,7 +847,7 @@ func (n *AssumeNode) GetAssume() SemanticNode     { return n.Assume }
 func (n *AssumeNode) GetDef() *ThmOrAssumpDefNode { return n.Def }
 
 func NewThmOrAssumpDefNode(name string, body SemanticNode, params ...*SymbolNode) *ThmOrAssumpDefNode {
-	node := &ThmOrAssumpDefNode{Name: UniqueStringOf(name), Body: body, Params: append([]*SymbolNode(nil), params...), Symbol: NewSymbolNode(name)}
+	node := &ThmOrAssumpDefNode{SemanticNodeBase: newSemanticNodeBasePointer(SemanticThmOrAssumpKind, name), Name: UniqueStringOf(name), Body: body, Params: append([]*SymbolNode(nil), params...), Symbol: NewSymbolNode(name)}
 	node.Symbol.Arity = len(params)
 	node.Symbol.Data = node
 	return node

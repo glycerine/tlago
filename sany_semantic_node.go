@@ -9,6 +9,10 @@ type sanySemanticNode struct {
 	*sanyLevelData
 }
 
+func (n *sanySemanticNode) runtimeSemanticBase() *tlc.SemanticNodeBase {
+	return n.SemanticNodeBase
+}
+
 func newSanySemanticNode(kind sanySemKind) sanySemanticNode {
 	base := tlc.NewSemanticNodeBase(tlc.SemanticKind(kind), "")
 	data := newSanyLevelData(&base)

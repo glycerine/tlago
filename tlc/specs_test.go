@@ -63,8 +63,8 @@ func TestSpecsAddSubstsWrapsInListOrder(t *testing.T) {
 	body := NewNumeralNode(1)
 	a := NewSymbolNode("A")
 	b := NewSymbolNode("B")
-	subA := NewSubstInNode(nil, Subst{Op: a, Expr: NewNumeralNode(2)})
-	subB := NewSubstInNode(nil, Subst{Op: b, Expr: NewNumeralNode(3)})
+	subA := NewSubstInNode(nil, NewSubst(a, NewNumeralNode(2)))
+	subB := NewSubstInNode(nil, NewSubst(b, NewNumeralNode(3)))
 
 	got, ok := SpecsAddSubsts(body, NewList(subA, subB)).(*SubstInNode)
 	if !ok {

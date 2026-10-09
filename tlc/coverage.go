@@ -540,8 +540,12 @@ func (c *coverageCreator) walk(node SemanticNode) {
 				c.letIns[newSemanticNodeKey(let.Body)] = n.Body
 			}
 		}
-		for _, let := range coverageLetDefinitions(n.Lets) {
-			c.walkOpDef(let)
+		if n.Context != nil {
+			n.Context.WalkGraphNodes(c.walk)
+		} else {
+			for _, let := range coverageLetDefinitions(n.Lets) {
+				c.walkOpDef(let)
+			}
 		}
 		c.walk(n.Body)
 	case *SubstInNode:

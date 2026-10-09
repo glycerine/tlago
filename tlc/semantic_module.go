@@ -4,7 +4,24 @@
 
 package tlc
 
-import "unicode/utf16"
+import (
+	"fmt"
+	"unicode/utf16"
+)
+
+// Context.walkGraph enumerates keys and resolves the current binding before
+// visiting each child; Pair history and declaration order are separate views.
+func (c *SemanticContext) WalkGraphNodes(visit func(SemanticNode)) {
+	entries := c.GetContextSymbolEnumeration()
+	for entries.HasMoreElements() {
+		entry := entries.nextEntry()
+		if entry.key.Module {
+			fmt.Printf("Bug in debugging caused by inner module %s\nSANY will throw a null pointer exception.\n", entry.key.Name)
+		} else {
+			visit(c.GetSymbol(entry.key))
+		}
+	}
+}
 
 // SemanticContext is tla2sany.semantic.Context. Context in context.go is the
 // separate tlc2.util.Context used for runtime evaluation bindings.

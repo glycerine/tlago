@@ -32,6 +32,10 @@ type tlcBridge struct {
 	canonicalLets          map[*sanySemLetInNode]*tlc.LetInNode
 	canonicalFormals       map[*sanyFormalParamNode]*tlc.SymbolNode
 	canonicalTheorems      map[*sanySemTheoremNode]*tlc.TheoremNode
+	canonicalGraphs        map[sanySemanticGraphNode]tlc.SemanticNode
+	canonicalContexts      map[*sanyContext]*tlc.SemanticContext
+	canonicalSubsts        map[*sanySemSubst]tlc.Subst
+	canonicalSubstArrays   map[tlcCanonicalSubstArray][]tlc.Subst
 	instanceDefinitions    map[string]*tlcBridgeInstance
 	instanceBindings       map[tlcBridgeInstanceKey]*tlcBridgeInstance
 	nativeDefinitions      map[*tlc.UniqueString]any
@@ -330,6 +334,9 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installConstantDeclarations()
 	bridge.installDefinitions()
 	bridge.installModuleTable()
+	for _, context := range bridge.canonicalContexts {
+		context.ModuleTable = bridge.processor.ModuleTbl
+	}
 	bridge.installAssumptions()
 	for _, module := range bridge.processor.ModuleTbl.GetModuleNodes() {
 		bridge.processor.ProcessConstantsDynamicExtendee(module)
@@ -1509,7 +1516,7 @@ func (b *tlcBridge) prepareInstanceBinding(binding *tlcBridgeInstance) {
 			if replacement == nil {
 				replacement = b.convertExpr(expr)
 			}
-			substs = append(substs, tlc.Subst{Op: target.sym, Expr: replacement})
+			substs = append(substs, tlc.NewSubst(target.sym, replacement))
 		}
 		restore()
 		for i, name := range inst.Params {
@@ -1697,8 +1704,16 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 	if expr == nil {
 		return nil
 	}
+	if source := sanyGeneratedExpressionNode(expr); source != nil {
+		if node := b.canonicalGraphs[source]; node != nil {
+			return node
+		}
+	}
 	if selected := sanyExprSelection(expr); selected != nil {
-		return b.withExprLocation(expr, b.selectorNode(expr, selected))
+		if source := sanyGeneratedExpressionNode(expr); source != nil {
+			return b.canonicalGraph(source)
+		}
+		return b.retainCanonicalExpression(expr, b.selectorNode(expr, selected))
 	}
 	var node tlc.SemanticNode
 	switch e := expr.(type) {
@@ -1810,7 +1825,7 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 		b.diags = append(b.diags, errorAt(expr.Position(), "E7009", "unsupported expression %T in TLC bridge", expr))
 		node = tlc.NewValueNode(tlc.ValUndef)
 	}
-	return b.withExprLocation(expr, node)
+	return b.retainCanonicalExpression(expr, node)
 }
 
 func (b *tlcBridge) withExprLocation(expr Expr, node tlc.SemanticNode) tlc.SemanticNode {
@@ -2090,6 +2105,9 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 	node.Body = b.convertExpr(e.Body)
 	for _, inst := range e.Instances {
 		node.Bindings = append(node.Bindings, b.standardInstanceBindings(inst)...)
+	}
+	if canonical != nil {
+		node.Context = b.canonicalContext(canonical.context)
 	}
 	return node
 }

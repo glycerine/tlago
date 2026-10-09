@@ -27558,3 +27558,49 @@ All receipts are under .codex-gotmp. These selections establish their retained
 assertions; complete canonical graph traversal is still unverified. No long
 workload restart, full suite or race run. Inventory counts unchanged. Updated
 architecture/current handoff and git diff --check passes.
+
+
+## 2026-10-09: Import canonical LET Context state into runtime traversal
+
+Continued from 419b6b4 while the unchanged full off-heap random workload remains
+live in native exec session 77502. Its log now exceeds 88 million of the original
+2,147,483,648 iterations; no completion credit or second copy. Fingerprint
+production is unchanged by this bridge work.
+
+Added runtime LET Context ownership and imported the retained SANY state through
+its existing descriptor. Pair history, current lookup bindings and Hashtable
+buckets/chains are transferred without replaying declarations. Runtime graph
+and coverage traversal use the actual context; native AST-only construction
+retains the previous declaration-list path. Adapter caches retain actual source
+node identities, with shells published before recursion. Represented expression
+and substitution wrappers borrow the source base; Subst copies share one fields
+record and source arrays share one runtime slice. Two native test inputs changed
+to the new Subst constructor, with their assertions unchanged. No new tests.
+
+The first broad original selection exposed EWD998TraceDebugger returning an
+unevaluated application; a HEAD overlay confirms the original test passed before
+this change. Importing a context had created a second symbol for an existing
+module definition and bypassed its config override. Canonical adaptation now
+finds existing module AST views by exact source identity and uses their evaluator
+adapter. The original debugger test passes after this correction: trace-symbols
+receipt, status 0, 0.522 seconds. Intermediate selector failures in originals
+206, 209 and 219 were fixed by adapting their generated source graph directly,
+rather than reusing a native rebuilt body under different lifted formals. Their
+focused rerun passes: selected-graphs receipt, status 0, 1.632 seconds.
+
+Final existing runtime coverage, Tool, Specs and context/table selection passes:
+canonical-let-context-final-runtime.log, terminal 656196, status 0, 0.026 seconds.
+The SANY package passes: canonical-let-context-sany-tests.log, terminal be39dc,
+status 0, 2.805 seconds. An initial ./sany command failed at setup because the
+package is named ./sany_tests; it made no test assertions. Receipts are under
+.codex-gotmp. Broader existing originals pass: canonical-let-context-final-originals.log,
+terminal 58b6a9, status 0, 206.787 seconds. Selection includes LegacySuite,
+Debug/Debugger, EWD998, coverage, LetDef, CyclicRedefine and
+ValueSemanticsAssume methods, preserving their assertions and original bounds.
+
+Complete runtime graph parity remains pending. ASSUME/PROVE and proof classes
+are explicitly unsupported by this adapter; theorem/module adapter identity and
+original-module metadata still need reconciliation. Runtime Label/OpDef and
+AT/Context visitor behavior also need their remaining source edges/callbacks.
+Updated TLC_ARCH and the current handoff to preserve these boundaries. Inventory
+counts remain unchanged; no full-workspace rerun or race instrumentation.

@@ -10870,30 +10870,37 @@ syntax. Comparison covers exception family, counters, body identity, defined
 state, tree nullness and location text; it does not establish every exception
 message or other syntax mutation path.
 
-## Remaining runtime LET adapter requirements
+## Runtime LET Context transfer and remaining graph adapters
 
-The retained canonical `sanySemLetInNode.context` is the source of traversal
-bindings. Runtime LetInNode currently has only Lets, Bindings and Body, and
-coverageLetDefinitions reconstructs a Hashtable from filtered user definitions.
-Java walkGraph visits Context instead, specifically because opDefs is incomplete.
-Module-instance definitions and imported theorem/assumption bindings must survive
-that traversal. Preserve context Pair history, current key-to-Pair selection,
-bucket/chain order, original module namespace and shared symbol identities.
-Replaying filtered getLets or Pair insertion order is insufficient for contexts
-whose duplicate operation rebuilt lookup bindings in a different order.
+Runtime `LetInNode.Context` now imports the actual retained SANY context through
+`runtimeState` and `ImportState`. This preserves Pair history, current
+key-to-Pair bindings, bucket/chain order, threshold and module namespace without
+replaying insertion order. Coverage and runtime semantic graph traversal visit
+this context in Hashtable key order, resolving each current binding. Native AST
+callers without a canonical context retain the earlier declaration-list path.
+Evaluation still uses the runtime LET declaration list and bindings.
 
-Runtime conversion therefore needs a canonical node adapter with an identity
-cache before it can transfer the actual context. The bridge retains original
-local AST Definition pointers and caches actual LET adapters; it still constructs
-runtime OpDefs after converting bodies and separately reconstructs INSTANCE
-exports. These are not canonical-context identity mappings. Canonical formal
-adapters retain their actual SemanticNode base; other symbol facades, imported
-ThmOrAssumpDef bodies and module-instance kind/parameters still require complete
-integration with their canonical counterparts. Preserve cycles by publishing
-adapter shells before traversing their children, and use the retained context
-rather than a name-matching substitute. Complete context integration remains
-unimplemented. The source completion fixes above do not earn runtime LET parity
-credit.
+The bridge caches graph views by actual source node pointer and publishes shells
+before following recursive bodies, source-definition links or contexts. Module
+definitions reuse existing evaluator adapters by canonical source identity;
+creating a competing symbol here bypasses configuration overrides, as the
+original EWD998 trace debugger test exposed. Selected source expressions now
+adapt their generated graph directly, preserving lifted formal identities.
+Represented application, argument, label, AT and substitution wrappers borrow
+the actual source semantic base. Source Subst records share fields across copied
+runtime entries; wrappers sharing a source array reuse one runtime slice. Array
+identity uses a retained typed backing-array pointer and length.
+
+This is not full runtime graph parity. The adapter explicitly rejects source
+node classes outside its represented set, including ASSUME/PROVE and proof
+bodies. Imported theorem views still need reconciliation with reconstructed
+module theorem adapters and complete original-module metadata. Label formal
+edges and OpDef proof-step edges remain absent from the runtime walker; AT and
+Context visitor callbacks still differ from the complete source explorer API.
+INSTANCE evaluation also retains its separate lowering. Preserve these limits
+when extending the adapter; do not replace source identities with name matching
+or filtered declaration replay. The focused original test receipts establish
+retained behavior, rather than proving every source context or graph shape.
 
 ## First canonical LET and formal adapters
 
