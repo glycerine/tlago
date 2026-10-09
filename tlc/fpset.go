@@ -708,12 +708,16 @@ func (s *MemFPSet) Recover() error {
 	return s.RecoverFile(s.filename)
 }
 
-func (s *MemFPSet) RecoverFile(fname string) error {
+func (s *MemFPSet) RecoverFile(fname string) (err error) {
 	file, err := os.Open(s.chkptName(fname, "chkpt"))
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	reader := bufio.NewReader(file)
 	in := NewValueInputStreamWithoutHandles(reader)
 
@@ -1025,13 +1029,17 @@ func (s *MemFPSet1) Recover() error {
 	return s.RecoverFile(s.filename)
 }
 
-func (s *MemFPSet1) RecoverFile(fname string) error {
+func (s *MemFPSet1) RecoverFile(fname string) (err error) {
 	file, err := os.Open(s.chkptName(fname, "chkpt"))
 	if err != nil {
 		return err
 	}
 	in := NewValueInputStream(file)
-	defer in.Close()
+	defer func() {
+		if closeErr := in.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.set.Recover(in)
@@ -1282,12 +1290,16 @@ func (s *MemFPSet2) Recover() error {
 	return s.RecoverFile(s.filename)
 }
 
-func (s *MemFPSet2) RecoverFile(fname string) error {
+func (s *MemFPSet2) RecoverFile(fname string) (err error) {
 	file, err := os.Open(s.chkptName(fname, "chkpt"))
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	reader := bufio.NewReader(file)
 	in := NewValueInputStreamWithoutHandles(reader)
 	for {

@@ -24583,3 +24583,37 @@ rejects GENERAL and unexpected EOF. No direct original Java method covers this
 native ownership boundary, so original credit remains 37 complete and four
 Missing. No full suite ran and no long workload used race instrumentation.
 All handles are terminal.
+
+### 2026-10-09: Memory fingerprint recovery final-close failure
+
+Compared pinned MemFPSet, MemFPSet1 and MemFPSet2 named recovery with Go. Each
+source method closes its input after successful reconstruction and propagates
+close I/O. Go deferred the close but discarded its result. A Linux child locks
+one native thread and strace faults the exact checkpoint-file close with EIO.
+The real failure was silently discarded after recovering membership, so the
+manager did not warn (memory-recovery-close-red.log, terminal c2847c, status 1,
+0.045 seconds; the trace proves one injected close of the target checkpoint).
+
+All three recovery methods now return a successful scan's deferred close error.
+An earlier read/reconstruction error remains primary, and native failure cleanup
+still closes once without rolling back partial membership or table/count fields.
+The manager retains its source warning/healthy-continuation boundary without
+reassignment. No filesystem provider, production hook or commit reordering added.
+
+Sixteen native cases cover normal/injected close across all three stores, valid
+and truncated input, and duplicate rejection where the source rejects it.
+MemFPSet1 uses the existing buffered stream's IOException conversion. The first
+fixed matrix exposed an incorrect new-fixture assumption that this conversion
+retains a syscall cause (terminal 94de0b, status 1, 0.514 seconds). Corrected the
+fixture to require the existing source IOException text and absent cause; the
+other stores still require errors.Is(EIO). All membership, original read-error,
+exact close-count, warning-count and continuation assertions remain intact.
+
+Final matrix passes (memory-recovery-close-green.log, terminal 8d8951, status 0,
+0.509 seconds). Related local/TCP memory recovery, startup, duplicate and commit
+checks plus existing original buffered-input, dynamic-manager and MultiFPSet
+methods pass (memory-recovery-close-related.log, terminal 5672b1, status 0,
+1.113 seconds). No dedicated upstream memory-store close test exists; these
+native checks earn no original-method credit. Distributed inventory remains
+37 complete and four Missing. No full suite, long model or race workload ran.
+All handles are terminal.

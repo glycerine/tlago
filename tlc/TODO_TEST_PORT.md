@@ -1744,6 +1744,12 @@ Existing TCP checks still require graceful reply delivery and forced interruptio
 of a reply drain. No original Java method directly covers this native ownership
 boundary; original method totals are unchanged.
 
+Memory fingerprint recovery now propagates successful-read close failures.
+Sixteen short Linux strace cases cover all three memory stores with real EIO
+injection and controls, preserving earlier read failures, partial membership,
+manager warnings and healthy continuation. Existing original buffered-input,
+manager and MultiFPSet methods remain unchanged; native checks add no credit.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

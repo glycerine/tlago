@@ -474,6 +474,10 @@ progress on failure without advancing checkpoint markers.
 Disk, off-heap and nested-store trace recovery requires the existing trace; it
 cannot fall back to a named snapshot when the trace is missing. MemFPSet retains
 the source file-based recovery that deliberately ignores the trace parameter.
+All three memory stores now propagate a final close failure after successful
+recovery, retaining reconstructed membership. Native failure cleanup closes once
+without replacing an earlier read/reconstruction error. Sixteen Linux syscall
+checks verify normal/faulted close, manager warnings and healthy continuation.
 Intern-table recovery holds its native interning mutex before opening and reading
 the checkpoint, through token publication and replay. Linux FIFO checks verify
 the blocked-header boundary and lock release on complete/truncated input.

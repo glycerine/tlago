@@ -13164,3 +13164,19 @@ accepted handlers/replies after a forced connection interruption. No call is
 replayed, and storage owners retain their existing lifetime boundaries. Short
 checks gate callback cleanup across all four forced/graceful caller combinations
 and retain cleanup failure identity through errors.Is and subsequent closure.
+
+### Memory fingerprint recovery propagates successful-read close failures
+
+MemFPSet, MemFPSet1 and MemFPSet2 named recovery return the final input-owner
+close result after reading/reconstructing successfully, matching source dis.close.
+Earlier read or duplicate failures remain primary. Native deferred cleanup also
+closes once on those failure paths without replacing the original failure;
+recovered fingerprints, source counts and partial table mutations remain intact.
+
+The distributed manager catches checked close I/O, reports the original hostname
+and continues healthy registrations without reassignment. Runtime reconstruction
+errors still stop traversal. MemFPSet1 retains the existing buffered stream's
+IOException conversion; the other stores retain their native file close error.
+Sixteen Linux strace controls/faults verify the actual target close, normal,
+truncated and duplicate input, preserved membership, exact warning count and
+continuation boundaries. No source test directly covers this close boundary.
