@@ -27086,3 +27086,28 @@ testMergeDuplicate, testMergeDistinct and native retained-flusher cases for
 (00fcdc, status 0); no Java credit claimed from that run. No production changes,
 new original-method credit, race or full-suite run. Inventory remains 37/41.
 Updated HANDOFF/architecture and git diff --check passes.
+
+
+### October 9, 2026: coordinator timer and an accepted pending worker reply
+
+Compared TLCServerThread.run, inner worker failure handling, outer trace/error
+catch, finally, timer and one-time worker-loss cleanup with upstream. No new
+production correction was needed in those paths. Added a native TCP scenario
+for their combined pending-call behavior: a real two-state worker computation
+finishes but its reply is held; published callback removal causes the unchanged
+ten-second coordinator timer to requeue exactly once, deregister and decrement
+the worker count. The timer joins while the accepted computation call remains
+pending. Later transport closure releases that call without block reduction or
+repeat cleanup. The final cache read emits exactly its source warning. Actual
+late worker work drains without fingerprint/trace publication or replay. FIFO
+identity, sent/received/generated statistics, activity timestamp, model state
+and the still-live worker runtime are asserted.
+
+Initial combined selection: distributed-coordinator-pending-reply-timer.log,
+terminal e8fad5, status 0, 10.024 seconds. Strengthened statistics, cache warning
+and worker-lifetime assertions: distributed-coordinator-pending-reply-timer-final.log,
+terminal 715769, status 0. Both runs include existing computed-reply loss,
+returned/panicked/false timer failure forms and wake-before-worker-decrement
+controls. All timer, coordinator and host work joins. No race, full suite,
+original-method credit or production changes. This is not arbitrary/full-process
+partition coverage. Updated HANDOFF/architecture; git diff --check passes.

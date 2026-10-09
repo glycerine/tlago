@@ -134,3 +134,116 @@ func TestWorkerRPCLostComputedReplyRetainsAssignedWork(t *testing.T) {
 		})
 	}
 }
+
+// No upstream method covers the native timer/accepted-call interaction. Use
+// the unchanged ten-second scheduler, not a direct TimerTask.Run invocation.
+func TestNativeCoordinatorTimerRequeuesPendingWorkerReply(t *testing.T) {
+	captureFailoverToolIO(t, ToolIOTool)
+	oldWorkers := NumWorkers()
+	SetNumWorkers(0)
+	t.Cleanup(func() { SetNumWorkers(oldWorkers) })
+	storage := NewMemFPSet()
+	manager := NewDistributedFPSetManager(NewLocalFingerprintEndpoint(storage))
+	worker, _ := managerOwnershipWorker(t, 2, manager)
+	endpoint := &heldWorkerReply{LocalWorkerEndpoint: NewLocalWorkerEndpoint(worker),
+		computed: make(chan struct{}), release: make(chan struct{}), finished: make(chan struct{})}
+	host, client := startWorkerRPC(t, endpoint)
+	queue := NewDiskStateQueue(t.TempDir())
+	t.Cleanup(queue.FinishAll)
+	states := []*TLCStateMut{{UID: 31, level: 4}, {UID: 32, level: 5}}
+	queue.SEnqueueAll(states)
+	trace := NewTLCTrace(t.TempDir(), "Spec")
+	t.Cleanup(func() { _ = trace.Close() })
+	server := &TLCServer{FPSetManager: manager, StateQueue: queue, Trace: trace}
+	server.WorkerStatesGenerated.Store(7)
+	thread := &TLCServerThread{Server: server, Worker: NewDistributedWorkerSmartProxy(client),
+		Selector: NewStaticBlockSelector(server, 2), URI: "tcp://worker/primary",
+		CacheRateHitRatio: -1, keepAliveDone: make(chan struct{}), runDone: make(chan struct{})}
+	thread.TimerTask = &TLCTimerTask{Thread: thread}
+	thread.cleanupGlobals.Store(true)
+	thread.setStates([]*TLCStateMut{})
+	server.RegisterTLCServerThread(thread)
+	recorder := &MemoryRecorder{}
+	AddMessageRecorder(recorder)
+	t.Cleanup(func() { RemoveMessageRecorder(recorder) })
+	var release sync.Once
+	t.Cleanup(func() {
+		thread.cancelKeepAlive()
+		_ = host.Close()
+		release.Do(func() { close(endpoint.release) })
+		thread.Join()
+		if err := host.CloseGracefully(); err != nil {
+			t.Error(err)
+		}
+	})
+	thread.Start()
+	select {
+	case <-endpoint.computed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("worker did not complete its accepted computation")
+	}
+	if endpoint.err != nil || endpoint.result == nil || endpoint.result.StatesComputed != 4 || thread.GetCurrentSize() != 2 || queue.Size() != 0 {
+		t.Fatalf("pending real worker result changed: %v/%v", endpoint.result, endpoint.err)
+	}
+	// Removal rejects subsequent callbacks but leaves the accepted call pending.
+	host.UnregisterWorker("primary")
+	joined := make(chan struct{})
+	started := time.Now()
+	go func() { defer close(joined); thread.runKeepAlive() }()
+	t.Cleanup(func() { thread.cancelKeepAlive(); <-joined })
+	t.Log("worker callback removed with its computed reply held; waiting for the original ten-second timer")
+	select {
+	case <-joined:
+		if elapsed := time.Since(started); elapsed < 10*time.Second {
+			t.Fatalf("worker-loss timer ran early: %s", elapsed)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("coordinator timer did not retire the removed worker")
+	}
+	if NumWorkers() != 0 || len(server.GetServerThreads()) != 0 || thread.GetCurrentSize() != 0 || queue.Size() != 2 || !thread.keepAliveStopped.Load() || thread.cleanupGlobals.Load() {
+		t.Fatal("timer did not requeue and deregister exactly once")
+	}
+	if server.IsDone() || server.LastError != nil || storage.Size() != 0 || len(trace.records) != 0 || server.WorkerStatesGenerated.Load() != 7 {
+		t.Fatal("timer published the pending result or completed model checking")
+	}
+	if len(recorder.Records(ECTLCDistributedWorkerDeregistered)) != 1 || recorder.Recorded(ECTLCDistributedWorkerLost) || recorder.Recorded(ECGeneral) {
+		t.Fatal("timer changed upstream deregistration-only reporting")
+	}
+	select {
+	case <-thread.runDone:
+		t.Fatal("timer terminated the still-pending computation call")
+	default:
+	}
+	if err := host.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-thread.runDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("closed transport did not release the coordinator computation")
+	}
+	if queue.Size() != 2 || NumWorkers() != 0 || len(recorder.Records(ECTLCDistributedWorkerDeregistered)) != 1 || len(recorder.Records(ECTLCDistributedWorkerLost)) != 1 || recorder.Recorded(ECTLCDistributedExceedBlocksize) {
+		t.Fatal("later call failure repeated cleanup, requeue or block reduction")
+	}
+	if thread.GetSentStates() != 2 || thread.GetReceivedStates() != 0 || thread.TimerTask.LastInvocation.Load() != 0 || thread.GetCacheRateRatio() != -1 || server.LastError != nil || server.KeepCallStack || server.IsDone() {
+		t.Fatal("pending reply or later transport loss changed source statistics/model result")
+	}
+	warnings := recorder.Records(ECGeneral)
+	if len(warnings) != 1 || warnings[0].Severity != SeverityWarning || len(warnings[0].Params) != 1 || warnings[0].Params[0] != "Failed to read remote worker cache statistic (Expect to see a negative chache hit rate. Does not invalidate model checking results)" {
+		t.Fatalf("later final cache read changed its source warning: %+v", warnings)
+	}
+	for _, state := range states {
+		if queue.SDequeue() != state {
+			t.Fatal("timer lost or reordered assigned work")
+		}
+	}
+	release.Do(func() { close(endpoint.release) })
+	<-endpoint.finished
+	if err := host.CloseGracefully(); err != nil {
+		t.Fatal(err)
+	}
+	if storage.Size() != 0 || len(trace.records) != 0 || server.WorkerStatesGenerated.Load() != 7 || endpoint.calls.Load() != 1 || !worker.IsAlive() || worker.Runtime.executor.IsShutdown() {
+		t.Fatal("late worker reply was replayed, published or stopped its runtime")
+	}
+	t.Log("timer and computation joined; assigned FIFO work retained exactly once")
+}

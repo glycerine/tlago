@@ -14739,3 +14739,29 @@ storage and lifetime. LSB/MSB still require fully flushed files and empty tables
 Existing final reporting, probability, single statistics query and cleanup
 assertions are shared. These native cases do not earn original-method credit
 or resolve the disabled 48-worker model's retained closed-flusher limitation.
+
+
+### Coordinator timer requeues an accepted worker call before transport loss
+
+A native TCP fixture holds the reply after a real worker computes its assigned
+two-state block. Removing the published callback rejects subsequent IsAlive
+calls while that accepted call remains pending. The real coordinator timer
+loop retains its ten-second initial delay, detects removal and performs source
+worker-loss cleanup: deregister once, requeue the assigned FIFO block, clear
+assignment, wake waiters before decrementing the global worker count. Its
+cancellation then joins the scheduler without completing the model.
+
+Closing transport afterwards releases the pending coordinator call. Its failure
+reports worker loss but the cleanup guard prevents another requeue/decrement.
+Because timer cleanup cleared the assignment, this later EOF does not reduce
+the block size. Final cache-read failure retains the sole source warning and
+negative cache ratio. Sent/received counts, generated-state delta and keepalive
+activity timestamp retain the unreceived-result values. Releasing the actual
+worker's late reply drains accepted server work without inserting fingerprints,
+writing trace records or replaying computation. The worker runtime itself is
+still live. Timer, coordinator computation and accepted host work all join.
+
+This exercises the production scheduler body in a joinable fixture; it does not
+claim a full-process network partition, a subsequent sixty-second timer period,
+or original Java method credit. Source thread/finally/cleanup comparisons found
+no production correction needed.
