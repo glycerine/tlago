@@ -14765,3 +14765,20 @@ This exercises the production scheduler body in a joinable fixture; it does not
 claim a full-process network partition, a subsequent sixty-second timer period,
 or original Java method credit. Source thread/finally/cleanup comparisons found
 no production correction needed.
+
+
+### Native bind hosts accept bracketed IPv6
+
+Coordinator listener construction and the callback CLI now share
+DistributedBindAddress. It applies the existing native IP-host parser to bare
+or bracketed host operands, then uses Go net.JoinHostPort. Previously bindHost
+[::1] became [[::1]]:PORT and failed before publication, despite that spelling
+working for discovery and advertisements. Invalid non-IP operands remain with
+net.Listen for diagnosis. Numeric ports retain their validated values.
+
+Focused actual IPv6 listeners cover both ::1 and [::1], coordinator discovery
+and IsDone, and worker callback IsAlive. Existing publication lifecycle, host
+advertisements, bound-port and IPv6 discovery controls pass; root CLI help and
+invalid-startup checks also pass. This fixes a native boundary defect without
+changing original TLC ordering or adding Java transport machinery. No original
+Java method covers Go bind formatting; original inventory remains 37/41.

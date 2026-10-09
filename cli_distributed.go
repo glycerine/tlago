@@ -3,7 +3,6 @@ package tlago
 import (
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"strconv"
 	"sync"
@@ -73,7 +72,7 @@ func runDistributedCLI(role string, args []string, stdout, stderr io.Writer) (st
 			fmt.Fprintln(stderr, "tlago.distributed.callbackPort must be between 0 and 65535")
 			return ExitToolFailure
 		}
-		network, openErr := tlc.NewDistributedWorkerNetwork(net.JoinHostPort(bindHost, portText), advertiseHost)
+		network, openErr := tlc.NewDistributedWorkerNetwork(tlc.DistributedBindAddress(bindHost, port), advertiseHost)
 		if openErr != nil {
 			fmt.Fprintln(stderr, openErr)
 			return ExitToolFailure
@@ -139,7 +138,7 @@ func printDistributedCLIHelp(w io.Writer, role string) {
 	fmt.Fprintln(w, "Properties use the original Java names and are applied before role initialization. Help: -help, --help, -h.")
 	fmt.Fprintln(w, "\nProcess properties:")
 	fmt.Fprintln(w, "  -Dtlc2.tool.distributed.TLCServer.port=N           Coordinator port (default 10997); set identically on all roles.")
-	fmt.Fprintln(w, "  -Dtlago.distributed.bindHost=HOST                 Native listener interface (default all interfaces).")
+	fmt.Fprintln(w, "  -Dtlago.distributed.bindHost=HOST                 Native listener interface; IPv6 may be bare or bracketed (default all interfaces).")
 	fmt.Fprintln(w, "  -Dtlago.distributed.advertiseHost=HOST            Reachable callback/publication hostname (default local hostname).")
 	fmt.Fprintln(w, "  -Dtlago.distributed.callbackPort=N                Worker/FP callback port (default 0: OS chooses); allow this port through firewalls.")
 	fmt.Fprintln(w, "The tlago.distributed properties configure Go networking and have no Java flag equivalent.")

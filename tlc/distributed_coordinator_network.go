@@ -60,7 +60,7 @@ func (n *DistributedCoordinatorNetwork) createRegistry(port int) (*TLCServerRegi
 	if n.registry != nil {
 		return nil, coordinatorPublicationFailure("coordinator listener is already created")
 	}
-	listener, err := net.Listen("tcp", net.JoinHostPort(n.bindHost, strconv.Itoa(port)))
+	listener, err := net.Listen("tcp", DistributedBindAddress(n.bindHost, port))
 	if err != nil {
 		return nil, err
 	}

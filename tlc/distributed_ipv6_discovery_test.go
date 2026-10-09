@@ -197,3 +197,61 @@ func TestNativeCoordinatorAdvertisedIPv6Hosts(t *testing.T) {
 		})
 	}
 }
+
+// Native bind hosts should accept the same IPv6 spelling as discovery and
+// advertisement. No upstream Java method tests Go listener construction.
+func TestNativeDistributedBracketedIPv6Listeners(t *testing.T) {
+	probe, err := net.Listen("tcp6", "[::1]:0")
+	if err != nil {
+		t.Skipf("IPv6 loopback unavailable: %v", err)
+	}
+	_ = probe.Close()
+	for _, bind := range []string{"::1", "[::1]"} {
+		t.Run(bind, func(t *testing.T) {
+			network := NewDistributedCoordinatorNetwork(bind, "[::1]")
+			t.Cleanup(func() {
+				if err := network.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			registry, err := network.Publication().CreateRegistry(0)
+			if err != nil {
+				t.Fatalf("bind coordinator to %q: %v", bind, err)
+			}
+			server := &TLCServer{InternTable: NewInternTable(16)}
+			if err := registry.Rebind(TLCServerName, server); err != nil {
+				t.Fatal(err)
+			}
+			discovery := NewDistributedNetworkDiscovery()
+			t.Cleanup(func() { _ = discovery.Close() })
+			remote, err := discovery.Lookup("tcp://" + network.Address + "/" + TLCServerName)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if done, err := remote.IsDone(); err != nil || done {
+				t.Fatalf("bound coordinator status = %v/%v", done, err)
+			}
+			// This is also the address construction used by the callback CLI.
+			callbacks, err := NewDistributedWorkerNetwork(DistributedBindAddress(bind, 0), "[::1]")
+			if err != nil {
+				t.Fatalf("bind callback to %q: %v", bind, err)
+			}
+			t.Cleanup(func() {
+				if err := callbacks.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			if err := callbacks.Host.RegisterWorker("bind-check", &rpcTestWorker{}); err != nil {
+				t.Fatal(err)
+			}
+			worker, err := DialWorkerEndpoint(callbacks.Address, "bind-check")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = worker.CloseConnection() })
+			if alive, err := worker.IsAlive(); err != nil || !alive {
+				t.Fatalf("bound callback status = %v/%v", alive, err)
+			}
+		})
+	}
+}

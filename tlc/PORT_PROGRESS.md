@@ -27111,3 +27111,28 @@ returned/panicked/false timer failure forms and wake-before-worker-decrement
 controls. All timer, coordinator and host work joins. No race, full suite,
 original-method credit or production changes. This is not arbitrary/full-process
 partition coverage. Updated HANDOFF/architecture; git diff --check passes.
+
+
+### October 9, 2026: bracketed IPv6 native listener hosts
+
+Compared DistributedFPSet startup, reporting and registration rejection with
+source, plus native storage ownership/draining paths; no source algorithm
+correction needed there. Native address review found a concrete inconsistency:
+discovery and advertisements accept [::1], but bind-host construction produced
+[[::1]]:0. Actual coordinator-listener reproduction fails with missing port in
+address: distributed-ipv6-bind-before.log, terminal 108283, status 1,
+0.014 seconds; bare IPv6 passes in the same run.
+
+Coordinator construction and the worker/fingerprint/combined callback CLI now
+share DistributedBindAddress, using the existing validated native IP parser
+and Go net.JoinHostPort. Invalid non-IP hosts remain for net.Listen to reject.
+Help documents bare/bracketed IPv6 bind hosts. New actual IPv6 checks verify
+coordinator discovery/IsDone and worker callback IsAlive with both spellings.
+Existing IPv6 location/discovery, advertised-host, actual bound-port and
+coordinator publication lifecycle controls remain green:
+distributed-ipv6-bind-fixed.log, terminal 016aac, status 0, 0.028 seconds.
+Root CLI help/invalid startup: distributed-ipv6-bind-cli.log, terminal a5c6d2,
+status 0, 0.017 seconds. No Java direct test for this Go boundary; original
+inventory unchanged at 37/41. No full-suite, race or long model rerun.
+Final help-text verification: distributed-ipv6-bind-cli-final.log, terminal
+f2ce6c, status 0, 0.018 seconds. All handles terminal and git diff --check passes.

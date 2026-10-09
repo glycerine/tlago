@@ -56,6 +56,16 @@ func distributedIPHost(host string) (string, bool) {
 	return candidate, true
 }
 
+// DistributedBindAddress formats the native listener address for coordinator
+// and callback roles. Accept bracketed IP host operands without adding another
+// bracket pair; leave invalid hosts for net.Listen to diagnose.
+func DistributedBindAddress(host string, port int) string {
+	if ipHost, ip := distributedIPHost(host); ip {
+		host = ipHost
+	}
+	return net.JoinHostPort(host, fmtInt(port))
+}
+
 func distributedWildcardHost(host string) bool {
 	address, err := netip.ParseAddr(host)
 	return err == nil && address.WithZone("").Unmap().IsUnspecified()
