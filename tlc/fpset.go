@@ -1525,19 +1525,63 @@ func (s *MultiFPSet) GetConfiguration() *FPSetConfiguration {
 
 func (s *MultiFPSet) CheckFPs() uint64 {
 	dis := uint64(1<<63 - 1)
-	for _, set := range s.Sets {
-		dis = javaLongMinBits(dis, set.CheckFPs())
+	for _, value := range checkNestedFPSets(s.Sets, "check fingerprints", func(set FPSet) uint64 { return set.CheckFPs() }) {
+		dis = javaLongMinBits(dis, value)
 	}
 	return dis
 }
 
 func (s *MultiFPSet) CheckInvariant(expectFPs ...uint64) bool {
-	for _, set := range s.Sets {
-		if !set.CheckInvariant() {
+	var stopped atomic.Bool
+	for _, valid := range checkNestedFPSets(s.Sets, "check invariant", func(set FPSet) bool {
+		// Source allMatch may skip work not started when a false result is
+		// already known. Work already in progress still belongs to this call.
+		if stopped.Load() {
+			return true
+		}
+		valid := set.CheckInvariant()
+		if !valid {
+			stopped.Store(true)
+		}
+		return valid
+	}) {
+		if !valid {
 			return false
 		}
 	}
 	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+}
+
+// Source child checks use parallel streams and wrap child IOException as an
+// operation failure. Keep its cause through native error wrapping, and join all
+// started storage work before returning or propagating an unchecked failure.
+func checkNestedFPSets[T any](sets []FPSet, operation string, call func(FPSet) T) []T {
+	values := make([]T, len(sets))
+	failures := make([]any, len(sets))
+	var pending sync.WaitGroup
+	pending.Add(len(sets))
+	for i, set := range sets {
+		go func(i int, set FPSet) {
+			defer pending.Done()
+			defer func() {
+				if failure := recover(); failure != nil {
+					if err, ok := failure.(error); ok && isJavaIOException(err) {
+						failures[i] = fmt.Errorf("%s partition %d: %w", operation, i, err)
+					} else {
+						failures[i] = failure
+					}
+				}
+			}()
+			values[i] = call(set)
+		}(i, set)
+	}
+	pending.Wait()
+	for _, failure := range failures {
+		if failure != nil {
+			panic(failure)
+		}
+	}
+	return values
 }
 
 func (s *MultiFPSet) BeginChkpt() error {

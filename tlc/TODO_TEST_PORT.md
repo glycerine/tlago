@@ -1445,6 +1445,11 @@ cases covering retained/removed files and exact host/message records. A native
 failed-directory-removal case retains the source's ignored cleanup result and
 completion. No enabled original method directly covers this exit diagnostic;
 these checks add no original-method credit.
+Nested fingerprint/invariant checks now have native concurrency/join, signed
+minimum, empty-result and child-failure checks. TCP verifies that child I/O is
+wrapped as an operation failure and reaches the manager's failed-task path.
+The existing original MultiFPSet getFPSet method remains green; no original
+method directly checks this concurrency/failure boundary, so no credit is added.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

@@ -12721,3 +12721,21 @@ same reporting behavior during native MultiFPSet traversal; library calls do
 not terminate the Go process. Process lifetime remains with the role owner,
 which drains accepted RPC replies before closing its host. Short local/TCP
 checks cover exact records/text and cleanup for all five storage forms.
+
+### Parallel nested fingerprint checks
+
+MultiFPSet fingerprint-distance and invariant checks run child stores in native
+goroutines, matching the source parallel-stream traversal. They join started
+storage work before reducing results or propagating failure. Distance reduction
+uses signed long ordering, including a negative minimum, and retains MaxInt64
+for an empty child array. Empty invariant checks succeed. A false invariant
+result permits skipping child checks not yet started, retaining source allMatch
+short-circuiting; already running checks remain owned by the caller.
+
+Source lambdas wrap child IOException as RuntimeException. The Go traversal
+preserves that operation-failure boundary using native error wrapping with the
+original cause; unchecked failures retain their identity. The native TCP error
+graph preserves the boundary, so the manager's callable I/O catch does not turn
+it into GENERAL/false. Instead, failed task completions are diagnosed and the
+manager retains its source reduction behavior. This uses Go concurrency and
+error graphs, not Java streams or exception-runtime emulation.

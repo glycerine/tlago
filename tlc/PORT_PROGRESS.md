@@ -23716,3 +23716,36 @@ both hosts and normal coordinator/worker/FP exits (fingerprint-completion-full-
 model.log, terminal a2f3f4, status 0, 50.979 seconds). No enabled original method
 directly tests this diagnostic; native checks add no original-method credit.
 No full suite or race workload ran. All handles are terminal.
+
+### October 8, 2026: parallel nested fingerprint checks
+
+Compared final-statistics/check failure handling with the source manager and
+MultiFPSet lambdas. Go's nested fingerprint-distance and invariant checks were
+sequential and exposed child I/O directly. Source parallel-stream checks wrap
+that I/O as RuntimeException, changing which manager catch handles it. Six new
+gated cases fail their concurrency requirement and a TCP case exposes direct
+I/O before the fix (nested-checks-before.log, terminal 5355ea, status 1,
+6.020 seconds).
+
+Added native concurrent child checks with joining before reduction/failure.
+Signed distance minima and empty reductions remain intact. Native error wrapping
+retains child I/O causes while preserving the source operation-failure boundary;
+unchecked failures retain identity. The TCP manager check diagnoses failed task
+completions instead of emitting GENERAL or the callable I/O false fallback.
+Initial new cases pass (nested-checks-fixed.log, terminal 181582, status 0,
+0.018 seconds). Related manager and parallel checkpoint checks pass
+(nested-checks-verified.log, terminal a13e23, status 0, 0.047 seconds), and the
+complete original MultiFPSet getFPSet method passes (nested-checks-original.log,
+terminal 434ff8, status 0, 0.221 seconds). Initial short new-case race checks pass
+(nested-checks-race.log, terminal 3ab5c6, status 0, 1.044 seconds).
+
+Retained source allMatch short-circuiting: false results permit skipping work
+not yet started, while already running checks join. Gated tests release the
+false/failing child only after both children enter, avoiding scheduler-dependent
+assumptions about cancellation. Final expanded new/manager/original checks pass
+(nested-checks-final.log, terminal b63611, status 0, 0.647 seconds). Only the new
+short concurrency/TCP checks ran with race instrumentation and pass
+(nested-checks-final-race.log, terminal 39c6f9, status 0, 1.041 seconds).
+No original method directly tests this parallel failure boundary; native checks
+add no completion credit. No full model or full suite ran. All handles are
+terminal.
