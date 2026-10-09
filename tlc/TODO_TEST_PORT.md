@@ -1817,6 +1817,13 @@ and retained nested file-open causes. Absolute diagnostics now preserve dot
 components rather than naming a different, collapsed location. There is no
 direct original distributed method for this case; test credit is unchanged.
 
+The native accepted-checkpoint connection-loss matrix now covers memory and
+factory-created two-child LSB/MSB stores across begin, commit and recovery.
+Exact pending/committed child bytes, fresh-store committed recovery, continued
+healthy-host work and retained registration identities are checked. Accepted
+storage work finishes after transport closes, without replay or reassignment.
+This adds no original-method credit and does not cover process death or atomicity.
+
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Missing**: `testSpec`.
   Upstream DistributedTLCTestCase.setUp unconditionally Assume.assumeTrue(false); retain as transport backlog, not a completed/skipped Go port. Permanent supplemental native coverage is in [tlc_distributed_trace_process_test.go](../tlc_distributed_trace_process_test.go): unchanged DieHard fixtures, FINISHED, no GENERAL across all roles, BEHAVIOR and all seven exact original trace states. Both coordinator-owned and standalone TCP fingerprint stores are checked. One worker thread and MemFPSet for the remote role are explicit native harness choices; the disabled original harness receives no completion credit.
 - [x] [tlc2/tool/distributed/DistributedDoInitFunctorInvariantContinueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DistributedDoInitFunctorInvariantContinueTest.java) — **Port complete**: `testSpec`. Translation: [tlc_init_model_java_test.go](../tlc_init_model_java_test.go). Original inherits ordinary ModelCheckerTestCase rather than a remote server harness. Identical original NotNine model/config bytes, inherited exit and all diagnostic assertions retained; continuation also preserves exact counts and uncovered assertion. Unchanged Java and Go pass.

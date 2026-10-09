@@ -370,6 +370,12 @@ snapshots print the source warning and let the manager recover the healthy host;
 nested disk child I/O failures propagate and stop before the later host. This
 storage-specific behavior must not be replaced by an atomic recovery assumption.
 
+Accepted-request connection-loss checks cover begin, commit and recovery with
+memory and two-child LSB/MSB stores. The manager continues to the healthy host
+before releasing the old handler, without replay or reassignment. Accepted work
+then finishes with exact child snapshot bytes/membership; committed snapshots
+also reopen in fresh stores. This covers transport loss, not host death.
+
 ## Remaining distributed work
 
 1. Extend restart/recovery coverage beyond the verified complete-checkpoint,

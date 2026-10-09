@@ -11195,6 +11195,11 @@ transport does not cancel the accepted storage operation. A failed begin has no
 follow-up commit; an ambiguously completed commit may still commit at the old
 store after the caller proceeds. These source semantics provide neither an
 atomic cross-store checkpoint nor process-crash recovery.
+The accepted-request matrix covers memory and factory-created two-child LSB/MSB
+stores. Each child retains its exact fingerprint snapshot; pending begins are
+unpromoted, completed commits consume pending files and fresh stores recover the
+committed membership. Recovery continues at the healthy host while the accepted
+disconnected handler remains gated, then completes at the old host on release.
 
 ModelValue's non-transient data Object accepts ordinary boxed scalar objects in
 the source. Native payload model data now additionally supports Go int8, int16

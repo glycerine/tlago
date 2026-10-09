@@ -24133,3 +24133,28 @@ passes (terminal f2210b, status 0, 0.012 seconds).
 No original distributed Java method directly tests this diagnostic boundary;
 native coverage earns no original-method credit. No full suite, full model or
 race workload ran. All check handles are terminal.
+
+### 2026-10-09: Disk stores finish accepted checkpoint work after transport loss
+
+Extended the existing accepted begin/commit/recover connection-loss check from
+memory to factory-created two-child LSB/MSB stores, yielding nine short cases.
+Rechecked source FPSetManager.Checkpoint.run: I/O warns and continues, with no
+reassignment or availability change. Named disk children run and join their
+storage work; native transport closure must not cancel an accepted operation.
+
+The healthy host completes while the disconnected host remains gated. Existing
+warning, registration identity, no-replay, queue resumption and queue/trace
+reopening assertions remain. Added exact child fingerprint bytes and membership,
+pending begin files without promotion, consumed temporary files after commit,
+and fresh-store recovery of the accepted committed generation. Disk producer
+owners close before fresh stores reopen the same files. No production shortcut
+was found and no production behavior was changed.
+
+The nine cases pass (terminal 5b467f, status 0, 0.063 seconds). Adjacent completed
+begin/recovery reply-loss checks and both original normal/off-heap MultiFPSet
+getFPSet methods also pass (terminal 14a6d4, status 0, 0.818 seconds). Race checking
+is restricted to the nine short accepted-request cases and passes (terminal
+4b3d0a, status 0, 1.239 seconds). No full suite or full-model workload ran.
+No enabled original method directly covers this native transport boundary, so
+original-method credit is unchanged. These checks do not prove process-death
+recovery or atomic checkpoints. All check handles are terminal.
