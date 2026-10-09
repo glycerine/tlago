@@ -1200,6 +1200,13 @@ Malformed kinds, references and narrow representations are rejected. The
 existing complete ModelValueTest translation remains green; these supplemental
 transport checks add no original-method credit.
 
+String-array attachments now have native `[]string` graph support. Focused gob
+and worker TCP checks preserve shared storage through mixed containers, separate
+equal arrays, nil/empty distinctions, Unicode/NUL/arbitrary native string bytes
+and receiver mutation isolation. Invalid array references fail explicitly.
+The existing complete ModelValueTest translation remains green; these native
+transport checks add no original-method completion credit.
+
 Accepted native checkpoint calls now have connection-loss coverage for begin,
 commit and recovery. The source I/O catch must warn once, continue to the healthy
 store and leave partition registrations/availability unchanged. Queue/trace

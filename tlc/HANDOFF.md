@@ -217,6 +217,10 @@ and both floating-point slice widths. Native array references preserve sharing,
 separate equal arrays, typed nil/empty slices and receiver isolation. Integer bit
 payloads retain signed zero and NaN bits; invalid kinds, references and narrow
 representations fail explicitly. These finite Go types require updated peers.
+Native `[]string` attachments also retain shared slice storage, separate equal
+arrays, typed nil/empty slices and exact string bytes across mixed graphs and
+worker requests/results. They use a separate typed array table with validated
+references and isolated receiver ownership.
 Attached `*TLCStateMut` objects reuse root/predecessor state identities, including
 attached-only states, cache/value back-references and native map keys. Decoder
 states are allocated before attachments are resolved. Typed nil references and

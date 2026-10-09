@@ -80,7 +80,11 @@ func checkDistributedPrimitiveArrays(states []*TLCStateMut, data []any) error {
 }
 
 func TestDistributedModelPrimitiveArrays(t *testing.T) {
-	data := distributedPrimitiveArrayExamples()
+	checkDistributedModelArrays(t, distributedPrimitiveArrayExamples())
+}
+
+func checkDistributedModelArrays(t *testing.T, data []any) {
+	t.Helper()
 	copied := distributedPayloadRoundTrip(t, distributedPrimitiveArrayStates(data))
 	if err := checkDistributedPrimitiveArrays(copied, data); err != nil {
 		t.Fatal(err)
@@ -99,7 +103,11 @@ func TestDistributedModelPrimitiveArrays(t *testing.T) {
 }
 
 func TestDistributedModelPrimitiveArraysWorkerRPC(t *testing.T) {
-	data := distributedPrimitiveArrayExamples()
+	checkDistributedModelArraysWorkerRPC(t, distributedPrimitiveArrayExamples())
+}
+
+func checkDistributedModelArraysWorkerRPC(t *testing.T, data []any) {
+	t.Helper()
 	_, client := startWorkerRPC(t, &rpcTestWorker{next: func(received []*TLCStateMut) (*NextStateResult, error) {
 		if err := checkDistributedPrimitiveArrays(received, data); err != nil {
 			return nil, err

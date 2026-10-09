@@ -24387,3 +24387,31 @@ checks pass with listener permission (terminal 9a8bfb, status 0, 0.096 seconds).
 This adds native combination coverage, not disabled-original-method credit,
 incomplete-commit recovery, fresh remote CLI support or atomicity guarantees.
 No full suite or race workload ran. All handles are terminal.
+
+### 2026-10-09: Native string-array attachments
+
+Rechecked state metadata declarations before extending transfer: populated
+functional states retain semantic SymbolNodes, extended actions retain Context
+and non-transferable CostModel data, and extended callables are ordinary fields.
+Their explicit native rejection remains appropriate; no evaluator/runtime
+emulation added. ModelValue's ordinary data field exposed a separate gap:
+string-array attachments were rejected although source string arrays transfer.
+
+Added native []string attachments with their own typed array table. Shared
+nonempty backing storage retains identity across direct and mixed-container
+references; distinct equal arrays stay separate. Strong source roots retain
+address-keyed slices during encoding. Typed nil, initialized empty and exact
+native string bytes survive; decoder validates references and owns its copied
+slice storage. Peers need the new payload tag. No Java object serialization or
+Java string runtime is introduced.
+
+Reused the existing array graph/ownership and worker TCP helpers for focused
+string-array checks with Unicode, NUL, empty and arbitrary Go string contents.
+Receiver mutation changes aliases without reaching separate/sender arrays;
+negative and out-of-range references fail. Initial new/adjacent array/state
+payload/original ModelValue checks pass (terminal 19798d, status 0, 0.034 seconds).
+Final selection also includes mixed-container worker RPC and existing codec/lazy
+failure paths (terminal 77f0c3, status 0, 0.042 seconds). The original ModelValue
+translation remains unchanged. No original method directly covers this transport
+boundary, so no method completion credit added. No full suite, long model or race
+workload ran. All handles are terminal.

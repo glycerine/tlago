@@ -13068,3 +13068,20 @@ subnormals, infinities and NaN payloads. Decode allocates these arrays before gr
 population and validates kinds, references, native int range and narrow element
 representations. The updated tags require updated peers. Focused gob/TCP checks
 cover requests and results; no original test directly covers this boundary.
+
+### Native string-array model attachments
+
+ModelValue's ordinary source data field can also transfer string arrays. Native
+[]string attachments use a separate string-array table, with a typed reference
+from the model-data node or mixed-container entry. Nonnil arrays copy their string
+elements; address/length IDs preserve shared nonempty backing storage, while
+strong source roots keep those identities alive during encoding. Distinct equal
+arrays retain distinct storage. Zero references represent typed nil; empty table
+entries allocate initialized empty slices. Decode validates array references and
+owns its receiver slice storage independently of the sender and encoded payload.
+
+Strings retain their exact native bytes, including Unicode, NUL and arbitrary Go
+string contents. This introduces no Java string objects or serialization runtime.
+Updated peers are required for the new tag. Focused gob and worker request/result
+checks cover sharing through mixed containers, element mutation, nil/empty forms
+and invalid references. No original method directly tests this native boundary.

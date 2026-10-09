@@ -30,6 +30,7 @@ type DistributedStatePayload struct {
 	ObjectMaps      [][]DistributedObjectMapEntry
 	ObjectKeyMaps   [][]DistributedObjectKeyMapEntry
 	PrimitiveArrays []DistributedPrimitiveArrayNode
+	StringArrays    [][]string
 }
 
 // Mixed attachment entries carry the same tags as scalar model data without
@@ -178,6 +179,8 @@ type distributedPayloadEncoder struct {
 	objectKeyMapRoots   []map[any]any
 	primitiveArrays     map[distributedPrimitiveArrayKey]int
 	primitiveArrayRoots []any
+	stringArrays        map[distributedByteArrayKey]int
+	stringArrayRoots    [][]string
 }
 
 type distributedByteArrayKey struct {
@@ -637,6 +640,24 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		encodeDistributedPrimitiveArray(e, node, v, "float32Array", func(v float32) uint64 { return uint64(math.Float32bits(v)) })
 	case []float64:
 		encodeDistributedPrimitiveArray(e, node, v, "float64Array", math.Float64bits)
+	case []string:
+		node.DataKind = "stringArray"
+		if v != nil {
+			if e.stringArrays == nil {
+				e.stringArrays = make(map[distributedByteArrayKey]int)
+			}
+			key := distributedByteArrayKey{reflect.ValueOf(v).Pointer(), len(v)}
+			id := e.stringArrays[key]
+			if id == 0 || len(v) == 0 {
+				array := make([]string, len(v))
+				copy(array, v)
+				id = len(e.payload.StringArrays) + 1
+				e.stringArrays[key] = id
+				e.stringArrayRoots = append(e.stringArrayRoots, v)
+				e.payload.StringArrays = append(e.payload.StringArrays, array)
+			}
+			node.DataArray = id
+		}
 	case []byte:
 		node.DataKind = "bytes"
 		if v != nil {
@@ -865,6 +886,7 @@ type distributedPayloadDecoder struct {
 	objectKeyMaps       []map[any]any
 	primitiveArrays     []any
 	primitiveArrayKinds []string
+	stringArrays        [][]string
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -892,6 +914,11 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 		copy(decoder.bytes[i], data)
 	}
 	decoder.primitiveArrays = make([]any, len(payload.PrimitiveArrays))
+	decoder.stringArrays = make([][]string, len(payload.StringArrays))
+	for i, array := range payload.StringArrays {
+		decoder.stringArrays[i] = make([]string, len(array))
+		copy(decoder.stringArrays[i], array)
+	}
 	decoder.primitiveArrayKinds = make([]string, len(payload.PrimitiveArrays))
 	for i, node := range payload.PrimitiveArrays {
 		array, err := decodeDistributedPrimitiveArray(node, false)
@@ -1499,6 +1526,14 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return nil, fmt.Errorf("primitive array kind mismatch: %s", node.DataKind)
 		}
 		return d.primitiveArrays[node.DataArray-1], nil
+	case "stringArray":
+		if node.DataArray < 0 || node.DataArray > len(d.stringArrays) {
+			return nil, fmt.Errorf("invalid string array reference %d", node.DataArray)
+		}
+		if node.DataArray == 0 {
+			return []string(nil), nil
+		}
+		return d.stringArrays[node.DataArray-1], nil
 	case "bytes":
 		if node.DataBytes < 0 || node.DataBytes > len(d.bytes) {
 			return nil, fmt.Errorf("invalid model byte data reference %d", node.DataBytes)
