@@ -23612,3 +23612,40 @@ focused.log, terminal 9842ac, status 0, 14.533 seconds). No source test was
 weakened or resized. No direct original empty-name method exists; native checks
 add no original-method credit. No full suite, full model or race workload ran.
 All handles are terminal.
+
+### October 8, 2026: literal empty fingerprint storage directories
+
+Compared initialization and checkpoint path construction with source disk,
+memory and DFID stores. Disk initialization replaced an empty directory with
+a temporary directory; checkpoint helpers cleaned away the source leading
+separator. Six new cases construct root-relative names resolving entirely inside
+temporary directories and perform real begin/commit/recovery. The initial run
+fails and terminates on a disk initialization panic (fingerprint-empty-directory-
+before.log, terminal d40c10, status 1). Capturing that operation through the
+existing native boundary makes all six mismatches independently visible
+(fingerprint-empty-directory-before-verified.log, terminal 9391ee, status 1,
+0.018 seconds).
+
+Removed the disk directory substitution, retained literal checkpoint prefixes
+and MemFPSet2's initialized filename prefix. A first compile catches the now
+unused filepath import (fingerprint-empty-directory-fixed.log, terminal cac3c6,
+status 1); removed it. All six cases pass (fingerprint-empty-directory-fixed-
+final.log, terminal 8213d7, status 0, 0.022 seconds).
+
+DFID checkpoint begin also created missing parent directories, unlike the source
+direct output open. Its new missing-parent case fails before removal
+(dfid-checkpoint-parents-before.log, terminal 3eb0c1, status 1, 0.012 seconds).
+Removed the directory creation; failure preserves the tree and membership.
+Combined new checks, empty-name/backing-name, symlink, missing-parent and focused
+DFID checks pass (fingerprint-empty-directory-verified.log, terminal d1dc20,
+status 0, 0.067 seconds). Both original LSB/MSB testFPSetRecovery methods pass
+with their unchanged 99,999 bounds, membership assertions and default settings
+(fingerprint-empty-directory-original.log, terminal 3f4198, status 0,
+12.090 seconds).
+
+Recorded a separate disk initializer ordering mismatch for the next chunk:
+source assigns paths and reader arrays before backing-file open, whereas Go
+checks negative worker count first and allocates readers after that open.
+No direct original empty-directory/DFID-parent method exists; native supplements
+add no completion credit. No full suite, full model or race workload ran. All
+handles are terminal.

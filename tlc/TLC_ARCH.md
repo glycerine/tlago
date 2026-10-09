@@ -12683,3 +12683,12 @@ source contracts. Local/TCP checks keep the empty snapshot separate from a
 prior `fpset` snapshot and recover its exact membership. MemFPSet1 retains the
 source SetOfLong recovery count behavior: loading count and reinserting nonzero
 keys increments that count again. These operations use native Go file paths.
+
+Empty storage directories also retain the source separator prefix. Fingerprint
+checkpoint names concatenate that literal prefix rather than cleaning it with
+`filepath.Join`; DiskFPSet initialization does not substitute a temporary
+directory. MemFPSet2 retains its source initialized filename prefix. Native
+checks construct root-relative names that resolve inside temporary directories,
+covering real begin/commit/recovery operations without opening root-level files.
+DFID checkpoint begin uses a direct file create; missing parents cause an I/O
+failure without changing the directory tree or fingerprint membership.

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"sync"
 )
 
@@ -427,9 +426,6 @@ func (s *MemFPIntSet) beginChkptLocked() error {
 
 func (s *MemFPIntSet) beginChkptFileLocked(fname string) error {
 	path := s.chkptName(fname, "tmp")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -633,7 +629,7 @@ func (s *MemFPIntSet) rehash() {
 }
 
 func (s *MemFPIntSet) chkptName(fname string, ext string) string {
-	return filepath.Join(s.metadir, fname+".fp."+ext)
+	return s.metadir + string(os.PathSeparator) + fname + ".fp." + ext
 }
 
 func splitFingerprint(fp uint64) (int32, int32) {

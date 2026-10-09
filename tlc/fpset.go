@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"os"
-	"path/filepath"
 	"reflect"
 	"runtime/debug"
 	"strconv"
@@ -755,7 +754,7 @@ func (s *MemFPSet) RecoverFP(fp uint64) error {
 func (s *MemFPSet) UnexportObject(force bool) {}
 
 func (s *MemFPSet) chkptName(fname string, ext string) string {
-	return filepath.Join(s.metadir, fname+".fp."+ext)
+	return s.metadir + string(os.PathSeparator) + fname + ".fp." + ext
 }
 
 func minUint64(a, b uint64) uint64 {
@@ -1058,7 +1057,7 @@ func (s *MemFPSet1) RecoverFP(fp uint64) error {
 func (s *MemFPSet1) UnexportObject(force bool) {}
 
 func (s *MemFPSet1) chkptName(fname string, ext string) string {
-	return filepath.Join(s.metadir, fname+".fp."+ext)
+	return s.metadir + string(os.PathSeparator) + fname + ".fp." + ext
 }
 
 const memFPSet2LogSpineSize = 24
@@ -1089,7 +1088,7 @@ func NewMemFPSet2(config *FPSetConfiguration) *MemFPSet2 {
 
 func (s *MemFPSet2) Init(numThreads int, metadir string, filename string) FPSet {
 	s.metadir = metadir
-	s.filename = filepath.Join(metadir, filename)
+	s.filename = metadir + string(os.PathSeparator) + filename
 	return s
 }
 
@@ -1334,7 +1333,7 @@ func (s *MemFPSet2) RecoverFP(fp uint64) error {
 func (s *MemFPSet2) UnexportObject(force bool) {}
 
 func (s *MemFPSet2) chkptName(fname string, ext string) string {
-	return filepath.Join(s.metadir, fname+".fp."+ext)
+	return s.metadir + string(os.PathSeparator) + fname + ".fp." + ext
 }
 
 func memFPSet2HighBytes(fp uint64) (byte, byte, byte, byte, byte) {
