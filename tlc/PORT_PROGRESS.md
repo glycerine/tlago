@@ -22824,3 +22824,38 @@ native map checks plus original ModelValue tests pass
 Related payload, model-data and focused worker TCP tests also pass
 (model-data-maps-verified.log, terminal 0297cf, status 0, 0.038 seconds).
 All processes are terminal. No full suite or race workload was run.
+
+### October 8, 2026: completed fingerprint insertion with a lost reply
+
+Audited source PutBlockCallable and FPSetManagerCallable: exceptions print the
+source connection warning, reassign the partition and retry against the newly
+assigned endpoint. Existing Go behavior matches and needs no production change.
+Added full-model native coverage for the ambiguous completion boundary rather
+than treating worker computation reply loss as fingerprint insertion coverage.
+
+A test-owned endpoint delegates real putBlock storage work and then verifies
+that every submitted fingerprint is present. It withholds the successful answer
+after publishing a completion marker. The parent kills the first of two hosts;
+both coordinator and worker independently fail over to the survivor. The full
+unchanged MC06 N=7 model requires the source slot-based size of 229,884, an empty
+queue, FINISHED, one source connection warning per coordinator/worker and no
+GENERAL or no-server warning. Ordinary model rows still require 114,942 and no
+unexpected EOF. The new explicit reply-loss row requires exactly one coordinator
+EOF diagnostic, with zero such diagnostics on every other role. No automatic
+transport replay, protocol redesign or model bound change is introduced.
+
+Initial setup put the root-package helper under tlc; corrected its location
+(fingerprint-put-reply-loss.log, terminal 86203b, status 1). The first actual model
+completed with the expected final count but failed the harness's blanket no-EOF
+check, which incorrectly rejected its deliberately lost insertion reply
+(fingerprint-put-reply-loss-fixed.log, terminal 0f63fa, status 1, 70.225 seconds).
+Scoped the exact required EOF diagnostic to the new fault row; existing rows'
+assertions remain unchanged. The corrected model passes
+(fingerprint-put-reply-loss-verified.log, terminal 8fb2e4, status 0, 70.487 seconds),
+after 2,048 new fingerprints were stored before the reply was lost.
+
+Existing complete original dynamic-manager translations, nested-manager routing
+and smart-proxy network-overhead tests also pass (fingerprint-put-reply-loss-
+originals.log, terminal e5a3d7, status 0, 0.075 seconds). This supplemental native
+failure phase has no direct original method and adds no original-method credit.
+All child processes are joined and all runs terminal. No full suite or race.

@@ -12237,3 +12237,22 @@ and worker-exception checks verify sharing, cycles, nil entries and mutations
 without sender aliasing. This supports a concrete native container and does not
 introduce arbitrary custom-object codecs or Java serialization. Peers carrying
 this new payload kind require the updated native build.
+
+### Completed fingerprint insertion with a lost reply
+
+The source PutBlockCallable catches an endpoint exception, prints the connection
+warning, reassigns the affected partition and calls the new endpoint. Native
+transport retains that algorithm without redialing or replaying mutations on
+its own. A full MC06 N=7 process scenario delegates actual putBlock storage work,
+verifies all submitted fingerprints are present, then withholds its successful
+answer. The parent kills that first fingerprint host after the completion marker.
+The source manager retries against the survivor and the worker's independent
+snapshot also fails over on its next lookup. Both partition slots alias the
+surviving registration, so final source size() reports 229,884, with an empty
+queue and FINISHED. Ordinary original model counts remain 114,942.
+
+This explicit fault requires one coordinator unexpected-EOF diagnostic from the
+lost insertion reply and one source failover warning per coordinator/worker.
+Other roles retain no-EOF assertions; GENERAL and no-server warnings are rejected.
+This does not establish behavior for arbitrary network blackholes or ambiguous
+insertions on hosts that remain usable, and it introduces no retry redesign.

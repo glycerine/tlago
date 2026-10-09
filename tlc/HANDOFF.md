@@ -164,6 +164,11 @@ The full model also kills the first of two fingerprint hosts with assigned work
 and resumes actual evaluation. Worker and coordinator fail over independently.
 Two partition slots alias the survivor, so source statistics report 229,884 in
 this separate failure row; ordinary original rows still require 114,942.
+Another row kills that host after a real successor `putBlock` has inserted new
+fingerprints but before its reply returns. Stored membership is verified before
+the kill. Source callable failover retries against the survivor and completes
+with the same 229,884 slot-based count and empty queue. Only this row requires
+one coordinator EOF diagnostic for the deliberately lost insertion reply.
 
 Fresh-process local recovery covers the complete 16,384-state initial frontier,
 a mid-run checkpoint and interruptions before queue commit, after queue commit,

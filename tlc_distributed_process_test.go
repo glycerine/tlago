@@ -32,6 +32,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		allWorkersLost                             bool
 		workerReplyLoss                            bool
 		duplicateWorkerRegistration                bool
+		fingerprintReplyLoss                       bool
 		fingerprintLoss                            bool
 		fingerprintServers                         int
 		midRunCheckpoint                           bool
@@ -44,6 +45,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "standalone_fingerprints", remoteFP: true},
 		{name: "partitioned_fingerprints", remoteFP: true, fingerprintServers: 2},
 		{name: "fingerprint_server_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true},
+		{name: "fingerprint_put_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true},
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
 		{name: "mid_run_checkpoint_recovery", recovering: true, midRunCheckpoint: true},
@@ -89,15 +91,15 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if role == "worker-fingerprint-loss" || role == "worker-reply-loss" || role == "worker-register-twice" {
 					command.Env = append(command.Env, "TLAGO_NATIVE_WORKER_RELEASE="+releaseWorker)
 				}
-				if scenario.fingerprintServers > 1 && role == "fpserver" {
+				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss") {
 					// These roles represent separate hosts. Give each private
 					// temporary storage even when they start in the same millisecond.
 					command.Env = append(command.Env, "TMPDIR="+t.TempDir())
 				}
 				roleCounts[role]++
 				label := role
-				if scenario.fingerprintServers > 1 && role == "fpserver" {
-					label = fmt.Sprintf("fpserver-%d", roleCounts[role])
+				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss") {
+					label = fmt.Sprintf("%s-%d", role, roleCounts[role])
 				}
 				if scenario.midRunCheckpoint && role == "worker" {
 					label = "worker-before-checkpoint"
@@ -347,7 +349,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				// A supported native implementation avoids inheriting the
 				// upstream harness's known OffHeap assumption failure.
 				for index := range max(1, scenario.fingerprintServers) {
-					fingerprint := start("fpserver", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+					fingerprintRole := "fpserver"
+					if scenario.fingerprintReplyLoss && index == 0 {
+						fingerprintRole = "fpserver-put-reply-loss"
+					}
+					fingerprint := start(fingerprintRole, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 					if scenario.fingerprintLoss && index == 0 {
 						failedFingerprint = fingerprint
 						// Register partition zero first: source reassign uses a
@@ -425,10 +431,21 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				start(workerRole, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 			}
 			if scenario.fingerprintLoss {
-				worker := start("worker-fingerprint-loss", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				workerRole := "worker-fingerprint-loss"
+				if scenario.fingerprintReplyLoss {
+					workerRole = "worker"
+				}
+				worker := start(workerRole, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				markerOutput, marker := worker.output, "NATIVE_WORKER_BLOCK_ASSIGNED"
+				if scenario.fingerprintReplyLoss {
+					markerOutput, marker = failedFingerprint.output, "NATIVE_FP_PUT_COMPLETED_NEW="
+				}
 				ticker := time.NewTicker(10 * time.Millisecond)
-				for !strings.Contains(worker.output.String(), "NATIVE_WORKER_BLOCK_ASSIGNED") {
+				for !strings.Contains(markerOutput.String(), marker) {
 					select {
+					case err := <-failedFingerprint.done:
+						failedFingerprint.joined = true
+						t.Fatalf("fingerprint host exited before loss barrier: %v", err)
 					case err := <-server.done:
 						server.joined = true
 						t.Fatalf("coordinator exited before fingerprint loss: %v", err)
@@ -448,9 +465,17 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					t.Fatal("killed fingerprint host unexpectedly exited successfully")
 				}
 				failedFingerprint.joined = true
-				t.Log("killed first fingerprint host with a worker block assigned; resuming actual successor evaluation")
-				if err := os.WriteFile(releaseWorker, nil, 0o600); err != nil {
-					t.Fatal(err)
+				if scenario.fingerprintReplyLoss {
+					completed := regexp.MustCompile(`NATIVE_FP_PUT_COMPLETED_NEW=(\d+)`).FindStringSubmatch(failedFingerprint.output.String())
+					if len(completed) != 2 || completed[1] == "0" {
+						t.Fatal("fingerprint host did not complete an actual insertion before reply loss")
+					}
+					t.Logf("killed first fingerprint host after inserting %s new fingerprints, before returning the reply", completed[1])
+				} else {
+					t.Log("killed first fingerprint host with a worker block assigned; resuming actual successor evaluation")
+					if err := os.WriteFile(releaseWorker, nil, 0o600); err != nil {
+						t.Fatal(err)
+					}
 				}
 				coordinator, err := rpc.Dial("tcp", net.JoinHostPort("127.0.0.1", fmt.Sprint(port)))
 				if err != nil {
@@ -596,7 +621,13 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				}
 				for _, process := range roles {
 					roleOutput := process.output.String()
-					if len(nativeDistributedMessages(roleOutput, tlc.ECGeneral)) != 0 || strings.Contains(roleOutput, "unexpected EOF") {
+					expectedEOF := 0
+					if scenario.fingerprintReplyLoss && process == server {
+						// The accepted put reply is deliberately lost in this row.
+						// Source failover reports the transport error before retry.
+						expectedEOF = 1
+					}
+					if len(nativeDistributedMessages(roleOutput, tlc.ECGeneral)) != 0 || strings.Count(roleOutput, "unexpected EOF") != expectedEOF {
 						t.Fatalf("partitioned role %s emitted GENERAL or lost an RPC reply", process.output.role)
 					}
 				}
@@ -689,7 +720,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			} else if strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECGeneral)) {
 				t.Fatal("GENERAL recorded")
 			}
-			if strings.Contains(output, "unexpected EOF") {
+			if !scenario.fingerprintReplyLoss && strings.Contains(output, "unexpected EOF") {
 				t.Fatal("native process shutdown lost an accepted RPC reply")
 			}
 		})
@@ -708,6 +739,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 			status := ExitToolFailure
 			if len(args) > 0 && args[0] == "checkpoint-fp-host" {
 				if err := nativeCheckpointFingerprintHost(); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
+			} else if len(args) > 0 && args[0] == "fpserver-put-reply-loss" {
+				if err := nativeDistributedFingerprintLostReply(args[1:]); err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				} else {
 					status = ExitOK
