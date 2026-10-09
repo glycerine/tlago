@@ -135,6 +135,8 @@ temporary reader arrays; native host cleanup releases all descriptors.
 Heap disk invariant checks retain table locks on flush/open failure. Once the
 scan opens, successful close releases locks even on invalid/truncated contents;
 expected-count comparison follows release. Close failure retains source ownership.
+Short Linux syscall checks verify actual close I/O failure overrides scan results
+and retains locks; successful-close controls release them.
 Memory and nested expected-count invariant overloads inherit the base true
 result. Nested no-argument checks visit children; disk overloads enforce counts.
 Memory recovery retains complete prefixes and prior membership on truncated or

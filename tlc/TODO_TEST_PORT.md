@@ -1829,6 +1829,9 @@ valid/invalid order through local/TCP endpoints. Corrected premature table-lock
 release on failures before the source finally region and moved expected-count
 comparison after release. No original method directly tests this failure
 boundary; these twenty short cases earn no original-method credit.
+A separate twelve-case Linux syscall matrix verifies real scan-close EIO
+overrides valid/invalid/truncated scan results and retains locks, with successful
+close controls. It requires strace and adds no original-method credit.
 
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Missing**: `testSpec`.
   Upstream DistributedTLCTestCase.setUp unconditionally Assume.assumeTrue(false); retain as transport backlog, not a completed/skipped Go port. Permanent supplemental native coverage is in [tlc_distributed_trace_process_test.go](../tlc_distributed_trace_process_test.go): unchanged DieHard fixtures, FINISHED, no GENERAL across all roles, BEHAVIOR and all seven exact original trace states. Both coordinator-owned and standalone TCP fingerprint stores are checked. One worker thread and MemFPSet for the remote role are explicit native harness choices; the disabled original harness receives no completion credit.

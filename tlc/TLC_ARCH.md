@@ -2614,8 +2614,12 @@ error or false result releases them after successful close; close failure skips
 release. The expected-size overload compares Size only after that region returns.
 Heap and off-heap scans share the signed sequential scan helper while retaining
 their separate native ownership boundaries. Short local/TCP checks cover LSB/MSB
-flush/open/scan I/O failure and valid/invalid order; close failure is source-audited
-rather than fault-injected by this matrix.
+flush/open/scan I/O failure and valid/invalid order. A separate short Linux
+strace check injects EIO at the actual scan-file close for valid, duplicate and
+truncated files. Close failure overrides the scan result/error and retains every
+stripe; successful-close controls release them. Exact path-filtered syscall logs
+prove the injection target. No production hook or timing race is used; this
+local storage check skips when strace is absent and does not fault TCP replies.
 Flusher validation has two separate source boundaries: off-heap ordering and
 index alignment are checked against the temporary output before file-count
 publication and replacement; both heap and off-heap flushers then scan the

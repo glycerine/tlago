@@ -24185,3 +24185,28 @@ No original method directly covers this failure-ownership boundary, so native
 checks earn no additional original-method credit. Close-failure ordering is
 source-audited rather than fault-injected here. No full suite, full model or
 long race workload ran. All check handles are terminal.
+
+### 2026-10-09: Native invariant scan-close failure verification
+
+Added twelve short Linux process cases: LSB/MSB, valid/duplicate/truncated scan
+files, and successful/injected-failure close. Path-filtered strace injects EIO
+at the actual scan-file close. Constructor readers own a separate file so the
+first filtered close is the invariant finally boundary. Exact syscall logs
+require one matching close and the expected native return/injection annotation.
+No production hook, timing race, Java transport or production change is needed.
+
+Each helper inspects every table stripe after the operation. Close failure must
+retain all locks and override true/false/EOF scan outcomes; successful close must
+release them, preserving valid/invalid results and the original EOF category.
+Fixture cleanup releases retained locks, and child-process exit releases the
+descriptor whose native close was deliberately substituted. Process-group
+cancellation and a 30-second watchdog prevent tracing failures leaving helpers.
+
+Initial twelve-case matrix passes (terminal a71f47, status 0, 0.368 seconds).
+After strengthening the control EOF-category assertion, the matrix, twenty
+adjacent local/TCP ownership cases and both original normal/off-heap MultiFPSet
+getFPSet methods pass (terminal 12777d, status 0, 1.514 seconds). This fills the
+previous local close-fault verification gap, not a remote transport fault or
+full-model recovery guarantee. The check skips without strace. No enabled
+original method directly covers this boundary; test credit is unchanged.
+No full suite, full model or race workload ran. All check handles are terminal.
