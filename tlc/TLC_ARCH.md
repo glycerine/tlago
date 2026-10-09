@@ -14435,3 +14435,33 @@ query/failure distinction. Existing four local checkpoint/commit/recovery/close
 checks now construct the manager through the public constructor instead of
 bypassing it with a struct literal. No direct original method covers the local
 constructor boundary; original-method credit remains unchanged.
+
+
+### Sole fingerprint host dies after its final distance check completes
+
+The native final-reporting matrix now covers actual host death after CheckFPs
+completes over the entire unchanged EWD840 MC06 N=7 model. A wrapper delegates
+to the real Mem store's distance check, verifies 114,942 entries and emits the
+positive distance before withholding the response. The parent first confirms
+orderly worker statistics and absence of final reports/diagnostics, then kills
+that host. Its storage directory belongs to the parent test for cleanup after
+forced death. No result, insertion or states-seen answer is fabricated.
+
+CheckFPsCallable reports its lost reply as one GENERAL and returns Long.MAX_VALUE.
+The subsequent states-seen query encounters the retained failed client; source
+reassignment exhausts the sole host and emits its two warnings. The source
+initial-state count remains one. Success reporting therefore preserves both
+the 1.1E-19 distance fallback and a negative optimistic estimate, rather than
+inventing retained states-seen statistics. Distinct/generated/queue summary
+counts were captured before the final check, so the distinct count remains
+114,942 with an empty queue. Success/statistics/FINISHED still follow in order.
+The source-style later Exit failure is printed after FINISHED; it does not
+convert the diagnostic into a checker failure. The coordinator and worker join
+normally; the killed fingerprint process is explicitly joined.
+
+This is a separate native failure case. Ordinary original model entries retain
+zero GENERAL; live-host returned/panicked I/O cases retain their exact injected
+diagnostic. No original method directly covers final-check reply loss, so the
+original inventory remains 37/41. No production change was needed in this phase.
+Coverage is one Mem host; surviving-host reassignment during final reporting,
+disk final-check loss and other phases remain outside this receipt.

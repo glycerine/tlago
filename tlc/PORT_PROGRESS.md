@@ -26629,3 +26629,45 @@ indices and nested partition tests plus native TCP nullable-manager failover
 control pass: distributed-local-manager-constructor-controls.log, terminal
 73ffb5, status 0. No full model, full suite or race rerun was needed for this
 missing-reference-only change. All handles terminal and git diff --check passes.
+
+
+### October 9, 2026: final fingerprint check completes before host/reply loss
+
+Covered a remaining final-reporting failure phase over the unchanged EWD840
+MC06 N=7 model. The sole remote Mem host runs its real CheckFPs over 114,942
+entries and exposes the positive distance before withholding the accepted
+reply. The parent confirms orderly worker statistics and absence of final
+reports/diagnostics, then kills and joins the host. Its temporary storage is
+parent-owned for cleanup after deliberate death. The killed host must have
+no prior GENERAL/EOF and no later states-seen/Exit calls.
+
+Go already follows the source in this phase; no production change was needed.
+The lost check produces one GENERAL and Long.MAX_VALUE fallback. The following
+states-seen call fails on the retained client, emits one failed-connection
+warning and one no-host warning, and retains the source initial-state count
+of one. Success therefore reports a negative optimistic probability alongside
+1.1E-19 actual-distance fallback. Counts captured before the final check remain
+114,942 distinct and zero queued. The test requires diagnostic/warning/success/
+statistics/FINISHED ordering and joined surviving roles. The receipt also shows
+the later failed Exit printed after FINISHED. This is sole-Mem-host coverage;
+surviving-host and disk final-check losses remain outside this receipt.
+
+The new case is explicitly native. Original entry points retain zero GENERAL
+and their existing workload/assertions. Existing returned/panicked method
+failure cases retain their separate expected diagnostic and normal host exit.
+No original Java method directly covers final-check reply loss, so original
+distributed inventory remains 37/41. No RMI/JVM or rpc25519 work.
+
+Initial full-model check passed: distributed-final-check-reply-loss-initial.log,
+terminal 3ceda5, status 0, 55.758 seconds. After parent-owned temporary storage
+and a positive-distance assertion, it passed in
+distributed-final-check-reply-loss-owned-storage.log, terminal 9eb3b0, status 0,
+54.965 seconds. Final strengthened killed-host zero-diagnostic gate passed in
+distributed-final-check-reply-loss.log, terminal fb25ed, status 0,
+56.076 seconds. Existing returned-I/O full-model control passed in
+distributed-final-check-reply-loss-method-control.log, terminal 8ae616,
+status 0, 54.728 seconds; only its returned row ran. Unchanged remote DieHard
+seven-state trace/zero-GENERAL control passed in
+distributed-final-check-reply-loss-control.log, terminal 38fd45, status 0,
+12.201 seconds. Reruns followed fixture ownership/assertion changes; no race
+or full-suite rerun. All handles terminal and git diff --check passes.

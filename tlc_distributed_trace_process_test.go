@@ -125,6 +125,10 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 		command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
 		command.Dir = directory
 		command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
+		if role == "fpserver-check-reply-loss" {
+			// This role is killed before its normal directory cleanup.
+			command.Env = append(command.Env, "TMPDIR="+t.TempDir())
+		}
 		if sourceHarness {
 			command.Env = append(command.Env, "TMPDIR="+t.TempDir(),
 				tlc.FPSetImplProperty+"=tlc2.tool.fp.OffHeapDiskFPSet", "TLAGO_MAX_DIRECT_MEMORY=512k")
@@ -155,6 +159,7 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 		start("worker", "127.0.0.1")
 	}
 	server := start("server", serverArgs...)
+	var fingerprint *nativeDistributedTestProcess
 	if remote {
 		if sourceHarness {
 			start("fpserver", "127.0.0.1")
@@ -162,14 +167,23 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 			role := "fpserver"
 			if checkFailure != "" {
 				role = "fpserver-check-io-" + checkFailure
+				if checkFailure == "reply-loss" {
+					role = "fpserver-check-reply-loss"
+				}
 			}
-			start(role, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+			fingerprint = start(role, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
 		}
 	}
 	if !sourceHarness {
 		start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
 	}
+	if checkFailure == "reply-loss" {
+		waitForNativeFinalFingerprintCheck(t, ctx, server, fingerprint)
+	}
 	for _, process := range roles {
+		if process.joined {
+			continue
+		}
 		err := <-process.done
 		process.joined = true
 		if err != nil {
@@ -183,7 +197,11 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 			expectedGeneral = 1
 		}
 		messages := nativeDistributedMessages(output, tlc.ECGeneral)
-		if len(messages) != expectedGeneral || (expectedGeneral == 1 && !strings.Contains(messages[0], nativeFinalFingerprintCheckFailure)) {
+		expectedFailure := nativeFinalFingerprintCheckFailure
+		if checkFailure == "reply-loss" {
+			expectedFailure = "unexpected EOF"
+		}
+		if len(messages) != expectedGeneral || (expectedGeneral == 1 && !strings.Contains(messages[0], expectedFailure)) {
 			t.Fatalf("%s GENERAL messages = %q, want %d", process.output.role, messages, expectedGeneral)
 		}
 		if checkFailure != "" && strings.HasPrefix(process.output.role, "fpserver-check-io-") {
@@ -197,8 +215,12 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 				previous = index
 			}
 		}
-		if strings.Contains(output, "unexpected EOF") {
-			t.Fatalf("%s shutdown lost an accepted RPC reply", process.output.role)
+		expectedEOF := 0
+		if checkFailure == "reply-loss" && process == server {
+			expectedEOF = 1
+		}
+		if strings.Count(output, "unexpected EOF") != expectedEOF {
+			t.Fatalf("%s lost an unexpected RPC reply", process.output.role)
 		}
 		t.Logf("%s exited normally", process.output.role)
 	}
