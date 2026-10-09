@@ -505,14 +505,13 @@ also reopen in fresh stores. This covers transport loss, not host death.
    full-model TCP relay stall covers both directions together and each direction
    independently; arbitrary network blackholes and other partition topologies
    remain unproved.
-3. Exact interruption between the trace and intern method calls remains unproved.
-   Short local Linux syscall checks now kill before intern-file mutation, inside
-   intern commit at deletion entry. Queue/trace promote their new generations;
-   intern/fingerprint snapshots retain the old generations and pending files.
-   This requires `strace` and does not establish full-model/remote recovery at
-   that boundary. Do not add a production hook, reorder commits or use a timing
-   race. Removing `vars.tmp` deletes the old checkpoint before failing and tests
-   a different boundary.
+3. The exact local trace-to-intern caller boundary is now verified with an
+   external GDB breakpoint and disassembly, followed by process death and fresh
+   recovery. Queue/trace retain the new generation; intern/fingerprints retain
+   the old generation and pending files. The earlier `strace` check stops inside
+   intern commit instead. Neither establishes full-model/remote recovery at
+   this boundary. Do not add a production hook, reorder commits or use a timing
+   race. Removing `vars.tmp` tests a different boundary.
 4. Finish the source ownership/constructor and native cleanup audit where evidence
    identifies actual remaining shortcuts. Consult prior audits before repeating
    completed checks. Missing-component behavior alone cannot prove full parity.

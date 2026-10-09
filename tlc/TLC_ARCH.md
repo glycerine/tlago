@@ -13743,3 +13743,56 @@ and its full exploration, two partition slots aliasing the survivor, the source
 diagnostics. This covers partial insertion with host death, not an atomic batch
 protocol, same-store reconnect or arbitrary network partitions. No direct source
 test exists and no original-method credit is added.
+
+### Exact local trace-to-intern checkpoint boundary
+
+An external GDB run of the existing
+TestDistributedCheckpointTraceBoundaryProcess fixture establishes the caller
+boundary previously left unproved by syscall injection. The test binary uses
+the normal optimized production implementation. Ignore the first checkpoint's
+breakpoint, then stop at distributed.go:255 on the second checkpoint. The
+inspected binary's Checkpoint disassembly has Trace.CommitChkpt at +461, its
+error branch at +469, the stopped instruction at +475 and InternTable.CommitChkpt
+at +504. Trace commit has returned successfully; intern commit has not been
+called. GDB kills the owned inferior while all its threads are stopped.
+
+Queue/trace committed bytes differ from the baseline and have no pending files.
+Intern/fingerprint committed bytes equal the baseline; their pending bytes
+retain the new generation. A fresh Go process recovers queue size 2, trace level
+2, fingerprint membership {41} without 43 and the intern token "before" without
+"after". The pending files remain unpromoted after recovery. This verifies local
+control flow and concrete storage behavior, not checkpoint atomicity or a
+full-model/remote interruption at this instruction. No production hook, source
+reordering or timing race is used.
+
+To repeat the debugger part, first locate the intern commit caller line in the
+current source; line 255 is the location in the inspected f72e2fc implementation.
+Build the normal test binary with `go test -c ./tlc -o <binary>`, create an empty
+checkpoint directory and set TLAGO_TRACE_BOUNDARY_DIRECTORY to its absolute path.
+Run GDB with the binary arguments
+`-test.run=^TestDistributedCheckpointTraceBoundaryProcess$ -test.v` and these
+commands:
+
+```text
+set pagination off
+set confirm off
+set debuginfod enabled off
+handle SIGURG nostop noprint pass
+handle SIGPIPE nostop noprint pass
+break tlc/distributed.go:255
+ignore 1 1
+run
+info line *$pc
+x/i $pc
+bt 3
+disassemble 'github.com/glycerine/tlago/tlc.(*TLCServer).Checkpoint'
+kill
+quit
+```
+
+Check the actual disassembly before interpreting a future breakpoint: source
+line numbers and instruction offsets can change. The fixture must print exactly
+one BASELINE_COMMITTED and no SECOND_COMMITTED marker. The persistent generation
+and recovery checks are the same contracts as the existing syscall-boundary
+test; the debugger adds the precise caller-PC evidence. No original Java method
+directly covers this interruption, and no completion credit is added.

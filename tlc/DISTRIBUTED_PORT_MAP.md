@@ -139,8 +139,10 @@ The remaining assignments are maintained in
    remote recovery before registration has the source's empty-manager limitation.
 2. Additional full-model fingerprint failure phases and general partitions
    remain unproved beyond the recorded loss and controlled-stall cases.
-3. Exact interruption between trace and intern method calls remains unproved;
-   syscall interruption inside intern commit proves a different boundary.
+3. The exact local caller boundary between trace and intern commit is verified
+   by external GDB/disassembly, process death and fresh recovery. Full-model or
+   remote interruption there remains unproved. The earlier syscall check stops
+   inside intern commit and proves a different control-flow boundary.
 4. Continue ownership/cleanup comparison where concrete source evidence reveals
    a shortcut. Consult prior receipts before repeating completed audits.
 5. Reconcile opaque data/evaluator metadata against actual source transferability.

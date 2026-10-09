@@ -25453,3 +25453,33 @@ initially guessed network filenames were corrected to actual owners before
 final link validation. Documentation-only change; no model, full suite or race
 run and no new original-method credit. Inventory remains 37 complete and four
 Reconcile. All prior process handles are terminal.
+
+### October 9, 2026: stop exactly between trace and intern commit calls
+
+Initial/successor publication comparison found no new production mismatch.
+Used the available external GDB to resolve remaining local caller-boundary
+verification without changing production or adding a timing gate. Built the
+normal optimized TLC test binary (terminal 692330, status 0), then ran the
+existing concrete two-checkpoint fixture under GDB. Ignore the first visit to
+distributed.go:255 and stop at the second. The baseline marker appears exactly
+once; the second completion marker never appears.
+
+Disassembly proves Trace.CommitChkpt at Checkpoint+461 has returned through its
+successful error branch; the stopped PC is +475, before InternTable.CommitChkpt
+at +504. GDB then kills the stopped owned process (distributed-checkpoint-caller-pc.log,
+terminal 32a32e, status 0). This is the caller boundary, whereas the earlier
+strace check stops inside intern commit before its first deletion.
+
+Byte comparisons verify new queue/trace committed generations with no pending
+files, old intern/fingerprint committed generations and new pending bytes.
+Fresh-process recovery passes with queue=2, trace level=2, fingerprints={41}
+without 43 and intern={before} without after
+(distributed-checkpoint-caller-recovery.log, terminal 88a8cc, status 0).
+Post-recovery file/marker/PC checks also pass
+(distributed-checkpoint-caller-files.log). Architecture notes retain the GDB
+procedure and its instruction-validation requirement; handoff/map now distinguish
+this verified local boundary from unproved full-model/remote interruption.
+
+No production hook, source reordering, arbitrary instruction delay, full suite,
+long workload or race run. No direct original test exists and inventory remains
+37 complete and four Reconcile. All handles are terminal.

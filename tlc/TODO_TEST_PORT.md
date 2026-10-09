@@ -739,6 +739,14 @@ worker with their distinct logging behavior. TCP checks distinguish endpoint
 removal from connection closure. These supplemental cases add no original
 method credit; broader distributed parity remains separately pending.
 
+External GDB verification now stops the existing concrete checkpoint fixture
+at the caller instruction after trace commit succeeds and before intern commit
+is invoked. Process death preserves new queue/trace and old intern/fingerprint
+generations; fresh recovery confirms both generations and leaves pending files
+unpromoted. This is a short local manual receipt, separate from the earlier
+syscall stop inside intern commit and from full-model/remote recovery. It adds
+no original-method credit or production hook.
+
 Native coordinator catalog checks cover local/TCP missing lookup/unbind, failure
 payloads, retained retry delays, duplicate creation, shutdown-hook binding guards
 and repeated coordinator removal. A lazy-reference check distinguishes an absent
