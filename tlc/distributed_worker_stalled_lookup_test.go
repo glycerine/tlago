@@ -102,6 +102,10 @@ func TestWorkerRPCStalledFingerprintLookupAllowsControlCalls(t *testing.T) {
 			if !worker.Computing.Load() || *generated != 1 || worker.OverallStatesComputed.Load() != 2 || storage.Size() != 0 {
 				t.Fatal("blocked lookup changed source computation/statistics boundary")
 			}
+			invocationStarted := worker.LastInvocation.Load()
+			if invocationStarted == 0 {
+				t.Fatal("actual computation did not record its invocation start")
+			}
 			if !exit {
 				// The real GetNextStates call owns Computing here. Keepalive
 				// must not consult the lost coordinator while lookup is blocked.
@@ -163,10 +167,10 @@ func TestWorkerRPCStalledFingerprintLookupAllowsControlCalls(t *testing.T) {
 				t.Fatal("accepted lookup was replayed, inserted fingerprints or retained computation flag")
 			}
 			if !exit {
-				// The actual computation finally published LastInvocation;
-				// do not assign a synthetic timestamp for this activity check.
-				if worker.LastInvocation.Load() == 0 {
-					t.Fatal("completed computation did not publish activity")
+				// Source records invocation start, not completion. A short call
+				// remains recent, but completing a long call must not refresh it.
+				if worker.LastInvocation.Load() != invocationStarted {
+					t.Fatal("computation completion changed its invocation-start timestamp")
 				}
 				if err := worker.Runtime.RunKeepAliveOnce(); err != nil {
 					t.Fatal(err)

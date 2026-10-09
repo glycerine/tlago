@@ -14867,8 +14867,12 @@ that block must make zero discovery calls and leave the worker published and
 its executor open. Control RPCs remain responsive and accepted computation
 returns all successors with their predecessor UID after releasing the lookup.
 
-After completion, the worker's own finally-published LastInvocation suppresses
-a second keepalive invocation. The fixture does not write Computing or
+After this short computation, the worker's LastInvocation still suppresses a
+second keepalive invocation. Both Java and Go publish that timestamp at invocation
+start; completion only clears Computing and must not refresh LastInvocation.
+The fixture captures the timestamp while blocked and asserts it is unchanged
+after return. A computation lasting beyond the activity timeout can therefore
+probe immediately after completion. The fixture does not write Computing or
 LastInvocation to produce either activity condition. Existing lifecycle checks
 cover idle shutdown, completion and loss categories separately. Production
 scheduling and timeout remain unchanged; this short task-policy check does not

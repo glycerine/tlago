@@ -27296,3 +27296,28 @@ production schedule or timeout changes, full suite, long workload or race run.
 This verifies worker task policy, not a later scheduled period or full-process
 partition. No original Java direct method exists; inventory remains 37/41.
 Updated HANDOFF/architecture; git diff --check passes.
+
+
+### October 9, 2026: correct worker activity timestamp evidence
+
+Worker batching/cache comparison exposed an error in the preceding audit's
+description, not production: both Java TLCWorker.getNextStates and Go set
+LastInvocation at invocation start. Finally clears Computing; it does not
+refresh the timestamp. The October 9 real-computation keepalive entry's claim
+that finally sets LastInvocation is incorrect and superseded by this entry.
+A long computation may therefore trigger discovery immediately after return
+when its invocation-start timestamp already exceeds the activity timeout.
+
+Corrected HANDOFF, architecture and fixture comments. Strengthened the existing
+stalled lookup check to capture the timestamp during actual computation and
+require the same value after completion, alongside its existing short-call
+activity suppression. No synthetic timestamp or Computing assignment is used.
+Source cache initial sentinels, masked routing/replacement, signed holder sort,
+lookup-before-checks and accepted-only UID assignment remain consistent with Go;
+no production correction or additional cache test needed.
+
+Focused stalled lookup (keepalive/exit) and eight existing native coordinator
+lifecycle cases pass: distributed-worker-invocation-timestamp.log, terminal
+1a82a5, status 0. No full suite, long workload or race run; no original-method
+credit change. Source comparison, not the short runtime alone, establishes the
+long-computation implication. All handles terminal and git diff --check passes.
