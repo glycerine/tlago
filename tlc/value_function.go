@@ -609,8 +609,12 @@ func (v *RecordValue) ToState() *TLCStateMut {
 			}
 		}
 	}
-	state.printRecord = v
-	return state
+	// PrintTLCState has its own base metadata and delegates state operations
+	// to this separate owner. Keep a value-slice alias for native evaluators.
+	wrapper := NewEmptyState()
+	wrapper.values = state.values
+	wrapper.printRecord, wrapper.printState = v, state
+	return wrapper
 }
 
 func (v *RecordValue) StateString() string {

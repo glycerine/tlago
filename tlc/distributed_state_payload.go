@@ -102,6 +102,7 @@ type DistributedStateNode struct {
 	Predecessor int
 	Cache       int
 	PrintRecord int
+	PrintState  int
 }
 
 type DistributedStringNode struct {
@@ -276,6 +277,12 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 	if state.functional || state.functionalBindings != nil || state.action != nil || state.callable != nil {
 		return 0, fmt.Errorf("network state contains extended evaluator metadata")
 	}
+	if (state.printRecord == nil) != (state.printState == nil) {
+		return 0, fmt.Errorf("print state requires both record and underlying state")
+	}
+	if state.printState != nil && (state.printState == state || state.printState.printRecord != nil || state.cached != nil) {
+		return 0, fmt.Errorf("invalid print state owner or wrapper cache")
+	}
 	id := len(e.payload.States) + 1
 	e.states[state] = id
 	e.payload.States = append(e.payload.States, DistributedStateNode{})
@@ -302,7 +309,11 @@ func (e *distributedPayloadEncoder) state(state *TLCStateMut) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil, Predecessor: predecessor, Cache: cache, PrintRecord: printRecord}
+	printState, err := e.state(state.printState)
+	if err != nil {
+		return 0, err
+	}
+	e.payload.States[id-1] = DistributedStateNode{WorkerID: state.WorkerID, UID: state.UID, Level: int32(state.level), ValuesArray: array, ValuesNil: state.values == nil, Predecessor: predecessor, Cache: cache, PrintRecord: printRecord, PrintState: printState}
 	return id, nil
 }
 
@@ -1226,6 +1237,22 @@ func decodeDistributedStates(payload *DistributedStatePayload, decoder *distribu
 		}
 	}
 	for i, node := range payload.States {
+		if node.PrintState < 0 || node.PrintState > len(objects) {
+			return nil, fmt.Errorf("invalid distributed print state reference %d", node.PrintState)
+		}
+		if (objects[i].printRecord == nil) != (node.PrintState == 0) {
+			return nil, fmt.Errorf("print state requires both record and underlying state")
+		}
+		if node.PrintState != 0 {
+			owner := objects[node.PrintState-1]
+			if owner == objects[i] || owner.printRecord != nil || objects[i].cached != nil {
+				return nil, fmt.Errorf("invalid print state owner or wrapper cache")
+			}
+			if len(objects[i].values) != len(owner.values) || len(owner.values) > 0 && node.ValuesArray != payload.States[node.PrintState-1].ValuesArray {
+				return nil, fmt.Errorf("print state values must alias underlying state")
+			}
+			objects[i].printState, objects[i].values = owner, owner.values
+		}
 		if node.Predecessor < 0 || node.Predecessor > len(objects) {
 			return nil, fmt.Errorf("invalid distributed predecessor reference %d", node.Predecessor)
 		}

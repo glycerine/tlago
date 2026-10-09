@@ -25597,3 +25597,45 @@ to it, returning that owner's result. Native printRecord currently flattens
 wrapper/underlying metadata. Handoff and architecture now explicitly retain this
 implementation requirement rather than treating current transfer graph checks
 as complete wrapper parity. Original-method completion counts are unchanged.
+
+
+### October 9, 2026: separate print-wrapper and underlying state ownership
+
+RecordValue.ToState now creates a base-metadata print wrapper with a separate
+mutable owner. Delegated copy/deepCopy/bind/unbind return the owner's result;
+assignment, fingerprint, identity hash, normalization, collection and empty-state
+creation and variable rendering follow the source delegation. Wrapper and owner
+UID/worker/level are independent. Native evaluator value slices alias the owner.
+
+Print extra-field ContainsKey follows source name object identity, while Lookup
+uses record selection. Initial focused transfer checks failed because their old
+assertion incorrectly expected membership for a sender name after transfer
+(distributed-print-owner-initial.log, terminal c06ec6, status 1). Corrected it to
+require lookup success, sender-name membership false and received-name membership
+true. The source comparison and new ownership checks also preserve asymmetric
+mutable-state/print-wrapper equality rather than silently comparing value arrays.
+
+Native state payloads now carry a PrintState graph reference. Decoding restores
+owner identity and value-slice alias after allocation, retaining root sharing,
+independent metadata and a cached model-data back-reference cycle. Invalid/missing
+owner IDs, self/wrapper owners, wrapper caches and conflicting nonempty value
+array identities fail explicitly. Updated peers are required; old print payloads
+without owners fail rather than synthesizing ownership. No Java transport added.
+
+Focused owner/graph/validation, native TCP print transfer, state/cache/alias, both
+original RecordValue methods and seven original simulation trace methods pass
+(distributed-print-owner-green.log, terminal 5e6746, status 0, 0.018 seconds).
+Original AliasSafety, AliasSafetySimu and TLCExtTraceAlias pass unchanged
+(distributed-print-owner-original-alias.log, terminal afb652, status 0, 0.608 seconds).
+Separate-process distributed DieHard with coordinator and standalone fingerprint
+storage retains exact original seven-state traces and passes
+(distributed-print-owner-process.log, terminal 1f18d6, status 0, 23.379 seconds).
+
+No direct original wrapper-owner method exists; native checks add no original
+completion credit. No full suite, shortened workload or race run. All handles
+are terminal. Handoff replaces the concrete ownership gap with current evidence.
+
+Final ownership/graph validation and TCP print selection also passes after
+adding explicit malformed-wrapper cache and conflicting value-array cases
+(distributed-print-owner-final.log, terminal 9f596b, status 0). All handles
+remain terminal.

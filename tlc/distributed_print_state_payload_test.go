@@ -44,8 +44,11 @@ func requirePrintStatePayloadGraph(t *testing.T, original, copied []*TLCStateMut
 	if got := copied[0].String(); got != want {
 		t.Fatalf("received print state = %q, want %q", got, want)
 	}
-	if got := copied[0].Lookup(extra); got == nil || got.(*IntValue).Val != 7 || !copied[0].ContainsKey(extra) {
-		t.Fatal("received print state lost a field outside the spec variables")
+	if got := copied[0].Lookup(extra); got == nil || got.(*IntValue).Val != 7 || copied[0].ContainsKey(extra) || !copied[0].ContainsKey(record.Names[1]) {
+		t.Fatal("received print state lost extra-field lookup or source membership identity")
+	}
+	if copied[0].printState == nil || copied[0].printState == original[0].printState || copied[0].printState == copied[1].printState || copied[0].printState.UID != TLCStateInitUID || copied[0].printState.Level() != TLCStateInitLevel {
+		t.Fatal("print state lost separate underlying ownership or metadata")
 	}
 	if copied[0].FingerPrint() != original[0].FingerPrint() {
 		t.Fatal("print state changed its underlying state fingerprint")

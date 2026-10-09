@@ -11820,12 +11820,27 @@ as cache access. Base predecessor updates still change level and retain failure
 checks. No executable callback or action is retained on a print wrapper merely
 because extended mode is enabled.
 
-Remaining ownership gap: the source wrapper holds a separate `state` object.
-Copy/deepCopy/bind/unbind delegate to that object and return its result rather
-than retaining a wrapper. The current flattened native representation does not
-yet establish those ownership/return contracts or independent wrapper/underlying
-metadata. The graph transfer checks below do not prove that behavior; implement
-the separate owner and its payload reference before claiming full wrapper parity.
+The native wrapper now holds a separate `printState` owner, matching the source
+`state` object. Copy/deepCopy/bind/unbind delegate to that owner and return its
+result rather than retaining a wrapper. Fingerprinting, identity hash, assignment
+checks, normalization, collection/empty-state creation and variable rendering
+also delegate. Wrapper UID/worker/level remain independent of owner metadata.
+The native value slice aliases the owner's slice for direct evaluator access;
+delegated operations use the owner. Extra-field ContainsKey uses record-name
+object identity while Lookup uses record selection. Equality delegates to the
+owner, whose source mutable-state type check rejects wrapper objects, preserving
+the source's asymmetric result.
+
+`DistributedStateNode.PrintState` retains a one-based owner reference in the
+same graph as roots, predecessors and attachments. Missing/out-of-range owners,
+self ownership, wrapper owners, wrapper caches and conflicting nonempty value
+array identities fail explicitly. Decoding restores the owner and value-slice
+alias after allocating states, preserving independent metadata and cycles through
+supported cached model data. This schema requires updated peers; an old print
+payload without an owner is rejected rather than inventing one. Local/TCP graph
+checks and existing original RecordValue, Alias safety/simulation and TLCExtTrace
+Alias tests pass, as do separate-process distributed DieHard traces with local
+and standalone fingerprint storage.
 
 RecordValue.PrintTLCState inherits TLCState’s serializability and holds its
 record plus underlying state. The native Go state representation’s printRecord

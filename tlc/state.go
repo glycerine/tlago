@@ -136,6 +136,7 @@ type TLCStateMut struct {
 	callable    func() (any, error)
 	cached      map[int]Value
 	printRecord *RecordValue
+	printState  *TLCStateMut // Separate owner delegated to by RecordValue.PrintTLCState.
 	functional  bool
 	// ENABLED uses TLCStateFun's persistent bindings, including declarations
 	// outside the root module that have no slot in the mutable state vector.
@@ -158,10 +159,16 @@ func NewFunctionalState() *TLCStateMut {
 }
 
 func (s *TLCStateMut) CreateEmpty() *TLCStateMut {
+	if s.printState != nil {
+		return s.printState.CreateEmpty()
+	}
 	return NewEmptyState()
 }
 
 func (s *TLCStateMut) Bind(name *UniqueString, value Value) *TLCStateMut {
+	if s != nil && s.printState != nil {
+		return s.printState.Bind(name, value)
+	}
 	if s != nil && s.functional {
 		s = s.functionalCopy()
 		s.functionalBindings = NewTLCStateFun(&SymbolNode{Name: name}, value, s.functionalBindings)
@@ -174,6 +181,9 @@ func (s *TLCStateMut) Bind(name *UniqueString, value Value) *TLCStateMut {
 }
 
 func (s *TLCStateMut) BindWithSource(name *UniqueString, value Value, source SemanticNode) *TLCStateMut {
+	if s != nil && s.printState != nil {
+		return s.printState.BindWithSource(name, value, source)
+	}
 	if s != nil && s.functional {
 		s = s.functionalCopy()
 		s.functionalBindings = NewTLCStateFun(&SymbolNode{Name: name}, value, s.functionalBindings)
@@ -188,6 +198,9 @@ func (s *TLCStateMut) BindWithSource(name *UniqueString, value Value, source Sem
 }
 
 func (s *TLCStateMut) Unbind(name *UniqueString) *TLCStateMut {
+	if s != nil && s.printState != nil {
+		return s.printState.Unbind(name)
+	}
 	if s != nil && s.functional {
 		s = s.functionalCopy()
 	}
@@ -232,6 +245,16 @@ func (s *TLCStateMut) Lookup(name *UniqueString) Value {
 	if s == nil || name == nil {
 		return nil
 	}
+	if s.printState != nil {
+		if s.printState.ContainsKey(name) {
+			return s.printState.Lookup(name)
+		}
+		value, err := s.printRecord.Select(NewStringValueFromUnique(name))
+		if err != nil {
+			return nil
+		}
+		return value
+	}
 	if s.functional {
 		return s.functionalBindings.Lookup(name)
 	}
@@ -250,6 +273,17 @@ func (s *TLCStateMut) Lookup(name *UniqueString) Value {
 }
 
 func (s *TLCStateMut) ContainsKey(name *UniqueString) bool {
+	if s != nil && s.printState != nil {
+		if s.printState.ContainsKey(name) {
+			return true
+		}
+		for _, field := range s.printRecord.Names {
+			if field == name {
+				return true
+			}
+		}
+		return false
+	}
 	if s.Lookup(name) != nil {
 		return true
 	}
@@ -261,6 +295,9 @@ func (s *TLCStateMut) ContainsKey(name *UniqueString) bool {
 }
 
 func (s *TLCStateMut) Copy() *TLCStateMut {
+	if s.printState != nil {
+		return s.printState.Copy()
+	}
 	values := make([]Value, len(s.values))
 	copy(values, s.values)
 	var sources []SemanticNode
@@ -291,6 +328,9 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 }
 
 func (s *TLCStateMut) DeepCopy() *TLCStateMut {
+	if s.printState != nil {
+		return s.printState.DeepCopy()
+	}
 	values := make([]Value, len(s.values))
 	var sources []SemanticNode
 	if s.sources != nil {
@@ -368,6 +408,9 @@ func (s *TLCStateMut) ExecCallable() (any, error) {
 }
 
 func (s *TLCStateMut) AddToVec(states *StateVec) *StateVec {
+	if s.printState != nil {
+		return s.printState.AddToVec(states)
+	}
 	if states == nil {
 		states = NewStateVec(1)
 	}
@@ -375,6 +418,10 @@ func (s *TLCStateMut) AddToVec(states *StateVec) *StateVec {
 }
 
 func (s *TLCStateMut) DeepNormalize() {
+	if s.printState != nil {
+		s.printState.DeepNormalize()
+		return
+	}
 	for _, value := range s.values {
 		if value != nil {
 			value.DeepNormalize()
@@ -386,6 +433,10 @@ func (s *TLCStateMut) AddCounts(counts *SemanticNodeLongTable) {
 	if s == nil || counts == nil {
 		return
 	}
+	if s.printState != nil {
+		s.printState.AddCounts(counts)
+		return
+	}
 	for _, source := range s.sources {
 		if source != nil {
 			counts.Add(source, 1)
@@ -394,6 +445,9 @@ func (s *TLCStateMut) AddCounts(counts *SemanticNodeLongTable) {
 }
 
 func (s *TLCStateMut) Sources() []SemanticNode {
+	if s != nil && s.printState != nil {
+		return s.printState.Sources()
+	}
 	if s == nil || s.sources == nil {
 		return nil
 	}
@@ -413,6 +467,9 @@ func (s *TLCStateMut) FingerPrint() uint64 {
 }
 
 func (s *TLCStateMut) FingerPrintWithTool(tool *Tool) uint64 {
+	if s.printState != nil {
+		return s.printState.FingerPrintWithTool(tool)
+	}
 	values := s.symmetryRepresentativeValues()
 	fp := FP64New()
 	if tool != nil && tool.ViewSpec != nil {
@@ -503,6 +560,9 @@ nextPerm:
 }
 
 func (s *TLCStateMut) AllAssigned() bool {
+	if s.printState != nil {
+		return s.printState.AllAssigned()
+	}
 	for _, value := range s.values {
 		if value == nil {
 			return false
@@ -512,6 +572,9 @@ func (s *TLCStateMut) AllAssigned() bool {
 }
 
 func (s *TLCStateMut) NoneAssigned() bool {
+	if s.printState != nil {
+		return s.printState.NoneAssigned()
+	}
 	for _, value := range s.values {
 		if value != nil {
 			return false
@@ -521,6 +584,9 @@ func (s *TLCStateMut) NoneAssigned() bool {
 }
 
 func (s *TLCStateMut) Unassigned() []StateVariable {
+	if s.printState != nil {
+		return s.printState.Unassigned()
+	}
 	var out []StateVariable
 	for i, value := range s.values {
 		if value == nil && i < len(stateVariables) {
@@ -711,12 +777,18 @@ func (s *TLCStateMut) CopyWith(prototype *TLCStateMut) *TLCStateMut {
 }
 
 func (s *TLCStateMut) Equal(obj TLCState) bool {
+	if s != nil && s.printState != nil {
+		return s.printState.Equal(obj)
+	}
 	other, ok := obj.(*TLCStateMut)
 	if !ok {
 		return false
 	}
 	if s == nil || other == nil {
 		return s == other
+	}
+	if other.printState != nil {
+		return false // Source mutable-state equals rejects a PrintTLCState object.
 	}
 	for i := range s.values {
 		if i >= len(other.values) {
@@ -745,6 +817,9 @@ func (s *TLCStateMut) Equal(obj TLCState) bool {
 // Java TLCStateMut deliberately inherits Object.hashCode despite overriding
 // equals. Retain object identity here rather than substituting a fingerprint.
 func (s *TLCStateMut) HashCode() int32 {
+	if s != nil && s.printState != nil {
+		return s.printState.HashCode()
+	}
 	return int32(reflect.ValueOf(s).Pointer())
 }
 
@@ -763,6 +838,12 @@ func (s *TLCStateMut) String() string {
 }
 
 func (s *TLCStateMut) StringForVariables(last *TLCStateMut, vars ...*UniqueString) string {
+	if s != nil && s.printState != nil {
+		if len(vars) == 0 {
+			vars = s.printRecord.Names
+		}
+		return s.printState.StringForVariables(last, vars...)
+	}
 	if s != nil && s.printRecord != nil && len(vars) == 0 {
 		return s.printRecord.StateString()
 	}

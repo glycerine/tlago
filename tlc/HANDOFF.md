@@ -515,10 +515,10 @@ also reopen in fresh stores. This covers transport loss, not host death.
 4. Finish the source ownership/constructor and native cleanup audit where evidence
    identifies actual remaining shortcuts. Consult prior audits before repeating
    completed checks. Missing-component behavior alone cannot prove full parity.
-   Concrete open state-owner gap: `RecordValue.PrintTLCState` owns a separate
-   underlying mutable state and delegates copy/bind operations to it. Go currently
-   flattens wrapper and underlying fields. Preserve their distinct metadata and
-   returned object identities when completing that port and its native payload.
+   Print wrappers now own a separate underlying mutable state. Delegated methods
+   retain source return identities and independent metadata; native payloads
+   preserve owner sharing and reject missing, recursive-wrapper or invalid owners.
+   Updated peers are required for this payload schema.
    Built-in selector arithmetic, startup capture, queue bounds, statistics and
    smart-proxy timing have a current source audit and focused green receipt.
    Custom factory selection now uses linked Go constructors registered through

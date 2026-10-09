@@ -1976,8 +1976,12 @@ Native base-state metadata checks cover print/functional states in extended mode
 action/callable setters remain no-ops, while predecessor assignment changes only
 the level. Existing state/TCP graph and seven original simulation trace checks
 pass. No direct source method tests this boundary; no original credit is added.
-Separate print-wrapper underlying ownership and delegated return values remain
-implementation work, now identified in the handoff.
+Separate print-wrapper ownership and delegated return values are now implemented.
+Native checks preserve independent metadata, copy/bind identities, source equality
+and name-identity behavior, shared owner roots and cached-data cycles. Malformed
+owner graphs fail explicitly. Original RecordValue and Alias checks plus native
+local/remote distributed DieHard process traces pass. No direct original wrapper
+ownership/transfer method exists; original completion counts remain unchanged.
 
 Full N=7 coverage also pauses TCP traffic to one of two fingerprint hosts while
 keeping connections open. Separate cases hold both directions, only requests
