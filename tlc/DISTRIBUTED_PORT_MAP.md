@@ -140,7 +140,9 @@ in real committed disk snapshots likewise stop fresh recovery at the source
 index assertion, retaining partial writes and joined sibling reconstruction.
 Truncated or duplicate records in real direct-memory snapshots stop before the
 next registered host or publication, retaining complete-prefix inserts, source
-assertions, checkpoint bytes and joined roles. Missing memory files still use the
+assertions, checkpoint bytes and joined roles. When corruption is on the second
+host, the first host retains its full reconstruction; the source manager does
+not roll back earlier successful recovery. Missing memory files still use the
 separate checked-I/O warning/continue path. Empty committed child snapshots also stop there, retaining zero failed-child
 count/writes after fresh initialization truncates the live backing file. Trailing
 partial records retain complete membership without warning/failover; fresh

@@ -26366,3 +26366,29 @@ distributed-corrupt-mem-shared-disk-control.log, terminal 6b94af, status 0,
 selector ran no tests (bb97fc, distributed-remote-corrupt-mem-snapshot.log)
 and earns no verification credit. All actual selected cases have RUN/PASS
 receipts. No full-suite rerun or race instrumentation. git diff --check passes.
+
+
+### October 9, 2026: later remote memory failure preserves earlier recovery
+
+Compared pinned FPSetManager checkpointInner and NonDistributedFPSetManager
+recovery/failure paths with Go; retained synchronous registration traversal,
+checked-I/O warning/continue, runtime assertion propagation and local trace
+ownership. Added real N=7 EWD840 snapshot corruption on the second remote
+MemFPSet registration. No direct original Java test covers this process boundary.
+
+Both fresh hosts must receive exactly one recovery call. The first host retains
+its complete committed membership count through shutdown; the second retains
+all complete records before a trailing partial long or two distinct inserts
+before the third record repeats the first. Exact source assertions prevent
+recovery-end/init/worker publication/final reporting; no failover, warning-only
+conversion or operation retry. All roles join with caught-failure status and
+every retained checkpoint byte remains unchanged. The source supplies no
+rollback transaction for a successful earlier registration.
+
+New second-host cases and existing first-host cases all pass:
+distributed-remote-corrupt-later-mem-snapshot.log, terminal 8aaa9d, status 0,
+27.642 seconds. Later host truncated 7.03 seconds and duplicate 6.96 seconds;
+all four selected subtests have RUN/PASS receipts. Shared disk branches retain
+the default first-host index and equivalent call-count checks; no storage or
+transport production code changed. No full-suite rerun or race instrumentation.
+git diff --check passes. Distributed original-method credit remains 37/41.

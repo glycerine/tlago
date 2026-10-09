@@ -14252,3 +14252,18 @@ checkpoint bytes survive unchanged; all fresh processes join with the source
 caught-failure status. No storage or transport change was needed. This is native
 integration evidence, with no original-method completion credit or checkpoint
 atomicity claim. Distributed inventory remains 37/41.
+
+
+### Later-host memory recovery failure retains earlier success
+
+`TestNativeDistributedRemoteCheckpointCorruptLaterMemSnapshot` checks the same
+truncated/duplicate record boundaries on the second registration in the real
+N=7 EWD840 checkpoint fixture. Both fresh hosts receive exactly one recovery
+call in registration order. The first host retains its full committed
+fingerprint count through shutdown; the second retains all complete records
+for truncation or two distinct inserts for duplication. The coordinator raises
+the source assertion before recovery-end, init or worker publication, and all
+roles join without rewriting checkpoint bytes. This verifies FPSetManager's
+sequential checkpointInner contract across prior success: it supplies no
+rollback of a host already reconstructed. No production changes, checkpoint
+atomicity claim or original-method completion credit.
