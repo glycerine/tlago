@@ -522,6 +522,9 @@ also reopen in fresh stores. This covers transport loss, not host death.
    State-info record conversion returns a print wrapper's existing record;
    ordinary states construct a fresh variable record. Preserve this distinction
    when building counterexamples or exporting traces.
+   Negative disk trace locations must attempt the source seek and propagate I/O
+   failure, retaining the failed pointer mutation. Do not return an empty prefix;
+   the coordinator catches that trace failure before behavior output.
    Built-in selector arithmetic, startup capture, queue bounds, statistics and
    smart-proxy timing have a current source audit and focused green receipt.
    Custom factory selection now uses linked Go constructors registered through

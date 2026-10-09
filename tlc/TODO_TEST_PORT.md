@@ -1989,6 +1989,13 @@ produce fresh variable records. No direct original conversion test exists; nativ
 identity checks and existing original record, alias and trace dump/load test ports
 pass without changing original-method completion counts.
 
+Native negative-location trace checks cover included/predecessor disk lookups
+and the coordinator's worker-error catch. Failed seeks propagate I/O errors
+instead of empty prefixes, retain pointer mutation and finish the queue without
+spurious behavior output. Existing trace checks and three original buffered-file
+seek methods pass. No direct original trace test covers this invalid location;
+original-method completion counts remain unchanged.
+
 Full N=7 coverage also pauses TCP traffic to one of two fingerprint hosts while
 keeping connections open. Separate cases hold both directions, only requests
 or only replies; markers require the selected direction and reject an opposite

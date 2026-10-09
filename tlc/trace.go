@@ -496,7 +496,7 @@ func (t *TLCTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCSta
 }
 
 func (t *TLCTrace) GetTraceAt(pos int64, included bool) []*TLCStateInfo {
-	if t == nil || pos < 0 {
+	if t == nil {
 		return nil
 	}
 	trace, recovered, err := t.getTraceAtFromDisk(pos, included)

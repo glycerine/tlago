@@ -12004,6 +12004,16 @@ focused trace, checkpoint and native TCP checks pass.
 
 ### Error-trace evaluation failure propagation
 
+Negative disk trace locations follow the same source I/O path as other failed
+seeks. `GetTraceAt` no longer returns an empty prefix before accessing the file.
+Both included and predecessor-only paths retain the buffered seek's pointer
+mutation to the failed location and propagate IOException. In the coordinator's
+worker-error handler this produces GENERAL before behavior/state output, retains
+the original worker failure and completes queue shutdown. It does not enter the
+separate failed-state-reconstruction exit path. Native checks cover both lookup
+forms and the real coordinator handler; original buffered seek methods remain
+green. There is no direct original negative-location trace test.
+
 State reconstruction and transition reconstruction errors returned by Tool, and
 alias errors returned after Tool's own exception handling, propagate from trace
 printing without replacing the result with a fallback state. Previous output

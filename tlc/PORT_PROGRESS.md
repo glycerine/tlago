@@ -25665,3 +25665,28 @@ SafetyDieHardAliasSupDumpLoadTraceJSON test ports pass unchanged
 (distributed-state-info-record-original.log, terminal e4056a, status 0, 1.091 seconds).
 No full suite, long distributed model or race run. All handles are terminal;
 original-method completion counts remain unchanged.
+
+
+### October 9, 2026: negative disk trace locations propagate seek failure
+
+Compared TLCTrace fingerprint reconstruction and state-info source behavior.
+Found GetTraceAt returned nil immediately for negative locations. Java instead
+saves the cursor then seeks the given location through getPrev/getFP, raising
+IOException. Removed the negative-location shortcut while retaining native
+in-memory helper behavior and other trace reconstruction paths.
+
+The new included/predecessor negative-location checks fail before correction
+(distributed-trace-negative-location-red.log, terminal b29291, status 1). Both
+now propagate I/O failure and retain the source buffered pointer mutation to -1.
+A native coordinator-handler case requires the original WorkerException to remain
+LastError/ErrState, one GENERAL, queue completion and no behavior/state/recovery
+exit diagnostics. This exercises the real error handler rather than an adapter.
+
+Focused negative-location and existing disk trace ownership/truncation/cursor/
+reconstruction checks pass (distributed-trace-negative-location-green.log,
+terminal 3cd53a, status 0, 0.111 seconds). Final selection adds the coordinator
+case and unchanged original buffered-file testWriteSeek, testWriteSeekNoLength
+and testReadSeekNoLength methods; it passes
+(distributed-trace-negative-location-final.log, terminal b443c0, status 0).
+No direct source trace test covers this boundary. No full suite, long model or
+race run; all handles are terminal and original-method counts are unchanged.
