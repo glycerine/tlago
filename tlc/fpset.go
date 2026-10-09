@@ -1034,7 +1034,9 @@ func (s *MemFPSet1) RecoverFile(fname string) (err error) {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
+	// FileUtil.newDFIS wraps the file directly in DataInputStream. Read each
+	// primitive on demand so I/O cannot move ahead of SetOfLong's assignments.
+	in := NewValueInputStreamWithoutHandles(file)
 	defer func() {
 		if closeErr := in.Close(); err == nil {
 			err = closeErr

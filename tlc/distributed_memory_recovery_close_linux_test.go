@@ -149,13 +149,7 @@ func TestDistributedMemoryRecoveryCloseProcess(t *testing.T) {
 		t.Fatalf("manager recovery/close classification = %v/%v, want I/O %v", err, endpoint.failure, wantIO)
 	}
 	if phase == "valid" {
-		if fault && backend == "mem1" {
-			// The existing buffered stream translates native file errors to
-			// IOException text, matching its source stream boundary.
-			if _, ok := endpoint.failure.(*IOException); !ok || endpoint.failure.Error() != "Input/output error" || javaThrowableCause(endpoint.failure) != nil {
-				t.Fatalf("buffered recovery close failure changed: %v", endpoint.failure)
-			}
-		} else if errors.Is(endpoint.failure, syscall.EIO) != fault {
+		if errors.Is(endpoint.failure, syscall.EIO) != fault {
 			t.Fatalf("successful scan discarded or fabricated final close failure: %v", endpoint.failure)
 		}
 	}

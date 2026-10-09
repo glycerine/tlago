@@ -162,6 +162,10 @@ Memory recovery retains complete prefixes and prior membership on truncated or
 duplicate input. Local/TCP checks cover all seven partial-long lengths: base
 memory runtime failures stop manager recovery, while packed-memory I/O failures
 warn and continue healthy registrations. Duplicates stop both without failover.
+`MemFPSet1` reads checkpoint primitives directly from the file, matching
+`FileUtil.newDFIS`. It must not eagerly buffer ahead of backing-set assignments.
+Short syscall checks cover each header/key read failure, partial field/table
+mutation, one file close and manager continuation; native I/O causes survive.
 Coordinator startup checks retain recovered trace/queue state before fingerprint
 failure. Runtime failures prevent publication; packed-memory truncation warns,
 continues healthy recovery and prints actual recovery counts before publication.

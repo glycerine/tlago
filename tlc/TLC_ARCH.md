@@ -13175,8 +13175,28 @@ recovered fingerprints, source counts and partial table mutations remain intact.
 
 The distributed manager catches checked close I/O, reports the original hostname
 and continues healthy registrations without reassignment. Runtime reconstruction
-errors still stop traversal. MemFPSet1 retains the existing buffered stream's
-IOException conversion; the other stores retain their native file close error.
+errors still stop traversal. All three stores retain native file close errors.
 Sixteen Linux strace controls/faults verify the actual target close, normal,
 truncated and duplicate input, preserved membership, exact warning count and
 continuation boundaries. No source test directly covers this close boundary.
+
+### MemFPSet1 checkpoint reads retain source field ordering
+
+Java FileUtil.newDFIS constructs DataInputStream directly over FileInputStream,
+without BufferedDataInputStream. MemFPSet1 recovery therefore uses the existing
+unbuffered primitive stream adapter. The ordinary ValueInputStream constructor's
+eager refill could fail before SetOfLong started, or read ahead of its field
+assignments; it also preceded installation of the recovery close defer.
+
+Each primitive now reads on demand. Failed header reads retain earlier field
+assignments and the old table; failed keys retain the replacement table and
+earlier insertions, including the source count increment. EOF conversion remains
+unchanged. Native file I/O causes remain available, and deferred closure runs
+once on both success and failure. This replaces the previous buffered close
+conversion with the actual unbuffered source boundary.
+
+Seven short Linux syscall cases cover success and EIO on each of six field/key
+reads. They prove read widths, target descriptor, partial mutation, final close,
+manager warning/healthy continuation and unchanged registration. The sixteen
+existing close cases also pass, now requiring errors.Is(EIO) for every store.
+No dedicated original method covers these failure boundaries; no credit added.

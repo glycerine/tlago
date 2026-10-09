@@ -1750,6 +1750,13 @@ injection and controls, preserving earlier read failures, partial membership,
 manager warnings and healthy continuation. Existing original buffered-input,
 manager and MultiFPSet methods remain unchanged; native checks add no credit.
 
+MemFPSet1 recovery now follows FileUtil.newDFIS's unbuffered primitive reads.
+Seven short Linux syscall cases cover each header/key read failure and success,
+retaining earlier field assignments, table identity/insertion counts, one close
+and manager continuation. Existing close cases now retain the native EIO cause
+for all three memory stores. No dedicated upstream MemFPSet1/SetOfLong test
+exists; distributed inventory remains 37 port complete and four Missing.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

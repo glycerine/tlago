@@ -24617,3 +24617,35 @@ methods pass (memory-recovery-close-related.log, terminal 5672b1, status 0,
 native checks earn no original-method credit. Distributed inventory remains
 37 complete and four Missing. No full suite, long model or race workload ran.
 All handles are terminal.
+
+### October 9, 2026: preserve MemFPSet1 file-read mutation boundaries
+
+Source FileUtil.newDFIS constructs an unbuffered DataInputStream over the file.
+MemFPSet1 instead used the ordinary eager ValueInputStream constructor. This
+could fail before installing cleanup, or consume later fields before the source
+backing-set assignments. Recovery now uses the existing unbuffered primitive
+adapter, retaining EOF conversion and native file I/O causes. No Java runtime,
+filesystem provider, production fault hook or changed recovery algorithm added.
+
+Seven Linux strace child cases cover normal input and EIO on each header/key
+read. They require exact target reads of 4/4/4/1/8/8 bytes, the source partial
+field/table/count state, one close, manager warning and healthy continuation,
+unchanged endpoint identity and availability. The first fixture mistakenly
+recovered a healthy memory store into its existing membership, triggering the
+source duplicate assertion (memory1-read-red.log, terminal 4b693e, status 1).
+Corrected that destination to be empty; the confirmed red then shows the old
+8192-byte prefetch and loss of the syscall cause (memory1-read-red-confirmed.log,
+terminal d781ae, status 1, 0.048 seconds).
+
+Read and existing close matrices pass (memory1-read-green.log, terminal 877062,
+status 0, 0.731 seconds). The sixteen close cases now require errors.Is(EIO)
+for MemFPSet1 too: the earlier buffered IOException conversion was an incorrect
+source boundary, not a requirement. Related local/TCP memory recovery and
+startup plus unchanged original buffered-input, dynamic-manager and MultiFPSet
+methods pass (memory1-read-related.log, terminal fd50c1, status 0, 2.193 seconds).
+The selection also repeats the seven short read cases. All six unchanged
+original value-stream methods pass (memory1-read-value-stream.log, terminal
+2658d3, status 0, 0.017 seconds). No dedicated upstream MemFPSet1/SetOfLong
+tests exist; no original-method credit added. Inventory stays
+37 complete and four Missing. No full suite, long model or race workload ran.
+All handles are terminal.
