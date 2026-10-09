@@ -505,23 +505,15 @@ func (s *TLCServer) PrintSummary(level int, statesGenerated int64, statesLeftInQ
 }
 
 func (s *TLCServer) ReportSuccess() {
-	if s == nil {
-		ReportSuccessCountsDistance(0, 0, 0)
-		return
-	}
 	distinct := s.fpSetSize()
-	actualDistance := uint64(0)
-	statesSeen := uint64(0)
-	if s.FPSetManager != nil {
-		actualDistance = s.FPSetManager.CheckFPs()
-		statesSeen = s.FPSetManager.GetStatesSeen()
-	}
+	actualDistance := s.FPSetManager.CheckFPs()
+	statesSeen := s.FPSetManager.GetStatesSeen()
 	ReportSuccessCountsDistance(distinct, actualDistance, int64(statesSeen))
 }
 
 func (s *TLCServer) fpSetSize() uint64 {
 	if s == nil || s.FPSetManager == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
 	return s.FPSetManager.Size()
 }

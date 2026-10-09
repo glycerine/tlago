@@ -22700,3 +22700,32 @@ ad5dc6, status 0, 0.036 seconds). Race instrumentation was restricted to the new
 two-case concurrency test (worker-stalled-lookup-race.log, terminal 137559,
 status 0, 1.050 seconds). Logs inspected and all processes terminal. No full
 suite or long workload/race combination; existing original assertions unchanged.
+
+### October 8, 2026: required fingerprint owner in final reporting
+
+Worker registration audit confirms the source synchronization/order, including
+queue wakeup before worker contact and retaining the started thread when the
+second URI lookup fails. Existing registration checks already cover these paths.
+The adjacent final-statistics audit found an actual shortcut: fpSetSize returned
+zero for missing coordinator/manager ownership, while Java dereferences its
+manager. During ModelCheck finalization Go could publish zero into both final
+count fields before GetStatesGenerated failed at the same absent manager.
+
+The shared size lookup now fails at the required-owner access. ReportSuccess's
+convenience path no longer fabricates zero size/distance/states-seen data or a
+success message for missing ownership. Actual healthy manager lookups and their
+ordering remain unchanged. New native direct checks reject absent coordinator/
+manager before success output. A process-isolated real ModelCheck fixture removes
+the manager at the existing publication boundary after initialization, finishes
+the coordinator and requires failure at final size lookup. It retains executor
+shutdown but leaves both final-count fields and rates unchanged, with no later
+success/summary/cleanup and metadata retained. The fixture's report interval is
+configured to one millisecond in a fresh process; no production schedule changes.
+
+New checks, original dynamic-manager methods and the existing final trace-depth
+failure case pass (final-fingerprint-owner.log, terminal 3bb762, status 0, 0.048
+seconds). Existing original DistributedDoInitFunctorEvalException and TLCSet
+model translations pass (final-fingerprint-owner-original-models.log, terminal
+8f0731, status 0, 1.739 seconds). Logs inspected, all processes terminal. No full
+suite or race run, no original assertion/bound changed and no new original-method
+credit for this native missing-owner boundary.

@@ -12178,6 +12178,14 @@ after release, unchanged predecessor UIDs, one lookup, no fingerprint insertion
 and computation-flag cleanup. This is a bounded service stall, not proof of
 arbitrary network blackholes or full-model partition behavior.
 
+Coordinator fingerprint size lookup requires the existing manager, including
+recovery/initialization messages and final-count collection. It cannot substitute
+zero for a missing owner. The convenience ReportSuccess method has the same
+required-owner boundary and obtains actual size, distance and states-seen data.
+During ModelCheck finalization, executor shutdown precedes size lookup; missing
+ownership fails there before updating either final-count field, collecting later
+statistics, resetting rates, printing success/summary or deleting metadata.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

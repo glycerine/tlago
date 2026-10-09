@@ -111,6 +111,8 @@ by Action's Serializable declaration alone.
 
 Coordinator publication inserts fingerprints before writing traces and queueing
 selected states. It uses the incoming successor UID as the predecessor location.
+Final fingerprint statistics require the existing manager. Missing ownership
+fails before publishing a fabricated zero count or success diagnostic.
 Missing selected partitions/states/visited vectors fail at source access points;
 unused partitions retain lazy access. Worker checks precede constraints. TLCApp
 retains captured action/property arrays, source vector concatenation, separate
