@@ -24210,3 +24210,21 @@ previous local close-fault verification gap, not a remote transport fault or
 full-model recovery guarantee. The check skips without strace. No enabled
 original method directly covers this boundary; test credit is unchanged.
 No full suite, full model or race workload ran. All check handles are terminal.
+
+### 2026-10-09: Native fingerprint-memory deprecation guidance
+
+Audited coordinator fingerprint check aggregation against FPSetManager and its
+callables; existing concurrent completions, I/O fallback, signed minimum and
+early-false behavior match the source and needed no change. The CLI audit found
+ordinary and distributed -fpmem warnings still directing Go users to configure
+memory through JVM mechanisms. Replaced both copies with a shared native warning
+that points to Go's memory budget and GOMEMLIMIT, also correcting the absolute
+spelling. This intentional platform adaptation preserves source parsing, byte
+conversion, ratio, allocation bounds and deprecation behavior.
+
+Updated the existing native ToolIO console assertion to the exact Go wording.
+The unchanged original TLCTest memory/CLI methods and native distributed option
+console checks pass (terminal 070a12, status 0, 0.016 seconds). No original Java
+test asserts this warning text; no original-method credit changes and no new
+test was added for this wording-only correction. No full suite, full model or
+race workload ran. All check handles are terminal.

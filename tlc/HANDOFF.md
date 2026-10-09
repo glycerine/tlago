@@ -468,6 +468,8 @@ verification receipts, source or vectors during disk cleanup.
 Persistent fixtures belong in `tlc/test_vectors/`, never a directory named
 `testdata`. CLI TLC arguments are Java's flags by default; direct arguments and
 `modelcheck`/`mc` use the same runner. Do not restore `--tlc` or the bounded CLI.
+Both checker and server `-fpmem` deprecation warnings give Go memory-budget
+guidance (`GOMEMLIMIT`), preserving the source option's acceptance and allocation.
 
 Commit each green chunk, aiming for every 10–15 minutes. Do not back up, rebase,
 stash, amend or push; the user pushes separately. Commits are already authorized.

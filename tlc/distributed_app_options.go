@@ -180,7 +180,7 @@ func setTLCAppFPMemory(config *FPSetConfiguration, value float64) (valid bool) {
 		}
 	}()
 	if value > 1 {
-		ToolIOPrintln("Using -fpmem with an abolute memory value has been deprecated. Please allocate memory for the TLC process via the JVM mechanisms and use -fpmem to set the fraction to be used for fingerprint storage.")
+		ToolIOPrintln(fpMemoryDeprecationWarning)
 		config.SetMemory(javaDoubleToLong(value))
 		config.SetRatio(1)
 	} else {

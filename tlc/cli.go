@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+// Keep the source option's deprecation, with guidance for the native runtime.
+const fpMemoryDeprecationWarning = "Using -fpmem with an absolute byte value is deprecated. Configure the Go runtime memory budget (for example, GOMEMLIMIT) and use -fpmem to select the fraction for fingerprint storage."
+
 type RuntimeParameters struct {
 	Invariants             []RuntimeInvariantTemplate
 	Constraints            []RuntimeConstraint
@@ -419,7 +422,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 				return opts, tlcCommandLineError("Error: An positive integer or a fraction for fpset memory size/percentage required. But encountered " + args[index+1])
 			}
 			if fpMemSize > 1 {
-				ToolIOPrintln("Using -fpmem with an abolute memory value has been deprecated. Please allocate memory for the TLC process via the JVM mechanisms and use -fpmem to set the fraction to be used for fingerprint storage.")
+				ToolIOPrintln(fpMemoryDeprecationWarning)
 				opts.FPSetConfiguration.SetMemory(javaDoubleToLong(fpMemSize))
 				opts.FPSetConfiguration.SetRatio(1)
 			} else {

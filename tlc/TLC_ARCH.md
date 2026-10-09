@@ -11093,6 +11093,12 @@ when reassignment reports no available server. Tool mode records those two
 messages, and system mode honors its assigned output stream. Reassignment,
 retry and final scalar/block/statistics answers retain the original behavior.
 
+The ordinary and distributed `-fpmem` parsers share one native deprecation
+warning: configure the Go runtime memory budget (for example, GOMEMLIMIT), then
+select the fingerprint fraction. The original JVM-mechanism instruction is
+inapplicable to this port. This is an intentional platform wording adaptation;
+absolute-byte acceptance, conversion, ratio and allocation bounds are unchanged.
+
 Worker completion/readiness and TLCApp option diagnostics also use ToolIO's
 println boundary, honoring native CLI stream assignments and tool-mode capture.
 The completion message precedes executor shutdown, keepalive cancellation,

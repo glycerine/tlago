@@ -67,7 +67,7 @@ func TestDistributedOptionConsoleUsesToolIO(t *testing.T) {
 			valid bool
 		}{
 			{"coverage", []string{"-coverage", "3", "Spec"}, []string{"Warning: coverage reporting not supported in distributed TLC, ignoring -coverage 3 parameter."}, true},
-			{"absolute_fp_memory", []string{"-fpmem", "2", "Spec"}, []string{"Using -fpmem with an abolute memory value has been deprecated. Please allocate memory for the TLC process via the JVM mechanisms and use -fpmem to set the fraction to be used for fingerprint storage."}, true},
+			{"absolute_fp_memory", []string{"-fpmem", "2", "Spec"}, []string{"Using -fpmem with an absolute byte value is deprecated. Configure the Go runtime memory budget (for example, GOMEMLIMIT) and use -fpmem to select the fraction for fingerprint storage."}, true},
 			{"missing_config", []string{"-config"}, []string{"Error: configuration file required.", "Usage: tlago server [-option] inputfile"}, false},
 		} {
 			t.Run(fmt.Sprintf("%s/mode=%d", test.name, mode), func(t *testing.T) {
