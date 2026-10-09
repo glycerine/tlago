@@ -10,7 +10,8 @@ import (
 
 type nativeFingerprintHeldPutReply struct {
 	tlc.DistributedFingerprintEndpoint
-	once sync.Once
+	once  sync.Once
+	flush func() error
 }
 
 type nativeFingerprintHeldLookupReply struct {
@@ -36,6 +37,11 @@ func (e *nativeFingerprintHeldPutReply) PutBlock(fps *tlc.LongVec) (*tlc.BitVect
 	result, err := e.DistributedFingerprintEndpoint.PutBlock(fps)
 	if err != nil || result == nil || result.TrueCount() == 0 {
 		return result, err
+	}
+	if e.flush != nil {
+		if err := e.flush(); err != nil {
+			return nil, err
+		}
 	}
 	// Verify actual storage mutation before withholding the completed answer.
 	missing, err := e.DistributedFingerprintEndpoint.ContainsBlock(fps)
@@ -68,7 +74,33 @@ func nativeDistributedFingerprintLostReply(args []string, lookup bool) error {
 		if !ok {
 			return fmt.Errorf("fingerprint reply-loss fixture requires a native TCP coordinator")
 		}
-		var held tlc.DistributedFingerprintEndpoint = &nativeFingerprintHeldPutReply{DistributedFingerprintEndpoint: endpoint}
+		put := &nativeFingerprintHeldPutReply{DistributedFingerprintEndpoint: endpoint}
+		if local, ok := endpoint.(*tlc.LocalFingerprintEndpoint); ok {
+			if multi, ok := local.Set.(*tlc.MultiFPSet); ok {
+				if _, disk := multi.Sets[0].(interface{ GetDiskWriteCnt() uint64 }); disk {
+					put.flush = func() error {
+						if !multi.CheckInvariant() {
+							return fmt.Errorf("disk fingerprint invariant failed before withholding insertion reply")
+						}
+						var count int64
+						for _, child := range multi.Sets {
+							stats, ok := child.(interface {
+								GetDiskWriteCnt() uint64
+								GetFileCnt() int64
+								GetTblCnt() int64
+							})
+							if !ok || stats.GetDiskWriteCnt() == 0 || stats.GetFileCnt() == 0 || stats.GetTblCnt() != 0 {
+								return fmt.Errorf("fingerprint child did not flush actual disk membership")
+							}
+							count += stats.GetFileCnt()
+						}
+						fmt.Printf("NATIVE_FP_DISK_FLUSHED_CHILDREN=%d COUNT=%d\n", len(multi.Sets), count)
+						return nil
+					}
+				}
+			}
+		}
+		var held tlc.DistributedFingerprintEndpoint = put
 		if lookup {
 			held = &nativeFingerprintHeldLookupReply{DistributedFingerprintEndpoint: endpoint}
 		}

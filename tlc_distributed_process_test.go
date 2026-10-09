@@ -37,6 +37,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		fingerprintLookupReplyLoss                 bool
 		fingerprintLoss                            bool
 		fingerprintServers                         int
+		fingerprintBackend                         string
 		workerThreads                              int
 		failedWorkerThreads                        int
 		midRunCheckpoint                           bool
@@ -52,6 +53,8 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "fingerprint_transport_stall", remoteFP: true, fingerprintServers: 2, fingerprintStall: true},
 		{name: "fingerprint_server_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true},
 		{name: "fingerprint_put_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true},
+		{name: "fingerprint_put_reply_loss_lsb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintBackend: "LSBDiskFPSet"},
+		{name: "fingerprint_put_reply_loss_msb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintBackend: "MSBDiskFPSet"},
 		{name: "fingerprint_lookup_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintLookupReplyLoss: true},
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
@@ -104,6 +107,10 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					// These roles represent separate hosts. Give each private
 					// temporary storage even when they start in the same millisecond.
 					command.Env = append(command.Env, "TMPDIR="+t.TempDir())
+					if scenario.fingerprintBackend != "" {
+						// Native host budget only; the original N=7 workload is unchanged.
+						command.Env = append(command.Env, "GOMEMLIMIT=64MiB")
+					}
 				}
 				roleCounts[role]++
 				label := role
@@ -368,7 +375,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					if scenario.fingerprintLookupReplyLoss && index == 0 {
 						fingerprintRole = "fpserver-lookup-reply-loss"
 					}
-					fingerprint := start(fingerprintRole, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+					backend := scenario.fingerprintBackend
+					if backend == "" {
+						backend = "MemFPSet"
+					}
+					fingerprint := start(fingerprintRole, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp."+backend, "127.0.0.1")
 					if (scenario.fingerprintLoss || scenario.fingerprintStall) && index == 0 {
 						failedFingerprint = fingerprint
 						// Register partition zero first: source reassign uses a
@@ -495,6 +506,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					completed := regexp.MustCompile(`NATIVE_FP_PUT_COMPLETED_NEW=(\d+)`).FindStringSubmatch(failedFingerprint.output.String())
 					if len(completed) != 2 || completed[1] == "0" {
 						t.Fatal("fingerprint host did not complete an actual insertion before reply loss")
+					}
+					if scenario.fingerprintBackend != "" && !regexp.MustCompile(`NATIVE_FP_DISK_FLUSHED_CHILDREN=2 COUNT=[1-9][0-9]*`).MatchString(failedFingerprint.output.String()) {
+						t.Fatal("disk insertion reply was held before both actual child files were flushed")
 					}
 					t.Logf("killed first fingerprint host after inserting %s new fingerprints, before returning the reply", completed[1])
 				} else if scenario.fingerprintLookupReplyLoss {
@@ -684,6 +698,11 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				}
 				for _, process := range roles {
 					roleOutput := process.output.String()
+					if scenario.fingerprintBackend != "" && strings.HasPrefix(process.output.role, "fpserver") {
+						if strings.Count(roleOutput, "...with nested instance type: tlc2.tool.fp."+scenario.fingerprintBackend) != 2 {
+							t.Fatal("fingerprint host did not use the configured two-child disk factory")
+						}
+					}
 					expectedEOF := 0
 					if scenario.fingerprintStall && strings.Contains(roleOutput, "Warning: Failed to connect from ") {
 						t.Fatalf("role %s failed over despite an intact stalled connection", process.output.role)

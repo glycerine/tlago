@@ -318,6 +318,10 @@ fingerprints but before its reply returns. Stored membership is verified before
 the kill. Source callable failover retries against the survivor and completes
 with the same 229,884 slot-based count and empty queue. Only this row requires
 one coordinator EOF diagnostic for the deliberately lost insertion reply.
+The insertion-reply-loss case also covers two-child LSB/MSB hosts. Before killing
+the first host, it flushes both child files and verifies stored membership; both
+hosts must report the configured disk implementation. Native host memory budgets
+do not change the original N=7 model bounds or source failover assertions.
 
 A separate full-model row kills the host after a nonempty `containsBlock` lookup
 completes but before its answer returns. The worker receives the single expected

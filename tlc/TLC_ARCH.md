@@ -12288,6 +12288,15 @@ Other roles retain no-EOF assertions; GENERAL and no-server warnings are rejecte
 This does not establish behavior for arbitrary network blackholes or ambiguous
 insertions on hosts that remain usable, and it introduces no retry redesign.
 
+The insertion-loss process scenario also covers production two-child LSB/MSB
+hosts. Before withholding the reply, the test endpoint invokes the real store
+invariant check to flush both child files, requires positive file/write counts
+and empty in-memory tables, then checks every submitted fingerprint is present.
+The parent requires that flush marker before killing the host and verifies both
+hosts' actual child implementation reports. Private native host budgets use
+GOMEMLIMIT=64MiB; the source N=7 workload, routing, failover and final assertions
+remain unchanged. This does not establish recovery from the dead host's files.
+
 ### Multiple workers sharing one native application
 
 Source TLCWorker.main constructs its DistApp and fingerprint manager once, then

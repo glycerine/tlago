@@ -24228,3 +24228,31 @@ console checks pass (terminal 070a12, status 0, 0.016 seconds). No original Java
 test asserts this warning text; no original-method credit changes and no new
 test was added for this wording-only correction. No full suite, full model or
 race workload ran. All check handles are terminal.
+
+### 2026-10-09: Full-model disk insertion reply loss
+
+Worker-loss source comparison confirms existing block requeue, one-time cleanup,
+failure catches and finalization ordering. Extended the existing full N=7 MC06
+insertion-reply-loss process scenario to production two-child LSB/MSB hosts.
+Only those native FP host processes use GOMEMLIMIT=64MiB; original model/config
+bytes and exploration bounds remain unchanged. No production code was changed.
+
+The test endpoint delegates real insertion, then runs the store invariant check
+to flush both children. Positive file/write counts and empty memory tables prove
+disk mutation before a full submitted-fingerprint membership check. Each row
+stores 2,048 new fingerprints and flushes 10,240 total before withholding the
+reply and killing the host. Both coordinator and worker independently reassign
+to the survivor. Existing slot-based final count 229,884, empty queue, FINISHED,
+exact failover/EOF diagnostics, registration identity and no-GENERAL checks stay
+intact. Both hosts must report exactly two children of the requested backend.
+
+Initial model rows pass (disk-insertion-reply-loss.log, terminal c6e423, status 0,
+98.142 seconds). Review found the added factory assertion under the unrelated
+multiple-worker condition; moved it into the partitioned-host assertion block.
+Final rows pass with that assertion active (disk-insertion-reply-loss-verified.log,
+terminal b0392d, status 0, 100.266 seconds; LSB 50.37 and MSB 49.88 seconds).
+All surviving children terminate normally and all child handles are joined.
+This verifies disk-host death after actual insertion/flush and before its reply,
+not recovery of the dead host's files or arbitrary partitions. No enabled
+original method directly covers this fault; the four disabled model methods
+remain missing. No full suite or race workload ran. All check handles are terminal.

@@ -1677,6 +1677,11 @@ existing source slot-based final count is 229,884 with an empty queue and FINISH
 The deliberately interrupted coordinator call requires one EOF diagnostic;
 other roles retain their no-EOF check, and all roles reject GENERAL. This adds
 native failure-phase coverage without original-method completion credit.
+The same insertion-reply-loss model now also runs with factory-created two-child
+LSB/MSB fingerprint hosts. Both child files flush before the failed host withholds
+its reply; real membership is checked after flushing. Both hosts must retain the
+requested backend and all existing failover, final-count and diagnostic assertions.
+The original N=7 bounds remain unchanged; this adds no original-method credit.
 
 The full-model fingerprint lookup-reply-loss row holds a real nonempty
 `containsBlock` answer, then kills its host. The worker must report exactly one
