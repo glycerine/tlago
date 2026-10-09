@@ -12860,3 +12860,18 @@ Successful reads propagate the input stream close result. Native cleanup closes
 the stream once on failure without replacing the original read error. Twelve
 native cases cover three read branches and missing worker/UID/level fields plus
 success. Relevant original queue/pool methods retain their assertions and bounds.
+
+### Disk queue synchronous pool error classification
+
+DiskStateQueue's enqueue spill and dequeue fill catch ordinary pool failures and
+raise SYSTEM_ERROR_WRITING_STATES or SYSTEM_ERROR_READING_STATES runtime
+assertions with parameters queue and the failure detail. A null detail falls
+back to the throwable text. The source assertion attaches no cause. Fatal
+categories escape this catch, retaining failure identity.
+
+Native spill/fill boundaries now apply that contract to returned errors and
+ordinary panics. Background pool failures keep their separate diagnostic and
+process-exit behavior. Synchronous write/dequeue/peek checks force actual
+missing-file errors and verify codes, parameters, runtime classification and
+unchanged states, counts, buffer indices and pool indices. No queue operation
+is retried or completed after the failure.

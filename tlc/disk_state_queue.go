@@ -420,7 +420,8 @@ func (q *DiskStateQueue) peekInner() *TLCStateMut {
 	return q.deqBuf[q.deqIndex]
 }
 
-func (q *DiskStateQueue) fillDequeueBuffer() error {
+func (q *DiskStateQueue) fillDequeueBuffer() (err error) {
+	defer catchDiskQueuePoolFailure(ECSystemErrorReadingStates, &err)
 	if q.loPool+1 <= q.hiPool {
 		if q.loPool+1 >= q.hiPool && q.writer != nil {
 			if err := q.writer.EnsureWritten(); err != nil {
@@ -470,7 +471,8 @@ func (q *DiskStateQueue) fillDequeueBuffer() error {
 	return nil
 }
 
-func (q *DiskStateQueue) spillEnqueueBuffer() error {
+func (q *DiskStateQueue) spillEnqueueBuffer() (err error) {
+	defer catchDiskQueuePoolFailure(ECSystemErrorWritingStates, &err)
 	buf, err := q.writer.DoWork(q.enqBuf, q.poolName(q.hiPool))
 	if err != nil {
 		return err
@@ -482,6 +484,29 @@ func (q *DiskStateQueue) spillEnqueueBuffer() error {
 	q.hiPool++
 	q.enqIndex = 0
 	return nil
+}
+
+// Source queue pool operations catch ordinary exceptions and raise a coded
+// runtime assertion with the detail message (or throwable text for nil detail).
+// Fatal categories escape; the source assertion does not attach a cause.
+func catchDiskQueuePoolFailure(code int, result *error) {
+	if failure := recover(); failure != nil {
+		*result = panicValueAsError(failure)
+		if isJavaError(*result) {
+			panic(failure)
+		}
+	}
+	if *result == nil {
+		return
+	}
+	if isJavaError(*result) {
+		panic(*result)
+	}
+	message := javaThrowableString(*result)
+	if detail := javaThrowableDetailMessage(*result); detail != nil {
+		message = *detail
+	}
+	*result = NewTLCRuntimeException(code, "queue", message)
 }
 
 func (q *DiskStateQueue) isAvailLocked() bool {

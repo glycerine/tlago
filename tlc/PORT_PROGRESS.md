@@ -23898,3 +23898,21 @@ queue methods pass (terminal eb8b99, status 0, 0.017 seconds). No direct origina
 method covers partial pool destination publication, so native checks add no
 original-method credit. No full suite, long model or race workload ran.
 All check handles are terminal.
+
+### Disk queue synchronous pool failure assertions
+
+Audited source enqueueInner/fillDeqBuffer catch(Exception) boundaries. Go
+propagated raw synchronous pool errors, whereas Java raises coded reading/
+writing-states runtime assertions with queue/detail parameters and no cause.
+Added native catch handling around spill/fill, retaining fatal-category escape,
+detail fallback and prior mutations. Background process-exit behavior remains
+separate. Real missing-file write/dequeue/peek cases reproduce all three raw
+error mismatches (terminal 3b866e, status 1, 0.012 seconds).
+
+Fixed cases, partial pool publication, synchronous/background pool failures,
+original DiskPoolWriter methods, constructor ownership and queue partial recovery
+pass (terminal 63a218, status 0, 0.104 seconds). All nine short inherited original
+disk queue methods pass (terminal a586e6, status 0, 0.018 seconds). No enabled
+original method directly tests this catch boundary; native checks add no
+original-method credit. No full suite, long model or race workload ran.
+All check handles are terminal.

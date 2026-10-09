@@ -1483,6 +1483,10 @@ Native pool-reader checks cover pending/direct/cache reads across missing worker
 UID and level fields plus successful input. Source partial destination publication,
 unvisited slots and pending-work retention are verified. Relevant original pool
 writer and nine short inherited queue methods pass; no new method credit added.
+Native disk queue write/dequeue/peek failure cases verify source coded runtime
+assertions, detail parameters, no attached cause and unchanged queue mutations.
+Related pool/recovery checks and short original queue methods pass. No direct
+original method covers this catch boundary; no new completion credit is added.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

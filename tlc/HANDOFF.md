@@ -137,6 +137,9 @@ leave queue waiters alive. Synchronous pool calls still return errors to callers
 Pool reads publish each empty state before decoding its fields, retaining partial
 mutation in a failed slot and leaving later slots untouched. Successful reads
 propagate close errors; native failure cleanup closes the stream only once.
+Disk queue synchronous pool failures become the source coded reading/writing
+states runtime assertions. Detail text and prior mutations remain; fatal
+categories escape the ordinary catch and no extra cause is attached.
 Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
 storage. The manager warns once, continues to the next registration and leaves
 routing intact; the broken connection does not replay the completed recovery.
