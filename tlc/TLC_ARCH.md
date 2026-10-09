@@ -14782,3 +14782,27 @@ advertisements, bound-port and IPv6 discovery controls pass; root CLI help and
 invalid-startup checks also pass. This fixes a native boundary defect without
 changing original TLC ordering or adding Java transport machinery. No original
 Java method covers Go bind formatting; original inventory remains 37/41.
+
+
+### Remote off-heap named checkpoints preserve the source limitation
+
+Java NonCheckpointableDiskFPSet overrides named begin, commit and recover with
+warning-only no-ops; OffHeapDiskFPSet inherits them. This differs from unnamed
+coordinator-local checkpoint/trace recovery. Native distributed recovery must
+not report remote off-heap membership restored merely because its named RPC
+returns successfully.
+
+An actual TCP manager check uses an initialized two-child off-heap registration
+and a later Mem registration. Named checkpoint leaves the off-heap live entries
+unchanged and creates no snapshot files, while the later memory host commits
+its actual eight-byte snapshot. After draining/closing the first generation,
+fresh initialized stores recover: off-heap remains empty, memory restores its
+entry and both registrations remain alive. Each off-heap child receives begin,
+commit and recover, yielding six exact source warning records. No failover,
+transport replay or invented off-heap persistence is introduced.
+
+The native fixture uses 256 KiB off-heap capacity, actual files, separate native
+hosts and fresh storage owners. It is not full-model restart coverage and earns
+no original Java method credit. No production correction was needed. Management
+source comparison also confirms synchronized stop/suspend/resume and checkpoint
+forcing; these remain plain Go wrapper operations rather than a Java JMX runtime.

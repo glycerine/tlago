@@ -27136,3 +27136,29 @@ status 0, 0.017 seconds. No Java direct test for this Go boundary; original
 inventory unchanged at 37/41. No full-suite, race or long model rerun.
 Final help-text verification: distributed-ipv6-bind-cli-final.log, terminal
 f2ce6c, status 0, 0.018 seconds. All handles terminal and git diff --check passes.
+
+
+### October 9, 2026: remote off-heap named-checkpoint limitation
+
+Compared distributed management queries and checkpoint/stop/suspend/resume
+with TLCServerMXWrapper/TLCStatisticsMXBean. Existing Go wrappers preserve the
+source behavior; no JMX runtime or new remote management protocol was added.
+Recovery source review confirmed NonCheckpointableDiskFPSet's named operations
+are warning-only no-ops, inherited by off-heap storage. This is distinct from
+coordinator-local trace replay and must remain explicit in recovery claims.
+
+Added native TCP manager coverage with two actual off-heap children followed
+by a memory-store registration. Checkpoint retains live off-heap membership,
+creates no off-heap snapshots, and commits the later memory snapshot. After
+draining/closing the first generation, fresh owners recover zero off-heap
+entries and the actual memory entry. All six child warnings (begin/commit/
+recover) retain exact source severity/message and both registrations stay alive.
+Native fixture has no direct original Java method; no original-method credit.
+
+Existing primitive warning control: distributed-offheap-named-checkpoint-primitive.log,
+terminal ced117, status 0, 0.013 seconds. Native TCP case, management ordering/
+reporting wake and supported nested memory/LSB/MSB recovery controls:
+distributed-offheap-named-checkpoint.log, terminal 2f7c83, status 0,
+0.032 seconds. All hosts and storage owners drained/closed; no production
+change, full model, full-suite or race run. Original inventory remains 37/41.
+Updated HANDOFF/architecture; git diff --check passes.
