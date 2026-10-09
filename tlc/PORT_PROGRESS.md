@@ -23956,3 +23956,25 @@ original manager nested-partition method pass (terminal 58a51f, status 0,
 1.510 seconds). No enabled original test directly covers this corrupt-input
 startup matrix; native checks add no original completion credit. No full suite,
 long model or race workload ran. All check handles are terminal.
+
+### 2026-10-09: Named disk snapshot recovery before publication
+
+Added 40 native startup cases across LSB/MSB, direct/nested and local/TCP stores
+with missing, empty, duplicate, descending and trailing-partial snapshots.
+Source comparison shows the existing production port already retains the
+distinct manager I/O catch, nested operation failure/joining and disk EOF/index
+assertion behavior. The checks use real files and actual source factory children,
+not fake fingerprint endpoints. They verify trace/queue recovery before failure,
+unread-record-inclusive disk counts, write/index mutation, reader replacement
+boundaries, healthy sibling joining, the next registration and publication,
+independent expected recovery statistics and lifecycle diagnostics.
+
+Initial 40-case check passes (terminal c7d2a4, status 0, 0.142 seconds). Related
+short recovery checks pass (terminal fe1bc9, status 0, 1.303 seconds). After
+strengthening independent count and partial-index assertions, the final same
+selection passes (terminal 0add6a, status 0, 0.478 seconds). Both original LSB/MSB
+`testFPSetRecovery` methods pass with their unchanged 99,999 bound (terminal
+1ee66b, status 0, 9.139 seconds); production was unchanged throughout. No enabled
+original method directly covers this named corrupt-snapshot startup matrix,
+so no original-method completion credit is added. No full suite, full model or
+race workload ran. All check handles are terminal.

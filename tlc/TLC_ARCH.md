@@ -12911,3 +12911,23 @@ partially recovered and healthy storage. A native hostname boundary deliberately
 ends the test after observing that publication is reached, without starting an
 unrelated model run. Eight local/TCP cases verify these contracts with real
 trace/queue checkpoint files and exact failure/warning/count assertions.
+
+### Named disk snapshot startup failure matrix
+
+`DiskFPSet.recover(String)` sets its file count from snapshot length before
+reading, writes each fingerprint and updates its page index before checking
+strict order, and reopens readers only after successful reconstruction. Empty
+snapshots fail the final index assertion. Duplicate/descending input retains the
+header count, earlier writes and partial index even when later records remain
+unread. A trailing partial long after complete records takes the source EOF
+catch and can finish successfully; do not impose a new alignment rejection.
+
+Direct missing-file I/O is caught by the distributed manager and reported once,
+then the next registration recovers. MultiFPSet wraps child I/O as an operation
+failure and joins both children before returning; this stops manager traversal
+and coordinator publication while preserving the sibling's completed recovery.
+Forty native LSB/MSB, direct/nested, local/TCP startup cases verify real files,
+trace/queue mutations, disk statistics/index/reader ownership, sibling joining,
+independent expected recovery counts and exact lifecycle boundaries. No
+production change was needed. These checks do not prove checkpoint atomicity,
+full-model restart or completion of disabled original model methods.

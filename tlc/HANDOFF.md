@@ -403,6 +403,14 @@ Intern-table recovery holds its native interning mutex before opening and readin
 the checkpoint, through token publication and replay. Linux FIFO checks verify
 the blocked-header boundary and lock release on complete/truncated input.
 
+Named disk snapshot startup now has 40 short LSB/MSB, direct/nested, local/TCP
+cases. Direct missing-file I/O warns and continues; nested I/O stops startup
+after both children join. Empty, duplicate and descending snapshots retain
+partial disk count/index/write mutations and stop before the next registration
+or publication. Trailing partial records after two complete fingerprints follow
+the source EOF catch and complete recovery. These checks add native coverage,
+not original-method credit or full-model restart guarantees.
+
 ## Testing, commits and documentation
 
 Implement the feature faithfully, then port its original Java tests. Preserve
