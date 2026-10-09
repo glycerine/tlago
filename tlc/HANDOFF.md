@@ -46,6 +46,16 @@ JVM-only GC/JPF assertions are not native Go implementation requirements.
 
 ## Verification baseline and test credit
 
+Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
+`-tags=tlc_fp_stress -timeout=0`, is running in native exec session `77502`.
+Its log is `.codex-gotmp/offheap-random-full.log`; compiler-only receipt is
+`.codex-gotmp/offheap-random-full-compile.log`. Poll that same handle before
+starting another copy. It preserves all 2,147,483,648 iterations and original
+assertions, with the default 64 MiB direct-memory budget and no race
+instrumentation. Source translation is committed, but full execution and
+original-method credit remain pending. Temporary storage is under
+`.codex-gotmp/`. Do not remove live files or infer completion from progress lines.
+
 The user supplied a green full-suite baseline. Do not rerun that approximately
 45-minute suite. The earlier recorded full-workspace run verified `23f046e`:
 root 1,552.199 seconds, TLC 771.039 seconds, SANY 2.419 seconds, status 0.

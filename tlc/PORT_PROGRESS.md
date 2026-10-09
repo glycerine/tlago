@@ -27479,3 +27479,43 @@ test-long inventory advances from 17/22 to 18/22 mapped methods, with four still
 pending. Main inventory and distributed 37/41 counts do not change; original
 source skips remain exact. The separate intern-error formatting hang is outside
 this authorization. git diff --check passes.
+
+
+### October 9, 2026: full off-heap random-fill translation and live verification
+
+Previous goal turn made verified progress at d236095; current worktree was clean.
+Compared pinned test-long FPSetTest.testMaxFPSetSizeRnd and the concrete
+OffHeapDiskFPSetLongTest factory with the existing complete heap random helper.
+Added the off-heap inherited method using that unchanged shared assertion body.
+Its factory ignores the supplied config and creates the original ratio-1.0
+off-heap configuration, with one reader. Seed 15041980, all 2,147,483,648
+iterations, predecessor membership checks, every put/size assertion, checkpoint
+calls, final invariant and final size assertion remain intact. No production
+changes or shortened workload; the method uses the existing tlc_fp_stress tag.
+
+Tagged compile-only check passes: terminal 9f9642, status 0, package 0.012 seconds,
+offheap-random-full-compile.log. This is compilation evidence, not body-pass
+credit. Started the full normal workload with -timeout=0, no race instrumentation,
+default 64 MiB direct-memory budget (TLAGO_MAX_DIRECT_MEMORY unset), and native
+temporary storage under .codex-gotmp. Command:
+
+env -u TLAGO_MAX_DIRECT_MEMORY GOCACHE="$PWD/.codex-gocache" \
+  GOTMPDIR="$PWD/.codex-gotmp" TMPDIR="$PWD/.codex-gotmp" \
+  GOPROXY=off GOSUMDB=off go test ./tlc -tags=tlc_fp_stress \
+  -run '^TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd$' \
+  -count=1 -timeout=0 -v > .codex-gotmp/offheap-random-full.log 2>&1
+
+Live exec session 77502 started at 16:13:15 CDT. Re-polled the same handle;
+it remains running. First minute reports 13,283,675 completed iterations with
+the original per-iteration checks. Preserve that handle and poll it across goal
+turns; no terminal receipt exists yet. A progress line or growing log cannot
+establish a passing full workload. The long inventory stays 18/22 and main /
+distributed counts remain unchanged until the complete method is verified.
+
+While the workload ran, checked apparent production placeholders against source.
+AbstractChecker.stop and probabilistic CASE rejection match pinned Java. The
+bridge's multiple-domain filtered-set guard is not an identified Java syntax
+gap: SANY processSubsetOf has exactly one bound, and canonical sanySubsetOf
+translation supplies one shared domain. Do not remove the guard to introduce an
+unsupported syntax extension. No additional production/test change warranted.
+Updated restart instructions and pending-test evidence; git diff --check passes.

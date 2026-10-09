@@ -14,7 +14,7 @@ import (
 // their complete bodies available without adding them to ordinary Go runs.
 // Run normally, with -tags=tlc_fp_stress and -timeout=0, never with -race.
 
-// Complete FPSetTest.testMaxFPSetSizeRnd, inherited by the heap subclasses.
+// Complete FPSetTest.testMaxFPSetSizeRnd, inherited by the disk subclasses.
 func javaLongFPSetRandomFull(t *testing.T, implementation string, factory func(*FPSetConfiguration) FPSet) {
 	t.Helper()
 	previousTime := time.Now()
