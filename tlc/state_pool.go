@@ -1,8 +1,8 @@
 package tlc
 
 import (
-	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -14,7 +14,6 @@ type StatePoolReader struct {
 	isFull   bool
 	canRead  bool
 	finished bool
-	err      error
 	done     chan struct{}
 }
 
@@ -51,9 +50,6 @@ func (r *StatePoolReader) Restart(file string, canRead bool) {
 func (r *StatePoolReader) DoWork(deqBuf []*TLCStateMut, file string) ([]*TLCStateMut, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.err != nil {
-		return nil, r.err
-	}
 	if r.isFull {
 		out := r.buf
 		r.buf = deqBuf
@@ -81,9 +77,6 @@ func (r *StatePoolReader) DoWork(deqBuf []*TLCStateMut, file string) ([]*TLCStat
 func (r *StatePoolReader) GetCache(deqBuf []*TLCStateMut, file string) ([]*TLCStateMut, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.err != nil {
-		return nil, r.err
-	}
 	if r.isFull {
 		out := r.buf
 		r.buf = deqBuf
@@ -112,6 +105,14 @@ func (r *StatePoolReader) SetFinished() {
 
 func (r *StatePoolReader) run() {
 	defer close(r.done)
+	defer func() {
+		if failure := recover(); failure != nil {
+			r.mu.Lock()
+			name := r.poolFile
+			r.mu.Unlock()
+			statePoolFailureExit(ECSystemErrorReadingPool, name, failure)
+		}
+	}()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for {
@@ -122,9 +123,7 @@ func (r *StatePoolReader) run() {
 			r.cond.Wait()
 		}
 		if err := readStatePoolFile(r.poolFile, r.buf); err != nil {
-			r.err = err
-			r.cond.Broadcast()
-			return
+			panic(err)
 		}
 		r.poolFile = ""
 		r.isFull = true
@@ -138,7 +137,6 @@ type StatePoolWriter struct {
 	poolFile string
 	reader   *StatePoolReader
 	finished bool
-	err      error
 	done     chan struct{}
 }
 
@@ -159,9 +157,6 @@ func (w *StatePoolWriter) Start() {
 func (w *StatePoolWriter) DoWork(enqBuf []*TLCStateMut, file string) ([]*TLCStateMut, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.err != nil {
-		return nil, w.err
-	}
 	if w.poolFile != "" {
 		if err := writeStatePoolFile(w.poolFile, w.buf); err != nil {
 			return nil, err
@@ -180,7 +175,7 @@ func (w *StatePoolWriter) EnsureWritten() error {
 	for w.poolFile != "" {
 		w.cond.Wait()
 	}
-	return w.err
+	return nil
 }
 
 func (w *StatePoolWriter) SetFinished() {
@@ -192,6 +187,11 @@ func (w *StatePoolWriter) SetFinished() {
 
 func (w *StatePoolWriter) run() {
 	defer close(w.done)
+	defer func() {
+		if failure := recover(); failure != nil {
+			statePoolFailureExit(ECSystemErrorWritingPool, "", failure)
+		}
+	}()
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	for {
@@ -202,9 +202,7 @@ func (w *StatePoolWriter) run() {
 			w.cond.Wait()
 		}
 		if err := writeStatePoolFile(w.poolFile, w.buf); err != nil {
-			w.err = err
-			w.cond.Broadcast()
-			return
+			panic(err)
 		}
 		w.poolFile = ""
 		w.cond.Broadcast()
@@ -212,6 +210,22 @@ func (w *StatePoolWriter) run() {
 			w.reader.Wakeup()
 		}
 	}
+}
+
+// Source run catches ordinary failures, reports their cause, and exits the
+// process. A stored error or a stopped goroutine would leave live queue waiters.
+func statePoolFailureExit(code int, name string, failure any) {
+	err := panicValueAsError(failure)
+	if isJavaError(err) {
+		panic(failure)
+	}
+	params := []*string{javaThrowableDetailMessage(err)}
+	if code == ECSystemErrorReadingPool && name != "" {
+		basename := filepath.Base(name)
+		params = append(params, &basename)
+	}
+	PrintErrorParametersWithThrowable(code, params, err)
+	os.Exit(1)
 }
 
 func readStatePoolFile(name string, states []*TLCStateMut) error {
@@ -241,10 +255,10 @@ func writeStatePoolFile(name string, states []*TLCStateMut) error {
 		return err
 	}
 	out := NewValueOutputStreamWithGlobalCompression(file)
-	for i, state := range states {
+	for _, state := range states {
 		if state == nil {
 			_ = out.Close()
-			return fmt.Errorf("state pool write encountered nil state at slot %d", i)
+			return NewNullPointerException()
 		}
 		if err := state.Write(out); err != nil {
 			_ = out.Close()

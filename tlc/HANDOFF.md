@@ -131,6 +131,9 @@ Memory queue checkpoints open the configured literal directory directly. They
 do not create parents, choose temporary directories or clean symlink traversal.
 Disk queues now use the same source path contract through one constructor for
 public and coordinator use. Checkpoint and spill operations do not create parents.
+Background state-pool read/write failures report the source pool diagnostic and
+exit the native process with status 1. They cannot silently stop a goroutine and
+leave queue waiters alive. Synchronous pool calls still return errors to callers.
 Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
 storage. The manager warns once, continues to the next registration and leaves
 routing intact; the broken connection does not replay the completed recovery.

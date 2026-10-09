@@ -23849,3 +23849,33 @@ rollback/transfer and assigned-block checkpoint checks pass (terminal 45637a,
 status 0, 0.047 seconds). No new original-method completion credit is added.
 The separate original two-billion-state growth method, full suite, long models
 and race workloads were not rerun. All check handles are terminal.
+
+### State-pool background failure process boundary
+
+Intern checkpoint paths already retain source concatenation and require no new
+change. Continued the storage audit into StatePoolReader/Writer.run. Source
+catch(Exception) reports the pool diagnostic and exits status 1; Go cached the
+error and returned from its goroutine, potentially leaving ensureWritten waiting
+forever on unfinished work. Removed the background error-cache shortcut and
+added source-ordered native diagnostics/process exit. Ordinary unchecked failures
+share this catch; fatal categories escape it. Nil write slots use the existing
+null-pointer category. Synchronous calls still return errors and retain pending
+work on failure.
+
+Four subprocess cases reproduce silent normal return with deferred cleanup
+(terminal f85771, status 1, 0.062 seconds). Fixed cases, original DiskPoolWriter
+methods, coordinator constructor cleanup and related disk queue recovery pass
+(terminal 96b28c, status 0, 0.120 seconds). Final subprocess cases and synchronous
+error/pending-work checks plus original DiskPoolWriter methods pass (terminal
+131ed8, status 0, 0.081 seconds). Ran one relevant full ordinary distributed
+N=7 model with two fingerprint hosts: partitioned_fingerprints passes, retaining
+114,942 distinct states, empty queue and normal completion (pool-failure-model.log,
+terminal e991e6, status 0, 49.708 seconds). No full suite or race workload ran.
+No enabled original method directly tests fatal pool failure; native supplements
+add no original-method completion credit. All check handles are terminal.
+
+Final diagnostic audit takes the reader filename snapshot under its native
+mutex after unwinding the run lock; the writer diagnostic does not read an
+unused filename. Final focused subprocess/synchronous/original writer checks
+pass (terminal 5ad79c, status 0, 0.100 seconds). The full model receipt above
+precedes this diagnostic-only snapshot correction. No model algorithm changed.

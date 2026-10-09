@@ -12826,3 +12826,23 @@ workers and inspects their configured paths; it does not write root files.
 Coordinator cleanup and assigned-block checkpoint checks remain green, along
 with all nine short inherited original queue methods. The original long growth
 method retains its source bounds and is outside this focused verification.
+
+### Background state-pool fatal failure boundary
+
+StatePoolReader.run and StatePoolWriter.run catch ordinary failures, report
+SYSTEM_ERROR_READING_POOL or SYSTEM_ERROR_WRITING_POOL with the cause, and exit
+the native process with status 1. Reader diagnostics also retain the current
+pool basename. Unchecked ordinary failures follow the same catch boundary;
+fatal error categories escape it. Source MP debug-stack handling is retained.
+
+The former Go background-error cache only stopped the goroutine and could leave
+ensureWritten waiting forever on unfinished work. Removed that shortcut. Native
+process exit bypasses normal return and deferred cleanup, as required by source
+behavior. Synchronous DoWork/GetCache failures continue to return to the caller
+without changing pending file/buffer ownership. Nil write slots use the existing
+null-pointer error category rather than an invented formatted error.
+
+Subprocess checks exercise real missing-file, truncated-read and nil-write
+failures without replacing the production exit with a hook. They require exactly
+one source diagnostic, reader basename, status 1, and no return/defer markers.
+Separate synchronous checks verify returned I/O errors and retained pending work.

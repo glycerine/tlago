@@ -1474,6 +1474,11 @@ Disk queue native path checks cover missing parents, symlink traversal through
 begin/commit/recovery and empty-directory constructor paths. The nine short
 inherited original queue methods remain green; the separate two-billion-state
 growth method was not rerun. No new original-method completion credit is added.
+Native subprocess checks cover state-pool background missing-file, truncated-read
+and nil-write failures: one source diagnostic, reader basename, actual exit 1,
+and no normal return/deferred cleanup. Synchronous failure checks retain pending
+work and caller error handling. Original DiskPoolWriter methods remain green;
+no direct original method covers fatal failures, so no credit is added.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.
