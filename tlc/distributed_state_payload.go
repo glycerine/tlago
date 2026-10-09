@@ -33,6 +33,9 @@ type DistributedStatePayload struct {
 	ObjectKeyMaps   [][]DistributedObjectKeyMapEntry
 	PrimitiveArrays []DistributedPrimitiveArrayNode
 	StringArrays    [][]string
+
+	StateVectorArrays [][]int
+	LongVectorArrays  [][]int
 }
 
 // Mixed attachment entries carry the same tags as scalar model data without
@@ -185,6 +188,11 @@ type distributedPayloadEncoder struct {
 	primitiveArrayRoots []any
 	stringArrays        map[distributedByteArrayKey]int
 	stringArrayRoots    [][]string
+
+	stateVectorArrays     map[distributedByteArrayKey]int
+	stateVectorArrayRoots [][]*StateVec
+	longVectorArrays      map[distributedByteArrayKey]int
+	longVectorArrayRoots  [][]*LongVec
 }
 
 type distributedByteArrayKey struct {
@@ -605,6 +613,14 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 			return err
 		}
 		node.DataKind, node.DataArray = "stateVector", id
+	case []*StateVec:
+		id, err := e.stateVectorArray(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataArray = "stateVectorArray", id
+	case []*LongVec:
+		node.DataKind, node.DataArray = "longVectorArray", e.longVectorArray(v)
 	case *TLCStateMut:
 		id, err := e.state(v)
 		if err != nil {
@@ -910,6 +926,8 @@ type distributedPayloadDecoder struct {
 	vectors             []*ValueVec
 	longVectors         []*LongVec
 	stateVectors        []*StateVec
+	stateVectorArrays   [][]*StateVec
+	longVectorArrays    [][]*LongVec
 	nameArrays          [][]*UniqueString
 	valueMaps           []map[string]Value
 	objectArrays        [][]any
@@ -1004,6 +1022,32 @@ func decodeDistributedStates(payload *DistributedStatePayload, decoder *distribu
 			vector.Add(state)
 		}
 		decoder.stateVectors[i] = vector
+	}
+	decoder.stateVectorArrays = make([][]*StateVec, len(payload.StateVectorArrays))
+	for i, refs := range payload.StateVectorArrays {
+		array := make([]*StateVec, len(refs))
+		for j, id := range refs {
+			if id < 0 || id > len(decoder.stateVectors) {
+				return nil, fmt.Errorf("state vector array %d: invalid vector reference %d", i+1, id)
+			}
+			if id != 0 {
+				array[j] = decoder.stateVectors[id-1]
+			}
+		}
+		decoder.stateVectorArrays[i] = array
+	}
+	decoder.longVectorArrays = make([][]*LongVec, len(payload.LongVectorArrays))
+	for i, refs := range payload.LongVectorArrays {
+		array := make([]*LongVec, len(refs))
+		for j, id := range refs {
+			if id < 0 || id > len(decoder.longVectors) {
+				return nil, fmt.Errorf("long vector array %d: invalid vector reference %d", i+1, id)
+			}
+			if id != 0 {
+				array[j] = decoder.longVectors[id-1]
+			}
+		}
+		decoder.longVectorArrays[i] = array
 	}
 	decoder.stateArrays = make([][]*TLCStateMut, len(payload.StateArrays))
 	for i, refs := range payload.StateArrays {
@@ -1535,6 +1579,10 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return (*StateVec)(nil), nil
 		}
 		return d.stateVectors[node.DataArray-1], nil
+	case "stateVectorArray":
+		return d.stateVectorArray(node.DataArray)
+	case "longVectorArray":
+		return d.longVectorArray(node.DataArray)
 	case "nameArray":
 		return d.nameArrayRefs(nil, node.DataArray == 0, node.DataArray)
 	case "state":

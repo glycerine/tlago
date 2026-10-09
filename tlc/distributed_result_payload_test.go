@@ -96,17 +96,19 @@ func TestDistributedResultPayloadNulls(t *testing.T) {
 
 func TestDistributedResultPayloadValidation(t *testing.T) {
 	cases := map[string]*DistributedResultPayload{
-		"missing":                         nil,
-		"null contradiction":              {Nil: true, StateVectors: []int{0}},
-		"null states contradiction":       {StatesNil: true, StateVectors: []int{0}},
-		"null fingerprints contradiction": {FingerprintsNil: true, FingerprintVectors: []int{0}},
-		"missing graph":                   {},
-		"negative state":                  {States: &DistributedStatePayload{StateVectors: [][]int{{-1}}}},
-		"oversize state":                  {States: &DistributedStatePayload{StateVectors: [][]int{{1}}}},
-		"unused roots":                    {States: &DistributedStatePayload{Roots: []int{0}}},
-		"bad vector":                      {States: &DistributedStatePayload{}, StateVectors: []int{1}},
-		"negative vector":                 {States: &DistributedStatePayload{}, StateVectors: []int{-1}},
-		"bad fingerprint":                 {States: &DistributedStatePayload{}, FingerprintVectors: []int{1}},
+		"missing":                    nil,
+		"null contradiction":         {Nil: true, StateArray: 1},
+		"negative state array":       {States: &DistributedStatePayload{}, StateArray: -1},
+		"bad state array":            {States: &DistributedStatePayload{}, StateArray: 1},
+		"negative fingerprint array": {States: &DistributedStatePayload{}, FingerprintArray: -1},
+		"bad fingerprint array":      {States: &DistributedStatePayload{}, FingerprintArray: 1},
+		"missing graph":              {},
+		"negative state":             {States: &DistributedStatePayload{StateVectors: [][]int{{-1}}}},
+		"oversize state":             {States: &DistributedStatePayload{StateVectors: [][]int{{1}}}},
+		"unused roots":               {States: &DistributedStatePayload{Roots: []int{0}}},
+		"bad vector":                 {States: &DistributedStatePayload{StateVectorArrays: [][]int{{1}}}, StateArray: 1},
+		"negative vector":            {States: &DistributedStatePayload{StateVectorArrays: [][]int{{-1}}}, StateArray: 1},
+		"bad fingerprint":            {States: &DistributedStatePayload{LongVectorArrays: [][]int{{1}}}, FingerprintArray: 1},
 	}
 	for name, payload := range cases {
 		t.Run(name, func(t *testing.T) {

@@ -13430,3 +13430,30 @@ isolation, null/empty vectors, stored metadata, map keys and receiver mutation.
 The two malformed length cases in the native result test now use negative and
 out-of-range state IDs, reflecting the removal of length metadata. No dedicated
 original TLCStateVec method exists, so original-method credit is unchanged.
+
+### Result partition arrays share the native graph
+
+NextStateResult retains its supplied state/fingerprint arrays. Native graph
+transfer now supports `[]*StateVec` and `[]*LongVec` model-data attachments and
+preserves their aliases with result partition arrays. StateVectorArrays and
+LongVectorArrays hold vector IDs; result StateArray/FingerprintArray address
+these shared tables, with zero for null. The separate inline partition arrays
+and nil flags are removed. Null/empty result arrays retain their public behavior.
+
+The state-vector array encoder reserves identity before walking vectors/states,
+retaining cycles through model data and back to the result array. Nonempty array
+identity uses native backing address and length; retained roots keep that storage
+alive during encoding. Decoding allocates typed arrays before resolving model
+data, using already allocated vector/state identities. Repeated arrays share
+receiver storage; distinct equal arrays remain separate while sharing their
+vector elements. Slice spare capacity does not cross the wire. Empty slices use
+distinct nodes, as in the other native attachment arrays.
+
+Direct/TCP/error-context checks verify repeated/distinct arrays, vector/state
+cycles, null/empty arrays, null entries, result-root sharing and receiver mutation
+without reaching the sender. Invalid attachment/nested/root IDs and invalid vector
+element IDs fail explicitly. Native result/vector validation cases now express
+their malformed references through the array tables; original Java assertions
+remain unchanged. This is a finite Go container contract; matching native builds
+are required and no Java serializer/runtime is added. No dedicated original
+array-transfer method exists, so original-method credit remains unchanged.

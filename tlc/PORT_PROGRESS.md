@@ -24996,3 +24996,40 @@ retaining 114,942 distinct states, an empty queue, actual work/statistics from b
 workers and normal shutdown. No full suite or race workload ran. No dedicated
 original TLCStateVec test exists; no original-method credit added. Distributed
 inventory remains 37 complete and four Missing. All handles are terminal.
+
+### October 9, 2026: retain result partition-array identity
+
+NextStateResult keeps its supplied vector arrays. After the individual vectors
+were ported, native model data still rejected []*StateVec/[]*LongVec and result
+assembly allocated separate root arrays. A direct attachment check reproduces
+the rejection (vector-array-red.log, terminal cc9491, status 1, 0.011 seconds).
+
+Added state/fingerprint vector-array tables and finite native attachment tags.
+State-array identity is reserved before walking vectors/states, retaining a
+cycle through model data to the root array. Nonempty slices use backing address
+and length with retained encoding roots. Decoder arrays share the original
+vector/state identities before model data is resolved. Repeated arrays share
+storage, distinct equal arrays remain separate, null/empty arrays and null
+entries survive, and slice spare capacity is discarded. Empty slices use
+distinct nodes as in the existing attachment arrays.
+
+Result roots now use graph array IDs instead of separate inline arrays/nil flags.
+Native result and vector validation cases express the same malformed references
+through these tables, with additional negative/out-of-range root checks.
+Original Java assertions and all model bounds remain unchanged. Distributed
+roles need matching builds for this native payload change; no Java serialization
+or runtime is introduced.
+
+Three native direct/TCP/error-context checks cover aliases, distinct arrays,
+vector/state cycles, null/empty arrays, null elements, result-root sharing and
+receiver mutation without reaching the sender. Invalid attachment/nested/root
+and element references fail. Initial vector/result checks pass
+(vector-array-green.log, terminal 45a924, status 0, 0.022 seconds).
+Final graph/model-data/worker RPC checks plus existing original LongVec,
+GrowingLongVec and smart-proxy methods pass (vector-array-related.log,
+terminal 7049ac, status 0, 0.111 seconds). The unchanged N=7 two-worker model passes
+normally (vector-array-model.log, terminal ed0d56, status 0, 38.994 seconds),
+retaining 114,942 distinct states, an empty queue, real work/statistics from both
+workers and normal shutdown. No dedicated upstream array-transfer method exists;
+no original-method credit added. Inventory remains 37 complete and four Missing.
+No full suite or race workload ran. All handles are terminal.

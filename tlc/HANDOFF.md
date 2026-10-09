@@ -298,6 +298,9 @@ backing-array aliases do not. Null/empty vectors and map-key identity are retain
 Attached state vectors likewise share their table with result partitions,
 preserving vector/state cycles, null entries, active capacity and receiver
 ownership. Decoded vectors retain TLCStateVec's unbounded collection policy.
+Typed vector-array attachments also share the result's partition arrays. Native
+array IDs preserve nonempty aliases and cycles, null/empty arrays, null entries
+and receiver isolation. Result payloads now use graph array IDs directly.
 Symbolic values follow the source materialization rules. Unsupported opaque
 custom data and evaluator metadata fail explicitly; they are not silently
 removed. Audit actual source transferability before extending the codec:

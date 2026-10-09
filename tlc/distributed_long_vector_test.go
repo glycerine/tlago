@@ -104,7 +104,7 @@ func TestDistributedAttachedLongVectorInvalidReferences(t *testing.T) {
 		if _, err := DecodeDistributedStates(payload); err == nil {
 			t.Fatalf("invalid attached vector key %d accepted", id)
 		}
-		if _, err := DecodeDistributedResult(&DistributedResultPayload{States: &DistributedStatePayload{LongVectors: [][]int64{{41}}}, FingerprintVectors: []int{id}}); err == nil {
+		if _, err := DecodeDistributedResult(&DistributedResultPayload{States: &DistributedStatePayload{LongVectors: [][]int64{{41}}, LongVectorArrays: [][]int{{id}}}, FingerprintArray: 1}); err == nil {
 			t.Fatalf("invalid result vector reference %d accepted", id)
 		}
 	}

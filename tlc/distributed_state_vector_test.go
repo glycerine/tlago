@@ -103,7 +103,7 @@ func TestDistributedAttachedStateVectorInvalidReferences(t *testing.T) {
 		if _, err := DecodeDistributedStates(payload); err == nil {
 			t.Fatalf("invalid state vector map key %d accepted", id)
 		}
-		if _, err := DecodeDistributedResult(&DistributedResultPayload{States: &DistributedStatePayload{StateVectors: [][]int{{0}}}, StateVectors: []int{id}}); err == nil {
+		if _, err := DecodeDistributedResult(&DistributedResultPayload{States: &DistributedStatePayload{StateVectors: [][]int{{0}}, StateVectorArrays: [][]int{{id}}}, StateArray: 1}); err == nil {
 			t.Fatalf("invalid result state vector reference %d accepted", id)
 		}
 	}

@@ -1820,6 +1820,12 @@ Malformed references and evaluator metadata remain rejected; decoded collections
 retain TLCStateVec policy. No original TLCStateVec transport method exists and
 no original-method status or credit changes.
 
+Typed state/fingerprint vector arrays now share the native graph with result
+partition arrays. Direct/TCP/error-context checks retain nonempty array aliases,
+cycles, repeated/distinct arrays, null/empty arrays, null entries and receiver
+isolation. Invalid attachment/nested/root/element references remain errors.
+Existing original methods are unchanged; no native transport-method credit added.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier
