@@ -24959,3 +24959,40 @@ The unchanged N=7 two-worker model passes normally
 retaining 114,942 distinct states, an empty queue, both workers' actual work and
 statistics, and normal shutdown. No full suite or race workload ran. All handles
 are terminal.
+
+### October 9, 2026: transfer recursive state-vector attachments
+
+TLCStateVec's source contract transfers active entries and object references,
+retaining vector identity and cycles through state/model data. Go rejected
+*StateVec attachments and separately flattened result partitions into roots and
+length metadata. The native direct check reproduces the attachment rejection
+(attached-state-vector-red.log, terminal 0e7601, status 1, 0.011 seconds).
+
+Added a shared state-vector table to the finite native graph. Encoding reserves
+vector identity before walking states; decoding allocates state identities before
+populating vectors/model data. Result partitions address this same table, retaining
+aliases with attached data and repeated partitions. Active capacity, separate
+backing arrays, null/empty vectors, null entries and receiver isolation follow
+the source TLCStateVec contract. Decoded collections retain unbounded growth and
+backing-array indexing. Unsupported state kinds/evaluator metadata remain errors;
+result traversal retains a panic-to-error boundary. Roles need matching builds
+for the native payload change; no Java transport/runtime is implemented.
+
+Three native checks cover direct and actual TCP transfer, a state/model/vector
+cycle, vector pointer map keys, receiver mutation and WorkerException context.
+Malformed vector/state/key/result references fail, and invalid metadata cannot
+enter through attached or result vectors. The native result validation cases
+formerly using negative/oversized length metadata now use negative/out-of-range
+state IDs, matching the new graph representation. Existing counter, partition,
+capacity, null, state/value alias and sender-isolation assertions are unchanged.
+
+Initial direct/RPC/result checks pass (attached-state-vector-green.log,
+terminal 0b7b92, status 0, 0.025 seconds). Final focused graph, attachment, result,
+worker RPC and original smart-proxy checks pass
+(attached-state-vector-related.log, terminal c223fa, status 0, 0.080 seconds).
+The unchanged N=7 two-worker model passes normally
+(attached-state-vector-model.log, terminal b800eb, status 0, 39.911 seconds),
+retaining 114,942 distinct states, an empty queue, actual work/statistics from both
+workers and normal shutdown. No full suite or race workload ran. No dedicated
+original TLCStateVec test exists; no original-method credit added. Distributed
+inventory remains 37 complete and four Missing. All handles are terminal.

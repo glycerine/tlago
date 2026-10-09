@@ -17,6 +17,7 @@ type DistributedStatePayload struct {
 	RootsArray      int
 	States          []DistributedStateNode
 	StateArrays     [][]int
+	StateVectors    [][]int
 	Values          []DistributedValueNode
 	Strings         []DistributedStringNode
 	ByteArrays      [][]byte
@@ -158,6 +159,7 @@ type distributedPayloadEncoder struct {
 	states              map[*TLCStateMut]int
 	stateArrays         map[distributedByteArrayKey]int
 	stateArrayRoots     [][]*TLCStateMut
+	stateVectors        map[*StateVec]int
 	values              map[Value]int
 	strings             map[*UniqueString]int
 	bytes               map[distributedByteArrayKey]int
@@ -597,6 +599,12 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		node.DataKind, node.DataArray = "nameArray", e.nameArray(v)
 	case *LongVec:
 		node.DataKind, node.DataArray = "longVector", e.longVector(v)
+	case *StateVec:
+		id, err := e.stateVector(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataArray = "stateVector", id
 	case *TLCStateMut:
 		id, err := e.state(v)
 		if err != nil {
@@ -901,6 +909,7 @@ type distributedPayloadDecoder struct {
 	rows                [][][]Value
 	vectors             []*ValueVec
 	longVectors         []*LongVec
+	stateVectors        []*StateVec
 	nameArrays          [][]*UniqueString
 	valueMaps           []map[string]Value
 	objectArrays        [][]any
@@ -980,6 +989,21 @@ func decodeDistributedStates(payload *DistributedStatePayload, decoder *distribu
 	decoder.states = make([]*TLCStateMut, len(payload.States))
 	for i := range decoder.states {
 		decoder.states[i] = &TLCStateMut{}
+	}
+	decoder.stateVectors = make([]*StateVec, len(payload.StateVectors))
+	for i, refs := range payload.StateVectors {
+		vector := newDistributedStateVec(len(refs))
+		for _, id := range refs {
+			if id < 0 || id > len(decoder.states) {
+				return nil, fmt.Errorf("state vector %d: invalid state reference %d", i+1, id)
+			}
+			var state *TLCStateMut
+			if id != 0 {
+				state = decoder.states[id-1]
+			}
+			vector.Add(state)
+		}
+		decoder.stateVectors[i] = vector
 	}
 	decoder.stateArrays = make([][]*TLCStateMut, len(payload.StateArrays))
 	for i, refs := range payload.StateArrays {
@@ -1503,6 +1527,14 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return (*LongVec)(nil), nil
 		}
 		return d.longVectors[node.DataArray-1], nil
+	case "stateVector":
+		if node.DataArray < 0 || node.DataArray > len(d.stateVectors) {
+			return nil, fmt.Errorf("invalid attached state vector reference %d", node.DataArray)
+		}
+		if node.DataArray == 0 {
+			return (*StateVec)(nil), nil
+		}
+		return d.stateVectors[node.DataArray-1], nil
 	case "nameArray":
 		return d.nameArrayRefs(nil, node.DataArray == 0, node.DataArray)
 	case "state":

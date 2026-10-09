@@ -7,7 +7,8 @@ import "fmt"
 // partitions share one state/value graph so aliases survive across partitions.
 // Only active vector entries are sent, as in TLCStateVec and LongVec's source
 // serialization contracts. Spare capacity is not part of a worker result.
-// Fingerprint vector IDs address States.LongVectors, shared with attachments.
+// Vector IDs address States.StateVectors and States.LongVectors, shared with
+// attachments, including recursive state-vector graphs.
 type DistributedResultPayload struct {
 	Nil                bool
 	ComputationTime    int64
@@ -16,51 +17,34 @@ type DistributedResultPayload struct {
 	FingerprintsNil    bool
 	StateVectors       []int
 	FingerprintVectors []int
-	StateLengths       []int
 	States             *DistributedStatePayload
 }
 
-func EncodeDistributedResult(result *NextStateResult) (*DistributedResultPayload, error) {
+func EncodeDistributedResult(result *NextStateResult) (payload *DistributedResultPayload, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			payload, err = nil, panicValueAsError(failure)
+		}
+	}()
 	if result == nil {
 		return &DistributedResultPayload{Nil: true}, nil
 	}
-	payload := &DistributedResultPayload{
+	payload = &DistributedResultPayload{
 		ComputationTime: result.ComputationTime, StatesComputed: result.StatesComputed,
 		StatesNil: result.NextStates == nil, FingerprintsNil: result.NextFingerprints == nil,
 		StateVectors:       make([]int, len(result.NextStates)),
 		FingerprintVectors: make([]int, len(result.NextFingerprints)),
 	}
-	var states []*TLCStateMut
-	stateIDs := make(map[*StateVec]int)
-	for i, vector := range result.NextStates {
-		if vector == nil {
-			continue
-		}
-		if id := stateIDs[vector]; id != 0 {
-			payload.StateVectors[i] = id
-			continue
-		}
-		id := len(payload.StateLengths) + 1
-		stateIDs[vector] = id
-		payload.StateVectors[i] = id
-		payload.StateLengths = append(payload.StateLengths, vector.Size())
-		for j, state := range vector.states {
-			if state == nil {
-				states = append(states, nil)
-				continue
-			}
-			mutable, ok := state.(*TLCStateMut)
-			if !ok {
-				return nil, fmt.Errorf("state vector %d entry %d: unsupported distributed state %T", i, j, state)
-			}
-			states = append(states, mutable)
-		}
-	}
 	encoder := &distributedPayloadEncoder{}
-	var err error
-	payload.States, err = encodeDistributedStates(states, encoder)
+	payload.States, err = encodeDistributedStates(nil, encoder)
 	if err != nil {
 		return nil, err
+	}
+	for i, vector := range result.NextStates {
+		payload.StateVectors[i], err = encoder.stateVector(vector)
+		if err != nil {
+			return nil, fmt.Errorf("state vector %d: %w", i, err)
+		}
 	}
 	for i, vector := range result.NextFingerprints {
 		payload.FingerprintVectors[i] = encoder.longVector(vector)
@@ -73,7 +57,7 @@ func DecodeDistributedResult(payload *DistributedResultPayload) (*NextStateResul
 		return nil, fmt.Errorf("missing distributed result payload")
 	}
 	if payload.Nil {
-		if len(payload.StateVectors) != 0 || len(payload.FingerprintVectors) != 0 || len(payload.StateLengths) != 0 || payload.States != nil {
+		if len(payload.StateVectors) != 0 || len(payload.FingerprintVectors) != 0 || payload.States != nil {
 			return nil, fmt.Errorf("null result contains graph data")
 		}
 		return nil, nil
@@ -86,21 +70,10 @@ func DecodeDistributedResult(payload *DistributedResultPayload) (*NextStateResul
 	if err != nil {
 		return nil, err
 	}
-	vectors := make([]*StateVec, len(payload.StateLengths))
-	offset := 0
-	for i, length := range payload.StateLengths {
-		if length < 0 || length > len(states)-offset {
-			return nil, fmt.Errorf("state vector %d has invalid length %d", i, length)
-		}
-		vectors[i] = newDistributedStateVec(length)
-		for _, state := range states[offset : offset+length] {
-			vectors[i].Add(state)
-		}
-		offset += length
-	}
-	if offset != len(states) {
+	if len(states) != 0 {
 		return nil, fmt.Errorf("state graph has unused roots")
 	}
+	vectors := decoder.stateVectors
 	fingerprints := decoder.longVectors
 	result := &NextStateResult{ComputationTime: payload.ComputationTime, StatesComputed: payload.StatesComputed}
 	if !payload.StatesNil {

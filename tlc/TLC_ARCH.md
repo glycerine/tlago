@@ -13402,3 +13402,31 @@ WorkerException state context. Negative/out-of-range attachment, key and result
 references fail explicitly. Existing original LongVec/GrowingLongVec methods
 remain unchanged; no upstream method covers this transport boundary and no
 original-method credit is added.
+
+### Attached state vectors and recursive result partitions
+
+Native state-vector attachments now follow TLCStateVec's active-entry contract.
+StateVectors in the state payload stores vector objects as state-reference arrays;
+model data and result partition references address that same table. The encoder
+reserves a vector ID before walking entries, allowing a state to refer back to
+its containing vector. The decoder creates state identities before populating
+vectors and resolving model data, retaining cycles without evaluator machinery.
+
+Repeated vectors and states remain shared; distinct equal vectors have separate
+exactly sized backing arrays. Null vectors, empty vectors and null entries stay
+distinct. Decoded vectors use TLCStateVec's existing unbounded growth/backing
+indexing policy. Unsupported state kinds and evaluator metadata still fail
+explicitly in the common state encoder.
+
+Result state partitions now directly reference the graph rather than flattening
+their entries into roots plus a separate length table. They retain aliases with
+model attachments and repeated partitions. Malformed vector/state references and
+unused result roots remain errors. Native result encoding retains its panic-to-
+error boundary around graph traversal. Distributed roles require matching builds
+for the updated payload; no Java serialization protocol is implemented.
+
+Native direct/TCP/error-context checks cover recursive graphs, identity, storage
+isolation, null/empty vectors, stored metadata, map keys and receiver mutation.
+The two malformed length cases in the native result test now use negative and
+out-of-range state IDs, reflecting the removal of length metadata. No dedicated
+original TLCStateVec method exists, so original-method credit is unchanged.

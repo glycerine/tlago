@@ -1813,6 +1813,13 @@ spare capacity and backing-array aliases are discarded as in the source.
 Invalid references fail explicitly. Original LongVec/GrowingLongVec methods
 remain port complete and unchanged; no transport method credit is added.
 
+State-vector attachments now share the native graph with result partitions.
+Direct/TCP/error-context checks preserve vector/state cycles, repeated and distinct
+objects, active capacity, null/empty vectors, map keys and receiver ownership.
+Malformed references and evaluator metadata remain rejected; decoded collections
+retain TLCStateVec policy. No original TLCStateVec transport method exists and
+no original-method status or credit changes.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier
