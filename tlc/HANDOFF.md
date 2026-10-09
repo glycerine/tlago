@@ -113,7 +113,12 @@ frames and error graphs survive payload transfer. Memory exhaustion permits
 smaller-batch retry; executor rejection does not. Lost fingerprint exit replies
 use an exit-only trait, allowing shutdown to visit later registrations. Prior
 closed clients and insertion/checkpoint failures remain reportable. The obsolete
-`UnmarshalException` carrier and RMI-specific exit branch are removed.
+`UnmarshalException` carrier and RMI-specific exit branch are removed. The unused
+RMI RemoteException, ServerException, NoSuchObjectException, ConnectException,
+ExportException and NotBoundException carriers/class metadata are also removed.
+TLC's fingerprint-registration rejection retains its source application name,
+message and checked-I/O category through the generic IOException carrier; it
+does not require an RMI base class. Generic diagnostic carriers remain intact.
 
 Native connection-owner cleanup ignores already-closed errors only when all
 causes are benign. Joined errors that also contain a real callback cleanup

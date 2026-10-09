@@ -24512,3 +24512,37 @@ workers report actual sent/received/computed work, with 114,942 final distinct
 states and an empty queue. Coordinator and worker exit normally and join; the
 harness rejects GENERAL and unexpected EOF. No full suite ran and no long
 workload used race instrumentation. All handles are terminal.
+
+### 2026-10-09: Remove dormant RMI exception scaffolding
+
+Following the user's native-Go transport directive, audited all references to
+the leftover RMI exception hierarchy. No transport adapter constructs RemoteException,
+ServerException, NoSuchObjectException, ConnectException, ExportException or
+NotBoundException. FPSetManagerException's inheritance was the sole remaining
+runtime dependency on that hierarchy. Source uses that TLC application error
+for manager capacity rejection; its constructor supplies a message and no cause.
+
+Removed those six transport carriers, their unused constructors, remote-base
+lookup and RMI class metadata. The TLC application rejection now embeds the
+generic IOException carrier and retains its source class name, message, native
+frames, absent cause and checked-I/O classification. Distributed transport and
+retry decisions still use native operation traits. Generic diagnostic carriers
+are preserved. Changed the native registration fixture's worker URI to tcp.
+
+Existing native registration failure checks now explicitly retain I/O and remote
+categories and the rejection's absent cause across encoding/decoding. Original
+Java manager and smart-proxy tests and their assertions are unchanged. Focused
+original manager/smart-proxy plus native RPC, discovery, lifecycle and fingerprint
+ownership checks pass (native-exception-cleanup.log, terminal 0725b7, status 0,
+0.228 seconds). The strengthened category check passes (terminal bfe265, status
+0, 0.013 seconds), as do the registration-order cases (terminal 052bad, status 0,
+0.013 seconds). Root native CLI help/startup rejection and application endpoint
+failure-order checks pass (native-exception-root.log, terminal b059ec, status 0).
+The root package time is 0.019 seconds.
+An earlier root selector matched no tests; it provides compilation evidence only
+and was replaced with those actual test names. Searches retain java.rmi only in
+the existing native worker test assertion forbidding RMI diagnostic classes.
+
+No new test methods or original-method credit added; the distributed inventory
+remains 37 complete and four Missing. No full suite, repeated long model or race
+workload ran. All handles are terminal.

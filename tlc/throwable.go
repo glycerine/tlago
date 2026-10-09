@@ -66,18 +66,8 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.StackOverflowError"
 	case *RuntimeException:
 		return "java.lang.RuntimeException"
-	case *RemoteException:
-		return "java.rmi.RemoteException"
-	case *ServerException:
-		return "java.rmi.ServerException"
-	case *NoSuchObjectException:
-		return "java.rmi.NoSuchObjectException"
-	case *ConnectException:
-		return "java.rmi.ConnectException"
 	case *FPSetManagerException:
 		return "tlc2.tool.distributed.fp.FPSetManagerException"
-	case *ExportException:
-		return "java.rmi.server.ExportException"
 	case *CharacterCodingException:
 		return "java.nio.charset.CharacterCodingException"
 	case *MalformedInputException:
@@ -158,8 +148,6 @@ func javaThrowableClassName(err error) string {
 		return "java.net.ConnectException"
 	case *NetBindException:
 		return "java.net.BindException"
-	case *NotBoundException:
-		return "java.rmi.NotBoundException"
 	case *MalformedURLException:
 		return "java.net.MalformedURLException"
 	case *InterruptedException:

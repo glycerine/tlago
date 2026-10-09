@@ -9,13 +9,6 @@ func NewNetConnectException(message ...string) *NetConnectException {
 }
 func (e *NetConnectException) Error() string { return javaThrowableMessage(e) }
 
-type NotBoundException struct{ javaExceptionBase }
-
-func NewNotBoundException(message ...string) *NotBoundException {
-	return &NotBoundException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
-}
-func (e *NotBoundException) Error() string { return javaThrowableMessage(e) }
-
 type MalformedURLException struct{ javaExceptionBase }
 
 func NewMalformedURLException(message ...string) *MalformedURLException {
@@ -43,10 +36,3 @@ func NewNetBindException(message ...string) *NetBindException {
 	return &NetBindException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
 func (e *NetBindException) Error() string { return javaThrowableMessage(e) }
-
-type ExportException struct{ *RemoteException }
-
-func NewExportException(message string, cause error) *ExportException {
-	return &ExportException{NewRemoteException(javaString(message), cause)}
-}
-func (e *ExportException) Error() string { return javaThrowableMessage(e) }

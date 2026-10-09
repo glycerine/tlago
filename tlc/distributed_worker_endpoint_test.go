@@ -66,7 +66,7 @@ func (w *registrationRemoteWorker) GetURI() (string, error) {
 	if w.calls == w.failAt {
 		return "", w.failure
 	}
-	return "rmi://worker:10997/0", nil
+	return "tcp://worker:10997/0", nil
 }
 
 func (w *registrationRemoteWorker) GetCacheRateRatio() (float64, error) {

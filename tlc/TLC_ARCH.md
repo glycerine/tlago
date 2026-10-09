@@ -13134,3 +13134,17 @@ contents, including NaN and the initial failure sentinel. The mutex is released
 before timer/coordinator updates, remote cache calls, diagnostics and shutdown.
 This avoids native Go data races without introducing Java monitor machinery or
 changing batch publication, failure precedence or worker lifecycle behavior.
+
+### TLC registration errors without RMI exception emulation
+
+FPSetManagerException represents the TLC manager's capacity rejection using the
+generic IOException carrier. Its application class name, nullable message/cause
+accessors, captured native frames and checked-I/O category remain available;
+native payloads preserve the rejection trait. Transport, retry and unavailable
+decisions continue to use DistributedOperationError traits exclusively.
+
+Unused RemoteException, ServerException, NoSuchObjectException, ConnectException,
+ExportException and NotBoundException carriers and class metadata are removed.
+No transport adapter constructed these types; the manager rejection
+was the sole remaining consumer of the RMI base class. Other generic diagnostic
+carriers remain intact. Native registration fixtures advertise tcp worker URIs.

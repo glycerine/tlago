@@ -123,5 +123,11 @@ func TestNativeFPRegistrationFailureCategories(t *testing.T) {
 		if isDistributedFPRegistrationRejected(decoded) != want || decoded.Error() != failure.Error() {
 			t.Fatalf("registration failure changed: %v", decoded)
 		}
+		if isJavaIOException(decoded) != isJavaIOException(failure) || isDistributedRemoteFailure(decoded) != isDistributedRemoteFailure(failure) {
+			t.Fatalf("registration failure I/O or transport classification changed: %v", decoded)
+		}
+		if want && (javaThrowableCause(failure) != nil || javaThrowableCause(decoded) != nil || !isJavaIOException(failure)) {
+			t.Fatal("registration rejection gained a cause or lost its checked-I/O category")
+		}
 	}
 }

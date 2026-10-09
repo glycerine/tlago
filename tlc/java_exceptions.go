@@ -130,11 +130,8 @@ func isJavaIOException(err error) bool {
 	if operation, ok := err.(*DistributedOperationError); ok {
 		return operation.IO
 	}
-	if javaRemoteException(err) != nil {
-		return true
-	}
 	switch err.(type) {
-	case *IOException, *FileSystemException, *NoSuchFileException, *AccessDeniedException, *FileAlreadyExistsException, *CharacterCodingException, *MalformedInputException, *UnmappableCharacterException, *UnsupportedEncodingException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
+	case *IOException, *FPSetManagerException, *FileSystemException, *NoSuchFileException, *AccessDeniedException, *FileAlreadyExistsException, *CharacterCodingException, *MalformedInputException, *UnmappableCharacterException, *UnsupportedEncodingException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
 		return true
 	}
 	return err == io.EOF || err == io.ErrUnexpectedEOF || err == io.ErrClosedPipe || err == io.ErrShortWrite
@@ -413,101 +410,15 @@ func NewRejectedExecutionExceptionWithCause(cause error) *RejectedExecutionExcep
 
 func (e *RejectedExecutionException) Error() string { return javaThrowableMessage(e) }
 
-// RemoteException.getCause() uses the public detail field, and getMessage()
-// appends detail.toString() even when the original message was null or empty.
-type RemoteException struct {
-	throwableTrace
-	Message *string
-	Detail  error
-}
-
-func NewRemoteException(message *string, detail error) *RemoteException {
-	return &RemoteException{throwableTrace: captureThrowableTrace(), Message: copyJavaMessage(message), Detail: detail}
-}
-
-func (e *RemoteException) GetMessage() *string {
-	if e == nil {
-		return nil
-	}
-	if e.Detail == nil {
-		return copyJavaMessage(e.Message)
-	}
-	message := "null"
-	if e.Message != nil {
-		message = *e.Message
-	}
-	return javaString(message + "; nested exception is: \n\t" + javaThrowableString(e.Detail))
-}
-
-func (e *RemoteException) GetCause() error {
-	if e == nil {
-		return nil
-	}
-	return e.Detail
-}
-
-func (e *RemoteException) Unwrap() error { return e.GetCause() }
-func (e *RemoteException) Error() string { return javaThrowableMessage(e) }
-
-type ServerException struct{ *RemoteException }
-
-func NewServerException(message *string, cause error) *ServerException {
-	return &ServerException{RemoteException: NewRemoteException(message, cause)}
-}
-
-func (e *ServerException) Error() string { return javaThrowableMessage(e) }
-
-type NoSuchObjectException struct{ *RemoteException }
-
-func NewNoSuchObjectException(message string) *NoSuchObjectException {
-	return &NoSuchObjectException{RemoteException: NewRemoteException(javaString(message), nil)}
-}
-
-func (e *NoSuchObjectException) Error() string { return javaThrowableMessage(e) }
-
-type ConnectException struct{ *RemoteException }
-
-func NewConnectException(message string, cause error) *ConnectException {
-	return &ConnectException{RemoteException: NewRemoteException(javaString(message), cause)}
-}
-
-func (e *ConnectException) Error() string { return javaThrowableMessage(e) }
-
-type FPSetManagerException struct{ *RemoteException }
+// Fingerprint registration rejection is a TLC application failure. Retain its
+// checked-I/O classification without implementing Java's RMI exception hierarchy.
+type FPSetManagerException struct{ *IOException }
 
 func NewFPSetManagerException(message string) *FPSetManagerException {
-	return &FPSetManagerException{RemoteException: NewRemoteException(javaString(message), nil)}
+	return &FPSetManagerException{IOException: NewIOException(message)}
 }
 
 func (e *FPSetManagerException) Error() string { return javaThrowableMessage(e) }
-
-func javaRemoteException(err error) *RemoteException {
-	switch failure := err.(type) {
-	case *RemoteException:
-		return failure
-	case *ServerException:
-		if failure != nil {
-			return failure.RemoteException
-		}
-	case *NoSuchObjectException:
-		if failure != nil {
-			return failure.RemoteException
-		}
-	case *ConnectException:
-		if failure != nil {
-			return failure.RemoteException
-		}
-	case *FPSetManagerException:
-		if failure != nil {
-			return failure.RemoteException
-		}
-	case *ExportException:
-		if failure != nil {
-			return failure.RemoteException
-		}
-	}
-	return nil
-}
 
 func isJavaNullPointerException(err error) bool {
 	if failure, ok := err.(*NullPointerException); ok {
