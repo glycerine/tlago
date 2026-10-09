@@ -12615,6 +12615,21 @@ checks cover all three endpoint roles, one close after terminal read failure,
 no later request/redial and continued use after a method error. Existing TCP
 loss, accepted-request, shutdown and original manager assertions remain intact.
 
+### Failed native response flush ownership
+
+The shared server codec closes its connection if the final buffered response
+flush fails, preserving that write error. Go net/rpc logs a WriteResponse error
+but keeps reading; returning the flush error alone can leave both its reader and
+the peer waiting on an open connection. Closure releases those readers while the
+accepted operation and its response accounting finish normally. No accepted
+operation is replayed, rolled back or canceled by this cleanup.
+
+TestDistributedResponseFlushFailureClosesTransport uses net.Pipe with a failing
+server write and an independently open read direction. It requires the waiting
+client and serving goroutine to finish, the accepted-reply count to drain, and
+exactly one fingerprint operation and one response write. This native transport
+ownership test has no corresponding original Java method.
+
 ### Native connection-owner cleanup errors
 
 Distributed connection owners and coordinator discovery previously used an

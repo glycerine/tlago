@@ -82,7 +82,9 @@ focused selection resolves them or earns their completion credit.
 Native `net/rpc` over TCP supplies coordinator, worker and fingerprint endpoints.
 Failed transport calls close their native client codec promptly while retaining
 the failed client and original error. They do not redial or replay. Valid remote
-method errors leave the shared connection usable.
+method errors leave the shared connection usable. Failed server response flushes
+close the connection and release peer/reader waiters without replaying the
+accepted operation; pending-reply accounting still completes.
 Named publication, discovery, file loading, interning, settings, registration,
 manager snapshots and keepalive are wired into the production CLI. Roles are
 `server`, `worker`, `fpserver` and `worker-fpserver`. The combined role shares its

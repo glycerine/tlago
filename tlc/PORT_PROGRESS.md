@@ -25860,3 +25860,33 @@ The unchanged ordinary LSB restart row also passes
 method credit remains 37/41 with four dispositions requiring reconciliation.
 This closes the documented full-model remote caller-boundary verification gap,
 without establishing atomic checkpoints or arbitrary interruption recovery.
+
+
+### October 9, 2026: close native server transport after response flush failure
+
+Compared coordinator completion/management, worker keepalive and native network
+ownership paths against the pinned source and local Go net/rpc implementation.
+Found a server-side native cleanup gap: WriteResponse closed the connection on
+encoding errors but returned a final buffer.Flush error without closing it.
+net/rpc.sendResponse only logs this error and continues reading. A failed write
+with an independently open read direction could leave both peer and server
+waiting indefinitely, even though accepted-reply accounting had completed.
+
+The shared codec now closes the connection on flush failure and returns the
+original write error. It does not replay, roll back or cancel accepted work.
+Added a short net.Pipe ownership test with an injected server write failure:
+it requires client/server completion, drained pending replies and exactly one
+fingerprint call and response write. No original Java method directly tests
+this native Go transport boundary.
+
+The new check reproduces the hang before correction
+(distributed-response-flush-red.log, terminal c82c19, status 1, 1.023 seconds)
+and passes after correction (distributed-response-flush-green.log, terminal
+4d061d, status 0, 0.016 seconds). Relevant native TCP scalar/batch, shutdown,
+incomplete-request, callback cleanup, fatal/codec failure and original dynamic
+FP manager/nested partition/smart-proxy checks pass
+(distributed-response-flush-focused.log, terminal 3ca717, status 0, 0.530 seconds).
+The new short isolated race selection also passes
+(distributed-response-flush-race.log, terminal 2c1dd7, status 0, 1.036 seconds).
+All handles are terminal. No long model, broad race or full suite was run;
+original distributed method credit remains unchanged at 37/41.

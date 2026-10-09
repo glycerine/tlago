@@ -1922,6 +1922,11 @@ original cause and retains the failed client without redial/replay. Method-level
 RPC errors keep the connection usable. This Go transport ownership coverage has
 no direct original Java method and adds no original-method completion credit.
 
+Native response-flush checks also require a failed server write to close the
+transport, unblock the peer and server reader, drain accepted-reply accounting
+and perform the accepted fingerprint operation exactly once. The short isolated
+race selection passes. This native codec check adds no original-method credit.
+
 Native model-data payload checks now also cover map[any]any with scalar/value
 keys, exact key types, cycles and shared references through requests, results and
 WorkerException contexts. Nil/empty maps, receiver isolation and malformed keys

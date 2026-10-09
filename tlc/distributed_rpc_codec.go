@@ -53,7 +53,13 @@ func (c *distributedServerCodec) WriteResponse(response *rpc.Response, body any)
 		_ = c.Close()
 		return err
 	}
-	return c.buffer.Flush()
+	if err := c.buffer.Flush(); err != nil {
+		// net/rpc logs a response error but keeps reading. A failed write
+		// must release the peer and reader; the accepted call is not replayed.
+		_ = c.Close()
+		return err
+	}
+	return nil
 }
 
 func (c *distributedServerCodec) Close() error { return c.conn.Close() }
