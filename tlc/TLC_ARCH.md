@@ -14686,3 +14686,20 @@ publication and startup wiring, not routing over a fabricated link-local
 interface. Existing IPv6 loopback callbacks, ordinary bootstrap, advertised-port
 checks and a native DieHard seven-state trace also remain green. No direct
 original Java method tests native addresses; original inventory stays 37/41.
+
+
+### Nested LSB final fingerprint reply loss with a surviving host
+
+The two-host final-check survivor scenario also runs the unchanged N=7 model
+with two actual LSBDiskFPSet children per host. After each real CheckFPs call,
+the fixture verifies positive file membership equal to child Size, zero table
+membership and a total equal to the host partition count. Thus the lost reply
+follows completed disk flush/read work. The failed and healthy partition counts
+sum to 114,942. Existing failure ordering, independent probability calculations,
+one final survivor statistics call and one cleanup Exit assertions are shared
+with the Mem scenario. Each host owns a separate temporary directory; the disk
+processes use GOMEMLIMIT=64MiB without reducing model bounds.
+
+This verifies nested LSB final-check loss and surviving-host completion, not
+MSB/off-heap final-check loss or arbitrary network partitions. No production
+algorithm changed and no additional original Java method credit is claimed.

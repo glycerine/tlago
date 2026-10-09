@@ -27012,3 +27012,23 @@ distributed-worker-native-uri-model-control.log, terminal 23b53b, status 0.
 No race, full-suite or long N=7 rerun. All handles terminal and
 git diff --check passes. Updated HANDOFF/architecture; original distributed
 inventory remains 37/41.
+
+
+### October 9, 2026: nested LSB final-check reply loss and survivor
+
+Extended the native full N=7 EWD840 final-check survivor scenario to two LSB
+children on each of two separate fingerprint hosts. Both hosts perform their
+actual final check; the first is killed before replying. Physical child file
+counts equal complete membership, tables are empty, and child totals equal
+each host partition count. All shared Mem assertions remain: 114,942 distinct
+states/zero queued, source diagnostic ordering, independently derived final
+probabilities, one survivor statistics query and one cleanup Exit. Separate
+TMPDIR ownership and GOMEMLIMIT=64MiB bound allocation without changing N=7.
+
+New complete model passes in distributed-final-disk-check-survivor.log, terminal
+4498d0, status 0, 47.929 seconds. Short original manager reassignment/failover
+and native nested/remote checked-I/O controls pass in
+distributed-final-disk-check-controls.log, terminal 9375bf, status 0,
+0.035 seconds. All processes joined; no race or full-suite run. No production
+change or original Java method credit; inventory remains 37/41. MSB/off-heap
+final-check loss and arbitrary partitions remain open.

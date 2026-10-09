@@ -159,6 +159,9 @@ func (e *nativeFinalFingerprintCheckEndpoint) CheckFPs() (uint64, error) {
 	if e.failure == "survivor" {
 		distance, err := e.DistributedFingerprintEndpoint.CheckFPs()
 		if err == nil {
+			if err := e.reportDiskCheck(count); err != nil {
+				return 0, err
+			}
 			e.checked.Store(true)
 			fmt.Printf("NATIVE_FINAL_FP_SURVIVOR_CHECK_COUNT=%d DISTANCE=%d\n", count, distance)
 		}
@@ -167,6 +170,9 @@ func (e *nativeFinalFingerprintCheckEndpoint) CheckFPs() (uint64, error) {
 	if e.failure == "reply-loss" {
 		distance, err := e.DistributedFingerprintEndpoint.CheckFPs()
 		if err != nil {
+			return 0, err
+		}
+		if err := e.reportDiskCheck(count); err != nil {
 			return 0, err
 		}
 		fmt.Printf("NATIVE_FINAL_FP_CHECK_COMPLETED_COUNT=%d DISTANCE=%d\n", count, distance)
@@ -241,7 +247,20 @@ func nativeDistributedFinalFingerprintCheckHost(args []string, failure string) (
 // The first host is lost after its real final check; the second completes the
 // same full model's partition check and remains available for final statistics.
 func TestNativeDistributedFinalFingerprintCheckReplyLossSurvivor(t *testing.T) {
-	output := runNativeDistributedModelWithCheckFailure(t, "EWD840", true, false, "reply-loss-survivor")
+	checkNativeDistributedFinalFingerprintSurvivor(t, false)
+}
+
+func TestNativeDistributedFinalFingerprintCheckDiskReplyLossSurvivor(t *testing.T) {
+	checkNativeDistributedFinalFingerprintSurvivor(t, true)
+}
+
+func checkNativeDistributedFinalFingerprintSurvivor(t *testing.T, disk bool) {
+	t.Helper()
+	mode := "reply-loss-survivor"
+	if disk {
+		mode += "-lsb"
+	}
+	output := runNativeDistributedModelWithCheckFailure(t, "EWD840", true, false, mode)
 	stats := nativeDistributedMessages(output, tlc.ECTLCStats)
 	if len(stats) != 1 || !regexp.MustCompile(`^\d+ states generated, 114942 distinct states found, 0 states left on queue\.$`).MatchString(stats[0]) {
 		t.Fatalf("captured completed-model counts changed: %q", stats)
@@ -261,6 +280,17 @@ func TestNativeDistributedFinalFingerprintCheckReplyLossSurvivor(t *testing.T) {
 	lostCount, err := strconv.ParseUint(lost[1], 10, 64)
 	if err != nil || lostCount+count != 114942 {
 		t.Fatalf("real final partitions do not cover the captured distinct count: %q/%q", lost, check)
+	}
+	if disk {
+		for _, size := range []uint64{lostCount, count} {
+			marker := fmt.Sprintf("NATIVE_FINAL_FP_DISK_CHECK_CHILDREN=2 COUNT=%d\n", size)
+			if strings.Count(output, marker) != 1 {
+				t.Fatalf("actual nested disk flush missing or repeated: %q", marker)
+			}
+		}
+		if strings.Count(output, "...with nested instance type: tlc2.tool.fp.LSBDiskFPSet") != 4 {
+			t.Fatal("final check did not use two physical LSB children on each host")
+		}
 	}
 	distance, err := strconv.ParseUint(check[2], 10, 64)
 	if err != nil || distance >= math.MaxInt64 {
@@ -323,4 +353,36 @@ func waitForNativeDistributedMarker(t *testing.T, ctx context.Context, process *
 		case <-ticker.C:
 		}
 	}
+}
+
+// A Mem host has nothing to report here. Disk cases must show actual complete
+// flushes in both physical children after storage's own final check returns.
+func (e *nativeFinalFingerprintCheckEndpoint) reportDiskCheck(count uint64) error {
+	local, ok := e.DistributedFingerprintEndpoint.(*tlc.LocalFingerprintEndpoint)
+	if !ok {
+		return fmt.Errorf("final check requires owned local storage")
+	}
+	multi, ok := local.Set.(*tlc.MultiFPSet)
+	if !ok {
+		return nil
+	}
+	if len(multi.Sets) != 2 {
+		return fmt.Errorf("final disk check requires two children")
+	}
+	var total uint64
+	for _, child := range multi.Sets {
+		disk, ok := child.(*tlc.LSBDiskFPSet)
+		if !ok {
+			return fmt.Errorf("unexpected final-check child %T", child)
+		}
+		if disk.GetFileCnt() <= 0 || uint64(disk.GetFileCnt()) != disk.Size() || disk.GetTblCnt() != 0 {
+			return fmt.Errorf("disk check did not flush complete child membership: file=%d table=%d size=%d", disk.GetFileCnt(), disk.GetTblCnt(), disk.Size())
+		}
+		total += uint64(disk.GetFileCnt())
+	}
+	if total != count {
+		return fmt.Errorf("physical final disk membership %d != host count %d", total, count)
+	}
+	fmt.Printf("NATIVE_FINAL_FP_DISK_CHECK_CHILDREN=2 COUNT=%d\n", total)
+	return nil
 }

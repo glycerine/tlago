@@ -94,7 +94,11 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 	if checkFailure != "" && (!remote || sourceHarness || model != "EWD840") {
 		t.Fatal("final-check fault requires the native remote EWD840 model")
 	}
-	survivingCheckHost := checkFailure == "reply-loss-survivor"
+	survivingCheckHost := checkFailure == "reply-loss-survivor" || checkFailure == "reply-loss-survivor-lsb"
+	fingerprintImplementation := "tlc2.tool.fp.MemFPSet"
+	if checkFailure == "reply-loss-survivor-lsb" {
+		fingerprintImplementation = "tlc2.tool.fp.LSBDiskFPSet"
+	}
 	directory, err := filepath.Abs(filepath.Join("tlc/test_vectors/models", model))
 	if err != nil {
 		t.Fatal(err)
@@ -126,9 +130,13 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 		command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
 		command.Dir = directory
 		command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
-		if role == "fpserver-check-reply-loss" {
-			// This role is killed before its normal directory cleanup.
+		if role == "fpserver-check-reply-loss" || (survivingCheckHost && role == "fpserver-check-survivor") {
+			// Separate hosts own separate storage, including simultaneous starts
+			// and a killed role that cannot perform its normal cleanup.
 			command.Env = append(command.Env, "TMPDIR="+t.TempDir())
+			if fingerprintImplementation != "tlc2.tool.fp.MemFPSet" {
+				command.Env = append(command.Env, "GOMEMLIMIT=64MiB")
+			}
 		}
 		if sourceHarness {
 			command.Env = append(command.Env, "TMPDIR="+t.TempDir(),
@@ -176,7 +184,7 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 					role = "fpserver-check-reply-loss"
 				}
 			}
-			fingerprint = start(role, "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+			fingerprint = start(role, "-Dtlc2.tool.fp.FPSet.impl="+fingerprintImplementation, "127.0.0.1")
 		}
 	}
 	if survivingCheckHost {
@@ -185,7 +193,7 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 		waitForNativeDistributedMarker(t, ctx, server, "first fingerprint registration", func() bool {
 			return len(nativeDistributedMessages(server.output.String(), tlc.ECTLCDistributedServerFPSetRegistered)) == 1
 		})
-		survivor = start("fpserver-check-survivor", "-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "127.0.0.1")
+		survivor = start("fpserver-check-survivor", "-Dtlc2.tool.fp.FPSet.impl="+fingerprintImplementation, "127.0.0.1")
 	}
 	if !sourceHarness {
 		start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
