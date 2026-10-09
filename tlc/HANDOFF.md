@@ -212,6 +212,13 @@ replacement registration. The reply-loss row keeps its disconnected runtime
 alive, requires one EOF smaller-block retry, one deregistration and exactly the
 source cache-statistic warning, then requires ordinary final model counts.
 
+The full-model shared-process-loss row gives two distinct worker endpoints on
+one listener real nonempty RPC blocks, then kills their process. It requires
+two loss/deregistration events and the source's single deduplicated cache warning
+before checking that the coordinator still reports unfinished work. A fresh
+worker finishes the unchanged model with 114,942 distinct states and an empty
+queue. The gate is in the test endpoint, not production evaluation or cleanup.
+
 The full model also kills the first of two fingerprint hosts with assigned work
 and resumes actual evaluation. Worker and coordinator fail over independently.
 Two partition slots alias the survivor, so source statistics report 229,884 in

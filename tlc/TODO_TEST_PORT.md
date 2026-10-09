@@ -1435,6 +1435,13 @@ distinct states and an empty queue. One source smaller-block retry, one
 deregistration and the exact cache-statistic warning are required. This supplements
 connection-loss coverage without credit for the four disabled original methods;
 general network partitions remain missing.
+The native MC06 `shared_worker_process_lost` row assigns nonempty RPC blocks
+to two distinct workers sharing one listener, then kills their whole process.
+It requires both loss/deregistration events and exactly the single cache warning
+printed by Java MP's warning deduplication. With all workers removed, the
+coordinator must still report unfinished work before a fresh worker registers.
+The unchanged model finishes with 114,942 distinct states and an empty queue.
+This native supplement adds no original-method completion credit.
 Four native missing-coordinator cases now distinguish direct loss cleanup from
 timer-triggered cleanup and successful status replies. They preserve assigned
 work and worker counts at the source failure boundary. The production fix rejects

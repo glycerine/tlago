@@ -23356,3 +23356,30 @@ lookup-related.log, terminal 263d6f, status 0, 0.063 seconds). No race workload
 or full suite ran. These native failure-phase checks add no original-method
 completion credit; the four disabled Java model methods remain missing. All
 verification handles are terminal.
+
+### October 8, 2026: loss of a process with two assigned workers
+
+Extended the native MC06 N=7 process matrix from single-worker loss to death of
+one process hosting two distinct active workers. Each test endpoint holds its
+own nonempty RPC block before evaluation. The parent validates distinct worker
+URIs on one listener before killing that process. A shared evaluation gate
+would serialize the markers and would not prove both calls were outstanding.
+Production networking, requeue, count decrement and cleanup remain unchanged.
+
+The first fixture incorrectly waited for two identical cache-statistic warnings.
+Java MP.printWarning records each call but deduplicates printed warning text.
+Stopped that run after confirming both deregistrations and the single warning
+(shared-worker-process-loss.log, terminal 33a288, status 1, interrupted after
+58.537 seconds). Corrected the fixture to require two loss/deregistration events
+and exactly the source's single printed warning; this was a test translation
+error, not a production failure or a reason to change MP behavior.
+
+The final full model passes (shared-worker-process-loss-verified.log, terminal
+6fefd7, status 0, 49.620 seconds). After deregistration, the coordinator reports
+unfinished work before replacement registration. The fresh worker finishes with
+114,942 distinct states, zero queued states and FINISHED; surviving roles exit
+normally. Focused short retry, lost-computed-reply and finalizer checks also pass
+(shared-worker-loss-related.log, terminal 6f8fef, status 0, 0.074 seconds). No
+full suite or race workload ran. There is no direct original Java shared-process
+loss method, so this supplement adds no original-method completion credit. All
+verification handles are terminal.

@@ -12550,3 +12550,18 @@ distinct states and an empty queue. Only the worker is required to emit the lost
 lookup's single EOF diagnostic; other roles retain no-EOF checks and all roles
 reject GENERAL. This native coverage does not translate the four disabled Java
 model methods or establish arbitrary network-partition behavior.
+
+### Native shared worker process death
+
+The full-model worker-loss matrix includes two worker endpoints sharing one
+native process listener. Each endpoint holds its own real nonempty coordinator
+RPC block before evaluation; the parent verifies distinct URIs on that listener
+before killing the process. A shared evaluation gate would not independently
+prove both outstanding calls. Production coordinator retry, requeue, worker
+removal and count-decrement ordering remain unchanged. Both worker loss and
+deregistration messages must occur. Java MP deduplicates identical cache-warning
+text, so stdout must contain one such GENERAL warning rather than two. The
+coordinator must report unfinished work after deregistration and before a fresh
+worker registers. Original N=7 final assertions remain 114,942 distinct states
+and zero queued states. No production fault hook or original-method completion
+credit is introduced.

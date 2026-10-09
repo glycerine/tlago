@@ -38,6 +38,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		fingerprintLoss                            bool
 		fingerprintServers                         int
 		workerThreads                              int
+		failedWorkerThreads                        int
 		midRunCheckpoint                           bool
 		checkpointInterrupted                      bool
 		checkpointInterruptedAfterQueue            bool
@@ -62,6 +63,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "checkpoint_interruption_after_first_fingerprint_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true, checkpointInterruptedAfterIntern: true, checkpointInterruptedAfterFirstFP: true},
 		{name: "worker_loss", workerLoss: true},
 		{name: "all_workers_lost", workerLoss: true, allWorkersLost: true},
+		{name: "shared_worker_process_lost", workerLoss: true, allWorkersLost: true, failedWorkerThreads: 2},
 		{name: "computed_worker_reply_loss", workerLoss: true, allWorkersLost: true, workerReplyLoss: true},
 		{name: "duplicate_worker_registration", duplicateWorkerRegistration: true},
 	} {
@@ -542,16 +544,20 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if scenario.workerReplyLoss {
 					role, marker = "worker-reply-loss", "NATIVE_WORKER_REPLY_COMPUTED"
 				}
-				failed := start(role, "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+				failedWorkers := max(1, scenario.failedWorkerThreads)
+				if failedWorkers > 1 {
+					role = "worker-assigned-blocks"
+				}
+				failed := start(role, fmt.Sprintf("-Dtlc2.tool.distributed.TLCWorker.threadCount=%d", failedWorkers), "127.0.0.1")
 				// Wait for a real RPC block and all registrations. Process-loss
 				// rows pause evaluation; reply-loss waits for actual completion.
 				ticker := time.NewTicker(10 * time.Millisecond)
 				defer ticker.Stop()
-				registrations := 2
+				registrations := failedWorkers + 1
 				if scenario.allWorkersLost {
-					registrations = 1
+					registrations = failedWorkers
 				}
-				for !strings.Contains(failed.output.String(), marker) || strings.Count(server.output.String(), "@!@!@STARTMSG 7001:") < registrations {
+				for strings.Count(failed.output.String(), marker) < failedWorkers || strings.Count(server.output.String(), "@!@!@STARTMSG 7001:") < registrations {
 					select {
 					case err := <-server.done:
 						server.joined = true
@@ -563,6 +569,22 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 						t.Fatal("worker assignment watchdog expired")
 					case <-ticker.C:
 					}
+				}
+				if failedWorkers > 1 {
+					assigned := regexp.MustCompile(`NATIVE_WORKER_BLOCK_ASSIGNED URI=(\S+) COUNT=(\d+)`).FindAllStringSubmatch(failed.output.String(), -1)
+					if len(assigned) != failedWorkers {
+						t.Fatalf("assigned worker blocks = %v, want %d", assigned, failedWorkers)
+					}
+					endpoints := make(map[string]bool)
+					var host string
+					for _, block := range assigned {
+						uri, err := url.Parse(block[1])
+						if err != nil || endpoints[block[1]] || block[2] == "0" || uri.Host == "" || (host != "" && host != uri.Host) {
+							t.Fatalf("assigned blocks do not identify distinct active workers on one listener: %v", assigned)
+						}
+						endpoints[block[1]], host = true, uri.Host
+					}
+					t.Logf("all %d workers in the shared process hold real nonempty RPC blocks", failedWorkers)
 				}
 				if scenario.workerReplyLoss {
 					if err := os.WriteFile(releaseWorker, nil, 0o600); err != nil {
@@ -581,7 +603,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					// The finally-block cache warning follows the source worker
 					// cleanup and worker-count decrement. Wait for both before
 					// permitting any replacement to register.
-					for !strings.Contains(server.output.String(), fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerDeregistered)) || !strings.Contains(server.output.String(), nativeDistributedLostWorkerCacheWarning) {
+					// MP suppresses repeated identical warning text. Multiple
+					// lost workers still produce only one cache-statistic warning.
+					for strings.Count(server.output.String(), fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerDeregistered)) < failedWorkers || !strings.Contains(server.output.String(), nativeDistributedLostWorkerCacheWarning) {
 						select {
 						case err := <-server.done:
 							server.joined = true
@@ -680,7 +704,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				}
 			}
 			if scenario.workerLoss {
-				if !strings.Contains(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerLost)) || strings.Count(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerDeregistered)) != 1 {
+				if len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerLost)) != max(1, scenario.failedWorkerThreads) || strings.Count(output, fmt.Sprintf("@!@!@STARTMSG %d:", tlc.ECTLCDistributedWorkerDeregistered)) != max(1, scenario.failedWorkerThreads) {
 					t.Fatal("worker loss was not reported and deregistered exactly once")
 				}
 				if scenario.workerReplyLoss {
@@ -736,8 +760,13 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			}
 			if scenario.workerLoss {
 				general := regexp.MustCompile(fmt.Sprintf(`(?s)@!@!@STARTMSG %d:(\d+) @!@!@\n(.*?)\n@!@!@ENDMSG %d @!@!@`, tlc.ECGeneral, tlc.ECGeneral)).FindAllStringSubmatch(output, -1)
-				if len(general) != 1 || general[0][1] != "3" || general[0][2] != nativeDistributedLostWorkerCacheWarning {
+				if len(general) != 1 {
 					t.Fatalf("worker-loss GENERAL events differ from source cache warning: %v", general)
+				}
+				for _, message := range general {
+					if message[1] != "3" || message[2] != nativeDistributedLostWorkerCacheWarning {
+						t.Fatalf("worker-loss GENERAL events differ from source cache warning: %v", general)
+					}
 				}
 			} else if scenario.duplicateWorkerRegistration {
 				registered := nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)
@@ -887,6 +916,12 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				}
 			} else if len(args) > 0 && args[0] == "worker-failpoint" {
 				if err := nativeDistributedBlockedWorker(args[1:]); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				} else {
+					status = ExitOK
+				}
+			} else if len(args) > 0 && args[0] == "worker-assigned-blocks" {
+				if err := nativeDistributedAssignedBlockWorkers(args[1:]); err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				} else {
 					status = ExitOK
