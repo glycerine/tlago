@@ -132,6 +132,9 @@ Public disk-store close releases readers while retaining their closed slots and
 resetting the pool cursor. Later disk I/O fails through those closed owners
 instead of reopening storage. Internal allocation rollback still clears its
 temporary reader arrays; native host cleanup releases all descriptors.
+Heap disk invariant checks retain table locks on flush/open failure. Once the
+scan opens, successful close releases locks even on invalid/truncated contents;
+expected-count comparison follows release. Close failure retains source ownership.
 Memory and nested expected-count invariant overloads inherit the base true
 result. Nested no-argument checks visit children; disk overloads enforce counts.
 Memory recovery retains complete prefixes and prior membership on truncated or

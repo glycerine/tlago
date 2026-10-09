@@ -2608,6 +2608,14 @@ boundary as native FPSet put/contains; a false ordering invariant is distinct
 from an I/O failure. The invariant scan also propagates source finally-close
 failures. Flusher IOException wrapping and rename runtime causes preserve
 Java's exception boundaries.
+Heap invariant lock release follows the source finally region, which starts
+after flush and scan-file open. Flush/open failure retains the locks. A scan
+error or false result releases them after successful close; close failure skips
+release. The expected-size overload compares Size only after that region returns.
+Heap and off-heap scans share the signed sequential scan helper while retaining
+their separate native ownership boundaries. Short local/TCP checks cover LSB/MSB
+flush/open/scan I/O failure and valid/invalid order; close failure is source-audited
+rather than fault-injected by this matrix.
 Flusher validation has two separate source boundaries: off-heap ordering and
 index alignment are checked against the temporary output before file-count
 publication and replacement; both heap and off-heap flushers then scan the

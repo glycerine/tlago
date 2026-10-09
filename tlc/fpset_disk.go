@@ -645,19 +645,32 @@ func (s *DiskFPSet) CheckFPs() uint64 {
 }
 
 func (s *DiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
+	// The expected-count overload compares size after the scan releases locks.
+	return s.checkInvariant() && (len(expectFPs) == 0 || s.Size() == expectFPs[0])
+}
+
+func (s *DiskFPSet) checkInvariant() bool {
 	s.acquireTblWriteLock()
-	defer s.releaseTblWriteLock()
 	if err := s.flushTable(); err != nil {
 		panic(err)
 	}
-	ok, err := s.checkFile()
+	in, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
 	if err != nil {
 		panic(err)
 	}
-	if !ok {
-		return false
+	// Source finally starts only after flush and open succeed. Close precedes
+	// release, so its failure also retains the table's source ownership.
+	defer func() {
+		if err := in.Close(); err != nil {
+			panic(err)
+		}
+		s.releaseTblWriteLock()
+	}()
+	ok, err := scanFingerprintFile(in)
+	if err != nil {
+		panic(err)
 	}
-	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+	return ok
 }
 
 func (s *DiskFPSet) UnexportObject(force bool) {}
@@ -1415,6 +1428,10 @@ func (s *DiskFPSet) checkFile() (ok bool, err error) {
 			err = closeErr
 		}
 	}()
+	return scanFingerprintFile(in)
+}
+
+func scanFingerprintFile(in *BufferedRandomAccessFile) (bool, error) {
 	length, err := in.Length()
 	if err != nil {
 		return false, err

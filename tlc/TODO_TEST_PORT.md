@@ -1824,6 +1824,12 @@ healthy-host work and retained registration identities are checked. Accepted
 storage work finishes after transport closes, without replay or reassignment.
 This adds no original-method credit and does not cover process death or atomicity.
 
+Native LSB/MSB invariant ownership checks cover flush/open/scan I/O failure and
+valid/invalid order through local/TCP endpoints. Corrected premature table-lock
+release on failures before the source finally region and moved expected-count
+comparison after release. No original method directly tests this failure
+boundary; these twenty short cases earn no original-method credit.
+
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Missing**: `testSpec`.
   Upstream DistributedTLCTestCase.setUp unconditionally Assume.assumeTrue(false); retain as transport backlog, not a completed/skipped Go port. Permanent supplemental native coverage is in [tlc_distributed_trace_process_test.go](../tlc_distributed_trace_process_test.go): unchanged DieHard fixtures, FINISHED, no GENERAL across all roles, BEHAVIOR and all seven exact original trace states. Both coordinator-owned and standalone TCP fingerprint stores are checked. One worker thread and MemFPSet for the remote role are explicit native harness choices; the disabled original harness receives no completion credit.
 - [x] [tlc2/tool/distributed/DistributedDoInitFunctorInvariantContinueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DistributedDoInitFunctorInvariantContinueTest.java) — **Port complete**: `testSpec`. Translation: [tlc_init_model_java_test.go](../tlc_init_model_java_test.go). Original inherits ordinary ModelCheckerTestCase rather than a remote server harness. Identical original NotNine model/config bytes, inherited exit and all diagnostic assertions retained; continuation also preserves exact counts and uncovered assertion. Unchanged Java and Go pass.

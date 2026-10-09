@@ -24158,3 +24158,30 @@ is restricted to the nine short accepted-request cases and passes (terminal
 No enabled original method directly covers this native transport boundary, so
 original-method credit is unchanged. These checks do not prove process-death
 recovery or atomic checkpoints. All check handles are terminal.
+
+### 2026-10-09: Heap disk invariant failure lock ownership
+
+Source DiskFPSet.checkInvariant acquires table locks and flushes/opens its scan
+before entering try/finally. Go's entry-level deferred unlock released ownership
+even when those earlier operations failed. Restored the source boundary: retain
+locks on flush/open failure, close then release after a scan, and retain locks
+if close fails. The expected-count overload now compares Size after scan cleanup,
+as the source does. Extracted the existing signed sequential scan so heap and
+off-heap retain their separate ownership boundaries without duplicate scanning.
+
+Added twenty short LSB/MSB local/TCP cases for flush/open/scan I/O failure and
+valid/duplicate order. The fixture inspects every stripe without starting a
+blocked follow-up operation and releases retained locks only for test cleanup.
+Before correction all eight flush/open cases report premature release (terminal
+b27a0a, status 1, 0.038 seconds). Corrected matrix passes (terminal f18f55, status
+0, 0.038 seconds). Adjacent checkpoint ownership, invariant overload, manager
+I/O, nested checks and both original normal/off-heap MultiFPSet getFPSet methods
+pass (terminal a43dfa, status 0, 0.330 seconds). The existing four original short
+disk batch methods and eighteen original short off-heap methods pass unchanged
+(terminal 63aeac, status 0, 1.067 seconds). Race checking is restricted to the new
+twenty short cases and passes (terminal 127787, status 0, 1.112 seconds).
+
+No original method directly covers this failure-ownership boundary, so native
+checks earn no additional original-method credit. Close-failure ordering is
+source-audited rather than fault-injected here. No full suite, full model or
+long race workload ran. All check handles are terminal.
