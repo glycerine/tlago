@@ -1466,6 +1466,10 @@ seven partial-long lengths after complete records, plus duplicates before an
 unvisited record. Source manager warning/continuation, exact runtime diagnostics,
 prefix/prior membership and unchanged registrations are verified. No enabled
 original method covers this boundary, so no completion credit is added.
+Native memory queue path checks reproduce and fix invented parent creation and
+lexical path cleaning. Begin/commit/recovery now retain source literal paths;
+original state-queue methods and related active-block checkpoint checks pass.
+No direct original method covers these filesystem boundaries; no credit added.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

@@ -127,6 +127,8 @@ Memory recovery retains complete prefixes and prior membership on truncated or
 duplicate input. Local/TCP checks cover all seven partial-long lengths: base
 memory runtime failures stop manager recovery, while packed-memory I/O failures
 warn and continue healthy registrations. Duplicates stop both without failover.
+Memory queue checkpoints open the configured literal directory directly. They
+do not create parents, choose temporary directories or clean symlink traversal.
 Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
 storage. The manager warns once, continues to the next registration and leaves
 routing intact; the broken connection does not replay the completed recovery.

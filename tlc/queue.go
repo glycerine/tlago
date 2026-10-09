@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 )
@@ -344,17 +343,7 @@ func (q *MemStateQueue) IsEmpty() bool {
 func (q *MemStateQueue) BeginChkpt() error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if q.diskdir == "" {
-		dir, err := os.MkdirTemp("", "MemStateQueue")
-		if err != nil {
-			return err
-		}
-		q.diskdir = dir
-	}
-	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
-		return err
-	}
-	file, err := os.Create(filepath.Join(q.diskdir, "queue.tmp"))
+	file, err := os.Create(q.checkpointPath("tmp"))
 	if err != nil {
 		return err
 	}
@@ -380,11 +369,8 @@ func (q *MemStateQueue) BeginChkpt() error {
 func (q *MemStateQueue) CommitChkpt() error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if q.diskdir == "" {
-		return nil
-	}
-	oldName := filepath.Join(q.diskdir, "queue.chkpt")
-	newName := filepath.Join(q.diskdir, "queue.tmp")
+	oldName := q.checkpointPath("chkpt")
+	newName := q.checkpointPath("tmp")
 	if _, err := os.Stat(oldName); err == nil {
 		if err := os.Remove(oldName); err != nil {
 			return NewIOException(fmt.Sprintf("MemStateQueue.commitChkpt: cannot delete %s", oldName))
@@ -399,10 +385,7 @@ func (q *MemStateQueue) CommitChkpt() error {
 func (q *MemStateQueue) Recover() error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if q.diskdir == "" {
-		return nil
-	}
-	file, err := os.Open(filepath.Join(q.diskdir, "queue.chkpt"))
+	file, err := os.Open(q.checkpointPath("chkpt"))
 	if err != nil {
 		return err
 	}
@@ -434,6 +417,10 @@ func (q *MemStateQueue) Recover() error {
 	}
 	closed = true
 	return in.Close()
+}
+
+func (q *MemStateQueue) checkpointPath(ext string) string {
+	return q.diskdir + string(os.PathSeparator) + "queue." + ext
 }
 
 func (q *MemStateQueue) Delete() error {

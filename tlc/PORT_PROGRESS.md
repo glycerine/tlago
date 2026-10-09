@@ -23816,3 +23816,19 @@ reply-loss checks and the original manager nested-partition method pass
 (terminal 29583c, status 0, 0.342 seconds). No enabled original method directly
 tests this manager/partial-input boundary, so no original-method credit is added.
 No full suite, long model or race workload ran. All check handles are terminal.
+
+### Memory queue checkpoint path fidelity
+
+Source MemStateQueue opens literal diskdir/separator/queue checkpoint paths.
+Go instead created missing parents, selected temporary directories for empty
+paths, silently skipped empty-path commit/recovery and cleaned symlink traversal.
+Removed those shortcuts and used one literal path helper for all three phases.
+Native cases reproduce missing-parent success and the wrong symlink/.. location
+(terminal 3b6b94, status 1, 0.015 seconds). Fixed cases, partial recovery,
+coordinator commit failures and original StateQueue methods pass (terminal
+1ed5a5, status 0, 0.022 seconds). Assigned-block checkpoint and source commit-text
+checks also pass (terminal 397107, status 0, 0.045 seconds). The symlink case
+checks real begin/commit/recovery files; it does not write root paths. No direct
+original test covers these filesystem boundaries, so native cases add no
+original-method credit. No full suite, long model or race workload ran.
+All check handles are terminal.

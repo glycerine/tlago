@@ -12794,3 +12794,18 @@ complete records and duplicate records followed by an unvisited fingerprint.
 It verifies exact runtime text, source warning text, healthy endpoint progress,
 prior/prefix membership and retained registration identity/availability. These
 are source nontransactional recovery semantics; no rollback or replay is added.
+
+### Memory queue checkpoint paths
+
+MemStateQueue checkpoint methods concatenate the configured disk directory,
+native separator and queue.tmp/queue.chkpt, as the source does. Begin opens the
+temporary file directly; it does not create parents or replace an empty directory
+with a generated temporary directory. Commit and recovery do not silently return
+for an empty directory. An empty configured directory produces a root-relative
+checkpoint path, preserving the source contract.
+
+Avoid filepath.Join here: removing symlink/.. changes filesystem resolution.
+Native cases verify failure without parent creation and a real symlink traversal
+where begin, commit and recovery all operate in the symlink target's parent,
+leaving the lexically cleaned location untouched. Queue formats, state ordering
+and source delete/rename failure semantics remain unchanged.
