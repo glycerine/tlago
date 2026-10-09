@@ -258,6 +258,10 @@ func TestNativeDistributedFinalFingerprintCheckMSBDiskReplyLossSurvivor(t *testi
 	checkNativeDistributedFinalFingerprintSurvivor(t, "MSB")
 }
 
+func TestNativeDistributedFinalFingerprintCheckOffHeapDiskReplyLossSurvivor(t *testing.T) {
+	checkNativeDistributedFinalFingerprintSurvivor(t, "OffHeap")
+}
+
 func checkNativeDistributedFinalFingerprintSurvivor(t *testing.T, disk string) {
 	t.Helper()
 	mode := "reply-loss-survivor"
@@ -287,9 +291,22 @@ func checkNativeDistributedFinalFingerprintSurvivor(t *testing.T, disk string) {
 	}
 	if disk != "" {
 		for _, size := range []uint64{lostCount, count} {
-			marker := fmt.Sprintf("NATIVE_FINAL_FP_DISK_CHECK_CHILDREN=2 COUNT=%d\n", size)
-			if strings.Count(output, marker) != 1 {
-				t.Fatalf("actual nested disk flush missing or repeated: %q", marker)
+			if disk == "OffHeap" {
+				pattern := fmt.Sprintf(`NATIVE_FINAL_FP_OFFHEAP_CHECK_CHILDREN=2 FILE=([1-9][0-9]*) TABLE=([1-9][0-9]*) COUNT=%d\n`, size)
+				matches := regexp.MustCompile(pattern).FindAllStringSubmatch(output, -1)
+				if len(matches) != 1 {
+					t.Fatalf("off-heap check did not preserve actual disk and memory membership: %q", pattern)
+				}
+				file, fileErr := strconv.ParseUint(matches[0][1], 10, 64)
+				table, tableErr := strconv.ParseUint(matches[0][2], 10, 64)
+				if fileErr != nil || tableErr != nil || file+table != size {
+					t.Fatalf("off-heap membership changed during final check: %q", matches)
+				}
+			} else {
+				marker := fmt.Sprintf("NATIVE_FINAL_FP_DISK_CHECK_CHILDREN=2 COUNT=%d\n", size)
+				if strings.Count(output, marker) != 1 {
+					t.Fatalf("actual nested disk flush missing or repeated: %q", marker)
+				}
 			}
 		}
 		if strings.Count(output, "...with nested instance type: tlc2.tool.fp."+disk+"DiskFPSet") != 4 {
@@ -360,7 +377,8 @@ func waitForNativeDistributedMarker(t *testing.T, ctx context.Context, process *
 }
 
 // A Mem host has nothing to report here. Disk cases must show actual complete
-// flushes in both physical children after storage's own final check returns.
+// membership in both physical children after storage's own final check returns.
+// LSB/MSB flush; off-heap deliberately scans retained memory without flushing.
 func (e *nativeFinalFingerprintCheckEndpoint) reportDiskCheck(count uint64) error {
 	local, ok := e.DistributedFingerprintEndpoint.(*tlc.LocalFingerprintEndpoint)
 	if !ok {
@@ -373,7 +391,8 @@ func (e *nativeFinalFingerprintCheckEndpoint) reportDiskCheck(count uint64) erro
 	if len(multi.Sets) != 2 {
 		return fmt.Errorf("final disk check requires two children")
 	}
-	var total uint64
+	var total, fileTotal, tableTotal uint64
+	offHeap := false
 	for _, child := range multi.Sets {
 		var disk *tlc.DiskFPSet
 		switch child := child.(type) {
@@ -381,17 +400,30 @@ func (e *nativeFinalFingerprintCheckEndpoint) reportDiskCheck(count uint64) erro
 			disk = child.DiskFPSet
 		case *tlc.MSBDiskFPSet:
 			disk = child.DiskFPSet
+		case *tlc.OffHeapDiskFPSet:
+			disk = child.DiskFPSet
+			offHeap = true
 		default:
 			return fmt.Errorf("unexpected final-check child %T", child)
 		}
-		if disk.GetFileCnt() <= 0 || uint64(disk.GetFileCnt()) != disk.Size() || disk.GetTblCnt() != 0 {
+		if offHeap {
+			if disk.GetFileCnt() <= 0 || disk.GetTblCnt() <= 0 || uint64(disk.GetFileCnt()+disk.GetTblCnt()) != disk.Size() {
+				return fmt.Errorf("off-heap check did not retain complete file/memory membership: file=%d table=%d size=%d", disk.GetFileCnt(), disk.GetTblCnt(), disk.Size())
+			}
+		} else if disk.GetFileCnt() <= 0 || uint64(disk.GetFileCnt()) != disk.Size() || disk.GetTblCnt() != 0 {
 			return fmt.Errorf("disk check did not flush complete child membership: file=%d table=%d size=%d", disk.GetFileCnt(), disk.GetTblCnt(), disk.Size())
 		}
-		total += uint64(disk.GetFileCnt())
+		fileTotal += uint64(disk.GetFileCnt())
+		tableTotal += uint64(disk.GetTblCnt())
+		total += disk.Size()
 	}
 	if total != count {
 		return fmt.Errorf("physical final disk membership %d != host count %d", total, count)
 	}
-	fmt.Printf("NATIVE_FINAL_FP_DISK_CHECK_CHILDREN=2 COUNT=%d\n", total)
+	if offHeap {
+		fmt.Printf("NATIVE_FINAL_FP_OFFHEAP_CHECK_CHILDREN=2 FILE=%d TABLE=%d COUNT=%d\n", fileTotal, tableTotal, total)
+	} else {
+		fmt.Printf("NATIVE_FINAL_FP_DISK_CHECK_CHILDREN=2 COUNT=%d\n", total)
+	}
 	return nil
 }

@@ -94,12 +94,14 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 	if checkFailure != "" && (!remote || sourceHarness || model != "EWD840") {
 		t.Fatal("final-check fault requires the native remote EWD840 model")
 	}
-	survivingCheckHost := checkFailure == "reply-loss-survivor" || checkFailure == "reply-loss-survivor-lsb" || checkFailure == "reply-loss-survivor-msb"
+	survivingCheckHost := checkFailure == "reply-loss-survivor" || checkFailure == "reply-loss-survivor-lsb" || checkFailure == "reply-loss-survivor-msb" || checkFailure == "reply-loss-survivor-offheap"
 	fingerprintImplementation := "tlc2.tool.fp.MemFPSet"
 	if checkFailure == "reply-loss-survivor-lsb" {
 		fingerprintImplementation = "tlc2.tool.fp.LSBDiskFPSet"
 	} else if checkFailure == "reply-loss-survivor-msb" {
 		fingerprintImplementation = "tlc2.tool.fp.MSBDiskFPSet"
+	} else if checkFailure == "reply-loss-survivor-offheap" {
+		fingerprintImplementation = "tlc2.tool.fp.OffHeapDiskFPSet"
 	}
 	directory, err := filepath.Abs(filepath.Join("tlc/test_vectors/models", model))
 	if err != nil {
@@ -138,6 +140,11 @@ func runNativeDistributedModelWithCheckFailure(t *testing.T, model string, remot
 			command.Env = append(command.Env, "TMPDIR="+t.TempDir())
 			if fingerprintImplementation != "tlc2.tool.fp.MemFPSet" {
 				command.Env = append(command.Env, "GOMEMLIMIT=64MiB")
+				if fingerprintImplementation == "tlc2.tool.fp.OffHeapDiskFPSet" {
+					// Two children per host must evict before the roughly 28k-entry
+					// model partitions complete, retaining both disk and memory entries.
+					command.Env = append(command.Env, "TLAGO_MAX_DIRECT_MEMORY=256k")
+				}
 			}
 		}
 		if sourceHarness {

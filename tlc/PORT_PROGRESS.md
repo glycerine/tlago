@@ -27051,3 +27051,38 @@ distributed-final-msb-check-controls.log, terminal 46acc2, status 0,
 0.015 seconds. No race or full-suite run. Original distributed inventory remains
 37/41; off-heap final-check loss remains unproved. Updated HANDOFF/architecture
 and git diff --check passes.
+
+
+### October 9, 2026: off-heap final-check reply loss and survivor
+
+Completion/keepalive source comparisons found no additional production change.
+Extended the native full N=7 final-check survivor case to two actual off-heap
+children per host. Source OffHeapDiskFPSet.checkFPs deliberately scans retained
+memory, unlike LSB/MSB's flush/read algorithm. The first native fixture wrongly
+required flushed files and failed; this was corrected in the fixture, preserving
+production behavior. Receipt distributed-final-offheap-check-survivor.log,
+terminal 52f560, status 1, 38.297 seconds.
+
+The next fixture required both actual file and memory entries, but a 512 KiB
+budget held these four roughly 28k-entry partitions without eviction. It failed
+with file=0/table=28752; receipt
+distributed-final-offheap-check-survivor-fixed.log, terminal e37e1c,
+status 1, 37.913 seconds. The native failure scenario now uses 256 KiB to
+exercise eviction, keeping the full N=7 model and all reporting/probability/
+cleanup assertions intact. LSB/MSB still require complete final flushes.
+
+Final full model passes in distributed-final-offheap-check-survivor-evicted.log,
+terminal 6acee3, status 0, 49.647 seconds. Actual child file-plus-memory counts
+equal membership and both host totals sum to 114,942 distinct fingerprints.
+The lost host completes its actual source subset check before being killed;
+the survivor supplies its real distance/statistics and exits once. All surviving
+processes joined. This does not resolve the source-disabled 48-worker model's
+retained closed-flusher failure or arbitrary partitions.
+
+Corrected focused selector runs ported Java off-heap testInsertAndEvict1,
+testMergeDuplicate, testMergeDistinct and native retained-flusher cases for
+4/48 workers: distributed-final-offheap-check-controls-final.log, terminal
+55c9aa, status 0, 0.020 seconds. Earlier selector ran only the native cases
+(00fcdc, status 0); no Java credit claimed from that run. No production changes,
+new original-method credit, race or full-suite run. Inventory remains 37/41.
+Updated HANDOFF/architecture and git diff --check passes.

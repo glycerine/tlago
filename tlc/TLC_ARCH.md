@@ -14720,3 +14720,22 @@ statistics call and one cleanup Exit. All surviving processes join.
 The three focused declared Java MSB checks for getLast and high fingerprints
 also pass. This adds native failure-phase evidence, not original method credit
 or proof of off-heap final-check loss. No production algorithm was changed.
+
+
+### Off-heap final check retains the upstream memory subset
+
+OffHeapDiskFPSet overrides the heap disk final-check algorithm. Upstream sorts
+and scans retained in-memory entries, approximating the closest pair without
+including evicted disk entries. The Go override preserves this behavior and
+the retained flusher selection; it must not be replaced with a complete disk
+flush to satisfy a native fixture.
+
+The two-host final-check reply-loss fixture therefore distinguishes off-heap
+storage from LSB/MSB. It requires positive actual file and memory membership in
+each physical off-heap child, whose sum equals Size. Both host totals must still
+cover the unchanged N=7 model's 114,942 distinct fingerprints. A native
+256 KiB direct-memory bound exercises eviction with these four partitions; each separate host owns its
+storage and lifetime. LSB/MSB still require fully flushed files and empty tables.
+Existing final reporting, probability, single statistics query and cleanup
+assertions are shared. These native cases do not earn original-method credit
+or resolve the disabled 48-worker model's retained closed-flusher limitation.
