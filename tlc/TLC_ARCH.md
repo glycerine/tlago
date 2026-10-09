@@ -10967,13 +10967,18 @@ dependencies and replace their semantic identities or cached/config bindings.
 New dependencies are retained in both source and runtime external tables;
 temporary expression wrappers remain separate from the running root.
 
-An overlay on unchanged original Test219 now observes 648 root traces: 620
-match exactly, including all 371 initial-context events, and none fail on a
-lookup alias. All 28 first mismatches are synthetic `$Pair` applications still
-allocated by AST conversion with unrelated UIDs. Their observed locations are
-TLC line 121, test219a lines 152, 164, 167 and 181, _JsonTrace line 14 and
-_TLCTrace line 24. Adapting actual INSTANCE exports expands the observed roots;
-the earlier smaller trace inventory is not a fixed coverage denominator.
+Available generated expressions now use `canonicalGraph` directly instead of
+rebuilding their children from the AST. Synthetic pairs, labels, operands and
+bound expressions retain their actual source graph identities and memberships.
+The AST path remains for expressions with no generated source graph; general
+source-generation completeness is still unproven.
+
+An overlay on unchanged original Test219 observes 648 root traces, all matching
+exactly, including all 371 initial-context events, without alias/null failures.
+This closes the observed synthetic `$Pair` identity gap. Whole-module traversal
+still differs at the separately reconstructed module Contexts: all 12 observed
+modules have different Context views and event counts. This subgraph observation
+does not prove module traversal parity or a fixed corpus coverage denominator.
 
 This is not full runtime graph parity. Complete module Context/body conversion,
 source-to-runtime mutation sharing and remaining native INSTANCE lowering still

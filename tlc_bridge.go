@@ -1691,14 +1691,11 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 		return nil
 	}
 	if source := sanyGeneratedExpressionNode(expr); source != nil {
-		if node := b.canonicalGraphs[source]; node != nil {
-			return node
-		}
+		// Preserve the generated children as well as the expression identity:
+		// synthetic pairs and other wrappers have their own source nodes.
+		return b.canonicalGraph(source)
 	}
 	if selected := sanyExprSelection(expr); selected != nil {
-		if source := sanyGeneratedExpressionNode(expr); source != nil {
-			return b.canonicalGraph(source)
-		}
 		return b.retainCanonicalExpression(expr, b.selectorNode(expr, selected))
 	}
 	var node tlc.SemanticNode

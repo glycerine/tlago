@@ -27910,3 +27910,51 @@ Final broader original legacy/debugger/EWD998/coverage/LET/cyclic selection
 passes after the declaration-range correction: runtime-alias-complete-originals.log,
 terminal b86643, status 0, 180.707 seconds. Original assertions and workload
 bounds remain unchanged. Git diff --check passes.
+
+## 2026-10-09: Adapt generated expression children directly
+
+Previous goal turn made authoritative progress in f233d32. Revalidated the
+clean worktree and polled the same live full off-heap random session 77502.
+Adopted the previously isolated source-body conversion: convertExpr now adapts
+an available generated expression through canonicalGraph directly. Removed the
+redundant selector-only source-graph branch. Expressions without a generated
+source graph retain the AST fallback; complete generation is not presumed.
+Synthetic pairs and other generated children now share the actual source graph
+memberships and identities instead of receiving unrelated runtime UIDs.
+
+Scoped-identifier rows and original SANY builtin, selector, incremental-semantic
+and operator checks pass: runtime-source-body-scope-sany-originals.log,
+terminal 6fdfd5, status 0, 0.096 seconds. An ignored observation overlay on
+unchanged original Test219 confirms all 648 subgraph entry/exit traces now match
+exactly, including the 371-event initial context, without alias/null failures.
+Receipt: runtime-source-body-traces.log, terminal c3fc72, status 0. Diagnostic
+files are under runtime-source-body-observation in .codex-gotmp; no test entries
+or original assertions were added or modified.
+
+Whole-module observation now isolates the next conversion boundary. All 12
+Test219 modules differ at their separately reconstructed Context view; event
+counts also differ. Receipt: runtime-source-body-module-traces.log, terminal
+c0b15b, status 0. Prepared an ignored module Context probe that registers the
+source Context's actual runtime view, reuses an existing retained Context where
+present, and imports its complete source Pair/Hashtable state after population.
+The probe matches all 12 whole-module traces exactly, including the root's
+9,536 events. Receipt: runtime-module-context-trace-probe.log, terminal 8499df,
+status 0. Focused original selectors/debugger/LET/cyclic/ASSUME and scoped rows
+also pass with that probe: runtime-module-context-originals-probe.log, terminal
+fd74ce, status 0. Probe files remain under runtime-module-context-probe; this
+Context change is not yet production and needs broader verification before
+adoption. The production module Context gap remains required work.
+
+Updated architecture and current handoff. General source-generation completeness,
+module Context conversion, source-to-runtime mutation sharing and remaining
+native INSTANCE fallback lowering remain explicit. Original-method inventory
+counts unchanged. No full-workspace or XML/ApalacheIR sweep, invented tests,
+race instrumentation or email work. The original full off-heap random session
+remains live at its unchanged 2,147,483,648-iteration bounds; no restart or
+completion credit.
+
+Final broader original legacy/debugger/EWD998/coverage/LET/cyclic selection
+passes: runtime-source-body-final-originals.log, terminal fec937, status 0,
+177.025 seconds. Original assertions and workload bounds remain unchanged.
+The full off-heap random log exceeds 291 million iterations and the same session
+is still live. Git diff --check passes.

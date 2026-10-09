@@ -57,11 +57,12 @@ parameters, preserving source identity across frontend reinitialization.
 The runtime now exposes UID-based entry/exit traversal, including Context and
 substitution records. Retained expressions use actual resolved operators;
 INSTANCE exports share SANY's chosen definitions, substitutions and formals.
-Debugger compilation preserves the running source module table. Strict
-traversal of original Test219 now reaches more INSTANCE subgraphs without alias
-failures; remaining first mismatches are synthetic `$Pair` children created by
-AST conversion. Complete module Context/body conversion, mutation sharing and
-remaining native INSTANCE fallback lowering remain pending; see `TLC_ARCH.md`.
+Debugger compilation preserves the running source module table. Available
+generated expressions now adapt their actual child graphs, closing the observed
+synthetic `$Pair` identity gap. All 648 observed Test219 subgraph traces match;
+whole-module traces still differ at reconstructed Contexts. Complete module
+Context conversion, general source-generation completeness, mutation sharing
+and remaining native INSTANCE fallback lowering remain pending; see `TLC_ARCH.md`.
 
 ## Verification baseline and test credit
 
