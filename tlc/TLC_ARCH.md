@@ -13545,3 +13545,26 @@ cases cover I/O reads/peek/writes plus nil and negative-length runtime failures.
 One direct checkpoint case verifies buffered-prefix/marker behavior. Existing
 original writer wake/finish and buffered/value stream methods remain unchanged.
 No dedicated upstream raw failure method exists; completion credit is unchanged.
+
+### Raw pool cleaner warnings and fatal canonicalization errors
+
+The raw cleaner formerly suppressed missing-file delete failures and formatted
+other warnings with lexical absolute paths. Source `File.delete()` returns
+false for every failed deletion, including absent files; each such failure
+warns using `getCanonicalPath()` and does not stop later deletions. The raw
+cleaner now uses the existing source canonical-path helper, with warning order
+and committed cleanup range matching the state queue. Symlinks followed by
+`..` resolve through the filesystem before missing path suffixes are appended.
+
+Canonicalization can itself fail. Source catches such exceptions outside the
+loop, prints the cleaning-pool error and exits 1. The raw cleaner now shares
+the existing pool diagnostic/exit handler rather than printing a misleading
+warning and continuing. Ordinary failed deletions remain warnings and advance
+the range; exceptional canonicalization does not publish that range.
+
+The existing native cleaner matrix is extended to both queue implementations,
+retaining every warning/path/order/progress/content assertion. A child-process
+symlink-loop case verifies source error severity, code, single event and exit
+without caller continuation. Existing raw reader/writer child checks now also
+require error severity. Original DiskPoolWriter assertions remain unchanged.
+No direct original cleaner method exists, so original-method credit is unchanged.

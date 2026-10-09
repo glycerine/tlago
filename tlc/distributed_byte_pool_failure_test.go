@@ -16,8 +16,12 @@ import (
 // rather than returning to this caller or leaving consumers waiting forever.
 func TestDistributedBytePoolBackgroundFailureExit(t *testing.T) {
 	if phase := os.Getenv("TLAGO_BYTE_POOL_FAILURE_EXIT"); phase != "" {
+		cleaningEvent := make(chan struct{}, 1)
 		AddMessageRecorder(RecorderFunc(func(message Message) {
-			fmt.Fprintf(os.Stdout, "RAW_POOL_EVENT %d %q\n", message.Code, message.Params)
+			fmt.Fprintf(os.Stdout, "RAW_POOL_EVENT %d %d %q\n", message.Code, message.Severity, message.Params)
+			if message.Code == ECSystemErrorCleaningPool {
+				cleaningEvent <- struct{}{}
+			}
 		}))
 		defer fmt.Fprintln(os.Stdout, "RAW_POOL_DEFER_RAN")
 		name := filepath.Join(os.Getenv("TLAGO_BYTE_POOL_FAILURE_DIRECTORY"), "0")
@@ -25,7 +29,20 @@ func TestDistributedBytePoolBackgroundFailureExit(t *testing.T) {
 			name = filepath.Join(filepath.Dir(name), "missing", "0")
 		}
 		done := make(chan struct{})
-		if strings.HasPrefix(phase, "reader_") {
+		if phase == "cleaner_loop" {
+			link := filepath.Join(filepath.Dir(name), "loop")
+			if err := os.Symlink(link, link); err != nil {
+				t.Fatal(err)
+			}
+			cleaner := NewByteArrayPoolCleaner(&DiskByteArrayQueue{diskdir: link})
+			cleaner.Start()
+			cleaner.DeleteUpTo(1)
+			// A diagnostic must be fatal here. Stop after an incorrect warning
+			// so the pre-fix child demonstrates return instead of timing out.
+			<-cleaningEvent
+			cleaner.FinishAndWait()
+			close(done)
+		} else if strings.HasPrefix(phase, "reader_") {
 			if phase == "reader_truncated" || phase == "reader_negative" {
 				data := []byte{0}
 				if phase == "reader_negative" {
@@ -49,7 +66,7 @@ func TestDistributedBytePoolBackgroundFailureExit(t *testing.T) {
 		fmt.Fprintln(os.Stdout, "RAW_POOL_FAILURE_RETURNED")
 		return
 	}
-	for _, phase := range []string{"reader_missing", "reader_truncated", "reader_negative", "writer_missing", "writer_nil"} {
+	for _, phase := range []string{"reader_missing", "reader_truncated", "reader_negative", "writer_missing", "writer_nil", "cleaner_loop"} {
 		t.Run(phase, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -61,11 +78,13 @@ func TestDistributedBytePoolBackgroundFailureExit(t *testing.T) {
 				t.Fatalf("raw pool failure should exit 1: %v\n%s", err, output)
 			}
 			code := ECSystemErrorWritingPool
-			if strings.HasPrefix(phase, "reader_") {
+			if phase == "cleaner_loop" {
+				code = ECSystemErrorCleaningPool
+			} else if strings.HasPrefix(phase, "reader_") {
 				code = ECSystemErrorReadingPool
 			}
 			text := string(output)
-			if strings.Count(text, "RAW_POOL_EVENT ") != 1 || !strings.Contains(text, fmt.Sprintf("RAW_POOL_EVENT %d ", code)) {
+			if strings.Count(text, "RAW_POOL_EVENT ") != 1 || !strings.Contains(text, fmt.Sprintf("RAW_POOL_EVENT %d %d ", code, SeverityError)) {
 				t.Fatalf("missing or extra raw pool diagnostic:\n%s", output)
 			}
 			if strings.HasPrefix(phase, "reader_") && !strings.Contains(text, `"0"]`) {

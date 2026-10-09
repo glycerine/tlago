@@ -2,10 +2,8 @@ package tlc
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 )
@@ -567,6 +565,11 @@ func (c *ByteArrayPoolCleaner) FinishAndWait() {
 
 func (c *ByteArrayPoolCleaner) run() {
 	defer close(c.done)
+	defer func() {
+		if failure := recover(); failure != nil {
+			statePoolFailureExit(ECSystemErrorCleaningPool, "", failure)
+		}
+	}()
 	for {
 		c.mu.Lock()
 		for !c.finished && c.deleteUpTo <= 0 {
@@ -592,11 +595,12 @@ func (c *ByteArrayPoolCleaner) run() {
 		}
 		for i := start; i < target; i++ {
 			name := q.poolName(i)
-			if err := os.Remove(name); err != nil && !errors.Is(err, os.ErrNotExist) {
-				if abs, absErr := filepath.Abs(name); absErr == nil {
-					name = abs
+			if err := os.Remove(name); err != nil {
+				canonical, err := statePoolCanonicalPath(name)
+				if err != nil {
+					panic(err)
 				}
-				PrintWarning(ECSystemErrorCleaningPool, name)
+				PrintWarning(ECSystemErrorCleaningPool, canonical)
 			}
 		}
 		q.mu.Lock()

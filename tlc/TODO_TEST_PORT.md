@@ -1988,6 +1988,12 @@ Failed checkpoint buffering/marker publication is checked directly. Existing
 original DiskPoolWriter and stream methods remain unchanged and green; these
 native failure cases add no original-method credit.
 
+The existing native cleaner matrix now covers both state and raw byte queues,
+including failed missing/nonempty-directory deletes, canonical symlink paths,
+later successful deletion and range progress. Raw canonicalization errors now
+have child-process coverage for one error-severity event and process exit.
+Original writer tests remain unchanged; these native cases add no test credit.
+
 Native coordinator read checks in `distributed_server_file_path_test.go` verify
 relative/absolute symlink traversal, exact directory/open-failure diagnostics
 and retained nested file-open causes. Absolute diagnostics now preserve dot

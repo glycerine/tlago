@@ -25139,3 +25139,33 @@ checks pass (byte-pool-failure-final.log, terminal 0ed9c1, status 0,
 checkpoint failure case add no original-method credit. Distributed inventory
 remains 37 complete and four Missing. No full suite, long workload or race run.
 All handles are terminal.
+
+### October 9, 2026: raw cleaner deletion diagnostics and exception catch
+
+Compared the raw cleaner with source DiskByteArrayQueue.StatePoolCleaner.
+Source warns for every false File.delete result, including missing files, using
+the canonical path; ordinary failures do not prevent later deletion or range
+publication. Go suppressed absent-file warnings and used filepath.Abs, which
+changed paths through symlinks followed by `..`. Extended the existing native
+state-cleaner matrix to both backends, retaining all warning/order/progress and
+retained-content assertions. Added a raw cleaner child-process canonicalization
+failure case. The raw cases fail before the fix (byte-pool-cleaner-red.log,
+terminal e36416, status 1, 0.093 seconds).
+
+Raw cleaner now uses the existing canonical-path helper for every failed delete.
+Canonicalization exceptions follow the existing source pool diagnostic/exit
+handler, rather than becoming warnings or silently escaping their owner.
+Ordinary delete failures still warn and advance the range. The child-process
+symlink-loop case requires one error-severity cleaning event and exit 1 without
+caller continuation. Existing raw reader/writer child cases now also assert
+source error severity. Initial focused checks pass (byte-pool-cleaner-green.log,
+terminal 283545, status 0, 0.105 seconds).
+
+Final verbose cleaner/raw-state pool/queue checkpoint checks and unchanged
+original DiskPoolWriter methods pass (byte-pool-cleaner-final.log, terminal
+381ea1, status 0, 0.193 seconds). Only the four short native cleaner matrix rows
+run with race instrumentation (byte-pool-cleaner-race.log, terminal 9ea6fb,
+status 0, 1.036 seconds). No long workload was combined with race; no full suite
+or full-model workload reran. No dedicated upstream cleaner method exists;
+native checks add no original-method credit. Distributed inventory remains
+37 complete and four Missing. All handles are terminal.

@@ -496,8 +496,10 @@ also reopen in fresh stores. This covers transport loss, not host death.
    flags before calling the factory. Failed callbacks retain native resource
    rollback; subclass registration setup still follows base factory creation.
    Raw byte-queue paths, partial reads and pool failure catches now match the
-   source. Background reader/writer failures print the pool diagnostic and exit;
-   synchronous failures raise the coded queue assertion without advancing work.
+   source. Background reader/writer failures and cleaner exceptions print the
+   pool error and exit. Ordinary failed deletions warn with canonical paths and
+   continue, including missing files. Synchronous failures raise the coded queue
+   assertion without advancing work.
    Failed raw writes close native files without reflushing or publishing the
    checkpoint marker. Original writer wake/finish and stream tests remain green.
 5. Reconcile opaque custom data and evaluator metadata against actual source
