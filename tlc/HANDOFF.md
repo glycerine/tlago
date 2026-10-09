@@ -6,6 +6,9 @@ This is the current restart guide. Detailed audit history and verification
 receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md); implementation contracts
 belong in [TLC_ARCH.md](TLC_ARCH.md). Older handoffs remain in Git history and
 must not be read as current assignments.
+Use [DISTRIBUTED_PORT_MAP.md](DISTRIBUTED_PORT_MAP.md) to locate the native
+implementation of each of the 35 upstream distributed source files. Mapping
+coverage is separate from behavioral verification and original-test credit.
 
 ## Goal and boundaries
 

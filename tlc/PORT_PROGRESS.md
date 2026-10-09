@@ -25431,3 +25431,25 @@ shared fixture and all assertions unchanged
 No direct original method covers this fault phase, so distributed inventory
 remains 37 complete and four Reconcile. No full suite, shortened model bounds,
 race workload, RPC retry redesign or Java runtime machinery was introduced.
+
+### October 9, 2026: inventory the original distributed source boundary
+
+Current fingerprint callable comparison confirms captured submission count,
+one callable per partition, index-preserving completion collection, source
+failure-slot behavior and local-manager executor bypass. Coordinator, worker,
+fingerprint and application interfaces have native operation counterparts.
+No new production mismatch was established by this comparison.
+
+Added DISTRIBUTED_PORT_MAP.md to map every file in the pinned source distributed
+directory tree to its Go implementation and retained contracts. The map separates
+TLC behavior from native replacements for Java naming/transport/thread/class
+infrastructure. It also identifies supporting trace, queue, fingerprint and
+payload owners outside that directory, and preserves all six remaining handoff
+assignments. A file mapping is expressly not proof that every method is correct.
+
+Read-only inventory validation against the pinned checkout reports 35 source
+files and 35 unique mapped rows, with no missing/extra source entries. Two
+initially guessed network filenames were corrected to actual owners before
+final link validation. Documentation-only change; no model, full suite or race
+run and no new original-method credit. Inventory remains 37 complete and four
+Reconcile. All prior process handles are terminal.
