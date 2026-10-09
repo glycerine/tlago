@@ -12273,3 +12273,21 @@ empty queue and FINISHED assertion remain unchanged. GENERAL and unexpected EOF
 are rejected on both coordinator and worker roles. All children must exit and be
 joined. This adds native shared-runtime coverage without claiming translation of
 the source assumption-disabled harness or proving exhaustive scheduling behavior.
+
+### Full-model checkpoint with multiple shared-runtime workers
+
+The coordinator checkpoint sequence still matches source: queue/trace/FP begin,
+queue resume, intern begin, then queue/trace/intern/FP commit. Recovery reads
+trace, queue and fingerprints in that order. This audit needed no implementation
+change and retains source mixed-file behavior on interruption.
+
+A full unchanged MC06 N=7 row now checkpoints with two workers sharing one
+process application, manager, executor and exit latch. The existing production
+barrier captures the unfinished frontier; the producer exits abruptly after
+commit and its worker process is retired. A fresh coordinator and two fresh
+replacement workers recover that persisted frontier. Producer registration count
+matches the configured workers. Each replacement URI has one nonzero-work
+statistics record, while final distinct/queue assertions remain 114,942/zero
+with FINISHED and no GENERAL or unexpected EOF. This local-store case complements
+single-worker remote-store restart checks, without proving their multi-worker
+combination or adding source assumption-disabled method credit.

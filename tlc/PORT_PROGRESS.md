@@ -22886,3 +22886,29 @@ checks pass (multiple-worker-threads-related.log, terminal 5230fc, status 0,
 0.013 seconds). No original method directly tests this native process layout;
 the four assumption-disabled methods remain Missing and receive no credit.
 All runs are terminal and children joined. No full suite or race workload.
+
+### October 8, 2026: full-model checkpoint with multiple workers
+
+Audited coordinator checkpoint/recovery order against source TLCServer; existing
+Go order matches and needed no production change. Rechecked ordinary extended
+action transferability: source Action retains evaluator nodes/Context and the
+non-serializable DO_NOT_RECORD CostModel. Its Serializable declaration alone
+does not make ordinary populated actions transferable. Explicit native rejection
+remains appropriate; no evaluator or JVM serialization machinery was added.
+
+Extended the actual full-model mid-run checkpoint harness to run two workers in
+one shared-runtime process before the snapshot and two new replacement workers
+after fresh-coordinator recovery. Existing single-worker rows keep their settings
+and assertions. Producer registrations must match the configured count. The new
+row inherits persisted/recovered frontier checks, both replacement identities and
+statistics with actual work, FINISHED, original 114,942 distinct states, an empty
+queue and no GENERAL or unexpected EOF. It adds no original-method credit.
+
+The full unchanged N=7 model passes (multiple-worker-checkpoint-model.log,
+terminal 66f7ca, status 0, 50.806 seconds), recovering 24,576 fingerprints and
+8,192 queued states. Focused assigned-block barrier, checkpoint/recovery-owner
+ordering, I/O catches, interning lock and complete original manager reassignment
+checks pass (multiple-worker-checkpoint-related.log, terminal fe39a1, status 0,
+0.059 seconds). Both coordinator/worker generations are terminal and joined.
+No full suite or race workload was run. Remote multi-worker restart and broader
+interruption/partition cases remain unproved.

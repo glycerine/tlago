@@ -51,6 +51,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "combined_worker_fingerprints", remoteFP: true, combined: true},
 		{name: "checkpoint_recovery", recovering: true},
 		{name: "mid_run_checkpoint_recovery", recovering: true, midRunCheckpoint: true},
+		{name: "mid_run_checkpoint_recovery_multiple_workers", recovering: true, midRunCheckpoint: true, workerThreads: 2},
 		{name: "checkpoint_interruption_before_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true},
 		{name: "checkpoint_interruption_after_queue_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true, checkpointInterruptedAfterQueue: true},
 		{name: "checkpoint_interruption_after_intern_commit", recovering: true, midRunCheckpoint: true, checkpointInterrupted: true, checkpointInterruptedAfterIntern: true},
@@ -177,7 +178,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				snapshot := start(producer, producerArgs...)
 				var snapshotWorker *nativeDistributedTestProcess
 				if scenario.midRunCheckpoint {
-					snapshotWorker = start("worker", "-Dtlc2.tool.distributed.TLCWorker.threadCount=1", "127.0.0.1")
+					snapshotWorker = start("worker", fmt.Sprintf("-Dtlc2.tool.distributed.TLCWorker.threadCount=%d", max(1, scenario.workerThreads)), "127.0.0.1")
 				}
 				err := <-snapshot.done
 				snapshot.joined = true
@@ -331,8 +332,8 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					if len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCCheckpointStart)) != 1 || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCCheckpointEnd)) != completedCheckpoints || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECGeneral)) != 0 {
 						t.Fatal("mid-run producer checkpoint phase or GENERAL assertion failed")
 					}
-					if len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCDistributedWorkerRegistered)) != 1 || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCFinished)) != 0 {
-						t.Fatal("checkpoint producer did not stop an unfinished run with one real worker")
+					if len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCDistributedWorkerRegistered)) != max(1, scenario.workerThreads) || len(nativeDistributedMessages(snapshot.output.String(), tlc.ECTLCFinished)) != 0 {
+						t.Fatal("checkpoint producer did not stop an unfinished run with the configured workers")
 					}
 				}
 				serverArgs = []string{"-Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.MemFPSet", "-tool", "-deadlock", "-recover", path[1], "MC06"}

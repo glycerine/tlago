@@ -182,6 +182,13 @@ actual files and recovered counts, not just producer markers. A short assigned-
 block barrier check reopens local, one-remote-store and two-remote-store snapshots
 with matching queue/trace/fingerprint identities.
 
+A local full-model mid-run checkpoint also runs two workers sharing one process
+application and runtime. Fresh coordinator and two replacement workers restore
+the persisted frontier and finish with the original 114,942 distinct states.
+Both producer registrations, both replacement statistics and actual work by
+each replacement worker are required. This does not establish remote multi-worker
+restart or checkpoint atomicity.
+
 Short process checks kill MemFPSet, LSBDiskFPSet and MSBDiskFPSet hosts after a
 committed checkpoint plus later insertion/pending snapshot. Fresh hosts recover
 only committed membership. Disk rows verify flushed live membership, unchanged
