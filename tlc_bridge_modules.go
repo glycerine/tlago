@@ -211,9 +211,11 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 				if entry.declaration != nil {
 					declaration.Arity = entry.declaration.semArity()
 				}
-				position := entry.position
-				position.File = entry.module.Name
-				declaration.Location = b.sourceLocationForPosition(position)
+				if entry.declaration == nil {
+					position := entry.position
+					position.File = entry.module.Name
+					declaration.Location = b.sourceLocationForPosition(position)
+				}
 				symbol = declaration
 			case entry.kind == OperatorDecl:
 				if def := b.moduleContextDefinition(mod, entry); def != nil {

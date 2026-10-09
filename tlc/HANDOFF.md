@@ -61,10 +61,13 @@ Debugger compilation preserves the running source module table. Available
 generated expressions now adapt their actual child graphs, closing the observed
 synthetic `$Pair` identity gap. Module Context views now import the source Pair
 history and Hashtable topology, sharing the canonical source Context identity.
+Canonical module and proof-local declarations retain source syntax and location.
 Runtime helper dependencies stay outside user source imports. All 12 observed
 Test219 whole-module traces and 60 getter arrays match. General source-generation
 completeness, mutation sharing and remaining native INSTANCE fallback lowering
 remain pending; see `TLC_ARCH.md`.
+Next metadata gap: runtime root `Extendees` still includes implicit trace helpers
+that the canonical source extendees excludes; reconcile their source membership.
 
 ## Verification baseline and test credit
 

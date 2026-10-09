@@ -10961,6 +10961,16 @@ the actual source Context export, preserving Generator's choice of reuse,
 substitutions and formals. The older native reconstruction remains only when
 the represented source symbol is absent.
 
+Canonical module and proof-local NEW declarations also retain the actual source
+syntax node and source location in their runtime SymbolNode fields. Attaching
+only SemanticBase is insufficient because SymbolNode's syntax and location
+accessors read separate fields. Generated declarations keep those source fields;
+AST-only declarations continue to derive their location from the declaration
+position. Observations on unchanged original Test207, Test208, Test209 and
+Test219 cover 22 declaration views, including four proof-local declarations:
+all syntax identities and locations match after conversion. This does not prove
+general source-to-runtime mutation sharing.
+
 Debugger compilation generates only the new wrapper or dependency against the
 retained source external table, as Java does. It does not regenerate running
 dependencies and replace their semantic identities or cached/config bindings.

@@ -27999,3 +27999,49 @@ of 2,147,483,648 iterations, with unchanged bounds, default direct-memory budget
 and no race instrumentation. No restart or completion credit. No full-workspace
 or XML/ApalacheIR sweep, invented tests or email work. Updated architecture and
 current handoff; detailed chronology stays here.
+
+
+Canonical declaration syntax and location retention (2026-10-09)
+
+Previous goal turn made authoritative progress in 13862ae. Revalidated the clean
+worktree and confirmed full off-heap random session 77502 remains live. Audited
+OpDeclNode construction in the pinned Java source and the runtime SymbolNode
+accessors. The source constructor retains its actual syntax and location; the
+runtime accessors read separate SymbolNode fields rather than SemanticBase.
+Module declaration attachment previously copied only the base, while proof-local
+NEW adaptation also omitted syntax and location. Preserve both source fields in
+both paths. Generated module population no longer overwrites the canonical
+location with a reconstructed position; AST-only declaration fallback remains.
+
+Focused original Test219, Debug02, EWD998Chan and scoped-identifier checks pass:
+runtime-declaration-metadata-originals.log,
+terminal 5e3380, status 0, 5.175 seconds. Ignored before/after observation overlays
+on unchanged original Test207, Test208, Test209 and Test219 identify 22 declaration
+views with missing syntax before the fix, including four proof-local declarations
+with unknown runtime locations. All 22 now match source syntax identity and
+location. Receipts: runtime-declaration-metadata-proof-before.log, terminal
+d7dff5, and runtime-declaration-metadata-proof-after.log, terminal 91796f;
+both status 0. The corrected original selection takes 1.843 seconds. The overlays
+change no original assertions and add no persistent tests or inventory credit.
+
+General generation and mutation sharing remain unproven. No full-workspace or
+XML/ApalacheIR sweep, race instrumentation, email work or long-workload restart.
+The full off-heap random log exceeds 325 million of 2,147,483,648 iterations;
+original bounds and assertions remain unchanged and completion credit is pending.
+
+Original SANY incremental-semantic and subexpression-selector methods also pass:
+runtime-declaration-metadata-sany-originals.log, terminal 411012, status 0,
+0.051 seconds. This supplements the focused runtime checks without a corpus sweep.
+
+A separate ignored observation identifies the next metadata boundary: original
+Test219's runtime root Extendees includes _JsonTrace and _TLCTrace, while its
+canonical source extendees contains only explicit TLC and Integers. The other
+11 observed modules agree. Receipt: runtime-extendee-metadata-observation.log,
+terminal f2c070, status 0. This is a confirmed remaining module metadata gap;
+no production inheritance change is included in this declaration chunk.
+
+Final broader original legacy/debugger/EWD998/coverage/LET/cyclic selection passes:
+runtime-declaration-metadata-broad-originals.log, terminal a11725, status 0,
+175.272 seconds. Original assertions and workload bounds are unchanged.
+The full off-heap random log now exceeds 331 million iterations and its same
+session remains live. Git diff --check passes.

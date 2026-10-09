@@ -1561,6 +1561,7 @@ func (b *tlcBridge) declarationSymbol(mod *Module, name string) *tlc.SymbolNode 
 	attach := func(symbol *tlc.SymbolNode) *tlc.SymbolNode {
 		if source, _ := tlcBridgeOwnedDeclaration(mod, name); source != nil {
 			symbol.SemanticBase = source.SemanticNodeBase
+			symbol.Location, symbol.TreeNode = source.Location, source.TreeNode
 		}
 		return symbol
 	}

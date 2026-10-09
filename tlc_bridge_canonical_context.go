@@ -110,6 +110,7 @@ func (b *tlcBridge) canonicalGraph(source sanySemanticGraphNode) tlc.SemanticNod
 		// declarations. They retain their own canonical declaration identity.
 		node := tlc.NewSymbolNode(source.semName())
 		node.SemanticBase, node.Arity = source.SemanticNodeBase, source.semArity()
+		node.Location, node.TreeNode = source.Location, source.TreeNode
 		if source.semKind() == sanyVariableDeclKind {
 			node.MarkVariableDecl()
 		} else if source.semKind() == sanyConstantDeclKind {
