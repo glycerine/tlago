@@ -1814,6 +1814,13 @@ GENERAL, EOF or failover warning. The relay preserves raw request/reply bytes an
 drains replies before closing. This adds controlled network-stall coverage,
 without original-method credit or exhaustive network-partition claims.
 
+Native graceful-shutdown checks now also cover a decoded request header whose
+sender never supplies its body. Shutdown expires pending socket reads while
+retaining accepted handlers and reply writes. A second case combines an accepted
+Exit with an incomplete request on the same TCP connection and checks the actual
+successful Exit reply. These transport checks have no direct original Java test
+and add no original-method completion credit.
+
 Forty native named disk snapshot startup cases cover LSB/MSB stores, direct and
 nested ownership, and local/TCP endpoints with missing, empty, duplicate,
 descending and trailing-partial snapshots. They verify source I/O versus runtime

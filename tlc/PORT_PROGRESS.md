@@ -24330,3 +24330,32 @@ translations pass (terminal d06d0c, status 0, 0.050 seconds). No original enable
 method directly tests these native stalls; no original-method credit added.
 Arbitrary packet loss/blackholes and other partition topologies remain unproved.
 No full suite or race workload ran. All handles are terminal.
+
+### 2026-10-09: Graceful RPC shutdown with incomplete bodies
+
+Native codec inspection found a shutdown gap: ReadRequestHeader increments the
+pending reply count before net/rpc decodes the body. A connected sender withholding
+that body kept CloseGracefully waiting forever. Added a real TCP check whose
+test-owned connection observes the next read after all header bytes are consumed;
+the initial check reproduces the hang (terminal 60470b, status 1, 2.017 seconds).
+Its failure cleanup forces closure and joins the graceful owner.
+
+Graceful close now expires inbound socket reads after closing listeners, before
+waiting for replies. This wakes incomplete bodies and idle readers without
+interrupting accepted handlers or their response writes. Normal operation
+deadlines and retry policy remain unchanged. Extended the check with a complete,
+gated Exit and an incomplete second request on the same TCP connection: close
+must wait for Exit, then its real successful response must arrive exactly once.
+Incomplete requests do not invoke fingerprint storage.
+
+Expanded graceful/forced-close checks pass (terminal bfabf5, status 0, 0.027
+seconds). Related short native RPC/lifecycle/failure/control/connection-owner
+checks and original dynamic-manager/smart-proxy translations pass (terminal
+a7ad8c, status 0, 0.326 seconds). Only the short graceful/forced-close concurrency
+selection ran with race instrumentation (terminal a7ea91, status 0, 1.056 seconds).
+One normal unchanged N=7 two-host model verifies process integration and retains
+114,942 distinct states, an empty queue and normal joined shutdown of all roles
+(incomplete-request-shutdown-model.log, terminal 17faff, status 0, 50.629 seconds).
+No full suite ran and no long workload used race instrumentation. No original
+Java method directly covers this native transport defect; no method credit added.
+All handles are terminal.

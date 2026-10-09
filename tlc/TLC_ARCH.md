@@ -11029,8 +11029,15 @@ The server codec uses the standard gob request/response header and body format;
 it also records accepted requests until the response is flushed. Request
 admission and the closed flag share a mutex, so no request can join the drain
 once orderly shutdown has started. The worker and FP command owners close their
-hosts gracefully: stop listening, finish accepted replies, then release socket
-and outbound-client ownership. This is necessary because storage Exit wakes the
+hosts gracefully: stop listening, expire inbound socket reads, finish accepted
+replies, then release socket and outbound-client ownership. A header is counted
+before its body is decoded; expiring reads prevents an incomplete body from
+holding the drain open indefinitely. It also wakes idle header readers without
+interrupting accepted handlers or response writes. An incomplete request is never
+dispatched to storage. Short real TCP checks retain the accepted Exit response
+beside an incomplete second request on the same connection. Read deadlines apply
+only during shutdown; ordinary operation deadlines and retry policy are unchanged.
+This is necessary because storage Exit wakes the
 FP reporting loop before the RPC handler returns its response.
 
 Explicit Close remains an immediate transport abort, including during a drain.

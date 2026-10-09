@@ -194,6 +194,10 @@ unpublication and registration errors. Host shutdown drains accepted replies,
 then closes each owned storage object once without invoking Exit or deleting
 files. Direct `Host` publications remain caller-owned; worker runtime shutdown
 is still separate.
+Graceful transport shutdown expires socket reads before draining, so a header
+whose body never arrives cannot hold shutdown open. Accepted handlers retain
+their response writes, including Exit beside an incomplete request on one TCP
+connection. Ordinary operation deadlines and retry policy are unchanged.
 Before registration begins, FP startup failures close allocated storage handles
 without deleting files or replacing the failure. Once registration starts,
 startup/reporting errors retain storage for the native host or caller to release.

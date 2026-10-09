@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/rpc"
 	"sync"
+	"time"
 )
 
 // DistributedRPCServer hosts named TLC objects using Go's native RPC protocol.
@@ -146,6 +147,15 @@ func (s *DistributedRPCServer) close(graceful bool) error {
 		}
 	}
 	if graceful {
+		// A decoded header is tracked before net/rpc reads its body. Stop
+		// incomplete reads as well as idle readers, or a peer withholding the
+		// body can prevent reply draining forever. Read deadlines leave
+		// accepted handlers and their response writes undisturbed.
+		for _, conn := range connections {
+			if err := conn.SetReadDeadline(time.Now()); err != nil && !errors.Is(err, net.ErrClosed) {
+				failures = append(failures, err)
+			}
+		}
 		s.replies.Wait()
 	}
 	if err := s.outbound.close(); err != nil {
