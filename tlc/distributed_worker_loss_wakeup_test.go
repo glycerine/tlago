@@ -55,61 +55,71 @@ func TestDistributedWorkerLossWakesSuspendedQueueConsumers(t *testing.T) {
 	oldWorkers := NumWorkers()
 	t.Cleanup(func() { SetNumWorkers(oldWorkers) })
 	for _, kind := range []string{"memory", "deque", "disk", "bytes"} {
-		t.Run(kind, func(t *testing.T) {
-			SetNumWorkers(2)
-			var queue StateQueue
-			var mu *sync.Mutex
-			var cond *sync.Cond
-			var stopped *bool
-			switch kind {
-			case "memory":
-				q := NewMemStateQueue()
-				queue, mu, cond, stopped = q, &q.mu, q.cond, &q.stop
-				q.numWaiting.Store(1)
-			case "deque":
-				q := NewStateDeque()
-				queue, mu, cond, stopped = q, &q.mu, q.cond, &q.stop
-				q.numWaiting.Store(1)
-			case "disk":
-				q := NewDiskStateQueue(t.TempDir())
-				queue, mu, cond, stopped = q, &q.mu, q.cond, &q.stop
-				q.numWaiting.Store(1)
-			case "bytes":
-				q := NewDiskByteArrayQueue(t.TempDir())
-				queue, mu, cond, stopped = q, &q.mu, q.cond, &q.stop
-				q.numWaiting.Store(1)
-			}
-			*stopped = true
-			ready, woke := make(chan struct{}), make(chan struct{})
-			go func() {
+		for _, block := range []string{"empty", "absent"} {
+			t.Run(kind+"/"+block, func(t *testing.T) {
+				SetNumWorkers(2)
+				var queue StateQueue
+				var mu *sync.Mutex
+				var cond *sync.Cond
+				var stopped *bool
+				switch kind {
+				case "memory":
+					q := NewMemStateQueue()
+					queue, mu, cond, stopped = q, &q.mu, q.cond, &q.stop
+					q.numWaiting.Store(1)
+				case "deque":
+					q := NewStateDeque()
+					queue, mu, cond, stopped = q, &q.mu, q.cond, &q.stop
+					q.numWaiting.Store(1)
+				case "disk":
+					q := NewDiskStateQueue(t.TempDir())
+					queue, mu, cond, stopped = q, &q.mu, q.cond, &q.stop
+					q.numWaiting.Store(1)
+				case "bytes":
+					q := NewDiskByteArrayQueue(t.TempDir())
+					queue, mu, cond, stopped = q, &q.mu, q.cond, &q.stop
+					q.numWaiting.Store(1)
+				}
+				*stopped = true
+				ready, woke := make(chan struct{}), make(chan struct{})
+				go func() {
+					mu.Lock()
+					close(ready)
+					cond.Wait()
+					mu.Unlock()
+					close(woke)
+				}()
+				<-ready
+				t.Cleanup(func() {
+					mu.Lock()
+					cond.Broadcast()
+					mu.Unlock()
+					<-woke
+				})
+				thread := &TLCServerThread{Server: &TLCServer{}, keepAliveDone: make(chan struct{})}
+				var states []*TLCStateMut
+				if block == "empty" {
+					states = []*TLCStateMut{}
+				}
+				thread.setStates(states)
+				thread.cleanupGlobals.Store(true)
+				thread.HandleRemoteWorkerLost(queue)
+				select {
+				case <-woke:
+				case <-time.After(time.Second):
+					t.Fatal("worker loss did not wake suspended queue consumer")
+				}
 				mu.Lock()
-				close(ready)
-				cond.Wait()
+				stillStopped := *stopped
 				mu.Unlock()
-				close(woke)
-			}()
-			<-ready
-			t.Cleanup(func() {
-				mu.Lock()
-				cond.Broadcast()
-				mu.Unlock()
-				<-woke
+				if !stillStopped || queue.Size() != 0 || NumWorkers() != 1 || !thread.keepAliveStopped.Load() || thread.cleanupGlobals.Load() || thread.currentStates() == nil {
+					t.Fatal("worker-loss wake resumed the queue or changed cleanup state")
+				}
+				thread.HandleRemoteWorkerLost(queue)
+				if NumWorkers() != 1 || queue.Size() != 0 {
+					t.Fatal("duplicate report repeated empty-work cleanup")
+				}
 			})
-			thread := &TLCServerThread{Server: &TLCServer{}, keepAliveDone: make(chan struct{})}
-			thread.setStates([]*TLCStateMut{})
-			thread.cleanupGlobals.Store(true)
-			thread.HandleRemoteWorkerLost(queue)
-			select {
-			case <-woke:
-			case <-time.After(time.Second):
-				t.Fatal("worker loss did not wake suspended queue consumer")
-			}
-			mu.Lock()
-			stillStopped := *stopped
-			mu.Unlock()
-			if !stillStopped || queue.Size() != 0 || NumWorkers() != 1 || !thread.keepAliveStopped.Load() || thread.cleanupGlobals.Load() {
-				t.Fatal("worker-loss wake resumed the queue or changed cleanup state")
-			}
-		})
+		}
 	}
 }

@@ -718,6 +718,13 @@ non-recoverable. Cause details, URI diagnostics, computing cleanup, counters and
 worker liveness are retained without a Java remote-exception envelope. Upstream
 has no direct methods for these cases; no original-method credit is added.
 
+Native worker-loss checks also cover absent and empty assigned blocks on all
+four queue backends. Cleanup substitutes an explicit empty batch before queue
+entry, preserves suspension, wakes consumers and decrements the worker count
+once. Timer FIFO checks use the production disk queue without changing their
+work identity/order assertions. No original method covers the absent-block case;
+the original-method inventory is unchanged.
+
 Native endpoint-removal checks cover all five worker operations and repeated
 direct exit over local/TCP boundaries, failure-payload round trips and unchanged
 completion counts. Shutdown and keepalive continue past an already removed

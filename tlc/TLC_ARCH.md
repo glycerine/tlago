@@ -13711,3 +13711,17 @@ original BitVector printing assertions plus all 44 ModelValue methods pass
 unchanged. No direct original attachment test exists and no credit is added.
 Communicating roles carrying these new tags/table need updated native builds.
 No Java object serializer, reflection runtime or arbitrary-object codec is added.
+
+### Worker loss with an absent assigned block
+
+Source TLCServerThread.handleRemoteWorkerLost substitutes an empty state array
+when its current work is null. The native caller now makes the same conversion
+before SEnqueueAll; the queues continue rejecting nil batches from other callers.
+This lets cleanup finish clearing work, notifying queue consumers and decrementing
+the worker count after a selector publishes an absent block. The existing
+one-time cleanup flag still prevents repeated deregistration or requeueing.
+
+Eight short native suspended-consumer cases cover absent/empty blocks on memory,
+deque, disk-state and byte-array queues. Timer failure fixtures use the actual
+coordinator disk queue: the source memory queue's bulk overwrite behavior cannot
+supply FIFO work identity/order there. Original queue assertions remain intact.

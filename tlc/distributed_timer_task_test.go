@@ -44,7 +44,10 @@ func checkTimerTaskWorkerLoss(t *testing.T, worker DistributedWorkerEndpoint) {
 	oldWorkers := NumWorkers()
 	SetNumWorkers(2)
 	defer SetNumWorkers(oldWorkers)
-	queue := NewMemStateQueue()
+	// Use the coordinator's production queue. The source memory queue's bulk
+	// enqueue overwrites slots, so it cannot stand in for disk-queue FIFO here.
+	queue := NewDiskStateQueue(t.TempDir())
+	t.Cleanup(queue.FinishAll)
 	server := &TLCServer{StateQueue: queue}
 	thread := &TLCServerThread{Server: server, Worker: NewDistributedWorkerSmartProxy(worker),
 		URI: "tcp://worker:1234/primary", keepAliveDone: make(chan struct{})}

@@ -1175,7 +1175,13 @@ func (t *TLCServerThread) HandleRemoteWorkerLost(stateQueue StateQueue) {
 	}
 	t.Server.RemoveTLCServerThread(t)
 	if stateQueue != nil {
-		stateQueue.SEnqueueAll(t.currentStates())
+		states := t.currentStates()
+		// Source cleanup substitutes an empty array for an absent work block.
+		// The queue itself still rejects nil batches supplied by other callers.
+		if states == nil {
+			states = []*TLCStateMut{}
+		}
+		stateQueue.SEnqueueAll(states)
 	}
 	t.setStates([]*TLCStateMut{})
 	if stateQueue != nil {

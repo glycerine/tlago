@@ -539,6 +539,9 @@ All four queues reject nil array/vector batches before mutation using an ordinar
 Go error. Explicit empty batches remain valid; rejection releases queue locks
 and preserves existing work. Original queue tests and native TCP retry/loss
 checks pass without changing their assertions.
+Worker-loss cleanup converts an absent assigned block to an explicit empty batch,
+as the source caller does, before clearing work, waking waiters and decrementing
+the worker count. Timer FIFO fixtures use the production disk queue.
 
 Raw byte-queue checkpoint/pool files retain literal symlink traversal and never
 create missing parents. Recovery preserves inactive slots, publishes allocations

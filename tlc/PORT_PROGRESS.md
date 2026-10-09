@@ -25368,3 +25368,34 @@ and storage identity. Peers carrying
 the new tags/table need updated native builds. No original attachment method
 exists; inventory remains 37 complete and four Reconcile. No full suite,
 full-model workload or race run. All handles are terminal.
+
+### October 9, 2026: preserve empty-work cleanup after worker loss
+
+File resolver/bootstrap and coordinator/worker loop comparison found a concrete
+caller mismatch: source TLCServerThread.handleRemoteWorkerLost converts a null
+assigned block to an empty array before queue entry; Go passed nil through.
+The recently corrected queue contract rejects nil batches, so cleanup could stop
+after deregistration, before waiter notification and worker-count decrement.
+The absent-block suspended-consumer check reproduces the panic
+(distributed-worker-loss-absent-red.log, terminal 035f81, status 1, 0.014 seconds).
+
+Restored the source caller conversion without weakening queue rejection. Expanded
+the existing suspended-consumer checks to absent/empty blocks on all four queue
+backends, including repeated loss reports. An initial related run also exposed
+the timer fixture's stale use of MemStateQueue for FIFO bulk work
+(distributed-worker-loss-absent-green.log, terminal 6251f2, status 1,
+0.026 seconds). Source memory bulk enqueue overwrites slots; the fixture now
+uses the coordinator's actual DiskStateQueue and retains every identity/order,
+reporting and one-time cleanup assertion. No production queue workaround.
+
+Focused local cleanup/timer/nil-batch checks and all nine original StateQueue
+methods pass (distributed-worker-loss-absent-final.log, terminal f06342,
+status 0, 0.029 seconds). All nine inherited original DiskStateQueue methods
+pass unchanged (distributed-worker-loss-original-disk.log, terminal 06294a,
+status 0, 0.018 seconds). Actual TCP timer failures, retry/loss and lost computed
+reply checks pass (distributed-worker-loss-absent-tcp.log, terminal f78e2d,
+status 0, 0.026 seconds). A race run selects only short concurrent worker-loss
+and suspended-consumer checks (distributed-worker-loss-absent-race.log,
+terminal 008f1f, status 0, 1.068 seconds). No full suite or long workload ran.
+No direct original method covers absent-block cleanup; inventory remains
+37 complete and four Reconcile. All handles are terminal.
