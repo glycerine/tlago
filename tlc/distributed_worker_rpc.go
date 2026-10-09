@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	"net/rpc"
+	"sync"
 )
 
 func (s *DistributedRPCServer) RegisterWorker(name string, endpoint DistributedWorkerEndpoint) error {
@@ -108,9 +109,11 @@ func (service *distributedWorkerService) Call(request DistributedWorkerRequest, 
 // NetworkWorkerEndpoint calls a named Go worker over TCP. It never retries a
 // call itself; the coordinator owns retry/worker-loss decisions and its queue.
 type NetworkWorkerEndpoint struct {
-	client  *rpc.Client
-	Address string
-	Object  string
+	connectionMu     sync.Mutex
+	connectionClosed bool
+	client           *rpc.Client
+	Address          string
+	Object           string
 }
 
 func DialWorkerEndpoint(address, object string) (*NetworkWorkerEndpoint, error) {
@@ -120,7 +123,55 @@ func DialWorkerEndpoint(address, object string) (*NetworkWorkerEndpoint, error) 
 	}
 	return &NetworkWorkerEndpoint{client: client, Address: address, Object: object}, nil
 }
-func (e *NetworkWorkerEndpoint) CloseConnection() error { return e.client.Close() }
+func (e *NetworkWorkerEndpoint) CloseConnection() error {
+	e.connectionMu.Lock()
+	if e.connectionClosed {
+		e.connectionMu.Unlock()
+		return nil
+	}
+	e.connectionClosed = true
+	client := e.client
+	e.connectionMu.Unlock()
+	if client != nil {
+		return client.Close()
+	}
+	return nil
+}
+
+// Registration receives an object reference. Dial only when TLC invokes the
+// callback, after its queue wake and other preceding source-owned work. A late
+// dial cannot outlive owner closure; an established failed call is never replayed.
+func (e *NetworkWorkerEndpoint) clientForCall() (*rpc.Client, error) {
+	e.connectionMu.Lock()
+	client, closed := e.client, e.connectionClosed
+	e.connectionMu.Unlock()
+	if closed {
+		return nil, rpc.ErrShutdown
+	}
+	if client != nil {
+		return client, nil
+	}
+	candidate, err := rpc.Dial("tcp", e.Address)
+	if err != nil {
+		return nil, err
+	}
+	e.connectionMu.Lock()
+	if e.connectionClosed {
+		e.connectionMu.Unlock()
+		_ = candidate.Close()
+		return nil, rpc.ErrShutdown
+	}
+	client = e.client
+	if client == nil {
+		e.client = candidate
+		client = candidate
+	}
+	e.connectionMu.Unlock()
+	if client != candidate {
+		_ = candidate.Close()
+	}
+	return client, nil
+}
 func workerConnectionFailure(err error) error {
 	var network *net.OpError
 	deadWorker := errors.As(err, &network) || errors.Is(err, net.ErrClosed) || err == rpc.ErrShutdown || err == io.EOF || err == io.ErrUnexpectedEOF
@@ -149,7 +200,11 @@ func workerCodecFailure(err error) error {
 func (e *NetworkWorkerEndpoint) call(request DistributedWorkerRequest) (DistributedWorkerReply, error) {
 	request.Object = e.Object
 	var reply DistributedWorkerReply
-	if err := e.client.Call("Worker.Call", request, &reply); err != nil {
+	client, err := e.clientForCall()
+	if err != nil {
+		return reply, workerConnectionFailure(err)
+	}
+	if err := client.Call("Worker.Call", request, &reply); err != nil {
 		return reply, workerConnectionFailure(err)
 	}
 	if reply.Failure != nil {

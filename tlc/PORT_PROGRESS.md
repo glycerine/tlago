@@ -24448,3 +24448,35 @@ status 0, 54.839 seconds), retaining 114,942 distinct states, an empty queue and
 normal joined shutdown of both processes. No original method directly tests
 this native address-reuse defect; no original-method credit added. No full suite
 or race workload ran. All handles are terminal.
+
+### 2026-10-09: Worker callback dialing after queue wake
+
+Compared worker registration with pinned TLCServer.registerWorker. Source wakes
+stuck queue consumers before its first worker.getURI call. Native coordinator
+dispatch eagerly dialed the worker before entering registration, so connection
+refusal skipped that wake. A focused real TCP test reproduces the lost side
+effect (terminal b699dc, status 1, 0.014 seconds; zero wakes, zero workers).
+
+Coordinator dispatch now validates and owns a worker reference without an early
+dial. The first source-owned callback opens TCP after queue waking. Native worker
+connection publication is synchronized: concurrent first calls share the selected
+client, redundant/late dials are discarded, unused closed references cannot dial,
+and established failed clients remain retained without replay or redial. Closure
+is idempotent and the coordinator owner closes callbacks through their endpoint
+owner. Explicit DialWorkerEndpoint calls retain their immediate-dial behavior.
+
+New checks cover queue waking before callback refusal, concurrent first URI calls,
+closed unused references, failed-client retention and repeated closure. Related
+worker RPC/control/failure/lifecycle, coordinator snapshots, bootstrap, generated
+address-reuse and original smart-proxy checks pass (terminal 7b0801, status 0,
+0.109 seconds; final expanded selection 66a98c, status 0, 0.106 seconds).
+Only the two new short order/ownership checks ran with race instrumentation
+(terminal 09a449, status 0, 1.046 seconds).
+
+The unchanged N=7 shared two-worker model passes normally with both endpoint
+registrations and actual work/statistics from each worker
+(deferred-worker-callback-model.log, terminal ce150f, status 0, 37.634 seconds). It retains
+114,942 distinct states, an empty queue, no GENERAL/EOF and normal joined shutdown
+of coordinator and worker. No original enabled method directly tests this native
+callback-dial boundary; no method completion credit added. No full suite ran and
+no long workload used race instrumentation. All handles are terminal.

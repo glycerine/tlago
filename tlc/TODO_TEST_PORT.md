@@ -1861,6 +1861,13 @@ through the existing remote I/O and manager reassignment paths; fresh references
 work and replacement storage remains isolated. No original Java method directly
 tests this native transport case; no original-method credit is added.
 
+Worker callback registration now preserves the source queue-wake-before-getURI
+ordering on connection refusal. Native TCP checks cover the formerly skipped wake
+and deferred callback connection ownership, including concurrent first calls,
+closed unused references, failed-client retention and idempotent closure. The
+original smart-proxy methods remain unchanged; these native boundary checks add
+no original-method completion credit.
+
 Native coordinator read checks in `distributed_server_file_path_test.go` verify
 relative/absolute symlink traversal, exact directory/open-failure diagnostics
 and retained nested file-open causes. Absolute diagnostics now preserve dot

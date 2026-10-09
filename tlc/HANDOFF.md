@@ -102,6 +102,10 @@ a random native host identity and a per-host sequence. A fresh host reusing an
 address cannot receive an old object's delayed call. Stale lazy fingerprint
 references fail through the existing manager failover path; replacement storage
 remains untouched. Explicit caller-selected endpoint names retain their meaning.
+Worker registration also receives a reference before opening its callback
+connection. TLC wakes stuck queue consumers before its first GetURI call;
+callback refusal must not skip that wake. Native callback owners close unused
+references safely, share concurrent first calls and never replay failed calls.
 
 `DistributedOperationError` traits drive retry, removal, discovery and exit
 choices. Causes remain available through `errors.Is`/`errors.As`; native sender

@@ -213,11 +213,12 @@ func (service *distributedServerService) Call(request DistributedServerRequest, 
 			})
 		}
 	case "registerWorker":
-		var worker *NetworkWorkerEndpoint
-		worker, failure = DialWorkerEndpoint(request.Endpoint.Address, request.Endpoint.Object)
-		if failure == nil {
-			failure = service.server.outbound.add(worker.client)
+		if request.Endpoint.Address == "" || request.Endpoint.Object == "" {
+			failure = workerConnectionFailure(errors.New("incomplete worker endpoint reference"))
+			return nil
 		}
+		worker := &NetworkWorkerEndpoint{Address: request.Endpoint.Address, Object: request.Endpoint.Object}
+		failure = service.server.outbound.add(distributedConnectionCloser(worker.CloseConnection))
 		if failure == nil {
 			failure = endpoint.RegisterWorker(worker)
 		}

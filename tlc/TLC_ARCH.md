@@ -13105,3 +13105,21 @@ normally, and replacement storage remains isolated. Native TCP checks reuse
 the exact address for separate host owners and exercise coordinator-owned
 fingerprints and the worker/FP publication adapters. This is Go object identity,
 without Java RMI, JVM machinery or distributed coordinator redesign.
+
+### Worker callback connection acquisition follows registration ordering
+
+Java TLCServer.registerWorker first wakes stuck queue consumers, then invokes
+worker.getURI before constructing and starting the server thread. Native worker
+registration previously dialed the callback before entering that method. A
+refused connection therefore skipped the required queue wake. Registration now
+validates and stores the native worker reference with the callback connection
+owner, then lets the first callback operation open TCP. Queue waking and other
+source-owned work retain their original order and failure precedence.
+
+The worker endpoint serializes connection publication, shares concurrent first
+calls and discards late/redundant successful dials. Closing an unused reference
+prevents later dialing; closing a connected reference releases it once. Existing
+failed connections remain retained and calls are not replayed or redialed. The
+public DialWorkerEndpoint helper still opens TCP immediately when explicitly
+requested. Short real TCP checks cover queue waking on refusal, concurrent first
+calls, closed unused references, failed-client retention and idempotent closure.
