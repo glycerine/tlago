@@ -24649,3 +24649,36 @@ original value-stream methods pass (memory1-read-value-stream.log, terminal
 tests exist; no original-method credit added. Inventory stays
 37 complete and four Missing. No full suite, long model or race workload ran.
 All handles are terminal.
+
+### October 9, 2026: preserve MemFPSet1 checkpoint write boundaries
+
+Source FileUtil.newDFOS directly wraps FileOutputStream in DataOutputStream.
+MemFPSet1 used buffered ValueOutputStream instead, combining all header/key
+writes and moving their I/O failures. It now uses the existing unbuffered
+primitive adapter. Deferred raw-file close runs once without replaying writes;
+earlier write failure remains primary and final close failure propagates after
+successful writes. The other two memory stores retain their source buffering.
+
+Eight Linux syscall cases exercise normal promotion, EIO at each of six writes
+and final close EIO. They require target write widths/counts, one close, exact
+completed temporary prefix, preserved old checkpoint, no failed promotion,
+healthy checkpoint continuation, source warning and unchanged registration and
+memory membership. Parent checks temporary bytes after the traced child exits
+so verification cannot add another target close. No production hook added.
+
+The first fixture did not compile because it guessed BeginCheckpoint instead of
+the existing Checkpoint API (memory1-write-red.log, terminal 8d09e5, status 1);
+corrected before gathering behavior evidence. The confirmed red shows one
+29-byte buffered write instead of six primitive writes; the second-write fault
+is never reached and the checkpoint is incorrectly promoted for this fault
+boundary (memory1-write-red-confirmed.log, terminal 154aaf, status 1,
+0.053 seconds).
+
+The eight-case matrix passes (memory1-write-green.log, terminal 989d40,
+status 0, 0.263 seconds). Related memory checkpoint/recovery and close cases,
+source duplicate/commit diagnostics and unchanged original dynamic-manager,
+MultiFPSet, buffered-input and value-stream methods pass
+(memory1-write-related.log, terminal 8bb394, status 0, 1.419 seconds).
+No dedicated upstream memory-store checkpoint test exists; native checks add
+no original-method credit. Inventory remains 37 complete and four Missing.
+No full suite, long model or race workload ran. All handles are terminal.

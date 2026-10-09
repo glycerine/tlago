@@ -1757,6 +1757,13 @@ and manager continuation. Existing close cases now retain the native EIO cause
 for all three memory stores. No dedicated upstream MemFPSet1/SetOfLong test
 exists; distributed inventory remains 37 port complete and four Missing.
 
+MemFPSet1 checkpoint writes now follow FileUtil.newDFOS's unbuffered primitives.
+Eight short Linux syscall cases cover success, all six write failures and final
+close failure. Completed temporary prefixes, old checkpoint preservation, skipped
+failed promotion, healthy continuation and one close without write retry are
+required. Existing original manager and stream methods remain unchanged; no
+dedicated source test exists and no original-method credit is added.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

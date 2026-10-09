@@ -991,20 +991,23 @@ func (s *MemFPSet1) BeginChkpt() error {
 	return s.BeginChkptFile(s.filename)
 }
 
-func (s *MemFPSet1) BeginChkptFile(fname string) error {
+func (s *MemFPSet1) BeginChkptFile(fname string) (err error) {
 	path := s.chkptName(fname, "tmp")
 	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
+	// FileUtil.newDFOS writes primitives directly, without buffering ahead
+	// of a failed field. Cleanup must close the file without replaying writes.
+	out := NewValueOutputStreamWithoutHandles(file)
+	defer func() {
+		if closeErr := file.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if err := s.set.BeginChkpt(out); err != nil {
-		_ = out.Close()
-		return err
-	}
-	return out.Close()
+	return s.set.BeginChkpt(out)
 }
 
 func (s *MemFPSet1) CommitChkpt() error {

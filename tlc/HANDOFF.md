@@ -166,6 +166,9 @@ warn and continue healthy registrations. Duplicates stop both without failover.
 `FileUtil.newDFIS`. It must not eagerly buffer ahead of backing-set assignments.
 Short syscall checks cover each header/key read failure, partial field/table
 mutation, one file close and manager continuation; native I/O causes survive.
+Its checkpoint writer also follows unbuffered `FileUtil.newDFOS`. Failed writes
+retain the completed temporary-file prefix and old checkpoint without promotion;
+native cleanup closes once without retrying writes. Healthy registrations continue.
 Coordinator startup checks retain recovered trace/queue state before fingerprint
 failure. Runtime failures prevent publication; packed-memory truncation warns,
 continues healthy recovery and prints actual recovery counts before publication.

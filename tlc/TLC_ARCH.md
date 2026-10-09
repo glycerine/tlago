@@ -13200,3 +13200,22 @@ reads. They prove read widths, target descriptor, partial mutation, final close,
 manager warning/healthy continuation and unchanged registration. The sixteen
 existing close cases also pass, now requiring errors.Is(EIO) for every store.
 No dedicated original method covers these failure boundaries; no credit added.
+
+### MemFPSet1 checkpoint writes retain source primitive boundaries
+
+FileUtil.newDFOS constructs an unbuffered DataOutputStream over FileOutputStream.
+MemFPSet1 now uses the existing direct primitive output adapter. Each header/key
+write completes before the next begins; failure leaves only the completed
+temporary-file prefix. The source SetOfLong field/table iteration and checkpoint
+bytes are unchanged. The other two memory stores keep their source buffering.
+
+Native deferred cleanup closes the raw file once and does not flush or retry
+after a failed write. An earlier write error remains primary; a successful
+write's final close error is returned. The distributed manager warns and skips
+that registration's promotion, preserves its previous checkpoint and continues
+healthy registrations without changing routing or availability.
+
+Eight short Linux syscall cases verify success, each of six primitive write
+failures and final-close EIO, exact write widths/counts, one close, completed
+prefix, old checkpoint preservation, healthy promotion and unchanged membership.
+No dedicated upstream test covers this boundary; original counts are unchanged.
