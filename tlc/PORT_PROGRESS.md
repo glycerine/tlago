@@ -26848,3 +26848,32 @@ IPv4 bootstrap, callback-address and native failure-category controls pass in
 distributed-ipv6-coordinator-advertisement-fixed.log, terminal c1533b, status 0,
 0.031 seconds. No race, long-model or full-suite run. All handles terminal;
 git diff --check passes.
+
+
+### October 9, 2026: fingerprint-manager shared local-host diagnostics
+
+Compared FPSetManager routing, serial/concurrent batches, checks, statistics,
+checkpoint and close with the pinned source. Found getHostName still used a
+direct os.Hostname shortcut. Java uses the shared local-host lookup and prints
+a lookup failure before returning Unknown. Go now reuses the existing native
+distributedLocalHostName lookup/cache and prints its failure stack before that
+fallback. Local-manager storage hostnames remain captured. No new Java resolver,
+RMI/JVM emulation, wire change, retry policy or rpc25519 work.
+
+No direct original Java test covers getHostName. A native check uses the real
+shared host cache during actual insertion failure/forward reassignment and
+requires the cached caller hostname and original cause in the warning, one
+healthy registration and actual insertion in survivor storage. Changing the
+cache affects later ordinary and worker-snapshot hostname queries; the local
+manager keeps its captured owner hostname. This verifies cache/failover behavior,
+not an induced OS resolver failure. Source comparison establishes the existing
+error-print/fallback path. Original distributed inventory remains 37/41.
+
+New TestDistributedManagerFailoverUsesSharedLocalHost passes in
+distributed-manager-hostname.log, terminal a09cb2, status 0, 0.014 seconds.
+Existing original DynamicFPSetManager constructor, index, reassignment, scalar/
+block failover and concurrent-order ports, original nested-partition manager
+checks and short native returned-failure/snapshot/TCP failure-graph controls
+pass in distributed-manager-hostname-controls.log, terminal a49b69, status 0.
+No race, long-model or full-suite rerun. All handles terminal and
+git diff --check passes.

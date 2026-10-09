@@ -14585,3 +14585,22 @@ metadata is removed only for that wildcard check, never from a reachable
 advertisement. Tests independently inspect the bound listener, published
 address and normalized host/zone, and require wildcard rejection before
 coordinator listener creation. Native address checks add no Java method credit.
+
+
+### Fingerprint-manager local-host diagnostics
+
+FPSetManager.getHostName uses the same local-host lookup as coordinator and
+fingerprint-server startup. Its previous direct os.Hostname call bypassed the
+existing shared lookup/cache and silently discarded lookup failures. Go now
+uses distributedLocalHostName, prints the existing source diagnostic stack on
+failure and returns Unknown. This reuses native Go resolution; no Java resolver
+or transport machinery is added. NonDistributedFPSetManager still returns its
+captured storage hostname.
+
+A native check installs a valid shared cache entry and exercises a real failed
+fingerprint insertion followed by forward reassignment to healthy storage. It
+requires the cached caller hostname and original failure in the warning, exact
+insertion and live-host count. Updating the shared cache affects subsequent
+ordinary/worker-snapshot queries while the local manager keeps its owner name.
+Original manager test ports and short native failure/snapshot controls pass.
+No direct original Java hostname method exists; original credit is unchanged.

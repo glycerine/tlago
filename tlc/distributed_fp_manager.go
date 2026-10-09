@@ -200,8 +200,10 @@ func (m *DistributedFPSetManager) GetHostName() string {
 	if m.NonDistributed {
 		return m.Description
 	}
-	if host, err := os.Hostname(); err == nil {
+	if host, err := distributedLocalHostName(); err == nil {
 		return host
+	} else {
+		fmt.Fprint(os.Stderr, javaThrowableStackTrace(err))
 	}
 	return "Unknown"
 }

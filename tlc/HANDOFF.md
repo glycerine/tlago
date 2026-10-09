@@ -141,6 +141,9 @@ nonempty zero-distance failure and the source empty-model bypass.
 The local fingerprint-manager constructor retains a missing reference until
 use; counts and empty batches remain valid. The ordinary distributed constructor
 still rejects it immediately, as its source evaluates the reference's string.
+Distributed manager diagnostics use the shared native local-host lookup and
+report lookup failures before falling back to `Unknown`. Local-manager hostnames
+remain captured from their storage owner.
 
 ## Checkpoint and recovery contracts
 
