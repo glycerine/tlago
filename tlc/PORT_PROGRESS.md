@@ -27217,3 +27217,29 @@ original short StateQueue methods: distributed-late-checkpoint-commit-verified.l
 terminal 4d1b49, status 0, 0.038 seconds. Three new cases pass. No full suite,
 long model or race workload. This native supplement earns no original-method
 credit; distributed inventory remains 37/41. Updated handoff and architecture.
+
+
+### October 9, 2026: coordinator registration and worker error audit
+
+Compared pinned TLCServer.registerWorker/removeTLCServerThread/setErrState and
+TLCServerThread's computation/publication/catch/finally sequence against Go.
+No production mismatch found. Registration serializes queue wake and both
+worker URI calls; first callback failure prevents thread construction, while
+second callback failure retains the already-started thread. Native callback
+references dial lazily, so connection refusal cannot precede queue wake.
+Removal reports deregistration only once. The first recorded model error owns
+the state and completion sequence; trace-printing Exception failures are
+reported while fatal Error failures escape. Finally still reads cache statistics
+and cancels keepalive/clears assigned states unless an earlier finally operation
+itself fails. Fingerprint insertion precedes trace and queue publication.
+No Java naming transport, RMI compatibility or runtime machinery is needed.
+
+Reused existing focused checks rather than adding overlapping tests. Registration
+URI failure/order, queue ownership/wake/null-worker/monitor-release, actual TCP
+callback refusal after queue wake, thread trace/queue error ownership/finally,
+all nine original smart-proxy methods and original dynamic manager constructor/
+index/reassignment contexts pass: distributed-registration-error-audit.log,
+terminal e2e069, status 0, 0.024 seconds. Expected caught failure stack output
+is retained in that log. No full suite, long model or race run; no original-test
+credit change (37/41). This bounded audit verifies the listed paths only and
+does not close remaining recovery/partition or disabled-model reconciliation.
