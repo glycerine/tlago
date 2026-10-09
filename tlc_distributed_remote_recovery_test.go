@@ -75,6 +75,7 @@ const (
 	nativeRemoteCheckpointMissingDiskSnapshot
 	nativeRemoteCheckpointRecoverReplyLoss
 	nativeRemoteCheckpointMissingMemSnapshot
+	nativeRemoteCheckpointTraceToIntern
 )
 
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
@@ -91,10 +92,41 @@ func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
 	}
 }
 
-func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, fault nativeRemoteCheckpointFault) {
+func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string, workerThreads int, fault nativeRemoteCheckpointFault, debuggerSetup ...func(*exec.Cmd)) {
 	commitReplyLoss := fault == nativeRemoteCheckpointCommitReplyLoss
 	recoverReplyLoss := fault == nativeRemoteCheckpointRecoverReplyLoss
 	missingMemSnapshot := fault == nativeRemoteCheckpointMissingMemSnapshot
+	traceToIntern := fault == nativeRemoteCheckpointTraceToIntern
+	var debugger, debuggerScript string
+	if traceToIntern {
+		var err error
+		debugger, err = exec.LookPath("gdb")
+		if err != nil {
+			t.Fatal("external checkpoint boundary check requires gdb")
+		}
+		source, err := filepath.Abs("tlc/distributed.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var line int
+		for index, text := range strings.Split(string(data), "\n") {
+			if strings.Contains(text, "if err := s.serverInternTable().CommitChkpt(s.Metadir)") {
+				line = index + 1
+			}
+		}
+		if line == 0 {
+			t.Fatal("intern checkpoint caller line absent")
+		}
+		debuggerScript = filepath.Join(t.TempDir(), "checkpoint.gdb")
+		script := fmt.Sprintf("set pagination off\nset confirm off\nset debuginfod enabled off\nhandle SIGURG nostop noprint pass\nhandle SIGPIPE nostop noprint pass\nbreak %s:%d\nignore 1 1\nstarti\ninfo inferiors\ncontinue\nprintf \"NATIVE_TRACE_INTERN_PC=%%p\\n\", $pc\ninfo line *$pc\nx/i $pc\ndisassemble 'github.com/glycerine/tlago/tlc.(*TLCServer).Checkpoint'\nkill\nprintf \"NATIVE_TRACE_INTERN_KILLED\\n\"\nquit\n", source, line)
+		if err := os.WriteFile(debuggerScript, []byte(script), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	model, err := filepath.Abs("tlc/test_vectors/models/EWD840")
 	if err != nil {
 		t.Fatal(err)
@@ -123,6 +155,14 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		commandArgs := append([]string{"-test.run=^TestNativeDistributedProcessHelper$", "--", role}, common...)
 		commandArgs = append(commandArgs, args...)
 		command := exec.CommandContext(ctx, os.Args[0], commandArgs...)
+		if traceToIntern && role == "checkpoint-mid-run" {
+			debugArgs := append([]string{"-q", "-batch", "-x", debuggerScript, "--args", os.Args[0]}, commandArgs...)
+			command = exec.CommandContext(ctx, debugger, debugArgs...)
+			if len(debuggerSetup) > 0 {
+				debuggerSetup[0](command)
+			}
+			environment = append(environment, "TLAGO_CHECKPOINT_TRACE_INTERN_BOUNDARY=1", "DEBUGINFOD_URLS=")
+		}
 		command.Dir = model
 		command.Env = append(os.Environ(), "TLAGO_NATIVE_DISTRIBUTED_PROCESS_HELPER=1")
 		command.Env = append(command.Env, environment...)
@@ -194,6 +234,14 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	output := producer.output.String()
 	path := regexp.MustCompile(`NATIVE_CHECKPOINT_PATH=([^\r\n]+)`).FindStringSubmatch(output)
 	counts := regexp.MustCompile(`NATIVE_CHECKPOINT_COUNTS=(\d+),(\d+)`).FindStringSubmatch(output)
+	if traceToIntern {
+		begins := regexp.MustCompile(`NATIVE_CHECKPOINT_BEGIN_COUNTS=(\d+),(\d+)`).FindAllStringSubmatch(output, -1)
+		if len(begins) != 2 {
+			t.Fatal("debugger did not observe exactly two real model checkpoints")
+		}
+		counts = begins[1]
+		checkNativeDistributedTraceInternPC(t, output)
+	}
 	if len(path) != 2 || len(counts) != 3 {
 		t.Fatal("checkpoint path/counts absent")
 	}
@@ -205,7 +253,34 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	if distinct <= 16384 || queued <= 0 || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointEnd)) != 1 || len(nativeDistributedMessages(output, tlc.ECGeneral)) != 0 || len(nativeDistributedMessages(output, tlc.ECTLCFinished)) != 0 {
 		t.Fatal("producer did not checkpoint an unfinished successor frontier")
 	}
-	if len(nativeDistributedMessages(output, tlc.ECTLCCheckpointStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)) != workerThreads {
+	expectedStarts := 1
+	if traceToIntern {
+		expectedStarts = 2
+		baseline := regexp.MustCompile(`NATIVE_CHECKPOINT_BASELINE=(\d+),(\d+)`).FindStringSubmatch(output)
+		if len(baseline) != 3 {
+			t.Fatal("debugger interruption lacks a completed baseline")
+		}
+		baselineDistinct, _ := strconv.Atoi(baseline[1])
+		if distinct <= baselineDistinct || strings.Contains(output, "NATIVE_CHECKPOINT_COUNTS=") {
+			t.Fatal("second checkpoint did not advance or returned after debugger interruption")
+		}
+		for _, name := range []string{"queue", "MC06.st", "vars"} {
+			committed, err := os.ReadFile(filepath.Join(path[1], name+".chkpt"))
+			before, beforeErr := os.ReadFile(filepath.Join(path[1], name+".chkpt.baseline"))
+			pending, pendingErr := os.ReadFile(filepath.Join(path[1], name+".tmp"))
+			if err != nil || beforeErr != nil || bytes.Equal(committed, before) != (name == "vars") {
+				t.Fatalf("unexpected checkpoint generation for %s: %v/%v", name, err, beforeErr)
+			}
+			if name == "vars" {
+				if pendingErr != nil || len(pending) == 0 {
+					t.Fatal("intern pending generation absent at caller boundary")
+				}
+			} else if !os.IsNotExist(pendingErr) {
+				t.Fatal("queue/trace temporary was not promoted before the caller boundary")
+			}
+		}
+	}
+	if len(nativeDistributedMessages(output, tlc.ECTLCCheckpointStart)) != expectedStarts || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedWorkerRegistered)) != workerThreads {
 		t.Fatal("producer checkpoint/registration sequence differs from the real two-store model")
 	}
 	if commitReplyLoss {
@@ -440,6 +515,18 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	if recovered != uint64(expectedRecovered) {
 		t.Fatal("restarted stores did not recover exactly committed membership before worker startup")
 	}
+	if traceToIntern {
+		pending, err := os.ReadFile(filepath.Join(path[1], "vars.tmp"))
+		if err != nil || len(pending) == 0 {
+			t.Fatal("fresh recovery promoted or lost the pending intern checkpoint")
+		}
+		for name, expected := range coordinatorSnapshots {
+			actual, err := os.ReadFile(filepath.Join(path[1], name))
+			if err != nil || !bytes.Equal(actual, expected) {
+				t.Fatalf("fresh recovery rewrote committed checkpoint %s: %v", name, err)
+			}
+		}
+	}
 	t.Log("restarted empty stores recovered committed membership; starting actual successor evaluation")
 	if recoverReplyLoss {
 		// No transport redial: the manager no longer owns the failed endpoint.
@@ -476,6 +563,39 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	if len(nativeDistributedMessages(output, tlc.ECTLCFinished)) != 1 || len(stats) != 1 || !regexp.MustCompile(fmt.Sprintf(`^\d+ states generated, %d distinct states found, 0 states left on queue\.$`, finalDistinct)).MatchString(stats[0]) || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverEnd)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
 		t.Fatal("recovered model lacks original completion/count assertions")
 	}
+}
+
+func checkNativeDistributedTraceInternPC(t *testing.T, output string) {
+	t.Helper()
+	match := regexp.MustCompile(`NATIVE_TRACE_INTERN_PC=(0x[0-9a-f]+)`).FindStringSubmatch(output)
+	if len(match) != 2 || strings.Count(output, "NATIVE_TRACE_INTERN_KILLED\n") != 1 {
+		t.Fatal("debugger did not stop and kill the owned inferior at the checkpoint caller")
+	}
+	pc, err := strconv.ParseUint(match[1][2:], 16, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var traceCall, internCall uint64
+	assembly := regexp.MustCompile(`(?m)^\s*(?:=>\s*)?(0x[0-9a-f]+)\s+<\+\d+>:\s+(.*)$`).FindAllStringSubmatch(output, -1)
+	for _, instruction := range assembly {
+		address, err := strconv.ParseUint(instruction[1][2:], 16, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(instruction[2], "call") {
+			continue
+		}
+		if strings.Contains(instruction[2], "(*TLCTrace).CommitChkpt") {
+			traceCall = address
+		}
+		if strings.Contains(instruction[2], "(*InternTable).CommitChkpt") {
+			internCall = address
+		}
+	}
+	if traceCall == 0 || internCall == 0 || !(traceCall < pc && pc < internCall) {
+		t.Fatalf("stopped PC %#x is not between trace %#x and intern %#x calls", pc, traceCall, internCall)
+	}
+	t.Logf("inspected checkpoint PC %#x after trace commit %#x and before intern commit %#x", pc, traceCall, internCall)
 }
 
 type nativeCheckpointFingerprintEndpoint struct {

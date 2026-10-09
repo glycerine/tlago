@@ -25820,3 +25820,43 @@ reply loss with nested LSB storage and computed-worker reply loss both pass
 (distributed-failed-client-models.log, terminal d5e41c, status 0, 109.674 seconds).
 Those models run normally, without race instrumentation. No full suite was run;
 all handles are terminal, and original-method completion credit is unchanged.
+
+
+### October 9, 2026: full-model remote trace-to-intern caller interruption
+
+Extended the native remote recovery fixture to complete a baseline checkpoint,
+advance unchanged N=7 EWD840 with two nested LSB hosts, and interrupt its second
+checkpoint using external GDB. No production hook or commit reordering is added.
+The debugger records its inferior PID and inspected checkpoint disassembly;
+assertions require the stopped PC after Trace.CommitChkpt and before
+InternTable.CommitChkpt. The Linux/amd64 opt-in entry uses a symbol-bearing,
+optimized go test -c binary. Timeout cleanup verifies the recorded inferior's
+current debugger parent before killing it, covering separate process groups.
+
+Queue/trace committed generations advance, intern retains its baseline plus
+pending file, and remote fingerprint snapshots already contain the new frontier.
+This differs faithfully from the earlier local FP fixture: remote named
+checkpoints commit during manager.Checkpoint. Fresh fingerprint hosts recover
+exact partition membership before replacement evaluation, coordinator recovery
+preserves the frontier and pending intern file, and the model finishes at
+114,942 states with an empty queue and no GENERAL. All processes are joined.
+
+Initial setup attempts exposed missing DWARF in transient go test binaries,
+a relative child executable path and GDB startup-with-shell argument handling;
+use go test -c, an absolute binary path and GDB's default shell handling.
+The first successful full-model receipt is
+distributed-remote-trace-intern-boundary-final.log (terminal 81418e, status 0,
+51.11 seconds). After tightening inferior cleanup and recording startup PID,
+the final receipt is distributed-remote-trace-intern-owned-inferior.log
+(terminal db7a44, status 0, 50.39 seconds). It records PC 0x7fb65b between calls
+0x7fb64d and 0x7fb678; its frontier advances from 20,480/12,288 to 24,580/8,191.
+Counts are scheduling-dependent; assertions compare actual persisted counts.
+
+The unchanged ordinary LSB restart row also passes
+(distributed-remote-trace-intern-baseline.log, terminal de46df, status 0,
+51.196 seconds). Default opt-in exclusion passes
+(distributed-remote-trace-intern-default.log, terminal 48ba44, status 0,
+0.017 seconds). No full suite or race workload was run. Original distributed
+method credit remains 37/41 with four dispositions requiring reconciliation.
+This closes the documented full-model remote caller-boundary verification gap,
+without establishing atomic checkpoints or arbitrary interruption recovery.

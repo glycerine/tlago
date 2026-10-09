@@ -1197,6 +1197,10 @@ func (q *nativeMidRunCheckpointQueue) BeginChkpt() error {
 	// Checkpoint has already suspended all server threads here. Capture the
 	// counts of the persisted frontier, rather than post-resume live counters.
 	q.distinct, q.queued = q.server.FPSetManager.Size(), q.Size()
+	if os.Getenv("TLAGO_CHECKPOINT_TRACE_INTERN_BOUNDARY") == "1" {
+		fmt.Printf("NATIVE_CHECKPOINT_BEGIN_COUNTS=%d,%d\n", q.distinct, q.queued)
+		fmt.Println("NATIVE_CHECKPOINT_PATH=" + q.server.Metadir)
+	}
 	return q.StateQueue.BeginChkpt()
 }
 
@@ -1301,18 +1305,36 @@ func nativeDistributedCheckpointMidRun(args []string, interruption string) error
 				}()
 				ticker := time.NewTicker(time.Millisecond)
 				defer ticker.Stop()
+				baseline := os.Getenv("TLAGO_CHECKPOINT_TRACE_INTERN_BOUNDARY") == "1"
+				threshold := uint64(16384)
 				for {
 					select {
 					case <-stop:
 						return
 					case <-ticker.C:
-						if server.FPSetManager.Size() <= 16384 {
+						if server.FPSetManager.Size() <= threshold {
 							continue
 						}
 					}
 					if err := server.Checkpoint(); err != nil {
 						fmt.Fprintln(os.Stderr, "mid-run checkpoint:", err)
 						os.Exit(ExitToolFailure)
+					}
+					if baseline {
+						for _, name := range []string{"queue.chkpt", server.FileName + ".st.chkpt", "vars.chkpt"} {
+							data, err := os.ReadFile(filepath.Join(server.Metadir, name))
+							if err == nil {
+								err = os.WriteFile(filepath.Join(server.Metadir, name+".baseline"), data, 0o600)
+							}
+							if err != nil {
+								fmt.Fprintln(os.Stderr, "baseline checkpoint:", err)
+								os.Exit(ExitToolFailure)
+							}
+						}
+						fmt.Printf("NATIVE_CHECKPOINT_BASELINE=%d,%d\n", queue.distinct, queue.queued)
+						threshold = queue.distinct
+						baseline = false
+						continue
 					}
 					fmt.Printf("NATIVE_CHECKPOINT_ALIVE_FINGERPRINTS=%d\n", server.FPSetManager.NumOfAliveServers())
 					fmt.Printf("NATIVE_CHECKPOINT_COUNTS=%d,%d\n", queue.distinct, queue.queued)

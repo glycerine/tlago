@@ -508,6 +508,18 @@ N=7 model with 114,942 stored fingerprints and an empty queue; source statistics
 count its two aliased routing slots as 229,884. This adds native transport
 coverage without changing original-test credit or introducing automatic replay.
 
+External GDB/disassembly also verifies the exact trace-to-intern caller boundary
+in the full N=7 model with two nested LSB fingerprint hosts. After a completed
+baseline and an advancing second checkpoint, the coordinator is killed after
+trace commit returns and before intern commit begins. Queue/trace retain the new
+generation; intern retains the baseline and its pending file. Remote fingerprints
+already hold the new generation because their named checkpoint commits earlier.
+Fresh roles restore exact membership/frontier and finish at 114,942 states with
+an empty queue. The separate local fixture retains old fingerprints at this
+boundary. Preserve this source distinction; neither check proves atomicity.
+The full-model check is opt-in and requires an optimized symbol-bearing binary
+from `go test -c`, Linux/amd64 ptrace permission and GDB; see `TLC_ARCH.md`.
+
 ## Remaining distributed work
 
 1. Extend restart/recovery coverage to other failure phases. Verified cases use
@@ -525,14 +537,7 @@ coverage without changing original-test credit or introducing automatic replay.
    full-model TCP relay stall covers both directions together and each direction
    independently; arbitrary network blackholes and other partition topologies
    remain unproved.
-3. The exact local trace-to-intern caller boundary is now verified with an
-   external GDB breakpoint and disassembly, followed by process death and fresh
-   recovery. Queue/trace retain the new generation; intern/fingerprints retain
-   the old generation and pending files. The earlier `strace` check stops inside
-   intern commit instead. Neither establishes full-model/remote recovery at
-   this boundary. Do not add a production hook, reorder commits or use a timing
-   race. Removing `vars.tmp` tests a different boundary.
-4. Finish the source ownership/constructor and native cleanup audit where evidence
+3. Finish the source ownership/constructor and native cleanup audit where evidence
    identifies actual remaining shortcuts. Consult prior audits before repeating
    completed checks. Missing-component behavior alone cannot prove full parity.
    Print wrappers now own a separate underlying mutable state. Delegated methods
@@ -564,7 +569,7 @@ coverage without changing original-test credit or introducing automatic replay.
    assertion without advancing work.
    Failed raw writes close native files without reflushing or publishing the
    checkpoint marker. Original writer wake/finish and stream tests remain green.
-5. The core metadata-transfer audit is complete for the pinned source. Neither
+4. The core metadata-transfer audit is complete for the pinned source. Neither
    core TLC nor its tests call `Value.setData` or `ModelValue.setData`; ordinary
    distributed tools use model-checking states with no stored action. Populated
    extended actions retain non-transferable evaluator objects. Keep unsupported
@@ -583,7 +588,7 @@ coverage without changing original-test credit or introducing automatic replay.
    Print/functional action and callable setters likewise remain base no-ops in
    extended mode. Their predecessor setter updates the level without storing
    the predecessor.
-6. Reconcile the four opt-in original model bodies with the upstream disabled
+5. Reconcile the four opt-in original model bodies with the upstream disabled
    harness and its retained-flusher failure. The source-profile failure is now
    located; staged bodies and native coverage earn no completion credit.
 

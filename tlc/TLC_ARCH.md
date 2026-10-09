@@ -13954,3 +13954,50 @@ one BASELINE_COMMITTED and no SECOND_COMMITTED marker. The persistent generation
 and recovery checks are the same contracts as the existing syscall-boundary
 test; the debugger adds the precise caller-PC evidence. No original Java method
 directly covers this interruption, and no completion credit is added.
+
+### Full-model remote trace-to-intern caller interruption
+
+The opt-in Linux/amd64 TestNativeDistributedRemoteCheckpointTraceToInternInterruption
+extends the registered-endpoint fixture with a completed baseline followed by an
+advancing second checkpoint of unchanged N=7 EWD840. Two fingerprint hosts use
+factory-created two-child LSB stores. GDB finds the current intern-commit caller
+line, ignores its first visit, stops on the second, inspects the actual checkpoint
+disassembly and kills only the owned coordinator inferior. The watchdog kills
+the debugger process group and its recorded inferior only
+after verifying the inferior still has that debugger as its parent in `/proc`.
+This covers GDB placing the inferior in a separate process group.
+
+The inspected optimized binary stopped at 0x7fb65b, after Trace.CommitChkpt's
+call at 0x7fb64d and before InternTable.CommitChkpt's call at 0x7fb678. Parent
+assertions require this instruction ordering, two checkpoint starts and only
+one completed checkpoint. The baseline frontier has 20,480 fingerprints and
+12,288 queued states; the interrupted frontier has 24,579 and 8,191 respectively.
+These observed counts are scheduling-dependent; the test requires an advancing
+frontier and exact persisted counts, rather than hard-coding them.
+
+Queue/trace committed bytes differ from the baseline and have no pending files.
+Intern committed bytes equal the baseline and its pending file remains. Both
+remote stores already committed the newer fingerprint generation: unlike local
+FP storage, named remote checkpoints commit during FPSetManager.Checkpoint,
+before queue/trace/intern commit. Fresh hosts recover exact committed partition
+membership; fresh coordinator recovery preserves the queued frontier and leaves
+the pending intern file unpromoted. Replacement evaluation finishes at 114,942
+states with an empty queue, one recovery and no GENERAL. All roles are joined.
+No production failpoint, source reordering or timing race is introduced.
+
+Run this native check using an absolute path to an optimized symbol-bearing
+binary. Ordinary transient `go test` binaries can omit debug symbols. For example,
+from the repository root, with the usual offline/cache environment:
+
+```sh
+go test -c . -o .codex-gotmp/distributed-remote-boundary.test
+TLAGO_DISTRIBUTED_GDB_BOUNDARY=1 "$PWD/.codex-gotmp/distributed-remote-boundary.test" \
+  -test.run '^TestNativeDistributedRemoteCheckpointTraceToInternInterruption$' \
+  -test.count=1 -test.timeout=8m -test.v
+```
+
+GDB and Linux/amd64 ptrace permission are required. Without the explicit opt-in, this
+supplemental native check skips; original model-test dispositions are unchanged.
+The receipt covers this model/layout and precise caller boundary, not arbitrary
+checkpoint atomicity or all interruption points. Ordinary LSB restart assertions
+also pass after the fixture extension.

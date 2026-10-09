@@ -133,6 +133,12 @@ source size-query failover. These receipts have different scopes; none establish
 complete distributed parity alone. Use the detailed entries in the progress log
 rather than rerunning unchanged long workloads.
 
+The exact trace-to-intern caller boundary is verified by external GDB/disassembly
+in both a local storage fixture and a full N=7 model with two nested LSB hosts.
+Fresh-process recovery preserves their distinct local/remote fingerprint commit
+generations. The remote model finishes at 114,942 states with an empty queue.
+Neither receipt establishes atomic checkpointing.
+
 The remaining assignments are maintained in
 [HANDOFF.md](HANDOFF.md#remaining-distributed-work):
 
@@ -140,15 +146,11 @@ The remaining assignments are maintained in
    remote recovery before registration has the source's empty-manager limitation.
 2. Additional full-model fingerprint failure phases and general partitions
    remain unproved beyond the recorded loss and controlled-stall cases.
-3. The exact local caller boundary between trace and intern commit is verified
-   by external GDB/disassembly, process death and fresh recovery. Full-model or
-   remote interruption there remains unproved. The earlier syscall check stops
-   inside intern commit and proves a different control-flow boundary.
-4. Continue ownership/cleanup comparison where concrete source evidence reveals
+3. Continue ownership/cleanup comparison where concrete source evidence reveals
    a shortcut. Consult prior receipts before repeating completed audits.
-5. Core metadata producers and transferability are audited; see `TLC_ARCH.md`.
+4. Core metadata producers and transferability are audited; see `TLC_ARCH.md`.
    New custom-data support needs a concrete producer and native contract.
-6. Resolve the four original model-test dispositions without manufacturing a
+5. Resolve the four original model-test dispositions without manufacturing a
    green gate or completion credit.
 
 No missing distributed Java file was identified by this mapping. Method bodies,

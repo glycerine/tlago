@@ -747,6 +747,16 @@ unpromoted. This is a short local manual receipt, separate from the earlier
 syscall stop inside intern commit and from full-model/remote recovery. It adds
 no original-method credit or production hook.
 
+An opt-in external GDB check now covers the same caller boundary in the full
+N=7 model with two nested LSB fingerprint hosts. A completed baseline precedes
+the interrupted advancing checkpoint. Disassembly confirms trace commit returned
+before intern commit was called; files retain new queue/trace, old intern plus
+its pending file, and new remote fingerprints committed earlier by the source
+remote path. Fresh roles restore exact partition membership/frontier and finish
+at 114,942 states with an empty queue and no GENERAL. This closes that specific
+full-model/remote verification gap without original-method credit. See
+`TLC_ARCH.md` for the optimized `go test -c` binary and Linux/GDB invocation.
+
 Native coordinator catalog checks cover local/TCP missing lookup/unbind, failure
 payloads, retained retry delays, duplicate creation, shutdown-hook binding guards
 and repeated coordinator removal. A lazy-reference check distinguishes an absent
