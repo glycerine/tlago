@@ -633,9 +633,6 @@ func (s *MemFPIntSet) rehash() {
 }
 
 func (s *MemFPIntSet) chkptName(fname string, ext string) string {
-	if fname == "" {
-		fname = "fpset"
-	}
 	return filepath.Join(s.metadir, fname+".fp."+ext)
 }
 

@@ -12671,3 +12671,15 @@ The failed client remains broken. Publishing recovered caller-owned storage
 through a fresh host permits membership reads without another recovery.
 This checks the library transport boundary, not full-model recovery after a
 network partition or fresh-process CLI registration ordering.
+
+### Explicit empty fingerprint filenames
+
+MemFPSet/1/2, MemFPIntSet and DiskFPSet named checkpoint operations preserve an
+explicitly empty name, selecting `.fp.tmp` and `.fp.chkpt` in the metadir. They
+do not substitute `fpset` or the initialized store name. Disk initialization
+also preserves an empty backing name, creating `.fp` and reserving `.tmp` as
+its merge filename. Named operations and unnamed operations retain distinct
+source contracts. Local/TCP checks keep the empty snapshot separate from a
+prior `fpset` snapshot and recover its exact membership. MemFPSet1 retains the
+source SetOfLong recovery count behavior: loading count and reinserting nonzero
+keys increments that count again. These operations use native Go file paths.

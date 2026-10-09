@@ -23575,3 +23575,40 @@ and pass (checkpoint-recover-reply-race.log, terminal 2262ab, status 0).
 No enabled original method covers this network boundary, so the native checks
 add no original-method completion credit. This is not full-model partition
 coverage. No full model or full suite ran; all handles are terminal.
+
+### October 8, 2026: explicit empty fingerprint checkpoint names
+
+Source filename helpers concatenate the supplied name literally. Go MemFPSet,
+MemFPSet1/2 and MemFPIntSet instead invented `fpset` for an empty name; DiskFPSet
+selected its initialized name or `fpset`. Added ten local/TCP storage cases and
+one DFID case before fixing production. All eleven fail their literal `.fp.tmp`
+path assertions (checkpoint-empty-name-before.log, terminal b2e709, status 1,
+0.033 seconds). Removed these fallback names.
+
+The initial fixed run exposed an incorrect expectation in the new MemFPSet1
+checks (checkpoint-empty-name-fixed.log, terminal e8784b, status 1,
+0.042 seconds). Rechecked SetOfLong.recover: source restores the serialized count
+and then reinserts each nonzero key, incrementing count again. Corrected the
+new assertion to the source count of four for two nonzero keys; retained exact
+membership assertions. No production count normalization was introduced.
+
+Disk initialization also invented `fpset.fp` for an explicitly empty backing
+name. Both new LSB/MSB cases reproduce that mismatch
+(fingerprint-empty-backing-before.log, terminal 52af3b, status 1, 0.016 seconds).
+Removed that fallback; source literal `.fp` and merge `.tmp` names remain.
+Final filename, backing-name, memory recovery/count, missing-parent and commit
+error checks pass (checkpoint-empty-name-verified.log, terminal 34decf, status 0,
+0.053 seconds). The empty snapshot stays separate from `fpset` and the initialized
+name and recovers the expected membership through local and TCP paths.
+
+An overly broad original-test regex also selected testFPSetRecovery2 and
+testFPSetRecoveryDuplicate. The run hit its three-minute watchdog while MSB
+testFPSetRecovery2 was repeatedly flushing the default-size table
+(checkpoint-empty-name-original.log, terminal bdbec5, status 1, 180.349 seconds).
+Retired that run and anchored the method selector. Both original LSB/MSB
+testFPSetRecovery methods pass with their unchanged 99,999 limit, complete
+membership assertions and default settings (checkpoint-empty-name-original-
+focused.log, terminal 9842ac, status 0, 14.533 seconds). No source test was
+weakened or resized. No direct original empty-name method exists; native checks
+add no original-method credit. No full suite, full model or race workload ran.
+All handles are terminal.

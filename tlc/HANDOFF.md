@@ -116,6 +116,10 @@ Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
 storage. The manager warns once, continues to the next registration and leaves
 routing intact; the broken connection does not replay the completed recovery.
 Recovered borrowed storage remains readable through a fresh host.
+Named memory, disk and DFID checkpoint methods use an explicitly empty name
+literally (`.fp.tmp`/`.fp.chkpt`), without selecting `fpset` or the initialized
+name. Empty disk backing names likewise create `.fp`; unnamed checkpoint
+methods retain their distinct source behavior.
 
 Failed coordinator construction stops and joins its queue workers and closes
 owned trace/fingerprint handles, preserving files and the original failure.

@@ -1427,6 +1427,11 @@ checks. They retain exact membership in both high-bit partitions, the source
 warning/continuation behavior, registration identities and no automatic replay.
 A fresh host reads the retained borrowed storage. No enabled original method
 directly covers this transport boundary, so it adds no completion credit.
+Explicit empty fingerprint checkpoint names now have native local/TCP checks
+for Mem/1/2 and LSB/MSB, plus DFID and empty disk backing-name checks. The
+literal snapshot stays separate from `fpset` and the initialized name; recovery
+retains exact membership and MemFPSet1's source count increment. No original
+method directly covers this filename boundary; native checks add no credit.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

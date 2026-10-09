@@ -755,9 +755,6 @@ func (s *MemFPSet) RecoverFP(fp uint64) error {
 func (s *MemFPSet) UnexportObject(force bool) {}
 
 func (s *MemFPSet) chkptName(fname string, ext string) string {
-	if fname == "" {
-		fname = "fpset"
-	}
 	return filepath.Join(s.metadir, fname+".fp."+ext)
 }
 
@@ -1061,9 +1058,6 @@ func (s *MemFPSet1) RecoverFP(fp uint64) error {
 func (s *MemFPSet1) UnexportObject(force bool) {}
 
 func (s *MemFPSet1) chkptName(fname string, ext string) string {
-	if fname == "" {
-		fname = "fpset"
-	}
 	return filepath.Join(s.metadir, fname+".fp."+ext)
 }
 
@@ -1340,9 +1334,6 @@ func (s *MemFPSet2) RecoverFP(fp uint64) error {
 func (s *MemFPSet2) UnexportObject(force bool) {}
 
 func (s *MemFPSet2) chkptName(fname string, ext string) string {
-	if fname == "" {
-		fname = "fpset"
-	}
 	return filepath.Join(s.metadir, fname+".fp."+ext)
 }
 

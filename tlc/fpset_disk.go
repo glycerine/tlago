@@ -252,9 +252,6 @@ func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet 
 		s.metadir = filepath.Join(os.TempDir(), "DiskFPSet")
 	}
 	base := s.metadir + string(os.PathSeparator) + filename
-	if filename == "" {
-		base = filepath.Join(s.metadir, "fpset")
-	}
 	s.tmpFilename = base + ".tmp"
 	s.fpFilename = base + ".fp"
 	if err := os.WriteFile(s.fpFilename, nil, 0o644); err != nil {
@@ -1421,12 +1418,6 @@ func (s *DiskFPSet) checkFile() (ok bool, err error) {
 }
 
 func (s *DiskFPSet) chkptName(fname string, ext string) string {
-	if fname == "" {
-		fname = s.filename
-	}
-	if fname == "" {
-		fname = "fpset"
-	}
 	return filepath.Join(s.metadir, fname+".fp."+ext)
 }
 
