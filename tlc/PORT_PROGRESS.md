@@ -26817,3 +26817,34 @@ All selected TCP entries ran without skips. Existing role-help selection passes
 in distributed-ipv6-help.log, terminal 0eef23, status 0, 0.017 seconds. Reruns
 followed fixture/production edits; no full suite, long model or race run. All
 handles terminal and git diff --check passes.
+
+
+### October 9, 2026: coordinator IPv6 publication and wildcard validation
+
+Follow-up native address comparison found coordinator advertisements still
+joined an already bracketed IP host directly, generating double brackets.
+Coordinator publication now uses the same native IP-host normalization as
+worker callbacks. Both roles reject wildcard addresses by parsed address value,
+including expanded IPv6, IPv4-mapped unspecified addresses and scoped IPv6
+wildcards. Zone metadata is removed only for unspecified-address validation;
+reachable addresses keep their actual zone. No TLC retry, lifecycle, source
+algorithm, JVM or rpc25519 changes.
+
+New native publication cases inspect advertised host/zone and the actual bound
+port independently, check the address retained in coordinator publication and
+require wildcard rejection before coordinator listener creation. Worker
+publication must also reject those wildcards. These are native address checks,
+not proof of actual link-local routing and not original Java method credit.
+Distributed inventory stays 37/41.
+
+Initial coordinator advertisement and existing IPv6/address/failure-category
+controls pass in distributed-ipv6-coordinator-advertisement.log, terminal
+6f84ec, status 0, 0.021 seconds. Expanded wildcard cases caught Go netip's
+zone-sensitive unspecified equality in
+distributed-ipv6-coordinator-advertisement-final.log, terminal a3d878,
+status 1, 0.030 seconds. Corrected production validation to clear the zone for
+the wildcard predicate. All new and existing IPv6 TCP discovery/callback,
+IPv4 bootstrap, callback-address and native failure-category controls pass in
+distributed-ipv6-coordinator-advertisement-fixed.log, terminal c1533b, status 0,
+0.031 seconds. No race, long-model or full-suite run. All handles terminal;
+git diff --check passes.

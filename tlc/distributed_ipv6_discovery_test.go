@@ -146,3 +146,54 @@ func TestNativeCoordinatorIPv6DiscoveryTCP(t *testing.T) {
 		t.Fatalf("IPv6 worker callback URI = %q/%v", uri, err)
 	}
 }
+
+func TestNativeCoordinatorAdvertisedIPv6Hosts(t *testing.T) {
+	for _, test := range []struct{ operand, host string }{
+		{"::1", "::1"}, {"[::1]", "::1"},
+		{"fe80::1%eth0", "fe80::1%eth0"}, {"[fe80::1%eth0]", "fe80::1%eth0"},
+		{"::", ""}, {"[::]", ""},
+		{"::%eth0", ""}, {"[::%eth0]", ""},
+		{"0:0:0:0:0:0:0:0", ""}, {"::ffff:0.0.0.0", ""},
+	} {
+		t.Run(test.operand, func(t *testing.T) {
+			network := NewDistributedCoordinatorNetwork("127.0.0.1", test.operand)
+			t.Cleanup(func() {
+				if err := network.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			registry, err := network.createRegistry(0)
+			if test.host == "" {
+				if err == nil || registry != nil || network.Address != "" {
+					t.Fatal("wildcard advertised host opened a coordinator listener")
+				}
+				if worker, err := NewDistributedWorkerNetwork("127.0.0.1:0", test.operand); err == nil {
+					_ = worker.Close()
+					t.Fatal("wildcard advertised host opened a worker publication")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			host, port, err := net.SplitHostPort(network.Address)
+			if err != nil || host != test.host {
+				t.Fatalf("advertised address = %q/%v", network.Address, err)
+			}
+			// Inspect the bound IPv4 listener, independently of the advertised
+			// IPv6 host. Scoped routing is not available on every test machine.
+			conn, err := net.Dial("tcp", net.JoinHostPort("127.0.0.1", port))
+			if err != nil {
+				t.Fatalf("advertised coordinator port is not bound: %v", err)
+			}
+			_ = conn.Close()
+			server := &TLCServer{}
+			if err := registry.Rebind(TLCServerName, server); err != nil {
+				t.Fatal(err)
+			}
+			if binding := network.Host.coordinators[TLCServerName]; binding.address != network.Address {
+				t.Fatalf("publication changed advertised address: %q", binding.address)
+			}
+		})
+	}
+}

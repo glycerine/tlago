@@ -49,7 +49,7 @@ func NewDistributedWorkerNetwork(listenAddress, advertisedAddress string) (*Dist
 		return nil, err
 	}
 	port, err := strconv.Atoi(portText)
-	if err != nil || port <= 0 || port > 65535 || host == "" || host == "0.0.0.0" || host == "::" {
+	if err != nil || port <= 0 || port > 65535 || host == "" || distributedWildcardHost(host) {
 		_ = listener.Close()
 		return nil, fmt.Errorf("worker advertised address must be a reachable host and port: %q", advertisedAddress)
 	}

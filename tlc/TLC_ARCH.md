@@ -14576,3 +14576,12 @@ published worker callback over IPv6. Scoped address spelling is checked without
 claiming link-local routing on an actual interface. Existing IPv4 bootstrap and
 retry controls remain green. There is no original Java native-address test;
 original-method credit stays unchanged.
+
+Coordinator publication also removes existing IP brackets before joining its
+advertised host and bound port, avoiding double brackets. Both coordinator and
+callback advertisements reject unspecified IP addresses by their parsed value,
+including expanded IPv6, mapped IPv4 and scoped IPv6 wildcard spellings. Zone
+metadata is removed only for that wildcard check, never from a reachable
+advertisement. Tests independently inspect the bound listener, published
+address and normalized host/zone, and require wildcard rejection before
+coordinator listener creation. Native address checks add no Java method credit.

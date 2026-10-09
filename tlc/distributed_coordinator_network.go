@@ -46,7 +46,10 @@ func (n *DistributedCoordinatorNetwork) createRegistry(port int) (*TLCServerRegi
 	if err != nil {
 		return nil, err
 	}
-	if host == "0.0.0.0" || host == "::" {
+	if ipHost, ip := distributedIPHost(host); ip {
+		host = ipHost
+	}
+	if distributedWildcardHost(host) {
 		return nil, errors.New("coordinator advertised host must be reachable, not a wildcard")
 	}
 	n.mu.Lock()

@@ -56,6 +56,11 @@ func distributedIPHost(host string) (string, bool) {
 	return candidate, true
 }
 
+func distributedWildcardHost(host string) bool {
+	address, err := netip.ParseAddr(host)
+	return err == nil && address.WithZone("").Unmap().IsUnspecified()
+}
+
 func distributedCoordinatorLocation(serverName, binding string) string {
 	port := fmtInt(TLCServerPort())
 	if host, ip := distributedIPHost(serverName); ip && strings.Contains(host, ":") {

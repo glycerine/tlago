@@ -93,8 +93,9 @@ only. They are not Go implementation requirements. Native network shutdown error
 reach CLI stderr and a failure exit status, including after a successful TLC
 command body; earlier command diagnostics remain visible. Native discovery accepts
 bare or bracketed IPv6 hosts and escapes zone suffixes for URLs, restoring them
-for TCP dialing. Callback advertisements retain scoped IP hosts and actual bound
-ports. IPv6 loopback discovery/status and worker callbacks have focused coverage;
+for TCP dialing. Coordinator and callback advertisements normalize IP brackets,
+retain scoped hosts and actual bound ports, and reject all wildcard spellings.
+IPv6 loopback discovery/status and worker callbacks have focused coverage;
 scoped link-local routing across real interfaces remains outside that coverage.
 
 Use [DISTRIBUTED_PORT_MAP.md](DISTRIBUTED_PORT_MAP.md) to find implementation
