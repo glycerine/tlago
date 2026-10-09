@@ -448,7 +448,7 @@ func (n *OpApplNode) String() string {
 }
 
 type LetInNode struct {
-	SemanticNodeBase
+	*SemanticNodeBase
 	Lets     []*OpDefNode
 	Bindings []LetBinding
 	Body     SemanticNode
@@ -460,8 +460,18 @@ type LetBinding struct {
 }
 
 func NewLetInNode(body SemanticNode, lets ...*OpDefNode) *LetInNode {
+	return NewLetInNodeWithBase(nil, body, lets...)
+}
+
+// Parser adapters retain the existing SANY node's UID, syntax and indexed tool
+// slots. Standalone runtime LET nodes allocate their own semantic identity.
+func NewLetInNodeWithBase(base *SemanticNodeBase, body SemanticNode, lets ...*OpDefNode) *LetInNode {
+	if base == nil {
+		owned := NewSemanticNodeBase(SemanticLetInKind, "LET")
+		base = &owned
+	}
 	return &LetInNode{
-		SemanticNodeBase: NewSemanticNodeBase(SemanticLetInKind, "LET"),
+		SemanticNodeBase: base,
 		Lets:             append([]*OpDefNode(nil), lets...),
 		Body:             body,
 	}

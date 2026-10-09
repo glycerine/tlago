@@ -2016,7 +2016,11 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 			return node
 		}
 	}
-	node := tlc.NewLetInNode(nil)
+	var base *tlc.SemanticNodeBase
+	if canonical != nil {
+		base = canonical.SemanticNodeBase
+	}
+	node := tlc.NewLetInNodeWithBase(base, nil)
 	if canonical != nil {
 		if b.canonicalLets == nil {
 			b.canonicalLets = map[*sanySemLetInNode]*tlc.LetInNode{}

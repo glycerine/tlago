@@ -44,6 +44,13 @@ parity beyond those contracts. Do not restart XML or ApalacheIR corpus sweeps.
 Other TLC test reconciliation remains visible in [TODO_TEST_PORT.md](TODO_TEST_PORT.md);
 JVM-only GC/JPF assertions are not native Go implementation requirements.
 
+Core bridge continuation: runtime LET views now share SANY's actual semantic
+base, following the existing OpDef/formal adapters. Original LET, selector and
+coverage checks pass. Complete canonical LET Context transfer remains pending;
+the existing runtime-state descriptor preserves Pair history and Hashtable
+topology, but imported symbol/wrapper adapters still need integration. See the
+runtime LET adapter requirements in `TLC_ARCH.md` before replacing traversal.
+
 ## Verification baseline and test credit
 
 Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with

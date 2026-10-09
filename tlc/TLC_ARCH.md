@@ -10922,6 +10922,15 @@ coverage methods pass unchanged. These receipts do not complete canonical
 Context transfer, semantic-base/UID sharing, imported theorem adapters, complete
 OpDef shell publication or source substitution-array sharing.
 
+Runtime LET adapters now also borrow the canonical LetInNode's actual
+SemanticNodeBase. They share its UID, syntax/location, level metadata and indexed
+tool slots, instead of allocating a second semantic identity for the cached
+view. The adapter shell is still published before child conversion. Standalone
+runtime LET construction retains its own allocation. Original selector, boxed
+LET, cyclic-redefinition, value-semantics and coverage methods pass unchanged.
+This supplies a prerequisite for Context transfer; complete canonical Context
+membership, imported wrapper adapters and graph traversal remain pending.
+
 ## Formal adapters retain the actual semantic base
 
 `SymbolNode.SemanticBase` identifies the semantic owner of an evaluator symbol

@@ -27519,3 +27519,42 @@ gap: SANY processSubsetOf has exactly one bound, and canonical sanySubsetOf
 translation supplies one shared domain. Do not remove the guard to introduce an
 unsupported syntax extension. No additional production/test change warranted.
 Updated restart instructions and pending-test evidence; git diff --check passes.
+
+
+### October 9, 2026: canonical runtime LET views share the source semantic base
+
+Previous goal turn made progress at e25e3cf. Revalidated clean worktree and
+polled live off-heap random exec session 77502 without restarting it. The last
+observed minute receipt reached 34,492,901 iterations with predecessor/size
+assertions intact; it remains live, without completion credit. Its binary was
+built from e25e3cf before this bridge change; fingerprint production is unchanged.
+
+Resumed the concrete remaining runtime LET Context requirement in TLC_ARCH.
+Pinned LetInNode.walkGraph visits the actual Context because opDefs is incomplete.
+The runtime still reconstructs traversal from filtered definitions. Complete
+integration needs actual canonical symbol/wrapper mappings, not name matching
+or a replay of declaration insertion order. Before wiring that transfer, found
+a prerequisite identity mismatch: the canonical cache's runtime LET shell owned
+a newly allocated SemanticNodeBase, while the source node already owned its UID,
+syntax/location, level metadata and indexed tool slots.
+
+Changed LetInNode to retain a SemanticNodeBase pointer, matching the existing
+runtime OpDef adapter. NewLetInNodeWithBase borrows a supplied canonical base;
+ordinary NewLetInNode still allocates its own source-shaped runtime identity.
+The bridge passes the actual canonical LET base and retains shell-before-child
+cache publication. No temporary duplicate UID, copied tool slots, invented
+context entries or new synthetic tests. Native selector wrappers without a
+canonical LET still take the standalone construction path. Full Context transfer
+and imported-wrapper graph adaptation remain pending; this does not claim that
+the reconstruction shortcut has been removed.
+
+Existing original Test206/209/216/219 and model coverage selection pass:
+canonical-let-base-original-models.log, terminal 2c0f67, status 0, 8.120 seconds.
+Original boxed LET, cyclic redefinition and ValueSemanticsAssume selection pass:
+canonical-let-base-original-let.log, terminal cb4972, status 0, 3.501 seconds.
+Existing original ReportCoverage01-04 and focused Tool checks pass:
+canonical-let-base-runtime.log, terminal 8e93fa, status 0, 0.023 seconds.
+All receipts are under .codex-gotmp. These selections establish their retained
+assertions; complete canonical graph traversal is still unverified. No long
+workload restart, full suite or race run. Inventory counts unchanged. Updated
+architecture/current handoff and git diff --check passes.
