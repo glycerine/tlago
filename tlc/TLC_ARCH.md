@@ -14517,3 +14517,22 @@ callers. Reader/close goroutines join, each raw resource closes once and no RPC
 is written. The existing raw-primary-closed callback test now requires its
 callback failure on repeated discovery close rather than accepting lost state.
 No original Java test covers this native Go owner; original credit is unchanged.
+
+
+### Idle worker scheduler after cached coordinator loss
+
+The native scheduler now has an actual-delay TCP check in addition to direct
+task-invocation coverage. Discovery first opens and uses a coordinator view;
+the host then closes before the worker timer starts. Two published idle workers
+share one runtime. The unchanged production runTimer loop must wait at least
+its ten-second initial delay, observe the cached connection failure, print one
+server-not-running diagnostic and exit both workers. The fixture joins that
+timer goroutine and checks shared executor shutdown, the completion latch and
+removed callback endpoints. It does not invoke the task manually or shorten
+the activity timeout or subsequent sixty-second period.
+
+The fixture owns the scheduler goroutine directly so it can join it, using the
+same task and runtime cancellation path as StartKeepAlive. It does not prove
+the next scheduled period, suppression during actual model computation, process
+death or arbitrary network partitions. No production behavior changed and no
+direct original Java timer test exists; original distributed credit stays 37/41.

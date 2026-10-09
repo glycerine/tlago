@@ -26732,3 +26732,26 @@ Only the two short gated discovery/coordinator close tests ran with race:
 distributed-discovery-close-join-race.log, terminal 7292d6, status 0,
 1.135 seconds. No long model or full-suite rerun. All handles terminal and
 git diff --check passes.
+
+
+### October 9, 2026: actual worker timer detects cached coordinator loss
+
+Compared worker task/lifecycle, selector and coordinator completion source
+paths; no new production mismatch was established in those comparisons.
+The existing native keepalive lifecycle checks call the task directly and
+therefore did not establish the actual scheduler's loss-detection path. Added
+TestNativeWorkerTimerDetectsCachedCoordinatorLoss with real TCP discovery and
+two published idle worker callbacks sharing one runtime. The coordinator view
+is opened and used before closing its host. A joinable fixture runs the
+unchanged production timer loop, retaining the ten-second initial delay and
+source timeout/period. It observes the actual scheduled probe, one lost-server
+diagnostic, both worker exits, shared executor shutdown, latch release and
+removed callbacks, then joins the scheduler. No manual task invocation, timer
+shortening, production change or original-method credit. This is not a full
+process or active-computation partition test. Original inventory stays 37/41.
+
+New scheduler check passes in distributed-worker-real-timer-loss.log, terminal
+441fbf, status 0, 10.031 seconds. Existing native coordinator lifecycle matrix
+and stalled-fingerprint worker-control cases pass in
+distributed-worker-real-timer-controls.log, terminal e7f3f5, status 0. No race,
+long-model or full-suite rerun. All handles terminal; git diff --check passes.
