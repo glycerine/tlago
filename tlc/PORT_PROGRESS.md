@@ -22609,3 +22609,35 @@ FINISHED and no GENERAL. All child processes are terminal and joined; captured
 logs were inspected. No full suite, race run or original-method completion credit.
 Additional failure phases, general network partitions, isolated trace-commit
 interruption and checkpoint atomicity remain open.
+
+### October 8, 2026: interning recovery owns its lock before file I/O
+
+Checkpoint sequence audit confirms Java and Go order queue, trace, intern and
+fingerprint commits identically. The isolated after-trace/before-intern process
+interruption still lacks a faithful deterministic boundary; it was not replaced
+by a timing race, production hook or different failed-intern-commit scenario.
+The related interning audit found a concrete source mismatch: InternTable.recover
+is synchronized for its entire method, but Go opened/read the checkpoint header
+before acquiring the interning mutex. Concurrent token allocation could occur
+during that read and then be overwritten by the restored token counter.
+
+Recover now acquires the existing native mutex before file opening/header reads
+and retains it through token publication and replay. Deferred unlocking covers
+open/header/replay failures. The source has no direct InternTable recovery test;
+new short Linux FIFO checks prove lock ownership at a blocked header read using
+the actual reader/writer open handshake, without sleeps or production hooks.
+Complete and truncated headers verify lock release and the next allocated token;
+truncation leaves the prior counter intact. This is native supplementary coverage,
+not original-method completion credit.
+
+The initial test build used a nonexistent GetTok accessor (intern-recovery-lock.log,
+terminal 918a3a, status 1); corrected to the existing Token API. Both FIFO rows
+and the existing commit-error check pass (intern-recovery-lock-fixed.log, terminal
+ec49b8, status 0, 0.013 seconds). Related coordinator commit-failure checks and all
+six original Java stream methods also pass (intern-recovery-related.log, terminal
+e48a1d, status 0, 0.023 seconds). The changed startup recovery path passes the full
+unchanged N=7 remote Mem restart case (intern-recovery-model.log, terminal f0993e,
+status 0, 51.365 seconds): restored 20,480 fingerprints/12,288 queued states,
+complete membership before worker startup, final 114,942 distinct/empty queue,
+FINISHED and no GENERAL. Logs inspected, all processes joined and terminal.
+No full suite or race run. Existing original assertions and bounds unchanged.

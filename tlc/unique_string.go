@@ -249,6 +249,10 @@ func (t *InternTable) Recover(metadir string) error {
 	if t == nil {
 		panic(NewNullPointerException())
 	}
+	// Source recover is synchronized across opening, header reads and replay.
+	// Do not allow new token allocation while recovery is waiting on file I/O.
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	file, err := os.Open(uniqueStringChkptName(metadir, "chkpt"))
 	if err != nil {
 		return distributedFileOpenException(uniqueStringChkptName(metadir, "chkpt"), err)
@@ -264,8 +268,6 @@ func (t *InternTable) Recover(metadir string) error {
 		_ = in.Close()
 		return err
 	}
-	t.mu.Lock()
-	defer t.mu.Unlock()
 	t.dataMu.Lock()
 	t.tokenCnt = tokenCnt
 	t.dataMu.Unlock()

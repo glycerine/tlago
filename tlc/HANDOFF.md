@@ -199,6 +199,9 @@ it does not add CLI startup support or establish checkpoint atomicity.
 The production checkpoint order is queue begin, trace begin, FP begin, queue
 resume, intern begin, queue commit, trace commit, intern commit, FP commit.
 Mixed files after interruption are source behavior, not an atomic transaction.
+Intern-table recovery holds its native interning mutex before opening and reading
+the checkpoint, through token publication and replay. Linux FIFO checks verify
+the blocked-header boundary and lock release on complete/truncated input.
 
 ## Testing, commits and documentation
 

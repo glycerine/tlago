@@ -12149,6 +12149,14 @@ while preventing the manager from ignoring them as remote outages. Other child
 panics propagate after joining. No RMI, ForkJoin exception copying or JVM runtime
 is introduced. Unnamed begin/commit remains sequential as in Java.
 
+InternTable recovery owns the native interning mutex for the entire operation,
+matching the source synchronized method. File opening and header reads must not
+precede lock acquisition: concurrent token allocation cannot interleave with a
+blocked header read and then be overwritten by the saved token counter. Header
+failure leaves the old counter intact and releases the mutex. Linux FIFO tests
+use an actual reader/writer handshake to inspect this boundary without sleeps
+or a production hook; complete and truncated headers cover lock release.
+
 Call-stack evaluator construction requires the source Tool whose shared Spec is
 copied. Nil cannot substitute a fresh default evaluator. Existing ordinary-tool
 selection and fresh-stack behavior remain intact. Coordinator initialization

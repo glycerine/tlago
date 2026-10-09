@@ -1411,6 +1411,10 @@ Named nested-store checkpoint traversal now has native concurrency/join and
 failure-boundary checks, plus fresh-store Mem/LSB/MSB recovery checks preserving
 both high-bit partitions. The source MultiFPSetTest has no corresponding named
 checkpoint methods; this adds no original-method completion credit.
+Intern-table recovery now locks before opening/reading its checkpoint, matching
+the whole source synchronized method. Short Linux FIFO cases prove the blocked
+header boundary and lock release on success/truncation. No direct original
+InternTable recovery test exists, so these native checks add no method credit.
 Short native worker reply-loss cases additionally retain fully computed but
 unreceived results behind a gate, close TCP and require source coordinator
 retry/requeue/deregistration before releasing the old reply. They verify no
