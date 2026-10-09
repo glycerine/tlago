@@ -1922,6 +1922,10 @@ original cause and retains the failed client without redial/replay. Method-level
 RPC errors keep the connection usable. This Go transport ownership coverage has
 no direct original Java method and adds no original-method completion credit.
 
+Native worker-cache constructor checks now require the source typed negative
+capacity error and dimension detail for wrapped shift inputs 31, 63 and -1.
+No original SimpleCache test exists; this adds no original-method credit.
+
 Native listener ownership checks cover accept failure, combined accept/close
 failure, continued use of an accepted connection, and retained mixed shutdown
 errors on coordinator/worker role owners. They add no original-method credit.

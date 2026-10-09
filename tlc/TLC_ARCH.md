@@ -14064,3 +14064,15 @@ The same failure/shutdown assertions apply: neither host receives recovery,
 publication does not occur, all roles join and retained snapshots (including the
 renamed queue) remain byte-identical. The missing queue is not regenerated.
 Production code and original-method credit remain unchanged.
+
+
+### Worker cache negative-capacity construction
+
+SimpleCache retains the source int-shift capacity: sizes 31, 63 and -1 all
+produce -2147483648 after Java's low-five-bit shift masking. Its constructor now
+raises the existing typed NegativeArraySizeException with that dimension detail,
+rather than a plain string panic that erased error category and message data.
+The existing constructor check now requires both type and detail for all three
+inputs; valid shift-wrap, zero-fingerprint, hit/miss and ratio checks are intact.
+A direct Java array-construction check confirms those failure details. No direct
+upstream SimpleCache test exists, so this adds no original-method credit.

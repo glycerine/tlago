@@ -25981,3 +25981,30 @@ publication failure and all seven original simulation trace methods pass
 (distributed-remote-corrupt-trace-focused.log, terminal c9e27c, status 0,
 0.041 seconds). All handles are terminal. No full suite or race run;
 original distributed completion remains 37/41 with four Reconcile contexts.
+
+
+### October 9, 2026: preserve worker cache constructor error category
+
+Reviewed distributed options and worker bootstrap against their pinned source
+and consulted their existing detailed comparison receipts before adding further
+work there. A supporting worker-cache constructor still panicked with the plain
+string java.lang.NegativeArraySizeException for a negative shift-derived
+capacity. That discarded the source exception category and dimension detail.
+
+SimpleCache now raises the existing typed NegativeArraySizeException with the
+negative dimension. Strengthened its existing constructor check to require type
+and detail for sizes 31, 63 and -1, all yielding -2147483648 under int shift
+masking. Valid shift wrap, sentinel/zero fingerprint, replacement and ratio
+assertions remain unchanged. A temporary direct Java array-construction probe
+confirms all three type/detail pairs (terminal 1bd7ab, status 0). No upstream
+SimpleCache test exists, so there is no original-method credit.
+
+The stronger check fails before correction
+(distributed-cache-constructor-red.log, terminal b7e45f, status 1, 0.013 seconds).
+The first broader run was blocked only in TCP rows by sandbox listener denial
+(distributed-cache-constructor-green.log, terminal 2271cb, status 1); no assertion
+or implementation was changed for that restriction. With the required local
+network permission, all cache, locale/ratio, worker computation-failure and
+original smart-proxy checks pass (distributed-cache-constructor-final.log,
+terminal bdcac9, status 0). No race or full-suite run; all handles are terminal.
+Original distributed method completion remains unchanged at 37/41.

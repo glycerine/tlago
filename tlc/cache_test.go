@@ -51,10 +51,14 @@ func TestSimpleCacheSizeUsesJavaIntShiftSemantics(t *testing.T) {
 	if got := len(NewSimpleCache(32).cache); got != 1 {
 		t.Fatalf("size 32 capacity = %d, want Java 1 << 32 wrap to 1", got)
 	}
-	defer func() {
-		if recovered := recover(); recovered == nil {
-			t.Fatalf("size 31 should panic like Java negative array capacity")
+	for _, size := range []int{31, 63, -1} {
+		failure := invokeDistributedServerOperation(func() error {
+			NewSimpleCache(size)
+			return nil
+		})
+		negative, ok := failure.(*NegativeArraySizeException)
+		if !ok || javaNullableString(javaThrowableDetailMessage(negative)) != "-2147483648" {
+			t.Fatalf("size %d failure = %T/%v, want negative capacity exception", size, failure, failure)
 		}
-	}()
-	_ = NewSimpleCache(31)
+	}
 }

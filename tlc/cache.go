@@ -19,7 +19,7 @@ func NewSimpleCache(size ...int) *SimpleCache {
 	}
 	capacity := javaSimpleCacheCapacity(bits)
 	if capacity < 0 {
-		panic("java.lang.NegativeArraySizeException")
+		panic(NewNegativeArraySizeException(fmtInt(capacity)))
 	}
 	out := &SimpleCache{
 		mask:  uint64(capacity - 1),
