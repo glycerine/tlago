@@ -27760,3 +27760,63 @@ Updated the current handoff and architecture; original-method inventory counts
 remain unchanged. No invented tests, full-workspace or XML/ApalacheIR sweep,
 race instrumentation or email work. Remaining visitor/null/mutation and INSTANCE
 lowering work stays explicit. Git diff --check passes.
+
+## 2026-10-09: Runtime semantic explorer callbacks and indexed traversal
+
+Previous goal turn made authoritative progress in 59dddd9. Revalidated the
+clean worktree and polled the same live full off-heap random session 77502.
+Implemented WalkSemanticGraph and SemanticExplorerVisitor over runtime views.
+The strict API uses the caller's semantic UID table, publishes nodes before
+entry callbacks and provides exit callbacks. Context and shared SubstFields
+records receive callbacks without UID registration. Context preserves the
+source exit callback inside each key-enumeration iteration, including module
+entries; an empty context receives only entry. AT nodes receive both callbacks
+on each occurrence without table registration. Indexed child loops reread
+current arrays after callbacks and preserve the source required-null boundaries.
+Compared the implementation with the pinned Java Context, Subst and represented
+semantic classes and the existing canonical SANY walker.
+
+Existing isDefinedWith/substituteFor traversal shares this engine. Its adapter
+retains lookup aliases, nil-array tolerance and AST-only LET/module fallback
+memberships, which are still needed by native runtime conversion. The strict
+API does not accept a lookup alias as an actual semantic declaration.
+
+Temporary overlays on unchanged original Test219 compare source and runtime
+entry/exit sequences by actual mapped object identity. Whole-module observation
+exposed lookup aliases and missing quantifier-range arrays. The pinned Java
+ordinary OpAppl constructors initialize ranges to an empty array; corrected
+NewOpApplNode accordingly. Before that correction, subgraph observation reports
+47 matching roots, 238 null failures and seven alias failures. After correction,
+276 of 292 observed root traces match, including the initial context's exact
+371 events. Thirteen roots reach aliases without semantic declarations and
+three have differing operator-definition views. No null failures remain in
+that final observation. Alias diagnostics identify Len, backslash-o,
+JsonDeserialize, ToTrace, Trace and $RecursiveFcnSpec. These conversion gaps
+remain required work. No assertions were weakened or new tests invented.
+
+Receipts under .codex-gotmp:
+runtime-explorer-subgraph-observation.log, terminal 6772c9, status 0, records the
+pre-constructor diagnostic. runtime-explorer-subgraph-complete-observation.log,
+terminal cea917, status 0, records the corrected diagnostic.
+runtime-explorer-alias-observation.log, terminal ce1634, status 0, names the
+remaining aliases. Overlay files stay under runtime-explorer-observation.
+Diagnostic runs retain the original test assertions but are observations, not
+additional original-method credit or proof of full graph parity.
+
+Focused original selector/debugger/LET/cyclic/ASSUME checks pass initially:
+runtime-explorer-first-originals.log, terminal ad74d0, status 0, 6.409 seconds.
+Broader original legacy/debugger/EWD998/coverage/LET/cyclic selection passes:
+runtime-explorer-final-originals.log, terminal 2e4082, status 0, 204.675 seconds.
+That broader run predates the empty-range constructor correction. Final focused
+original checks after that correction pass: runtime-explorer-bounds-originals.log,
+terminal 855816, status 0, 6.439 seconds. Final focused native coverage, Tool,
+Specs, Defns, context and semantic-table checks pass:
+runtime-explorer-complete-native-checks.log, terminal 3775cb, status 0, 0.023
+seconds. Original assertions and workload bounds remain intact.
+
+Updated architecture and current handoff with the strict explorer contract and
+remaining conversion boundaries. The full off-heap random session remains live,
+beyond 235 million of its original 2,147,483,648 iterations; no restart or
+completion credit. Original-method counts unchanged. No race instrumentation,
+full-workspace or XML/ApalacheIR sweep, invented tests or email work.
+Git diff --check passes.

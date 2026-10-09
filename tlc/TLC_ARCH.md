@@ -10937,8 +10937,29 @@ earlier views. Name-based lookup uses the spec's retained initial context;
 canonical graph conversion uses its exact source node. Source-less native
 construction retains the existing fallback.
 
-This is not full runtime graph parity. Complete Context/Subst explorer callbacks,
-mutation/null-boundary behavior and the remaining native INSTANCE lowering still
+`WalkSemanticGraph` now provides the source explorer contract over runtime
+views, with a caller-supplied UID table and entry/exit callbacks. Context and
+shared `SubstFields` records receive callbacks without UID registration. Context
+retains Java's unusual exit callback inside its key-enumeration loop, including
+module-name entries, and no exit callback for an empty table. Substitution
+records visit their operator and expression. AT occurrences receive both
+callbacks without visited-table registration. Indexed child loops reread the
+current arrays after callbacks and preserve required null failures. Ordinary
+native application constructors initialize the empty quantifier-range array,
+as Java does.
+
+The existing `isDefinedWith`/`substituteFor` adapter shares this traversal engine,
+while retaining native lookup aliases, nil-array tolerance and AST-only
+LET/module fallback memberships. The strict explorer requires actual semantic
+declarations. An overlay on unchanged original Test219 matches 276 of 292
+observed root traces, including all 371 initial-context events; 13 roots reach
+lookup aliases without semantic declarations and three have differing operator
+definition views. Observed alias names include `Len`, `\o`, `JsonDeserialize`,
+`ToTrace`, `Trace` and `$RecursiveFcnSpec`. These are concrete conversion gaps,
+not source null failures to suppress in the strict walker.
+
+This is not full runtime graph parity. Complete module/body conversion,
+source-to-runtime mutation sharing and remaining native INSTANCE lowering still
 need reconciliation with canonical source nodes.
 The listed original test receipts establish retained behavior and loading of the
 represented proof graphs; they do not prove every visitor contract or complete

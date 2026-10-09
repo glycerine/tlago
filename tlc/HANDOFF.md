@@ -54,8 +54,11 @@ model 219's formerly missing assumption graphs on lines 42 and 57 now generate.
 AST fallback retention remains until complete generation is established across
 source forms. Builtin adapters now share their actual SANY bases and formal
 parameters, preserving source identity across frontend reinitialization.
-Complete visitor callbacks, mutation/null boundaries and native INSTANCE
-lowering remain pending; see `TLC_ARCH.md`.
+The runtime now exposes UID-based entry/exit traversal, including Context and
+substitution records. Strict traversal of original Test219 still identifies
+lookup aliases without semantic declarations and differing operator views.
+Complete module/body conversion, mutation sharing and native INSTANCE lowering
+remain pending; see `TLC_ARCH.md` for the concrete alias names and observations.
 
 ## Verification baseline and test credit
 
