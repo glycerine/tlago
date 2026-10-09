@@ -37,6 +37,32 @@ func TestWorkerRPCStalledFingerprintLookupAllowsControlCalls(t *testing.T) {
 				entered: make(chan struct{}), release: make(chan struct{}), finished: make(chan struct{})}
 			fpHost, fpClient := startFingerprintRPC(t, lookup)
 			worker, generated := managerOwnershipWorker(t, 2, NewDistributedFPSetManager(fpClient))
+			var statusCalls atomic.Int32
+			if !exit {
+				coordinatorHost, coordinator := startCoordinatorRPC(t, NewLocalServerEndpoint(&TLCServer{}))
+				discovery := NewDistributedNetworkDiscovery()
+				t.Cleanup(func() {
+					if err := discovery.Close(); err != nil {
+						t.Error(err)
+					}
+				})
+				location := "tcp://" + coordinator.Address + "/main"
+				view, err := discovery.Lookup(location)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if done, err := view.IsDone(); err != nil || done {
+					t.Fatalf("initial coordinator status = %v/%v", done, err)
+				}
+				if err := coordinatorHost.Close(); err != nil {
+					t.Fatal(err)
+				}
+				status := NewTLCServerStatusLookup(discovery.Lookup)
+				worker.Runtime.ConfigureKeepAliveLookup(location, func(url string) (bool, error) {
+					statusCalls.Add(1)
+					return status(url)
+				}, nil)
+			}
 			worker.Runtime.StartKeepAlive(nil)
 			t.Cleanup(func() { _ = worker.Runtime.cancelKeepAlive(false) })
 			workerHost, client := startWorkerRPC(t, NewLocalWorkerEndpoint(worker))
@@ -75,6 +101,16 @@ func TestWorkerRPCStalledFingerprintLookupAllowsControlCalls(t *testing.T) {
 			}
 			if !worker.Computing.Load() || *generated != 1 || worker.OverallStatesComputed.Load() != 2 || storage.Size() != 0 {
 				t.Fatal("blocked lookup changed source computation/statistics boundary")
+			}
+			if !exit {
+				// The real GetNextStates call owns Computing here. Keepalive
+				// must not consult the lost coordinator while lookup is blocked.
+				if err := worker.Runtime.RunKeepAliveOnce(); err != nil {
+					t.Fatal(err)
+				}
+				if statusCalls.Load() != 0 || worker.unexported.Load() || worker.Runtime.executor.IsShutdown() {
+					t.Fatal("keepalive interrupted real computation after coordinator loss")
+				}
 			}
 			control = make(chan error, 1)
 			go func() {
@@ -125,6 +161,19 @@ func TestWorkerRPCStalledFingerprintLookupAllowsControlCalls(t *testing.T) {
 			<-lookup.finished
 			if worker.Computing.Load() || lookup.calls.Load() != 1 || storage.Size() != 0 {
 				t.Fatal("accepted lookup was replayed, inserted fingerprints or retained computation flag")
+			}
+			if !exit {
+				// The actual computation finally published LastInvocation;
+				// do not assign a synthetic timestamp for this activity check.
+				if worker.LastInvocation.Load() == 0 {
+					t.Fatal("completed computation did not publish activity")
+				}
+				if err := worker.Runtime.RunKeepAliveOnce(); err != nil {
+					t.Fatal(err)
+				}
+				if statusCalls.Load() != 0 || worker.unexported.Load() || worker.Runtime.executor.IsShutdown() {
+					t.Fatal("keepalive ignored actual recent computation after coordinator loss")
+				}
 			}
 		})
 	}

@@ -14855,3 +14855,22 @@ exited/joined. All remote committed snapshots, earlier coordinator snapshots and
 the complete pending intern bytes remain identical; the committed intern and
 trace files remain absent. This verifies a failed restart, not successful
 recovery, checkpoint atomicity or new original-method completion credit.
+
+
+### Actual computation suppresses worker coordinator-loss probes
+
+The stalled fingerprint lookup fixture also checks TLCTimerTask's activity
+policy against real worker computation. It first discovers and calls a live
+coordinator, then closes that host. A real native worker GetNextStates call
+blocks inside its remote fingerprint lookup. Invoking RunKeepAliveOnce during
+that block must make zero discovery calls and leave the worker published and
+its executor open. Control RPCs remain responsive and accepted computation
+returns all successors with their predecessor UID after releasing the lookup.
+
+After completion, the worker's own finally-published LastInvocation suppresses
+a second keepalive invocation. The fixture does not write Computing or
+LastInvocation to produce either activity condition. Existing lifecycle checks
+cover idle shutdown, completion and loss categories separately. Production
+scheduling and timeout remain unchanged; this short task-policy check does not
+prove a later scheduled period or a full-process partition. No direct original
+Java method covers this combination, so original-method credit is unchanged.

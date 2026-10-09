@@ -27270,3 +27270,29 @@ distributed-missing-intern-recovery-verified.log, terminal 183af6, status 0,
 race run. No direct original Java method covers this boundary; native checks
 earn no original-method credit and the distributed inventory remains 37/41.
 Updated HANDOFF and architecture; git diff --check passes.
+
+
+### October 9, 2026: keepalive during real blocked worker computation
+
+Compared Java TLCTimerTask's activity scan, timeout and typed lookup/exit catches
+with Go; no production mismatch found. Existing native lifecycle checks used
+explicit Computing/LastInvocation assignments, while the stalled fingerprint
+lookup check ran real computation but never invoked worker keepalive. Extended
+that existing fixture instead of adding another overlapping scenario.
+
+The keepalive row first establishes actual coordinator discovery/status, then
+closes the coordinator host. Actual TCP worker computation blocks in remote FP
+lookup. RunKeepAliveOnce must make zero discovery calls and preserve publication
+and the shared executor. Responsive control RPCs and successful computation
+retain predecessor UIDs. The actual computation finally sets LastInvocation;
+a second keepalive invocation must still make zero discovery calls. Neither
+activity field is assigned by this fixture. Existing explicit-exit row unchanged.
+
+Strengthened stalled lookup (keepalive/exit), eight existing native coordinator
+lifecycle cases and synchronous coordinator task activity/unchecked-failure
+controls pass: distributed-worker-real-activity-keepalive.log, terminal 00b855,
+status 0, 0.036 seconds. Owned calls/hosts drain through existing cleanup. No
+production schedule or timeout changes, full suite, long workload or race run.
+This verifies worker task policy, not a later scheduled period or full-process
+partition. No original Java direct method exists; inventory remains 37/41.
+Updated HANDOFF/architecture; git diff --check passes.
