@@ -23,6 +23,7 @@ type DistributedStatePayload struct {
 	ValueArrays     [][]int
 	ValueRows       [][]int
 	ValueVectors    []DistributedValueVectorNode
+	LongVectors     [][]int64
 	NameArrays      [][]int
 	StateCaches     [][]DistributedStateCacheEntry
 	ValueMaps       [][]DistributedValueMapEntry
@@ -165,6 +166,7 @@ type distributedPayloadEncoder struct {
 	rows                map[distributedByteArrayKey]int
 	rowRoots            [][][]Value
 	vectors             map[*ValueVec]int
+	longVectors         map[*LongVec]int
 	nameArrays          map[distributedByteArrayKey]int
 	nameRoots           [][]*UniqueString
 	caches              map[uintptr]int
@@ -189,6 +191,10 @@ type distributedByteArrayKey struct {
 }
 
 func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePayload, err error) {
+	return encodeDistributedStates(states, &distributedPayloadEncoder{})
+}
+
+func encodeDistributedStates(states []*TLCStateMut, encoder *distributedPayloadEncoder) (payload *DistributedStatePayload, err error) {
 	defer func() {
 		if failure := recover(); failure != nil {
 			payload = nil
@@ -196,7 +202,7 @@ func EncodeDistributedStates(states []*TLCStateMut) (payload *DistributedStatePa
 		}
 	}()
 	payload = &DistributedStatePayload{Nil: states == nil}
-	encoder := &distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int), arrays: make(map[distributedByteArrayKey]int), vectors: make(map[*ValueVec]int), nameArrays: make(map[distributedByteArrayKey]int)}
+	*encoder = distributedPayloadEncoder{payload: payload, states: make(map[*TLCStateMut]int), values: make(map[Value]int), strings: make(map[*UniqueString]int), bytes: make(map[distributedByteArrayKey]int), arrays: make(map[distributedByteArrayKey]int), vectors: make(map[*ValueVec]int), longVectors: make(map[*LongVec]int), nameArrays: make(map[distributedByteArrayKey]int)}
 	payload.Roots = make([]int, len(states))
 	for i, state := range states {
 		id, failure := encoder.state(state)
@@ -589,6 +595,8 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		node.DataKind, node.DataName = "uniqueString", e.string(v)
 	case []*UniqueString:
 		node.DataKind, node.DataArray = "nameArray", e.nameArray(v)
+	case *LongVec:
+		node.DataKind, node.DataArray = "longVector", e.longVector(v)
 	case *TLCStateMut:
 		id, err := e.state(v)
 		if err != nil {
@@ -716,6 +724,19 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 		return fmt.Errorf("unsupported network model-value data %T", data)
 	}
 	return nil
+}
+
+func (e *distributedPayloadEncoder) longVector(vector *LongVec) int {
+	if vector == nil {
+		return 0
+	}
+	if id := e.longVectors[vector]; id != 0 {
+		return id
+	}
+	id := len(e.payload.LongVectors) + 1
+	e.longVectors[vector] = id
+	e.payload.LongVectors = append(e.payload.LongVectors, append([]int64(nil), vector.data...))
+	return id
 }
 
 func (e *distributedPayloadEncoder) valueRows(rows [][]Value) (int, error) {
@@ -879,6 +900,7 @@ type distributedPayloadDecoder struct {
 	arrays              [][]Value
 	rows                [][][]Value
 	vectors             []*ValueVec
+	longVectors         []*LongVec
 	nameArrays          [][]*UniqueString
 	valueMaps           []map[string]Value
 	objectArrays        [][]any
@@ -890,6 +912,10 @@ type distributedPayloadDecoder struct {
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
+	return decodeDistributedStates(payload, &distributedPayloadDecoder{})
+}
+
+func decodeDistributedStates(payload *DistributedStatePayload, decoder *distributedPayloadDecoder) (states []*TLCStateMut, err error) {
 	defer func() {
 		if failure := recover(); failure != nil {
 			states = nil
@@ -908,7 +934,11 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 	if payload.RootsArray != 0 && len(payload.Roots) != 0 {
 		return nil, fmt.Errorf("root array reference conflicts with inline roots")
 	}
-	decoder := &distributedPayloadDecoder{values: make([]Value, len(payload.Values)), strings: make([]*UniqueString, len(payload.Strings)), bytes: make([][]byte, len(payload.ByteArrays))}
+	*decoder = distributedPayloadDecoder{values: make([]Value, len(payload.Values)), strings: make([]*UniqueString, len(payload.Strings)), bytes: make([][]byte, len(payload.ByteArrays))}
+	decoder.longVectors = make([]*LongVec, len(payload.LongVectors))
+	for i, data := range payload.LongVectors {
+		decoder.longVectors[i] = NewLongVecFrom(data)
+	}
 	for i, data := range payload.ByteArrays {
 		decoder.bytes[i] = make([]byte, len(data))
 		copy(decoder.bytes[i], data)
@@ -1465,6 +1495,14 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 		return node.DataString, nil
 	case "uniqueString":
 		return d.string(node.DataName)
+	case "longVector":
+		if node.DataArray < 0 || node.DataArray > len(d.longVectors) {
+			return nil, fmt.Errorf("invalid attached long vector reference %d", node.DataArray)
+		}
+		if node.DataArray == 0 {
+			return (*LongVec)(nil), nil
+		}
+		return d.longVectors[node.DataArray-1], nil
 	case "nameArray":
 		return d.nameArrayRefs(nil, node.DataArray == 0, node.DataArray)
 	case "state":

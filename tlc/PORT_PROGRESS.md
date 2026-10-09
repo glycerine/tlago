@@ -24921,3 +24921,41 @@ from both workers and normal shutdown. After that workload finished, the exact
 short publication, concurrent lookup and callback cleanup selection passes with
 race instrumentation (coordinator-reference-race.log, terminal fe3313,
 status 0, 1.263 seconds). No full suite ran. All handles are terminal.
+
+### October 9, 2026: transfer attached LongVec objects in the shared graph
+
+Source ModelValue retains an Object data field. LongVec has an explicit finite
+transfer contract: active count/longs, reconstructed exact capacity, shared
+vector object identity and independent backing arrays. Native model data instead
+rejected *LongVec (attached-long-vector-red.log, terminal d40e90,
+status 1, 0.012 seconds). This is core TLC container data, not a reason to build
+a Java object serializer or reflection runtime.
+
+Added LongVectors to the native state graph and a longVector attachment tag.
+Mixed arrays/maps and pointer map keys reuse its object IDs. Result fingerprint
+vectors now reference this same table rather than an isolated result table;
+sharing with model data survives across the whole invocation. Internal state
+encode/decode helpers retain their tables for result assembly, while public state
+and error-context transfer continue through that common implementation. Native
+roles need matching builds for the payload change.
+
+Three focused native checks cover direct transfer, real worker request/result
+and WorkerException context, plus malformed attachment/key/result references.
+They retain repeated objects, distinct equal objects, extreme signed longs,
+typed nulls, initialized empty vectors, exact active capacity and sender
+isolation. Receiver mutation is shared through repeated result/attachment
+references; distinct vector backings and attached primitive arrays stay separate
+as required by LongVec's custom source contract.
+
+The existing original LongVec and GrowingLongVec methods remain unchanged and
+pass. No original method covers this transport boundary, so no credit is added;
+distributed inventory remains 37 complete and four Missing. Initial focused
+graph/result/vector checks pass (attached-long-vector-green.log,
+terminal 4f8c64, status 0, 0.045 seconds). Final related worker RPC, model-data,
+result and original vector checks pass after invalid-reference completion
+(attached-long-vector-related.log, terminal 3c707c, status 0, 0.098 seconds).
+The unchanged N=7 two-worker model passes normally
+(attached-long-vector-model.log, terminal 475a1d, status 0, 38.233 seconds),
+retaining 114,942 distinct states, an empty queue, both workers' actual work and
+statistics, and normal shutdown. No full suite or race workload ran. All handles
+are terminal.

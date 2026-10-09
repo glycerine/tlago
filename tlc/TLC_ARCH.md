@@ -13378,3 +13378,27 @@ evicts its cached views without retargeting references held by callers. Existing
 native publication and concurrent discovery checks cover replacement, fresh
 lookup, alias identity, unbind, removal and shared cleanup. There is no dedicated
 original method for this boundary, so test inventory credit is unchanged.
+
+### Attached LongVec objects and result fingerprint sharing
+
+The native state graph now represents finite `*LongVec` attachments. Java
+LongVec's custom transfer writes elementCount and the active longs, then rebuilds
+an exactly sized backing array. The Go contract preserves signed 64-bit contents,
+shared vector objects, distinct equal vectors, null/empty vectors and receiver
+isolation. It discards spare capacity and backing-array aliases, as the source
+does. Mixed containers and map keys use the same vector IDs as direct model data.
+
+Result fingerprint vectors now reference that graph's LongVectors table rather
+than a separate result-only table. A vector attached to a returned state's model
+data remains the same object when also present in NextFingerprints, including
+repeated partitions. The state encoder/decoder can retain their graph tables for
+result assembly; ordinary state and error-context transfer uses the same code.
+Native peers require matching builds for this payload change. This extends the
+finite Go data contract without a Java serializer or arbitrary object runtime.
+
+Native direct/TCP checks verify aliases, separate storage, exact capacity, extreme
+long bits, map keys, null/empty vectors, result sharing, receiver mutation and
+WorkerException state context. Negative/out-of-range attachment, key and result
+references fail explicitly. Existing original LongVec/GrowingLongVec methods
+remain unchanged; no upstream method covers this transport boundary and no
+original-method credit is added.

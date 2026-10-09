@@ -292,6 +292,9 @@ Mixed `[]any` and `map[string]any` attachments retain supported scalars, bytes,
 TLC values, typed containers and recursive mixed-container graphs with the same
 ownership guarantees. Their compact entries share the scalar data tags; peers
 must use the updated native payload schema.
+Attached `*LongVec` objects now share the state graph's vector table with result
+fingerprints. Active elements and object aliases survive; spare capacity and
+backing-array aliases do not. Null/empty vectors and map-key identity are retained.
 Symbolic values follow the source materialization rules. Unsupported opaque
 custom data and evaluator metadata fail explicitly; they are not silently
 removed. Audit actual source transferability before extending the codec:

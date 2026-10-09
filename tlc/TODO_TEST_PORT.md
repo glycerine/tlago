@@ -1806,6 +1806,13 @@ worker proxy. Existing short registration URI/wake and lost-computed-reply check
 retain their assertions; the manually started fixture registers explicitly.
 No upstream constructor method exists and original-method totals are unchanged.
 
+Finite LongVec attachments now use the same native graph table as returned
+fingerprint vectors. Direct/TCP/error-context checks preserve object aliases,
+active elements, null/empty vectors, map-key identity and receiver isolation;
+spare capacity and backing-array aliases are discarded as in the source.
+Invalid references fail explicitly. Original LongVec/GrowingLongVec methods
+remain port complete and unchanged; no transport method credit is added.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier

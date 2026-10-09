@@ -7,6 +7,7 @@ import "fmt"
 // partitions share one state/value graph so aliases survive across partitions.
 // Only active vector entries are sent, as in TLCStateVec and LongVec's source
 // serialization contracts. Spare capacity is not part of a worker result.
+// Fingerprint vector IDs address States.LongVectors, shared with attachments.
 type DistributedResultPayload struct {
 	Nil                bool
 	ComputationTime    int64
@@ -16,7 +17,6 @@ type DistributedResultPayload struct {
 	StateVectors       []int
 	FingerprintVectors []int
 	StateLengths       []int
-	FingerprintNodes   [][]int64
 	States             *DistributedStatePayload
 }
 
@@ -56,23 +56,14 @@ func EncodeDistributedResult(result *NextStateResult) (*DistributedResultPayload
 			states = append(states, mutable)
 		}
 	}
-	fingerprintIDs := make(map[*LongVec]int)
-	for i, vector := range result.NextFingerprints {
-		if vector == nil {
-			continue
-		}
-		id := fingerprintIDs[vector]
-		if id == 0 {
-			id = len(payload.FingerprintNodes) + 1
-			fingerprintIDs[vector] = id
-			payload.FingerprintNodes = append(payload.FingerprintNodes, append([]int64(nil), vector.data...))
-		}
-		payload.FingerprintVectors[i] = id
-	}
+	encoder := &distributedPayloadEncoder{}
 	var err error
-	payload.States, err = EncodeDistributedStates(states)
+	payload.States, err = encodeDistributedStates(states, encoder)
 	if err != nil {
 		return nil, err
+	}
+	for i, vector := range result.NextFingerprints {
+		payload.FingerprintVectors[i] = encoder.longVector(vector)
 	}
 	return payload, nil
 }
@@ -82,7 +73,7 @@ func DecodeDistributedResult(payload *DistributedResultPayload) (*NextStateResul
 		return nil, fmt.Errorf("missing distributed result payload")
 	}
 	if payload.Nil {
-		if len(payload.StateVectors) != 0 || len(payload.FingerprintVectors) != 0 || len(payload.StateLengths) != 0 || len(payload.FingerprintNodes) != 0 || payload.States != nil {
+		if len(payload.StateVectors) != 0 || len(payload.FingerprintVectors) != 0 || len(payload.StateLengths) != 0 || payload.States != nil {
 			return nil, fmt.Errorf("null result contains graph data")
 		}
 		return nil, nil
@@ -90,7 +81,8 @@ func DecodeDistributedResult(payload *DistributedResultPayload) (*NextStateResul
 	if payload.StatesNil && len(payload.StateVectors) != 0 || payload.FingerprintsNil && len(payload.FingerprintVectors) != 0 {
 		return nil, fmt.Errorf("null result array contains vector references")
 	}
-	states, err := DecodeDistributedStates(payload.States)
+	decoder := &distributedPayloadDecoder{}
+	states, err := decodeDistributedStates(payload.States, decoder)
 	if err != nil {
 		return nil, err
 	}
@@ -109,10 +101,7 @@ func DecodeDistributedResult(payload *DistributedResultPayload) (*NextStateResul
 	if offset != len(states) {
 		return nil, fmt.Errorf("state graph has unused roots")
 	}
-	fingerprints := make([]*LongVec, len(payload.FingerprintNodes))
-	for i, node := range payload.FingerprintNodes {
-		fingerprints[i] = NewLongVecFrom(node)
-	}
+	fingerprints := decoder.longVectors
 	result := &NextStateResult{ComputationTime: payload.ComputationTime, StatesComputed: payload.StatesComputed}
 	if !payload.StatesNil {
 		result.NextStates = make([]*StateVec, len(payload.StateVectors))
