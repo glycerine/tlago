@@ -13725,3 +13725,21 @@ Eight short native suspended-consumer cases cover absent/empty blocks on memory,
 deque, disk-state and byte-array queues. Timer failure fixtures use the actual
 coordinator disk queue: the source memory queue's bulk overwrite behavior cannot
 supply FIFO work identity/order there. Original queue assertions remain intact.
+
+### Fingerprint host death during batch insertion
+
+The source FPSet.putBlock performs ordered scalar puts, so a host can die with
+only a prefix inserted. A native test endpoint performs a strict prefix using
+the real store's scalar puts, verifies every membership bit (prefix present,
+suffix absent) and waits for process death before any reply. The production
+batch implementation has no interruption hook. The production manager/queue and
+transport are unchanged: no same-endpoint replay or fabricated successful result
+is introduced. Source callable reassignment retries against the surviving host.
+
+MemFPSet and two-child LSB/MSB hosts cover this phase. Disk fixtures flush and
+verify actual child files before loss. All rows retain the original N=7 model
+and its full exploration, two partition slots aliasing the survivor, the source
+229,884 slot-based count, an empty queue and expected coordinator/worker failover
+diagnostics. This covers partial insertion with host death, not an atomic batch
+protocol, same-store reconnect or arbitrary network partitions. No direct source
+test exists and no original-method credit is added.

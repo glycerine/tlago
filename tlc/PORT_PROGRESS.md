@@ -25399,3 +25399,35 @@ and suspended-consumer checks (distributed-worker-loss-absent-race.log,
 terminal 008f1f, status 0, 1.068 seconds). No full suite or long workload ran.
 No direct original method covers absent-block cleanup; inventory remains
 37 complete and four Reconcile. All handles are terminal.
+
+### October 9, 2026: full-model partial fingerprint insertion loss
+
+Compared coordinator initialization/completion and the source ordered FPSet
+putBlock loop. No new production mismatch was found. Extended the existing
+native failure fixture for the remaining partial-insertion phase: execute a
+strict prefix through real scalar store puts, verify every membership bit
+(prefix present, suffix absent), then hold the accepted batch until the parent
+kills its host. This is a test endpoint, not an interruption hook in production
+storage. The prefix contains 1,024 of 2,048 new fingerprints in all three rows.
+Disk cases flush actual files and verify both nested children before the kill.
+
+The unchanged full N=7 model passes with MemFPSet
+(distributed-partial-put-memory.log, terminal 8d0741, status 0, 62.311 seconds)
+and two-child LSB/MSB hosts (distributed-partial-put-disk.log, terminal e96f08,
+status 0, 98.069 seconds; rows 48.35 and 49.70 seconds). Source coordinator and
+worker managers independently reassign to the survivor; both partition slots
+retain its registration. Every run finishes with 229,884 slot-counted distinct
+states, an empty queue, one expected coordinator EOF diagnostic and no GENERAL.
+All roles are joined. Original manager constructor/index/reassignment/failover,
+concurrent block-order and nested-partition tests also pass unchanged
+(distributed-partial-put-original-managers.log, terminal 4cc3ac, status 0,
+0.043 seconds).
+
+The existing completed-insertion reply-loss row passes again with the extended
+shared fixture and all assertions unchanged
+(distributed-partial-put-related-complete.log, terminal f83d20, status 0,
+61.627 seconds). All handles are terminal.
+
+No direct original method covers this fault phase, so distributed inventory
+remains 37 complete and four Reconcile. No full suite, shortened model bounds,
+race workload, RPC retry redesign or Java runtime machinery was introduced.

@@ -402,6 +402,10 @@ fingerprints but before its reply returns. Stored membership is verified before
 the kill. Source callable failover retries against the survivor and completes
 with the same 229,884 slot-based count and empty queue. Only this row requires
 one coordinator EOF diagnostic for the deliberately lost insertion reply.
+Partial-insertion rows stop after a strict prefix of the source per-fingerprint
+loop, verify every prefix/suffix membership bit and kill the host before a reply.
+Mem/LSB/MSB rows then retain the same source reassignment, final slot-based
+count and empty-queue assertions. Disk rows flush actual child files before loss.
 The insertion-reply-loss case also covers two-child LSB/MSB hosts. Before killing
 the first host, it flushes both child files and verifies stored membership; both
 hosts must report the configured disk implementation. Native host memory budgets
@@ -492,7 +496,8 @@ also reopen in fresh stores. This covers transport loss, not host death.
    empty. Do not reorder startup to manufacture support.
 2. Cover additional full-model fingerprint failure phases and general network
    partitions. Forced TCP closure/reply loss is covered; it does not prove every
-   partition or stalled-connection case. One gated accepted fingerprint lookup
+   partition or stalled-connection case. Complete and partial batch insertion
+   loss are covered with Mem/LSB/MSB storage. One gated accepted fingerprint lookup
    verifies worker control responsiveness and orderly exit. A controlled
    full-model TCP relay stall covers both directions together and each direction
    independently; arbitrary network blackholes and other partition topologies

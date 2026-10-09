@@ -35,6 +35,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		fingerprintStall                           bool
 		fingerprintStallDirection                  string
 		fingerprintReplyLoss                       bool
+		fingerprintPartialPut                      bool
 		fingerprintLookupReplyLoss                 bool
 		fingerprintLoss                            bool
 		fingerprintServers                         int
@@ -58,6 +59,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 		{name: "fingerprint_put_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true},
 		{name: "fingerprint_put_reply_loss_lsb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintBackend: "LSBDiskFPSet"},
 		{name: "fingerprint_put_reply_loss_msb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintBackend: "MSBDiskFPSet"},
+		{name: "fingerprint_partial_put_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintPartialPut: true},
+		{name: "fingerprint_partial_put_loss_lsb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintPartialPut: true, fingerprintBackend: "LSBDiskFPSet"},
+		{name: "fingerprint_partial_put_loss_msb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintReplyLoss: true, fingerprintPartialPut: true, fingerprintBackend: "MSBDiskFPSet"},
 		{name: "fingerprint_lookup_reply_loss", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintLookupReplyLoss: true},
 		{name: "fingerprint_lookup_reply_loss_lsb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintLookupReplyLoss: true, fingerprintBackend: "LSBDiskFPSet"},
 		{name: "fingerprint_lookup_reply_loss_msb", remoteFP: true, fingerprintServers: 2, fingerprintLoss: true, fingerprintLookupReplyLoss: true, fingerprintBackend: "MSBDiskFPSet"},
@@ -111,7 +115,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				if role == "fpserver-transport-stall" {
 					command.Env = append(command.Env, "TLAGO_NATIVE_FP_STALL_DIRECTION="+scenario.fingerprintStallDirection)
 				}
-				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-lookup-reply-loss" || role == "fpserver-transport-stall") {
+				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-put-partial-loss" || role == "fpserver-lookup-reply-loss" || role == "fpserver-transport-stall") {
 					// These roles represent separate hosts. Give each private
 					// temporary storage even when they start in the same millisecond.
 					command.Env = append(command.Env, "TMPDIR="+t.TempDir())
@@ -122,7 +126,7 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				}
 				roleCounts[role]++
 				label := role
-				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-lookup-reply-loss" || role == "fpserver-transport-stall") {
+				if scenario.fingerprintServers > 1 && (role == "fpserver" || role == "fpserver-put-reply-loss" || role == "fpserver-put-partial-loss" || role == "fpserver-lookup-reply-loss" || role == "fpserver-transport-stall") {
 					label = fmt.Sprintf("%s-%d", role, roleCounts[role])
 				}
 				if scenario.midRunCheckpoint && role == "worker" {
@@ -379,6 +383,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					}
 					if scenario.fingerprintReplyLoss && index == 0 {
 						fingerprintRole = "fpserver-put-reply-loss"
+						if scenario.fingerprintPartialPut {
+							fingerprintRole = "fpserver-put-partial-loss"
+						}
 					}
 					if scenario.fingerprintLookupReplyLoss && index == 0 {
 						fingerprintRole = "fpserver-lookup-reply-loss"
@@ -481,6 +488,9 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 				markerOutput, marker := worker.output, "NATIVE_WORKER_BLOCK_ASSIGNED"
 				if scenario.fingerprintReplyLoss {
 					markerOutput, marker = failedFingerprint.output, "NATIVE_FP_PUT_COMPLETED_NEW="
+					if scenario.fingerprintPartialPut {
+						marker = "NATIVE_FP_PUT_PARTIAL_PREFIX="
+					}
 				}
 				if scenario.fingerprintLookupReplyLoss {
 					markerOutput, marker = failedFingerprint.output, "NATIVE_FP_LOOKUP_COMPLETED_COUNT="
@@ -510,7 +520,22 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 					t.Fatal("killed fingerprint host unexpectedly exited successfully")
 				}
 				failedFingerprint.joined = true
-				if scenario.fingerprintReplyLoss {
+				if scenario.fingerprintPartialPut {
+					partial := regexp.MustCompile(`NATIVE_FP_PUT_PARTIAL_PREFIX=(\d+) TOTAL=(\d+)`).FindStringSubmatch(failedFingerprint.output.String())
+					var prefix, total int
+					if len(partial) != 3 {
+						t.Fatal("fingerprint host did not verify a partial insertion")
+					}
+					fmt.Sscan(partial[1], &prefix)
+					fmt.Sscan(partial[2], &total)
+					if prefix <= 0 || prefix >= total || strings.Count(failedFingerprint.output.String(), "NATIVE_FP_PUT_PARTIAL_PREFIX=") != 1 || strings.Contains(failedFingerprint.output.String(), "NATIVE_FP_PUT_COMPLETED_NEW=") {
+						t.Fatal("partial insertion did not retain exactly one strict prefix")
+					}
+					if scenario.fingerprintBackend != "" && !regexp.MustCompile(`NATIVE_FP_DISK_FLUSHED_CHILDREN=2 COUNT=[1-9][0-9]*`).MatchString(failedFingerprint.output.String()) {
+						t.Fatal("partial disk insertion was held before actual child files were flushed")
+					}
+					t.Logf("killed first fingerprint host after inserting %d of %d fingerprints", prefix, total)
+				} else if scenario.fingerprintReplyLoss {
 					completed := regexp.MustCompile(`NATIVE_FP_PUT_COMPLETED_NEW=(\d+)`).FindStringSubmatch(failedFingerprint.output.String())
 					if len(completed) != 2 || completed[1] == "0" {
 						t.Fatal("fingerprint host did not complete an actual insertion before reply loss")
@@ -893,8 +918,8 @@ func TestNativeDistributedProcessHelper(t *testing.T) {
 				} else {
 					status = ExitOK
 				}
-			} else if len(args) > 0 && (args[0] == "fpserver-put-reply-loss" || args[0] == "fpserver-lookup-reply-loss") {
-				if err := nativeDistributedFingerprintLostReply(args[1:], args[0] == "fpserver-lookup-reply-loss"); err != nil {
+			} else if len(args) > 0 && (args[0] == "fpserver-put-reply-loss" || args[0] == "fpserver-lookup-reply-loss" || args[0] == "fpserver-put-partial-loss") {
+				if err := nativeDistributedFingerprintLostReply(args[1:], args[0] == "fpserver-lookup-reply-loss", args[0] == "fpserver-put-partial-loss"); err != nil {
 					fmt.Fprintln(os.Stderr, err)
 				} else {
 					status = ExitOK

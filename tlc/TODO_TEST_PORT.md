@@ -725,6 +725,13 @@ once. Timer FIFO checks use the production disk queue without changing their
 work identity/order assertions. No original method covers the absent-block case;
 the original-method inventory is unchanged.
 
+Full N=7 native process checks also kill a fingerprint host after a strict batch
+insertion prefix. Mem/LSB/MSB rows verify each prefix/suffix membership bit before
+host death, retain the source callable reassignment and finish with 229,884
+slot-counted distinct states and an empty queue. Disk rows flush actual child
+files before the kill. No direct original method covers partial batch loss;
+these checks add no original-method completion credit.
+
 Native endpoint-removal checks cover all five worker operations and repeated
 direct exit over local/TCP boundaries, failure-payload round trips and unchanged
 completion counts. Shutdown and keepalive continue past an already removed

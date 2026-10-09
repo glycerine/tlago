@@ -10,8 +10,9 @@ import (
 
 type nativeFingerprintHeldPutReply struct {
 	tlc.DistributedFingerprintEndpoint
-	once  sync.Once
-	flush func() error
+	once    sync.Once
+	flush   func() error
+	partial bool
 }
 
 type nativeFingerprintHeldLookupReply struct {
@@ -63,8 +64,43 @@ func nativeFingerprintDiskReadCount(store *tlc.MultiFPSet) uint64 {
 }
 
 func (e *nativeFingerprintHeldPutReply) PutBlock(fps *tlc.LongVec) (*tlc.BitVector, error) {
+	if e.partial && fps != nil && fps.Size() > 1 {
+		missing, err := e.DistributedFingerprintEndpoint.ContainsBlock(fps)
+		if err != nil {
+			return nil, err
+		}
+		if missing != nil && missing.TrueCount() == fps.Size() {
+			// FPSet.putBlock calls put for each fingerprint in input order.
+			// Stop at a real prefix of that loop, before processing the suffix.
+			prefix := fps.Size() / 2
+			for i := 0; i < prefix; i++ {
+				seen, err := e.DistributedFingerprintEndpoint.Put(uint64(fps.ElementAt(i)))
+				if err != nil || seen {
+					return nil, fmt.Errorf("partial insertion failed at %d: seen=%v error=%v", i, seen, err)
+				}
+			}
+			if e.flush != nil {
+				if err := e.flush(); err != nil {
+					return nil, err
+				}
+			}
+			remaining, err := e.DistributedFingerprintEndpoint.ContainsBlock(fps)
+			if err != nil || remaining == nil || remaining.TrueCount() != fps.Size()-prefix {
+				return nil, fmt.Errorf("partial insertion membership count changed: %v", err)
+			}
+			for i := 0; i < fps.Size(); i++ {
+				if remaining.Get(i) != (i >= prefix) {
+					return nil, fmt.Errorf("partial insertion membership differs at %d", i)
+				}
+			}
+			e.once.Do(func() {
+				fmt.Printf("NATIVE_FP_PUT_PARTIAL_PREFIX=%d TOTAL=%d\n", prefix, fps.Size())
+				<-make(chan struct{}) // Parent kills this host before any reply.
+			})
+		}
+	}
 	result, err := e.DistributedFingerprintEndpoint.PutBlock(fps)
-	if err != nil || result == nil || result.TrueCount() == 0 {
+	if e.partial || err != nil || result == nil || result.TrueCount() == 0 {
 		return result, err
 	}
 	if e.flush != nil {
@@ -86,7 +122,7 @@ func (e *nativeFingerprintHeldPutReply) PutBlock(fps *tlc.LongVec) (*tlc.BitVect
 	return result, nil
 }
 
-func nativeDistributedFingerprintLostReply(args []string, lookup bool) error {
+func nativeDistributedFingerprintLostReply(args []string, lookup, partial bool) error {
 	args, err := tlc.ExtractDistributedStartupProperties(args)
 	if err != nil {
 		return err
@@ -103,7 +139,7 @@ func nativeDistributedFingerprintLostReply(args []string, lookup bool) error {
 		if !ok {
 			return fmt.Errorf("fingerprint reply-loss fixture requires a native TCP coordinator")
 		}
-		put := &nativeFingerprintHeldPutReply{DistributedFingerprintEndpoint: endpoint}
+		put := &nativeFingerprintHeldPutReply{DistributedFingerprintEndpoint: endpoint, partial: partial}
 		if local, ok := endpoint.(*tlc.LocalFingerprintEndpoint); ok {
 			if multi, ok := local.Set.(*tlc.MultiFPSet); ok {
 				if _, disk := multi.Sets[0].(interface{ GetDiskWriteCnt() uint64 }); disk {
