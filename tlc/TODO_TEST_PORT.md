@@ -1461,6 +1461,11 @@ reader and retains existing reader/pool ownership on open failure. Corrected an
 earlier native assertion and Go implementation that incorrectly allocated heap
 readers from `IncWorkers`. Related original nested methods remain green; no
 direct original test exists, so no credit is added.
+Native nested initialization checks cover failures from either child, joined
+ownership, unchanged arguments and ignored replacement returns. Checked I/O
+has one operation wrapper; unchecked/fatal errors retain identity without Java
+ForkJoin copying. Original nested-store methods and actual startup rollback
+checks remain green. No direct original method exists, so no credit is added.
 Native invariant-overload checks cover local/TCP memory, nested and LSB/MSB
 stores. Memory/nested expected-count calls inherit the base true result; disk
 calls enforce counts and nested no-argument checks visit children. Related

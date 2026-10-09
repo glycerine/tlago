@@ -24026,3 +24026,27 @@ e4baa9, status 0, 0.279 seconds). No original method directly tests these
 registration boundaries, so native checks earn no new original-method credit.
 Current handoff, architecture and inventory claims are corrected. No full suite,
 long model or race selection ran. All check handles are terminal.
+
+### 2026-10-09: Remove ForkJoin exception-copy emulation from initialization
+
+MultiFPSet.Init still copied RuntimeException causes for children running in
+native goroutines solely to reproduce Java ForkJoinTask behavior. Removed that
+extra JVM-specific copying and the worker/caller parameter used to select it.
+Concurrent initialization, checked-I/O wrapping, original child identities,
+ignored replacement returns and joining remain intact. Unchecked/fatal native
+failures retain their original identity; checked I/O retains its original cause
+under one operation boundary regardless of the executing goroutine.
+
+Six gated native cases verify arguments, independent child startup, joining,
+retained child references and I/O/unchecked/fatal failure ownership from either
+child. Before removal, the goroutine-side I/O and unchecked rows fail (terminal
+c3690d, status 1, 0.025 seconds). Corrected cases, constructor rollback and two
+original normal/off-heap MultiFPSet getFPSet methods pass (terminal 71592c,
+status 0, 1.149 seconds). Actual fingerprint startup cleanup passes (terminal
+8b7784, status 0, 0.193 seconds). Only the six short gated cases receive race
+checking: initial terminal 3fc1b0, status 0, 1.049 seconds. Increased their test
+watchdogs to five seconds for slower remote machines; final race check passes
+(terminal 8a53f6, status 0, 1.045 seconds). No direct enabled original method
+tests this initialization failure boundary; native checks add no original-method
+credit. No full suite, full
+model or long race workload ran. All check handles are terminal.

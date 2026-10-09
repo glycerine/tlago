@@ -1405,7 +1405,7 @@ func (s *MultiFPSet) Init(numThreads int, metadir string, filename string) FPSet
 	var pending sync.WaitGroup
 	var failureMu sync.Mutex
 	var failure error
-	initialize := func(i int, worker bool) {
+	initialize := func(i int) {
 		defer pending.Done()
 		err := func() (err error) {
 			defer func() {
@@ -1422,13 +1422,6 @@ func (s *MultiFPSet) Init(numThreads int, metadir string, filename string) FPSet
 		if isJavaIOException(err) {
 			err = NewRuntimeExceptionFromCause(err)
 		}
-		if worker {
-			// ForkJoinTask copies RuntimeException(Throwable) when its
-			// exception originated on another thread.
-			if runtimeFailure, ok := err.(*RuntimeException); ok && runtimeFailure != nil {
-				err = NewRuntimeExceptionFromCause(runtimeFailure)
-			}
-		}
 		if err != nil {
 			failureMu.Lock()
 			if failure == nil {
@@ -1439,10 +1432,10 @@ func (s *MultiFPSet) Init(numThreads int, metadir string, filename string) FPSet
 	}
 	pending.Add(len(s.Sets))
 	for i := 0; i < len(s.Sets)-1; i++ {
-		go initialize(i, true)
+		go initialize(i)
 	}
 	if len(s.Sets) != 0 {
-		initialize(len(s.Sets)-1, false)
+		initialize(len(s.Sets) - 1)
 	}
 	pending.Wait()
 	if failure != nil {

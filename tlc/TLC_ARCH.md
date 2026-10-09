@@ -8152,9 +8152,10 @@ invocation does not reset that flag. Base FPSet.exit sets it before synchronized
 notify, which wakes one waiter. Concrete sets carry their inherited wait state;
 memory sets reuse the same reentrant monitor as their synchronized operations.
 MultiFPSet init initializes children concurrently, ignores returned replacement
-objects and wraps checked I/O. Worker RuntimeExceptions retain the ForkJoin
-cause-copy behavior; general JVM pool scheduling/provider details remain
-separate. Disk init retains lexical paths, explicit prefix mkdirs and coded
+objects and wraps checked I/O once. Native child failures are joined without
+Java ForkJoin exception copying: unchecked errors retain their original identity
+and checked I/O retains the original cause under one operation boundary.
+Disk init retains lexical paths, explicit prefix mkdirs and coded
 file-open failures. File.mkdirs tries the original spelling before canonical
 parent creation, so missing components before .. can still fail at file open.
 All sixteen upstream MultiFPSetTest methods are translated after implementation,

@@ -123,6 +123,9 @@ Nested `AddThread` inherits the source no-op. `IncWorkers` visits children,
 but heap disk children also inherit a no-op; off-heap children register with the
 shared eviction barrier. Only a direct disk `AddThread` adds a reader. Local/TCP
 checks verify successful/failed reader addition and retained pool ownership.
+Nested initialization joins its children, ignores returned replacements and
+wraps checked I/O once. Unchecked failures retain their native identity; no
+Java ForkJoin exception copying is performed.
 Memory and nested expected-count invariant overloads inherit the base true
 result. Nested no-argument checks visit children; disk overloads enforce counts.
 Memory recovery retains complete prefixes and prior membership on truncated or
