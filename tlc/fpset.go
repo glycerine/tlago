@@ -665,25 +665,31 @@ func (s *MemFPSet) BeginChkpt() error {
 	return s.BeginChkptFile(s.filename)
 }
 
-func (s *MemFPSet) BeginChkptFile(fname string) error {
+func (s *MemFPSet) BeginChkptFile(fname string) (err error) {
 	path := s.chkptName(fname, "tmp")
 	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
+	// Preserve source buffering, but close the owned file directly on failure:
+	// closing the buffer would flush again and replay a failed write.
+	out := NewBufferedDataOutputStream(file)
+	defer func() {
+		if closeErr := file.Close(); err == nil {
+			err = bufferedRandomAccessFileIOError(closeErr)
+		}
+	}()
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, bucket := range s.table {
 		for _, fp := range bucket {
 			if err := out.WriteLong(int64(fp)); err != nil {
-				_ = out.Close()
 				return err
 			}
 		}
 	}
-	return out.Close()
+	return out.Flush()
 }
 
 func (s *MemFPSet) CommitChkpt() error {
@@ -1251,13 +1257,19 @@ func (s *MemFPSet2) BeginChkpt() error {
 	return s.BeginChkptFile(s.filename)
 }
 
-func (s *MemFPSet2) BeginChkptFile(fname string) error {
+func (s *MemFPSet2) BeginChkptFile(fname string) (err error) {
 	path := s.chkptName(fname, "tmp")
 	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
+	// Cleanup must not flush a buffer whose write has already failed.
+	out := NewBufferedDataOutputStream(file)
+	defer func() {
+		if closeErr := file.Close(); err == nil {
+			err = bufferedRandomAccessFileIOError(closeErr)
+		}
+	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i, bucket := range s.table {
@@ -1265,12 +1277,11 @@ func (s *MemFPSet2) BeginChkptFile(fname string) error {
 		for j := 0; j < len(bucket); j += 5 {
 			fp := memFPSet2Fingerprint(low, bucket[j], bucket[j+1], bucket[j+2], bucket[j+3], bucket[j+4])
 			if err := out.WriteLong(int64(fp)); err != nil {
-				_ = out.Close()
 				return err
 			}
 		}
 	}
-	return out.Close()
+	return out.Flush()
 }
 
 func (s *MemFPSet2) CommitChkpt() error {

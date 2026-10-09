@@ -24682,3 +24682,40 @@ MultiFPSet, buffered-input and value-stream methods pass
 No dedicated upstream memory-store checkpoint test exists; native checks add
 no original-method credit. Inventory remains 37 complete and four Missing.
 No full suite, long model or race workload ran. All handles are terminal.
+
+### October 9, 2026: stop buffered checkpoint cleanup replay
+
+MemFPSet and MemFPSet2 correctly require source 8192-byte buffering, unlike
+MemFPSet1. Their failure cleanup incorrectly called the buffer's Close after a
+failed WriteLong, replaying the failed buffer. Failed final flush also returned
+without closing the file. The new bounded syscall tests reproduce both defects:
+first full-buffer EIO is followed by another successful 8192-byte write, while
+final-flush EIO has no target close (buffered-memory-checkpoint-red.log,
+terminal 0956d7, status 1, 0.102 seconds).
+
+Both stores now use BufferedDataOutputStream directly, flush once after table
+traversal, and defer raw-file close. Failure cleanup never retries
+the buffer; earlier write failure remains primary. Final close failure retains
+the existing buffered IOException conversion. Normal checkpoint bytes and
+source iteration/buffering remain unchanged; generic buffer Close is unchanged.
+Native cleanup releases failure-path resources instead of emulating JVM leaks.
+
+Eight Linux syscall cases cover both stores with normal output, first full-buffer
+write failure, final flush failure and close failure. They require exact target
+8192/8-byte writes, no replay, one close, precise completed prefix, retained old
+checkpoint, skipped failed promotion, healthy checkpoint continuation, warning
+count, retained registration and every original fingerprint. Matrix passes
+(buffered-memory-checkpoint-green.log, terminal 9fb32c, status 0, 0.448 seconds).
+
+Related memory checkpoint/recovery/close and missing-parent checks plus unchanged
+original dynamic-manager, MultiFPSet, buffered-input and value-stream methods
+pass (buffered-memory-checkpoint-related.log, terminal 628c26, status 0,
+1.815 seconds). The unchanged full N=7 two-worker mid-run checkpoint/recovery
+row passes normally without race instrumentation
+(buffered-memory-checkpoint-model.log, terminal 900db7, status 0,
+43.512 seconds). It recovers 24,576 examined
+states and 8,192 queued states, then reaches 114,942 distinct states and queue
+zero with both replacement worker endpoints doing work and normal role exits.
+No full suite or race workload ran. No dedicated original method covers this
+native cleanup boundary; distributed inventory remains 37 complete and four
+Missing. All handles are terminal.

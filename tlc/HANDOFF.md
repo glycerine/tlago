@@ -169,6 +169,10 @@ mutation, one file close and manager continuation; native I/O causes survive.
 Its checkpoint writer also follows unbuffered `FileUtil.newDFOS`. Failed writes
 retain the completed temporary-file prefix and old checkpoint without promotion;
 native cleanup closes once without retrying writes. Healthy registrations continue.
+The buffered `MemFPSet` and `MemFPSet2` writers likewise close the raw owner on
+failure, without replaying the failed buffer. Their source flush boundaries and
+I/O conversion remain intact; syscall checks verify full-buffer/final-flush and
+close failures, retained prefixes and skipped promotion.
 Coordinator startup checks retain recovered trace/queue state before fingerprint
 failure. Runtime failures prevent publication; packed-memory truncation warns,
 continues healthy recovery and prints actual recovery counts before publication.

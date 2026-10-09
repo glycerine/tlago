@@ -13219,3 +13219,23 @@ Eight short Linux syscall cases verify success, each of six primitive write
 failures and final-close EIO, exact write widths/counts, one close, completed
 prefix, old checkpoint preservation, healthy promotion and unchanged membership.
 No dedicated upstream test covers this boundary; original counts are unchanged.
+
+### Buffered memory checkpoint cleanup never replays failed writes
+
+MemFPSet and MemFPSet2 retain the source's 8192-byte BufferedDataOutputStream.
+Both now use that primitive buffer directly, explicitly flush once after the
+table traversal, and defer closure of the raw file. An earlier write/flush error
+remains primary. Successful writing propagates the final close error using the
+existing buffered IOException conversion.
+
+Calling buffer.Close after WriteLong failed previously retried the same buffered
+bytes. A failed final flush previously skipped raw-file cleanup. Native cleanup
+now closes once without another flush on either path, preserving the exact
+completed prefix. The source does not retry these writes; native Go releases
+the resource without emulating its leaked failure-path descriptors.
+
+Eight Linux syscall cases cover both stores with success, first full-buffer
+write failure, final flush failure and close failure. They require 8192/8-byte
+write boundaries, no replay, one close, exact completed file bytes, old checkpoint
+preservation, no failed promotion, healthy continuation and unchanged membership.
+Generic buffer Close semantics remain unchanged. No original-method credit added.

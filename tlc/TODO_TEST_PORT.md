@@ -1764,6 +1764,13 @@ failed promotion, healthy continuation and one close without write retry are
 required. Existing original manager and stream methods remain unchanged; no
 dedicated source test exists and no original-method credit is added.
 
+The two buffered memory stores now close their raw checkpoint file without
+reflushing a failed buffer. Eight short Linux syscall cases preserve source
+8192-byte buffering and cover normal, full-buffer/final-flush and close failure.
+Exact prefixes, no write replay, one close, old checkpoint preservation and
+healthy continuation are required. No dedicated original method covers this
+boundary; inventory remains 37 port complete and four Missing.
+
 The full local mid-run checkpoint/recovery harness now also uses two workers in
 one shared-runtime process before the snapshot and two fresh replacement workers
 after recovery. It checks producer registrations, persisted/recovered frontier
