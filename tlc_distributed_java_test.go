@@ -1,5 +1,3 @@
-//go:build tlago_disabled_distributed_tests
-
 /*******************************************************************************
  * Copyright (c) 2015 Microsoft Research. All rights reserved.
  *
@@ -37,12 +35,22 @@ import (
 	"github.com/glycerine/tlago/tlc"
 )
 
-// Original method bodies from tlc2.tool.distributed's four model tests.
-// Harness reconciliation is pending. Upstream's shared setup unconditionally
-// assumes false because of OffHeapDiskFPSet. This explicit opt-in draft keeps
-// every assertion active for investigation; it does not add a replacement skip
-// or original-method completion credit. Native processes replace exit trapping.
+// DistributedTLCTestCase.setUp unconditionally assumes false before starting
+// any roles. Preserve that source assumption in ordinary original-test runs.
+// Opt-in diagnostics call the assertion bodies below directly, keeping their
+// deliberate assumption bypass separate from the faithful Java test contract.
+func distributedOriginalModelSetup(t *testing.T) {
+	t.Helper()
+	t.Skip("DistributedTLCTestCase broken with OffHeapDiskFPSet.")
+}
+
 func TestJavaDieHardDistributed(t *testing.T) {
+	distributedOriginalModelSetup(t)
+	checkJavaDieHardDistributed(t)
+}
+
+func checkJavaDieHardDistributed(t *testing.T) {
+	t.Helper()
 	output := runNativeDistributedModel(t, "DieHard", false, true)
 	requireDistributedOriginalEvent(t, output, tlc.ECTLCFinished)
 	if len(nativeDistributedMessages(output, tlc.ECGeneral)) != 0 {
@@ -80,6 +88,12 @@ func TestJavaDieHardDistributed(t *testing.T) {
 }
 
 func TestJavaEWD840Distributed(t *testing.T) {
+	distributedOriginalModelSetup(t)
+	checkJavaEWD840Distributed(t)
+}
+
+func checkJavaEWD840Distributed(t *testing.T) {
+	t.Helper()
 	output := runNativeDistributedModel(t, "EWD840", false, true)
 	requireDistributedOriginalEvent(t, output, tlc.ECTLCFinished)
 	requireDistributedOriginalStats(t, output, 1, "114942")
@@ -90,6 +104,12 @@ func TestJavaEWD840Distributed(t *testing.T) {
 }
 
 func TestJavaEWD840DistributedWithFPSet(t *testing.T) {
+	distributedOriginalModelSetup(t)
+	checkJavaEWD840DistributedWithFPSet(t)
+}
+
+func checkJavaEWD840DistributedWithFPSet(t *testing.T) {
+	t.Helper()
 	output := runNativeDistributedModel(t, "EWD840", true, true)
 	requireDistributedOriginalEvent(t, output, tlc.ECTLCFinished)
 	requireDistributedOriginalStats(t, output, 1, "114942")
@@ -100,6 +120,12 @@ func TestJavaEWD840DistributedWithFPSet(t *testing.T) {
 }
 
 func TestJavaTSnapShotDistributed(t *testing.T) {
+	distributedOriginalModelSetup(t)
+	checkJavaTSnapShotDistributed(t)
+}
+
+func checkJavaTSnapShotDistributed(t *testing.T) {
+	t.Helper()
 	output := runNativeDistributedModel(t, "TSnapShot", false, true)
 	requireDistributedOriginalEvent(t, output, tlc.ECTLCFinished)
 	requireDistributedOriginalStats(t, output, 2, "0")

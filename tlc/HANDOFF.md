@@ -42,16 +42,21 @@ Later distributed changes have focused receipts; they do not establish a new
 full-workspace pass. Reuse verification for unchanged code.
 
 The distributed inventory records 41 original methods: 37 port complete and
-four requiring reconciliation. Their complete assertion bodies are now staged in
-`tlc_distributed_java_test.go`, behind `tlago_disabled_distributed_tests`.
-Upstream's shared setup unconditionally assumes false for OffHeapDiskFPSet.
-The draft runs the original Ant off-heap/512 KiB profile with CPU-derived workers
-and native process joins instead of JVM exit interception. On 48 workers,
+four requiring reconciliation. `tlc_distributed_java_test.go` preserves the
+source shared setup's unconditional false assumption with `t.Skip`, using its
+exact OffHeapDiskFPSet reason before any roles start. Every assertion remains
+in its shared body helper. `tlc_distributed_java_diagnostic_test.go`, behind
+`tlago_disabled_distributed_tests`, exposes `TestDiagnosticJava...` entries that
+deliberately bypass that assumption. A source skip is not an executed body pass;
+these separate diagnostics earn no original-method completion credit.
+
+The diagnostic runs the original Ant off-heap/512 KiB profile with CPU-derived
+workers and native process joins instead of JVM exit interception. On 48 workers,
 DieHard, remote EWD840 and TSnapShot pass; local EWD840 fails with GENERAL during
 final off-heap CheckFPs. Java's selector likewise retains a previously shut-down
-flusher when the new partitions are too small. Do not reset it to hide this
-source behavior, weaken the assertion, manufacture a skip or award completion
-credit. The opt-in draft records a known failure, not an ordinary green gate.
+flusher when new partitions are too small. Do not reset it to hide this source
+behavior, weaken the assertions or infer completion from source-skipped entries.
+The opt-in diagnostic retains the known failure.
 
 | Original class | Pending method |
 | --- | --- |
@@ -192,9 +197,10 @@ restart or checkpoint atomicity. See architecture notes for their exact limits.
 4. Keep unsupported metadata explicit. Extend the completed core producer audit
    only when a concrete additional producer and native transfer contract warrant
    it. Do not invent action/cache data on ordinary states to expand codec scope.
-5. Reconcile the four staged original model bodies with the source-disabled
-   harness and retained-flusher failure described above. No staged-body or native
-   coverage credit substitutes for resolving their dispositions.
+5. Continue reconciling the four model bodies and native harness adaptation with
+   the retained-flusher failure described above. The exact source assumption is
+   now restored, but skipped entries and opt-in diagnostics do not establish
+   passing bodies or earn completion credit.
 
 ## Testing, commits and documentation
 

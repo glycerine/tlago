@@ -26311,3 +26311,26 @@ status 0, 0.402 seconds. Isolated short accepted/listener/callback ownership
 race checks pass: distributed-accepted-connection-ownership-race.log,
 terminal 3b706c, status 0, 1.343 seconds. No long model or full-suite run; all
 handles terminal. git diff --check passes.
+
+
+### October 9, 2026: separate source-disabled model entries from diagnostics
+
+Restored the exact unconditional DistributedTLCTestCase.setUp assumption in
+the four ordinary original-model entries, before starting any roles. The reason
+is copied verbatim from pinned upstream. Every assertion body is mechanically
+unchanged in a shared helper. Separately named TestDiagnosticJava entries under
+tlago_disabled_distributed_tests deliberately bypass that source assumption
+and retain the original Ant profile and full assertions, including the known
+local EWD840 closed-flusher failure. Native process ownership replaces Java
+exit interception; no RMI or Java runtime is introduced.
+
+Default original entries: distributed-source-assumption.log, terminal 0bf1c8,
+status 0, 0.017 seconds, all four SKIP with the exact upstream reason. Tagged
+source entries plus actual DieHard diagnostic execution:
+distributed-source-assumption-diagnostic.log, terminal 578b9e, status 0,
+11.247 seconds; DieHard diagnostic PASS (11.23 seconds), all source entries
+SKIP. Neither skipped entries nor diagnostic execution earn passing-original
+body credit. Distributed inventory stays 37/41, with all four Reconcile.
+Existing unchanged diagnostic-model receipts remain applicable. No full-suite
+rerun or long race workload. Mechanical body comparison and git diff --check
+pass.

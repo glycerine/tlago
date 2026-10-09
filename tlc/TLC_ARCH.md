@@ -13839,10 +13839,16 @@ original null-state method exists and no original-method credit is added.
 
 ### Disabled distributed model harness reconciliation
 
-`tlc_distributed_java_test.go` stages all four original assertion bodies under
-the explicit `tlago_disabled_distributed_tests` build tag. The source setup
-unconditionally assumes false with reason "DistributedTLCTestCase broken with
-OffHeapDiskFPSet." No replacement skip is introduced. Native child processes
+`tlc_distributed_java_test.go` retains all four original assertion bodies in
+shared helpers and preserves the exact shared-setup assumption in ordinary
+`TestJava...` entries. The source unconditionally assumes false with reason
+"DistributedTLCTestCase broken with OffHeapDiskFPSet." Its Go translation calls
+`t.Skip` before starting roles. `tlc_distributed_java_diagnostic_test.go`, behind
+`tlago_disabled_distributed_tests`, contains separate `TestDiagnosticJava...`
+entries that deliberately bypass the assumption and invoke those same bodies.
+A source skip is not a passing assertion body; original-method credit remains
+37/41 pending the remaining harness/body reconciliation.
+Native child processes
 replace SecurityManager exit interception and its artificial GENERAL filtering;
 every role is joined and real GENERAL messages remain failures. Workers start
 before the coordinator. Ant's off-heap implementation and 512 KiB direct-memory

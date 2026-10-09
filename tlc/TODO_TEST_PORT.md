@@ -703,13 +703,17 @@ Original checkpoint-on-violation and time-bound models; generated recheck varian
 
 ### Distributed TLC
 
-Current inventory: **37 port complete and four Reconcile**. All four original
-model bodies are staged behind `tlago_disabled_distributed_tests`, retaining
+Current inventory: **37 port complete and four Reconcile**. Ordinary test entries
+now preserve the upstream unconditional OffHeapDiskFPSet setup assumption as
+`t.Skip`, before any roles start. Assertion bodies remain unchanged in shared
+helpers. Separate `TestDiagnosticJava...` entries behind
+`tlago_disabled_distributed_tests` deliberately bypass that assumption, retaining
 Ant's off-heap/512 KiB profile, CPU-derived workers, fixtures and assertions.
 Three source-profile runs pass; local EWD840 fails during final CheckFPs because
 the source selector retains an old flusher with a closed executor when new
-partitions are too small. The draft is an explicit diagnostic target, not a
-green gate or completed/skipped port. No original-method credit is added.
+partitions are too small. Source skips and diagnostic passes do not establish
+passing original model bodies or resolve harness reconciliation. No method credit
+is added.
 
 Native worker resource-failure checks cover local/TCP calls, returned/panicked
 memory exhaustion and executor rejection. Memory exhaustion requeues both
@@ -2200,16 +2204,16 @@ overrides valid/invalid/truncated scan results and retains locks, with successfu
 close controls. It requires strace and adds no original-method credit.
 
 - [ ] [tlc2/tool/distributed/DieHardDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DieHardDistributedTLCTest.java) — **Reconcile**: `testSpec`.
-  Opt-in original body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go), build tag `tlago_disabled_distributed_tests`. All seven trace states, ordinal/action-label checks, FINISHED, BEHAVIOR and no GENERAL are staged; the source Ant-profile run passes with 48 workers. The upstream unconditional OffHeapDiskFPSet assumption remains documented; no replacement skip or completion credit is added.
+  Source setup/body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go). The ordinary entry preserves the exact upstream unconditional skip. Explicit body diagnostic: [tlc_distributed_java_diagnostic_test.go](../tlc_distributed_java_diagnostic_test.go), build tag `tlago_disabled_distributed_tests`. All seven trace states, ordinal/action-label checks, FINISHED, BEHAVIOR and no GENERAL are staged; the source Ant-profile run passes with 48 workers. The restored source assumption is separate from diagnostic execution; no passing-body or completion credit is added.
 - [x] [tlc2/tool/distributed/DistributedDoInitFunctorInvariantContinueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DistributedDoInitFunctorInvariantContinueTest.java) — **Port complete**: `testSpec`. Translation: [tlc_init_model_java_test.go](../tlc_init_model_java_test.go). Original inherits ordinary ModelCheckerTestCase rather than a remote server harness. Identical original NotNine model/config bytes, inherited exit and all diagnostic assertions retained; continuation also preserves exact counts and uncovered assertion. Unchanged Java and Go pass.
 - [x] [tlc2/tool/distributed/DistributedDoInitFunctorInvariantTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DistributedDoInitFunctorInvariantTest.java) — **Port complete**: `testSpec`. Translation: [tlc_init_model_java_test.go](../tlc_init_model_java_test.go). Original inherits ordinary ModelCheckerTestCase rather than a remote server harness. Identical original NotNine model/config bytes, inherited exit and all diagnostic assertions retained; continuation also preserves exact counts and uncovered assertion. Unchanged Java and Go pass.
 - [ ] [tlc2/tool/distributed/EWD840DistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/EWD840DistributedTLCTest.java) — **Reconcile**: `test`.
-  Opt-in original body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go), build tag `tlago_disabled_distributed_tests`. FINISHED, exact 114942 distinct/0 queued STATS and no GENERAL are staged. The source Ant-profile run fails during final CheckFPs on a retained closed flusher, matching the source selector contract. The upstream unconditional OffHeapDiskFPSet assumption remains documented; no replacement skip or completion credit is added.
+  Source setup/body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go). The ordinary entry preserves the exact upstream unconditional skip. Explicit body diagnostic: [tlc_distributed_java_diagnostic_test.go](../tlc_distributed_java_diagnostic_test.go), build tag `tlago_disabled_distributed_tests`. FINISHED, exact 114942 distinct/0 queued STATS and no GENERAL are staged. The source Ant-profile run fails during final CheckFPs on a retained closed flusher, matching the source selector contract. The restored source assumption is separate from diagnostic execution; no passing-body or completion credit is added.
 - [ ] [tlc2/tool/distributed/EWD840DistributedWithFPSetTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/EWD840DistributedWithFPSetTLCTest.java) — **Reconcile**: `test`.
-  Opt-in original body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go), build tag `tlago_disabled_distributed_tests`. FINISHED, exact 114942 distinct/0 queued STATS and no GENERAL are staged with one standalone fingerprint role; the source Ant-profile run passes with 48 workers. The upstream unconditional OffHeapDiskFPSet assumption remains documented; no replacement skip or completion credit is added.
+  Source setup/body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go). The ordinary entry preserves the exact upstream unconditional skip. Explicit body diagnostic: [tlc_distributed_java_diagnostic_test.go](../tlc_distributed_java_diagnostic_test.go), build tag `tlago_disabled_distributed_tests`. FINISHED, exact 114942 distinct/0 queued STATS and no GENERAL are staged with one standalone fingerprint role; the source Ant-profile run passes with 48 workers. The restored source assumption is separate from diagnostic execution; no passing-body or completion credit is added.
 - [x] [tlc2/tool/distributed/TLCSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/TLCSetTest.java) — **Port complete**: `testSpec`. Translation: [tlc_distributed_test.go](../tlc_distributed_test.go). Full server/application initialization with unchanged original model/config, source default FPSet ratio and MSB dummy equivalent, isolated registry namespace, and all three diagnostic assertions. Native FPSet exit preserves the process as Java dummy exit does. Unchanged Java and Go pass; no network transport substitute is claimed.
 - [ ] [tlc2/tool/distributed/TSnapShotDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/TSnapShotDistributedTLCTest.java) — **Reconcile**: `test`.
-  Opt-in original body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go), build tag `tlago_disabled_distributed_tests`. FINISHED, STATS queue=0, no GENERAL and BEHAVIOR are staged; the source Ant-profile run passes with 48 workers. The upstream unconditional OffHeapDiskFPSet assumption remains documented; no replacement skip or completion credit is added.
+  Source setup/body: [tlc_distributed_java_test.go](../tlc_distributed_java_test.go). The ordinary entry preserves the exact upstream unconditional skip. Explicit body diagnostic: [tlc_distributed_java_diagnostic_test.go](../tlc_distributed_java_diagnostic_test.go), build tag `tlago_disabled_distributed_tests`. FINISHED, STATS queue=0, no GENERAL and BEHAVIOR are staged; the source Ant-profile run passes with 48 workers. The restored source assumption is separate from diagnostic execution; no passing-body or completion credit is added.
 
 ### Fingerprint sets, indexers, arrays, and iterators
 

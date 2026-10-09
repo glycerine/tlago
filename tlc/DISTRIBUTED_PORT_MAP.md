@@ -117,8 +117,10 @@ their completeness.
 ## Evidence and open work
 
 The current original distributed inventory is 41 method contexts: 37 complete
-and four Reconcile. The four staged model bodies preserve their original
-assertions and Ant profile behind `tlago_disabled_distributed_tests`. On the
+and four Reconcile. The ordinary `TestJava...` entries preserve the exact source
+setup assumption; their assertion helpers remain unchanged. Separately named
+`TestDiagnosticJava...` entries bypass the assumption behind
+`tlago_disabled_distributed_tests`, retaining the Ant profile. On the
 recorded 48-worker run, local EWD840 fails at final off-heap fingerprint checking;
 the source selector also retains the closed flusher in that configuration.
 The shared Java harness disables these tests. Do not weaken the assertions,
