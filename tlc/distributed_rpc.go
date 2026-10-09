@@ -94,7 +94,9 @@ func (s *DistributedRPCServer) Serve(listener net.Listener) error {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		_ = listener.Close()
+		if err := listener.Close(); !distributedCloseIsBenign(err) {
+			return errors.Join(net.ErrClosed, err)
+		}
 		return net.ErrClosed
 	}
 	s.listeners[listener] = struct{}{}
@@ -111,6 +113,9 @@ func (s *DistributedRPCServer) Serve(listener net.Listener) error {
 			closed := s.closed
 			s.mu.Unlock()
 			if closed {
+				if !distributedCloseIsBenign(err) {
+					return err
+				}
 				return nil
 			}
 			// This listener leaves the host's tracking map on return. Release
@@ -123,7 +128,9 @@ func (s *DistributedRPCServer) Serve(listener net.Listener) error {
 		s.mu.Lock()
 		if s.closed {
 			s.mu.Unlock()
-			_ = conn.Close()
+			if err := conn.Close(); !distributedCloseIsBenign(err) {
+				return err
+			}
 			return nil
 		}
 		s.connections[conn] = struct{}{}

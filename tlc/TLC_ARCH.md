@@ -14193,3 +14193,16 @@ inputs including their tails, unchanged coordinator checkpoints, and no warning
 or failover. Replacement evaluation must finish at 114,942 states with an empty
 queue and joined roles. This does not extend that EOF rule to empty/out-of-order
 snapshots, which retain their source failures, or prove checkpoint atomicity.
+
+
+### Serve shutdown races retain native ownership failures
+
+`DistributedRPCServer.Serve` releases a listener passed after host closure and
+retains any real release failure alongside the closed-host cause. If shutdown
+races an outstanding Accept, closed-only accept errors remain benign, but a
+joined real accept failure propagates to the role owner. A connection returned
+after admission closes is released without dispatch; its real close failure
+likewise propagates. These paths neither admit/replay requests nor close the
+listener twice. Existing coordinator/worker owners retain non-benign Serve
+results through their joined shutdown. Six focused native cases distinguish
+closed-only from mixed failures; no original Java transport test covers them.

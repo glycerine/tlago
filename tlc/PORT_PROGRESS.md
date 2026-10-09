@@ -26251,3 +26251,32 @@ and original-manager receipts. No race instrumentation or full-suite rerun.
 git diff --check passes. Original distributed credit remains 37/41. This
 verifies the successful EOF boundary, not successful recovery from empty or
 out-of-order snapshots and not checkpoint atomicity.
+
+
+### October 9, 2026: Serve shutdown races preserve cleanup failures
+
+Found three remaining error-suppression paths at native listener admission:
+Serve discarded listener.Close failure when the host was already closed,
+returned success for every Accept error observed during shutdown, and discarded
+Close failure from a connection accepted after admission closed. Six focused
+native cases (closed-only/mixed at each boundary) reproduce all three lost real
+failures while retaining benign-shutdown controls. The late-accept fixture
+releases Accept only when host shutdown closes its listener, so it exercises
+the actual closed-admission branch without timing assumptions or TCP faults.
+
+Serve now applies the existing all-causes benign classification at those
+boundaries. Rejected-listener failures retain the closed-host cause; late
+accept/connection cleanup failures propagate to the role owner. No late
+connection is admitted or retained, listener/connection release occurs once,
+and cleanup joins the serving goroutine. No TLC batching/retry/checkpoint
+algorithm changes. No direct original Java test exists for native admission
+ownership; original distributed credit remains 37/41.
+
+Red: distributed-serve-shutdown-red.log, terminal 747f98, status 1,
+0.012 seconds. Green: distributed-serve-shutdown-green.log, terminal 7e02f7,
+status 0, 0.011 seconds. Focused listener/role-owner/mixed-cleanup, host-close,
+reply-drain/forced/partial-request and response-flush checks pass:
+distributed-serve-shutdown-focused.log, terminal 2eebc2, status 0,
+0.341 seconds. Isolated short new admission checks pass with race instrumentation:
+distributed-serve-shutdown-race.log, terminal 098bb1, status 0. No long models
+or full-suite run; all handles terminal. git diff --check passes.
