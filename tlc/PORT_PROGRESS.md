@@ -26189,3 +26189,38 @@ distributed-remote-disk-ordering-baseline-final.log, terminal 536523, status 0,
 git diff --check passes. Original distributed completion remains 37/41; this
 adds native fresh-process corruption coverage, not checkpoint atomicity or
 successful restart from out-of-order data.
+
+
+### October 9, 2026: empty committed disk snapshot in fresh-role recovery
+
+Compared the inspected FPSetManager scalar/batch submission, partition-index
+collection, checks and lifecycle traversal with pinned Java. No production
+correction was justified in those paths. Added LSB/MSB real-checkpoint rows for
+an empty first-child committed snapshot, extending the existing fresh-process
+corruption fixture without changing the N=7 model or source failure assertions.
+
+The initial test incorrectly expected the old live backing bytes to survive
+fresh startup. Both rows rejected that expectation. Source review confirmed
+DiskFPSet.init explicitly truncates via FileOutputStream before named recovery;
+the Go initializer already matches it. Corrected the test to require a nonempty
+original live file followed by an empty replacement live file after failed
+recovery. This is a source-based test correction, not a production regression.
+
+Empty recovery assigns zero failed-child count, then reports Index error at
+the source EOF/index assertion. Sibling recovery joins; the later host remains
+empty and recovery-end/init/worker publication/final output never occurs.
+No checked-I/O warning or failover catch suppresses the failure. Empty committed
+input, healthy child/host snapshots and coordinator checkpoints remain unchanged.
+Fresh roles join caught-failure shutdown. Original credit remains 37/41; no
+atomicity or successful empty-snapshot restore is claimed.
+
+Initial incorrect live-file expectation fails in both rows:
+distributed-remote-empty-disk-snapshot.log, terminal 3f4adc, status 1,
+11.133 seconds. Corrected LSB empty case plus existing LSB duplicate/descending
+rows pass: distributed-remote-empty-disk-snapshot-final.log, terminal ab3889,
+status 0, 19.524 seconds. That slash/alternation selection ran only LSB rows;
+explicit remaining MSB empty selection passes:
+distributed-remote-empty-disk-snapshot-msb.log, terminal 097cbe, status 0,
+6.448 seconds. Reuse unchanged short storage/original-manager receipts from the
+preceding entry. No race or full-suite run; all handles terminal.
+git diff --check passes.

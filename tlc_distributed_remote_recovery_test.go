@@ -81,6 +81,7 @@ const (
 	nativeRemoteCheckpointBeginReplyLoss
 	nativeRemoteCheckpointDuplicateDiskSnapshot
 	nativeRemoteCheckpointDescendingDiskSnapshot
+	nativeRemoteCheckpointEmptyDiskSnapshot
 )
 
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
@@ -116,6 +117,14 @@ func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
 	}
 }
 
+func TestNativeDistributedRemoteCheckpointEmptyDiskSnapshot(t *testing.T) {
+	for _, backend := range []string{"lsb", "msb"} {
+		t.Run(backend, func(t *testing.T) {
+			checkNativeDistributedRemoteCheckpointRestart(t, backend, 1, nativeRemoteCheckpointEmptyDiskSnapshot)
+		})
+	}
+}
+
 // Real checkpoint ordering corruption must retain the source disk assertion,
 // partial reconstruction and sibling joins, without publishing replacement work.
 func TestNativeDistributedRemoteCheckpointDiskSnapshotOrdering(t *testing.T) {
@@ -142,6 +151,8 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 	truncatedTrace := fault == nativeRemoteCheckpointTruncatedTrace
 	corruptCoordinator := truncatedQueue || truncatedTrace
 	corruptDiskOrdering := fault == nativeRemoteCheckpointDuplicateDiskSnapshot || fault == nativeRemoteCheckpointDescendingDiskSnapshot
+	emptyDiskSnapshot := fault == nativeRemoteCheckpointEmptyDiskSnapshot
+	invalidDiskSnapshot := corruptDiskOrdering || emptyDiskSnapshot
 	var debugger, debuggerScript string
 	if traceToIntern {
 		var err error
@@ -433,6 +444,19 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			t.Fatal(err)
 		}
 	}
+	if emptyDiskSnapshot {
+		if backend == "mem" {
+			t.Fatal("empty disk snapshot requires nested disk storage")
+		}
+		originalLiveDisk, err := os.ReadFile(filepath.Join(directories[0], "MC06_0.fp"))
+		if err != nil || len(originalLiveDisk) == 0 {
+			t.Fatalf("original live disk file missing: %v", err)
+		}
+		if err := os.Truncate(filepath.Join(directories[0], snapshots[0][0].filename), 0); err != nil {
+			t.Fatal(err)
+		}
+		snapshots[0][0].data = []byte{}
+	}
 	if corruptDiskOrdering {
 		if backend == "mem" || len(snapshots[0][0].data) < 32 {
 			t.Fatal("disk ordering case requires at least four nested snapshot records")
@@ -530,7 +554,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 		t.Log("corrupt coordinator snapshot stops before remote recovery and publication; all roles join and checkpoint bytes survive")
 		return
 	}
-	if missingDiskSnapshot || corruptDiskOrdering {
+	if missingDiskSnapshot || invalidDiskSnapshot {
 		// Source main reports this failure and closes the server with cleanup=false;
 		// it does not turn the caught exception into a process failure status.
 		for _, process := range append([]*nativeDistributedTestProcess{server}, restarted...) {
@@ -556,7 +580,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			}
 		}
 		matchesFailure := matchesMissingChild
-		if corruptDiskOrdering {
+		if invalidDiskSnapshot {
 			matchesFailure = len(failure) == 1 && strings.Contains(failure[0], tlc.NewTLCRuntimeException(tlc.ECSystemIndexError).Error())
 		}
 		if len(failure) != 1 || !matchesFailure || len(nativeDistributedMessages(output, tlc.ECTLCCheckpointRecoverStart)) != 1 || len(nativeDistributedMessages(output, tlc.ECTLCDistributedServerFPSetRegistered)) != 2 {
@@ -598,7 +622,7 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 					if _, err := os.Stat(filepath.Join(directories[i], committed)); !os.IsNotExist(err) {
 						t.Fatal("failed nested recovery recreated a missing committed child")
 					}
-				} else if i == 0 && child == 0 && !corruptDiskOrdering {
+				} else if i == 0 && child == 0 && !invalidDiskSnapshot {
 					if !os.IsNotExist(err) {
 						t.Fatal("failed recovery recreated the missing committed child")
 					}
@@ -617,6 +641,12 @@ func checkNativeDistributedRemoteCheckpointRestart(t *testing.T, backend string,
 			live, err := os.ReadFile(filepath.Join(directories[0], "MC06_0.fp"))
 			if err != nil || len(live) < 24 || !bytes.Equal(live[:24], snapshots[0][0].data[:24]) {
 				t.Fatal("disk assertion did not retain its three written fingerprint records")
+			}
+		}
+		if emptyDiskSnapshot {
+			live, err := os.ReadFile(filepath.Join(directories[0], "MC06_0.fp"))
+			if err != nil || len(live) != 0 {
+				t.Fatal("fresh disk initialization or empty recovery retained old live fingerprints")
 			}
 		}
 		t.Log("failed disk child stops recovery before publication; later host remains empty and retained checkpoints survive")

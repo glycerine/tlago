@@ -14170,3 +14170,13 @@ Both hosts join caught-failure shutdown. Corrupted/healthy committed snapshots
 and coordinator checkpoints remain byte-identical to their retained inputs.
 This supplements short storage checks with real checkpoint/fresh-role coverage;
 it adds no original-method credit or checkpoint atomicity claim.
+
+
+The same fresh-role fixture now covers an empty committed first-child snapshot
+with LSB and MSB hosts. DiskFPSet.init truncates the live file before recovery,
+as Java's FileOutputStream constructor does. Empty named recovery assigns zero
+file count, then raises SYSTEM_INDEX_ERROR in the EOF index check; it does not
+restore an empty successful checkpoint or recover old live membership. The
+backing file remains empty, the sibling finishes reconstruction, and the later
+host/publication phases remain untouched. The empty committed input and all
+other coordinator/remote checkpoint bytes survive caught-failure shutdown.
