@@ -133,6 +133,10 @@ Attached model-value data supports native `[]Value` through the same array graph
 preserving cycles, shared backing storage and typed nil/empty arrays across RPC.
 Native `map[string]Value` attachments also preserve shared map identity, cycles,
 nil entries and typed nil/empty maps in requests, results and failure contexts.
+Native `map[any]any` attachments additionally retain supported scalar and value
+keys, their concrete Go types and shared references. Non-comparable decoded keys,
+duplicate keys and unsupported entries fail explicitly. General keys are not
+evaluated or fingerprinted to sort them. Peers need the updated payload schema.
 Mixed `[]any` and `map[string]any` attachments retain supported scalars, bytes,
 TLC values, typed containers and recursive mixed-container graphs with the same
 ownership guarantees. Their compact entries share the scalar data tags; peers

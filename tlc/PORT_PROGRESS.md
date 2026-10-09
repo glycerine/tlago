@@ -23218,3 +23218,30 @@ pass (distributed-close-errors-verified.log, terminal afbf6c, status 0,
 0.040 seconds). Short cleanup/concurrent lookup checks pass under race
 instrumentation (distributed-close-errors-race.log, terminal 2730e5, status 0,
 1.056 seconds). All handles are terminal. No full model or full suite was run.
+
+### October 8, 2026: general keys in native model-value data maps
+
+Compared fingerprint callable routing/failure behavior with Java; the inspected
+paths retain source failover and queue-facing bit-vector semantics. The payload
+audit found that ModelValue.data is a non-transient Object and transferable map
+attachments are not restricted to string keys. Added native map[any]any support
+using compact key/data nodes with the existing supported scalar/container/value
+tags. Map identities are reserved before traversal and sender roots retained;
+all decoder maps are allocated before resolving entries. Cycles, shared maps,
+value keys and nested arrays retain graph identity without sender aliasing.
+
+Concrete Go key types/equality, nil keys and nil/empty maps are preserved.
+General keys are not fingerprinted, evaluated or sorted. Unsupported keys/data,
+bad references, non-comparable decoded keys and duplicate entries fail explicitly.
+Requests, results and WorkerException contexts share the representation. Peers
+carrying these attachments need the updated schema. No Java map/serialization
+runtime or arbitrary opaque object codec is added. No direct original Java
+method tests attached-map networking; supplemental checks add no method credit.
+
+Initial focused direct/TCP/invalid-input checks pass (model-data-general-keys.log,
+terminal 52d47f, status 0, 0.016 seconds). Final existing state/result, scalar and
+typed/mixed attachment checks plus original ModelValue tests pass (model-data-
+general-keys-verified.log, terminal 6eebed, status 0, 0.034 seconds). Only the new
+short general-key graph and TCP checks ran with race instrumentation and pass
+(model-data-general-keys-race.log, terminal 160b64, status 0, 1.055 seconds).
+All handles are terminal. No full model or full suite was repeated.

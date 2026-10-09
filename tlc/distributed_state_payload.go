@@ -12,19 +12,20 @@ import (
 // remain shared after decoding; receiver objects do not alias sender objects.
 // State levels use the in-memory int32 range, not the short disk-queue format.
 type DistributedStatePayload struct {
-	Nil          bool
-	Roots        []int
-	States       []DistributedStateNode
-	Values       []DistributedValueNode
-	Strings      []DistributedStringNode
-	ByteArrays   [][]byte
-	ValueArrays  [][]int
-	ValueVectors []DistributedValueVectorNode
-	NameArrays   [][]int
-	StateCaches  [][]DistributedStateCacheEntry
-	ValueMaps    [][]DistributedValueMapEntry
-	ObjectArrays [][]DistributedObjectDataNode
-	ObjectMaps   [][]DistributedObjectMapEntry
+	Nil           bool
+	Roots         []int
+	States        []DistributedStateNode
+	Values        []DistributedValueNode
+	Strings       []DistributedStringNode
+	ByteArrays    [][]byte
+	ValueArrays   [][]int
+	ValueVectors  []DistributedValueVectorNode
+	NameArrays    [][]int
+	StateCaches   [][]DistributedStateCacheEntry
+	ValueMaps     [][]DistributedValueMapEntry
+	ObjectArrays  [][]DistributedObjectDataNode
+	ObjectMaps    [][]DistributedObjectMapEntry
+	ObjectKeyMaps [][]DistributedObjectKeyMapEntry
 }
 
 // Mixed attachment entries carry the same tags as scalar model data without
@@ -55,6 +56,11 @@ func (node DistributedObjectDataNode) valueNode() DistributedValueNode {
 
 type DistributedObjectMapEntry struct {
 	Key  string
+	Data DistributedObjectDataNode
+}
+
+type DistributedObjectKeyMapEntry struct {
+	Key  DistributedObjectDataNode
 	Data DistributedObjectDataNode
 }
 
@@ -137,24 +143,26 @@ type DistributedValueNode struct {
 }
 
 type distributedPayloadEncoder struct {
-	payload        *DistributedStatePayload
-	states         map[*TLCStateMut]int
-	values         map[Value]int
-	strings        map[*UniqueString]int
-	bytes          map[distributedByteArrayKey]int
-	arrays         map[distributedByteArrayKey]int
-	arrayRoots     [][]Value // Keep address-keyed backing storage alive while encoding.
-	vectors        map[*ValueVec]int
-	nameArrays     map[distributedByteArrayKey]int
-	nameRoots      [][]*UniqueString
-	caches         map[uintptr]int
-	cacheRoots     []map[int]Value // Retain address-keyed maps throughout encoding.
-	valueMaps      map[uintptr]int
-	valueMapRoots  []map[string]Value
-	objectArrays   map[distributedByteArrayKey]int
-	objectRoots    [][]any
-	objectMaps     map[uintptr]int
-	objectMapRoots []map[string]any
+	payload           *DistributedStatePayload
+	states            map[*TLCStateMut]int
+	values            map[Value]int
+	strings           map[*UniqueString]int
+	bytes             map[distributedByteArrayKey]int
+	arrays            map[distributedByteArrayKey]int
+	arrayRoots        [][]Value // Keep address-keyed backing storage alive while encoding.
+	vectors           map[*ValueVec]int
+	nameArrays        map[distributedByteArrayKey]int
+	nameRoots         [][]*UniqueString
+	caches            map[uintptr]int
+	cacheRoots        []map[int]Value // Retain address-keyed maps throughout encoding.
+	valueMaps         map[uintptr]int
+	valueMapRoots     []map[string]Value
+	objectArrays      map[distributedByteArrayKey]int
+	objectRoots       [][]any
+	objectMaps        map[uintptr]int
+	objectMapRoots    []map[string]any
+	objectKeyMaps     map[uintptr]int
+	objectKeyMapRoots []map[any]any
 }
 
 type distributedByteArrayKey struct {
@@ -575,6 +583,12 @@ func (e *distributedPayloadEncoder) modelData(node *DistributedValueNode, data a
 			return err
 		}
 		node.DataKind, node.DataMap = "objectMap", id
+	case map[any]any:
+		id, err := e.objectKeyMap(v)
+		if err != nil {
+			return err
+		}
+		node.DataKind, node.DataMap = "objectKeyMap", id
 	case Value:
 		id, err := e.value(v)
 		if err != nil {
@@ -647,6 +661,38 @@ func (e *distributedPayloadEncoder) objectMap(values map[string]any) (int, error
 	return id, nil
 }
 
+func (e *distributedPayloadEncoder) objectKeyMap(values map[any]any) (int, error) {
+	if values == nil {
+		return 0, nil
+	}
+	if e.objectKeyMaps == nil {
+		e.objectKeyMaps = make(map[uintptr]int)
+	}
+	key := uintptr(reflect.ValueOf(values).UnsafePointer())
+	if id := e.objectKeyMaps[key]; id != 0 {
+		return id, nil
+	}
+	id := len(e.payload.ObjectKeyMaps) + 1
+	e.objectKeyMaps[key] = id
+	e.objectKeyMapRoots = append(e.objectKeyMapRoots, values)
+	e.payload.ObjectKeyMaps = append(e.payload.ObjectKeyMaps, nil)
+	entries := make([]DistributedObjectKeyMapEntry, 0, len(values))
+	// Preserve native key types and identity. Unlike string keys, general keys
+	// have no common ordering; do not fingerprint or evaluate value keys to sort.
+	for key, data := range values {
+		var keyNode, dataNode DistributedValueNode
+		if err := e.modelData(&keyNode, key); err != nil {
+			return 0, fmt.Errorf("object-key map key: %w", err)
+		}
+		if err := e.modelData(&dataNode, data); err != nil {
+			return 0, fmt.Errorf("object-key map entry: %w", err)
+		}
+		entries = append(entries, DistributedObjectKeyMapEntry{Key: distributedObjectDataNode(keyNode), Data: distributedObjectDataNode(dataNode)})
+	}
+	e.payload.ObjectKeyMaps[id-1] = entries
+	return id, nil
+}
+
 func (e *distributedPayloadEncoder) valueMap(values map[string]Value) (int, error) {
 	if values == nil {
 		return 0, nil
@@ -681,15 +727,16 @@ func (e *distributedPayloadEncoder) valueMap(values map[string]Value) (int, erro
 }
 
 type distributedPayloadDecoder struct {
-	values       []Value
-	strings      []*UniqueString
-	bytes        [][]byte
-	arrays       [][]Value
-	vectors      []*ValueVec
-	nameArrays   [][]*UniqueString
-	valueMaps    []map[string]Value
-	objectArrays [][]any
-	objectMaps   []map[string]any
+	values        []Value
+	strings       []*UniqueString
+	bytes         [][]byte
+	arrays        [][]Value
+	vectors       []*ValueVec
+	nameArrays    [][]*UniqueString
+	valueMaps     []map[string]Value
+	objectArrays  [][]any
+	objectMaps    []map[string]any
+	objectKeyMaps []map[any]any
 }
 
 func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCStateMut, err error) {
@@ -772,6 +819,10 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 	for i, entries := range payload.ObjectMaps {
 		decoder.objectMaps[i] = make(map[string]any, len(entries))
 	}
+	decoder.objectKeyMaps = make([]map[any]any, len(payload.ObjectKeyMaps))
+	for i, entries := range payload.ObjectKeyMaps {
+		decoder.objectKeyMaps[i] = make(map[any]any, len(entries))
+	}
 	for i, entries := range payload.ObjectArrays {
 		for j, node := range entries {
 			data, err := decoder.modelData(node.valueNode())
@@ -791,6 +842,25 @@ func DecodeDistributedStates(payload *DistributedStatePayload) (states []*TLCSta
 				return nil, fmt.Errorf("object map %d key %q: %w", i+1, entry.Key, err)
 			}
 			decoder.objectMaps[i][entry.Key] = data
+		}
+	}
+	for i, entries := range payload.ObjectKeyMaps {
+		for j, entry := range entries {
+			key, err := decoder.modelData(entry.Key.valueNode())
+			if err != nil {
+				return nil, fmt.Errorf("object-key map %d key %d: %w", i+1, j, err)
+			}
+			if key != nil && !reflect.TypeOf(key).Comparable() {
+				return nil, fmt.Errorf("object-key map %d has non-comparable key %T", i+1, key)
+			}
+			if _, duplicate := decoder.objectKeyMaps[i][key]; duplicate {
+				return nil, fmt.Errorf("object-key map %d has duplicate key", i+1)
+			}
+			data, err := decoder.modelData(entry.Data.valueNode())
+			if err != nil {
+				return nil, fmt.Errorf("object-key map %d entry %d: %w", i+1, j, err)
+			}
+			decoder.objectKeyMaps[i][key] = data
 		}
 	}
 	for i, node := range payload.Values {
@@ -1235,6 +1305,14 @@ func (d *distributedPayloadDecoder) modelData(node DistributedValueNode) (any, e
 			return map[string]any(nil), nil
 		}
 		return d.objectMaps[node.DataMap-1], nil
+	case "objectKeyMap":
+		if node.DataMap < 0 || node.DataMap > len(d.objectKeyMaps) {
+			return nil, fmt.Errorf("invalid model object-key-map reference %d", node.DataMap)
+		}
+		if node.DataMap == 0 {
+			return map[any]any(nil), nil
+		}
+		return d.objectKeyMaps[node.DataMap-1], nil
 	default:
 		return nil, fmt.Errorf("unknown model data kind %q", node.DataKind)
 	}

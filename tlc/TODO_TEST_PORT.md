@@ -1607,6 +1607,12 @@ errors cannot hide other callback cleanup failures, including discovery-owned
 coordinator cleanup. They preserve error causes and later-owner cleanup without
 adding original Java method completion credit.
 
+Native model-data payload checks now also cover map[any]any with scalar/value
+keys, exact key types, cycles and shared references through requests, results and
+WorkerException contexts. Nil/empty maps, receiver isolation and malformed keys
+are checked. Existing original ModelValue tests pass; general-map network checks
+add no original-method completion credit.
+
 Full N=7 coverage now also pauses bidirectional TCP traffic to one of two
 fingerprint hosts while keeping both connections open. Test control probes
 require responsive coordinator status/manager and worker alive/cache calls,

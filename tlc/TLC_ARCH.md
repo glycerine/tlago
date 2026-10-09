@@ -12459,3 +12459,22 @@ handling; source coordinator algorithms and the no-replay transport policy are
 unchanged. Focused native checks cover both raw and wrapped/joined closed errors
 and a discovery-owned coordinator with a previously closed primary connection
 and a failing callback close. There is no direct original Java method to credit.
+
+### General native model-data map keys
+
+ModelValue.data is a non-transient Object in the source, with no string-key
+restriction on transferable map attachments. The Go payload now also represents
+map[any]any with compact key/data nodes using the existing scalar/container/value
+tags. It reserves each map identity before traversing entries and retains sender
+maps throughout encoding. The decoder allocates all maps before filling entries,
+so value keys, recursive maps and nested arrays retain shared graph identity.
+
+Supported keys retain their concrete Go types and native equality semantics;
+nil keys and nil/empty maps remain distinct. General keys are not fingerprinted,
+evaluated or sorted. Unsupported custom keys/data, invalid references,
+non-comparable decoded keys and duplicate keys fail explicitly. Receiver maps
+and buffers do not alias sender storage. Requests, results and WorkerException
+contexts use the same representation. Peers carrying these maps need the updated
+native payload schema. No Java map runtime, serializer or arbitrary custom-object
+codec is introduced. Existing original ModelValue tests remain green; these new
+networking checks have no direct original method completion credit.
