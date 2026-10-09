@@ -26078,3 +26078,21 @@ status 0, 19.935 seconds). Reuse the unchanged direct-memory full evaluation and
 short storage/manager receipts from the preceding entry. No full suite or race
 workload; all handles are terminal. Original distributed completion remains
 37/41 with four source-disabled harness contexts requiring reconciliation.
+
+
+### October 9, 2026: consolidate the distributed restart handoff
+
+Reduced HANDOFF.md from 708 to 239 lines by consolidating repeated implementation
+and process evidence into contract and coverage tables. The handoff links the
+source map, detailed architecture and existing progress receipts, retaining the
+user-supplied full-suite baseline, original disabled-harness/flusher disposition,
+unresolved earlier model failure, alias replay concern and five remaining work
+assignments. Native Go transport remains explicit; RMI names identify upstream
+source files only. Recovery ordering, local/remote checkpoint distinctions,
+CLI empty-manager limitation, unsupported metadata boundaries and verification
+limits remain visible. Original distributed credit is unchanged at 37/41.
+
+This is documentation-only. Checked local Markdown link targets and required
+restart sections, and ran git diff --check. Reused existing code/test receipts;
+no full suite, model workload or race selection was rerun. Appended this entry
+without rewriting the progress log's mixed line endings.
