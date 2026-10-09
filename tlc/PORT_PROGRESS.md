@@ -23549,3 +23549,29 @@ failure cases, original MemIntQueue and focused object/DFID checks pass
 exists in the source test inventory; native supplements add no original-method
 completion credit. No full suite, full model or race workload ran. All handles
 are terminal.
+
+### October 8, 2026: completed fingerprint recovery reply loss
+
+Rechecked the coordinator checkpoint/recovery sequence against TLCServer and
+the manager's synchronous Checkpoint.run recovery branch. Added a native TCP
+boundary that closes the host after its real recovery has finished, rather than
+before storage work begins. Memory and nested LSB/MSB stores recover fresh
+storage from named snapshots containing both high-bit partitions.
+
+The manager reports its exact source checkpoint warning once, continues to the
+healthy registration and preserves both registration identities and availability.
+Both stores retain their own recovered membership. Calling recovery again on
+the broken client does not replay it; a fresh native host can read the retained
+caller-owned storage without another recovery operation. Current production
+passes this new boundary; no implementation change or weakened assertion was
+needed.
+
+The new three-backend cases pass (checkpoint-recover-reply.log, terminal eec368,
+status 0, 0.032 seconds). Related begin/in-flight reply-loss, source I/O catch
+checks and original manager constructor/index/reassignment/failover methods
+pass (checkpoint-recover-reply-verified.log, terminal 7df9c9, status 0,
+0.085 seconds). Only the new short recovery cases ran under race instrumentation
+and pass (checkpoint-recover-reply-race.log, terminal 2262ab, status 0).
+No enabled original method covers this network boundary, so the native checks
+add no original-method completion credit. This is not full-model partition
+coverage. No full model or full suite ran; all handles are terminal.

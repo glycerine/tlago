@@ -1422,6 +1422,11 @@ existence/delete/rename sequence and target ownership on success and failure.
 These 52 cases and the byte-array partial pool-deletion check add no
 original-method completion credit; the existing original StateQueue and
 MemIntQueue methods remain green.
+Completed fingerprint recovery with a lost TCP reply now has native Mem/LSB/MSB
+checks. They retain exact membership in both high-bit partitions, the source
+warning/continuation behavior, registration identities and no automatic replay.
+A fresh host reads the retained borrowed storage. No enabled original method
+directly covers this transport boundary, so it adds no completion credit.
 Attached model-value `[]Value` data now transfers through the native array graph.
 Short payload/TCP checks cover nil/empty arrays, self-references, sharing with
 state and tuple backing arrays, receiver ownership and invalid array references.

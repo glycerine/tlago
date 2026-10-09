@@ -112,6 +112,10 @@ Named `MultiFPSet` checkpoint and recovery operations run child stores
 concurrently and join before returning. Child I/O failures propagate as operation
 failures with native Go error wrapping; the manager must not ignore them as remote
 server outages. Unnamed begin/commit operations retain source sequential ordering.
+Short TCP cases also cover completed recovery with a lost reply for Mem/LSB/MSB
+storage. The manager warns once, continues to the next registration and leaves
+routing intact; the broken connection does not replay the completed recovery.
+Recovered borrowed storage remains readable through a fresh host.
 
 Failed coordinator construction stops and joins its queue workers and closes
 owned trace/fingerprint handles, preserving files and the original failure.

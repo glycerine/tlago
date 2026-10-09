@@ -12658,3 +12658,16 @@ stops at the first failed deletion: earlier deletions remain, later pool files
 and checkpoint files remain untouched, checkpoint markers do not advance, and
 the queue mutex is released. MemObjectStack follows its distinct source
 rename-only sequence and is not changed to use delete-before-rename.
+
+### Completed fingerprint recovery with a lost reply
+
+Source manager recovery invokes each registration synchronously. Its I/O catch
+reports the original host using the checkpoint warning text, continues to the
+next registration and does not reassign routing or replay the operation. Native
+TCP tests now close a host after real named recovery completes but before its
+reply reaches the manager. Memory and nested LSB/MSB stores retain both high-bit
+partitions; the subsequent healthy registration also recovers its own contents.
+The failed client remains broken. Publishing recovered caller-owned storage
+through a fresh host permits membership reads without another recovery.
+This checks the library transport boundary, not full-model recovery after a
+network partition or fresh-process CLI registration ordering.
