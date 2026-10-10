@@ -141,8 +141,8 @@ type WrongInvocationException struct{ javaExceptionBase }
 
 type NoSuchElementException struct{ javaExceptionBase }
 
-func NewNoSuchElementException() *NoSuchElementException {
-	return &NoSuchElementException{javaExceptionBase: newJavaExceptionBase(nil, nil)}
+func NewNoSuchElementException(message ...string) *NoSuchElementException {
+	return &NoSuchElementException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
 func (e *NoSuchElementException) Error() string { return javaThrowableMessage(e) }
 

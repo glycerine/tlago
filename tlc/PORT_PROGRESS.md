@@ -31556,3 +31556,61 @@ Final rebuild and original selection 75547 terminal 2840c0, comparison 70d6a7,
 retain all 22 source rows and 20 original methods (4.720s, originals-final.log).
 These healthy-set rows do not add coverage for receiver mutation or I/O failure.
 Latest saved random progress is 1,016,659,522 / 2,147,483,648 (70d6a7).
+
+
+2026-10-10: Resume after power loss; PickSuccessor action and console ownership.
+
+Working tree recovered at a1b60ad with four unfinished production files. Polling
+original full random workload handle 27326 returned live (d3a819, 4eaad2); no
+restart or replacement workload. Latest saved progress, 6eca44, is
+1,050,166,101 / 2,147,483,648, without terminal result or original-method credit.
+
+Source TLCExt.java action reconstruction neither changes IdThread.currentState
+nor substitutes UnknownAction when no match exists. Extended states use their
+stored action directly, including null. Native reconstruction now follows those
+branches and fails before prompting for a null action. One retained console
+reader replaces the per-call buffered reader, preserving the class input,
+startup charset and buffered commands. It recognizes all six Scanner line
+separators, Java trim's U+0020 boundary, unbounded lines and source EOF failures.
+NoSuchElementException accepts an optional detail message; existing no-argument
+calls retain null messages. Input is captured on standard-override installation
+and direct public TLCExt helper entry, without reading it until prompted. The
+explored command now preserves the source receiver/argument order and checked
+I/O catch using the existing classifier and stack printer. I/O failures were
+inspected, not experimentally established through manufactured faults.
+
+Ignored API observations are under .codex-gotmp/pick-console-input/. Source
+ConsoleProbeTool copies pinned FastTool only to observe actual action generation
+and substitute the guard; existing C model states and transitions drive both
+implementations. Twenty UTF-8 command/action cases match source, final terminal
+6eca44, with 19 baseline differences corrected. These include current-slot
+identity during ordinary action reconstruction, first action matching, stored
+extended actions, unmatched/missing action failures, repeated yes/no reads, EOF,
+states/diff, unsupported explore mode, Java whitespace, a 70,000-character line,
+input replacement after class initialization and LF/CR/CRLF/NEL/LS/PS separators.
+NPE observations compare the exception category, excluding JVM enhanced messages;
+other rows retain messages, output and action/current-slot events.
+
+Charset observations, charset-final-run.log (3945 terminal d22e28), match all 49
+cases across UTF-8, US-ASCII, ISO-8859-1, UTF-16, UTF-16BE and UTF-16LE, including
+selected malformed UTF-8, surrogate pairs, malformed surrogates and odd UTF-16
+EOF. The first matrix attempt failed before reaching the console because Java
+reads C.cfg with the default charset. For UTF-16 runs, the observer now reads an
+ignored copy of the same existing C.cfg transcoded into that charset; C.tla is
+byte-identical and native uses the original config. No production fixture or
+upstream source changed. Extended charset providers and COMPAT remain unproven.
+A further healthy MemFPSet/model-checker observation (92e04e) matches source and
+confirms the explored command actually stores the successor fingerprint. Total
+console comparisons: 70; no original Java PickSuccessor method exists in the
+pinned tlc2 tree, and no new persistent test or method credit was invented.
+
+Twenty unchanged original model methods pass (26821 terminal e5462d, 4.461s,
+originals.log). Three original TLCIterator classes pass (50959 terminal de9373,
+0.011s, iterators.log), preserving the no-message exception callers. Rebuilt
+prior observers retain all 22 guard-order cases, 11 AssertError boundaries and
+18 monitor cases (1531 terminal 5dce0b). The first order observer launch lacked
+its scratch metadata directory; rerun after creating that required directory
+completed normally. Monitor checks are normal runs; prior short race receipts
+remain separate. No broad suite, long race run, bound reduction, mail work,
+weakened assertion or inventory credit. HANDOFF and TLC_ARCH describe the final
+contract and its limits; original model reconciliation and TLC parity remain open.

@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -27,6 +26,7 @@ var tlcExtClassMonitor distributedServerMonitor
 var tlcExtCacheLock reentrantReadWriteLock
 
 func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*BoolValue, error) {
+	ensureTLCExtConsole()
 	if expected == nil {
 		return nil, newTLCError(ECGeneral, "AssertError expected a string error")
 	}
@@ -78,6 +78,7 @@ func tlcExtPickSuccessorSeen(succState *TLCStateMut) (seen bool) {
 }
 
 func TLCExtPickSuccessor(tool *Tool, guard Value, curState *TLCStateMut, succState *TLCStateMut) (*BoolValue, error) {
+	ensureTLCExtConsole()
 	tlcExtClassMonitor.Lock()
 	defer tlcExtClassMonitor.Unlock()
 	if tlcExtPickSuccessorSeen(succState) {
@@ -105,28 +106,24 @@ func tlcExtPickSuccessorGuard(tool *Tool, guard Value, curState *TLCStateMut, su
 	if err != nil {
 		return nil, err
 	}
-	reader := bufio.NewReader(os.Stdin)
+	reader := ensureTLCExtConsole()
 	for {
-		level := 0
-		if curState != nil {
-			level = curState.Level()
+		if curState == nil || action == nil {
+			panic(NewNullPointerException())
 		}
+		level := curState.Level()
 		PrintMessage(ECTLCModuleOverrideStdout, "Extend behavior of length "+strconv.Itoa(level)+" with a \""+actionName(action)+"\" step ["+action.String()+"]? (Yes/no/explored/states/diff):")
-		nextLine, err := reader.ReadString('\n')
-		if err != nil && nextLine == "" {
-			return nil, err
-		}
-		nextLine = strings.TrimRight(nextLine, "\r\n")
-		if strings.TrimSpace(nextLine) == "" || strings.HasPrefix(strings.ToLower(nextLine), "y") {
+		nextLine := reader.nextLine()
+		if tlcExtConsoleTrim(nextLine) == "" || strings.HasPrefix(strings.ToLower(nextLine), "y") {
 			return BoolTrue, nil
 		}
 		switch nextLine[0] {
 		case 's':
 			curText := ""
 			if curState != nil {
-				curText = strings.TrimSpace(curState.String())
+				curText = tlcExtConsoleTrim(curState.String())
 			}
-			PrintMessage(ECTLCModuleOverrideStdout, curText+"\n~>\n"+strings.TrimSpace(succState.String()))
+			PrintMessage(ECTLCModuleOverrideStdout, curText+"\n~>\n"+tlcExtConsoleTrim(succState.String()))
 		case 'd':
 			if curState != nil {
 				PrintMessage(ECTLCModuleOverrideStdout, succState.StringForVariables(curState))
@@ -134,8 +131,8 @@ func tlcExtPickSuccessorGuard(tool *Tool, guard Value, curState *TLCStateMut, su
 				PrintMessage(ECTLCModuleOverrideStdout, succState.String())
 			}
 		case 'e':
-			if checker := MainChecker(); checker != nil && checker.FPSet != nil {
-				checker.FPSet.Put(succState.FingerPrint())
+			if checker := MainChecker(); checker != nil {
+				tlcExtPickSuccessorExplore(checker, succState)
 				return BoolTrue, nil
 			}
 			PrintMessage(ECTLCModuleOverrideStdout, "Marking a state explored is unsupported by the current TLC mode. Is TLC running in simulation mode?")
@@ -145,27 +142,45 @@ func tlcExtPickSuccessorGuard(tool *Tool, guard Value, curState *TLCStateMut, su
 	}
 }
 
+func tlcExtPickSuccessorExplore(checker *ModelChecker, succState *TLCStateMut) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err := panicValueAsError(failure)
+			if !isJavaIOException(err) {
+				panic(failure)
+			}
+			_, _ = fmt.Fprint(os.Stderr, javaThrowableStackTrace(err))
+		}
+	}()
+	set := checker.FPSet
+	fp := succState.FingerPrint()
+	if set == nil {
+		panic(NewNullPointerException())
+	}
+	set.Put(fp)
+}
+
 func pickSuccessorAction(tool *Tool, curState *TLCStateMut, succState *TLCStateMut) (*Action, error) {
-	if succState != nil && succState.HasAction() {
+	if succState != nil && succState.retainsExtendedMetadata() {
 		return succState.GetAction(), nil
 	}
-	if tool != nil && curState != nil && succState != nil {
-		restoreCurrentState := PushCurrentState(curState)
-		defer restoreCurrentState()
-		for _, action := range tool.GetActions() {
-			nextStates, err := tool.GetNextStates(action, curState)
-			if err != nil {
-				return nil, err
-			}
-			if nextStates.Contains(succState) {
-				return action, nil
-			}
+	if tool == nil {
+		panic(NewNullPointerException())
+	}
+	for _, action := range tool.GetActions() {
+		nextStates, err := tool.GetNextStates(action, curState)
+		if err != nil {
+			return nil, err
+		}
+		if nextStates.Contains(succState) {
+			return action, nil
 		}
 	}
-	return UnknownAction, nil
+	return nil, nil
 }
 
 func TLCExtToTrace(value Value) (Value, error) {
+	ensureTLCExtConsole()
 	counterExample, ok := value.(*CounterExample)
 	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "ToTrace", "CounterExample", ValuesPPR(value))
@@ -174,10 +189,12 @@ func TLCExtToTrace(value Value) (Value, error) {
 }
 
 func TLCExtCounterExample() Value {
+	ensureTLCExtConsole()
 	return NewEmptyCounterExample()
 }
 
 func TLCExtCounterExampleWithTool(tool *Tool, ctxt *Context) Value {
+	ensureTLCExtConsole()
 	def := tool.GetCounterExampleDef()
 	if def != nil && def.Symbol != nil && ctxt != nil {
 		if value, ok := ctxt.Lookup(def.Symbol).(Value); ok {
@@ -188,10 +205,12 @@ func TLCExtCounterExampleWithTool(tool *Tool, ctxt *Context) Value {
 }
 
 func TLCExtTrace(state *TLCStateMut) (Value, error) {
+	ensureTLCExtConsole()
 	return TLCExtTraceWithTool(nil, state)
 }
 
 func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
+	ensureTLCExtConsole()
 	_ = tool
 	if state == nil {
 		panic(NewNullPointerException())
@@ -273,6 +292,7 @@ func traceInfoTupleValue(trace []*TLCStateInfo, suffix ...*TLCStateMut) Value {
 }
 
 func TLCExtTLCDefer(states []*TLCStateMut, callable func() (any, error)) (Value, error) {
+	ensureTLCExtConsole()
 	for _, state := range states {
 		if state == nil {
 			return nil, javaMethodOverrideError("TLCDefer", "null")
@@ -283,10 +303,12 @@ func TLCExtTLCDefer(states []*TLCStateMut, callable func() (any, error)) (Value,
 }
 
 func TLCExtTLCNoOp(value Value) Value {
+	ensureTLCExtConsole()
 	return value
 }
 
 func TLCExtTLCModelValue(value Value) (Value, error) {
+	ensureTLCExtConsole()
 	tlcExtClassMonitor.Lock()
 	defer tlcExtClassMonitor.Unlock()
 	str, ok := value.(*StringValue)
@@ -297,6 +319,7 @@ func TLCExtTLCModelValue(value Value) (Value, error) {
 }
 
 func TLCExtTLCFP(value Value) *IntValue {
+	ensureTLCExtConsole()
 	tlcExtClassMonitor.Lock()
 	defer tlcExtClassMonitor.Unlock()
 	value.DeepNormalize()
@@ -304,6 +327,7 @@ func TLCExtTLCFP(value Value) *IntValue {
 }
 
 func TLCExtTLCEvalDefinition(tool *Tool, name Value, args ...any) (Value, error) {
+	ensureTLCExtConsole()
 	if tool == nil {
 		return nil, newTLCError(ECGeneral, "TLCEvalDefinition has no tool")
 	}

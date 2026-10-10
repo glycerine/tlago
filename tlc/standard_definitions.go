@@ -16,6 +16,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	if t == nil {
 		return nil
 	}
+	ensureTLCExtConsole()
 
 	t.defineStandardValue("TRUE", BoolTrue)
 	t.defineStandardValue("FALSE", BoolFalse)

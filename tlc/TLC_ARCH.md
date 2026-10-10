@@ -9213,6 +9213,27 @@ memory sets and verify ordering, one lookup, actual seen/unseen states, guard
 failures and absent-checker/empty/partial/null controls; they do not establish
 failure-path I/O parity or the interactive prompt path.
 
+PickSuccessor action reconstruction leaves the current-state slot untouched.
+Extended successors use their stored action even when null; ordinary successors
+regenerate actions in tool order and choose the first containing StateVec. A
+missing action fails before the prompt rather than substituting UnknownAction.
+TLCExt binds one console reader when its overrides are installed or a public
+helper first runs, retaining that input and default charset for its lifetime.
+The existing class monitor protects interactive reads and their read-ahead.
+Lines recognize LF, CR, CRLF, NEL, LS and PS without a Scanner token-size limit;
+command trimming removes only characters through U+0020. An exhausted input
+raises NoSuchElementException("No line found"), while a final unterminated line
+is accepted. Decoding uses the six existing guaranteed charset families and
+replacement rules. Extended providers and COMPAT locale discovery remain outside
+that decoder contract. The explored command captures its FPSet receiver before
+fingerprinting; its IOException catch prints the stack and still accepts the
+successor. Seventy source/native console cases verify ordinary/extended action
+selection, current-slot ownership, missing actions, commands, input replacement,
+repeated reads, EOF, long lines, line separators, supported charsets and selected
+malformed encodings. The healthy checker case verifies actual FPSet membership
+after the explored command. These bounded observations do not establish I/O
+failure behavior or all terminal/blocking schedules.
+
 TLCExt's synchronized AssertError, PickSuccessor, TLCModelValue and TLCFP methods
 share one class monitor with Trace's noninitial model-checking reconstruction
 block. The native implementation reuses distributedServerMonitor, also used by
