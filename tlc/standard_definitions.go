@@ -945,7 +945,7 @@ func standardTLCGetAndSet(tool *Tool, args []SemanticNode, con *Context, state *
 // override body runs. Null passes that cast and fails only when evaluated.
 func standardOperatorMethod(index int, eval func([]Value) (Value, error)) func([]Value) (Value, error) {
 	return func(args []Value) (Value, error) {
-		if args[index] != nil && !isOperatorValue(args[index]) {
+		if !isNil(args[index]) && !isOperatorValue(args[index]) {
 			return nil, NewClassCastException("Cannot cast " + javaValueClassName(args[index]) + " to tlc2.value.impl.OpValue")
 		}
 		return eval(args)

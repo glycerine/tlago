@@ -9181,6 +9181,23 @@ unproven; captured-array rereads follow the source loop directly.
 Focused original and full set/subset regressions pass. The complete unchanged
 CommunityModules all/shiviz target passes after these bag changes.
 
+FoldBag's guards also recognize typed-null bag, multiplicity and diagnostic-key
+pointers. A typed-null IntValue count takes the invalid-count branch, whose first
+null receiver read fails before later diagnostic fields. The shared operator-call
+helper rejects logical null only when called. The registered OpValue parameter
+guard accepts logical null, including native interfaces holding a typed-null
+nonoperator pointer; non-null wrong types retain their existing invocation cast.
+Empty domains do not invoke the operator and return the base unchanged.
+
+The expanded 12,096-case actual-runtime observer retains the original 32 bag
+forms and adds ten typed-null receiver classes, count slots and zero/positive
+count keys. Four additional logical-null operator forms cover direct and
+registered invocation, with independent source flags. All rows agree outside
+332 stack locations, with no missing/deferred calls. Raw input/cache state,
+messages/codes/nullable details and source frames remain compared. Focused
+original/native tests and the full original CommunityModules all/shiviz target
+pass. No persistent tests/fixtures or original-method credit are added.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

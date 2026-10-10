@@ -38080,3 +38080,65 @@ Later polls 361de5/631736 confirm the same full sequential sessions are live.
 Native progress reaches 802,817 of 3,221,225,473 original iterations; Java emits
 its original insertion-rate lines. No terminal receipt or long-test credit.
 Continue polling 69494 and 85088 across turns, without duplicates.
+
+
+## FoldBag typed-null validation and operator invocation boundaries
+
+Previous turn made verified progress in 53becff. Initial polls 9234df/08d34e
+confirm original sequential Java session 69494 and native 85088 remain live.
+Inspect CommunityModules BagsExt.java and the native fold/operator helpers.
+Extend the existing actual-runtime observer in ignored .codex-gotmp/fold-bag-null.
+Keep the original 32 bag forms; add ten typed-null receiver classes and matching
+count/key slots corresponding to actual Java null. Diagnostic key cases use
+both zero and positive counts. Add typed-null OpRcdValue, OpLambdaValue,
+MethodValue and StringValue arguments; each represents Java's legal null OpValue
+argument. Direct non-null wrong-type arguments remain skipped because Java's
+statically typed entry does not accept them; registered calls still test them.
+Use actual constructors, checked test206 nodes, finite operator records and
+installed/reflected MethodValues, with independent source flags. No evaluator
+callback, semantic graph, persistent test or fixture is fabricated.
+
+Java session 67458 terminal 05db37 and native baseline 2968 terminal 274596
+exit zero. Baseline 454a6d: 12,096 rows present, 3,860 raw differences, 3,536
+outside stack locations. The initial comparison script prints baseline then
+tries the not-yet-created after log; correct only the observer to skip absent
+logs. This observation-tool error is not a production-failure count.
+
+FoldBag now requires logical non-null bag receivers; typed-null IntValue counts
+enter the source invalid-count branch. Diagnostic count, key and reread count
+receivers fail at their source dereferences. sequenceOperatorEval requires a
+non-null operator only when invoked. standardOperatorMethod accepts logical
+null for the typed OpValue parameter, preserving non-null wrong-type cast
+failures before entering the body. Empty domains still bypass operator invocation
+and return the base unchanged. No accumulation, loop-bound reread, wrapping or
+valid-value behavior changes.
+
+Native session 25051 terminal 8d8323 exits zero. Comparison 3d77bc confirms all
+12,096 rows present with zero outside-stack differences; 332 raw differences
+are native/JVM stack locations and repeated-frame elision. Full messages, codes,
+nullable parameters, source-owner frames and raw input/cache state remain in
+the comparison. No missing calls or additional original-method credit.
+
+Focused original/native session 11913 terminal 69719c exits zero: root 7.279s,
+tlc 10.363s. Original module/value/set/scalar/stream/model/replay assertions and
+bounds remain intact, normally without race instrumentation. Full unchanged
+CommunityModules Ant target is on live session 13162 (start b39b3b), log
+.codex-gotmp/fold-bag-null/community-ant.log, pending terminal completion.
+Do not duplicate or shorten it. Handoff/architecture record the current evidence.
+
+Later polls 647b11/93c5ed confirm the same sequential runs 69494 and 85088 remain
+live. Native progress reaches 1,398,785/3,221,225,473 original iterations; Java
+continues its original insertion-rate reports. No terminal result or long credit.
+The active goal remains unchanged.
+
+Full original CommunityModules session 13162 terminal adbfa0 exits zero.
+All phase passes in 348.50s and shiviz in 1.34s; whole target 350.38s, package
+350.399s. The existing complete target preserves all original assumptions,
+assertions and workload bounds. This resolves its pending status above; no
+restart, shortening or race instrumentation. Handoff/architecture now record
+the complete receipt. Final diff review and git diff --check pass.
+
+Sequential logs now show native 1,960,961/3,221,225,473 original iterations and
+continued Java insertion-rate output. Sessions 69494 and 85088 remain assigned
+to those original full runs; no completion or long-test credit is claimed.
+Goal stays active after the verified FoldBag correction.

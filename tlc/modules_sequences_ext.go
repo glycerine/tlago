@@ -694,7 +694,7 @@ func SequencesExtAllSubSeqs(seq Value) (Value, error) {
 
 // These helpers retain direct Java dereferences without adding a module catch.
 func sequenceOperatorEval(operator Value, args []Value) (Value, error) {
-	if operator == nil {
+	if isNil(operator) {
 		panic(NewNullPointerException())
 	}
 	return EvalOperatorValue(operator, args, EvalClear)

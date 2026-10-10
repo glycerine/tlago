@@ -1,7 +1,7 @@
 package tlc
 
 func BagsExtFoldBag(op Value, base Value, bag Value) (Value, error) {
-	if bag == nil {
+	if isNil(bag) {
 		panic(NewNullPointerException())
 	}
 	fcn := asFcnRcdValue(bag)
@@ -19,17 +19,17 @@ func BagsExtFoldBag(op Value, base Value, bag Value) (Value, error) {
 		args[1] = elem
 		value := fcnParameterDomain(values, i)
 		count, ok := value.(*IntValue)
-		if !ok || count.Val <= 0 {
-			if value == nil {
+		if !ok || count == nil || count.Val <= 0 {
+			if isNil(value) {
 				panic(NewNullPointerException())
 			}
 			countText := ValuesPPR(value)
-			if elem == nil {
+			if isNil(elem) {
 				panic(NewNullPointerException())
 			}
 			domainText := ValuesPPR(elem)
 			lastValue := fcnParameterDomain(values, i)
-			if lastValue == nil {
+			if isNil(lastValue) {
 				panic(NewNullPointerException())
 			}
 			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "FoldBag", "an element of Nat", countText+" (in: "+domainText+":>"+ValuesPPR(lastValue)+")")

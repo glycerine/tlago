@@ -618,8 +618,12 @@ validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
 function conversion rejects null names after normalization. All 3,328 direct and
 registered observations agree outside 140 native/JVM stack-text differences.
-Original set/value regressions and the complete CommunityModules all/shiviz
-target pass. Arbitrary operator mutation remains unproven.
+Typed-null bag/count/key/operator pointers now also preserve source dispatch and
+failure order. Null operator arguments pass the registered parameter cast and
+fail only if invoked; empty bags return their base unchanged. All 12,096 expanded
+observations agree outside 332 stack-location differences. Focused original/native
+tests and the complete original CommunityModules all/shiviz target pass.
+Arbitrary operator mutation remains unproven.
 `Contains`, `RemoveFirst`, `Suffixes`, `AllSubSeqs`, `SetToSeq` and `SetToSeqs`
 retain source conversion and null failures, copy ownership and removal shortcuts.
 All 5,312 observations agree outside four intentional native object-identity
