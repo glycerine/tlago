@@ -251,15 +251,15 @@ func (v *SetCapValue) Member(elem Value) (resultBool bool, err error) {
 func (v *SetCapValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	f1, err := v.Set1.IsFinite()
-	if err != nil {
-		return false, err
+	if err != nil || f1 {
+		return f1, err
 	}
 	f2, err := v.Set2.IsFinite()
 	if err != nil {
 		return false, err
 	}
-	if !f1 && !f2 {
-		return false, v.unsupported("Attempted to check if the set %sis finite.", v)
+	if !f2 {
+		return false, v.runtimeFailure("Attempted to check if the set " + ValuesPPR(v) + "is finite.")
 	}
 	return true, nil
 }
@@ -378,7 +378,7 @@ func (v *SetCapValue) Elements() (enumeration ValueEnumeration) {
 	if enum2, ok := asEnumerable(v.Set2); ok {
 		return &setFilterEnumeration{enum: enum2.Elements(), predicate: v.Set1, includeWhenMember: true, cm: v.CM}
 	}
-	return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\cap T when neither S:\n%s\nnor T:\n%s\nis enumerable", v.Set1, v.Set2))
+	return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\cap T when neither S:\n" + ValuesPPR(v.Set1) + "\nnor T:\n" + ValuesPPR(v.Set2) + "\nis enumerable"))
 }
 
 func (v *SetCapValue) String() string {
@@ -457,7 +457,7 @@ func (v *SetDiffValue) IsFinite() (resultBool bool, err error) {
 		return false, err
 	}
 	if !f2 {
-		return false, v.unsupported("Attempted to check if the set %sis finite.", v)
+		return false, v.runtimeFailure("Attempted to check if the set " + ValuesPPR(v) + "is finite.")
 	}
 	return false, nil
 }
@@ -661,7 +661,10 @@ func (v *UnionValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
-		return false, v.unsupported("Attempted to check if:\n %s\nis an element of the non-enumerable set\n%s", elem, v)
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure("Attempted to check if:\n " + ValuesPPR(elem) + "\nis an element of the non-enumerable set:\n " + ValuesPPR(v))
 	}
 	e := enum.Elements()
 	for {
@@ -680,7 +683,7 @@ func (v *UnionValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
-		return false, v.unsupported("Attempted to check if the nonenumerable set:\n%s\nis a finite set.", v)
+		return false, v.runtimeFailure("Attempted to check if the nonenumerable set:\n" + ValuesPPR(v) + "\nis a finite set.")
 	}
 	e := enum.Elements()
 	for {
@@ -754,7 +757,7 @@ func (v *UnionValue) Permute(perm *MVPerm) Value {
 func (v *UnionValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set:\n%s", v)
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set:\n" + ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
@@ -762,7 +765,7 @@ func (v *UnionValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 func (v *UnionValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set:\n %s.", v)
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set:\n " + ValuesPPR(v) + ".")
 	}
 	return v, nil
 }
@@ -803,7 +806,7 @@ func (v *UnionValue) Elements() (enumeration ValueEnumeration) {
 	}
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
-		return newErrorEnumeration(v.unsupported("Attempted to enumerate the nonenumerable set:\n%s", v.Set))
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate the nonenumerable set:\n" + ValuesPPR(v.Set)))
 	}
 	return newUnionEnumeration(enum.Elements(), v)
 }
@@ -925,7 +928,7 @@ func (e *unionEnumeration) advanceElementSet() {
 	}
 	enum, ok := asEnumerable(e.elemSet)
 	if !ok {
-		e.err = e.owner.unsupported("Attempted to enumerate UNION(s), but some element of s is nonenumerable.")
+		e.err = e.owner.runtimeFailure("Attempted to enumerate UNION(s), but some element of s is nonenumerable.")
 		return
 	}
 	e.elemSetEnum = enum.Elements()
@@ -970,16 +973,25 @@ func setEnumFromEnumerationWithNormalization(enum ValueEnumeration, isNorm func(
 	}
 }
 
+// setExceptFailure preserves Assert.fail(reason, getSource()) for set values.
+func setExceptFailure(v Value) error {
+	message := "Attempted to apply EXCEPT to the set " + ValuesPPR(v) + "."
+	if source := valueSource(v); source != nil {
+		return NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+	}
+	return NewTLCRuntimeExceptionMessage(message)
+}
+
 func takeExceptOnSet(v Value, ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set %s.", v)
+		return nil, setExceptFailure(v)
 	}
 	return ex.Value, nil
 }
 
 func takeExceptsOnSet(v Value, exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set %s.", v)
+		return nil, setExceptFailure(v)
 	}
 	return v, nil
 }

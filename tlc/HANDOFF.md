@@ -252,6 +252,13 @@ normalization and exception precedence. Lazy array application rejects null befo
 its source catch. All 288 explicit-function, 98 lazy-function and eight direct
 vector observations match; relevant original value/model methods pass. Materialized
 record flags and exact wrapper counts remain part of the lazy comparisons.
+Intersection finiteness now short-circuits after a finite left operand. Set
+intersection/difference and UNION failures, including EXCEPT, retain runtime
+categories, source metadata and wrapper counts. Of 200 set-operation observations,
+194 match exactly; six retain a diagnostic-text difference because Java prints
+its iterator identity and Go prints the offending set. Relevant original value
+and model checks pass. Later-inner UNION failures and iterator reset boundaries
+still need reconciliation; do not infer coverage from first-inner failures.
 Continue concrete core TLC gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -261,7 +268,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,191,273,593 of 2,147,483,648 iterations, without a terminal result. The previous
+1,205,669,530 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

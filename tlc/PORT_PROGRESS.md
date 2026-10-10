@@ -32380,3 +32380,46 @@ do not claim that model executed. No broad sweep, race work, original assertion
 changes or shortened bounds. Formatting/diff checks pass. HANDOFF consolidates
 function-value status; TLC_ARCH records exact null and source boundaries.
 Overall core TLC parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10: Resume after power loss; set-operation runtime boundaries.
+
+Working tree starts clean at b5d65b3. Direct poll of original stress session
+27326 succeeds (b6cbff); it remains live. Latest saved progress is 1,205,669,530 /
+2,147,483,648, without terminal result or original-method credit. Preserve the
+full original workload, no race, and do not start a duplicate.
+
+Resume ignored .codex-gotmp/set-operation-boundaries observation. Initial Java
+setup fails because BoolValue.of does not exist (a67eae); use the source Boolean
+singletons and rerun successfully (67877a). Earlier java.log contained a missing
+Observe-class startup failure, not a source test failure. No persistent test or
+fixture is added. Ten set shapes, two source states and ten operations produce
+200 complete rows with TLCGlobals.expand=false. Baseline differs in 76 rows.
+
+Fix SetCap.IsFinite to skip the right operand after finite left, matching Java's
+short-circuit conjunction. Convert source Assert failures in set intersection,
+difference and UNION to runtime exceptions with source/context metadata. Preserve
+source formatting order, UNION membership punctuation and null-member dereference.
+Shared set EXCEPT helpers now pretty-print directly and preserve runtime metadata;
+inspect Subset/SetPred source and KSubset inheritance for the same contract.
+UNION retains its distinct single/array EXCEPT messages. First-inner UNION
+constructor failures retain detailed source metadata and exact wrapper counts.
+
+Final strict comparison (647c51; after-final.log) matches 194 of 200 full rows,
+correcting 70 baseline differences. Six explicit differences remain for outer
+UNION enumeration/size: Java prints a process-specific Enumerator identity;
+Go prints the offending set. All six retain matching category, wrapper count and
+source/context metadata. Preserve full strings in logs rather than normalizing
+away the differences; do not claim all 200 full messages match. Later-inner
+nonenumerable failure messages and reset boundaries remain to reconcile; valid
+later-inner continuation passes. No JVM identity emulation or inventory credit.
+
+Four unchanged original InitializeValue methods (Union, SetCap, SetCup, SetDiff),
+the existing ValueTest empty-set constructor translation and an existing reducible
+UNION check pass: 1164 terminal a3281d, original-values.log, 0.015s. Independent
+unchanged Java ValueTest and InitializeValueTest pass JUnit OK (11 tests), 944d3f,
+java-original-values.log, 0.027s. Two unchanged original Go models,
+ConstantRank2AssertError and ValueSemanticsAssume, pass: 40410 terminal 6ea73f,
+original-models.log, 2.376s. No broad sweep, race run, changed original assertion
+or shortened workload. HANDOFF and TLC_ARCH retain the exact scope and remaining
+diagnostic gaps. Core TLC parity and original-model reconciliation remain open.

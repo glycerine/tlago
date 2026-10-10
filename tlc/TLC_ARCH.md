@@ -6971,6 +6971,29 @@ the loop, preserving the empty-vector false result. Direct vector controls retai
 sorted/unsorted behavior for empty/nonempty searches and null/ordinary keys.
 
 
+SetCap finiteness follows Java's short-circuit conjunction: a finite left operand
+returns true without evaluating the right operand. SetCap/SetDiff nonfinite
+failures and SetCap nonenumerable failures preserve Assert runtime categories,
+source/context metadata and exact catch boundaries. Set EXCEPT helpers format
+with ValuesPPR before constructing source-aware runtime failures; this shared
+path also serves Subset, SetPred and KSubset, whose inherited/source messages
+agree. UNION's two EXCEPT overloads retain their distinct punctuation and spacing.
+UNION membership over a nonenumerable outer set dereferences a null member before
+formatting the receiver, and otherwise retains the source message and metadata.
+
+The 200-row set-operation observation runs with TLCGlobals.expand=false and
+covers finite/nonfinite intersections, differences, nonenumerable UNION outer
+sets and first inner sets, valid later-inner continuation, membership, size,
+enumeration and EXCEPT overloads. Complete outcomes match in 194 rows; six outer
+UNION enumeration/size diagnostics retain an explicit text difference: Java
+prints UnionValue$Enumerator@identity while Go prints the offending outer set.
+Error categories, source/context and wrapper counts match for those six; no JVM
+identity emulation is added and no full-message parity is claimed for them.
+Later nonenumerable inner-set failures and iterator resets remain unverified;
+the native shared advance helper still uses the first-inner failure message for
+later-inner failures. No original-test inventory credit comes from this matrix.
+
+
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime
 boundary. Null comparison/equality/member arguments fail before formatting; Apply
