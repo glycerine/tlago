@@ -190,9 +190,13 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("FoldFunctionOnSet", 4, standardOperatorMethod(0, func(args []Value) (Value, error) {
 		return FunctionsFoldFunctionOnSet(args[0], args[1], args[2], args[3])
 	}))
-	t.defineStandardMethod("Quantify", 2, func(args []Value) (Value, error) { return FiniteSetsExtQuantify(args[0], args[1]) })
+	t.defineStandardMethod("Quantify", 2, standardOperatorMethod(1, func(args []Value) (Value, error) {
+		return FiniteSetsExtQuantify(args[0], args[1])
+	}))
 	t.defineStandardMethod("kSubset", 2, func(args []Value) (Value, error) { return FiniteSetsExtKSubset(args[0], args[1]) })
-	t.defineStandardMethod("FoldSet", 3, func(args []Value) (Value, error) { return FiniteSetsExtFoldSet(args[0], args[1], args[2]) })
+	t.defineStandardMethod("FoldSet", 3, standardEnumerableMethod(2, standardOperatorMethod(0, func(args []Value) (Value, error) {
+		return FiniteSetsExtFoldSet(args[0], args[1], args[2])
+	})))
 	t.defineStandardMethod("FoldBag", 3, func(args []Value) (Value, error) { return BagsExtFoldBag(args[0], args[1], args[2]) })
 	t.defineStandardMethod("CSVWriteRecord", 4, func(args []Value) (Value, error) {
 		return CSVWriteRecord(args[0], args[1], args[2], args[3])
@@ -941,6 +945,19 @@ func standardOperatorMethod(index int, eval func([]Value) (Value, error)) func([
 	return func(args []Value) (Value, error) {
 		if args[index] != nil && !isOperatorValue(args[index]) {
 			return nil, NewClassCastException("Cannot cast " + javaValueClassName(args[index]) + " to tlc2.value.impl.OpValue")
+		}
+		return eval(args)
+	}
+}
+
+// MethodHandle converts the last argument first. Nest this outside earlier
+// parameter guards so an invalid set wins before an invalid operator.
+func standardEnumerableMethod(index int, eval func([]Value) (Value, error)) func([]Value) (Value, error) {
+	return func(args []Value) (Value, error) {
+		if args[index] != nil {
+			if _, ok := asEnumerable(args[index]); !ok {
+				return nil, NewClassCastException("Cannot cast " + javaValueClassName(args[index]) + " to tlc2.value.impl.Enumerable")
+			}
 		}
 		return eval(args)
 	}

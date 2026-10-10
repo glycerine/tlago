@@ -1,24 +1,31 @@
 package tlc
 
 func FiniteSetsExtQuantify(set Value, test Value) (Value, error) {
-	enumerable, ok := asEnumerable(set)
+	_, ok := asEnumerable(set)
 	if !ok {
+		if set == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Quantify", "set", ValuesPPR(set))
 	}
 
 	size := int32(0)
 	args := []Value{nil}
-	enum := enumerable.Elements()
+	converted, err := tryToSetEnumValue(set)
+	if err != nil {
+		return nil, err
+	}
+	if converted == nil {
+		panic(NewNullPointerException())
+	}
+	enum := converted.Elements()
 	for {
-		elem := enum.NextElement()
+		elem := nextEnumerationElement(enum)
 		if elem == nil {
-			if err := enum.Err(); err != nil {
-				return nil, err
-			}
 			return NewIntValue(size), nil
 		}
 		args[0] = elem
-		value, err := EvalOperatorValue(test, args, EvalClear)
+		value, err := sequenceOperatorEval(test, args)
 		if err != nil {
 			return nil, err
 		}
@@ -35,37 +42,43 @@ func FiniteSetsExtQuantify(set Value, test Value) (Value, error) {
 func FiniteSetsExtKSubset(kValue Value, set Value) (Value, error) {
 	k, ok := kValue.(*IntValue)
 	if !ok {
+		if kValue == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "kSubset", "natural number", ValuesPPR(kValue))
 	}
 	if _, ok := asEnumerable(set); !ok {
 		if _, userValue := set.(*UserValue); !userValue {
+			if set == nil {
+				panic(NewNullPointerException())
+			}
 			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "kSubset", "set", ValuesPPR(set))
 		}
 	}
-	return NewKSubsetValue(int(k.Val), set), nil
+	return NewKSubsetValue(int(k.Val), set, set.GetCostModel()), nil
 }
 
 func FiniteSetsExtFoldSet(op Value, base Value, set Value) (Value, error) {
 	enumerable, ok := asEnumerable(set)
 	if !ok {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "FoldSet", "set", ValuesPPR(set))
+		if set == nil {
+			panic(NewNullPointerException())
+		}
+		return nil, NewClassCastException("Cannot cast " + javaValueClassName(set) + " to tlc2.value.impl.Enumerable")
 	}
 
 	args := []Value{nil, base}
 	enum := enumerable.Elements()
 	for {
-		elem := enum.NextElement()
+		elem := nextEnumerationElement(enum)
 		if elem == nil {
-			if err := enum.Err(); err != nil {
-				return nil, err
-			}
 			return args[1], nil
 		}
 		args[0] = elem
-		var err error
-		args[1], err = EvalOperatorValue(op, args, EvalClear)
+		value, err := sequenceOperatorEval(op, args)
 		if err != nil {
 			return nil, err
 		}
+		args[1] = value
 	}
 }

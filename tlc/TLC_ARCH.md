@@ -8506,8 +8506,38 @@ eight source combinations and both Functions folds plus FoldSeq. Actual parsed
 test206 nodes and runtime constructors feed the real source reflected methods
 and native registrations. No persistent fixture/test, fabricated semantic graph
 or evaluator callback is introduced; original-method credit is unchanged.
-Focused original regressions pass. The complete CommunityModules baseline
-predates these parameter guards; its fold bodies are unchanged by this revision.
+Focused original regressions pass. The complete unchanged CommunityModules
+all/shiviz rerun after finite-set changes also covers these parameter guards.
+
+FiniteSetsExt Quantify materializes an enumerable value through toSetEnum before
+constructing its element iterator or invoking the predicate. Thus a later lazy
+set enumeration failure wins over an earlier element's predicate error. Direct
+set-enum values retain their array/vector traversal and null-element termination.
+Registered Quantify casts its predicate to OpValue before entering the method.
+FoldSet's registered Enumerable conversion precedes its OpValue conversion,
+matching MethodHandle's last-argument-first casts. Null passes these casts and
+fails only at the source dereference; an empty set bypasses operator invocation.
+Both loops preserve immediate enumeration failures and typed null operator calls.
+kSubset retains source diagnostic null failures, accepts Enumerable and UserValue
+sets without eager enumeration and preserves the set's coverage model in its
+new KSubsetValue, including negative and maximum int bounds.
+
+All 11,184 direct and MethodValue observations agree outside 1,288 raw stack/
+Union iterator identity differences. Removing only native/JVM stack locations,
+repeated-frame elision lines and Union iterator identity strings leaves identical
+results, error/cause headers, messages, codes, nullable details and source-frame
+counts. Thirty-four set forms, actual finite-map/null/non-operator predicates,
+seven k bounds, source combinations and default/nondefault coverage models cover
+ordinary/lazy/invalid sets, late failures and actual Nat/Int UserValues. Real
+coverage wrappers are constructed from the parsed source node. kSubset checks
+set reference and coverage-model identity; set-enum input snapshots retain
+vector contents and normalization flags without formatting lazy inputs. Observers
+use actual parsed test206 nodes and runtime constructors; no fabricated semantic
+graph, evaluator callback or persistent fixture/test is introduced. Arbitrary
+predicate mutation and allocation exhaustion remain unproven. Original-method
+credit is unchanged. Full original set/subset and focused regressions pass, along
+with the complete unchanged CommunityModules all/shiviz target. That current
+full-suite baseline also covers the preceding function-fold registration guards.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

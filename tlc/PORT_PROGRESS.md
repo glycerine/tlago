@@ -36177,3 +36177,66 @@ Latest saved original random stress progress is 1,958,431,955 /
 session 27326, log, seed and bounds. Handoff and architecture now distinguish the
 verified direct fold bodies from registered parameter casting and preserve the
 native stack-text limitation.
+
+
+2026-10-10: FiniteSetsExt materialization, casts and coverage ownership
+
+Previous goal turn made verified progress in e55c5e5. Confirm clean worktree,
+read original FiniteSetsExt/BagsExt sources and native implementations (7fc169).
+Original random stress session 27326 remains directly live (afddc4). Quantify
+streams input Elements in Go but source first materializes toSetEnum; FoldSet's
+source signature requires Enumerable and OpValue conversions. kSubset explicitly
+passes its input set's coverage model into its constructor, while Go drops it.
+Keep BagsExt as separate next work rather than changing an unobserved loop here.
+
+Build ignored source/native observers from actual parsed test206 nodes and runtime
+constructors. Initial 32 set forms, actual finite OpRcdValue/null/non-operator
+predicates, seven k bounds, source flags and direct/reflected entry points yield
+10,608 complete observations. Direct FoldSet rows omit values that cannot be
+passed to its source typed Enumerable parameter; reflected rows retain invalid
+set/operator combinations. Source uses the real reflected methods. Nondefault
+coverage wrappers use actual parsed OpApplNode constructors, via reflection for
+the package-private source wrapper; native NewCostModel uses the same parsed
+node. No fabricated semantic graph, evaluator callback or persistent fixture/
+test is introduced. Compare errors, source frames, raw set-enum input state,
+kSubset retained set reference and coverage-model identity. Initial raw matrix
+has 4,792 differences (41ecc1), 3,568 outside native stack and Union identity
+text (b40335).
+
+Materialize Quantify before predicate invocation. Preserve typed null diagnostics
+and operator calls, immediate enumeration errors, and source accumulator
+assignment timing. Add Quantify OpValue guard and a reusable Enumerable guard
+nested outside FoldSet's OpValue guard, preserving last-argument-first cast
+failure order. kSubset inherits input GetCostModel. All 10,608 rows agree outside
+1,288 raw stack/Union iterator identity differences; only 304 differences remain
+after removing stack locations, and all are Union identity strings (b40335).
+A concrete late failure row, 0/30/3/0/0, now raises the Union enumeration error
+before a nonboolean predicate result, matching source (30132c).
+
+Extend to actual Naturals.Nat and Integers.Int UserValues to cover kSubset's
+accepted UserValue branch. An ignored native mechanical insertion initially
+hits an unused names helper (f0f444); correct the insertion target before running
+(369ba4). Complete source exits zero (55d218), complete native exits zero
+(76eba5). All 11,184 rows retain the same 1,288 raw differences, with zero outside
+native stack locations/elision lines and Union iterator identities (58e8ae).
+Exception/cause headers, message/code/nullable-detail/source-frame fields and
+checked ownership/state agree. Do not fabricate JVM stack or iterator identities.
+Arbitrary predicate mutation and allocation exhaustion remain unproven; original
+method credit is unchanged.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass, root 5.907s and tlc 2.382s (1155cf). Full original
+set/subset/randomization/debugger/initialization and vector-sharing/reference
+selection passes normally at original bounds, tlc 85.413s (session 6605,
+terminal 3a56c9). Complete unchanged original CommunityModules all/shiviz target
+starts with timeout zero (session 72932, e078a6) and advances past FiniteSetsExtTests
+into FunctionsTests and later modules. No race or shortened workload.
+Complete original CommunityModules target exits zero (session 72932, terminal
+bc427b). Both unchanged phases pass: root 310.500s, all 309.78s and shiviz 0.25s
+(6cdc0b). This is the current full-suite baseline and also covers the preceding
+Functions registered OpValue guards. No original assumptions, expected phase
+exits or workload bounds changed. Latest saved original random stress progress is
+1,973,184,528 / 2,147,483,648 (6cdc0b), without terminal result or long credit.
+Direct poll cfe6ea confirms session 27326 live; preserve original seed, bounds
+and log. Handoff and architecture record the finite-set contracts, checked
+coverage ownership, native diagnostic-text limits and current full-suite result.
