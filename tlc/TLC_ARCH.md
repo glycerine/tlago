@@ -6932,6 +6932,26 @@ source/native observations verify these branches, body identity under controlled
 runtime-table replacement, and actual values from existing C model definitions.
 These observations do not prove every configuration or module-visibility case.
 
+`FiniteSets!IsFiniteSet` and `Cardinality` require non-null receivers, including
+native interfaces holding typed-null pointers. Enumerable dispatch treats those
+pointers as Java’s null `instanceof` result. Composite finite-set checks retain
+left-to-right evaluation and source short circuits: an empty finite function
+domain returns before inspecting its range, and finite intersection/difference
+left operands return before inspecting their right operands. Tuple and record
+products retain their empty-component early return. Component null failures stay
+inside the source value owner; an `IsEmptyValue` null receiver fails before entering
+that helper’s owner catch.
+
+`SubsetValue.Size` retains the existing `size >= 31` overflow branch and otherwise
+uses Java’s masked, signed 32-bit shift. This also preserves results for negative
+counts in malformed actual vectors. The 768 direct/registered runtime observations
+include finite/infinite components, typed-null values, source owners and size
+boundaries. Results agree outside stack locations in 762 cases; six retain the
+established UNION iterator-identity text difference described below. No JVM
+identity text is synthesized. Focused original/native tests and the complete
+original CommunityModules Ant target pass; no persistent tests, fixtures or
+original-method credit are added.
+
 `TLCDefer` attaches deferred evaluation to the current and successor states in
 order, without evaluating its argument during setup. Extended states retain the
 callback; ordinary states keep their source no-op. Callback execution reuses the
@@ -7019,8 +7039,12 @@ values and an unpaired UTF-16 surrogate. Results, returned reference identity,
 output code units, messages/codes/nullable details and source heads agree outside
 2,328 stack-location differences. No evaluator callbacks or semantic graphs are
 fabricated, and no persistent tests/fixtures or original-method credit are added.
-Focused original assertion/module/print-trace and replay tests pass. Writer I/O
-failure handling and malformed variants beyond this matrix remain unproven.
+Focused original assertion/module/print-trace and replay tests pass. Eight
+additional observations use real open/closed file writers with direct and
+registered `Print`/`PrintT` calls. Return identity, normalization, file text and
+`GENERAL` report counts match. Closed writes retain each runtime’s actual I/O
+error provenance: Java `IOException` versus native `fs.PathError`. Full report-text
+parity and further malformed variants are not claimed.
 
 `@@` converts both operands to finite functions, left then right,
 before checking either conversion result. A lazy right operand is materialized

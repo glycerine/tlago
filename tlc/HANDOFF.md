@@ -238,8 +238,15 @@ dereferences. `Assert` treats null conditions as false and dereferences its
 message only on failure; a true condition returns unchanged. All 25,984 direct/
 registered console/writer observations agree outside 2,328 stack-location
 differences, including multiline output and UTF-16 surrogates. Focused original
-assertion, module, print-trace and replay tests pass. Writer I/O failures and
-further malformed-value variants remain separate work.
+assertion, module, print-trace and replay tests pass. Eight additional real-file
+writer observations match return identity, normalization, output and report counts
+for open and closed handles. Closed-write reports retain each runtime’s actual
+I/O error details; full message parity is not claimed.
+`FiniteSets` now preserves null-receiver failures, composite-set short circuits
+and Java’s masked, signed 32-bit power-set size arithmetic. Of 768 actual-runtime
+comparisons, 762 agree outside stack locations; six retain the documented UNION
+iterator-identity text difference. Focused original/native tests and the full
+original CommunityModules Ant target pass.
 `_Possible!_Counts` now accepts only function records, normalizes each source
 record, preserves malformed-count failures and wraps integer sums. Its raw output
 uses Java HashMap merge iteration order. Twelve bounded source comparisons,

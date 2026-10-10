@@ -37769,3 +37769,65 @@ sequential receiver/branch changes. No persistent tests/fixtures or original
 method credit. Prior broad baseline retained; this correction has focused
 verification. Handoff/architecture updated; goal active. Writer I/O failures,
 additional malformed values and arbitrary mutation remain unproven.
+
+
+## FiniteSets receiver dispatch and signed power-set size; real writer handles
+
+Continue from 85dade3 after checking the saved work and existing live test
+handles. No duplicate test process is started. The real-handle writer observer
+in .codex-gotmp/tlc-writer-owner uses actual temporary files, closes the real
+handles for failing cases and calls Print/PrintT directly and through registered
+MethodValues. Source terminal 8340ef and native terminal da38d9 exit zero.
+Comparison 8828d2 confirms eight behavioral rows: returned identity, normalization,
+exact file text, zero open-write reports and one GENERAL closed-write report.
+Original input sets normalize on both sides. Native fs.PathError and source
+IOException retain their actual details; this does not establish full report-text
+parity. No production writer change, fabricated error writer or original-test
+credit is needed.
+
+FiniteSets observer .codex-gotmp/finite-sets uses actual checked test206 nodes,
+real value constructors, actual vector storage/counts and installed/reflected
+standard MethodValues. No semantic graph or evaluator callback is fabricated.
+Initial source terminal 1dd4e4 and native terminal 065c13 exit zero: 584 rows,
+104 raw differences, 56 outside stack locations. Fifty are null-dispatch gaps;
+six retain the already documented UNION iterator-identity text difference.
+Module entry guards now recognize typed-null interfaces. Composite finite-set
+checks guard component receivers at the source dereferences, retaining empty-set
+and left-to-right short circuits. Enumerable dispatch rejects typed-null values;
+cup diagnostic formatting retains operand order. Native terminal da4922 exits
+zero and reduces the original matrix to the six identity-text differences.
+
+Expand to 768 rows with typed-null components, finite/infinite domain/range
+short circuits, source owners and real vector counts including negative values
+and 30/31-bit boundaries. Source terminal 2d87f2 and native terminal b19787 exit
+zero. Thirty-six additional differences expose Java's signed 32-bit masked shift
+and typed-null component/IsEmptyValue boundaries. SubsetValue.Size keeps its
+size >= 31 overflow branch, otherwise shifting int32(1) by uint32(size) & 31.
+A null IsEmptyValue receiver must fail before installing the callee owner catch;
+otherwise source extraction on the typed-null receiver masks the intended null
+exception with a native runtime panic. Native terminal c51419 exposes four such
+remaining rows; moving that guard before the defer fixes them without changing
+generic valueSource behavior.
+
+Final native terminal a5aa9c and comparison e3bbba exit zero: all 768 rows are
+present, none deferred; 76 raw differences consist of 70 stack-location cases
+and the six established UNION iterator-identity text differences. Thus 762 agree
+outside stack locations. Canonicalization removes only stack locations and
+repeated-frame elision, preserving result units, categories, messages, codes,
+nullable parameters and source-owner context. The six differences preserve actual
+Java iterator identity and native type/pointer text; JVM identity is not emulated.
+No persistent tests/fixtures or original-method credit is added.
+
+Focused original/native session 52819 terminal 4ab84f exits zero: root 13.096s
+and tlc 89.819s. Original SubsetValue matrices and related finite-set, module,
+sequence, stream, assertion, replay and trace checks keep their assertions and
+bounds. The full original CommunityModules Ant target remains on its existing
+session 97998 pending terminal completion. No workload uses -race.
+
+Full original CommunityModules Ant session 97998 terminal e093f4 exits zero.
+The complete all phase passes in 305.21s, shiviz in 0.22s, whole target 305.86s
+(package 305.881s). Existing shared target and original assertions/bounds remain
+unchanged. Log: .codex-gotmp/finite-sets/community-ant.log. The prior pending
+status above is resolved; no restart or race instrumentation was used. Handoff
+and architecture now record this receipt alongside the focused passes. Goal
+remains active; these changes do not establish full TLC completion.

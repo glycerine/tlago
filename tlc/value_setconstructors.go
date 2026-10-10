@@ -108,7 +108,7 @@ func (v *SetOfTuplesValue) IsFinite() (resultBool bool, err error) {
 		panic(NewNullPointerException())
 	}
 	for _, set := range v.Sets {
-		if set == nil {
+		if isNil(set) {
 			panic(NewNullPointerException())
 		}
 		finite, err := set.IsFinite()
@@ -447,7 +447,7 @@ func (v *SetOfRcdsValue) IsFinite() (resultBool bool, err error) {
 		panic(NewNullPointerException())
 	}
 	for _, value := range v.Values {
-		if value == nil {
+		if isNil(value) {
 			panic(NewNullPointerException())
 		}
 		finite, err := value.IsFinite()
@@ -808,6 +808,9 @@ func (v *SetOfFcnsValue) Member(elem Value) (resultBool bool, err error) {
 
 func (v *SetOfFcnsValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if isNil(v.Domain) {
+		panic(NewNullPointerException())
+	}
 	finiteDomain, err := v.Domain.IsFinite()
 	if err != nil {
 		return false, err
@@ -820,6 +823,9 @@ func (v *SetOfFcnsValue) IsFinite() (resultBool bool, err error) {
 		if empty {
 			return true, nil
 		}
+	}
+	if isNil(v.Range) {
+		panic(NewNullPointerException())
 	}
 	finiteRange, err := v.Range.IsFinite()
 	if err != nil {
@@ -1187,11 +1193,17 @@ func subsetValueMember(owner Value, set Value, elem Value) (resultBool bool, err
 
 func (v *SubsetValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if isNil(v.Set) {
+		panic(NewNullPointerException())
+	}
 	return v.Set.IsFinite()
 }
 
 func (v *SubsetValue) Size() (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
+	if isNil(v.Set) {
+		panic(NewNullPointerException())
+	}
 	size, err := v.Set.Size()
 	if err != nil {
 		return 0, err
@@ -1199,7 +1211,7 @@ func (v *SubsetValue) Size() (resultInt int, err error) {
 	if size >= 31 {
 		return 0, NewTLCRuntimeException(ECTLCModuleOverflow, "the number of elements in:\n"+ValuesPPR(v))
 	}
-	return 1 << size, nil
+	return int(int32(1) << (uint32(size) & 31)), nil
 }
 
 func (v *SubsetValue) IsNormalized() bool {

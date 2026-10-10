@@ -17,7 +17,7 @@ func STRING() Value {
 }
 
 func IsFiniteSet(value Value) (*BoolValue, error) {
-	if value == nil {
+	if isNil(value) {
 		panic(NewNullPointerException())
 	}
 	finite, err := value.IsFinite()
@@ -28,7 +28,7 @@ func IsFiniteSet(value Value) (*BoolValue, error) {
 }
 
 func Cardinality(value Value) (*IntValue, error) {
-	if value == nil {
+	if isNil(value) {
 		panic(NewNullPointerException())
 	}
 	if _, ok := asEnumerable(value); !ok {

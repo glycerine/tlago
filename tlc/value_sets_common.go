@@ -6,10 +6,10 @@ import (
 )
 
 func IsEmptyValue(value Value) (resultBool bool, err error) {
-	defer catchValueFailure(value, &err)
-	if value == nil {
+	if isNil(value) {
 		panic(NewNullPointerException())
 	}
+	defer catchValueFailure(value, &err)
 	switch v := value.(type) {
 	case *SetEnumValue:
 		return v.Elems.Len() == 0, nil

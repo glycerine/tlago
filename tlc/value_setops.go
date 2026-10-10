@@ -56,9 +56,15 @@ func (v *SetCupValue) Member(elem Value) (resultBool bool, err error) {
 
 func (v *SetCupValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if isNil(v.Set1) {
+		panic(NewNullPointerException())
+	}
 	f1, err := v.Set1.IsFinite()
 	if err != nil || !f1 {
 		return f1, err
+	}
+	if isNil(v.Set2) {
+		panic(NewNullPointerException())
 	}
 	return v.Set2.IsFinite()
 }
@@ -169,11 +175,11 @@ func (v *SetCupValue) Elements() (enumeration ValueEnumeration) {
 	enum2, ok2 := asEnumerable(v.Set2)
 	if !ok1 || !ok2 {
 		// The source formats operands in order while constructing its error.
-		if v.Set1 == nil {
+		if isNil(v.Set1) {
 			panic(NewNullPointerException())
 		}
 		left := ValuesPPR(v.Set1)
-		if v.Set2 == nil {
+		if isNil(v.Set2) {
 			panic(NewNullPointerException())
 		}
 		right := ValuesPPR(v.Set2)
@@ -270,9 +276,15 @@ func (v *SetCapValue) Member(elem Value) (resultBool bool, err error) {
 
 func (v *SetCapValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if isNil(v.Set1) {
+		panic(NewNullPointerException())
+	}
 	f1, err := v.Set1.IsFinite()
 	if err != nil || f1 {
 		return f1, err
+	}
+	if isNil(v.Set2) {
+		panic(NewNullPointerException())
 	}
 	f2, err := v.Set2.IsFinite()
 	if err != nil {
@@ -466,12 +478,18 @@ func (v *SetDiffValue) Member(elem Value) (resultBool bool, err error) {
 
 func (v *SetDiffValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if isNil(v.Set1) {
+		panic(NewNullPointerException())
+	}
 	f1, err := v.Set1.IsFinite()
 	if err != nil {
 		return false, err
 	}
 	if f1 {
 		return true, nil
+	}
+	if isNil(v.Set2) {
+		panic(NewNullPointerException())
 	}
 	f2, err := v.Set2.IsFinite()
 	if err != nil {
@@ -977,6 +995,9 @@ func (e *errorEnumeration) NextElement() Value { return nil }
 func (e *errorEnumeration) Err() error { return e.err }
 
 func asEnumerable(value Value) (Enumerable, bool) {
+	if isNil(value) {
+		return nil, false
+	}
 	enum, ok := value.(Enumerable)
 	return enum, ok
 }
