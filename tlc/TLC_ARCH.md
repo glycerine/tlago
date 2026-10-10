@@ -7973,6 +7973,28 @@ existing original record-copy normalization test passes unchanged. No new
 original-test credit, broad ownership proof or arbitrary callback behavior is
 claimed. Other composite operations and concurrent mutation remain separate.
 
+Composite permutation retains source traversal lengths and failure order.
+Tuples reject null arrays/children while preserving the original value when
+no child changes. Records normalize first, allocate/traverse by name count and
+read only corresponding values, ignoring excess values. Function records
+normalize then call size, preserving the size wrapper on null values; both value
+and explicit-domain passes use value count. The value pass precedes the domain
+pass. Changed domains construct unnormalized functions; value-only changes keep
+the original domain and normalized flag, while unchanged receivers retain
+identity. Model values reject null permutations with a typed null failure under
+their own wrapper; scalar children that ignore permutation remain unchanged.
+All 11,220 observations agree across tuples, records, explicit-domain functions
+and four interval constructors. They cover eleven record-name forms, fourteen
+function domains, seventeen value/child forms, normalized flags, independent
+parent/child source attachment, and null/identity/two-model swap permutations.
+Models and permutations are built through their real constructors; the Java
+observer resides in the implementation package for constructor access. Raw
+structural results compare input mutation, result normalization/source metadata
+and whole-value identity without rendering malformed composites. No original-
+test credit, general array/child ownership or arbitrary-permutation callback
+claim is added. Other mappings, domain kinds and concurrent mutation remain
+outside the comparison.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

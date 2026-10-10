@@ -35087,3 +35087,47 @@ Handoff and architecture updated. Latest full stress saved progress is
 1,690,034,339 / 2,147,483,648 (398243), without terminal result or long-method
 credit. Preserve original handle/artifacts/bounds. Other composite operations,
 arbitrary callbacks and concurrency remain separate parity targets.
+
+
+### 2026-10-10: Composite permutation traversal and identity
+
+Previous turn made verified progress in cbd4838; confirm clean HEAD (c51212).
+Original full stress 27326 remains live on direct polls 82659c and 614298.
+Compare composite permutation. Native record traversal used value count rather
+than name count; function-record domain traversal used domain count rather than
+value count. Null arrays/children and null model-value permutation objects lost
+source typed failures. Function permutation bypassed size's failure wrapper.
+
+Ignored composite-permutation uses actual test206 Def2 source attachment and
+fresh runtime children. Eleven record-name forms and fourteen explicit function
+domains cover null/empty, reordered/duplicate integers or names, null entries,
+model keys and mixed keys. Four interval constructors retain their normalization
+setting. Seventeen value forms include null/ordinary arrays, undefined values,
+null entries, unsorted sets, nested tuples/records and genuine model values.
+Use independent parent/child source flags, normalized flags and null/identity/
+two-model swap permutations. Build models and permutations through the real
+constructors; Java observer package is tlc2.value.impl for MVPerm constructor
+access. No fabricated semantic graph, custom evaluator or permutation callback.
+Raw results compare failures, input state, result normalization/source metadata
+and whole-value identity without malformed-value rendering. Initial Java/native
+complete 11,220 rows with 5,022 differences (90ac38).
+
+Restore typed tuple array/child failures and null model-value permutation failure.
+Record normalization precedes name-count allocation/traversal and typed value
+reads. Function permutation normalizes, calls size and traverses both passes by
+value count. Preserve value-before-domain order, changed-domain normalized-state
+reset, value-only retained domain and unchanged whole-value identity. Native
+11280 finishes (035840); all 11,220 rows agree (601066). No persistent test or
+fixture, changed original assertions or original-method credit. The comparison
+does not establish general array/child ownership or other permutation mappings.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests plus focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream checks pass. Focused MVPerm,
+permutation subgroup, symmetry installation/context and special-value checks
+also pass. Session 65296 finishes with exit zero (d93b61); root 5.047s and tlc
+2.422s (cbac5b). No race, broad suite or shortened workloads. Logs remain under
+composite-permutation. Handoff and architecture updated. Latest full stress
+saved progress is 1,694,041,553 / 2,147,483,648 (cbac5b), without terminal result
+or long-method credit. Preserve original handle/artifacts/bounds. Other domain
+kinds/mappings, arbitrary callbacks and concurrency remain separate targets.

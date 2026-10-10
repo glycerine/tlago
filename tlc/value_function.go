@@ -362,6 +362,9 @@ func (v *ModelValue) DeepCopy() Value    { return v }
 
 func (v *ModelValue) Permute(perm *MVPerm) Value {
 	defer catchValueFailure(v, nil)
+	if perm == nil {
+		panic(NewNullPointerException())
+	}
 	if res := perm.Get(v); res != nil {
 		return res
 	}
@@ -937,9 +940,16 @@ func (v *RecordValue) Permute(perm *MVPerm) Value {
 	if err := v.normalizeRecord(); err != nil {
 		panic(err)
 	}
-	values := make([]Value, len(v.Values))
+	if v.Names == nil {
+		panic(NewNullPointerException())
+	}
+	values := make([]Value, len(v.Names))
 	changed := false
-	for i, value := range v.Values {
+	for i := range values {
+		value := fcnParameterDomain(v.Values, i)
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
 		values[i] = value.Permute(perm)
 		changed = changed || values[i] != value
 	}
@@ -1609,16 +1619,27 @@ func (v *FcnRcdValue) Permute(perm *MVPerm) Value {
 	if err := v.normalizeFcn(); err != nil {
 		panic(err)
 	}
-	values := make([]Value, len(v.Values))
+	size, err := v.Size()
+	if err != nil {
+		panic(err)
+	}
+	values := make([]Value, size)
 	vchanged := false
 	for i, value := range v.Values {
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
 		values[i] = value.Permute(perm)
 		vchanged = vchanged || values[i] != value
 	}
 	if v.Intv == nil {
-		domain := make([]Value, len(v.Domain))
+		domain := make([]Value, size)
 		dchanged := false
-		for i, value := range v.Domain {
+		for i := range domain {
+			value := fcnParameterDomain(v.Domain, i)
+			if isNil(value) {
+				panic(NewNullPointerException())
+			}
 			domain[i] = value.Permute(perm)
 			dchanged = dchanged || domain[i] != value
 		}

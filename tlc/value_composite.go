@@ -323,9 +323,15 @@ func (v *TupleValue) DeepCopy() Value {
 
 func (v *TupleValue) Permute(perm *MVPerm) Value {
 	defer catchValueFailure(v, nil)
+	if v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	out := make([]Value, len(v.Elems))
 	changed := false
 	for i, elem := range v.Elems {
+		if isNil(elem) {
+			panic(NewNullPointerException())
+		}
 		out[i] = elem.Permute(perm)
 		changed = changed || out[i] != elem
 	}

@@ -355,6 +355,8 @@ state traversal follows value count and skips child calls after an undefined
 value. Tuple/record/function deep normalization and copying preserve typed
 failures and traversal order; record sorting retains partial changes and source
 failure frames. Independent parent/child source attachment also agrees.
+Composite permutation follows source name/value traversal counts, typed failures
+and result identity; null, identity and model-swap observations agree.
 All bounded comparisons agree, including the prior lambda conversion and deep-
 normalization matrices; contracts and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
