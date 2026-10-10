@@ -925,10 +925,11 @@ func (v *FcnRcdValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
+		selfText := ValuesPPR(v)
 		if other == nil {
 			panic(NewNullPointerException())
 		}
-		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the function %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other)))
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the function %s with the value:\n%s", selfText, ValuesPPR(other)))
 	}
 	if err := v.normalizeFcn(); err != nil {
 		return 0, err
@@ -950,7 +951,7 @@ func (v *FcnRcdValue) compareOtherInterval(fcn *FcnRcdValue) (int, error) {
 		for i, dElem := range v.Domain {
 			iv, ok := dElem.(*IntValue)
 			if !ok {
-				return 0, v.unsupported("Attempted to compare integer with non-integer\n%s.", ValuesPPR(dElem))
+				return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare integer with non-integer\n%s.", ValuesPPR(dElem)))
 			}
 			intervalElement := int64(fcn.Intv.Low) + int64(i)
 			domainElement := int64(iv.Val)
@@ -1006,7 +1007,7 @@ func (v *FcnRcdValue) compareToInterval(fcn *FcnRcdValue) (int, error) {
 	for i, dElem := range fcn.Domain {
 		iv, ok := dElem.(*IntValue)
 		if !ok {
-			return 0, v.unsupported("Attempted to compare integer with non-integer:\n%s.", ValuesPPR(dElem))
+			return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare integer with non-integer:\n%s.", ValuesPPR(dElem)))
 		}
 		intervalElement := int64(v.Intv.Low) + int64(i)
 		domainElement := int64(iv.Val)
@@ -1033,10 +1034,11 @@ func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
+		selfText := ValuesPPR(v)
 		if other == nil {
 			panic(NewNullPointerException())
 		}
-		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the function %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other)))
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the function %s with the value:\n%s", selfText, ValuesPPR(other)))
 	}
 	if err := v.normalizeFcn(); err != nil {
 		return false, err
@@ -1064,7 +1066,7 @@ func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
 		for i, dElem := range fcn.Domain {
 			iv, ok := dElem.(*IntValue)
 			if !ok {
-				return false, v.unsupported("Attempted to compare an integer with non-integer:\n%s.", ValuesPPR(dElem))
+				return false, v.runtimeFailure(fmt.Sprintf("Attempted to compare an integer with non-integer:\n%s.", ValuesPPR(dElem)))
 			}
 			if int64(iv.Val) != int64(v.Intv.Low)+int64(i) {
 				return false, nil
@@ -1085,7 +1087,7 @@ func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
 		for i, dElem := range v.Domain {
 			iv, ok := dElem.(*IntValue)
 			if !ok {
-				return false, v.unsupported("Attempted to compare an integer with non-integer:\n%s.", ValuesPPR(dElem))
+				return false, v.runtimeFailure(fmt.Sprintf("Attempted to compare an integer with non-integer:\n%s.", ValuesPPR(dElem)))
 			}
 			if int64(iv.Val) != int64(fcn.Intv.Low)+int64(i) {
 				return false, nil
@@ -1116,7 +1118,10 @@ func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *FcnRcdValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the function %s", ValuesPPR(elem), ValuesPPR(v))
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the function %s", ValuesPPR(elem), ValuesPPR(v)))
 }
 
 func (v *FcnRcdValue) IsFinite() (bool, error) { return true, nil }
@@ -1128,7 +1133,11 @@ func (v *FcnRcdValue) Apply(arg Value) (resultValue Value, err error) {
 		return nil, err
 	}
 	if result == nil {
-		return nil, v.unsupported("Attempted to apply function:\n%s\nto argument %s, which is not in the domain of the function.", ValuesPPR(v), ValuesPPR(arg))
+		selfText := ValuesPPR(v)
+		if arg == nil {
+			panic(NewNullPointerException())
+		}
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply function:\n%s\nto argument %s, which is not in the domain of the function.", selfText, ValuesPPR(arg)))
 	}
 	return result, nil
 }
@@ -1138,7 +1147,10 @@ func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
 	if v.Intv != nil {
 		iv, ok := arg.(*IntValue)
 		if !ok {
-			return nil, v.unsupported("Attempted to apply function with integer domain to the non-integer argument %s", ValuesPPR(arg))
+			if arg == nil {
+				panic(NewNullPointerException())
+			}
+			return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply function with integer domain to the non-integer argument %s", ValuesPPR(arg)))
 		}
 		if iv.Val >= v.Intv.Low && iv.Val <= v.Intv.High {
 			offset := int64(iv.Val) - int64(v.Intv.Low)
@@ -1353,7 +1365,7 @@ func (v *FcnRcdValue) normalizeFcn() (err error) {
 			return err
 		}
 		if cmp == 0 {
-			return v.unsupported("The value\n%s\noccurs multiple times in the function domain.", v.Domain[i])
+			return v.runtimeFailure(fmt.Sprintf("The value\n%s\noccurs multiple times in the function domain.", v.Domain[i]))
 		}
 		if cmp > 0 {
 			v.Domain[0], v.Domain[i] = v.Domain[i], v.Domain[0]
@@ -1379,7 +1391,7 @@ func (v *FcnRcdValue) normalizeFcn() (err error) {
 			j--
 		}
 		if cmp == 0 {
-			return v.unsupported("The value\n%s\noccurs multiple times in the function domain.", v.Domain[i])
+			return v.runtimeFailure(fmt.Sprintf("The value\n%s\noccurs multiple times in the function domain.", v.Domain[i]))
 		}
 		v.Domain[j] = d
 		v.Values[j] = val

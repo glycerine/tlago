@@ -246,6 +246,10 @@ methods pass; Java record, tuple and interval originals also pass. Array dispatc
 now preserves tuple/record arity checks and both source catch boundaries. All 56
 array/sequence-helper observations and relevant original methods pass; function
 records retain their default tuple-packing behavior.
+Function-record domain comparison, membership, application and duplicate-domain
+failures now retain source runtime metadata. Receiver formatting precedes null
+operand failure, preserving normalization and exception precedence. All 288
+bounded comparisons and relevant original value/model methods pass.
 Continue concrete core TLC gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -255,7 +259,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,168,814,283 of 2,147,483,648 iterations, without a terminal result. The previous
+1,183,352,057 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

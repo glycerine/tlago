@@ -6947,6 +6947,15 @@ function conversion has no receiver source: its root shape failure stays an
 ordinary runtime exception, then the tuple boundary wraps it. Directly sourced
 function records retain detailed source metadata instead. These 120 observations
 do not establish every function-record domain comparison or other value subtype.
+Function-record integer/noninteger domain comparisons, membership, missing-domain
+Apply, interval-domain Select and duplicate-domain normalization now retain the
+source runtime failure and detailed metadata. Shape comparison/equality and
+missing-domain Apply format the receiver before dereferencing a null operand.
+Formatting may normalize the receiver or raise a duplicate-domain failure first;
+null checks therefore follow that formatting rather than preempting it. The
+288-row function-record matrix retains full outcomes and raw post-call domain/value
+arrays for explicit integer/string domains, duplicate domains, intervals and empty
+functions. It does not prove every binary-search threshold or nested value failure.
 
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime

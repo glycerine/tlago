@@ -32260,3 +32260,61 @@ new override registration or shortened workload. Formatting/diff checks pass;
 HANDOFF and TLC_ARCH replace the earlier array-overload verification gap with the
 precise dispatch contract and bounded evidence. Overall core TLC parity and
 original-model reconciliation remain incomplete.
+
+
+2026-10-10: Function-record runtime boundaries and receiver formatting order.
+
+Previous goal turn made verified progress in ce4cccd. Worktree starts clean.
+Direct polls e62726 and e805bb confirm original random stress handle 27326 is
+still live. Latest saved progress is 1,183,352,057 / 2,147,483,648 (f8817f), without
+terminal result or original-method credit. Preserve its full bounds and budget.
+
+Inspect all nine remaining FcnRcdValue unsupported boundaries against pinned
+Java Assert.fail calls: four integer/noninteger domain comparisons, membership,
+missing-domain Apply, interval-domain Select and two duplicate-domain normalization
+sites. Use runtimeFailure at those exact boundaries, retaining message arguments,
+source/context metadata and existing catchValueFailure wrapping. Member and
+interval-domain Select reject null arguments at the source dereference. Missing-
+domain Apply must format its receiver before a null argument dereference.
+
+Ignored .codex-gotmp/function-failures derives from the record harness. Five
+initial shapes cover unsorted explicit integer domain, two duplicate domains,
+interval domain and explicit string domain. Twenty-four operations run each
+with/without source: prior twenty record-style operations plus interval-vs-explicit
+comparison/equality in both directions. Compare complete values/root category
+and diagnostic, wrapping and detailed expression/EmptyContext identity, normalized
+flag and raw post-call domain/value arrays. Only enhanced JVM NPE messages are
+excluded. No persistent test or fixture was invented.
+
+The first strict 240-row comparison failed (26668 terminal 2fccdd). Two causes
+were inspected separately. First, fmt.Sprint in the native observer swallowed
+Stringer panics into PANIC=String method text, so explicit returned values now
+render by Value.String under the observer's exception boundary. Preserve the
+original before.log/after.log. Rebuild native baseline ce4cccd with a Go overlay
+of its exact value_function.go and the corrected observer, preserving
+before-corrected.log. Second, the early null guards introduced in the prior
+collection correction preempted receiver toString. Java formats this first,
+which may normalize the domain or throw its duplicate error before inspecting
+null. Evaluate/capture ValuesPPR(v) before checking null in Compare, Equal and
+missing-domain Apply. Keep argument formatting and subsequent exception order.
+This is a corrective additional change; no history rewrite or assertion weakening.
+
+All 240 corrected source/native rows match (17861 terminal 41c16c), with 104
+baseline differences. Add a sixth empty-function shape to exercise missing-domain
+Apply(null) and its receiver normalization. Final 288 complete rows match (82362
+terminal 142219); the original 240 source rows remain identical. Additional 48
+rows have no baseline-change claim. The initial duplicate-domain comparison now
+returns the source duplicate error before NPE and preserves moved/copied arrays.
+These bounded observations do not claim all domain sizes, thresholds or nested
+value failures, and add no original-method inventory credit.
+
+All 58 unchanged original FcnRcdValueTest (13), TupleValueTest (1) and
+ModelValueTest (44) methods pass: 22130 terminal 1cf2ae, original-values.log,
+2.248s. Java FcnRcdValueTest independently passes unchanged JUnitCore OK (13 tests),
+1710f4, java-original-values.log, 0.329s. Keep source class isolation as documented;
+this does not resolve the earlier combined class-order failure. Original
+ConstantRank2AssertError and ValueSemanticsAssume methods pass: 34193 terminal
+8e9c18, original-models.log, 2.429s. No broad sweep, race workload, modified
+original assertions or shortened bounds. Formatting/diff checks pass; HANDOFF
+and TLC_ARCH record failure categories and exact receiver-formatting order.
+Overall core TLC parity and original-model reconciliation remain incomplete.
