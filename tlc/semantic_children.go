@@ -123,7 +123,7 @@ func SemanticPathTo(root SemanticNode, location SourceLocation, requireExact boo
 				parameters = n.GetQuantSymbolLists()
 			}
 			for _, parameter := range parameters {
-				if parameter.Location == location {
+				if parameter.GetSourceLocation() == location {
 					path = []SemanticNode{parameter}
 				}
 			}

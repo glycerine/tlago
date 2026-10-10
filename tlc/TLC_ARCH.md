@@ -11096,6 +11096,24 @@ models and the Bitwise bridge check, 10,195 canonical locations agree both befor
 and after the change. This establishes the observed location contracts, not
 general syntax/semantic graph mutation sharing or all specialized formatters.
 
+Parser-backed SymbolNode views also delegate GetSourceLocation/GetTreeNode to
+their actual shared SemanticNodeBase. SetTreeNode updates that owner, so writing
+through a runtime symbol and through the parser object observes the same syntax.
+The source location resolver marks this parser-owned path; standalone native
+aliases/formals retain their separate adapter fields. Formal path lookup and
+variable-location capture during tool setup call the getter instead of reading
+the copied symbol Location field. Later changes to captured state-variable maps
+are outside this observation.
+
+Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
+and syntax identities now agree with the source owner. Baseline had 3,072 missing
+location/syntax views, primarily OpDef symbols. A pinned-Java/native standalone
+comparison loads unchanged Test219 and Debug02, then observes owner/view syntax
+replacement, removal, typed-null removal and restoration on definition, formal
+and variable symbols. All 15 rows agree; baseline differed throughout. General
+semantic name/body/parameter mutation and the remaining direct string-formatting
+paths remain separate work.
+
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target
 conversion helpers have been removed.

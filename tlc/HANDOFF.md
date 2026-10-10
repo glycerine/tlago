@@ -75,9 +75,16 @@ Parser-owned semantic bases also read current syntax locations for TLC getters,
 common human-readable locations and standard-module classification. Eight
 mutation cases match Java; 10,195 unchanged graph-location observations agree.
 Action definition display preserves an unknown location after syntax removal.
+Parser-backed symbol location/syntax accessors now use that shared owner too;
+all 4,637 observed symbol rows agree, including 3,072 previously missing views.
+Fifteen mutation rows across definition, formal and variable symbols match Java.
 General source generation, graph mutation sharing and source-less
 fallback lowering remain unproven. Keep those gaps distinct from the completed
 bounded observations.
+
+Next concrete source audit: `SemanticString` and direct semantic `String` methods
+still contain cached-location/name paths. Compare their source formatting before
+changing them; preserve the separate native lookup alias contract.
 
 ## Verification baseline and test credit
 

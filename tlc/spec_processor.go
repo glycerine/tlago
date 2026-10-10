@@ -417,7 +417,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 		names[i] = variable.String()
 	}
 	for _, node := range p.VariablesNodes {
-		locations[node.Name.String()] = node.Location
+		locations[node.Name.String()] = node.GetSourceLocation()
 	}
 	SetStateVariablesWithLocations(names, locations)
 	p.applyDefinitionsToTool(tool)

@@ -28903,3 +28903,56 @@ last change. Formatting and git diff --check pass. No original-method credit,
 assertion or workload-bound changes; no full-workspace/XML/ApalacheIR sweep,
 long race workload or excluded email work. General graph mutation sharing and
 specialized formatting remain unproven.
+
+
+Parser-backed symbol views share source syntax and locations (2026-10-09)
+
+Previous turn made authoritative progress with commit 0eb23d4. Revalidated the
+clean workspace and polled full off-heap random session 27326, still live. Latest
+observed progress exceeds 85 million of 2,147,483,648 iterations. No completion
+credit, second stress copy, race instrumentation or workload-bound change.
+
+The shared semantic base now reads live syntax, but SymbolNode overrode its
+location/tree getters with copied adapter fields. Actual SANY SymbolNodes are
+the definitions/declarations themselves; their syntax is the same owner observed
+by SemanticNode. An ignored overlay on existing Github817/1244, Test219, LET,
+cyclic and Debug02 originals plus the existing Bitwise bridge check finds 4,637
+canonical symbol rows. Baseline has 3,072 location mismatches and 3,072 syntax
+identity mismatches, primarily definition views with absent copied metadata.
+Receipt: .codex-gotmp/symbol-location-before-observation.log, terminal 90fa1e,
+status 0, 1.486 seconds.
+
+Parser-backed symbol getters now delegate to the actual shared semantic base;
+their syntax setter updates that owner too. The base's syntax-location resolver
+identifies parser ownership. Standalone native lookup aliases and formals retain
+their explicit adapter fields. Formal-parameter path lookup and tool setup's
+variable-location capture now call the getter. All 4,637 observed canonical
+locations and tree identities agree after the change: symbol-location-after-observation.log,
+terminal 603dd4, status 0, 1.477 seconds; count receipt 4ab1a3, zero mismatches.
+
+An ignored pinned-Java/native standalone driver loads unchanged original Test219
+and Debug02. It observes definition, formal and variable symbols through five
+owner/view mutations: owner replacement, view replacement, owner removal,
+typed-null removal and view restoration. The Java owner and symbol are the same
+object. All 15 native rows now match Java location, syntax identity and owner
+location; baseline differs on all 15 rows. Receipts under .codex-gotmp/:
+symbol-location-before-mutation.log, terminal 04e37d, status 0;
+symbol-location-after-mutation.log, terminal d5aa48, status 0;
+symbol-location-java-mutation.log, terminal d723a7, status 0;
+comparison/count receipt cea758, status 0. Driver/overlays remain ignored under
+symbol-location-observation. javac reports only its deprecated frontend overload.
+No Java source, original fixture, persistent test or original-method credit changes.
+
+Existing focused TLC checker/trace-retention/original coverage/tool getter/
+simulation trace checks pass: symbol-location-tlc-checks.log, terminal c201bf,
+status 0, 0.057 seconds. Selected original model/coverage/debugger/incremental
+semantic/context methods pass without observers: symbol-location-originals.log,
+terminal 4cbe82, status 0, 4.401 seconds. Short SANY suite passes:
+symbol-location-sany-checks.log, terminal b59db3, status 0, 2.593 seconds.
+Additional original Debug02-Debug05 debugger/simulation selection passes:
+symbol-location-debugger-originals.log, terminal 75f0d0, status 0, 2.690 seconds.
+Git diff --check passes. No full-workspace/XML/ApalacheIR sweep or excluded email
+work. General graph mutation sharing and state-variable map behavior after setup
+remain unproven. Next concrete source audit: SemanticString/direct String methods
+still use cached location/name paths; compare source formatting before changing
+them and retain native lookup alias behavior.
