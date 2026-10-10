@@ -6807,6 +6807,17 @@ source/native observations verify these branches, body identity under controlled
 runtime-table replacement, and actual values from existing C model definitions.
 These observations do not prove every configuration or module-visibility case.
 
+`TLCDefer` attaches deferred evaluation to the current and successor states in
+order, without evaluating its argument during setup. Extended states retain the
+callback; ordinary states keep their source no-op. Callback execution reuses the
+captured context, state pair, control and cost model. A null state during setup
+produces the coded runtime override failure, retaining a null detail parameter;
+a callback already attached to the first state survives a second-state failure.
+Later execution failures escape without the setup wrapper. Ten bounded
+source/native API observations verify these paths. Their full null-message
+comparison disables JVM enhanced NPE descriptions; those JVM-specific details
+are not synthesized by the native implementation.
+
 Imported operators retain their original symbols/arities while source bodies
 are converted, before module contexts are installed. Builtin operator arguments
 retain the original builtin OpDef fallback used by SymbolNodeValueLookupProvider.

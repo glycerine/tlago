@@ -31721,3 +31721,60 @@ Full random handle 27326 remains live on direct poll c983dd. Latest saved progre
 is 1,071,815,569 / 2,147,483,648 (a78cc4), without terminal result or completion
 credit. Preserve the handle, original bounds, default budget and artifacts.
 Core TLC parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10: TLCDefer setup runtime failure and nullable parameter.
+
+Previous goal turn was progress: verified commit 262440d. Revalidated clean
+worktree and original full random handle 27326 (5f1457 live). GetOrDefault's
+worker routing was already audited; do not repeat it without a new concrete gap.
+Deferred callback setup contains a distinct source mismatch: Java catches setup
+Throwable and calls Assert.fail with the override error code, operator name and
+e.getMessage(). Native's null-state branch instead returned an EvalException
+carrier and the literal string "null". Construct the existing nullable coded
+failure with Runtime=true and a genuinely null detail parameter. This preserves
+MP's unresolved %2% message slot, matching source when NPE has no detail text.
+No new Java exception machinery, state storage policy or callback-copy behavior.
+
+Ignored API observations under .codex-gotmp/defer-boundary use actual C semantic
+bodies and copied existing initial/successor states, a nonempty context, enabled
+control and a distinct incoming cost model. Renamed FastTool adapter
+DeferProbeTool records evaluation arguments and supplies the callback result or
+execution failure; Java TLCExt itself is unchanged. Independent ordinary and
+extended processes compare setup with two distinct states, the same state twice,
+null second/current states and deferred evaluation failure. They verify zero
+evaluation during setup, ordinary no-op behavior, repeated extended execution,
+unchanged captured context/state/control/cost arguments, partial first-state
+attachment, and execution failures escaping without the setup wrapper.
+
+The initial observer passed two semantic arguments directly to the Java helper,
+while native's registered one-argument operator correctly rejected that call.
+Preserve java-*.log and before-*.log as invalid-arity observations, not parity
+failures. Correct both observers to the legal single argument. To retain a
+reviewable baseline after fixing the observer, build before-onearg from the
+exact 262440d modules_tlc_ext.go through an ignored Go compiler overlay; no
+checkout, backup branch, reset or rebase. Final rows render the canonical
+NullableParams rather than its legacy string projection (null projects to an
+empty string), preserving the null-versus-literal distinction explicitly.
+
+All ten corrected rows match (4563c8), with four baseline setup-error differences
+(two null positions in each state mode). Logs are java-onearg-*, before-onearg-*
+and after-onearg-*. Java uses -XX:-ShowCodeDetailsInExceptionMessages for this
+full-message comparison; the native NPE has no enhanced JVM detail description.
+This bounds the diagnostic claim explicitly and does not establish parity for
+JVM-generated enhanced messages or arbitrary state-setter failures. No original
+Java TLCDefer method was found in the pinned module-test tree; no persistent
+test/fixture or original-method completion credit was invented.
+
+Four unchanged original model methods pass (1638 terminal 21fe11, 0.493s,
+original-models.log): TLCExtModel, TLCExtTraceSim and both simulation-worker
+state/action constraint methods. Seven original SimulationWorkerGetTraceTLCState
+methods plus existing callable/value and mode checks pass (49603 terminal
+0d0035, 0.012s, original-trace-and-callable.log). No broad suite or race run.
+Formatting and diff checks pass. HANDOFF and TLC_ARCH record the final contract
+and enhanced-message limit; detailed chronology remains here.
+
+Original full random handle 27326 remains live on direct polling (9d039f).
+Latest saved progress is 1,083,295,084 / 2,147,483,648 (4b3910), without terminal
+result or method credit. Preserve its handle, original bounds, default budget
+and artifacts. Overall TLC parity and original-model reconciliation remain open.

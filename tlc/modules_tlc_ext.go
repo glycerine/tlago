@@ -295,7 +295,11 @@ func TLCExtTLCDefer(states []*TLCStateMut, callable func() (any, error)) (Value,
 	ensureTLCExtConsole()
 	for _, state := range states {
 		if state == nil {
-			return nil, javaMethodOverrideError("TLCDefer", "null")
+			// The source catches the setup failure and calls Assert.fail. The
+			// underlying null-pointer exception has no native detail message.
+			failure := newTLCErrorCodeNullable(ECTLCModuleValueJavaMethodOverride, javaString("TLCDefer"), nil)
+			failure.Runtime = true
+			return nil, failure
 		}
 		state.SetCallable(callable)
 	}
