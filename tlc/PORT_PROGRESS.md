@@ -33298,3 +33298,49 @@ inventory credit. Update current handoff and architecture contracts.
 Original full stress handle 27326 remains live (0b5e86); latest saved progress
 is 1,384,348,328 / 2,147,483,648 (e18882), with no terminal result or credit.
 Preserve the original workload, memory budget, handle and artifacts.
+
+
+2026-10-10: Theorem contexts and context-factory runtime metadata
+
+Previous goal turn made verified progress in 41eed7f. Pinned Spec's theorem
+context helper retains its incoming context, while native GetThmOrAssumpContext
+still replaced nil. Tool.contexts rejects non-enumerable bounds through a
+source/context-bearing runtime assertion; native instead returned EvalException.
+These are concrete control-flow and error-carrier gaps in existing producers.
+
+Ignored .codex-gotmp/theorem-context-factory uses original test219 definitions
+Thm2, I!Thm2 and LOCAL K!Thm2. Nil, empty and actual-formal nonempty contexts
+cover context identity, theorem body evaluation and repeated lazy argument
+reads with caching enabled/disabled. The argument is the existing literal under
+Foo. Initial observers assume Foo's imported body is directly OpApplNode and
+fail on its real SubstInNode (376ba9; 62052 terminal ef2d87), producing no parity
+credit. Follow the actual substitution body without changing it. All 54 rows
+complete (81f449; 55354 terminal e5aea2), exposing 16 differences (d04b16).
+Remove only the theorem helper's nil-context replacement. All 54 complete rows
+now match (37767 terminal ce95f4; comparison 3f7dd7), including parameterized and
+LOCAL instance bindings, lazy context identity, body failures and cache counts.
+
+C's actual expensive definition supplies its inner quantifier and formal e.
+Bind that formal to represented Nat, Int, TRUE and the real first state's x
+value. Observe normal/randomized factory calls; all eight rows expose lost
+runtime category and expression/context metadata (2da7ff). Carry the actual
+bound and context through NewTLCDetailedRuntimeException using the existing
+value-owned diagnostic. All eight final rows match (72077 terminal 08c4b6;
+comparison 3f7dd7), including complete messages, GENERAL code, nullable parameter
+array, expression identity, exact incoming-context identity and frame depth.
+No fabricated semantic graph, evaluator callback or persistent test/fixture.
+Java enhanced NPE messages disabled. Additional argument-array/count boundaries
+remain outside this observation; both context helpers still have length guards
+absent from the Java loops and need source-backed producer reconciliation.
+
+Seven original checks pass unchanged (44525 terminal 803704,
+original-models.log, 4.606s): LegacySuiteTest216, LegacySuiteTest219,
+ConstantRank2AssertError, ValueSemanticsAssume, CCoverage, ICoverage and
+EmptyExistentialQuantifier. Focused context/function-context/bounded-CHOOSE/
+lookup/lazy-level checks pass (72262 terminal b4a784, existing-contexts.log,
+0.018s). No changed assertions, broad suite, race, shortened workload or
+original-method inventory credit. Update current handoff and contracts.
+
+Original full stress handle 27326 remains live (2d0777), latest saved progress
+1,399,313,236 / 2,147,483,648 (32cd9a). No terminal result or long-method credit;
+preserve its original handle, memory budget, bounds and artifacts.

@@ -652,9 +652,6 @@ func (t *Tool) GetThmOrAssumpContext(opDef *ThmOrAssumpDefNode, args []SemanticN
 		return c, newTLCError(ECGeneral, "applying theorem or assumption %s with wrong number of arguments", opDef)
 	}
 	c1 := c
-	if c1 == nil {
-		c1 = EmptyContext
-	}
 	for i, param := range opDef.Params {
 		c1 = c1.Cons(param, t.GetVal(args[i], c, cachable, DoNotRecordCostModel))
 	}
@@ -845,7 +842,7 @@ func (t *Tool) contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		}
 		enumerable, ok := asEnumerable(val)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "%s", nonEnumerableErrorMsg(val, bound))
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, nonEnumerableErrorMsg(val, bound), bound, c)
 		}
 		if i < len(expr.BdedQuantATuple) && expr.BdedQuantATuple[i] {
 			if i >= len(expr.BdedQuantSymbolLists) || len(expr.BdedQuantSymbolLists[i]) == 0 {

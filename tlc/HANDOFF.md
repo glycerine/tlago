@@ -304,7 +304,11 @@ relevant original model/debugger and focused checks pass. Detailed bounds and
 receipts stay in TLC_ARCH and PORT_PROGRESS. Enumerators and action constructors
 also retain their supplied contexts; 64 enumeration and 36 action observations
 match, including failed-binding cursor state and successor generation. Theorem
-contexts and additional context-factory failures remain separate audit gaps.
+contexts now retain their incoming context, and non-enumerable quantifier bounds
+retain detailed runtime failures; 54 theorem and eight factory observations
+match, with relevant original model checks passing. Ordinary/theorem context
+helpers still impose argument-count guards absent from the source loops; examine
+those and their actual argument-array producers next.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

@@ -5022,6 +5022,11 @@ Parameterized theorem and assumption definitions use Java's separate
 with `getVal(arg, context, cachable)` before evaluating the body. The Go
 `ThmOrAssumpDefNode` therefore carries `Params`, and eval/init/next/enabled all
 route through `GetThmOrAssumpContext`.
+That helper retains the incoming context, including nil. Zero-arity definitions
+return it unchanged; a parameter binding dereferences it through Context.Cons.
+The actual test219 imported theorem definitions verify ordinary, parameterized
+and LOCAL instances, lazy-argument context identity and cacheability. Argument
+array/count boundaries remain outside that bounded observation.
 
 ### Model Presentation
 
@@ -5742,6 +5747,11 @@ done flag unchanged; repeated calls repeat the source failure. With zero value
 enumerators, nextElement returns the supplied base and leaves isDone false.
 The bounded comparison covers real I model function/quantifier nodes and the
 direct zero-enumerator constructor; it adds no general null-array proof.
+Tool.contexts rejects a non-enumerable bound with a detailed runtime GENERAL
+failure carrying the actual bound expression and incoming context. It uses the
+bound value's diagnostic, including Nat and Int explanations. The check precedes
+normal or randomized enumeration. The bounded comparison uses C's actual inner
+quantifier with its formal bound to represented standard and state values.
 
 ## Utility Collections
 
@@ -7421,8 +7431,8 @@ evaluation leaves the cache and cache count unchanged. GetVar and GetPrimedVar
 also preserve the incoming context. Their lookup branch follows the operator's
 declared arity, including zero-arity builtins, rather than the argument slice
 length; prime recognition still precedes that branch. The bounded
-comparison covers actual C model expressions and APIs. Theorem contexts and
-additional context-factory failures remain outside this observation.
+comparison covers actual C model expressions and APIs. Additional argument-array
+and context-factory failure branches remain outside this observation.
 
 Initial-state, next-state and ENABLED predicate entry points preserve explicit
 nil contexts. A failure at the
