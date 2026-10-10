@@ -6957,6 +6957,20 @@ null checks therefore follow that formatting rather than preempting it. The
 arrays for explicit integer/string domains, duplicate domains, intervals and empty
 functions. It does not prove every binary-search threshold or nested value failure.
 
+Lazy-function membership, finiteness, application/selection binding failures and
+nonenumerable tuple conversion use the same source-aware Assert boundary. Null
+membership and direct args.toTuple calls retain typed NPEs. Its default array
+application rejects a nil argument slice before entering the single-argument
+source catch, so a sourced receiver does not add a frame for a null array.
+Actual C-model evaluations compare materialized-record flags, complete results,
+exception metadata and exact frame counts across four finite parameter shapes;
+two nonenumerable-domain conversion rows retain the source's unwrapped detailed
+failure. The matrix does not cover every malformed tuple formal or EXCEPT chain.
+Sorted ValueVec search raises typed NPE at the null key's Compare call inside
+the loop, preserving the empty-vector false result. Direct vector controls retain
+sorted/unsorted behavior for empty/nonempty searches and null/ordinary keys.
+
+
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime
 boundary. Null comparison/equality/member arguments fail before formatting; Apply

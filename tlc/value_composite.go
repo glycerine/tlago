@@ -114,6 +114,9 @@ func (v *ValueVec) Search(val Value, sorted bool) (bool, error) {
 		low, high := 0, len(v.data)
 		for low < high {
 			mid := (low + high) >> 1
+			if val == nil {
+				panic(NewNullPointerException())
+			}
 			cmp, err := val.Compare(v.data[mid])
 			if err != nil {
 				return false, err

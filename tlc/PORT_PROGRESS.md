@@ -32318,3 +32318,65 @@ ConstantRank2AssertError and ValueSemanticsAssume methods pass: 34193 terminal
 original assertions or shortened bounds. Formatting/diff checks pass; HANDOFF
 and TLC_ARCH record failure categories and exact receiver-formatting order.
 Overall core TLC parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10: Lazy-function runtime boundaries and default array null handling.
+
+Previous goal turn made verified progress in 6f5b264. Worktree starts clean.
+Original full random stress session 27326 remains live on direct polls 26c5db
+and 5ece9f. Latest saved progress is 1,191,273,593 / 2,147,483,648 (088712), without
+terminal result or original-method credit. Preserve original bounds and budget.
+
+Inspect FcnLambdaValue.java Assert.fail boundaries and FunctionValue's default
+array apply. Twelve source-backed generic unsupported calls remain in native
+membership, finiteness, apply/select binding and nonenumerable tuple conversion.
+Use the existing runtimeFailure helper while retaining exact message arguments
+and outer source catch boundaries. The native-only EXCEPT conversion type guard
+is unchanged. Null member arguments and direct args.toTuple calls now raise typed
+NPE at the source dereference. ApplyArgs(nil) raises typed NPE before delegating;
+Java's default-interface null-array failure has no receiver source catch/frame.
+Control passing, argument binding, evaluation and materialization algorithms are
+unchanged.
+
+Ignored .codex-gotmp/lambda-boundaries uses the actual checked C model, FastTool/
+native evaluator, initial state and c body. Parameter symbols are existing Op(S)
+and expensive(N) formals; no evaluation hooks or invented persistent fixtures.
+Four finite shapes cover one scalar parameter, two scalar parameters, one tuple
+parameter with two fields, and mixed tuple/scalar groups. Twelve operations with/
+without source exercise member, finite query, valid/invalid Apply and Select,
+null arguments/array, valid one-argument array, Boolean argument and ToTuple.
+Compare complete values/root failure category/message, detailed source/context,
+exact FingerprintException frame count and lazy materialized-record flag.
+Enhanced JVM NPE messages alone remain excluded.
+
+Initial Java observer compilation used ambiguous select(null); preserve setup
+failure and java.log, then explicitly cast to Value and save java-current.log.
+Initial strict 96-row comparison (91790 terminal 17d19e) and extended comparison
+(97342 terminal f44fe7) expose four remaining typed-NPE mismatches: tuple-domain
+membership calls ValueVec.search with sorted=true and null search key. Inspect
+source ValueVec.search: elem.compareTo executes only inside its nonempty loop.
+Native matched the algorithm but raised an untyped Go nil-interface panic.
+Add the typed NPE immediately before that call, leaving empty search unchanged.
+No synthetic normalization or null rejection before the loop.
+
+After that correction, all 98 rows match (16504 terminal fb242e): the initial
+96 plus two actual Nat-domain ToTuple failures, sourced and unsourced. Initial
+96 correct 56 baseline differences; the two new conversion rows have no baseline
+claim. Final failures and intermediate logs remain preserved. Nat conversion
+fails without materializing and without an extra source wrapper, retaining
+source detailed metadata where present. Eight direct vector rows also match
+(80237 terminal 56fe73), covering sorted/unsorted, empty/nonempty and null/one keys.
+These observations do not prove every incompatible tuple pattern, EXCEPT chain
+or evaluator control combination, and earn no original-method inventory credit.
+
+All 31 unchanged original FcnLambdaValueTest (18) and FcnRcdValueTest (13) methods
+pass, with three existing ValueVec checks and the existing SetEnum conversion
+check: 19713 terminal b5bc64, original-values.log, 2.170s. Unchanged Java
+FcnLambdaValueTest independently passes JUnitCore OK (18 tests), 280fe9,
+java-original-values.log, 0.053s. Two relevant original Go model methods,
+ConstantRank2AssertError and ValueSemanticsAssume, pass: 82269 terminal e32520,
+original-models.log, 2.523s. The selection's SetPredValue name matched no method;
+do not claim that model executed. No broad sweep, race work, original assertion
+changes or shortened bounds. Formatting/diff checks pass. HANDOFF consolidates
+function-value status; TLC_ARCH records exact null and source boundaries.
+Overall core TLC parity and original-model reconciliation remain incomplete.
