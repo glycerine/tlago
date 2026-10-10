@@ -397,7 +397,11 @@ one startup message from concurrent construction.
 String length and fingerprinting retain typed null-string failures; unquoted
 conversion fails before its source catch boundary. Comparison diagnostics render
 the receiver before a null argument. All 1,372 scalar observations agree with
-controlled string intern tokens. Debugger placeholder methods retain concrete
+controlled string intern tokens. Scalar comparison and membership now recognize typed-null right operands;
+model-value delegation excludes null pointers. Of 2,592 additional comparisons,
+2,576 match exactly. Sixteen string/debugger results retain the known intern-token
+allocation-order gap; actual token reads confirm correct subtraction in both
+runtimes. Focused original/native tests pass. Debugger placeholder methods retain concrete
 identity, source-frame ownership and unquoted diagnostic dispatch. String-backed
 record lookup/EXCEPT and function/lambda record conversion accept the subclass;
 value streams retain its object handles. All 240 scalar and 1,960 composite

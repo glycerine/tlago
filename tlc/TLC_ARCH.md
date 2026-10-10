@@ -8321,6 +8321,26 @@ subclasses/stream callbacks and parsed singleton/token initialization remain
 separate parity requirements. Native callers bypassing the private source
 constructor with a raw Go debugger literal are outside these observations.
 
+Scalar Compare, Equal and Member treat native typed-null right operands as
+Java null. Boolean/integer comparison excludes typed-null same-class pointers
+from the fast branch; string comparison skips string dispatch for logical null.
+Model-value delegation requires an actual non-null model receiver. Membership
+requires its argument receiver at the source dereference. String mismatch
+formatting still renders the receiver first, including null payload failures;
+existing value owner catches and valid comparison arithmetic are unchanged.
+
+The 2,592-case actual-runtime matrix includes nine scalar/debugger receiver forms,
+24 right operands, independent source flags and all three methods. Native null
+pointer classes correspond to actual Java null. Of these cases, 2,576 agree
+exactly. Sixteen raw string/debugger comparison results retain an intern-token
+allocation-order difference: source tokens for hello/surrogate/debugger are
+595/596/597, while native tokens are 800/801/1 in this runtime setup. All 36
+string-comparison token observations in each runtime verify the actual signed
+32-bit token subtraction. No tokens are synthesized or comparison results
+normalized away. This confirms arithmetic, not cross-runtime intern allocation
+parity. Focused original/native tests pass; no persistent test/fixture or
+original-method credit is added.
+
 Core Sequences operations retain their source conversion and read boundaries.
 Len/Head/Tail/Cons/Append invoke tuple Size rather than treating a null element
 array as empty. Concat converts both tuples before reading either size and reads

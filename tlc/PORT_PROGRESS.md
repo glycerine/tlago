@@ -38025,3 +38025,58 @@ establish termination. No duplicate run is started. Heap drafts compile but are
 not running. Prior random-long PASS is retained and its stale test-file comment
 is corrected; do not rerun it. Handoff now records the two live handles and the
 source generator issue. No main/long test credit changes; goal remains active.
+
+
+## Scalar typed-null comparisons/membership; live sequential runs retained
+
+Previous turn made progress in a59968c. Initial polls 30bb83/e4cc34 confirm
+Java sequential session 69494 and Go session 85088 remain live. Do not restart
+or shorten either original workload. Source/native logs record normal progress.
+Inspect scalar Compare/Equal/Member and their pinned Java bodies. Current equal
+handling from 1fcacdf still delegates a typed-null ModelValue receiver, while
+Compare and Member retain interface-only null checks. Those concrete gaps guide
+an ignored actual-runtime observer in .codex-gotmp/scalar-null.
+
+Reuse checked test206 Def2 source nodes, actual scalar/debugger/model constructors
+and existing diagnostic serialization. Nine receiver forms include Boolean,
+integer limits, strings with null payload/unpaired surrogate and actual debugger
+placeholder. Twenty-four operands include ten typed-null classes corresponding
+to actual Java null, valid/malformed scalars and actual tuple/set/model values.
+All three methods run with independent source flags. No semantic graph,
+evaluator callback, persistent test or fixture is fabricated. Initial Java
+compile wrongly guessed a ModelValue constructor; correct only the observer to
+use actual ModelValue.make. Native observer similarly uses actual MakeModelValue;
+compilation failures are not production-failure or method-completion credit.
+Source terminal 869919 and native session 81712 terminal 753746 exit zero.
+Baseline comparison 40220b: 2,592 rows, none missing/deferred, 740 differences.
+
+Compare excludes typed-null Boolean/IntValue pointers from its same-type branch;
+StringValue skips string dispatch for logical null. Scalar model delegation
+requires a non-null model pointer in both Compare and Equal. Membership receiver
+guards use isNil. Preserve source mismatch/receiver formatting order and all
+owner catches. No Compare arithmetic or global intern behavior changes.
+Native session 8220 terminal 88a353 exits zero. Comparison 7ad6ed leaves 16 raw
+non-stack differences; 724 null-dispatch differences are corrected. All remaining
+cases compare hello or the unpaired surrogate with the actual debugger string
+in either direction. UniqueString.compareTo uses signed token subtraction;
+these cases expose the already explicit actual-runtime intern-allocation gap.
+Do not fabricate JVM token identities or replace subtraction with lexical order.
+
+Add observer metadata reading actual tokens for existing successful string
+comparisons; do not normalize values or change inputs. Source terminal 4914d6
+and native 55902 terminal 595e51 exit zero. Comparison 97841f confirms 36 actual
+token-delta checks in each runtime all match signed int32 subtraction. Java
+hello/surrogate/debugger tokens are 595/596/597, native 800/801/1. Each log retains
+all 2,592 original observation rows. Thus 2,576 rows agree exactly and sixteen
+retain explicit intern-allocation differences, not full comparator-result parity.
+
+Focused original/native session 39828 terminal 6f1537 exits zero: root 7.305s,
+tlc 11.325s. Original module/scalar/model-value/set/tuple/function/stream/model
+and replay checks retain assertions and bounds; no race instrumentation.
+Handoff/architecture describe the correction and its intern-history limit.
+No main/long original-method credit changes. Goal active.
+
+Later polls 361de5/631736 confirm the same full sequential sessions are live.
+Native progress reaches 802,817 of 3,221,225,473 original iterations; Java emits
+its original insertion-rate lines. No terminal receipt or long-test credit.
+Continue polling 69494 and 85088 across turns, without duplicates.

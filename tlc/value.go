@@ -252,11 +252,11 @@ func (v *BoolValue) KindString() string { return v.KindStringFor(v.Kind()) }
 func (v *BoolValue) Compare(other Value) (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
 	o, ok := other.(*BoolValue)
-	if !ok {
-		if mv, ok := other.(*ModelValue); ok {
+	if !ok || o == nil {
+		if mv, ok := other.(*ModelValue); ok && mv != nil {
 			return mv.modelValueCompareTo(v)
 		}
-		if other == nil {
+		if isNil(other) {
 			panic(NewNullPointerException())
 		}
 		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare boolean %s with non-boolean:\n%s", ValuesPPR(v), ValuesPPR(other)))
@@ -275,7 +275,7 @@ func (v *BoolValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	o, ok := other.(*BoolValue)
 	if !ok || o == nil {
-		if mv, ok := other.(*ModelValue); ok {
+		if mv, ok := other.(*ModelValue); ok && mv != nil {
 			return mv.modelValueEquals(v)
 		}
 		if isNil(other) {
@@ -288,7 +288,7 @@ func (v *BoolValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *BoolValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	if elem == nil {
+	if isNil(elem) {
 		panic(NewNullPointerException())
 	}
 	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the boolean %s", ValuesPPR(elem), ValuesPPR(v)))
@@ -417,11 +417,11 @@ func (v *IntValue) NBits() int {
 func (v *IntValue) Compare(other Value) (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
 	o, ok := other.(*IntValue)
-	if !ok {
-		if mv, ok := other.(*ModelValue); ok {
+	if !ok || o == nil {
+		if mv, ok := other.(*ModelValue); ok && mv != nil {
 			return mv.modelValueCompareTo(v)
 		}
-		if other == nil {
+		if isNil(other) {
 			panic(NewNullPointerException())
 		}
 		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare integer %s with non-integer:\n%s", ValuesPPR(v), ValuesPPR(other)))
@@ -439,7 +439,7 @@ func (v *IntValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	o, ok := other.(*IntValue)
 	if !ok || o == nil {
-		if mv, ok := other.(*ModelValue); ok {
+		if mv, ok := other.(*ModelValue); ok && mv != nil {
 			return mv.modelValueEquals(v)
 		}
 		if isNil(other) {
@@ -452,7 +452,7 @@ func (v *IntValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *IntValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	if elem == nil {
+	if isNil(elem) {
 		panic(NewNullPointerException())
 	}
 	return false, v.runtimeFailure("Attempted to check if the value:\n" + ValuesPPR(elem) + "\nis an element of the integer " + ValuesPPR(v))
@@ -568,13 +568,17 @@ func (v *StringValue) Length() int {
 
 func (v *StringValue) Compare(other Value) (resultInt int, err error) {
 	defer catchValueFailure(v.receiver(), &err)
-	o, ok := asStringValue(other)
+	var o *StringValue
+	var ok bool
+	if !isNil(other) {
+		o, ok = asStringValue(other)
+	}
 	if !ok {
-		if mv, ok := other.(*ModelValue); ok {
+		if mv, ok := other.(*ModelValue); ok && mv != nil {
 			return mv.modelValueCompareTo(v.receiver())
 		}
 		selfText := ValuesPPR(v.receiver())
-		if other == nil {
+		if isNil(other) {
 			panic(NewNullPointerException())
 		}
 		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare string %s with non-string:\n%s", selfText, ValuesPPR(other)))
@@ -593,7 +597,7 @@ func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
 		o, ok = asStringValue(other)
 	}
 	if !ok {
-		if mv, ok := other.(*ModelValue); ok {
+		if mv, ok := other.(*ModelValue); ok && mv != nil {
 			return mv.modelValueEquals(v.receiver())
 		}
 		selfText := ValuesPPR(v.receiver())
@@ -610,7 +614,7 @@ func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *StringValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v.receiver(), &err)
-	if elem == nil {
+	if isNil(elem) {
 		panic(NewNullPointerException())
 	}
 	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the string %s", ValuesPPR(elem), ValuesPPR(v.receiver())))
