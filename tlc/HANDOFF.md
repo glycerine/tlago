@@ -115,9 +115,13 @@ local/TCP worker checks pass; no production correction was needed. Initial
 predicates now retain the processor's `Vect` object instead of a slice snapshot.
 Cached growth, shrinkage, replacement and restoration match Java in 13 bounded
 observations; all 53 earlier predicate observations still agree. Focused original
-checks pass, including all five generated-trace tests. Continue core source
-parity and remaining original model-test reconciliation. General `Vect` invalid-
-count and exception behavior remains unproven.
+checks pass, including all five generated-trace tests. Simulation statistics now
+report current tool actions, retain the source matrix shape and use direct action
+IDs. Action-flow aggregation preserves source bounds failures; all 68 bounded
+worker/graph observations agree, and focused original simulation checks pass.
+Next source audit: action-flow graph output. General `Vect` invalid-count and
+exception behavior remains unproven; original model-test reconciliation remains
+open.
 
 ## Verification baseline and test credit
 

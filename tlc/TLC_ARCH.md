@@ -11291,6 +11291,30 @@ observer calls AddGeneratedSuccessor. Both install simulation state metadata
 before generating states and retain trace assertions. Replacements occur inside
 evaluation callbacks, without concurrent writes. These comparisons do not prove
 VM-generated null-detail messages or arbitrary concurrent graph mutation.
+Simulation statistics retain their source worker's tool. Extended action reports
+read its current combined initial/next actions each time, preserving counts by
+name while reflecting added, removed and replaced actions. Source statistics
+construction no longer reads action names merely to cache them. Tracing captures
+the matrix dimensions at construction, including zero dimensions; disabled
+tracing keeps its single unused cell. Successor collection uses state action IDs
+directly and preserves source matrix access order and null/bounds exceptions.
+Standalone native adapters retain their existing optional-state/name behavior.
+
+Action-flow snapshots read all cells in the current action dimensions and retain
+source failures when a worker's captured matrix is too small. Context reduction
+checks current action IDs instead of silently discarding out-of-range IDs. It
+keeps the source aggregation and definition-location grouping. All 68 ignored
+pinned-Java/native observations agree on full normalized action records, matrix
+shapes and counts, generated-state counters, keep/reduce snapshots, two-worker
+aggregation and escaping exception categories. They use unchanged BasicMultiTrace
+with actual Init/Next-generated simulation states, actual worker statistics and
+actual simulator snapshot methods. Standard/extended statistics and tracing
+off/on are observed separately. Current actions are changed through the source
+initial vector and action field, with native equivalents. No worker threads are
+started in this bounded comparison; it does not prove concurrent reporting or
+complete DOT output parity. Existing focused original simulation checks pass.
+No persistent tests/fixtures or original-method credit are added.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

@@ -115,6 +115,8 @@ type SimulationWorkerStatistics struct {
 	Extended        bool
 	TraceID         int64
 	workerActionIDs *InsMap[*UniqueString, int]
+	tool            *Tool
+	sourceTool      bool
 	distinctStates  *CountDistinct
 	distinctValues  *InsMap[*UniqueString, *CountDistinct]
 }
@@ -132,7 +134,7 @@ func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atom
 	size := 1
 	if traceActions != "" && tool != nil {
 		size = len(tool.GetSpecActions())
-		if size < 1 {
+		if size < 1 && tool.SpecProcessor == nil {
 			size = 1
 		}
 	}
@@ -145,6 +147,8 @@ func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atom
 		DistinctValues:  NewInsMap[*UniqueString, int64](),
 		ActionCounts:    NewInsMap[*UniqueString, int64](),
 		workerActionIDs: NewInsMap[*UniqueString, int](),
+		tool:            tool,
+		sourceTool:      tool != nil && tool.SpecProcessor != nil,
 		Extended:        simulatorPropertyBool("tlc2.tool.Simulator.extendedStatistics", "TLAGO_SIMULATOR_EXTENDED_STATISTICS"),
 		distinctValues:  NewInsMap[*UniqueString, *CountDistinct](),
 	}
@@ -159,7 +163,7 @@ func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atom
 	for i := range stats.ActionStats {
 		stats.ActionStats[i] = make([]int64, size)
 	}
-	if tool != nil {
+	if tool != nil && !stats.sourceTool {
 		for id, action := range tool.GetSpecActions() {
 			if action != nil {
 				stats.workerActionIDs.Set(UniqueStringOf(action.GetName()), id)
@@ -207,7 +211,24 @@ func newSimulationCountDistinct(bits int) *CountDistinct {
 }
 
 func (s *SimulationWorkerStatistics) CollectPostSuccessor(state *TLCStateMut, action *Action, next *TLCStateMut) {
-	if s == nil || s.TraceActions == "" || state == nil || next == nil {
+	if s == nil || s.TraceActions == "" {
+		return
+	}
+	if s.sourceTool {
+		if state == nil || state.GetAction() == nil {
+			panic(NewNullPointerException())
+		}
+		from := state.GetAction().GetID()
+		row := simulationActionStatsRow(s.ActionStats, from)
+		if next == nil || next.GetAction() == nil {
+			panic(NewNullPointerException())
+		}
+		to := next.GetAction().GetID()
+		simulationActionStatsCell(row, to)
+		row[to]++
+		return
+	}
+	if state == nil || next == nil {
 		return
 	}
 	from := actionIDFromStateAction(s, state.GetAction())
@@ -216,6 +237,26 @@ func (s *SimulationWorkerStatistics) CollectPostSuccessor(state *TLCStateMut, ac
 		s.ActionStats[from][to]++
 	}
 	_ = action
+}
+
+func simulationActionStatsRow(stats [][]int64, index int) []int64 {
+	if stats == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(stats) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(stats)))
+	}
+	return stats[index]
+}
+
+func simulationActionStatsCell(row []int64, index int) int64 {
+	if row == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(row) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(row)))
+	}
+	return row[index]
 }
 
 func (s *SimulationWorkerStatistics) CollectPreTrace() int64 {
@@ -317,6 +358,16 @@ func (s *SimulationWorkerStatistics) GetActions() Value {
 		return EmptyRecord
 	}
 	values := NewInsMap[*UniqueString, Value]()
+	if s.sourceTool {
+		for _, action := range s.tool.GetSpecActions() {
+			if action == nil {
+				panic(NewNullPointerException())
+			}
+			key := UniqueStringOf(action.GetName())
+			values.Set(key, intValueFromInt64(s.ActionCounts.Get(key)))
+		}
+		return NewRecordValueFromInsMap(values)
+	}
 	for key := range s.workerActionIDs.All() {
 		values.Set(key, intValueFromInt64(s.ActionCounts.Get(key)))
 	}

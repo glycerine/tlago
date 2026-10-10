@@ -29694,3 +29694,64 @@ Final getter-order adjustment retains all 13 vector observations; final native
 session 32353 completed status 0 (9048ea). Final Tool/Vect checks pass normally,
 session 68352 completed status 0 (4070ab); see init-vector-final-native.log and
 init-vector-final-tool.log. Formatting and git diff --check pass.
+
+
+2026-10-09: Simulation action-statistic ownership and matrix boundaries
+
+Previous goal turn made concrete progress in 16981bb. Remaining main-suite
+inventory items still describe upstream failures or JVM-specific assertions;
+no new disposition or original-method credit was inferred. Source review found
+three production differences in simulation statistics: native extended action
+reports cached construction-time names, empty traced action sets were clamped to
+one matrix row, and matrix collection/graph aggregation silently skipped invalid
+indexes or truncated captured matrices. Source reports current tool actions,
+allocates exact dimensions and exposes the corresponding source array failures.
+
+SimulationWorkerStatistics now retains the worker tool and its parser-backed
+origin. Extended GetActions reads current combined actions while retaining
+collected counts by name. Parser-backed construction does not read/copy names
+when Java would not query them. Matrix dimensions retain zero for an empty traced
+set; disabled tracing keeps the unused single cell. Source successor collection
+uses actual state action IDs directly and checks row/column accesses in source
+order. Shared helpers preserve null/bounds categories. Simulator snapshots read
+every current-dimension cell and reject invalid reduction IDs instead of silently
+truncating or skipping them. Existing native standalone adapters remain intact.
+
+All 68 final pinned-Java/native observations agree: 34 each for standard and
+extended statistics, each observing tracing off/on. Rows include normalized
+current action records, counters and matrices after two actual successors;
+initial-vector growth/clear, action replacement/restoration; exact empty matrix
+shape and collection result; keep/reduce snapshots through those phases; and
+aggregation of two distinct actual workers. Baseline at 16981bb differs in ten
+extended and four standard rows. Comparison 8eb186 returned status 0. Source
+uses actual SimulationWorker statistics and private Simulator snapshot methods
+via reflection, with unchanged BasicMultiTrace and real initial/pick-branch/
+traverse-branch states in simulation mode. Native uses the production parser,
+actual worker statistics and snapshot method via ignored export overlay. No
+worker threads run in these observations, so concurrent reporting remains
+unproved. No new persistent tests or source fixtures were added.
+
+Ignored drivers/overlays are under .codex-gotmp/simulation-statistics-observation/.
+Final logs in .codex-gotmp/ are simulation-statistics-final-{java,before,after}-
+{extended,standard}.log. Final Java compile 226101 returned status 0; extended
+Java ea7314, native 32fc26, baseline a30d3b and standard Java f57811, native
+aec4ee, baseline c0d4d1 all returned status 0. Earlier Java/native setup attempts
+failed because the observer selected the pick-branch action again in a nonzero
+branch and because RuntimeParameters has no Mode field. Corrected the ignored
+observer to use the existing traverse action and install ModeSimulation before
+generating states. Those failed attempts supply no comparison evidence; no
+production workaround was made for observation setup.
+
+Focused original SimulationWorker, SimulatorCorrectness, simulator behavior
+printing, TLCGetAll and TLCGetLevel plus native Simulator/SimulationWorker checks
+pass after both production changes: simulation-statistics-final-originals.log,
+session 58287 completed status 0 (ec9967); root 1.360 seconds, TLC 0.013 seconds.
+Earlier worker-only original selection also passed, session 79222 terminal
+8a6bbb; root 0.977 seconds, TLC 0.012 seconds. Original inputs and assertions are
+unchanged. Formatting and git diff --check pass. No broad suite, XML/ApalacheIR
+sweep or race workload. Inventory counts remain unchanged.
+
+Full original off-heap stress session 27326 remains live, poll c1a9f7; latest
+saved observation 472,965,686 / 2,147,483,648 iterations, no terminal result or
+method credit. Overall parity remains incomplete. Next source audit: simulator
+action-flow graph output, which the bounded snapshot comparison does not prove.

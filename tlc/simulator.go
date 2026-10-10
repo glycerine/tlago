@@ -999,6 +999,7 @@ func (s *Simulator) getActionFlowGraphSnapshot(contexts actionFlowGraphContexts)
 		return &actionFlowGraphSnapshot{}
 	}
 	actions := s.Tool.GetSpecActions()
+	sourceTool := s.Tool.SpecProcessor != nil
 	length := len(actions)
 	aggregate := make([][]int64, length)
 	for i := range aggregate {
@@ -1006,9 +1007,20 @@ func (s *Simulator) getActionFlowGraphSnapshot(contexts actionFlowGraphContexts)
 	}
 	for _, worker := range s.Workers {
 		if worker == nil || worker.Statistics == nil {
+			if sourceTool {
+				panic(NewNullPointerException())
+			}
 			continue
 		}
 		workerStats := worker.Statistics.ActionStats
+		if sourceTool {
+			for i := 0; i < length; i++ {
+				for j := 0; j < length; j++ {
+					aggregate[i][j] += simulationActionStatsCell(simulationActionStatsRow(workerStats, i), j)
+				}
+			}
+			continue
+		}
 		for i := 0; i < length && i < len(workerStats); i++ {
 			for j := 0; j < length && j < len(workerStats[i]); j++ {
 				aggregate[i][j] += workerStats[i][j]
@@ -1023,6 +1035,9 @@ func (s *Simulator) getActionFlowGraphSnapshot(contexts actionFlowGraphContexts)
 	actionsToDistinctActions := make([]int, length)
 	for _, action := range actions {
 		if action == nil {
+			if sourceTool {
+				panic(NewNullPointerException())
+			}
 			continue
 		}
 		definition := action.GetDefinitionLocation()
@@ -1033,6 +1048,9 @@ func (s *Simulator) getActionFlowGraphSnapshot(contexts actionFlowGraphContexts)
 			reducedActions = append(reducedActions, action)
 		}
 		actionID := action.GetID()
+		if sourceTool && (actionID < 0 || actionID >= len(actionsToDistinctActions)) {
+			panic(NewArrayIndexOutOfBoundsException(actionID, len(actionsToDistinctActions)))
+		}
 		if actionID >= 0 && actionID < len(actionsToDistinctActions) {
 			actionsToDistinctActions[actionID] = id
 		}
