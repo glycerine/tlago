@@ -380,7 +380,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 			if err != nil {
 				return nil, err
 			}
-			bval, err := requireBoolValue(value, "A non-boolean expression (%s) was used as a formula in a conjunction.\n%s", valueKindString(value), SemanticString(arg))
+			bval, err := requireBoolValueAt(value, arg, c, "A non-boolean expression (%s) was used as a formula in a conjunction.\n%s", valueKindString(value), SemanticString(arg))
 			if err != nil {
 				return nil, err
 			}
@@ -395,7 +395,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 			if err != nil {
 				return nil, err
 			}
-			bval, err := requireBoolValue(value, "A non-boolean expression (%s) was used as a formula in a disjunction.\n%s", valueKindString(value), SemanticString(arg))
+			bval, err := requireBoolValueAt(value, arg, c, "A non-boolean expression (%s) was used as a formula in a disjunction.\n%s", valueKindString(value), SemanticString(arg))
 			if err != nil {
 				return nil, err
 			}
@@ -415,7 +415,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		guard, err := requireBoolValue(guardValue, "A non-boolean expression (%s) was used as the condition of an IF.\n%s", valueKindString(guardValue), SemanticString(expr))
+		guard, err := requireBoolValueAt(guardValue, expr, c, "A non-boolean expression (%s) was used as the condition of an IF.\n%s", valueKindString(guardValue), SemanticString(expr))
 		if err != nil {
 			return nil, err
 		}
@@ -466,7 +466,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		arg, err := requireBoolValue(value, "Attempted to apply the operator ~ to a non-boolean\n(%s)\n%s", valueKindString(value), SemanticString(expr))
+		arg, err := requireBoolValueAt(value, args[0], c, "Attempted to apply the operator ~ to a non-boolean\n(%s)\n%s", valueKindString(value), SemanticString(expr))
 		if err != nil {
 			return nil, err
 		}
@@ -602,22 +602,29 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		return t.evalActionSubscript(expr, opcode, args, c, s0, s1, control, cm)
 	case OpcodeCdot:
 		return t.evalActionComposition(args, c, s0, s1, control, cm)
-	case OpcodeSF:
-		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "SF", SemanticString(expr))
-	case OpcodeWF:
-		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "WF", SemanticString(expr))
-	case OpcodeTE:
-		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "\\EE", SemanticString(expr))
-	case OpcodeTF:
-		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "\\AA", SemanticString(expr))
-	case OpcodeLeadsto:
-		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "a ~> b", SemanticString(expr))
-	case OpcodeArrow:
-		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "a -+-> formula", SemanticString(expr))
-	case OpcodeBox:
-		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "[]A", SemanticString(expr))
-	case OpcodeDiamond:
-		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "<>A", SemanticString(expr))
+	case OpcodeSF, OpcodeWF, OpcodeTE, OpcodeTF, OpcodeLeadsto, OpcodeArrow, OpcodeBox, OpcodeDiamond:
+		form := ""
+		switch opcode {
+		case OpcodeSF:
+			form = "SF"
+		case OpcodeWF:
+			form = "WF"
+		case OpcodeTE:
+			form = "\\EE"
+		case OpcodeTF:
+			form = "\\AA"
+		case OpcodeLeadsto:
+			form = "a ~> b"
+		case OpcodeArrow:
+			form = "a -+-> formula"
+		case OpcodeBox:
+			form = "[]A"
+		case OpcodeDiamond:
+			form = "<>A"
+		}
+		failure := NewTLCRuntimeException(ECTLCEncounteredFormulaInPredicate, form, SemanticString(expr))
+		failure.Expr, failure.Ctxt = expr, c
+		return nil, failure
 	default:
 		return nil, newTLCError(ECGeneral, "TLC BUG: could not evaluate this expression.\n%s", SemanticString(expr))
 	}
@@ -958,6 +965,13 @@ func requireBoolValue(value Value, format string, args ...any) (*BoolValue, erro
 	return nil, newTLCError(ECGeneral, format, args...)
 }
 
+func requireBoolValueAt(value Value, expr SemanticNode, c *Context, format string, args ...any) (*BoolValue, error) {
+	if bval, ok := value.(*BoolValue); ok {
+		return bval, nil
+	}
+	return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf(format, args...), expr, c)
+}
+
 func valueKindString(value Value) string {
 	if value == nil {
 		return "<nil>"
@@ -975,7 +989,7 @@ func (t *Tool) evalBinaryConjunction(args []SemanticNode, c *Context, s0 *TLCSta
 		if i == 0 {
 			side = "P"
 		}
-		bval, err := requireBoolValue(value, "Attempted to evaluate an expression of form P /\\ Q when %s was\n%s.\n%s", side, valueKindString(value), SemanticString(expr))
+		bval, err := requireBoolValueAt(value, expr, c, "Attempted to evaluate an expression of form P /\\ Q when %s was\n%s.\n%s", side, valueKindString(value), SemanticString(expr))
 		if err != nil {
 			return nil, err
 		}
@@ -996,7 +1010,7 @@ func (t *Tool) evalBinaryDisjunction(args []SemanticNode, c *Context, s0 *TLCSta
 		if i == 0 {
 			side = "P"
 		}
-		bval, err := requireBoolValue(value, "Attempted to evaluate an expression of form P \\/ Q when %s was\n%s.\n%s", side, valueKindString(value), SemanticString(expr))
+		bval, err := requireBoolValueAt(value, expr, c, "Attempted to evaluate an expression of form P \\/ Q when %s was\n%s.\n%s", side, valueKindString(value), SemanticString(expr))
 		if err != nil {
 			return nil, err
 		}

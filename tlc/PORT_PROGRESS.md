@@ -33488,3 +33488,50 @@ Update current handoff and architecture contracts.
 Original full stress handle 27326 remains live (fef341), latest saved progress
 1,429,093,135 / 2,147,483,648 (122782). No terminal result or long-method credit;
 preserve its original handle, memory budget, bounds and artifacts.
+
+
+2026-10-10: Boolean evaluation runtime metadata
+
+Previous goal turn made verified progress in 823bba3. Pinned Tool.evalApplImpl
+uses source/context-bearing Assert failures for non-boolean list/binary
+conjunction/disjunction, negation and IF. Native requireBoolValue instead
+returned EvalException without expression/context. Temporal-formula predicate
+failures likewise lost their source detailed runtime category and references.
+
+Ignored .codex-gotmp/boolean-evaluation-metadata binds existing symbols/formals
+to FALSE, TRUE, 1 and a string, using actual B Switch/Next,
+MinimalSetOfNextStates Next and Github817 CheckBoth/Spec/opRec bodies. Two base
+contexts, all binary value pairs and unary/list/invalid-IF guards yield 92 rows.
+No semantic graph mutation, invented evaluator, persistent test or fixture.
+Initial observers selected C's nested binary disjunction instead of a disjunction
+list and assumed a Github817.cfg that does not exist (e48e47/a74f08). Use the
+actual MinimalSetOfNextStates list and original Github817b config. Sequential
+FastTools in one Java process reject the next model's Init as constant (f8a074);
+run each actual model in a fresh Java process (aa57df/fb5ee8/bd578f). Direct
+FastTool setup does not extract Github817's embedded config (ee507f); its existing
+b config loads correctly. Incomplete outputs provide no parity credit.
+The complete baseline exposes 58 differences (903a6b; comparison b0c21b).
+
+Add source-aware boolean validation at the six inspected Eval paths. Retain
+list child, binary/IF application and negation operand ownership, including exact
+incoming context. All eight source temporal opcode branches now construct the
+same detailed runtime error with code 2261 and original parameters. The box
+failure reached from Github817 Spec is directly compared. All 92 final rows
+match (9ea800; source b6f4ef; comparison 141b04), including complete messages,
+category/code/parameters, exact failing expression/context, zero frame depth
+and short-circuit results. Earlier complete comparison fb9f30 also matches;
+final observers strengthen box expression identity. Java enhanced NPE messages
+disabled. Implication/equivalence/CASE, quantified and action-subscript boolean
+errors remain outside this observation, as do direct remaining temporal opcodes.
+
+Focused evaluator/liveness/lookup checks pass (9517 terminal 63a347;
+existing-checks.log, 0.014s). Eleven original model checks pass unchanged
+(6977 terminal 4360d3; original-models.log, 4.152s): BCoverage, CCoverage,
+MinimalSetOfNextStates, Github817 and its b/c/d/e variants,
+ConstantRank2AssertError, ValueSemanticsAssume and Debug02Debugger.
+No changed assertions, broad suite, race, reduced bounds or inventory credit.
+Update current handoff and architecture contracts.
+
+Original full stress handle 27326 remains live (1324a8), latest saved progress
+1,436,756,385 / 2,147,483,648 (e0ee4c). No terminal result or long-method credit;
+preserve its original handle, memory budget, bounds and artifacts.

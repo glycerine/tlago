@@ -7452,6 +7452,20 @@ All 132 observations on actual test219 definitions/arguments agree across nil,
 empty and bound contexts and both caching modes. Other typed-null expression
 classes remain outside this observation.
 
+Boolean Eval failures for conjunction/disjunction lists, binary conjunction/
+disjunction, negation and IF use the source detailed runtime carrier. List errors
+retain the offending child, binary/IF errors the whole application, and negation
+errors its operand even though the diagnostic prints the negation application.
+All retain the exact evaluation context and GENERAL code with null parameters.
+Temporal-formula opcode failures retain runtime code 2261, the original form/
+expression parameters and the current expression/context. The eight source
+branches share the same carrier construction. All 92 observations on actual B,
+MinimalSetOfNextStates and Github817 definitions agree for booleans, integer and
+string context bindings, short-circuit results and the reached box formula.
+This directly observes six boolean paths and the box path, not every temporal
+opcode. Implication, equivalence, CASE, quantified predicates, action-subscript
+checks and generation-specific boolean diagnostics remain separate comparisons.
+
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays
 before arguments, and preserves null-array failures at those dereferences.

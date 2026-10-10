@@ -320,7 +320,11 @@ empty groups, ignored excess domains and null/index failure precedence. All 102
 factory observations and relevant original model checks pass. Argument conversion
 now rejects null before lazy construction or formal indexing, and null-symbol
 lookup retains Java's typed failure. All 132 related observations and relevant
-original model checks pass.
+original model checks pass. Conjunction/disjunction, negation and IF errors now
+retain the source runtime category and failing expression/context, including
+list-child versus whole-expression ownership. Temporal-formula failures use the
+same detailed runtime carrier. All 92 observed evaluation rows and relevant
+original checks pass; remaining boolean error branches still need comparison.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.
