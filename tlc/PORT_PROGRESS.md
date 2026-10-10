@@ -31159,3 +31159,57 @@ the same handle live. No terminal result or original-method credit. Keep full
 bounds, default budget and live files. Next concrete audit: source required
 checker/current-state ownership in TLCExt!Trace versus native fallback branches.
 Overall TLC parity remains incomplete.
+
+
+2026-10-10 Required TLCExt!Trace ownership:
+Previous turn made verified progress in 3a4468d; clean tree revalidated (125c80).
+Full off-heap random session 27326 remains live (60f95e and cfbadb). Source Trace
+reads allAssigned from its supplied state before any short path. Its unwritten
+noninitial branch dereferences IdThread.currentState, and requires mainChecker
+only if that current state is noninitial. Written noninitial states always require
+mainChecker but not a saved current state. Initial and initial-current/unwritten
+short paths return without a checker.
+
+Native Trace returned an empty tuple for a null supplied state, tried another
+trace path for a missing current state and reconstructed predecessor chains when
+the checker was missing. Source has none of these fallback paths. Ignored
+trace-owner-observation drivers derive actual initial/written/unwritten C states
+through the same real MemFPSet/Worker trace setup as the prior repeated-state
+comparison. Ten cases per ordinary/extended mode cover null supplied states,
+missing current/checker combinations and valid short/owned paths. Java assertions
+are enabled; source cleanup and native cleanup release the actual records.
+Failure rows compare exception class and saved-current identity; successful rows
+also retain complete escaped tuple text. Enhanced JVM failure messages and stacks
+are deliberately not claimed as compared.
+
+Source compile 7f2506, native baseline build 32562 terminal 078cb4 and actual
+runs/comparison 8a5765 return status 0. Twelve of 20 rows differ before the fix:
+Go silently returns empty/partial traces in ten rows and raises an unrelated
+array-index failure for missing current state with a checker in two rows. Java
+raises NullPointerException in all twelve. The remaining eight valid short/owned
+rows already match.
+
+Require a nonnil supplied state and a nonnil current state in the unwritten
+noninitial branch; call the required checker prefix method directly. Retain
+initial/initial-current short paths and source success-only current restoration.
+Remove the unused predecessorTraceTupleValue fallback. Native rebuild 13591
+terminal 34a01b and comparison 3d2583 match all 20 owner rows. Recompile the prior
+repeated-state driver against this code (39829 terminal 1f7912) and run its full
+20 rows unchanged. Final saved compare.py receipt 81ee73 requires exact source/
+native row counts and equality, all twelve corrected null-pointer classes and
+all twenty earlier repeated-state results. Forty bounded observations agree;
+these are not complete module parity or original-method credit.
+
+All 15 unchanged selected original methods pass: session 17933 terminal 13883b,
+3.810s, originals.log. Selection: three TLCExtTrace methods, four Alias safety/
+simulation/liveness methods, TLCGetLevel and its TTrace, both ErrorTraceConstruction
+methods, DieHard JSON/TLC single-worker safety round trips and AliasSub2 JSON/TLC
+single-worker round trips. No persistent tests/fixtures, source edits, weakened
+assertions, worker-bound changes, new inventory credit, broad suite, race run or
+email work. Formatting and git diff --check pass.
+
+Full off-heap random progress is 915,951,700 / 2,147,483,648 (81ee73); its original
+handle is still live without a terminal result or method credit. Preserve its
+bounds, default budget and files. Next audit: Trace's incomplete-state diagnostic
+and exception construction, which uses source Assert.fail before owner access.
+Overall TLC parity remains incomplete.

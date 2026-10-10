@@ -6322,7 +6322,18 @@ Trace reconstruction and aliasing:
   C's actual stuttering transitions match Java with assertions enabled in ordinary
   and extended-state modes; fifteen focused original methods pass. These are
   direct API/record reconstruction observations, not full-model execution or new
-  original-method credit. Required-owner fallback paths remain a separate audit.
+  original-method credit.
+- `TLCExt!Trace` raises a null-pointer failure for a null supplied state. An
+  unwritten noninitial state requires the current-state slot; if that current
+  state is noninitial it also requires the main checker. A written noninitial
+  state requires the checker but does not require a saved current state. Initial
+  state and unwritten-successor/initial-current short paths do not require a
+  checker. The native predecessor-chain fallback is removed. Twenty owner
+  observations match source exception classes, current-slot identity and complete
+  successful tuple text; twenty repeated-state observations also remain equal.
+  Fifteen focused original methods pass. Enhanced JVM null-pointer message text,
+  incomplete-state diagnostic construction and arbitrary sparse reconstruction
+  results are not established by these owner observations.
 - The Java default `evalAlias` overloads evaluate the resolved `ALIAS` operator
   body under `EvalControl.Clear`, convert record-like values to alias states,
   and on evaluation errors attach `_ALIASEvalError` to an alias record instead

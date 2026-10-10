@@ -172,9 +172,11 @@ equal-valued states as separate trace positions. All 20 worker-backed repeated-
 state observations and 15 focused original methods pass; earlier metadata and
 lifetime comparisons remain recorded in `PORT_PROGRESS.md`. The JSON auto-worker
 prefix mismatch remains an explicit source limitation in existing deterministic
-replay evidence; keep original assertions. Next audit: required checker and
-current-state ownership in `TLCExt!Trace`, before accepting its native fallback
-paths as source behavior. Original model-test reconciliation remains open.
+replay evidence; keep original assertions. `TLCExt!Trace` now requires Java's
+checker/current-state owners instead of returning fallback traces. All 40 owner
+and repeated-state observations match; 15 focused original methods pass.
+Next audit: incomplete-state diagnostic and exception construction in
+`TLCExt!Trace`. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

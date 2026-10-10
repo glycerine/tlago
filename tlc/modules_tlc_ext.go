@@ -151,7 +151,7 @@ func TLCExtTrace(state *TLCStateMut) (Value, error) {
 func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
 	_ = tool
 	if state == nil {
-		return EmptyTuple, nil
+		panic(NewNullPointerException())
 	}
 	if !state.AllAssigned() {
 		unassigned := state.Unassigned()
@@ -180,38 +180,23 @@ func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
 		return NewTupleValue([]Value{NewRecordValueFromInsMap(state.Values())}), nil
 	}
 	if state.UID == TLCStateInitUID {
-		current, ok := CurrentState()
-		if ok && current != nil {
-			trace := make([]*TLCStateInfo, 0)
-			if current.IsInitial() {
-				trace = append(trace, NewTLCStateInfo(current), NewTLCStateInfo(state))
-			} else if checker := MainChecker(); checker != nil {
-				trace = append(trace, checker.traceInfoPrefix(current)...)
-				trace = append(trace, NewTLCStateInfo(current), NewTLCStateInfo(state))
-				// Source restores only after successful prefix reconstruction;
-				// nested Tool.getState calls replace the current-state slot.
-				SetCurrentState(current)
-			}
-			if len(trace) > 0 {
-				return traceInfoTupleValue(trace), nil
-			}
+		current, _ := CurrentState()
+		if current == nil {
+			panic(NewNullPointerException())
 		}
+		trace := make([]*TLCStateInfo, 0)
+		if current.IsInitial() {
+			trace = append(trace, NewTLCStateInfo(current), NewTLCStateInfo(state))
+		} else {
+			trace = append(trace, MainChecker().traceInfoPrefix(current)...)
+			trace = append(trace, NewTLCStateInfo(current), NewTLCStateInfo(state))
+			// Source restores only after successful prefix reconstruction;
+			// nested Tool.getState calls replace the current-state slot.
+			SetCurrentState(current)
+		}
+		return traceInfoTupleValue(trace), nil
 	}
-	if checker := MainChecker(); checker != nil {
-		return traceInfoTupleValue(checker.traceInfoPrefix(state), state), nil
-	}
-	return predecessorTraceTupleValue(state), nil
-}
-
-func predecessorTraceTupleValue(state *TLCStateMut) Value {
-	reversed := make([]Value, 0)
-	for cur := state; cur != nil; cur = cur.Predecessor() {
-		reversed = append(reversed, NewRecordValueFromInsMap(cur.Values()))
-	}
-	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
-		reversed[i], reversed[j] = reversed[j], reversed[i]
-	}
-	return NewTupleValue(reversed)
+	return traceInfoTupleValue(MainChecker().traceInfoPrefix(state), state), nil
 }
 
 func stateActionRecordValue(state *TLCStateMut, action *Action) *RecordValue {
