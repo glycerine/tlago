@@ -1667,7 +1667,11 @@ func asRecordValue(value Value) *RecordValue {
 	case *FcnLambdaValue:
 		return v.ToRecord()
 	case *TupleValue:
-		if len(v.Elems) == 0 {
+		size, err := v.Size()
+		if err != nil {
+			panic(err)
+		}
+		if size == 0 {
 			return EmptyRecord
 		}
 		return nil

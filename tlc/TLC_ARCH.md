@@ -7878,6 +7878,19 @@ two-element arrays with optional source attachment, including record conversion.
 No persistent test or fixture is added; other composite operations remain
 separate parity targets.
 
+Tuple domain construction and function conversion also retain the null element
+array failure. Domain catches and attaches its own source frame; function
+conversion has no catch wrapper. Tuple-to-record dispatch checks size before
+recognizing the empty tuple, so record equality/comparison cannot silently
+accept a null-array tuple as an empty record. Their enclosing record methods
+retain the record's source wrapper. All 64 observations agree across domain,
+function conversion, record equality and record comparison, four array forms
+(null, allocated-empty, null-element and two-element) and independent tuple/
+record source attachment. The function result comparison checks interval and
+value-array length; it does not establish array ownership. No original-test
+credit is added. Function-record normalization and other composite operations
+remain separate parity targets.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

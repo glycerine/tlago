@@ -34885,3 +34885,36 @@ No race, broad suite, shortened original workloads or new original-test credit.
 Observer logs remain under predicate-operator-except and composite-size.
 Handoff and architecture updated. Preserve the original stress handle,
 artifacts and bounds; broader composite and ownership parity remain open.
+
+
+### 2026-10-10: Tuple domain and conversion null-array boundaries
+
+Previous turn made verified progress in 7d8191e; confirm clean HEAD (3ee1fd).
+Original full stress 27326 remains live on direct poll 22a061. Source inspection
+shows tuple domain calls size under its own catch; tuple-to-function reads the
+element length without a catch. Tuple-to-record conversion calls size before
+recognizing the empty tuple. Native domain/function conversion and record
+conversion dispatch still used Go len, silently accepting null element arrays.
+
+Ignored tuple-conversion reuses actual test206 Def2 for source attachment and
+runtime tuple arrays (null, allocated-empty, null-element and two integers).
+Initial 24 rows compare domain, function conversion and empty-record equality
+with both values sourced/unsourced: six differences (7c9cb5). Route all three
+length checks through tuple size, propagating its typed error under the existing
+operation boundaries. Native 18851 completes (264b7d); all 24 rows agree
+(3718a5). Extend the observer to record comparison and independent tuple/record
+source flags; Java ac2ace/native 5e79fc complete all 64 rows with zero differences
+(7f9743). Remove an initially hardcoded native shared-array display field before
+final comparison; function result evidence covers interval and value-array
+length, not array identity. No fabricated semantic graph/evaluator, persistent
+test/fixture, changed original assertion or original-method credit.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests and focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream checks pass. Session 37670 completes
+with exit zero (763619); root 5.009s and tlc 2.179s (7f9743). No race, broad suite
+or shortened original workload. Logs remain under tuple-conversion. Handoff and
+architecture updated. Latest full stress saved progress is 1,667,596,435 /
+2,147,483,648 (7f9743), without terminal result or long-method credit. Preserve
+original handle/artifacts/bounds. Function-record normalization and broader
+composite parity remain open targets.

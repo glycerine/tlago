@@ -382,12 +382,20 @@ func (v *TupleValue) Select(arg Value) (resultValue Value, err error) {
 
 func (v *TupleValue) Domain() Value {
 	defer catchValueFailure(v, nil)
-	return NewIntervalValue(1, int32(len(v.Elems)))
+	size, err := v.Size()
+	if err != nil {
+		panic(err)
+	}
+	return NewIntervalValue(1, int32(size))
 }
 
 func (v *TupleValue) ToFcnRcd() *FcnRcdValue {
-	v.CM.incValueSecondary(int64(len(v.Elems)))
-	return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(len(v.Elems))), v.Elems, v.CM)
+	size, err := v.Size()
+	if err != nil {
+		panic(err)
+	}
+	v.CM.incValueSecondary(int64(size))
+	return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(size)), v.Elems, v.CM)
 }
 
 func (v *TupleValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
