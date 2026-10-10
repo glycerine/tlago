@@ -31614,3 +31614,54 @@ completed normally. Monitor checks are normal runs; prior short race receipts
 remain separate. No broad suite, long race run, bound reduction, mail work,
 weakened assertion or inventory credit. HANDOFF and TLC_ARCH describe the final
 contract and its limits; original model reconciliation and TLC parity remain open.
+
+
+2026-10-10: TLCEvalDefinition root-module ownership.
+
+Previous goal turn was progress: verified commit ac1b31f. Resume from a clean
+worktree and compare the next concrete TLCExt source gap. Java tlcDefByName
+resolves the name with SpecProcessor.getModuleTbl().getRootModule().getOpDef;
+native instead used Tool.DefnsByName, which holds replaceable runtime bindings.
+Use the current external-module table's root module, retaining source body
+selection and arity validation independently of runtime table replacements.
+Null name results now raise typed NullPointerException instead of a formatted
+"string, null" EvalException. Wrong-type, unknown-name and parameterized-definition
+diagnostics remain distinct. Name evaluation and selected body evaluation keep
+the supplied context, state pair, control and cost model. Source owner/null
+preconditions retain typed failures; the bounded observations below do not
+establish all missing-owner branches or assertion-disabled Java behavior.
+
+Ignored .codex-gotmp/eval-definition observations use unchanged existing C model
+states and definitions. DefinitionProbeTool is a renamed pinned FastTool adapter
+that records evaluation scope and body identity, without changing TLCExt's source
+implementation. Eight baseline rows establish three differences: null-name
+failure, shadowed c selecting d's body, and a shadowed parameterized Op accepting
+d's zero-arity body. Runtime-table replacement is an explicit API observation,
+not a claim of reproducing every configured model. Source still selects c and
+rejects Op(S) using its root semantic definition. Final native code matches all
+eight source rows with full diagnostics and scope/identity events; NPE comparison
+uses the exception category rather than JVM enhanced messages.
+
+Three additional actual-evaluation rows compare c=1, d=0 and vars=<<1, 0>> with
+the real evaluator while the runtime c binding remains shadowed. The first source
+attempt evaluated newly allocated StringNodes without Tool preprocessing's
+literal tool object and returned null before any body was evaluated. Preserve
+that failed attempt in java-current.log; set the name literal's tool object as
+Tool's actual StringKind evaluation requires. Final source java-final.log and
+native after.log match all 11 rows (15b0a2). No production model, fixture or
+upstream file was changed. No original Java TLCEvalDefinition test method was
+found in pinned test or test-model trees; no persistent test was invented and
+no original-method completion credit was added.
+
+Fourteen unchanged original model methods pass (20095 terminal fafa93, 2.035s,
+originals.log): all six CyclicRedefine methods, TLCExtModel, ConstantContextTLCCache,
+ConstantRank2AssertError, Github696/b and TLCExtTrace/Alias/Sim. They cover existing
+module/configuration behavior and regressions, not the full definition-by-name
+contract. No broad suite or race run. Formatting and diff checks pass; update
+HANDOFF and the architecture's former runtime-table lookup description.
+
+Original full random workload 27326 remains live on direct polling (cba2c4,
+238ee6). Latest saved progress is 1,064,294,508 / 2,147,483,648 (03a3fb), without
+terminal result or original-method credit. Preserve its handle, bounds, default
+budget and artifacts. Core TLC parity and original-model reconciliation remain
+incomplete; continue source-backed production gaps and faithful original tests.

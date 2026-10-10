@@ -328,16 +328,27 @@ func TLCExtTLCFP(value Value) *IntValue {
 
 func TLCExtTLCEvalDefinition(tool *Tool, name Value, args ...any) (Value, error) {
 	ensureTLCExtConsole()
-	if tool == nil {
-		return nil, newTLCError(ECGeneral, "TLCEvalDefinition has no tool")
-	}
 	str, ok := name.(*StringValue)
 	if !ok {
+		if name == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCEvalDefinition", "string", ValuesPPR(name))
 	}
-	value := tool.DefnsByName[str.Val]
-	opDef, ok := value.(*OpDefNode)
-	if !ok || opDef == nil {
+	if tool == nil || tool.SpecProcessor == nil || tool.SpecProcessor.ModuleTbl == nil {
+		panic(NewNullPointerException())
+	}
+	module := tool.SpecProcessor.ModuleTbl.GetRootModule()
+	if module == nil {
+		panic(NewAssertionError())
+	}
+	if str == nil || str.Val == nil {
+		panic(NewNullPointerException())
+	}
+	// Configured runtime bindings can replace entries in DefnsByName. Java
+	// resolves the original semantic definition in the root module instead.
+	opDef := module.GetOpDef(str.Val)
+	if opDef == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCEvalDefinition", "name of a definition reachable from the root module", ValuesPPR(name))
 	}
 	if opDef.Arity() != 0 {

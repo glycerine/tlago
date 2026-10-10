@@ -202,6 +202,9 @@ comparisons match source across the six supported charset families, including
 a healthy checker marking a successor explored. Three original iterator classes
 also pass after the optional exception-message change. These observations do not
 prove I/O-failure behavior, extended charset providers or all interactive timing.
+TLCEvalDefinition resolves through the current root module rather than replaced
+runtime bindings, preserving body selection, arity checks and null-name failures.
+Eleven bounded source comparisons and 14 related original model methods pass.
 Continue concrete core TLC gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -211,7 +214,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,050,166,101 of 2,147,483,648 iterations, without a terminal result. The previous
+1,064,294,508 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

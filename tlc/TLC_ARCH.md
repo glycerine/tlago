@@ -6796,8 +6796,16 @@ modules may be folded together when the behavior is still direct; for example
 `Strings` and `FiniteSets` live in `modules_misc.go`, and `TLCEval`'s value
 conversion helper lives beside other TLC module operators. `TLCExt` includes
 the definition-by-name hook as `TLCExtTLCEvalDefinition`, which looks up a
-zero-arity `OpDefNode` in the concrete `Tool` definition table and evaluates
-its body in the existing context/state pair.
+zero-arity `OpDefNode` through the current external-module table's root module
+and evaluates its body in the existing context/state pair. Runtime definition
+bindings do not determine this lookup: replacing a binding must neither select
+a different body nor bypass the root definition's arity check. Name evaluation
+and body evaluation retain the incoming context, states, control and cost model.
+Null names raise the source null-pointer failure; wrong types, missing names
+and nonzero arity retain their distinct coded diagnostics. Eleven bounded
+source/native observations verify these branches, body identity under controlled
+runtime-table replacement, and actual values from existing C model definitions.
+These observations do not prove every configuration or module-visibility case.
 
 Imported operators retain their original symbols/arities while source bodies
 are converted, before module contexts are installed. Builtin operator arguments
