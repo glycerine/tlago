@@ -134,10 +134,12 @@ ordinary and ID-only callers use the coordinator stream. All 52 bounded state,
 stream and failure observations agree, and focused originals pass. Bounded-choice
 and nested-disjunction checks on five existing models also match all 275 rows,
 including functor stopping, callback failures and retained states. No correction
-was needed for these cases. Next source audit: action-composition functor delegation
-and intermediate-state accounting in probabilistic mode. General `Vect` invalid-
-count and exception behavior remains unproven; original model-test reconciliation
-remains open.
+was needed for these cases. Action-composition accounting and functor delegation
+also match all 98 observations across seven existing configurations in ordinary
+and probabilistic modes; all seven original composition tests pass. This includes
+Java's unsupported probabilistic composition paths and partial register effects.
+Next source audit: general `Vect` exception and invalid-count behavior. Original
+model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

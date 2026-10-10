@@ -5324,6 +5324,19 @@ Key semantics:
   randomized pass for assignments, Java falls back to ordinary sequential
   enumeration. `CASE` in the next-state relation remains deliberately
   unsupported in probabilistic mode.
+- Action-composition callback accounting is verified on the seven existing cdot
+  configurations in ordinary and probabilistic modes: all 98 source/native rows
+  agree. Intermediate counts reach the outer functor before successor callbacks,
+  including zero counts. Successors retain the original predecessor/action, and
+  retained objects keep their bindings after normal and abrupt returns. Chained
+  composition reports four outer intermediate states and preserves register
+  side effects, including partial effects before callback failure. The source's
+  anonymous second-phase functor has no `hasStates` override: probabilistic
+  membership/disjunction paths that query it throw `UnsupportedOperationException`.
+  Go preserves that limitation. Context models with deterministic second phases
+  can succeed in probabilistic mode. These observations do not establish general
+  unsatisfied-state callbacks or concurrent composition; none of these fixtures
+  invoked the unsatisfied-state hook. Existing seven original tests pass.
 - A complete state must assign every declared variable.
 - `isGoodState` detects incomplete or illegal states.
 - Model constraints and action constraints filter states but do not replace

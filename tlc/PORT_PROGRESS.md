@@ -30328,3 +30328,39 @@ credit. Overall TLC parity remains incomplete. Next source audit: action-
 composition functor delegation and intermediate-state accounting in probabilistic
 mode. Consult earlier CopyWith/metadata/diagnostic receipts; compare actual source
 callback behavior rather than broadening the experimental source feature.
+
+
+2026-10-09: Resume action-composition functor/accounting audit after outage
+
+Recovered clean master at 607374f. Ignored observers use the unchanged existing
+ActionComposition A/B, CdotWithContext A/B/C/D and ChainedCdots configurations,
+with cdot enabled and probabilistic false/true in separate processes. Each
+configuration observes full Init plus six callbacks policies: natural presence,
+always false, always true, failure at first/second successor, and failure at
+incrementStatesGenerated. All 98 ordered Java/native rows agree. No production
+change or persistent tests/fixtures were needed. Source compile a1a69e, terminal
+705d93/0d51f1 for native build and source observations; native matrix and initial
+comparison a47375 all returned status 0. Observer sources/logs/compare.py are in
+.codex-gotmp/composition-observation/.
+
+Rows retain full successor bindings, callback order, intermediate counts, original
+predecessor/action identity, retained state images, exception categories, RNG
+advancement and register 0. Register 0 is explicitly initialized to zero before
+each API observation; this does not claim an assumption-checking execution. In
+ordinary ChainedCdots, outer INC:4 precedes x=9,10,10,11 and register 0 ends at 63.
+Failures on first/second ADD retain register 32/42; an INC failure retains 23.
+Context D reports two zero increments and no successors; failing its first INC
+interrupts after one zero increment. Java's anonymous composition wrapper does
+not override hasStates: probabilistic ActionComposition fails after INC:1 and
+ChainedCdots fails within first-phase collection before any outer INC. Go matches
+these source UnsupportedOperationException boundaries. Other context models can
+produce successors in probabilistic mode. No fixture invoked the unsatisfied hook;
+its general delegation remains unproven by these observations.
+
+All seven existing original composition tests pass at unchanged bounds, normal
+execution without race: session 43698 terminal 7228a9, root 1.545s, status 0, log
+.codex-gotmp/composition-observation/original-tests.log. No broad suite, inventory
+change or new original-method credit. Overall parity remains incomplete. Full
+off-heap stress session 27326 remains live (poll 8f5518); latest saved progress
+651,776,834 / 2,147,483,648, no terminal result or credit. Next inspect source Vect
+exception/capacity ordering and invalid-count behavior; no email work.
