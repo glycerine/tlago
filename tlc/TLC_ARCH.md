@@ -7690,9 +7690,23 @@ shapes, arithmetic and LT/LE/GT/GEQ overrides, with/without a source on the meth
 value. They include null arrays, zero through four arguments, valid calls and
 invalid concrete values at the expected arity. The source frame count, category,
 message, code and nullable parameters agree. The earlier 2,004 arithmetic module
-observations still agree. Zero-arity override entry points, unknown native arity,
-remaining comparison null arguments and dynamic module replacement remain
-outside these observations.
+observations still agree. Zero-arity override entry points, unknown native arity
+and dynamic module replacement remain outside these arity observations.
+
+Numeric comparison argument checks preserve source formatting failures for null
+values. A null first argument fails before the second is inspected. A valid
+integer first argument reaches the null second argument's formatting failure;
+an invalid non-null first argument retains its ordinary argument error even if
+the second is null. These failures use the existing numeric method adapter,
+including its nullable detail and source wrapper.
+All 3,600 direct LT/LE/GT/GEQ observations agree across both modules, fifteen
+values per argument and source-less/source-attached method values. Another
+2,700 observations through actual parsed definition body method objects in
+legacy test209 and ValueSemanticsAssume agree, including signatures and inherited
+module ownership. Values include nine integer edges, boolean, tuple, null,
+string, empty set and interval. This does not cover arbitrary value formatting
+callbacks, typed-null Go values or dynamic module replacement.
+
 
 
 

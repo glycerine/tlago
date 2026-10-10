@@ -358,9 +358,10 @@ arithmetic implementation as well as its signature; all 2,004 direct module and
 3,000 parsed-definition observations agree, including null/zero/negative cases.
 Positive-arity numeric override failures now retain source diagnostics and
 wrapping; all 368 arithmetic/comparison observations agree. Integer GEQ
-selection also preserves its source diagnostic label. Zero-arity overrides,
-remaining comparison null cases and mutation during evaluation remain separate
-targets.
+selection also preserves its source diagnostic label. Comparison null arguments
+now retain source-ordered formatting failures; all 3,600 direct and 2,700
+parsed-definition observations agree. Zero-arity overrides and mutation during
+evaluation remain separate targets.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

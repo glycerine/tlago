@@ -34276,3 +34276,43 @@ Handoff/contracts updated.
 Original full stress session 27326 remains live on direct poll (8e532d).
 Latest saved progress is 1,570,364,638 / 2,147,483,648 (b2e9fe), without a terminal
 result or long-method credit. Preserve original handle, artifacts and bounds.
+
+
+2026-10-10: Numeric comparison null-argument formatting failures
+
+Previous turn completed 77f6af0. Inspect Java Naturals/Integers LT/LE/GT/GEQ:
+argument checks format the failing argument before constructing code 2266.
+Values.ppr takes the result of value.toString, so a null value fails at that
+read. Native ValuesPPR intentionally formats nil as null for other API callers;
+using it directly here suppresses the source failure.
+
+Ignored .codex-gotmp/numeric-comparisons compares original Java numeric method
+factories and native module-selected wrappers across both modules, four
+comparison methods, fifteen values per argument and with/without a source on
+the method. Values include nine integer edges, boolean, tuple, null, string,
+empty set and interval. Use existing test209 S only as an optional value source;
+no graph mutation or evaluator callbacks. Java f79e32 and native ed7903 complete
+with all 3,600 rows; 384 null-path differences (fd444c). Add typed null failures
+at the source reads in intComparison, preserving first-argument error precedence
+and second-argument laziness. Do not change the generic ValuesPPR nil contract.
+Native 95213 completes (2878d4); all 3,600 rows agree (4b0acf), including complete
+category/message/code/nullable parameters and source frame counts.
+
+Ignored .codex-gotmp/numeric-comparison-slots repeats the values through actual
+parsed external-module definition body method objects in original
+LegacySuiteTest209 and ValueSemanticsAssume. Java 82686 terminal 21fbb2 and
+native 47999 terminal eee2eb complete. All 2,700 rows agree (89098f), retaining
+source signatures and inherited module ownership. No persistent tests/fixtures
+or original-method inventory credit. Arbitrary formatting callbacks, typed-null
+Go representations and dynamic module replacement remain outside this bounded
+comparison.
+
+Eleven unchanged original model checks and original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl plus focused function-context, rendering, lambda stream
+and numeric checks pass (68073 terminal 0ff7e1; root 4.515s, tlc 2.102s;
+existing-checks.log, 89098f). No broad suite, race, shortened original bounds
+or changed original assertions. Handoff and architecture contracts updated.
+
+Original full stress session 27326 remains live on direct poll (2cb0dc).
+Latest saved progress is 1,571,036,684 / 2,147,483,648 (230e6d), without a terminal
+result or long-method credit. Preserve original handle, artifacts and bounds.

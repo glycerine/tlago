@@ -160,10 +160,16 @@ func numericIntValue(value *IntValue) int32 {
 func intComparison(op string, x, y Value, cmp func(int32, int32) bool) (*BoolValue, error) {
 	ix, ok := x.(*IntValue)
 	if !ok {
+		if x == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentErrorAn, "first", op, "integer", ValuesPPR(x))
 	}
 	iy, ok := y.(*IntValue)
 	if !ok {
+		if y == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentErrorAn, "second", op, "integer", ValuesPPR(y))
 	}
 	return NewBoolValue(cmp(ix.Val, iy.Val)), nil
