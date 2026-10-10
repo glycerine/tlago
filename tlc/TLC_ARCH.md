@@ -11349,6 +11349,28 @@ was introduced to reproduce an unspecified order. These observations start no
 worker threads or whole-model search and add no original-method credit. General
 concurrent output and output-error behavior remain unproven.
 
+Extended source-backed simulation statistics capture a fixed counter array at
+construction and index it through the current variable declaration's `VarLoc`.
+Construction, collection and reporting re-read the current declaration array as
+their loops advance. Replacing global declarations therefore reuses retained
+slots; a larger declaration set can fail at the original array boundary. Native
+standalone adapters keep their name-keyed counter behavior.
+
+Collection first increments generated states, then updates variable counters,
+then distinct states, then action counts. A later variable-slot failure retains
+earlier variable updates without counting the state or action. Distinct-value
+reporting uses Java's signed 32-bit cast; action count increments use its signed
+32-bit addition. These width rules follow source code; overflow-scale workloads
+were not run.
+
+All 20 ignored pinned-Java/native observations agree across naive and HyperLogLog
+counters using actual states from unchanged BasicMultiTrace, I and M models.
+They cover duplicates, declaration replacement, retained slot counts, bounds
+failures and partial updates after restoration. The earlier 68 action-statistics
+observations and focused original simulation checks still pass. This does not
+prove arbitrary concurrent declaration mutation, all malformed metadata or
+complete simulation parity. No persistent tests/fixtures or method credit added.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

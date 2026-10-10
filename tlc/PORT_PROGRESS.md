@@ -29852,3 +29852,55 @@ credit. Overall parity remains incomplete. Next source audit: extended simulatio
 counter ownership. Source uses constructor-sized per-variable counters indexed
 by variable location; native currently uses name-keyed counters. This source
 review identifies the next comparison, not yet a verified production mismatch.
+
+
+2026-10-09: Preserve extended simulation variable-counter ownership
+
+Recovered the saved production change after interruption and completed its
+verification. Source ExtendedSimulationWorkerStatistics retains a constructor-
+sized CountDistinct array indexed by current variable locations. The previous
+native name-keyed implementation lost retained slot counts after declaration
+replacement and counted a state that Java rejects at the variable-array boundary.
+Source-backed Go statistics now retain that array and re-read current variable
+declarations during construction, collection and reporting. Collection preserves
+generated-state increment, variable updates, state update and action update in
+source order. Earlier variable updates survive a later slot failure. Reporting
+casts distinct-value counts to signed 32 bits; action increments retain Java's
+signed 32-bit addition. Native standalone adapters retain their existing path.
+
+All 20 final counter observations agree with pinned Java: ten each for naive and
+HyperLogLog counters, using actual generated states from unchanged BasicMultiTrace,
+I and M models. There were 12 differences against the previous implementation.
+The rows cover initial/duplicate counts, replacement with one variable, retained
+slot counts, replacement with four variables, bounds failures and partial updates
+visible after restoration. No worker threads or whole-model search were started.
+An initial attempt to use TLCGetLevel as the larger model failed in unchanged
+Java's sequential loader with an invariant bound to Sequences.SelectSeq; that
+attempt is not credited. Its logs remain separate. The completed comparison uses
+unchanged M and introduces no production workaround for the source loader failure.
+
+Final comparison 0d2bec returned status 0: all 20 counter rows match, and all 68
+previous standard/extended action-statistics rows still match. Final counter
+sessions 56071 and 33530 returned status 0 (terminal 236462 and bdb0ef). Focused
+original SimulationWorker, SimulatorCorrectness, SimulatorPrintBehavior,
+CoverageStatistics, TLCGetAll and TLCGetLevel selections plus existing native
+Simulator/SimulationWorker checks returned status 0, session 73405 terminal
+395e0e; root 1.489 seconds and TLC 0.013 seconds. Original inputs, assertions and
+workload bounds are unchanged. The statistics regression logs contain all 34
+expected rows per mode; their earlier launch receipts were truncated, so only
+the complete row comparison is claimed here.
+
+Ignored observers and baseline overlay are under
+.codex-gotmp/simulation-counter-observation/. Final logs are
+.codex-gotmp/simulation-counter-final-{naive,hll,originals}.log and
+simulation-counter-final-regression-{extended,standard}.log. Source comparison
+logs are simulation-counter-m-java-{naive,hll}.log and the existing
+simulation-statistics-final-java-{extended,standard}.log. Failed TLCGetLevel
+attempt logs and previous baseline logs are preserved. Formatting and git diff
+--check pass. No persistent tests or fixtures, inventory changes or new original-
+method credit. No broad suite, XML/ApalacheIR sweep, race or email-related work.
+
+Original full off-heap stress session 27326 remains live, poll 5428c5. Latest
+saved progress is 535,772,413 / 2,147,483,648 iterations; no terminal result or
+method credit. Do not restart or shorten it. Overall TLC parity remains incomplete.
+Next source audit: simulation trace-statistics reporting and trace-count ownership.

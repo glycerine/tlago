@@ -124,9 +124,14 @@ labels and format integral weights with the source decimal suffix. All 12 bounde
 complete DOT artifacts match Java byte for byte. Multi-context checks on three
 existing models also agree on all 30 complete graphs; 27 are byte-identical and
 three differ only in Java's unordered cluster order. No production correction
-was needed for these cases. Next source audit: extended simulation counter
-ownership. General `Vect` invalid-count and exception behavior remains unproven;
-original model-test reconciliation remains open.
+was needed for these cases. Extended simulation statistics now retain
+constructor-sized variable counters indexed by current variable locations. They
+preserve Java's variable, state and action update order, including partial updates
+before bounds failures. All 20 naive/HyperLogLog observations agree; the previous
+68 statistics observations and focused original simulation checks remain green.
+Next source audit: simulation trace-statistics reporting and trace-count ownership.
+General `Vect` invalid-count and exception behavior remains unproven; original
+model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

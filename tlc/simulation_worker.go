@@ -119,6 +119,9 @@ type SimulationWorkerStatistics struct {
 	sourceTool      bool
 	distinctStates  *CountDistinct
 	distinctValues  *InsMap[*UniqueString, *CountDistinct]
+
+	// Captured once; source access indexes it with current variable locations.
+	variableCounters []*CountDistinct
 }
 
 func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorkerStatistics {
@@ -154,9 +157,17 @@ func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atom
 	}
 	if stats.Extended {
 		stats.distinctStates = newSimulationCountDistinct(8)
-		for _, variable := range StateVariables() {
-			if variable.Name != nil {
-				stats.distinctValues.Set(variable.Name, newSimulationCountDistinct(10))
+		if stats.sourceTool {
+			stats.variableCounters = make([]*CountDistinct, simulationStateVariableCount())
+			for i := 0; i < simulationStateVariableCount(); i++ {
+				index := stats.variableCounterIndex(simulationStateVariableName(i))
+				stats.variableCounters[index] = newSimulationCountDistinct(10)
+			}
+		} else {
+			for _, variable := range StateVariables() {
+				if variable.Name != nil {
+					stats.distinctValues.Set(variable.Name, newSimulationCountDistinct(10))
+				}
 			}
 		}
 	}
@@ -178,6 +189,32 @@ func (s *SimulationWorkerStatistics) CollectPreSuccessor(state *TLCStateMut, act
 		return
 	}
 	s.NumGenStates.Add(1)
+	if s.Extended && s.sourceTool {
+		for i := 0; i < simulationStateVariableCount(); i++ {
+			name := simulationStateVariableName(i)
+			counter := s.variableCounters[s.variableCounterIndex(name)]
+			if next == nil {
+				panic(NewNullPointerException())
+			}
+			value := next.Lookup(name)
+			if counter == nil || value == nil {
+				panic(NewNullPointerException())
+			}
+			counter.AddValue(value)
+			s.DistinctValues.Set(name, counter.Count())
+		}
+		if next == nil || s.distinctStates == nil {
+			panic(NewNullPointerException())
+		}
+		s.distinctStates.AddState(next)
+		s.DistinctStates = s.distinctStates.Count()
+		if state == nil || state.GetAction() == nil {
+			panic(NewNullPointerException())
+		}
+		key := UniqueStringOf(state.GetAction().GetName())
+		s.ActionCounts.Set(key, int64(int32(s.ActionCounts.Get(key))+1))
+		return
+	}
 	if s.Extended && next != nil {
 		if s.distinctStates != nil {
 			s.distinctStates.AddState(next)
@@ -208,6 +245,39 @@ func newSimulationCountDistinct(bits int) *CountDistinct {
 		return NewCountDistinctNaive()
 	}
 	return NewCountDistinctHyperLogLog(bits)
+}
+
+func simulationStateVariableCount() int {
+	if stateVariableDeclarations != nil {
+		return len(stateVariableDeclarations)
+	}
+	return len(stateVariables)
+}
+
+func simulationStateVariableName(index int) *UniqueString {
+	count := simulationStateVariableCount()
+	if index < 0 || index >= count {
+		panic(NewArrayIndexOutOfBoundsException(index, count))
+	}
+	if stateVariableDeclarations != nil {
+		declaration := stateVariableDeclarations[index]
+		if declaration == nil {
+			panic(NewNullPointerException())
+		}
+		return declaration.Name
+	}
+	return stateVariables[index].Name
+}
+
+func (s *SimulationWorkerStatistics) variableCounterIndex(name *UniqueString) int {
+	if name == nil || s.variableCounters == nil {
+		panic(NewNullPointerException())
+	}
+	index := name.VarLoc()
+	if index < 0 || index >= len(s.variableCounters) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(s.variableCounters)))
+	}
+	return index
 }
 
 func (s *SimulationWorkerStatistics) CollectPostSuccessor(state *TLCStateMut, action *Action, next *TLCStateMut) {
@@ -339,6 +409,17 @@ func (s *SimulationWorkerStatistics) GetDistinctValues() Value {
 		return NewIntValue(-1)
 	}
 	values := NewInsMap[*UniqueString, Value]()
+	if s.sourceTool {
+		for i := 0; i < simulationStateVariableCount(); i++ {
+			name := simulationStateVariableName(i)
+			counter := s.variableCounters[s.variableCounterIndex(name)]
+			if counter == nil {
+				panic(NewNullPointerException())
+			}
+			values.Set(name, NewIntValue(int32(counter.Count())))
+		}
+		return NewRecordValueFromInsMap(values)
+	}
 	for _, variable := range StateVariables() {
 		if variable.Name == nil {
 			continue
