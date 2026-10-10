@@ -11170,8 +11170,27 @@ getter write, a processor getter write, array replacement, empty/null arrays and
 restoration. It compares array length/identity, presence checks, full constraint
 metadata and actual state/action filtering. All 56 rows agree; baseline differs
 in 28. The 45 cast/location rows still agree after selecting the actual getter
-arrays in that observation. Invariant, implied-property and temporal action/name
-array ownership remains a separate source contract.
+arrays in that observation.
+
+All five property action/name families now follow the same current-processor
+ownership: invariants, fairness temporals, implied initial predicates, implied
+actions and implied temporals. The ten tool getters delegate to processor
+getters, which return retained slices. Standalone native tool fields keep their
+existing getter behavior. Configuration reset establishes non-null empty action
+and name arrays, matching Java's completed processor shape. Source metadata
+requires non-null action arrays before its streams; `LivenessIsTrue` requires the
+implied-temporal array before reading its length. Native empty nil slices retain
+their adapter behavior.
+
+An ignored driver loads unchanged TLCGetLevel in pinned Java and Go and observes
+each family's original arrays, installation of an existing Next action, writes
+through tool and processor getters, replacement with an existing Init action,
+empty/null arrays and restoration. It compares action/name lengths, sharing and
+first values, full source spec metadata and the implied-temporal liveness
+predicate. All 128 rows agree; baseline differs in 105. Original empty families
+remain non-null in Go after processing. No new source fixtures or persistent
+tests. These observations do not establish other action-array consumers' null
+behavior or initial/next predicate and assumption ownership.
 
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing

@@ -88,8 +88,11 @@ All 15 observed ownership/report/failure rows and 11 counter lifecycle rows matc
 Java. Constraint metadata now preserves Java's operator/action casts and null
 failures; all 45 observed state/action cases agree. Constraint getters now retain
 current processor arrays; all 56 ownership/metadata/filter observations match,
-including empty/null arrays. Next source audit: invariant, implied-property and
-temporal action/name array ownership through the processor and tool getters.
+including empty/null arrays. Invariant, implied-property and temporal action/name
+getters now share current processor arrays; all 128 observed rows match Java.
+Config processing preserves non-null empty arrays, and metadata/liveness array
+failures match. Next source audit: initial/next predicates and assumption getters;
+other action-array consumers' null behavior remains unproven.
 
 ## Verification baseline and test credit
 

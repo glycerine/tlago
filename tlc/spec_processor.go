@@ -384,16 +384,17 @@ func (p *SpecProcessor) resetProcessedConfig() {
 	p.ConfigErrors = nil
 	p.InitPred = nil
 	p.NextPred = nil
-	p.Temporals = nil
-	p.TemporalNames = nil
-	p.ImpliedTemporals = nil
-	p.ImpliedTempNames = nil
-	p.Invariants = nil
-	p.InvariantNames = nil
-	p.ImpliedInits = nil
-	p.ImpliedInitNames = nil
-	p.ImpliedActions = nil
-	p.ImpliedActNames = nil
+	// Java materializes non-null arrays even when a property family is empty.
+	p.Temporals = []*Action{}
+	p.TemporalNames = []string{}
+	p.ImpliedTemporals = []*Action{}
+	p.ImpliedTempNames = []string{}
+	p.Invariants = []*Action{}
+	p.InvariantNames = []string{}
+	p.ImpliedInits = []*Action{}
+	p.ImpliedInitNames = []string{}
+	p.ImpliedActions = []*Action{}
+	p.ImpliedActNames = []string{}
 	p.ModelConstraints = nil
 	p.ActionConstraints = nil
 	p.PossiblePostConds = nil
@@ -486,70 +487,70 @@ func (p *SpecProcessor) GetTemporal() []*Action {
 	if p == nil {
 		return nil
 	}
-	return append([]*Action(nil), p.Temporals...)
+	return p.Temporals
 }
 
 func (p *SpecProcessor) GetTemporalNames() []string {
 	if p == nil {
 		return nil
 	}
-	return append([]string(nil), p.TemporalNames...)
+	return p.TemporalNames
 }
 
 func (p *SpecProcessor) GetImpliedTemporals() []*Action {
 	if p == nil {
 		return nil
 	}
-	return append([]*Action(nil), p.ImpliedTemporals...)
+	return p.ImpliedTemporals
 }
 
 func (p *SpecProcessor) GetImpliedTemporalNames() []string {
 	if p == nil {
 		return nil
 	}
-	return append([]string(nil), p.ImpliedTempNames...)
+	return p.ImpliedTempNames
 }
 
 func (p *SpecProcessor) GetInvariants() []*Action {
 	if p == nil {
 		return nil
 	}
-	return append([]*Action(nil), p.Invariants...)
+	return p.Invariants
 }
 
 func (p *SpecProcessor) GetInvariantsNames() []string {
 	if p == nil {
 		return nil
 	}
-	return append([]string(nil), p.InvariantNames...)
+	return p.InvariantNames
 }
 
 func (p *SpecProcessor) GetImpliedInits() []*Action {
 	if p == nil {
 		return nil
 	}
-	return append([]*Action(nil), p.ImpliedInits...)
+	return p.ImpliedInits
 }
 
 func (p *SpecProcessor) GetImpliedInitNames() []string {
 	if p == nil {
 		return nil
 	}
-	return append([]string(nil), p.ImpliedInitNames...)
+	return p.ImpliedInitNames
 }
 
 func (p *SpecProcessor) GetImpliedActions() []*Action {
 	if p == nil {
 		return nil
 	}
-	return append([]*Action(nil), p.ImpliedActions...)
+	return p.ImpliedActions
 }
 
 func (p *SpecProcessor) GetImpliedActionNames() []string {
 	if p == nil {
 		return nil
 	}
-	return append([]string(nil), p.ImpliedActNames...)
+	return p.ImpliedActNames
 }
 
 func (p *SpecProcessor) GetModelConstraints() []SemanticNode {

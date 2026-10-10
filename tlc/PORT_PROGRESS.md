@@ -29232,3 +29232,46 @@ Stress session 27326 remains live (poll 3a5369), with latest saved observation
 246,985,402 / 2,147,483,648 iterations and no terminal result or new method credit.
 Overall parity is incomplete. Next concrete audit: current processor ownership of
 invariant, implied-property and temporal action/name arrays through tool getters.
+
+
+2026-10-09: Current property action and name arrays
+
+Java Spec delegates ten invariant/temporal/implied-property getters to the
+processor, which returns actual action/name arrays. Go tool getters retained
+setup snapshots and processor getters copied the arrays, preventing sharing and
+later processor replacement. All ten getters now read retained processor arrays.
+Standalone native tool fields retain their existing adapter behavior. Processed
+configuration creates non-null empty action/name arrays, matching the source's
+completed processor rather than collapsing empty families to nil copies. Source
+spec metadata requires these action arrays before streaming them; LivenessIsTrue
+preserves the source implied-temporal array length/null boundary.
+
+Ignored standalone drivers load unchanged TLCGetLevel in pinned Java and Go and
+observe all five action/name families across eight phases: original, installation
+of an existing Next action, tool getter write, processor getter write, replacement
+with an existing Init action, empty/null arrays and restoration. Rows compare
+lengths, sharing, first action/name values, source spec metadata and the liveness
+predicate. All 128 rows agree; baseline differs in 105. Comparison terminal
+2f372d, status 0. Logs under .codex-gotmp/: property-array-java.log,
+property-array-before.log, property-array-after.log. Driver/baseline overlays stay
+ignored under property-array-observation. javac emits only the deprecated frontend
+overload note. No original Java source, fixture or persistent test changes, and
+no original-method inventory credit. Source searches found no direct originals
+for these getters.
+
+Selected existing original TLCGetAll/TLCGetLevel, A/B/C coverage, Debug02-Debug05,
+ReportCoverage01-04, DoInitFunctorEvalException and simulation state/action
+constraint checks plus native copied-getter/successor checks pass normally:
+.codex-gotmp/property-array-originals.log, terminal 7fa4ec, status 0;
+root 5.995 seconds, TLC 7.188 seconds. Additional original Github710a-e/fairness,
+EvalExceptionLiveness, SimulationWorkerInvariantViolation and both one/four-worker
+SimulatorCorrectnessLivenessViolation contexts pass with original trace bounds:
+property-array-liveness-originals.log, terminal 68109d, status 0, 5.864 seconds.
+Formatting and git diff --check pass. No full workspace/XML/ApalacheIR sweep or
+long race selection.
+
+Stress session 27326 remains live (poll 474edb), latest saved observation
+265,658,186 / 2,147,483,648 iterations, with no terminal result or new method credit.
+Overall parity remains incomplete. Other action-array consumers' null handling is
+unproven. Next concrete ownership audit: initial/next predicate and assumption
+getters through the processor and tool.

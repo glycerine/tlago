@@ -718,12 +718,18 @@ func (t *Tool) GetInvariants() []*Action {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetInvariants()
+	}
 	return t.Invariants
 }
 
 func (t *Tool) GetTemporals() []*Action {
 	if t == nil {
 		return nil
+	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetTemporal()
 	}
 	return t.Temporals
 }
@@ -732,6 +738,9 @@ func (t *Tool) GetTemporalNames() []string {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetTemporalNames()
+	}
 	return t.TemporalNames
 }
 
@@ -739,12 +748,18 @@ func (t *Tool) GetImpliedTemporals() []*Action {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetImpliedTemporals()
+	}
 	return t.ImpliedTemporals
 }
 
 func (t *Tool) GetImpliedTemporalNames() []string {
 	if t == nil {
 		return nil
+	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetImpliedTemporalNames()
 	}
 	return t.ImpliedTempNames
 }
@@ -781,12 +796,18 @@ func (t *Tool) GetInvNames() []string {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetInvariantsNames()
+	}
 	return t.InvariantNames
 }
 
 func (t *Tool) GetImpliedActNames() []string {
 	if t == nil {
 		return nil
+	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetImpliedActionNames()
 	}
 	return t.ImpliedActNames
 }
@@ -854,6 +875,9 @@ func (t *Tool) GetImpliedInitNames() []string {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetImpliedInitNames()
+	}
 	return t.ImpliedInitNames
 }
 
@@ -861,12 +885,18 @@ func (t *Tool) GetImpliedInits() []*Action {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetImpliedInits()
+	}
 	return t.ImpliedInits
 }
 
 func (t *Tool) GetImpliedActions() []*Action {
 	if t == nil {
 		return nil
+	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetImpliedActions()
 	}
 	return t.ImpliedActions
 }
@@ -983,6 +1013,13 @@ func (t *Tool) requireConstraintArray(nodes []SemanticNode) []SemanticNode {
 	return nodes
 }
 
+func (t *Tool) requireActionArray(actions []*Action) []*Action {
+	if t != nil && t.SpecProcessor != nil && actions == nil {
+		panic(NewNullPointerException())
+	}
+	return actions
+}
+
 func (t *Tool) GetAssumptions() []SemanticNode {
 	if t == nil {
 		return nil
@@ -1053,7 +1090,7 @@ func (t *Tool) LivenessIsTrue() bool {
 	if t != nil && t.LivenessIsTrueFunc != nil {
 		return t.LivenessIsTrueFunc(t)
 	}
-	return t == nil || len(t.GetImpliedTemporals()) == 0
+	return t == nil || semanticGraphArrayLength(t.SpecProcessor != nil, t.GetImpliedTemporals()) == 0
 }
 
 func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, prefix func() []*TLCStateInfo) (*TLCStateInfo, error) {
