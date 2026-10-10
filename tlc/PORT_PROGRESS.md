@@ -28556,3 +28556,57 @@ selection passes: instance-export-broad-originals.log, terminal 8c4924, status 0
 8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Git diff --check passes.
 The same original full off-heap random workload remains live beyond 469 million
 iterations; completion credit remains pending.
+
+
+Early INSTANCE symbol registration uses canonical exports (2026-10-09)
+
+Previous goal turn committed 9aaddc3, a concrete unnamed INSTANCE export correction.
+Revalidated the clean workspace and polled the same live full off-heap session
+77502. Source inspection found prepareInstanceDefinitions still manufacturing
+symbols for generated INSTANCE exports, with manually reconstructed signatures.
+Generator's Context already owns the selected operator/theorem symbols.
+
+An ignored overlay observes registration against actual canonical owner Context
+symbols on existing original Github817/Github1244, Test219, LET, cyclic-redefinition,
+Debug02 and trace-expression methods. Baseline records 1,378 registrations, all
+with mismatching symbol identity despite matching names/arities; no source export
+is unresolved. Receipt: instance-symbol-before-observation.log, terminal 17b9c6,
+status 0, 5.593 seconds. Adapting the canonical source for observation can populate
+caches early; this is an API identity observation, not independent broad behavior
+verification.
+
+prepareInstanceDefinitions now resolves each operator/theorem export through
+canonicalSymbol before publishing the alias/binding maps. This retains Generator's
+actual source identity and signature. The earlier all-module owner indexing is
+retained before adaptation. Source-less/missing-export cases keep the existing
+reconstruction path pending a wider audit. No new persistent test or fixture is
+introduced.
+
+The same ignored observation records 1,378 registrations after correction, all
+sharing canonical identity, names and arities, with no unresolved source exports.
+Receipt: instance-symbol-after-observation.log, terminal 253d1f, status 0,
+5.480 seconds. These observations add no original-method credit or invented
+persistent assertions. The focused originals also pass without instrumentation:
+instance-symbol-focused-originals.log, terminal 93fee2, status 0, 5.355 seconds.
+Broader original verification is recorded below when terminal.
+
+Next source audit: source-definition locality and ownership after module setup
+assigns metadata from AST Definition views. In particular, source RECURSIVE
+declarations can determine locality independently of a later LOCAL body; compare
+checked source nodes before changing metadata. General source generation, graph
+mutation sharing and source-less INSTANCE reconstruction remain unproven.
+
+The same original full off-heap random run remains live beyond 480 million of
+2,147,483,648 iterations, with completion credit pending. No restart, race
+instrumentation, full-workspace/XML/ApalacheIR sweep, email work, Java edit or
+translated assertion/workload-bound change.
+
+Existing native bridge checks for Bitwise RECURSIVE declaration locality and
+qualified-local runtime postconditions also pass: instance-symbol-native-bridge.log,
+terminal 9ca3f9, status 0, 0.136 seconds. Java checkout HEAD is reverified as the
+pinned 8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Git diff --check passes.
+
+Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and trace
+selection passes: instance-symbol-broad-originals.log, terminal 658589, status 0,
+179.797 seconds. The same full off-heap random run remains live beyond 483 million
+iterations, without completion credit. Git diff --check passes.

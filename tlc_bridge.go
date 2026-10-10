@@ -550,17 +550,23 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 				if inst.exportsUnqualified() {
 					exportName = def.Name
 				}
-				// Each instantiated declaration owns its symbol. A qualified
-				// lookup alias can also name an export in another module.
-				exportSymbol := tlc.NewSymbolNode(exportName)
-				if b.reusesInstanceSource(inst, def) {
-					exportSymbol = b.sourceDefinitionSymbol(inst.Module+"!"+def.Name, def)
-				} else {
-					// SANY installs the instantiated operator's full signature
-					// in its context before later definitions refer to it. Keep
-					// its arity available before converting any definition body,
-					// including uses of the operator as an OpArgNode.
-					exportSymbol.Arity = len(inst.Params) + len(def.Params)
+				// Generator already chose this export's identity and full
+				// signature. All lookup aliases retain that actual source symbol.
+				var exportSymbol *tlc.SymbolNode
+				if mod.semanticNode != nil {
+					source := mod.semanticNode.context.getSymbol(exportName)
+					switch source.(type) {
+					case *sanySemOpDefNode, *sanySemThmOrAssumpDefNode:
+						exportSymbol = b.canonicalSymbol(source)
+					}
+				}
+				if exportSymbol == nil {
+					exportSymbol = tlc.NewSymbolNode(exportName)
+					if b.reusesInstanceSource(inst, def) {
+						exportSymbol = b.sourceDefinitionSymbol(inst.Module+"!"+def.Name, def)
+					} else {
+						exportSymbol.Arity = len(inst.Params) + len(def.Params)
+					}
 				}
 				if binding.symbols == nil {
 					binding.symbols = map[*Definition]*tlc.SymbolNode{}

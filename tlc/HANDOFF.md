@@ -84,8 +84,10 @@ failures. View capture follows configuration and precedes symmetry setup; alias
 lookup stays inside trace rendering's error boundary. Unnamed INSTANCE convenience
 aliases now resolve the actual unqualified source exports; all 544 observed export
 conversions match canonical nodes and bodies, with no fallback calls. Source-less
-fallback lowering remains unaudited. Next: inspect early INSTANCE alias-symbol
-registration against those canonical exports. General source generation and
+fallback lowering remains unaudited. Early INSTANCE registration now uses the
+canonical operator/theorem symbols; all 1,378 observed registrations retain source
+identity, names and arities. Next: audit source-definition locality and ownership
+when module setup assigns metadata from AST views. General source generation and
 mutation-sharing parity remain pending.
 
 ## Verification baseline and test credit

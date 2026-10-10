@@ -11023,7 +11023,18 @@ debugger and trace originals, all 544 observed conversions now return the actual
 canonical export, body and source identity. Baseline had 88 node mismatches and
 82 body mismatches from 88 fallback calls; corrected execution has zero of each
 and no unresolved source lookups. This observation does not establish source-less
-fallback parity or early alias-symbol registration identity.
+fallback parity.
+
+Early INSTANCE alias registration now obtains the operator or theorem symbol
+from the owner's actual source Context through canonicalSymbol. Generator's
+chosen identity and complete signature are retained before the aliases are
+published; a second synthetic symbol with the same name/arity is not substituted.
+All source-definition owners remain indexed before any early adaptation, so
+cross-module and recursive references can reuse their existing shells. Reconstruction
+remains available when no canonical export exists. On the same focused originals,
+all 1,378 observed registration symbols now share canonical identity, name and
+arity. Baseline names/arities agreed but all 1,378 identities differed. This closes
+that observed registration gap, not general graph mutation or source-less behavior.
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target
 conversion helpers have been removed.
