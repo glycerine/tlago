@@ -407,9 +407,30 @@ func reportCoverage(tool *Tool) {
 		}
 	}
 	actions := append([]*Action(nil), currentActions...)
-	sort.SliceStable(actions, func(i, j int) bool {
-		return coverageActionLess(actions[i], actions[j])
-	})
+	if tool.SpecProcessor != nil {
+		// TreeSet keeps the first inserted action at each predicate location,
+		// even if a later action there has a different cost model.
+		seen := make(map[SourceLocation]bool)
+		unique := make([]*Action, 0, len(actions))
+		for _, action := range actions {
+			if action.Pred == nil {
+				panic(NewNullPointerException())
+			}
+			location := action.GetDefinitionLocation()
+			if !seen[location] {
+				seen[location] = true
+				unique = append(unique, action)
+			}
+		}
+		actions = unique
+		sort.SliceStable(actions, func(i, j int) bool {
+			return sourceLocationLess(actions[i].GetDefinitionLocation(), actions[j].GetDefinitionLocation())
+		})
+	} else {
+		sort.SliceStable(actions, func(i, j int) bool {
+			return coverageActionLess(actions[i], actions[j])
+		})
+	}
 	reported := NewInsMap[*CostModelNode, bool]()
 	for _, action := range actions {
 		if action == nil || action.CM.node == nil {
@@ -476,7 +497,8 @@ func coverageActionLess(left *Action, right *Action) bool {
 
 func sourceLocationLess(left SourceLocation, right SourceLocation) bool {
 	if left.Source != right.Source {
-		return left.Source < right.Source
+		// Location.compareTo compares module UniqueString tokens, not text.
+		return UniqueStringOf(left.Source).Compare(UniqueStringOf(right.Source)) < 0
 	}
 	if left.BeginLine != right.BeginLine {
 		return left.BeginLine < right.BeginLine

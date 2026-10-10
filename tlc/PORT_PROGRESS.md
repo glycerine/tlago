@@ -30574,3 +30574,60 @@ Original full off-heap random stress session 27326 remains live (poll c93b19).
 Latest saved progress is 700,626,729 / 2,147,483,648; no terminal result or method
 credit. Overall parity remains incomplete. Next audit: coverage report sorting/
 deduplication by actual predicate locations and variable-counter setup boundaries.
+
+
+2026-10-09: Match coverage report location selection and module ordering
+
+Previous turn made progress in 1e1e628; this turn started clean. Source coverage
+reporting first inserts Actions into a TreeSet whose comparator uses only their
+predicate locations, preserving the first Action for equal locations. It then
+deduplicates the retained CMs by identity. Native reporting previously sorted
+using additional predicate/name ties and only deduplicated CMs, exposing extra
+reports and selecting different representatives. Corrected source-backed report
+selection with first-location representatives before sorting/CM deduplication.
+The original action array is retained. Source Location.compareTo compares module
+UniqueString tokens, not textual names; corrected sourceLocationLess accordingly.
+
+Ignored observers under .codex-gotmp/coverage-order-observation load unchanged
+I, B, H and DieHardAlias with AliasSup config. Actual action counts are 3, 2, 5
+and 6. Each model observes ten complete reports: normal, independent CM graphs,
+reversed inputs, name ties, shared CMs, duplicate input, same-location independent
+and shared CMs, first no-op CM, and empty input. Actual checked predicates and
+contexts are retained; private actual creator getCM and the corresponding native
+creator build complete independent graphs. Distinct counters expose selection.
+Reports compare every raw message code/parameter in order and check input
+references against a snapshot taken before reporting. Four count rows plus 40
+reports and an actual alias/next Location.compareTo pair give 45 ordered rows;
+all match, correcting 13 baseline differences. The direct cross-module pair
+verifies interned ordering on existing DieHardAlias and DieHard locations; this
+is not a full mixed-module action-producer sweep. No persistent test or source
+fixture was invented or modified. No original-method credit.
+
+Initial observer setup used bare ActionWrappers without required child graphs;
+Java assertions rejected that setup. Native empty input through its copying
+SetActions helper also became nil; observer installation now targets the actual
+cached action array directly in both implementations. Corrected to actual
+creator-built graphs, and corrected the source array check to use a pre-report
+snapshot. Initial incomplete logs remain as initial-*.log, session 76203 terminal
+4e3588; they are not parity evidence. Final source/native baseline session 70283
+terminal 0a941c returned status 0. Corrected native session 36383 terminal fb5196
+returned status 0, all 45 rows matching. Final compare.py receipt a8983c requires
+exactly 45 new + 38 constraint + 24 initial + 16 + 16 family rows, exact order
+and equality; status 0, all 139 match. Prior observers: session 86110 terminal
+12395b (constraints), session 69727 terminal 7aebab (initial/families), status 0.
+General concurrent mutation, intern-token extremes and all source producers are
+not established by these bounded observations.
+
+All 26 selected original root model/generated-trace tests pass at unchanged
+bounds: 19 coverage models, TLCGetLevel/TLCGetLevelTTrace and five
+TraceExpressionSpec methods. Session 77815 terminal 32f25b, root 10.048s, status 0,
+original-models.log. All four original TestJavaReportCoverage01..04 methods pass,
+session 86110 terminal 12395b, TLC 0.012s, status 0, original-reporting.log. No
+race, broad workspace suite, XML/ApalacheIR sweep, inventory changes or new
+original-method credit. Formatting and git diff --check pass. No email work.
+
+Original full off-heap random stress session 27326 remains live (poll 2e6c30).
+Latest saved progress is 722,371,117 / 2,147,483,648; no terminal result or method
+credit. Overall parity remains incomplete. Next audit coverage variable-counter
+setup/reporting boundaries against current processor declarations, retaining
+source partial updates and output before failures.

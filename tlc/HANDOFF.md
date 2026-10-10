@@ -146,10 +146,11 @@ source iteration and first failures. Coverage creation/reporting now preserve
 source null failures in initial, next, invariant and implied families, including
 partial updates and report prefixes. Constraint creation now requires the source
 OpDef cast, installs a fresh Action after building its cost model, and preserves
-repeated-creation failures. Constraint reports retain null/cast failures. All 94
-coverage observations and 30 focused original tests pass. Next audit: coverage
-report sorting/deduplication by predicate location and variable-counter setup
-boundaries. Original model-test reconciliation remains open.
+repeated-creation failures. Constraint reports retain null/cast failures. Reports
+now retain the first action per predicate location, then deduplicate cost models;
+module ordering follows interned tokens. All 139 coverage observations and 30
+focused original tests pass. Next audit: coverage variable-counter setup and
+reporting boundaries. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

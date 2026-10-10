@@ -9400,8 +9400,30 @@ foreign-slot retention is compared. All 56 earlier coverage rows still agree.
 Twenty-six original model/generated-trace tests and four original reporting tests
 pass normally. No new persistent tests/fixtures or original-method credit.
 Failures inside arbitrary malformed semantic graphs and VM-generated exception
-detail text are not established; report sorting/deduplication and variable-counter
-setup boundaries remain separate audits.
+detail text are not established; variable-counter setup boundaries remain a
+separate audit.
+
+Coverage reports retain Java's TreeSet selection: the first input action at each
+predicate location survives, independent of names, contexts or its cost model.
+Those representatives are sorted by Location.compareTo, then cost models are
+deduplicated by identity. A first no-op CM still suppresses another action at the
+same location with a nonempty CM. Reports never reorder the checker's array.
+Location module ordering compares UniqueString token numbers, not module text;
+line/column/end coordinates retain the source numeric ordering.
+
+All 45 ordered observations on unchanged I, B, H and DieHardAlias agree after
+correcting 13 baseline rows. There are four actual action counts, 40 complete
+report observations and one direct cross-module location comparison using the
+existing alias and next predicates. Reports cover ordinary models, independent
+CM graphs, reversed inputs, name ties, shared CMs, duplicate inputs, same-location
+roots, a first no-op CM and empty arrays. Each CM graph is built by the actual
+coverage creator from an existing checked predicate/context; counters distinguish
+which representative is selected. Input arrays are compared with snapshots taken
+before reporting. The cross-module comparison establishes the alias/next token
+ordering, not a general mixed-module producer sweep. All 94 earlier coverage
+observations and 30 original model/reporting tests remain green. No persistent
+tests, fixture changes or original-method credit. General concurrent mutation,
+extreme intern-token arithmetic and every coverage producer remain unproven.
 
 LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
 ModelChecker.vetoCleanup property retains disk graph handles for subsequent
