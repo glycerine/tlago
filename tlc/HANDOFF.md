@@ -403,7 +403,11 @@ distinguish null from empty and retain vector/array ownership. Enumeration
 normalization failures are immediate. All 1,362 construction/ownership rows agree;
 existing empty-array callers use explicit empty slices. Original set/subset,
 randomization and debugger checks pass, along with vector sharing/RPC checks.
-Broader vector access/insertion and parsed intern allocation remain open.
+ValueVec keeps its Java element count independently of backing storage. Direct
+access, insertion, sorting, growth and failed-store mutations match all 17,700
+observations; five transfer observations preserve exceptional counts and null
+backing arrays. Existing original set/subset checks and focused regressions pass.
+Parsed intern allocation and broader value subclass behavior remain open.
 Prior lambda conversion and deep-normalization matrices also agree; contracts
 and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
@@ -438,7 +442,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,518,779,649 of 2,147,483,648 iterations, without a terminal result. The previous
+1,869,338,437 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

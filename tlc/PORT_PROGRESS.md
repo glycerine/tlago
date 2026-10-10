@@ -35702,3 +35702,51 @@ unchanged. Handoff and architecture distinguish constructor verification from th
 previous complete CommunityModules run through 686d6b7. Latest saved full stress
 progress is 1,846,976,793 / 2,147,483,648 (18a6ad), without terminal result or long
 credit. Preserve original stress handle, log and bounds.
+
+
+2026-10-10: ValueVec independent count, direct array access and insertion
+
+Resume the uncommitted vector work after recovery. Initial status has four
+modified source/test files (bc1dff); the completed native-after log has 10,200
+rows. All 10,200 source/native rows agree (d6effd). Read pinned ValueVec.java:
+count is an independent signed int, direct access uses the full physical array,
+AddAt increments after its store and Add post-increments before its store.
+Sorted insertion grows before duplicate comparison, sorting keeps unused slots
+and publishes count on completion, and growth publishes storage before copying.
+Retain these source behaviors and WrongInvocationException for the set bound.
+
+Expand ignored actual-runtime observers to InsertAt, CopyInto, EnsureCapacity
+and indexed IndexOf, retaining actual parsed test206 source nodes. Initial
+17,700 rows have 360 differences (855dd6): native arraycopy checks negative
+length before negative indices. Source checks source index, destination index,
+then length. Correct the helper order; all 17,700 rows agree (5ad8ad).
+
+Observe five source ObjectOutputStream/ObjectInputStream transfers: actual
+repeated AddAt produces count 2 over capacity 1; reflected actual runtime fields
+also retain count -1, max int and null backing arrays with counts 0/1. Native
+transfer through a parsed tool in simulation mode and real state caches initially
+rejects four counts and converts the null empty backing array (5ad8ad). Preserve
+all signed Java int counts independently of capacity and decode reference zero
+as null. Keep invalid array references and out-of-int32 counts rejected. Remove
+three existing native invalid-count cases contradicted by source serialization;
+retain existing invalid/conflicting reference assertions. Update the existing
+sharing fixture's count assignment and original KSubset fixture ToArray calls,
+as the pinned Java test already does. No persistent test/fixture, fabricated
+semantic graph or evaluator callback is added. All 17,705 completed rows agree
+(e92903). Earlier 1,362 constructor/ownership rows still agree (69aa5f).
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering and native vector sharing/reference checks pass: session
+42627 exits zero (a15b35), root 5.534s and tlc 2.408s (e92903). Full original
+set/subset/randomization/debugger/initialization selection and existing native
+vector sharing/reference checks pass normally at original bounds: session 4759
+exits zero, tlc 87.723s (59ec30). Short existing vector worker RPC check initially
+fails only on sandbox-denied loopback listen (69aa5f); rerun with socket access
+exits zero (202bc8), tlc 0.013s (59ec30). No race, shortened workload or full
+CommunityModules rerun; original-method credit remains unchanged.
+
+Original full off-heap random stress session 27326 is directly polled and remains
+live (2431c8). Latest saved log progress is 1,869,338,437 / 2,147,483,648
+(312edd); no terminal result or long-test credit. Preserve the same handle, log,
+original seed and bounds. Update concise handoff and implementation contracts.
+Parsed intern allocation and broader value subclass behavior remain separate.

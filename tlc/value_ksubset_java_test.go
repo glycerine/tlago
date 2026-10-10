@@ -56,7 +56,7 @@ func TestJavaKSubsetValue(t *testing.T) {
 			t.Fatal(err)
 		}
 		javaFcnSetSize(t, set, 496)
-		array := append([]Value(nil), set.Elems.data...)
+		array := set.Elems.ToArray()
 		for _, v := range array {
 			if v == nil {
 				t.Fatal("expected non-null element")
@@ -73,7 +73,7 @@ func TestJavaKSubsetValue(t *testing.T) {
 			t.Fatal(err)
 		}
 		javaFcnSetSize(t, set, 528)
-		array := append([]Value(nil), set.Elems.data...)
+		array := set.Elems.ToArray()
 		for _, v := range array {
 			if v == nil {
 				t.Fatal("expected non-null element")
@@ -90,7 +90,7 @@ func TestJavaKSubsetValue(t *testing.T) {
 			t.Fatal(err)
 		}
 		javaFcnSetSize(t, set, 1953)
-		array := append([]Value(nil), set.Elems.data...)
+		array := set.Elems.ToArray()
 		for _, v := range array {
 			if v == nil {
 				t.Fatal("expected non-null element")
@@ -107,7 +107,7 @@ func TestJavaKSubsetValue(t *testing.T) {
 			t.Fatal(err)
 		}
 		javaFcnSetSize(t, set, 2016)
-		array := append([]Value(nil), set.Elems.data...)
+		array := set.Elems.ToArray()
 		for _, v := range array {
 			if v == nil {
 				t.Fatal("expected non-null element")

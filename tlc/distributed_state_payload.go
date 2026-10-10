@@ -441,7 +441,7 @@ func (e *distributedPayloadEncoder) vector(vector *ValueVec) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	e.payload.ValueVectors[id-1] = DistributedValueVectorNode{Array: array, Count: len(vector.data)}
+	e.payload.ValueVectors[id-1] = DistributedValueVectorNode{Array: array, Count: vector.Len()}
 	return id, nil
 }
 
@@ -1127,14 +1127,14 @@ func decodeDistributedStates(payload *DistributedStatePayload, decoder *distribu
 	}
 	decoder.vectors = make([]*ValueVec, len(payload.ValueVectors))
 	for i, node := range payload.ValueVectors {
-		array, err := decoder.arrayRefs(nil, false, node.Array)
+		array, err := decoder.arrayRefs(nil, node.Array == 0, node.Array)
 		if err != nil {
 			return nil, fmt.Errorf("value vector %d: %w", i+1, err)
 		}
-		if node.Count < 0 || node.Count > len(array) {
-			return nil, fmt.Errorf("value vector %d: count outside backing array", i+1)
+		if node.Count < math.MinInt32 || node.Count > math.MaxInt32 {
+			return nil, fmt.Errorf("value vector %d: count outside Java int range", i+1)
 		}
-		decoder.vectors[i] = &ValueVec{data: array[:node.Count]}
+		decoder.vectors[i] = &ValueVec{data: array, count: int32(node.Count)}
 	}
 	// Allocate all mixed containers before resolving entries. Values and
 	// attachments can point to one another or share recursive containers.
@@ -1514,7 +1514,7 @@ func (d *distributedPayloadDecoder) populate(value Value, node DistributedValueN
 			}
 			v.Elems = d.vectors[node.Vector-1]
 		} else if node.CollectionPresent {
-			v.Elems = &ValueVec{data: refs}
+			v.Elems = &ValueVec{data: refs, count: int32(len(refs))}
 		} else if len(refs) != 0 {
 			return fmt.Errorf("null value vector contains elements")
 		}

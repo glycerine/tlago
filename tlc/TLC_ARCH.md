@@ -8278,8 +8278,31 @@ arrays, with no fabricated evaluators or persistent fixtures/tests. No original
 ValueVec/SetEnumValue unit test class exists in the pinned ordinary test tree;
 existing original set/subset/randomization/debugger and model/value/stream checks
 pass. Existing native vector sharing and worker RPC checks also pass. Broader
-vector access/insertion, malformed counts and parsed intern allocation remain
-separate requirements. This comparison adds no original-method credit.
+parsed intern allocation remains a separate requirement. This constructor
+comparison adds no original-method credit.
+
+ValueVec keeps its full backing array and signed Java int count independently.
+Direct slot access uses physical array bounds, including inactive slots. AddAt
+increments the count after a successful store even when count exceeds capacity;
+Add increments before a failing store. Sorted insertion grows before duplicate
+comparison. Sort publishes its new count only after successful completion and
+retains unused slots. IndexOf propagates equality failures and uses the argument
+as receiver; unsorted Search uses the stored value. InsertAt, CopyInto and
+ToArray preserve source arraycopy preflight order and diagnostics. EnsureCapacity
+checks the set bound even for an already sufficient array, raises
+WrongInvocationException and publishes replacement storage before copying.
+All 17,700 source/native access, insertion, sorting, copy, growth and failure
+observations agree across three bounds, source flags, ten actual constructor
+states, five arguments and signed index extremes. Earlier 1,362 constructor rows
+still agree. Five Java ObjectOutputStream/ObjectInputStream observations retain
+an overcapacity count produced by actual AddAt calls, reflected negative/max-int
+counts and null backing arrays. Native transfer through actual parsed-tool state
+caches agrees, retaining all int32 counts independently of backing length and
+reserving array reference zero for null. Invalid backing references and counts
+outside Java int range remain errors. Existing native rejection cases that
+contradicted these source transfers were removed; original KSubset fixtures now
+call ToArray as their Java source does. No persistent test or fixture was added,
+no semantic graph or evaluator was fabricated and no original credit was added.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
@@ -14115,8 +14138,8 @@ active count. Enum values reference vector IDs, preserving shared vector objects
 as well as distinct vectors over shared storage. Encoding visits the entire
 capacity, including inactive slots retained after sorting/deduplication. Vector
 IDs are reserved before walking their arrays. Decoding resolves arrays against
-allocated Value objects, validates each count against backing length, constructs
-vectors, then populates Value owners. This supports cycles through inactive
+allocated Value objects, validates each count against the Java int range,
+constructs vectors with independent counts, then populates Value owners. This supports cycles through inactive
 storage. Appending within capacity changes shared storage; shared vector owners
 also observe the updated active count. Receiver storage remains isolated from
 the sender. Existing inline enum fixtures remain accepted. Communicating roles

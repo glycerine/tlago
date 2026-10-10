@@ -16,48 +16,50 @@ type Enumerable interface {
 	Elements() ValueEnumeration
 }
 
+// ValueVec keeps the Java array and active count independently. Direct slot
+// writes can address unused storage, and failed stores can leave count > capacity.
 type ValueVec struct {
-	data []Value
+	data  []Value
+	count int32
 }
 
 func NewValueVec(capacity int) *ValueVec {
 	if capacity < 0 {
 		panic(NewNegativeArraySizeException(fmt.Sprint(capacity)))
 	}
-	return &ValueVec{data: make([]Value, 0, capacity)}
+	return &ValueVec{data: make([]Value, capacity)}
 }
 
 func NewValueVecFrom(values []Value) *ValueVec {
 	if values == nil {
 		panic(NewNullPointerException())
 	}
-	return &ValueVec{data: values[:len(values):len(values)]}
+	return &ValueVec{data: values[:len(values):len(values)], count: int32(len(values))}
 }
 
 func (v *ValueVec) Add(val Value) {
-	if len(v.data) == cap(v.data) {
-		v.ensureCapacity(len(v.data) + 1)
+	if v.Len() == v.Cap() {
+		v.ensureCapacity(int(v.count + 1))
 	}
-	v.data = append(v.data, val)
+	index := v.count
+	v.count++ // Source post-increment runs before the array store's bounds check.
+	v.Set(int(index), val)
 }
 
 func (v *ValueVec) AddAt(val Value, index int) {
-	oldLen := len(v.data)
-	newLen := oldLen + 1
-	if index < 0 || index >= cap(v.data) || newLen > cap(v.data) {
-		panic("ValueVec index out of bounds")
-	}
-	if index >= len(v.data) {
-		v.data = v.data[:index+1]
-	}
-	v.data[index] = val
-	if len(v.data) != newLen {
-		v.data = v.data[:newLen]
-	}
+	v.Set(index, val)
+	v.count++
 }
 
 func (v *ValueVec) AddSortedUnique(val Value) error {
-	for i, elem := range v.data {
+	if v.Len() == v.Cap() {
+		v.ensureCapacity(int(v.count + 1))
+	}
+	for i := 0; i < v.Len(); i++ {
+		elem := v.At(i)
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
 		cmp, err := elem.Compare(val)
 		if err != nil {
 			return err
@@ -66,77 +68,107 @@ func (v *ValueVec) AddSortedUnique(val Value) error {
 			return nil
 		}
 		if cmp > 0 {
-			v.insertAt(val, i)
+			for j := v.Len() - 1; j >= i; j-- {
+				v.Set(j+1, v.At(j))
+			}
+			v.Set(i, val)
+			v.count++
 			return nil
 		}
 	}
-	v.Add(val)
+	index := v.count
+	v.count++
+	v.Set(int(index), val)
 	return nil
 }
 
-func (v *ValueVec) insertAt(val Value, index int) {
-	if len(v.data) == cap(v.data) {
-		v.ensureCapacity(len(v.data) + 1)
+func (v *ValueVec) InsertAt(val Value, index int) {
+	if v.Len() == v.Cap() {
+		v.ensureCapacity(int(v.count + 1))
 	}
-	var zero Value
-	v.data = append(v.data, zero)
-	copy(v.data[index+1:], v.data[index:len(v.data)-1])
-	v.data[index] = val
+	valueVecArrayCopy(v.data, index, v.data, int(int32(index)+1), int(v.count-int32(index)))
+	v.Set(index, val)
+	v.count++
 }
 
 func (v *ValueVec) Len() int {
 	if v == nil {
 		panic(NewNullPointerException())
 	}
-	return len(v.data)
+	return int(v.count)
 }
 func (v *ValueVec) Cap() int {
-	if v == nil {
+	if v == nil || v.data == nil {
 		panic(NewNullPointerException())
 	}
-	return cap(v.data)
+	return len(v.data)
 }
-func (v *ValueVec) Empty() bool          { return v.Len() == 0 }
-func (v *ValueVec) At(i int) Value       { return v.data[i] }
-func (v *ValueVec) Set(i int, val Value) { v.data[i] = val }
-func (v *ValueVec) First() Value         { return v.data[0] }
-func (v *ValueVec) Last() Value          { return v.data[len(v.data)-1] }
+func (v *ValueVec) Empty() bool { return v.Len() == 0 }
+func (v *ValueVec) At(index int) Value {
+	if v == nil || v.data == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(v.data)))
+	}
+	return v.data[index]
+}
+func (v *ValueVec) Set(index int, val Value) {
+	if v == nil || v.data == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(v.data)))
+	}
+	v.data[index] = val
+}
+func (v *ValueVec) First() Value { return v.At(0) }
+func (v *ValueVec) Last() Value  { return v.At(int(int32(v.Len()) - 1)) }
 
 func (v *ValueVec) ToArray() []Value {
-	if v == nil {
-		panic(NewNullPointerException())
+	length := v.Len()
+	if length < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(length)))
 	}
-	out := make([]Value, len(v.data))
-	copy(out, v.data)
+	out := make([]Value, length)
+	valueVecArrayCopy(v.data, 0, out, 0, length)
 	return out
 }
 
-func (v *ValueVec) Contains(val Value) bool {
-	return v.IndexOf(val) != -1
+func (v *ValueVec) CopyInto(values []Value) {
+	length := v.Len()
+	valueVecArrayCopy(v.data, 0, values, 0, length)
 }
 
-func (v *ValueVec) IndexOf(val Value) int {
-	for i, elem := range v.data {
-		eq, err := val.Equal(elem)
-		if err == nil && eq {
-			return i
+func (v *ValueVec) Contains(val Value) bool { return v.IndexOf(val) != -1 }
+func (v *ValueVec) IndexOf(val Value) int   { return v.IndexOfFrom(val, 0) }
+func (v *ValueVec) IndexOfFrom(val Value, index int) int {
+	for i := int32(index); int(i) < v.Len(); i++ {
+		elem := v.At(int(i))
+		if val == nil {
+			panic(NewNullPointerException())
+		}
+		equal, err := val.Equal(elem)
+		if err != nil {
+			panic(err)
+		}
+		if equal {
+			return int(i)
 		}
 	}
 	return -1
 }
 
 func (v *ValueVec) Search(val Value, sorted bool) (bool, error) {
-	if v == nil {
-		panic(NewNullPointerException())
-	}
 	if sorted {
-		low, high := 0, len(v.data)
+		low, high := 0, v.Len()
 		for low < high {
-			mid := (low + high) >> 1
+			mid := int(int32(low+high) >> 1)
+			elem := v.At(mid)
 			if val == nil {
 				panic(NewNullPointerException())
 			}
-			cmp, err := val.Compare(v.data[mid])
+			cmp, err := val.Compare(elem)
 			if err != nil {
 				return false, err
 			}
@@ -151,11 +183,12 @@ func (v *ValueVec) Search(val Value, sorted bool) (bool, error) {
 		}
 		return false, nil
 	}
-	for i := 0; i < len(v.data); i++ {
-		if v.data[i] == nil {
+	for i := 0; i < v.Len(); i++ {
+		elem := v.At(i)
+		if elem == nil {
 			panic(NewNullPointerException())
 		}
-		equal, err := v.data[i].Equal(val)
+		equal, err := elem.Equal(val)
 		if err != nil {
 			return false, err
 		}
@@ -167,25 +200,21 @@ func (v *ValueVec) Search(val Value, sorted bool) (bool, error) {
 }
 
 func (v *ValueVec) Sort(noDup bool) error {
-	if v == nil {
-		panic(NewNullPointerException())
-	}
 	newCount := 0
-	if len(v.data) != 0 {
+	if v.Len() != 0 {
 		newCount = 1
 	}
-	for i := 1; i < len(v.data); i++ {
-		elem := v.data[i]
-		cmp := 0
-		idx := 0
-		low, high := 0, newCount
+	for i := 1; i < v.Len(); i++ {
+		elem := v.At(i)
+		cmp, idx, low, high := 0, 0, 0, newCount
 		for low < high {
-			idx = (low + high) >> 1
-			var err error
+			idx = int(int32(low+high) >> 1)
+			other := v.At(idx)
 			if elem == nil {
 				panic(NewNullPointerException())
 			}
-			cmp, err = elem.Compare(v.data[idx])
+			var err error
+			cmp, err = elem.Compare(other)
 			if err != nil {
 				return err
 			}
@@ -203,41 +232,82 @@ func (v *ValueVec) Sort(noDup bool) error {
 				idx++
 			}
 			for j := newCount; j > idx; j-- {
-				v.data[j] = v.data[j-1]
+				v.Set(j, v.At(j-1))
 			}
-			v.data[idx] = elem
+			v.Set(idx, elem)
 			newCount++
 		}
 	}
-	v.data = v.data[:newCount]
+	v.count = int32(newCount)
 	return nil
 }
 
 func (v *ValueVec) String() string {
-	parts := make([]string, len(v.data))
-	for i, elem := range v.data {
-		parts[i] = elem.String()
+	var out strings.Builder
+	out.WriteString("{")
+	for i := 0; i < v.Len(); i++ {
+		if i > 0 {
+			out.WriteString(", ")
+		}
+		elem := v.At(i)
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
+		out.WriteString(elem.String())
 	}
-	return "{" + strings.Join(parts, ", ") + "}"
+	out.WriteString("}")
+	return out.String()
 }
 
+func (v *ValueVec) EnsureCapacity(minCapacity int) { v.ensureCapacity(minCapacity) }
 func (v *ValueVec) ensureCapacity(minCapacity int) {
-	if cap(v.data) >= Globals.SetBound {
-		panic(newTLCError(ECGeneral, "Attempted to construct a set with too many elements (>%d).", Globals.SetBound))
+	capacity := v.Cap()
+	if capacity >= Globals.SetBound {
+		panic(NewWrongInvocationException(fmt.Sprintf("Attempted to construct a set with too many elements (>%d).", Globals.SetBound)))
 	}
-	if cap(v.data) >= minCapacity {
+	if capacity >= minCapacity {
 		return
 	}
-	newCapacity := cap(v.data) + cap(v.data)
+	newCapacity := int(int32(capacity) + int32(capacity))
 	if newCapacity < minCapacity {
 		newCapacity = minCapacity
 	}
 	if newCapacity > Globals.SetBound {
 		newCapacity = Globals.SetBound
 	}
-	out := make([]Value, len(v.data), newCapacity)
-	copy(out, v.data)
-	v.data = out
+	if newCapacity < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(newCapacity)))
+	}
+	old := v.data
+	v.data = make([]Value, newCapacity)
+	valueVecArrayCopy(old, 0, v.data, 0, v.Len())
+}
+
+// System.arraycopy checks all bounds before moving any elements. Source vector
+// insertion uses this overload, including its object-array diagnostics.
+func valueVecArrayCopy(source []Value, sourceIndex int, destination []Value, destinationIndex int, length int) {
+	if source == nil || destination == nil {
+		panic(NewNullPointerException())
+	}
+	fail := func(message string) {
+		panic(&ArrayIndexOutOfBoundsException{javaExceptionBase: newJavaExceptionBase(javaString("arraycopy: "+message), nil)})
+	}
+	if sourceIndex < 0 {
+		fail(fmt.Sprintf("source index %d out of bounds for object array[%d]", sourceIndex, len(source)))
+	}
+	if destinationIndex < 0 {
+		fail(fmt.Sprintf("destination index %d out of bounds for object array[%d]", destinationIndex, len(destination)))
+	}
+	if length < 0 {
+		fail(fmt.Sprintf("length %d is negative", length))
+	}
+	if int64(sourceIndex)+int64(length) > int64(len(source)) {
+		fail(fmt.Sprintf("last source index %d out of bounds for object array[%d]", int64(sourceIndex)+int64(length), len(source)))
+	}
+	if int64(destinationIndex)+int64(length) > int64(len(destination)) {
+		fail(fmt.Sprintf("last destination index %d out of bounds for object array[%d]", int64(destinationIndex)+int64(length), len(destination)))
+	}
+	copy(destination[destinationIndex:destinationIndex+length], source[sourceIndex:sourceIndex+length])
 }
 
 type TupleValue struct {

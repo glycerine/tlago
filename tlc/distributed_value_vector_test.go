@@ -8,10 +8,10 @@ import "testing"
 func TestDistributedValueVectorSharingAndCapacity(t *testing.T) {
 	storage := []Value{NewIntValue(1), NewIntValue(2), nil}
 	vector := NewValueVecFrom(storage)
-	vector.data = vector.data[:1]
+	vector.count = 1
 	first, second := NewSetEnumValueVec(vector, false), NewSetEnumValueVec(vector, true)
 	other := NewValueVecFrom(storage)
-	other.data = other.data[:2]
+	other.count = 2
 	storage[2] = first // Recursive reference in the unused backing storage.
 	input := []*TLCStateMut{{level: 1, values: []Value{first, second, NewSetEnumValueVec(other, false), NewTupleValue(storage), &SetEnumValue{}, NewSetEnumValueVec(NewValueVec(0), true)}}}
 	got := distributedPayloadRoundTrip(t, input)[0].values
@@ -61,12 +61,13 @@ func TestDistributedValueVectorWorkerRPC(t *testing.T) {
 	}
 }
 
+// Counts need not fit backing storage: Java default serialization retains them.
 func TestDistributedValueVectorInvalidReferences(t *testing.T) {
 	for _, node := range []DistributedValueVectorNode{
-		{Array: -1}, {Array: 2}, {Array: 1, Count: -1}, {Array: 1, Count: 2}, {Count: 1},
+		{Array: -1}, {Array: 2},
 	} {
 		if _, err := DecodeDistributedStates(&DistributedStatePayload{ValueArrays: [][]int{{0}}, ValueVectors: []DistributedValueVectorNode{node}}); err == nil {
-			t.Fatal("invalid vector backing reference or count accepted")
+			t.Fatal("invalid vector backing reference accepted")
 		}
 	}
 	for _, node := range []DistributedValueNode{
