@@ -37407,3 +37407,44 @@ tool checks. No persistent new test/fixture or original-method credit. Prior
 broad baseline retained; this correction has focused verification. Handoff and
 architecture updated; overall goal active. Concurrent table replacement and
 arbitrary mutated-value deduplication remain unproven.
+
+Permutation deduplication continuation after verified 9d1fb74. Previous goal
+turn made progress; checkout clean. Native subgroup uses index-string keys;
+pinned source hashes mapped model-value names, then calls stored permutation
+equality through util.Set bucket chains. Reused indices, changed names and
+colliding typed names can therefore change subgroup membership or first failure.
+
+Prepare ignored .codex-gotmp/permutation-dedup using actual model-value,
+function/set/permutation constructors, public index/name/type fields and checked
+test206 source metadata. No semantic graph or evaluator callback is fabricated.
+Direct source hash calls are compared with actual native method availability;
+missing HashCode is reported explicitly rather than predicting its result.
+Source a64dab/native 47571 terminal d36e13 complete 480 rows: 402 differences,
+including 360 missing hash API calls and 42 actual subgroup behavior differences.
+
+Port MVPerm.HashCode with UTF-16 name hashes and signed 32-bit accumulation.
+Replace index keys with a specialized pinned util.Set translation, preserving
+bucket/equality order, key replacement, float load thresholds and descending
+rehash traversal. Preserve the source Compaq notice. Native 58087 exits zero
+(56c6da); 23 differences remain at actual null-name ModelValue equality ownership.
+Source UniqueString.equals(UniqueString) dereferences both names; native's general
+nullable helper bypasses this failure. Guard the untyped model-value call site
+and retain its owner catch; compatible typed model equality now uses the source
+name-reference comparison. Initial focused original/native 93419 passes
+(43f111), root 6.518s/tlc 2.841s, before the model-value correction.
+
+Native 91883 exits zero (3b7b67); all 480 rows match exactly after correction.
+Final focused original/native 60831 exits zero (90aab9), root 6.581s and
+tlc 2.664s. Independently run all 44 original ModelValueTest methods through
+TestJavaModelValue; terminal 29f764 passes, tlc .014s. Rerun prior observers:
+permutation 90568 terminal 45a6b8 retains all 4,160 exact rows; subgroup 639a50
+exits zero and retains all 440 exact rows.
+
+Preserve initial logs as *-base.log. Expand actual generator profiles to force
+rehash before colliding differently typed names, reversing the initial typed
+order in a second profile. Source ed0c7e/native 75181 terminal 75834f exit
+zero; all 672 rows match exactly, including selected diagnostic/owner. No
+persistent tests/fixtures or original-method credit added. Prior broad baseline
+retained; this correction has focused verification. Handoff/architecture updated;
+goal active. Concurrent mutation, allocation-resource behavior and arbitrary
+field changes beyond these observations remain unproven.

@@ -5485,8 +5485,29 @@ The earlier 440 subgroup observations still match. Focused original symmetry,
 value/evaluator and native state/tool checks pass. The existing special-value
 test explicitly initializes its empty model-value table, preserving assertions.
 No persistent test/fixture or original-method credit is added. Concurrent table
-replacement, arbitrary public field mutation and deduplication under mutated
-model values remain unproven.
+replacement and arbitrary public field mutations remain unproven beyond the
+following bounded deduplication observations.
+
+MVPerm.HashCode folds the UTF-16 name hash of each non-null mapped value in
+array order, using signed 32-bit arithmetic and omitting empty slots. It retains
+the source null-name failure without a model-value owner catch. Subgroup
+membership uses a specialized translation of the pinned util.Set: stored hashes,
+bucket-chain traversal, existing-key equality, key replacement, the float load
+threshold and descending-bucket rehash all retain source ordering. Permutation
+indices are not a substitute for source equality. Untyped ModelValue.Equal
+checks both name pointers before the source UniqueString.equals call, preserving
+the original null failure and model-value ownership; compatible typed values
+compare name references directly. The ignored constructor/public-field observer
+covers name/index reuse, duplicate generators, equal and colliding hashes,
+supplementary Unicode names, null names and colliding differently typed values.
+It includes a rehash before typed collisions, verifying the selected failure
+owner and diagnostic. All 672 rows match exactly. The original 480-row baseline
+has 402 differences, including 360 unavailable native hash-method calls and 42
+subgroup behavior differences. Earlier 4,160 permutation and 440 subgroup
+observations remain exact. Focused original/native checks and all 44 original
+ModelValueTest methods pass. No persistent tests/fixtures or original-method
+credit are added. Concurrent mutation, allocation-resource behavior and further
+arbitrary field changes remain unproven.
 
 - `TLCStateMut.toString` also honors VIEW, but only when the global `useView`
   flag is enabled; fingerprinting uses VIEW whenever the active tool has one.

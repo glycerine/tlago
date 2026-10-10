@@ -539,6 +539,14 @@ sizes. The earlier 440 subgroup observations still match. Focused original/nativ
 checks pass; the standalone special-value test now explicitly initializes its
 empty model-value table with its assertions preserved. Further concurrent
 mutation and deduplication variants remain unproven.
+Subgroup deduplication now uses Java's permutation name hashes and bucket-chain
+equality order, including replacement and rehashing. All 672 observed hash,
+collision, reused-index, changed-name and failure-ownership cases match exactly;
+the earlier 4,160 permutation and 440 subgroup cases still match. Untyped
+model-value equality now preserves null-name failures, and typed equality uses
+source name-reference identity. Focused original/native checks and all 44
+original `ModelValueTest` methods pass. Mutation variants beyond these
+observations remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

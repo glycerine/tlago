@@ -229,7 +229,7 @@ func PermutationSubgroup(value Value) ([]*MVPerm, error) {
 		return nil, NewIllegalArgumentException()
 	}
 
-	seen := make(map[string]struct{})
+	seen := newPermutationSet(capacity)
 	perms := make([]*MVPerm, 0)
 	for {
 		elem := enum.NextElement()
@@ -260,12 +260,8 @@ func PermutationSubgroup(value Value) ([]*MVPerm, error) {
 			}
 			perm.Put(dmv, rmv)
 		}
-		if perm.Size() > 0 {
-			key := perm.key()
-			if _, ok := seen[key]; !ok {
-				seen[key] = struct{}{}
-				perms = append(perms, perm)
-			}
+		if perm.Size() > 0 && seen.put(perm) == nil {
+			perms = append(perms, perm)
 		}
 	}
 
@@ -279,11 +275,9 @@ func PermutationSubgroup(value Value) ([]*MVPerm, error) {
 				if perm.Size() == 0 {
 					continue
 				}
-				key := perm.key()
-				if _, ok := seen[key]; ok {
+				if seen.put(perm) != nil {
 					continue
 				}
-				seen[key] = struct{}{}
 				perms = append(perms, perm)
 			}
 		}

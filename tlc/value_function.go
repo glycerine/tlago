@@ -3,7 +3,6 @@ package tlc
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -237,18 +236,25 @@ func (p *MVPerm) String() string {
 	return b.String()
 }
 
-func (p *MVPerm) key() string {
-	var b strings.Builder
-	for i, mv := range p.elems {
+func (p *MVPerm) HashCode() int32 {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	var hash int32
+	for _, mv := range p.elems {
 		if mv == nil {
 			continue
 		}
-		b.WriteString(strconv.Itoa(i))
-		b.WriteByte('>')
-		b.WriteString(strconv.Itoa(mv.Index))
-		b.WriteByte(';')
+		if mv.Val == nil {
+			panic(NewNullPointerException())
+		}
+		var valueHash int32
+		for _, unit := range javaStringUTF16(mv.Val.String()) {
+			valueHash = 31*valueHash + int32(unit)
+		}
+		hash = 31*hash + valueHash
 	}
-	return b.String()
+	return hash
 }
 
 func (p *MVPerm) elementAt(index int) *ModelValue {
@@ -337,11 +343,17 @@ func (v *ModelValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	if v.Type == typedModelValueUntypedCodeUnit {
 		o, ok := other.(*ModelValue)
-		return ok && v.Val.Equal(o.Val), nil
+		if !ok || o == nil {
+			return false, nil
+		}
+		if v.Val == nil || o.Val == nil {
+			panic(NewNullPointerException())
+		}
+		return v.Val.Equal(o.Val), nil
 	}
-	if o, ok := other.(*ModelValue); ok {
+	if o, ok := other.(*ModelValue); ok && o != nil {
 		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
-			return o.Val == v.Val || o.Val.Equal(v.Val), nil
+			return o.Val == v.Val, nil
 		}
 		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the differently-typed model values %s and %s", ValuesPPR(v), ValuesPPR(o)))
 	}
