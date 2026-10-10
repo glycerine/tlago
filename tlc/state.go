@@ -69,11 +69,30 @@ func StateVariables() []StateVariable {
 	for i, node := range stateVariableDeclarations {
 		out[i].Name = node.Name
 		out[i].declaration = node
+		out[i].CountDistinct = node.GetCountDistinct()
 	}
 	return out
 }
 
+func stateVariablesForTool(tool *Tool) []StateVariable {
+	if processor := tool.GetSpecProcessor(); processor != nil {
+		nodes := processor.GetVariablesNodes()
+		out := make([]StateVariable, len(nodes))
+		for i, node := range nodes {
+			out[i] = StateVariable{Name: node.Name, CountDistinct: node.GetCountDistinct(), declaration: node}
+		}
+		return out
+	}
+	return StateVariables()
+}
+
 func InitializeStateVariableCoverageCounters() {
+	if stateVariableDeclarations != nil {
+		for _, node := range stateVariableDeclarations {
+			node.SetCountDistinct(NewCountDistinctSyncedHyperLogLog(10))
+		}
+		return
+	}
 	for i := range stateVariables {
 		stateVariables[i].CountDistinct = NewCountDistinctSyncedHyperLogLog(10)
 	}
@@ -81,6 +100,12 @@ func InitializeStateVariableCoverageCounters() {
 
 func CountStateVariableCoverage(state *TLCStateMut) {
 	if state == nil || !CoverageVariableEnabled() {
+		return
+	}
+	if stateVariableDeclarations != nil {
+		for _, node := range stateVariableDeclarations {
+			node.Count(state.Lookup(node.Name))
+		}
 		return
 	}
 	for i := range stateVariables {

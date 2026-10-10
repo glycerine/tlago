@@ -423,7 +423,7 @@ func tlcSpecRecord(tool *Tool) Value {
 		propertyActionSetValue(filterInternalActions(tool.GetInvariants())),
 		propertyActionSetValue(tool.GetImpliedInits()),
 		propertyActionSetValue(tool.GetImpliedTemporals()),
-		stateVariablesSetValue(),
+		stateVariablesSetValue(tool),
 		semanticNodeSetValue(tool, tool.GetActionConstraints()),
 		semanticNodeSetValue(tool, tool.GetModelConstraints()),
 		propertyActionSetValue(tool.GetImpliedActions()),
@@ -546,10 +546,10 @@ func filterInternalActions(actions []*Action) []*Action {
 	return out
 }
 
-func stateVariablesSetValue() Value {
+func stateVariablesSetValue(tool *Tool) Value {
 	ensureTLCGetSetUniqueStrings()
 	ensureCounterExampleUniqueStrings()
-	vars := StateVariables()
+	vars := stateVariablesForTool(tool)
 	if len(vars) == 0 {
 		return EmptySet
 	}

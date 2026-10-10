@@ -31,6 +31,26 @@ type SymbolNode struct {
 	Arity      int
 	Location   SourceLocation
 	TreeNode   any
+	// Variable declarations own their coverage counters, as OpDeclNode does.
+	countDistinct *CountDistinct
+}
+
+func (s *SymbolNode) SetCountDistinct(counter *CountDistinct) *SymbolNode {
+	s.countDistinct = counter
+	return s
+}
+
+func (s *SymbolNode) GetCountDistinct() *CountDistinct { return s.countDistinct }
+
+func (s *SymbolNode) Count(value Value) *SymbolNode {
+	if s.countDistinct == nil {
+		panic(NewNullPointerException())
+	}
+	if value == nil && s.countDistinct.mode != CountDistinctNoop {
+		panic(NewNullPointerException())
+	}
+	s.countDistinct.AddValue(value)
+	return s
 }
 
 // Parser-backed symbol views share their declaration/definition's semantic

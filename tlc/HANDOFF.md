@@ -82,9 +82,11 @@ the nil-versus-empty child-array branch and property-aware fallback formatting.
 All 44 observed Java/native cases agree. Builtin and null syntax expose Java's
 empty comment/child arrays. Variable locations and spec records match all 16
 observed rows after setup, including replacement in the retained array. Null
-location records use Java's `--unknown--` module. Next source audit: variable
-metadata ownership across tools and declaration-owned coverage counters; these
-remain unproven.
+location records use Java's `--unknown--` module. Spec metadata and coverage now
+use the requested tool's declarations; counters belong to those declarations.
+All 15 observed ownership/report/failure rows and 11 counter lifecycle rows match
+Java. Next source audit: constraint metadata's tool-object casts and failure
+boundaries; the native fallback currently differs from the source cast.
 
 ## Verification baseline and test credit
 

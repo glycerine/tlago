@@ -11114,8 +11114,31 @@ An ignored pinned-Java/native driver loads unchanged Debug02 and observes eight
 phases: initial declaration, owner/view syntax changes, missing/typed-null syntax,
 restoration, declaration-array replacement and a native setter reset. All 16
 location/spec-record rows agree; baseline differs in 12 rows. This establishes
-location ownership after setup, not cross-tool metadata selection or
-declaration-owned coverage counter identity.
+location ownership after setup. Spec metadata and coverage reporting additionally
+select the requested tool's `SpecProcessor` declarations; a processor with no
+variables yields an empty collection. Standalone native tools retain the global
+state-record adapter path.
+
+Variable `SymbolNode` declarations now own `CountDistinct` counters through
+`SetCountDistinct`, `GetCountDistinct` and `Count`. Coverage creation installs new
+synchronized HyperLogLog counters after creating the action/constraint models,
+matching Java's phase order. Reinitializing one tool does not change another
+tool's independent counters. Shared declaration pointers share their counters.
+State metadata exposes the retained declarations' current counters; worker
+counting traverses the active state declaration slice and looks up each value by
+its variable name, matching Java `Worker`. Native records keep their slot-based
+counting adapter. Reporting a source declaration without a counter throws the
+source null exception; a Noop counter reports -1 and is omitted. `Count` retains
+fluent identity, throws for missing counters, and preserves Noop's acceptance of
+null values while actual counters reject null values.
+
+An ignored driver constructs two actual tools on unchanged Debug02 in pinned
+Java and Go and observes metadata, coverage initialization, state counting,
+reinitialization, shared declarations, coverage reports and an uninitialized
+report failure. All 15 rows agree; the baseline differs in seven. Another driver
+observes unset/reset, Noop, Naive and synchronized HyperLogLog lifecycle and null
+boundaries on an actual original declaration. All 11 rows agree. These contracts
+do not establish general semantic graph mutation sharing.
 
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing

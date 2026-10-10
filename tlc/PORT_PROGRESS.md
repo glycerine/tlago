@@ -29100,3 +29100,51 @@ owned coverage counter identity remain separate, unproven ownership contracts.
 Original off-heap random stress session 27326 remains active; latest saved log
 observation is 173,265,617 of 2,147,483,648 iterations with no terminal result.
 No restart, shortened bounds or method credit. Overall TLC parity is incomplete.
+
+
+2026-10-09: Declaration-owned variable coverage and tool-specific metadata
+
+Source TLCGetSet and CostModelCreator use the requested tool's SpecProcessor
+variable declarations; OpDeclNode owns each CountDistinct counter. Go selected
+global state slots for both metadata and reports and stored counters in those
+slots. Separate tools therefore lost metadata/counter ownership, and coverage
+initialization for one tool reset the active other tool's counters.
+
+Spec metadata/reporting now select the requested processor declarations. Variable
+SymbolNodes retain their own counters through source-shaped fluent set/count and
+get methods. Coverage initialization installs synchronized HyperLogLog counters
+after action/constraint model creation, matching the source phase order. Shared
+declarations share counters. Worker counting continues to traverse the active
+state declarations, as Java Worker does, looking up values by variable name.
+Standalone native tools retain the global record adapter and native slot counting.
+Source reports without initialized counters throw the generic null exception.
+Counter count calls preserve missing-counter and null-value boundaries, including
+Noop's acceptance of null values. No persistent tests or fixtures were added.
+
+Ignored drivers construct two actual tools from unchanged original Debug02 in
+pinned Java and Go. They observe source spec metadata, initialization, state
+counting, independent reinitialization, shared declarations, three coverage
+reports and an uninitialized report failure. All 15 rows agree; baseline differs
+in seven. Independent lifecycle observation on an actual original declaration
+covers unset/reset, Noop, Naive and synchronized HyperLogLog fluent identity,
+counts and null boundaries; all 11 rows agree. Final comparison terminal a99a9a,
+status 0. Logs under .codex-gotmp/: variable-owner-java.log,
+variable-owner-before.log, variable-owner-after.log, variable-counter-java.log
+and variable-counter-after.log. Drivers/overlays remain ignored in the matching
+variable-owner-observation and variable-counter-observation directories.
+Source test searches found no direct originals for the declaration counter
+accessors; no original-method inventory credit was added.
+
+Selected original TLCGetAll/TLCGetLevel, A/B/C coverage, Debug02-Debug05 and
+ReportCoverage01-04 checks plus focused native counter, debugger-variable,
+counterexample and successor checks pass normally. Log:
+.codex-gotmp/variable-owner-originals.log; terminal a849a7, status 0;
+root 5.697 seconds, TLC 6.576 seconds. Formatting and git diff --check pass.
+No full workspace/XML/ApalacheIR sweep or long race selection.
+
+Stress session 27326 remains live (poll 25f730) with a latest saved observation
+of 200,912,056 / 2,147,483,648 iterations and no terminal result. Corrected the
+inventory's stale pre-outage session/log reference without changing its pending
+credit. Overall parity is incomplete. Next concrete audit: constraint metadata
+casts current tool objects to OpDefNode or Action; Go currently has a name-only
+fallback instead of the source failure boundary.
