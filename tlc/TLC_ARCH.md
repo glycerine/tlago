@@ -11371,6 +11371,25 @@ observations and focused original simulation checks still pass. This does not
 prove arbitrary concurrent declaration mutation, all malformed metadata or
 complete simulation parity. No persistent tests/fixtures or method credit added.
 
+Source-backed simulation statistics retain their owning worker and report its
+current global trace ID, matching Java's inner-class access. The shared atomic
+trace counter assigns IDs; advancing that counter alone does not change an
+already assigned worker ID. Directly constructed native statistics retain the
+standalone `TraceID` adapter. A noninitial state's missing action throws the
+source null-pointer exception during trace reporting instead of acquiring the
+native helper's `UnnamedAction` fallback.
+
+All 28 ignored pinned-Java/native observations agree across standard and extended
+statistics on unchanged BasicMultiTrace states. They cover null/initial states,
+repeated action names, a missing action in a predecessor, a truncated chain, two
+actual sequential one-step worker simulations sharing a counter, direct counter
+allocation and four explicit worker-ID assignments at signed 32-bit reporting
+boundaries. Those assignments use source reflection and the native worker field;
+they prove owner access and narrowing, not overflow-scale simulation. Existing
+focused original simulation checks and 20 variable-counter observations pass.
+No worker threads, new persistent tests/fixtures or original-method credit.
+General concurrent reporting and polymorphic predecessor reporting remain unproven.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

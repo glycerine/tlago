@@ -29904,3 +29904,53 @@ Original full off-heap stress session 27326 remains live, poll 5428c5. Latest
 saved progress is 535,772,413 / 2,147,483,648 iterations; no terminal result or
 method credit. Do not restart or shorten it. Overall TLC parity remains incomplete.
 Next source audit: simulation trace-statistics reporting and trace-count ownership.
+
+
+2026-10-09: Preserve simulation trace-statistics worker ownership
+
+Previous goal turn made verified progress in eb706db. Continued with source
+SimulationWorkerStatistics.getTraceStatistics: Java reads its owning worker's
+globalTraceCnt, while native read a copied TraceID. Native action-name lookup also
+turned a missing noninitial action into UnnamedAction instead of throwing Java's
+NullPointerException. Source-backed statistics now retain the worker and read its
+current ID. The source-backed trace loop rejects missing actions. Standalone
+native statistics keep their existing adapter behavior.
+
+All 28 final pinned-Java/native observations agree: 14 each with standard and
+extended statistics. Unchanged BasicMultiTrace supplies actual Init/Next states
+for null/initial reporting, repeated Next action counts, missing predecessor
+action and truncated-chain reporting. Two actual workers run sequential one-step
+simulations with a shared atomic trace counter; a worker retains its assigned ID
+when the other worker or direct collectPreTrace advances that shared counter.
+Four explicit owner-ID assignments use source reflection and native GlobalTrace
+at 2,147,483,647, 2,147,483,648, -1 and 0. They verify owner access and existing
+signed narrowing, not billions of traces. Ten baseline rows differed: missing
+action plus four owner assignments in each statistics mode. No worker threads,
+listeners or full model search. General concurrent reporting and polymorphic
+predecessor reporting remain unproven.
+
+Ignored Java/native observers, baseline source file and overlays are under
+.codex-gotmp/simulation-trace-observation/. Corrected observer compilation a7a7ef
+returned status 0. Java standard/extended runs 7c8619/689d2e and baseline native
+092873/351c1c returned status 0. Final native extended session 16306 terminal
+3b461d and standard session 87122 terminal d8a95e returned status 0. Logs are
+.codex-gotmp/simulation-trace-{java-,before-}{true,false}.log and
+simulation-trace-{true,false}.log. Comparison 2c4968 verified all 28 exact rows
+and all 20 previous naive/HyperLogLog variable-counter rows against Java.
+Counter replay sessions 18545/98183 returned status 0, terminal b69575/2b31b0;
+logs simulation-trace-counter-{naive,hll}.log.
+
+Focused original SimulationWorker, SimulatorCorrectness, SimulatorPrintBehavior,
+CoverageStatistics, TLCGetAll and TLCGetLevel selections plus existing native
+Simulator/SimulationWorker checks pass normally, session 64814 terminal 155574,
+status 0: root 1.426 seconds, TLC 0.013 seconds. Log:
+.codex-gotmp/simulation-trace-originals.log. Inputs, assertions and workload bounds
+remain unchanged. Formatting and git diff --check pass. No persistent tests or
+fixtures, inventory updates or new method credit. No broad suite, XML/ApalacheIR
+sweep, race workload or email-related work.
+
+Original full off-heap stress session 27326 remains live, poll fffe82. Latest saved
+progress is 544,083,024 / 2,147,483,648 iterations, without terminal result or method
+credit. Overall TLC parity remains incomplete. Next source audit: simulation retry
+and post-trace failure boundaries; consult previous packed-Welford receipts rather
+than repeating completed arithmetic checks.

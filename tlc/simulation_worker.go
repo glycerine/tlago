@@ -122,6 +122,7 @@ type SimulationWorkerStatistics struct {
 
 	// Captured once; source access indexes it with current variable locations.
 	variableCounters []*CountDistinct
+	worker           *SimulationWorker
 }
 
 func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorkerStatistics {
@@ -380,6 +381,9 @@ func (s *SimulationWorkerStatistics) GetTraceStatistics(state *TLCStateMut) Valu
 	actionCounts := NewInsMap[*UniqueString, Value]()
 	for cur := state; cur != nil && !cur.IsInitial(); cur = cur.Predecessor() {
 		action := cur.GetAction()
+		if s.sourceTool && action == nil {
+			panic(NewNullPointerException())
+		}
 		actionKey := UniqueStringOf(action.GetName())
 		count := int32(1)
 		if old, ok := actionCounts.Get(actionKey).(*IntValue); ok {
@@ -459,6 +463,9 @@ func (s *SimulationWorkerStatistics) traceCount() int64 {
 	if s == nil {
 		return 0
 	}
+	if s.sourceTool && s.worker != nil {
+		return s.worker.GlobalTrace
+	}
 	return s.TraceID
 }
 
@@ -498,7 +505,7 @@ func NewSimulationWorker(id int, tool *Tool, results *SimulationWorkerResultQueu
 	if results == nil {
 		results = NewSimulationWorkerResultQueue()
 	}
-	return &SimulationWorker{
+	worker := &SimulationWorker{
 		ID:             id,
 		Tool:           tool,
 		Rand:           NewJavaRandom(seed),
@@ -517,6 +524,8 @@ func NewSimulationWorker(id int, tool *Tool, results *SimulationWorkerResultQueu
 		RLGamma:        0.7,
 		RLReward:       -10,
 	}
+	worker.Statistics.worker = worker
+	return worker
 }
 
 func (w *SimulationWorker) Stop() {

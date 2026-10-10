@@ -129,7 +129,11 @@ constructor-sized variable counters indexed by current variable locations. They
 preserve Java's variable, state and action update order, including partial updates
 before bounds failures. All 20 naive/HyperLogLog observations agree; the previous
 68 statistics observations and focused original simulation checks remain green.
-Next source audit: simulation trace-statistics reporting and trace-count ownership.
+Trace-statistics reporting now reads the owning worker's trace ID and rejects
+missing actions with Java's null-pointer failure. All 28 standard/extended
+observations agree, including two workers sharing a trace counter; focused
+original simulation checks pass. Next source audit: simulation retry and
+post-trace failure boundaries, consulting earlier packed-statistics receipts.
 General `Vect` invalid-count and exception behavior remains unproven; original
 model-test reconciliation remains open.
 
