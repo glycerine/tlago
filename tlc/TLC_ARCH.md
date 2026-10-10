@@ -9444,9 +9444,31 @@ and all raw messages in order. The seven recorder-change shapes act only after
 the first variable message; creation emits no such message and is a control.
 All 139 prior coverage rows and 30 original tests still pass. No new persistent
 tests/fixtures or original-method credit. Arbitrary concurrent mutation and custom
-counter implementations are not established. Coverage collector primed-location
-and substitution/context capture remain further source audits; enqueue counting
-ownership already has separate lifecycle verification.
+counter implementations are not established. Enqueue counting ownership already
+has separate lifecycle verification.
+
+Coverage creators capture the primed-location set once during construction.
+Reusing a creator after replacing the processor's next predicate with null or
+the initial predicate preserves that set. A newly constructed creator reads the
+current predicate; restoring the processor does not update a creator constructed
+while the predicate was null. Per-action traversal state is reset independently.
+Nested constant-override collectors intentionally start with an empty primed set,
+and primed-location collection retains Java's original context when descending
+through substitutions, even though it constructs a substituted context first.
+
+Forty ordered source/native graph and lifecycle observations on existing models
+`E`, `L`, `Github649`, `TLCGetLevel` and `O` agree without production changes.
+Eight stages per model compare ordered children, LET aliases, recursive links,
+primed flags, levels, substitution targets and cost-model root ownership. Graph
+serialization retains object identity, including shared links and cycles. Only
+the unordered substitution map is sorted by target location; the source observer
+rejects ambiguous descriptors. Model `O` supplies a nonempty substitution map
+and has no primed-set difference between ordinary and null-next construction,
+matching Java. The other four models distinguish these captures. This audit does
+not establish evaluation-time substitution lookup across next/invariant roots,
+arbitrary malformed semantic graphs or concurrent collector mutation. No new
+persistent tests/fixtures or original-method credit; prior original-test receipts
+remain applicable because production code did not change.
 
 LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
 ModelChecker.vetoCleanup property retains disk graph handles for subsequent

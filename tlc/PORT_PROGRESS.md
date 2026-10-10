@@ -30686,3 +30686,58 @@ credit. Overall parity remains incomplete. Next audit coverage collector primed-
 location and substitution/context capture, consulting earlier receipts first.
 Worker enqueue/value-counting ownership already has an 11-observation lifecycle
 audit in TLC_ARCH.md; do not restart it without a concrete additional contract.
+
+
+2026-10-10 — Resume after power loss; coverage collector lifecycle audit
+
+Recovered clean master at 91dc156. Polled the existing full off-heap random
+stress session 27326 instead of starting another copy; it remains live, latest
+saved progress 759,657,729 / 2,147,483,648 (poll e468c3). Original bounds, default
+64 MiB budget and assertions remain intact; no race and no terminal result or
+method credit. The interrupted old log remains preserved.
+
+Reviewed prior traversal, constant-override, primed-location, recursion and
+higher-order receipts before selecting a new collector-lifetime observation.
+Source CostModelCreator captures getPrimedLocs in its constructor and resets
+per-action traversal state in getCM, without recollecting primed locations.
+Nested constant-override collectors intentionally have an empty primed set.
+Spec.collectPrimedLocs intentionally descends into substitution bodies with the
+original context after constructing a substituted context; Go already matches.
+MarkUnchanged also already sets the native primed flag. No production correction
+was needed.
+
+Ignored observer assets are in .codex-gotmp/coverage-capture-observation/:
+ObserveCoverageCapture.java, exports.go, overlay.json, driver/main.go, source/
+native logs and compare.py. These call the actual private Java constructor/getCM
+and native collector through reflection/overlay, using existing checked models
+E, L, Github649, TLCGetLevel and O. Eight stages per model: ordinary construction;
+reuse after null next; fresh null-next collector; reuse after initial predicate;
+fresh initial-predicate collector; reuse of null-next collector after restoring
+next; reuse of original collector after restoring next; fresh restored collector.
+All stages build fresh cost models for the existing next-state actions.
+
+Graph rows preserve CM object identity and ordered child/LET links, recursive
+links, primed flags, levels, substitution targets and root ownership. Only the
+unordered substitution map is sorted by target location; Java rejects ambiguous
+keys. O supplies a nonempty substitution link at every stage. Its baseline and
+null-next primed graphs agree, unlike the other four models; the comparison
+explicitly requires that source behavior. An initial comparison incorrectly
+required a difference for O as well and failed (d880e1); this was an observation
+expectation error, not a production mismatch. Final comparison 581faf requires
+exactly 40 ordered rows, source/native equality, preserved original captures,
+retained empty captures after restoration and the O substitution link; status 0.
+
+Initial 32 child/LET/recursive graph rows matched (7948b2). Extended source
+compile/build receipts 93ae8f/01891a, native build terminal fd8ab3, source run
+session 34995 terminal a81f48 and native run 38834d all returned status 0. O source
+9b28a3 and native 9c2d77 also returned status 0. Final source/native rows match
+all five models without code changes. Prior 175 coverage observations and 30
+original-test receipts remain applicable; they were not rerun for this docs-only
+change. No persistent tests or fixtures, source-model changes, inventory changes,
+new original-method credit, broad workspace suite, XML/ApalacheIR sweep or email
+work. Overall parity remains incomplete.
+
+Next audit: coverage substitution lookup during evaluation when next-state and
+invariant actions share a semantic substitution, using existing model O. Graph
+construction and creator capture are now audited separately; arbitrary malformed
+semantic graphs and concurrent collector mutation remain unproven.

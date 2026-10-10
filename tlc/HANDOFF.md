@@ -151,10 +151,14 @@ now retain the first action per predicate location, then deduplicate cost models
 module ordering follows interned tokens. Variable setup preserves partial counter
 replacement and null failures; reports read each current declaration/counter in
 the captured array instead of snapshotting the whole collection. All 175 coverage
-observations and 30 focused original tests pass. Next audit: coverage collector
-primed-location and substitution/context capture. Consult earlier state-counter
-ownership receipts before repeating that completed work. Original model-test
-reconciliation remains open.
+observations and 30 focused original tests pass. A further 40 collector lifecycle
+and graph observations match Java without code changes: primed locations are
+captured at construction, while fresh collectors read the current next predicate.
+Ordered children, LET/recursive links, substitution links and root ownership also
+agree on five existing models. Next audit: substitution lookup during evaluation
+when next-state and invariant actions share a semantic substitution, using model
+`O`. Consult earlier traversal and state-counter receipts before repeating that
+completed work. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
