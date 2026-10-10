@@ -7220,6 +7220,26 @@ correction follows the inspected source factory contract; the bounded numeric
 observer does not exercise a zero-argument final factory producer. No new
 persistent test or original-method inventory credit is added.
 
+The represented Sequences, Bags, TLC, FiniteSets and Randomization value-array
+overrides retain their actual Method.toString signatures in a shared metadata
+table. It includes declared interface/concrete return types and zero-, one-,
+two- and three-argument forms. The five previously explicit signatures use the
+same table as the thirty corrected wrappers. Callbacks, arity eligibility and
+lookup aliases retain their existing behavior. This table does not expose extra
+TLA+ module members: the standalone Cons helper remains outside Sequences'
+represented module exports.
+
+All 105 direct-method image/finite-query/nil-invocation rows agree with Java for
+35 actual reflected methods and native registrations. Another 102 rows agree
+for the 34 actual bindings in the existing StandardModules model; Cons has no
+matching exported OpDef and is not counted there. The original Sequences, TLC
+and Randomization suites pass unchanged on both runtimes (34 Java methods),
+and eight relevant original native model tests pass. These comparisons establish
+metadata and the exercised failure paths, not arbitrary method invocation
+semantics or complete community-module signature coverage. No persistent test
+or fixture is added.
+
+
 
 
 Record comparison/equality shape failures, membership, single-argument Apply and

@@ -32920,3 +32920,47 @@ Latest saved stress progress 1,306,574,380 / 2,147,483,648 (8f7764), without
 terminal result; preserve original handle, budget and workload files.
 HANDOFF/TLC_ARCH updated; continue concrete native override metadata/invocation
 gaps. Full TLC parity and original-model reconciliation remain open.
+
+
+2026-10-10: Remaining represented core value-method signatures.
+Previous goal turn made verified progress in ba8c754. Revalidate clean tree and
+poll original long stress handle 27326 (2b9263 live). Inspect actual Sequences,
+Bags, TLC, FiniteSets and Randomization declarations and native registrations.
+Ignored .codex-gotmp/core-method-metadata observes actual MethodValue.get for
+35 represented reflected methods and native installed wrappers, without invoking
+new evaluator hooks or creating persistent tests/fixtures. Each method compares
+operator image, finite-query failure and nil-array invocation, including full
+error type/message, codes/parameters, nullable detail and frame count.
+Initial 105 rows have ninety differences (8e5d72): thirty wrappers still retain
+short names, while the five explicit FiniteSets/TLC signatures already match.
+
+Retain complete source Method.toString metadata for all thirty-five methods in
+standardValueMethodSignatures, replacing the separate five-case switch. Populate
+the table from the actual reflection observations; source interface/concrete
+return types and exact argument counts remain visible. Implementations and
+registration/arity behavior are unchanged. All 105 complete rows match after
+correction (21717 terminal d25de3).
+
+Independent real-binding comparison loads the unchanged existing StandardModules
+model and inspects actual module OpDefs and Tool lookup on both runtimes. All 102
+rows agree (f088c5), covering thirty-four actual bindings. Cons is a standalone
+represented helper with an actual Java method but no matching exported source
+OpDef here, so it is excluded from the binding count; no extra module member is
+registered. No pre-correction binding baseline is claimed. Java enhanced NPE
+messages are disabled for nullable-detail comparison. Arbitrary method-handle
+casts/arity and community-module signatures remain outside this bounded audit.
+
+Existing translations of the three original SequencesTest/TLCTest/RandomizationTest
+suites pass (5740 terminal 014516, original-module-tests.log, 0.280s), retaining
+all original cases/seeds/assertions/workload bounds. Independent unchanged Java
+JUnit with -ea also passes all 34 original methods (6c00b3,
+java-original-module-tests.log, 0.058s). Eight original model tests pass:
+18607 terminal f39bc2, original-models.log, 3.950s; BagsModel, StandardModulesModel,
+ValueSemanticsAssume, ConstantRank2AssertError, TLCExtModel and all three
+UserModuleOverride models. No broad sweep, race, shortened original bounds,
+new persistent test/fixture or original-method inventory credit.
+Formatting/diff checks pass. Latest saved original stress progress is
+1,317,175,710 / 2,147,483,648 (1427c4), without terminal result or long-method
+credit; preserve its handle, default budget, workload bounds and artifacts.
+HANDOFF/TLC_ARCH updated. Continue concrete native metadata/invocation gaps;
+overall TLC parity and model reconciliation remain incomplete.

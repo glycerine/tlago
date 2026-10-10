@@ -334,19 +334,8 @@ func (t *Tool) defineStandardMethodWithMinLevel(name string, arity int, minLevel
 	if signature := numericMethodSignature(module, name); signature != "" {
 		method = signature
 	}
-	// MethodValue reports Method.toString() when a native value operation fails.
-	// Preserve the source reflection metadata, including its declared return type.
-	switch name {
-	case "Print":
-		method = "public static tlc2.value.impl.Value tlc2.module.TLC.Print(tlc2.value.impl.Value,tlc2.value.impl.Value)"
-	case "PrintT":
-		method = "public static tlc2.value.impl.Value tlc2.module.TLC.PrintT(tlc2.value.impl.Value)"
-	case "ToString":
-		method = "public static tlc2.value.impl.Value tlc2.module.TLC.ToString(tlc2.value.impl.Value)"
-	case "IsFiniteSet":
-		method = "public static tlc2.value.IBoolValue tlc2.module.FiniteSets.IsFiniteSet(tlc2.value.impl.Value)"
-	case "Cardinality":
-		method = "public static tlc2.value.impl.IntValue tlc2.module.FiniteSets.Cardinality(tlc2.value.impl.Value)"
+	if signature := standardValueMethodSignatures[name]; signature != "" {
+		method = signature
 	}
 	value := NewMethodValue(method, minLevel, func(args []Value, control int) (Value, error) {
 		_ = control

@@ -65,3 +65,43 @@ func numericMethodSignature(module, name string) string {
 	}
 	return fmt.Sprintf("public static %s tlc2.module.%s.%s(%s)", result, module, method, params)
 }
+
+// Source Method.toString metadata for the represented value-array overrides.
+// Keep declared return types and arities; lookup aliases share these wrappers.
+var standardValueMethodSignatures = map[string]string{
+	"IsFiniteSet":        "public static tlc2.value.IBoolValue tlc2.module.FiniteSets.IsFiniteSet(tlc2.value.impl.Value)",
+	"Cardinality":        "public static tlc2.value.impl.IntValue tlc2.module.FiniteSets.Cardinality(tlc2.value.impl.Value)",
+	"Seq":                "public static tlc2.value.impl.Value tlc2.module.Sequences.Seq(tlc2.value.impl.Value)",
+	"Len":                "public static tlc2.value.impl.IntValue tlc2.module.Sequences.Len(tlc2.value.impl.Value)",
+	"Head":               "public static tlc2.value.impl.Value tlc2.module.Sequences.Head(tlc2.value.impl.Value)",
+	"Tail":               "public static tlc2.value.impl.Value tlc2.module.Sequences.Tail(tlc2.value.impl.Value)",
+	"Cons":               "public static tlc2.value.impl.Value tlc2.module.Sequences.Cons(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"Append":             "public static tlc2.value.impl.Value tlc2.module.Sequences.Append(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"Concat":             "public static tlc2.value.impl.Value tlc2.module.Sequences.Concat(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"SubSeq":             "public static tlc2.value.impl.Value tlc2.module.Sequences.SubSeq(tlc2.value.impl.Value,tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"SelectSeq":          "public static tlc2.value.impl.Value tlc2.module.Sequences.SelectSeq(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"EmptyBag":           "public static tlc2.value.impl.Value tlc2.module.Bags.EmptyBag()",
+	"IsABag":             "public static tlc2.value.IBoolValue tlc2.module.Bags.IsABag(tlc2.value.impl.Value)",
+	"BagCardinality":     "public static tlc2.value.impl.IntValue tlc2.module.Bags.BagCardinality(tlc2.value.impl.Value)",
+	"BagIn":              "public static tlc2.value.IBoolValue tlc2.module.Bags.BagIn(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"CopiesIn":           "public static tlc2.value.impl.IntValue tlc2.module.Bags.CopiesIn(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"BagCup":             "public static tlc2.value.impl.Value tlc2.module.Bags.BagCup(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"BagDiff":            "public static tlc2.value.impl.Value tlc2.module.Bags.BagDiff(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"BagUnion":           "public static tlc2.value.impl.Value tlc2.module.Bags.BagUnion(tlc2.value.impl.Value)",
+	"SqSubseteq":         "public static tlc2.value.IBoolValue tlc2.module.Bags.SqSubseteq(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"BagOfAll":           "public static tlc2.value.impl.Value tlc2.module.Bags.BagOfAll(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"BagToSet":           "public static tlc2.value.impl.Value tlc2.module.Bags.BagToSet(tlc2.value.impl.Value)",
+	"SetToBag":           "public static tlc2.value.impl.Value tlc2.module.Bags.SetToBag(tlc2.value.impl.Value)",
+	"Print":              "public static tlc2.value.impl.Value tlc2.module.TLC.Print(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"PrintT":             "public static tlc2.value.impl.Value tlc2.module.TLC.PrintT(tlc2.value.impl.Value)",
+	"Assert":             "public static tlc2.value.impl.Value tlc2.module.TLC.Assert(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"JavaTime":           "public static tlc2.value.impl.Value tlc2.module.TLC.JavaTime()",
+	"MakeFcn":            "public static tlc2.value.impl.Value tlc2.module.TLC.MakeFcn(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"CombineFcn":         "public static tlc2.value.impl.Value tlc2.module.TLC.CombineFcn(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"Permutations":       "public static tlc2.value.impl.Value tlc2.module.TLC.Permutations(tlc2.value.impl.Value)",
+	"SortSeq":            "public static tlc2.value.impl.Value tlc2.module.TLC.SortSeq(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"RandomElement":      "public static tlc2.value.impl.Value tlc2.module.TLC.RandomElement(tlc2.value.impl.Value)",
+	"ToString":           "public static tlc2.value.impl.Value tlc2.module.TLC.ToString(tlc2.value.impl.Value)",
+	"RandomSubset":       "public static tlc2.value.impl.Value tlc2.module.Randomization.RandomSubset(tlc2.value.impl.Value,tlc2.value.impl.Value)",
+	"RandomSetOfSubsets": "public static tlc2.value.impl.Value tlc2.module.Randomization.RandomSetOfSubsets(tlc2.value.impl.Value,tlc2.value.impl.Value,tlc2.value.impl.Value)",
+}

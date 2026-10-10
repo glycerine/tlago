@@ -298,9 +298,11 @@ direct/inherited invocation observations match; relevant existing and original
 checks pass. Numeric method images and diagnostics now retain actual Naturals or
 Integers signatures, including the distinct GT return types. All 102 observations
 across 34 real-model bindings agree. Eager native constants use an allocated empty
-argument array. Focused numeric/override and original model checks pass. Continue
-other concrete native override metadata/invocation gaps against source and the
-original-test inventory.
+argument array. Sequences, Bags, TLC, FiniteSets and Randomization value-array
+methods now also retain complete source signatures. All 105 direct-method and
+102 loaded-binding observations agree; the original module suites and relevant
+model checks pass. Continue other concrete native override metadata/invocation
+gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
@@ -309,7 +311,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,306,574,380 of 2,147,483,648 iterations, without a terminal result. The previous
+1,317,175,710 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,
