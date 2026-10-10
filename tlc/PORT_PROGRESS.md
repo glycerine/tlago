@@ -32149,3 +32149,56 @@ original-models.log, 2.507s. No broad sweep, race workload, changed original bou
 or original-method credit. Formatting/diff checks pass. HANDOFF and TLC_ARCH
 record the precise collection boundaries and observation limits. Overall TLC
 parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10: Record runtime boundaries and normalization failure mutations.
+
+Previous goal turn made verified progress in 53752b4. Worktree starts clean.
+Direct polls ef121d and de188d confirm original random stress session 27326 is
+still live. Latest saved progress is 1,161,328,474 / 2,147,483,648 (4b2d95), without
+terminal result or credit. Preserve its existing bounds, budget and artifacts.
+
+Pinned RecordValue.java uses Assert.fail(reason, getSource()) at seven native
+boundaries still represented by unsupported: compare/equality shape failures,
+membership, missing-field/nonstring single-argument Apply, and two duplicate-field
+normalization sites. Use runtimeFailure and the already-matching source message
+arguments. Null compare/equality/member arguments raise typed NPE before message
+construction. Keep existing Apply(null) returned-error adaptation and Select
+behavior; existing catchValueFailure retains source wrapping. Normalization's
+in-place algorithm and partial mutation remain untouched.
+
+Ignored .codex-gotmp/record-failures adapts the scalar harness. First three record
+shapes (valid, first-pass duplicate, insertion duplicate) run twenty operations
+with/without source. Cases include wrong-shape compare/equality, membership,
+finite/size, EXCEPT, null arguments, successful self-compare/equality, root
+replacement/empty EXCEPT, missing/nonstring/null/existing field Apply, missing
+Select and explicit Normalize. Compare full values/root exception category and
+message, wrapping and detailed source/context identity, plus normalized flag and
+raw field/value arrays after every operation. Ignore only non-tabbed console
+warning lines when extracting named records; preserve raw logs. Enhanced JVM NPE
+messages remain outside the comparison. All initial 120 rows match, correcting
+60 baseline differences (75339 terminal faf517).
+
+Inspect raw output rather than assuming lexical UniqueString ordering. The
+first insertion-duplicate shape did not shift in its actual intern order. Add
+fourth shape b,a,c,c after the earlier names are interned. It actually shifts
+before failing: raw a:2,c:3,b:1,b:1, normalized false, and source diagnostic
+Field name b occurs multiple times in record. Preserve the source's overwritten
+field-name diagnostic and copied values rather than repairing them on failure.
+Final all 160 rows match (8538 terminal 307799), and the original 120 source rows
+are unchanged. New forty rows have no baseline-change claim. No persistent test
+or fixture was invented and observations add no inventory credit. This matrix
+exercises single-argument Apply only; source array-overload behavior and its
+mapping through applyFunctionValue remain a follow-up to inspect, not verified
+by these results. Do not infer array-overload parity from single-argument checks.
+
+Both unchanged original RecordValueTest translations pass, alongside original
+InitializeValueRecord and all 44 ModelValueTest methods: 69108 terminal 913c09,
+original-values.log, 0.015s. Unchanged source RecordValueTest independently passes
+JUnitCore OK (2 tests), 0eac3e, java-original-values.log, 0.021s. Relevant original
+ConstantRank2AssertError and ValueSemanticsAssume methods pass unchanged: 76367
+terminal 0f0087, original-models.log, 2.489s. No broad sweep, race workload,
+original assertion edits or changed workload bounds. Formatting/diff checks pass.
+HANDOFF consolidates collection/record status; TLC_ARCH records exact failure
+mutation and API limits. Overall TLC parity and original reconciliation remain
+incomplete.

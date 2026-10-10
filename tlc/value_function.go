@@ -489,7 +489,10 @@ func (v *RecordValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("Attempted to compare record:\n%s\nwith non-record\n%s", ValuesPPR(v), ValuesPPR(other))
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare record:\n%s\nwith non-record\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	if err := v.normalizeRecord(); err != nil {
 		return 0, err
@@ -521,7 +524,10 @@ func (v *RecordValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("Attempted to check equality of record:\n%s\nwith non-record\n%s", ValuesPPR(v), ValuesPPR(other))
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of record:\n%s\nwith non-record\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	if err := v.normalizeRecord(); err != nil {
 		return false, err
@@ -548,7 +554,10 @@ func (v *RecordValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *RecordValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if element:\n%s\nis in the record:\n%s", ValuesPPR(elem), ValuesPPR(v))
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if element:\n%s\nis in the record:\n%s", ValuesPPR(elem), ValuesPPR(v)))
 }
 
 func (v *RecordValue) IsFinite() (bool, error) { return true, nil }
@@ -704,9 +713,9 @@ func (v *RecordValue) Apply(arg Value) (resultValue Value, err error) {
 				return v.Values[i], nil
 			}
 		}
-		return nil, v.unsupported("Attempted to access nonexistent field '%s' of record\n%s", sv.Val, ValuesPPR(v))
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to access nonexistent field '%s' of record\n%s", sv.Val, ValuesPPR(v)))
 	}
-	return nil, v.unsupported("Attempted to access record by a non-string argument: %s", ValuesPPR(arg))
+	return nil, v.runtimeFailure(fmt.Sprintf("Attempted to access record by a non-string argument: %s", ValuesPPR(arg)))
 }
 
 func (v *RecordValue) Select(arg Value) (resultValue Value, err error) {
@@ -760,7 +769,7 @@ func (v *RecordValue) normalizeRecord() (err error) {
 	for i := 1; i < len(v.Names); i++ {
 		cmp := v.Names[0].Compare(v.Names[i])
 		if cmp == 0 {
-			return v.unsupported("Field name %s occurs multiple times in record.", v.Names[i])
+			return v.runtimeFailure(fmt.Sprintf("Field name %s occurs multiple times in record.", v.Names[i]))
 		}
 		if cmp > 0 {
 			v.Names[0], v.Names[i] = v.Names[i], v.Names[0]
@@ -782,7 +791,7 @@ func (v *RecordValue) normalizeRecord() (err error) {
 			j--
 		}
 		if cmp == 0 {
-			return v.unsupported("Field name %s occurs multiple times in record.", v.Names[i])
+			return v.runtimeFailure(fmt.Sprintf("Field name %s occurs multiple times in record.", v.Names[i]))
 		}
 		v.Names[j] = st
 		v.Values[j] = val

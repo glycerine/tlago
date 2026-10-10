@@ -6948,6 +6948,18 @@ ordinary runtime exception, then the tuple boundary wraps it. Directly sourced
 function records retain detailed source metadata instead. These 120 observations
 do not establish every function-record domain comparison or other value subtype.
 
+Record comparison/equality shape failures, membership, single-argument Apply and
+both duplicate-field normalization branches use the same source-aware runtime
+boundary. Null comparison/equality/member arguments fail before formatting; Apply
+retains its existing typed-null returned-error adaptation. Normalization keeps
+Java's in-place insertion sort and partial array mutations. A duplicate detected
+after shifting can report the field currently at the insertion index and leave
+copied values in the array; neither diagnostics nor failure cleanup repair that
+source behavior. The 160 observations compare raw names/values and normalized
+flags as well as complete outcomes. The source Apply(Value[]) overload is outside
+that observation matrix; Select behavior remains unchanged.
+
+
 
 
 `Randomization` validates public arguments in Java order and reports

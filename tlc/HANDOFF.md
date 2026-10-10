@@ -238,10 +238,12 @@ use UTF-16 units, including unpaired surrogates. All 84 scalar, 468 model-value
 and ten additional prefix observations match source; relevant original value,
 permutation and model methods pass. Keep function-record Java tests isolated:
 the earlier combined class-order failure remains preserved in PORT_PROGRESS.md.
-Tuple membership, explicit-set failure branches, interval membership/EXCEPT and
-function-record shape comparisons now preserve source runtime metadata and null
-ordering. All 120 bounded comparisons, 28 original Go value methods and two
-related model methods pass; Java TupleValue/IntervalValue originals also pass.
+Tuple membership, explicit-set failures, interval membership/EXCEPT, function
+shape comparisons and record failures preserve source runtime metadata and null
+ordering. All 120 collection and 160 record observations match, including partial
+record mutations after duplicate-field failure. Relevant original value and model
+methods pass; Java record, tuple and interval originals also pass. These checks
+cover single-argument record application, not its source array overload.
 Continue concrete core TLC gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -251,7 +253,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,157,447,960 of 2,147,483,648 iterations, without a terminal result. The previous
+1,161,328,474 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,
