@@ -79,7 +79,8 @@ func TestToolIntersectionReducesEitherOperandWithoutEnumeratingTheOther(t *testi
 			return tl.EvalImpl(node, c, s0, s1, control, cm)
 		}
 		// Nat cannot be enumerated. Java intersects it via membership of the small operand.
-		lazy := NewSetPredValue(bound, NatValue, predicate, tool, EmptyContext, EmptyState, EmptyState, EvalClear)
+		state := NewEmptyState()
+		lazy := NewSetPredValue(bound, NatValue, predicate, tool, EmptyContext, state, state, EvalClear)
 		var left, right Value = lazy, NewIntervalValue(1, 2)
 		if reducibleFirst {
 			left, right = right, left

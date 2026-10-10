@@ -8807,10 +8807,15 @@ parsed predicates and the real Int bound. No source semantic graph, evaluator
 callback, persistent test/fixture or original-method credit is fabricated.
 Original bag/predicate/model/value/EXCEPT/Sequences/TLCModule/stream/MP and
 lazy-subset checks and the complete unchanged CommunityModules all/shiviz target
-pass. Predicate constructor state/copy/tool boundaries remain a separate next
-target, with a
-36-row actual-constructor baseline identifying ten differences. General invalid
-variable-object types and additional lazy producer variants remain unproven.
+pass. Predicate constructors require a non-null predecessor before copying the
+optional successor. The copy constructor rejects a null source and retains its
+explicit tool argument, including null. It retains source variables, domain,
+predicate, context, control and cost model, copies both supplied states, and
+resets conversion and source metadata. All 36 actual-constructor observations
+match Java exactly; the baseline had ten differences. Focused original checks
+and the complete unchanged CommunityModules all/shiviz target pass.
+General invalid variable-object types and additional lazy producer variants
+remain unproven.
 
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking

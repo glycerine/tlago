@@ -316,6 +316,9 @@ type SetPredValue struct {
 }
 
 func NewSetPredValue(vars any, inVal Value, pred SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *SetPredValue {
+	if state == nil {
+		panic(NewNullPointerException())
+	}
 	cm := DoNotRecordCostModel
 	if len(cms) > 0 {
 		cm = cms[0]
@@ -335,10 +338,7 @@ func NewSetPredValue(vars any, inVal Value, pred SemanticNode, tool *Tool, con *
 
 func NewSetPredValueFrom(other *SetPredValue, tool *Tool) *SetPredValue {
 	if other == nil {
-		return nil
-	}
-	if tool == nil {
-		tool = other.Tool
+		panic(NewNullPointerException())
 	}
 	return NewSetPredValue(other.Vars, other.InVal, other.Pred, tool, other.Con, other.State, other.PState, other.Control, other.CM)
 }

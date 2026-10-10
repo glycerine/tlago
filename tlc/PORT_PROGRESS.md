@@ -37001,3 +37001,44 @@ constructor baseline. Original random stress session 27326 remains live by
 direct poll d12813; latest saved progress is 2,122,596,786 / 2,147,483,648,
 without terminal result or new long-test credit. Overall Java-to-Go goal remains
 active.
+
+Predicate constructor continuation after restart, October 10, 2026.
+HEAD 568e36f was clean. Original stress handle 27326 responds as live; do not
+restart or award execution credit without its terminal result. Java source
+SetPredValue constructor copies s0 unconditionally and s1 conditionally; its
+copy constructor delegates using the explicit tool argument. Native constructor
+now raises typed NullPointerException for null predecessor or null copy source
+and preserves a supplied null tool. Shared lambda state-copy helper is unchanged.
+Ignored actual-constructor observer session 51750 exits zero (b98c2f); comparison
+0b155a reports all 36 Java/native rows present and exactly equal, correcting
+ten baseline differences without persistent tests or fixtures. Focused original
+bag/predicate/model/value/EXCEPT/Sequences/TLCModule/stream/MP and lazy-subset
+checks exit zero in session 43390 (3786ca), root 2.166s and tlc 2.674s. Full
+unchanged CommunityModules all/shiviz target runs on final production code in
+session 46963, log .codex-gotmp/predicate-constructors/community-ant.log,
+timeout zero and no race instrumentation. No new original-method credit.
+
+Additional existing native payload/reducible checks first expose an isolated
+setup dependency (32cf9a): global EmptyState is null before model setup. Replace
+that global input in the two existing predicate-construction tests with an
+explicit NewEmptyState, retaining all assertions and adding no tests. The same
+selection then passes in session 92678 (84c588), tlc 0.022s. This is native
+regression coverage, not original Java-method credit.
+
+Existing tool/call-stack selection passes (3b9606), tlc 0.024s. Adjacent
+source inspection identifies the next candidate: FcnLambdaValue normal
+constructor preserves c and unconditionally copies s0, whereas Go currently
+substitutes EmptyContext and accepts null s0. Source copy constructor reads
+a required fcn and retains explicit tool; Go silently accepts null fcn and
+replaces null tool. Source copy shares captured states and omits cost/source
+metadata; preserve those distinctions when building an actual-constructor
+comparison. No lambda production edit or parity claim in this chunk.
+
+Full unchanged CommunityModules session 46963 exits zero (5d363c), root
+310.740s, all 309.59s and shiviz 0.71s (28c878). Both original phases
+and bounds pass on final predicate-constructor production code. Formatting
+and diff checks pass. Handoff/architecture record completed verification, the
+existing native setup correction and the adjacent lambda-constructor candidate.
+Original random stress session 27326 remains live by direct poll a19b0e; latest
+saved progress 2,134,261,517 / 2,147,483,648, with no terminal result or new
+long-test credit. Overall Java-to-Go goal remains active.
