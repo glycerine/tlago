@@ -483,10 +483,16 @@ the supplied tool, including null. All 36 constructor observations match Java
 exactly, and focused original checks and the complete CommunityModules
 all/shiviz target pass. Broader lazy conversions and constructor
 variants remain unproven.
-Next inspect `FcnLambdaValue` constructors against the pinned source: native
-construction replaces null context and accepts null predecessor states; its
-copy constructor accepts null sources and replaces null tool arguments. These
-are source-inspection candidates, without a saved comparison or completed fix.
+`FcnLambdaValue` constructors now retain null context, require a predecessor
+state, reject null copy sources and preserve the supplied copy tool. Copies
+share captured states, EXCEPT entries and cached results, resetting source and
+cost metadata as Java does. All 42 constructor observations match exactly.
+Focused original and native checks and the complete CommunityModules
+all/shiviz target pass. Existing standalone lambda tests now create their
+empty-state inputs explicitly, preserving their assertions.
+Next fix `FcnLambdaValue.MakeRecursive` retaining Java's null-context failure
+before control changes. The saved 16-row actual-lambda comparison identifies
+eight differences; no recursive-method production correction is included yet.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -570,7 +576,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,134,261,517 of 2,147,483,648 iterations, without a terminal result. The previous
+2,145,082,455 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

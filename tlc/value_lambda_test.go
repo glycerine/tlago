@@ -14,7 +14,7 @@ func TestFcnLambdaStringFallsBackAfterExpansionPanic(t *testing.T) {
 	})
 	x, y := NewSymbolNode("x"), NewSymbolNode("y")
 	params := NewTupleFcnParam([]*SymbolNode{x, y}, NewSetEnumValue([]Value{NewTupleValue([]Value{NewIntValue(7)})}, true))
-	fcn := NewFcnLambdaValue(params, BoolTrue, NewTool(), EmptyContext, EmptyState, EmptyState, EvalClear)
+	fcn := NewFcnLambdaValue(params, BoolTrue, NewTool(), EmptyContext, NewEmptyState(), NewEmptyState(), EvalClear)
 	defer func() {
 		if err := recover(); err != nil {
 			t.Fatalf("lazy function formatting propagated expansion failure: %v", err)

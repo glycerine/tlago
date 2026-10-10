@@ -8817,6 +8817,21 @@ and the complete unchanged CommunityModules all/shiviz target pass.
 General invalid variable-object types and additional lazy producer variants
 remain unproven.
 
+FcnLambdaValue construction retains its supplied context, including null,
+requires a predecessor state before copying the optional successor, and retains
+the supplied cost model. Its copy constructor requires a source and retains
+the explicit tool, including null. Copies share parameter/body/context references,
+captured states, EXCEPT arrays and cached function records, and retain control;
+source and cost metadata reset to their defaults. The ignored actual-constructor
+comparison reuses the checked test206 Def5 lambda and actual EXCEPT/cache
+operations, with reflection only for private fields and an actual cost-model
+wrapper. All 42 rows match Java exactly, correcting fourteen baseline differences.
+No semantic graph, callback, persistent test or original-method credit is added.
+Existing native standalone checks construct empty-state inputs explicitly.
+Focused original and native checks and the complete unchanged CommunityModules
+all/shiviz target pass. Further lambda operation and producer variants remain
+unproven.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

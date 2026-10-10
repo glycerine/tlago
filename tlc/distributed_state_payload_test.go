@@ -121,7 +121,7 @@ func TestDistributedStatePayloadRepresentations(t *testing.T) {
 func TestDistributedStatePayloadMaterialization(t *testing.T) {
 	bound := NewSymbolNode("payloadParameter")
 	tool := NewTool()
-	lambda := NewFcnLambdaValue(NewSingleFcnParam(bound, NewIntervalValue(1, 2)), NewValueNode(NewIntValue(42)), tool, EmptyContext, EmptyState, nil, EvalClear)
+	lambda := NewFcnLambdaValue(NewSingleFcnParam(bound, NewIntervalValue(1, 2)), NewValueNode(NewIntValue(42)), tool, EmptyContext, NewEmptyState(), nil, EvalClear)
 	predicate := NewSetPredValue(bound, NewIntervalValue(1, 2), NewValueNode(BoolTrue), tool, EmptyContext, NewEmptyState(), nil, EvalClear)
 	lazy := &LazyValue{Val: NewIntValue(8)}
 	got := distributedPayloadRoundTrip(t, []*TLCStateMut{{level: 1, values: []Value{lambda, predicate, lazy}}})[0].values

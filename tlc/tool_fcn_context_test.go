@@ -41,7 +41,7 @@ func TestToolFunctionContextUsesBranchSpecificDiagnostics(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tool := NewTool()
-			fcn := NewFcnLambdaValue(tc.params, BoolTrue, tool, EmptyContext, EmptyState, EmptyState, EvalClear)
+			fcn := NewFcnLambdaValue(tc.params, BoolTrue, tool, EmptyContext, NewEmptyState(), NewEmptyState(), EvalClear)
 			function := NewValueNode(fcn)
 			function.Image = "F"
 			expr := NewBuiltinOpApplNode(OpFA, function, tc.arg)
@@ -62,7 +62,7 @@ func TestToolFunctionContextPreservesCapturedContextAndMixedBindings(t *testing.
 		NewIntervalValue(1, 2), NewSetEnumValue([]Value{inner}, true), NewIntervalValue(9, 9),
 	})
 	tool := NewTool()
-	fcn := NewFcnLambdaValue(params, BoolTrue, tool, EmptyContext.Cons(captured, NewIntValue(42)), EmptyState, EmptyState, EvalClear)
+	fcn := NewFcnLambdaValue(params, BoolTrue, tool, EmptyContext.Cons(captured, NewIntValue(42)), NewEmptyState(), NewEmptyState(), EvalClear)
 	// Java ignores extra arguments after all formals have been bound.
 	arg := NewTupleValue([]Value{NewIntValue(1), NewIntValue(2), inner, NewIntValue(9), NewIntValue(99)})
 	expr := NewBuiltinOpApplNode(OpFA, fcn, arg)
@@ -85,7 +85,7 @@ func TestToolFunctionContextTupleMismatchIsAnError(t *testing.T) {
 		NewIntervalValue(1, 1), NewSetEnumValue([]Value{short}, true),
 	})
 	tool := NewTool()
-	fcn := NewFcnLambdaValue(params, BoolTrue, tool, EmptyContext, EmptyState, EmptyState, EvalClear)
+	fcn := NewFcnLambdaValue(params, BoolTrue, tool, EmptyContext, NewEmptyState(), NewEmptyState(), EvalClear)
 	function := NewValueNode(fcn)
 	function.Image = "F"
 	expr := NewBuiltinOpApplNode(OpFA, function, NewTupleValue([]Value{NewIntValue(1), short}))
@@ -99,7 +99,7 @@ func TestToolFunctionContextSingleTupleMismatchPrintsToolIdentity(t *testing.T) 
 	a, b := NewSymbolNode("a"), NewSymbolNode("b")
 	short := NewTupleValue([]Value{NewIntValue(7)})
 	tool := NewTool()
-	fcn := NewFcnLambdaValue(NewTupleFcnParam([]*SymbolNode{a, b}, NewSetEnumValue([]Value{short}, true)), BoolTrue, tool, EmptyContext, EmptyState, EmptyState, EvalClear)
+	fcn := NewFcnLambdaValue(NewTupleFcnParam([]*SymbolNode{a, b}, NewSetEnumValue([]Value{short}, true)), BoolTrue, tool, EmptyContext, NewEmptyState(), NewEmptyState(), EvalClear)
 	function := NewValueNode(fcn)
 	function.Image = "F"
 	expr := NewBuiltinOpApplNode(OpFA, function, short)
@@ -114,7 +114,7 @@ func TestToolFunctionContextSingleTupleMismatchPrintsToolIdentity(t *testing.T) 
 func TestToolFunctionContextShortArgumentsKeepDirectIndexFailure(t *testing.T) {
 	a, b := NewSymbolNode("a"), NewSymbolNode("b")
 	tool := NewTool()
-	fcn := NewFcnLambdaValue(NewFcnParams([][]*SymbolNode{{a, b}}, []bool{false}, []Value{NewIntervalValue(1, 2)}), BoolTrue, tool, EmptyContext, EmptyState, EmptyState, EvalClear)
+	fcn := NewFcnLambdaValue(NewFcnParams([][]*SymbolNode{{a, b}}, []bool{false}, []Value{NewIntervalValue(1, 2)}), BoolTrue, tool, EmptyContext, NewEmptyState(), NewEmptyState(), EvalClear)
 	expr := NewBuiltinOpApplNode(OpFA, fcn, NewTupleValue([]Value{NewIntValue(1)}))
 	defer func() {
 		if err, ok := recover().(*ArrayIndexOutOfBoundsException); !ok || err.Error() != "Index 1 out of bounds for length 1" {

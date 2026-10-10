@@ -37042,3 +37042,45 @@ existing native setup correction and the adjacent lambda-constructor candidate.
 Original random stress session 27326 remains live by direct poll a19b0e; latest
 saved progress 2,134,261,517 / 2,147,483,648, with no terminal result or new
 long-test credit. Overall Java-to-Go goal remains active.
+
+Lambda constructor continuation, October 10, 2026. HEAD 6350b4f is clean.
+Previous turn was progress: committed predicate constructor parity and verified
+original/native checks. Current pinned source requires s0, preserves context,
+and copy construction requires fcn while retaining explicit tool. Build ignored
+.codex-gotmp/lambda-constructors from actual parsed test206 Def5 lambda and
+real constructors, caches and EXCEPT calls; reflection reads private source
+fields and instantiates actual coverage wrapper on the checked lambda node.
+Default matrix has 38 rows (6586b9/fce665), fourteen differences (364d57).
+Expanded custom-cost matrix has 42 rows: Java e32166/native cbafd8, baseline
+453e03, fourteen actual null context/state/copy-tool/source differences.
+Native constructors now require predecessor/copy source and retain context/tool,
+leaving copy sharing and metadata defaults unchanged. Final native session
+32170 exits zero (e4306d); comparison 8c51d3 has 42 rows, zero raw or semantic
+differences. Existing standalone lambda native tests now explicitly create empty
+state inputs, preserving assertions without adding tests/fixtures. Focused
+original/native session 80439 exits zero (e2eae0), root 2.272s and tlc 2.507s.
+Full unchanged CommunityModules starts on final production code in session
+76764, log .codex-gotmp/lambda-constructors/community-ant.log, original
+bounds and timeout zero without race. Random stress handle 27326 remains live
+by direct poll 28cd8a; last saved 2,137,578,050 / 2,147,483,648 iterations.
+No new original-method credit or overall completion claim.
+
+Independent existing native lambda/payload/function-context checks pass
+(21d63a), tlc 0.022s. Prepare ignored .codex-gotmp/lambda-recursion baseline
+while immutable constructor CommunityModules binary runs. Actual checked Def5
+lambda/formal, normal/null context, normal/null name, controls 0/17 and source
+flags produce sixteen rows; Java/native both exit zero (65f8e2/a6c520), eight
+actual differences (642601). Go MakeRecursive silently creates EmptyContext
+and sets KeepLazy for null context; source throws typed NullPointerException
+under its owner catch, preserving null context and original control. Other
+eight rows agree. No recursive-method production edit yet. Preserve this
+baseline as the next feature chunk, with no persistent fixture/test credit.
+
+Full unchanged CommunityModules session 76764 exits zero (041f72), root
+305.621s, all 304.97s and shiviz 0.23s (7c3144), on final constructor code.
+Formatting and diff checks pass. Handoff/architecture record completed checks
+and saved recursion baseline. Original random stress handle 27326 remains
+live by direct poll 92773a; last saved progress is 2,145,082,455 /
+2,147,483,648, with no terminal result and no additional execution/method
+credit. Goal remains active; next target is source MakeRecursive null-context
+failure and unchanged control under the existing owner catch.

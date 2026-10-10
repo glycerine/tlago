@@ -375,8 +375,8 @@ type FcnLambdaValue struct {
 }
 
 func NewFcnLambdaValue(params *FcnParams, body SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *FcnLambdaValue {
-	if con == nil {
-		con = EmptyContext
+	if state == nil {
+		panic(NewNullPointerException())
 	}
 	cm := DoNotRecordCostModel
 	if len(cms) > 0 {
@@ -396,10 +396,7 @@ func NewFcnLambdaValue(params *FcnParams, body SemanticNode, tool *Tool, con *Co
 
 func NewFcnLambdaValueFrom(other *FcnLambdaValue, tool *Tool) *FcnLambdaValue {
 	if other == nil {
-		return nil
-	}
-	if tool == nil {
-		tool = other.Tool
+		panic(NewNullPointerException())
 	}
 	return &FcnLambdaValue{
 		Params:  other.Params,
