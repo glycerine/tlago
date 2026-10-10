@@ -6,6 +6,8 @@ import (
 )
 
 func TestSpecialValuesCannotBeFingerprintedOrPermutedLikeJava(t *testing.T) {
+	ModelValueInit()
+	SetModelValues()
 	for _, tc := range []struct {
 		name string
 		val  Value

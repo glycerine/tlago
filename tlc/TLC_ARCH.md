@@ -5462,8 +5462,31 @@ unnormalized sets, null/short function arrays, typed failures, source ownership,
 multiple generators and ordered closure. Focused original symmetry and
 value/evaluator checks pass. No persistent tests/fixtures or original-method
 credit are added. Native non-enumerable argument validation is an adapter
-boundary outside the source method's Enumerable signature. Permutation table
-lifetimes, allocation-resource behavior and further mutations remain unproven.
+boundary outside the source method's Enumerable signature. Allocation-resource
+behavior and further mutations remain unproven.
+
+MVPerm construction requires an initialized ModelValue.mvs table and allocates
+exactly its current length, without repairing a stale table after ModelValue.make.
+Composition allocates its result against that current table and rereads table
+entries when eliding identities. Rendering also uses current table entries;
+neither operation retains a domain snapshot. Equality iterates the left array
+without a total-length guard, preserving early false results and later bounds
+failures. Non-null model values use their public equality method even when the
+other entry is null, retaining typed-model null failures and source ownership.
+Get/Put and internal slot reads preserve typed cast/null/bounds failures. Null
+range insertion follows source equality and can increment the signed 32-bit
+count while leaving the slot empty. AllModelValues traverses the actual slots
+without sizing its allocation from that count. The ignored actual-runtime
+observer covers table growth, reset, replacement, initialized empty and absent
+tables, stale tables after make, typed/untyped values, identity/swap/cycle/partial
+maps, public index changes, unequal permutation sizes and source flags. All
+4,160 rows match exactly, correcting 858 differences in the 1,600-row baseline.
+The earlier 440 subgroup observations still match. Focused original symmetry,
+value/evaluator and native state/tool checks pass. The existing special-value
+test explicitly initializes its empty model-value table, preserving assertions.
+No persistent test/fixture or original-method credit is added. Concurrent table
+replacement, arbitrary public field mutation and deduplication under mutated
+model values remain unproven.
 
 - `TLCStateMut.toString` also honors VIEW, but only when the global `useView`
   flag is enabled; fingerprinting uses VIEW whenever the active tool has one.

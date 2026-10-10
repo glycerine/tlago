@@ -106,28 +106,31 @@ func modelValueFromStream(index int) *ModelValue {
 }
 
 type MVPerm struct {
-	elems  []*ModelValue
-	domain []*ModelValue
-	count  int
+	elems []*ModelValue
+	count int
 }
 
 func NewMVPerm() *MVPerm {
 	modelValues.Lock()
 	defer modelValues.Unlock()
-	if len(modelValues.mvs) != modelValues.count {
-		setModelValuesLocked()
+	if modelValues.mvs == nil {
+		panic(NewNullPointerException())
 	}
-	domain := make([]*ModelValue, len(modelValues.mvs))
-	copy(domain, modelValues.mvs)
-	return &MVPerm{
-		elems:  make([]*ModelValue, len(domain)),
-		domain: domain,
-	}
+	return &MVPerm{elems: make([]*ModelValue, len(modelValues.mvs))}
 }
 
 func (p *MVPerm) Get(value Value) Value {
-	mv := value.(*ModelValue)
-	res := p.elems[mv.Index]
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	mv, ok := value.(*ModelValue)
+	if !ok && value != nil {
+		panic(valueStreamClassCast(value, "tlc2.value.impl.ModelValue"))
+	}
+	if mv == nil {
+		panic(NewNullPointerException())
+	}
+	res := p.elementAt(mv.Index)
 	if res == nil {
 		return nil
 	}
@@ -135,38 +138,43 @@ func (p *MVPerm) Get(value Value) Value {
 }
 
 func (p *MVPerm) Put(dval, rval *ModelValue) {
-	eq, err := dval.Equal(rval)
-	if err != nil {
-		panic(err)
+	if p == nil {
+		panic(NewNullPointerException())
 	}
-	if !eq && p.elems[dval.Index] == nil {
+	if !permutationModelValueEqual(dval, rval) && p.elementAt(dval.Index) == nil {
 		p.elems[dval.Index] = rval
-		p.count++
+		p.count = int(int32(p.count) + 1)
 	}
 }
 
 func (p *MVPerm) putIndex(index int, elem *ModelValue) {
-	if p.elems[index] == nil && elem != nil {
+	if p.elementAt(index) == nil && elem != nil {
 		p.elems[index] = elem
-		p.count++
+		p.count = int(int32(p.count) + 1)
 	}
 }
 
 func (p *MVPerm) Size() int {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
 	return p.count
 }
 
 func (p *MVPerm) Compose(perm *MVPerm) *MVPerm {
-	res := p.emptyLike()
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	res := NewMVPerm()
 	for i, mv := range p.elems {
 		if mv == nil {
-			res.putIndex(i, perm.elems[i])
+			res.putIndex(i, perm.elementAt(i))
 			continue
 		}
-		mv1 := perm.elems[mv.Index]
+		mv1 := perm.elementAt(mv.Index)
 		if mv1 == nil {
 			res.putIndex(i, mv)
-		} else if !p.domain[i].sameModelValue(mv1) {
+		} else if !permutationModelValueEqual(currentPermutationModelValue(i), mv1) {
 			res.putIndex(i, mv1)
 		}
 	}
@@ -174,14 +182,19 @@ func (p *MVPerm) Compose(perm *MVPerm) *MVPerm {
 }
 
 func (p *MVPerm) Equal(other *MVPerm) bool {
-	if p == nil || other == nil {
-		return p == other
+	if p == nil {
+		panic(NewNullPointerException())
 	}
-	if len(p.elems) != len(other.elems) {
+	if other == nil {
 		return false
 	}
 	for i, mv := range p.elems {
-		if !mv.sameModelValue(other.elems[i]) {
+		otherValue := other.elementAt(i)
+		if mv == nil {
+			if otherValue != nil {
+				return false
+			}
+		} else if !permutationModelValueEqual(mv, otherValue) {
 			return false
 		}
 	}
@@ -189,7 +202,10 @@ func (p *MVPerm) Equal(other *MVPerm) bool {
 }
 
 func (p *MVPerm) AllModelValues() []*ModelValue {
-	values := make([]*ModelValue, 0, p.count)
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	values := make([]*ModelValue, 0)
 	for _, mv := range p.elems {
 		if mv != nil {
 			values = append(values, mv)
@@ -199,6 +215,9 @@ func (p *MVPerm) AllModelValues() []*ModelValue {
 }
 
 func (p *MVPerm) String() string {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
 	var b strings.Builder
 	b.WriteByte('[')
 	wrote := false
@@ -209,7 +228,7 @@ func (p *MVPerm) String() string {
 		if wrote {
 			b.WriteString(", ")
 		}
-		b.WriteString(p.domain[i].String())
+		b.WriteString(currentPermutationModelValue(i).String())
 		b.WriteString(" -> ")
 		b.WriteString(mv.String())
 		wrote = true
@@ -232,13 +251,41 @@ func (p *MVPerm) key() string {
 	return b.String()
 }
 
-func (p *MVPerm) emptyLike() *MVPerm {
-	domain := make([]*ModelValue, len(p.domain))
-	copy(domain, p.domain)
-	return &MVPerm{
-		elems:  make([]*ModelValue, len(p.elems)),
-		domain: domain,
+func (p *MVPerm) elementAt(index int) *ModelValue {
+	if p == nil || p.elems == nil {
+		panic(NewNullPointerException())
 	}
+	if index < 0 || index >= len(p.elems) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(p.elems)))
+	}
+	return p.elems[index]
+}
+
+func currentPermutationModelValue(index int) *ModelValue {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	if modelValues.mvs == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(modelValues.mvs) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(modelValues.mvs)))
+	}
+	return modelValues.mvs[index]
+}
+
+func permutationModelValueEqual(left, right *ModelValue) bool {
+	if left == nil {
+		panic(NewNullPointerException())
+	}
+	var value Value
+	if right != nil {
+		value = right
+	}
+	equal, err := left.Equal(value)
+	if err != nil {
+		panic(err)
+	}
+	return equal
 }
 
 func newModelValueLocked(name string) *ModelValue {
@@ -415,17 +462,6 @@ func (v *ModelValue) ToString(sb *strings.Builder, offset int, swallow bool) *st
 	defer catchValueFailure(v, nil)
 	sb.WriteString(v.Val.String())
 	return sb
-}
-
-func (v *ModelValue) sameModelValue(other *ModelValue) bool {
-	if v == nil || other == nil {
-		return v == other
-	}
-	eq, err := v.Equal(other)
-	if err != nil {
-		panic(err)
-	}
-	return eq
 }
 
 type RecordValue struct {

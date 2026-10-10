@@ -528,8 +528,17 @@ preserves Java's rejection of sets of size zero or one, and reads explicit
 function domains and range slots before validating model-value types. Typed
 null/bounds failures and source runtime messages match all 440 observations,
 including multiple-generator closure order and malformed enumeration storage.
-Focused original symmetry and value/evaluator checks pass. Permutation table
-lifetimes and further malformed inputs remain unproven.
+Focused original symmetry and value/evaluator checks pass. Further malformed
+inputs remain unproven.
+Permutation construction now uses the initialized current model-value table
+without rebuilding it. Composition and rendering read the current table;
+equality follows the left array length and preserves model-value failures.
+Typed null/cast/bounds failures and null-mapping count behavior match all 4,160
+observations across table growth, reset, replacement and unequal permutation
+sizes. The earlier 440 subgroup observations still match. Focused original/native
+checks pass; the standalone special-value test now explicitly initializes its
+empty model-value table with its assertions preserved. Further concurrent
+mutation and deduplication variants remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

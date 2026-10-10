@@ -37366,3 +37366,44 @@ fixtures or original-method credit. Prior broad CommunityModules baseline
 retained; focused verification covers this correction. Handoff/architecture
 updated; goal active. Further permutation table lifetimes, allocation-resource
 behavior and arbitrary mutation remain unproven.
+
+Permutation-table continuation after verified 242cbc6. Previous goal turn made
+progress; checkout clean. Pinned MVPerm constructs against current mvs without
+repair, composes against current table and renders current domain names. Native
+retains a stale domain snapshot and rebuilds model tables in its constructor.
+Source equality loops over the left array and delegates non-null values to
+ModelValue.equals, including typed values against null; native length/nil guards
+skip those source failures.
+
+Prepare ignored .codex-gotmp/permutation-tables from actual model-value and
+permutation constructors. Java reflects the actual package-private constructor;
+model table changes use actual init/make/add/setValues lifecycle methods and
+public index fields. No semantic graph or evaluator callback is fabricated.
+Source 2566ca/native 24958 terminal e2361c complete all 1,600 rows; 858 actual
+differences across constructors, table lifetimes, equality and typed failures.
+
+Native removes domain snapshots and emptyLike. NewMVPerm requires non-null
+current table; Compose creates a fresh source-sized result and current table
+reads retain locking. Equality follows left-array reads and delegates actual
+model-value equality with a real null interface when appropriate. Get/Put and
+slot reads use typed cast/null/bounds failures. Null-mapping count increments
+and signed overflow follow source; AllModelValues allocates independently of
+count. Remove the now-unused nil-shortcut sameModelValue helper. Native 25422
+exits zero (efa308), all 1,600 exact. Focused original/native 74939 exits zero
+(23c38c), root 6.492s and tlc 2.665s, including original symmetry/TTrace models
+and native state fingerprint/symmetry checks.
+
+Preserve original logs as *-base.log. Expand ignored observer with unequal
+permutation sizes, both composition directions, repeated null puts and current
+model-value source flags. Fix only observer edit whitespace matching during
+setup. Source 6f7af2/native 65405 terminal af2a4a complete all 4,160 rows,
+exactly equal. Earlier subgroup observer rerun 33173 exits zero (7c3437), all
+440 rows still exact. Focused native check 33536 exits zero (cbf93a), .012s.
+Independent existing special-value test cdb927 fails because it relied on silent
+model-table construction before its expected unsupported permutation failure.
+Initialize its empty model-value table explicitly; preserve every assertion.
+Final focused native 35015 passes, including this setup and permutation/state/
+tool checks. No persistent new test/fixture or original-method credit. Prior
+broad baseline retained; this correction has focused verification. Handoff and
+architecture updated; overall goal active. Concurrent table replacement and
+arbitrary mutated-value deduplication remain unproven.
