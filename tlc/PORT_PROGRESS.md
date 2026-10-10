@@ -30523,3 +30523,54 @@ Latest saved progress is 689,165,632 / 2,147,483,648; no terminal result or meth
 credit. Overall TLC parity remains incomplete. Next audit: coverage constraint
 ownership, repeated creation and constraint-report failures, using current actual
 source tool objects rather than assuming the creator is idempotent.
+
+
+2026-10-09: Preserve coverage constraint conversion and report failures
+
+Previous turn made progress in 1674a03; current tree started clean. Source
+CostModelCreator casts each creation-time constraint tool object to OpDefNode,
+constructs a fresh Action, builds its CM, then publishes the Action. Go previously
+reused Action objects, accepted wrong types, used a source image as the unnamed
+action name, skipped null expressions and published fallback Actions before
+building their models. Corrected source-backed assignConstraintCostModel; native
+standalone fallback behavior is retained. Reporting now performs the source
+Action cast and null dereference rather than silently ignoring unusable objects.
+
+Exactly 38 ordered pinned-Java/native observations on unchanged TLCGetLevel
+match; 20 baseline rows differed. Nineteen shapes run through create/report with
+a fresh tool per case: valid, null action/model arrays and entries, missing/wrong
+tool objects, restored OpDefs, existing Actions, duplicate arrays, shared action/
+model expressions, repeated creation, reporting without creation and a foreign
+tool slot. Rows compare exception categories, initial/next CM replacement,
+variable counter identity, constraint tool-object classes/identity, Action names,
+predicate/context ownership, CM presence, foreign-slot retention and complete
+ordered raw message codes/parameters. Null OpDefs create UnnamedAction; existing
+Actions cause ClassCastException during creation. Repeated/duplicate/shared-node
+creation fails after preserving earlier successful replacements. Report-before-
+creation and restored OpDefs fail with the source cast; missing/null nodes fail
+with NullPointerException. No persistent test or fixture was invented.
+
+Ignored observers/logs/comparator are in
+.codex-gotmp/coverage-constraint-observation/. Source compile/source and native
+baseline session 76199 terminal 4be8ab returned status 0. Corrected native session
+52307 terminal c66a5a returned status 0 and matched all 38 rows. Prior coverage
+regression observers session 63841 terminal 04a198 returned status 0: all 24
+initial-vector and 32 implied-enabled/disabled family rows still match. Final
+compare.py receipt 22583c requires exactly 38 + 24 + 16 + 16 rows, exact order
+and equality; status 0, all 94 match.
+This does not establish failure publication inside arbitrary malformed graphs,
+Java polymorphic object behavior or VM-generated exception detail text.
+
+All 26 selected original root model/generated-trace checks pass: 19 coverage
+models, TLCGetLevel and TLCGetLevelTTrace, plus all five TraceExpressionSpec
+methods. Session 19469 terminal 4c42f9, root 9.844s, status 0, original-models.log.
+All four original TestJavaReportCoverage01..04 methods pass, session 79134
+terminal e7aa18, TLC 0.012s, status 0, original-reporting.log. Original fixtures,
+assertions and bounds remain unchanged. No race or broad workspace suite; no
+XML/ApalacheIR sweep. No inventory changes or new original-method credit.
+Formatting and git diff --check pass. No email-related work.
+
+Original full off-heap random stress session 27326 remains live (poll c93b19).
+Latest saved progress is 700,626,729 / 2,147,483,648; no terminal result or method
+credit. Overall parity remains incomplete. Next audit: coverage report sorting/
+deduplication by actual predicate locations and variable-counter setup boundaries.

@@ -9379,9 +9379,29 @@ and 32 action-family cases with implied coverage enabled/disabled. They retain
 exception categories, initial/next cost-model replacement, variable-counter
 identity and every raw message code/parameter in order. Nineteen existing model
 coverage tests and four original reporting tests pass normally. No persistent
-fixtures/tests or original-method credit were added. Repeated creation and
-constraint ownership/report failure boundaries remain separate work; Java's
-constraint conversion can reject an Action installed by an earlier creation.
+fixtures/tests or original-method credit were added.
+
+Source-backed constraint creation casts each current tool object to OpDefNode;
+null is accepted as an unnamed definition, other types throw ClassCastException.
+It always constructs a fresh Action and builds the cost model before installing
+it in that tool's semantic-node slot. A repeated creation, duplicate expression
+or shared expression across action/model constraints can therefore fail when it
+encounters an Action installed earlier. Earlier successful replacements remain
+installed. Reports cast current objects to Action and preserve wrong-type and
+null failures, including report-before-creation. Standalone native adapters retain
+their existing fallback conversion.
+
+All 38 ordered constraint observations on TLCGetLevel agree after correcting 20
+baseline rows. They cover null arrays/entries, missing/wrong/OpDef/Action objects,
+duplicates, shared nodes, repeated creation, uninitialized reporting and a foreign
+tool slot. Every raw report code/parameter, initial/next CM replacement, variable
+counter identity, constraint object identity/name/predicate/context/model and
+foreign-slot retention is compared. All 56 earlier coverage rows still agree.
+Twenty-six original model/generated-trace tests and four original reporting tests
+pass normally. No new persistent tests/fixtures or original-method credit.
+Failures inside arbitrary malformed semantic graphs and VM-generated exception
+detail text are not established; report sorting/deduplication and variable-counter
+setup boundaries remain separate audits.
 
 LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
 ModelChecker.vetoCleanup property retains disk graph handles for subsequent

@@ -144,9 +144,12 @@ observations, 27 real-model consumer observations and 149 earlier observations
 match Java. Initial generation, combined actions and `TLCGet("spec")` preserve
 source iteration and first failures. Coverage creation/reporting now preserve
 source null failures in initial, next, invariant and implied families, including
-partial updates and report prefixes. All 56 observations and 23 existing original
-coverage tests pass. Next audit: coverage constraint ownership, repeated creation
-and constraint-report failures. Original model-test reconciliation remains open.
+partial updates and report prefixes. Constraint creation now requires the source
+OpDef cast, installs a fresh Action after building its cost model, and preserves
+repeated-creation failures. Constraint reports retain null/cast failures. All 94
+coverage observations and 30 focused original tests pass. Next audit: coverage
+report sorting/deduplication by predicate location and variable-counter setup
+boundaries. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

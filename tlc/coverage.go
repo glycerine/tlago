@@ -499,7 +499,20 @@ func coverageImpliedEnabled() bool {
 
 func reportConstraintCoverage(tool *Tool, nodes []SemanticNode) {
 	for _, node := range nodes {
-		if action, ok := SemanticToolObjectForTool(tool, node).(*Action); ok && action != nil {
+		if tool.SpecProcessor != nil && node == nil {
+			panic(NewNullPointerException())
+		}
+		object := SemanticToolObjectForTool(tool, node)
+		action, ok := object.(*Action)
+		if tool.SpecProcessor != nil {
+			if object != nil && !ok {
+				panic(NewClassCastException())
+			}
+			if action == nil {
+				panic(NewNullPointerException())
+			}
+		}
+		if action != nil {
 			action.CM.Report()
 		}
 	}
@@ -546,6 +559,20 @@ func (c *coverageCreator) createForAction(action *Action, relation CoverageRelat
 }
 
 func (c *coverageCreator) assignConstraintCostModel(expr SemanticNode) {
+	if c.tool.SpecProcessor != nil {
+		if expr == nil {
+			panic(NewNullPointerException())
+		}
+		existing := SemanticToolObjectForTool(c.tool, expr)
+		opDef, ok := existing.(*OpDefNode)
+		if existing != nil && !ok {
+			panic(NewClassCastException())
+		}
+		action := NewActionFromOpDef(expr, EmptyContext, opDef, false, false)
+		action.CM = c.createForAction(action, CoverageRelationConstraint)
+		SetSemanticToolObjectForTool(c.tool, expr, action)
+		return
+	}
 	if expr == nil {
 		return
 	}
