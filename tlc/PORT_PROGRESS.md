@@ -35481,3 +35481,42 @@ Existing debugger scalar and composite fingerprint observers complete
 shortened workload. Handoff and architecture updated. Latest full stress saved
 progress is 1,787,273,699 / 2,147,483,648 (6ad1b5), without terminal result or
 long-method credit. Preserve its original handle, artifacts and bounds.
+
+
+### 2026-10-10: Predicate-based sequence boundaries and Insert short circuit
+
+Previous goal turn made verified progress in d11f107; clean worktree confirmed
+(cb3ab1). Direct poll 7a87a8 confirms original full stress session 27326 remains
+live, with saved progress 1,794,130,257 / 2,147,483,648 (1e941b). Continue
+SelectInSeq, SelectSeq and Insert using pinned Sequences.java read/evaluation order.
+
+Ignored sequence-predicates observer uses actual test206 parsed source nodes and
+runtime tuple/function-record/operator-record constructors and arrays. No
+fabricated evaluator callbacks, semantic graph mutations or persistent fixtures.
+Eight sequence forms and eighteen predicate forms across three operations and
+four source settings yield 1,728 rows, initially with 504 differences (773171).
+Use direct sequence conversion and typed Size reads; preserve function validation
+before Size in SelectInSeq/Insert and Size/empty shortcut before operator
+validation in SelectSeq. Null diagnostic operands raise typed null failures.
+Reuse argument arrays, retain SelectSeq args[0] and Insert args[1] after calls,
+and short circuit Insert comparison after a false predicate. Shared-array
+mutation follows source inspection; no fabricated mutation callback is used.
+
+After sequence changes, 56 rows still differ (b0c71e), all due to generic
+recursive printing of null operator-record output values. Raise the typed null
+failure at appendValueString's missing receiver before dispatch; enclosing
+printers retain their existing source frames. Expand with four singleton binary
+function maps to isolate true/false/non-boolean/null predicate results for a
+boolean sequence element. All 2,112 expanded rows agree (5e0897), including
+Insert returning <<TRUE, 0>> for a false predicate rather than comparing int to
+boolean. All 9,196 prior core sequence/composition rows still agree (933e9a).
+No original-test credit is added.
+
+Focused existing original value/model/EXCEPT/stream/Sequences/TLCModule/FP64/
+StringDeserialize/StringHelper/MP/debugger and rendering checks pass. Session
+58354 exits zero (b6798a); root 5.357s and tlc 2.678s (933e9a). No race, broad
+suite, shortened workload or original assertion changes. Update handoff and
+architecture; arbitrary callbacks, SequencesExt and other module-specific casts
+remain open. Direct stress poll edf770 confirms original session 27326 stays
+live. Latest saved progress is 1,801,492,127 / 2,147,483,648 (f688db), without
+terminal result or long-method credit. Preserve original handle, log and bounds.

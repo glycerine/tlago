@@ -29,6 +29,9 @@ func ValueToStringUnchecked(value Value, delimiter ...string) string {
 }
 
 func appendValueString(value Value, sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	if printer, ok := value.(ValueStringPrinter); ok {
 		return printer.ToString(sb, offset, swallow)
 	}

@@ -383,8 +383,12 @@ null/size reads, conversion order and substring shortcuts. Strings preserve
 UTF-16 units through slicing, concatenation, length, fingerprinting and legacy
 checkpoint writes. ToolIO UTF-8 output retains split surrogate state and captured
 messages preserve recombined pairs. All 9,196 sequence/composition rows and 132
-console traces agree. Callback-based sequence operations, `SequencesExt` and other
-module-specific casts remain separate work.
+console traces agree. `SelectInSeq`, `SelectSeq` and `Insert` retain predicate
+validation/size order, shared argument arrays and source null failures. `Insert`
+compares values only after a true predicate. All 2,112 finite-map observations
+agree, including diagnostic source frames and non-boolean/null results.
+Arbitrary callback mutation, `SequencesExt` and other module-specific casts remain
+separate work.
 All bounded comparisons agree, including the prior lambda conversion and deep-
 normalization matrices; contracts and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.

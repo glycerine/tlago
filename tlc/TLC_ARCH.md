@@ -8169,9 +8169,29 @@ print/println, output/error streams, reset, stream replacement, aliasing and
 captured message equality. Original MP/failover test setup now restores encoder
 state along with its prior streams; assertions are unchanged. No persistent test,
 fixture or original-method credit is added. Prior 240 debugger scalar and 13,056
-composite fingerprint rows still agree. Other sequence callbacks, SequencesExt,
-module-specific casts, arbitrary writer callbacks/charsets and parsed class/token
-initialization remain separate requirements.
+composite fingerprint rows still agree. Arbitrary writer callbacks/charsets and
+parsed class/token initialization remain separate requirements.
+
+Predicate-based Sequences helpers preserve direct tuple conversion and typed
+size reads without adding module catch frames. SelectInSeq and Insert validate
+the function before reading size; SelectSeq reads size and returns the empty
+singleton before validating its operator. Null diagnostic operands fail at the
+source toString dereference. Each operation reuses its source-sized argument
+array. SelectSeq retains args[0] after operator evaluation; Insert retains args[1]
+when shifting, while using the original inserted value for comparison and output.
+Insert compares only when the predicate is true. A false predicate therefore
+permits insertion even when the values cannot be compared. Generic recursive
+value printing now raises a typed null failure at a missing child's toString
+call, retaining enclosing printer and public-wrapper source frames.
+All 2,112 finite-map observations agree across eight sequence forms, twenty-two
+predicate forms, three operations and four source settings. Runtime tuple,
+function-record and operator-record maps exercise true/false/non-boolean/null
+results, malformed sequences, missing entries and diagnostic rendering. The
+existing parsed test206 body supplies source nodes; no evaluator callbacks or
+semantic nodes are fabricated. The prior 9,196 core sequence rows still agree.
+No persistent tests/fixtures or original-test credit are added. Arbitrary
+callback mutation, broader operator behavior, SequencesExt and other module
+casts remain separate work; shared-argument mutation behavior is source-inspected.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

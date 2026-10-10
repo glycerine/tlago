@@ -217,15 +217,24 @@ func sequenceTuple(value Value) *TupleValue {
 }
 
 func SelectInSeq(s Value, test Value) (Value, error) {
-	seq := asTupleValue(s)
+	seq := sequenceTuple(s)
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectInSeq", "sequence", ValuesPPR(s))
 	}
 	if !isFunctionValue(test) {
+		if test == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectInSeq", "function", ValuesPPR(test))
 	}
-	for i, elem := range seq.Elems {
-		value, err, _ := applyFunctionValue(test, []Value{elem}, EvalClear)
+	length, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	args := make([]Value, 1)
+	for i := 0; i < length; i++ {
+		args[0] = seq.Elems[i]
+		value, err, _ := applyFunctionValue(test, args, EvalClear)
 		if err != nil {
 			return nil, err
 		}
@@ -241,19 +250,28 @@ func SelectInSeq(s Value, test Value) (Value, error) {
 }
 
 func SelectSeq(s Value, test Value) (Value, error) {
-	seq := asTupleValue(s)
+	seq := sequenceTuple(s)
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectSeq", "sequence", ValuesPPR(s))
 	}
-	if len(seq.Elems) == 0 {
+	length, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	if length == 0 {
 		return EmptyTuple, nil
 	}
 	if !isOperatorValue(test) {
+		if test == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectSeq", "operator", ValuesPPR(test))
 	}
 	out := NewValueVec(0)
-	for _, elem := range seq.Elems {
-		value, err := EvalOperatorValue(test, []Value{elem}, EvalClear)
+	args := make([]Value, 1)
+	for i := 0; i < length; i++ {
+		args[0] = seq.Elems[i]
+		value, err := EvalOperatorValue(test, args, EvalClear)
 		if err != nil {
 			return nil, err
 		}
@@ -262,25 +280,33 @@ func SelectSeq(s Value, test Value) (Value, error) {
 			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectSeq", "boolean-valued operator", ValuesPPR(test))
 		}
 		if boolValue.Val {
-			out.Add(elem)
+			out.Add(args[0])
 		}
 	}
 	return NewTupleValue(out.ToArray()), nil
 }
 
 func Insert(s Value, v Value, test Value) (Value, error) {
-	seq := asTupleValue(s)
+	seq := sequenceTuple(s)
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Insert", "sequence", ValuesPPR(s))
 	}
 	if !isFunctionValue(test) {
+		if test == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "Insert", "function", ValuesPPR(test))
 	}
-	values := make([]Value, len(seq.Elems)+1)
-	idx := len(seq.Elems)
+	length, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	args := []Value{v, nil}
+	values := make([]Value, length+1)
+	idx := length
 	for idx > 0 {
-		right := seq.Elems[idx-1]
-		value, err, _ := applyFunctionValue(test, []Value{v, right}, EvalClear)
+		args[1] = seq.Elems[idx-1]
+		value, err, _ := applyFunctionValue(test, args, EvalClear)
 		if err != nil {
 			return nil, err
 		}
@@ -288,12 +314,19 @@ func Insert(s Value, v Value, test Value) (Value, error) {
 		if !ok {
 			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "Insert", "boolean-valued operator", ValuesPPR(test))
 		}
-		cmp, err := v.Compare(right)
-		if err != nil {
-			return nil, err
+		shift := false
+		if boolValue.Val {
+			if v == nil {
+				panic(NewNullPointerException())
+			}
+			cmp, err := v.Compare(args[1])
+			if err != nil {
+				return nil, err
+			}
+			shift = cmp < 0
 		}
-		if boolValue.Val && cmp < 0 {
-			values[idx] = right
+		if shift {
+			values[idx] = args[1]
 			idx--
 		} else {
 			values[idx] = v
