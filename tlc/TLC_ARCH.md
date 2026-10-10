@@ -11500,6 +11500,26 @@ dispatch rows still agree. Focused originals pass normally, including unchanged
 Concurrent register mutation, allocation exhaustion and wider native integer
 arguments are not proven by these bounded observations.
 
+Simulator.GetRNG selects the actual scoped simulation worker's generator,
+independently of registration or worker ID; ordinary and ID-only callers receive
+the coordinator generator. Probabilistic Tool disjunction generation now uses
+that dispatch. Source-backed generation throws a typed null-pointer exception
+when the simulator or selected generator is absent. Standalone tools without a
+source processor retain the existing missing-simulator enumerable-RNG adapter.
+
+All 52 ignored pinned-Java/native observations agree on unchanged DieHardAlias /
+DieHard. Ten actual full-Next transitions run for each ordinary caller, actual
+worker seeded 7, actual worker seeded 19 and ordinary IdThread caller. Each row
+compares successor count, every state binding and worker/coordinator aril counts;
+owner identity, tail draws and final coordinator draw verify stream advancement.
+Java uses actual sequential worker/IdThread threads, native uses the existing
+execution scopes. The model has multiple enabled disjuncts, so this verifies
+state choices as well as metadata. Missing simulator and null coordinator cases
+retain source failures. Existing focused original simulation and complete
+RandomizationTest translations pass normally. No persistent tests/fixtures or
+original-method credit. Arbitrary concurrent simulation, bounded-choice random
+enumeration and all probabilistic CLI behavior remain separate verification work.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

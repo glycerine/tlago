@@ -688,7 +688,10 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		}
 		res := s1
 		if toolProbabilisticEnabled() {
-			rng := probabilisticRandomGenerator()
+			rng := probabilisticRandomGenerator(t)
+			if rng == nil {
+				panic(NewNullPointerException())
+			}
 			index := int(rng.NextDouble() * float64(len(args)))
 			stride := rng.NextPrime()
 			for i := 0; i < len(args); i++ {
@@ -824,9 +827,12 @@ func (t *Tool) actionCompositionIntermediateStates(action *Action, pred Semantic
 	return intermediate, res, err
 }
 
-func probabilisticRandomGenerator() *JavaRandom {
-	if simulator := CurrentSimulator(); simulator != nil && simulator.Rand != nil {
-		return simulator.Rand
+func probabilisticRandomGenerator(tool *Tool) *JavaRandom {
+	if simulator := CurrentSimulator(); simulator != nil {
+		return simulator.GetRNG()
+	}
+	if tool != nil && tool.SpecProcessor != nil {
+		panic(NewNullPointerException())
 	}
 	return RandomEnumerableGenerator()
 }

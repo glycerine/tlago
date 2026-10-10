@@ -129,9 +129,12 @@ simulation checks pass at unchanged bounds. The existing short scope-isolation
 race check passes. Aggregate snapshots retain first-worker domains and source
 failures; register growth preserves old arrays and setter partial updates. The
 indexed all-worker getter is ported, and all 43 new register observations agree.
-Next source audit: Simulator random-generator dispatch in probabilistic state
-generation. General `Vect` invalid-count and exception behavior remains unproven;
-original model-test reconciliation remains open.
+Probabilistic disjunctions now use the active simulation worker's random stream;
+ordinary and ID-only callers use the coordinator stream. All 52 bounded state,
+stream and failure observations agree, and focused originals pass. Next source
+audit: probabilistic bounded-choice and nested-disjunction successor generation.
+General `Vect` invalid-count and exception behavior remains unproven; original
+model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

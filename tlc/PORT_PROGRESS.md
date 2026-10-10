@@ -30207,3 +30207,65 @@ random-generator dispatch in probabilistic state generation. Source Tool selects
 Simulator.getRNG, which dispatches to the actual simulation worker; native
 probabilisticRandomGenerator currently reads the simulator's coordinator generator.
 Verify actual generation and stream ownership before changing that path.
+
+
+2026-10-09: Select the worker random stream for probabilistic successors
+
+Previous goal turn made verified progress in 649810c. Source Tool's probabilistic
+disjunction asks Simulator.getRNG, which selects the actual current simulation
+worker's generator. Native used the coordinator generator unconditionally. Added
+the missing Simulator.GetRNG dispatch and routed probabilistic disjunctions through
+it. Source-backed generation preserves null-pointer failures for absent simulator
+or selected generator; standalone tools retain their existing missing-simulator
+random-enumeration adapter.
+
+All 52 final pinned-Java/native observations agree; 39 baseline rows differ.
+Unchanged DieHardAlias/DieHard supplies the actual full Next predicate, multiple
+enabled disjuncts and four state bindings. Ten actual generated transitions each
+run for an ordinary caller, unregistered worker seeded 7, unregistered worker
+seeded 19 and ordinary IdThread caller. Rows preserve all generated state values,
+successor counts and worker/coordinator aril counts. Owner identity, per-context
+tail draws and the final coordinator draw check stream ownership and advancement.
+Worker phases now leave the coordinator stream unchanged. The old implementation
+advanced that stream and generated different state sequences. Source uses actual
+sequential worker/IdThread threads with bounded overridden steps; native uses the
+existing execution scopes. The 40 transitions are an observer workload, not a
+replacement for original model tests or a claim of full search completion.
+
+The final three observations cover absent simulator, null coordinator generator
+identity and its generation failure. Ordinary and ID-only contexts use the
+coordinator; worker contexts select their own generator even with no registrations.
+Enumerable RNGs are reset through the supported setSeed operation per transition.
+The first source observer attempted set(new java.util.Random(...)); source rejects
+that foreign subclass at a later get with ClassCastException. The corrected
+observer uses source setSeed(41), with native equivalent. Failed attempt logs are
+preserved, and no production workaround or credit is claimed for that attempt.
+No model source, original assertions or workload bounds changed.
+
+Ignored observers, overlays and baseline files are under
+.codex-gotmp/simulator-rng-observation/. Final compile ad4a60 returned status 0.
+Final source af207f, native baseline session 52364 terminal 51f247 and corrected
+session 52242 terminal 8b990d returned status 0. Comparison c5920f verifies all 52
+exact rows. Logs: .codex-gotmp/simulator-rng-complete-{java,before,current}.log.
+The initial failed source log simulator-rng-java.log and intermediate 49-row
+logs remain separate. No generic Random object is installed in the final source
+observer. No listener or model-search workload is involved.
+
+Focused original SimulationWorker, SimulatorCorrectness, SimulatorPrintBehavior,
+CoverageStatistics, TLCGetAll, TLCGetLevel and the entire existing RandomizationTest
+translation plus native Simulator/SimulationWorker checks pass normally: session
+42172 terminal ae348b, status 0; root 1.528 seconds, TLC 0.282 seconds. Log:
+.codex-gotmp/simulator-rng-originals.log. Original inputs, assertions and bounds
+remain unchanged. Formatting and git diff --check pass. No persistent tests or
+fixtures, inventory changes or new original-method credit. No broad suite,
+XML/ApalacheIR sweep, race workload or email-related work. No new concurrency
+primitive or scope lifecycle is introduced; arbitrary concurrent generation and
+all probabilistic CLI behavior are not proven by this sequential comparison.
+
+Original full off-heap stress session 27326 remains live, poll 030033. Latest saved
+progress is 617,715,601 / 2,147,483,648 iterations; no terminal result or method
+credit. Overall TLC parity remains incomplete. Next source audit: probabilistic
+bounded-choice and nested-disjunction successor generation. Consult prior RNG
+arithmetic/thread-local ownership receipts and the source's intentional ordinary
+enumeration after exhausted probabilistic membership before changing behavior.
+Do not reopen the source's unsupported probabilistic CASE path.

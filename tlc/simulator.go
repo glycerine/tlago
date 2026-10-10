@@ -567,6 +567,16 @@ func (s *Simulator) sourceTraceWorker() *SimulationWorker {
 	return s.Workers[0]
 }
 
+func (s *Simulator) GetRNG() *JavaRandom {
+	if worker := currentSimulationWorker(); worker != nil {
+		return worker.GetRNG()
+	}
+	if s == nil {
+		return nil
+	}
+	return s.Rand
+}
+
 func (s *Simulator) GetConfig() Value {
 	if s == nil {
 		return EmptyRecord
