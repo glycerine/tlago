@@ -238,50 +238,61 @@ func (b *operatorValueBase) KindString() string {
 func (b *operatorValueBase) Compare(other Value) (resultInt int, err error) {
 	defer catchValueFailure(b.receiver(), &err)
 	if b.KindValue == MethodValueKind {
-		return 0, b.unsupported("%s", b.methodComparisonMessage(other))
+		return 0, b.runtimeFailure(b.methodComparisonMessage(other))
 	}
-	return 0, b.unsupported("Attempted to compare operator %s with value:\n%s", ValuesPPR(b.receiver()), ValuesPPRString(other.String()))
+	operator := ValuesPPR(b.receiver())
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	return 0, b.runtimeFailure(fmt.Sprintf("Attempted to compare operator %s with value:\n%s", operator, ValuesPPRString(other.String())))
 }
 
 func (b *operatorValueBase) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(b.receiver(), &err)
 	if b.KindValue == MethodValueKind {
-		return false, b.unsupported("%s", b.methodComparisonMessage(other))
+		return false, b.runtimeFailure(b.methodComparisonMessage(other))
 	}
-	return false, b.unsupported("Attempted to check equality of operator %s with value:\n%s", ValuesPPR(b.receiver()), ValuesPPRString(other.String()))
+	operator := ValuesPPR(b.receiver())
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	return false, b.runtimeFailure(fmt.Sprintf("Attempted to check equality of operator %s with value:\n%s", operator, ValuesPPRString(other.String())))
 }
 
 func (b *operatorValueBase) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(b.receiver(), &err)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
 	if b.KindValue == MethodValueKind {
 		if elem != nil {
 			_ = elem.String()
 		}
-		return false, b.unsupported("%s\nis an element of operator %s", ValuesPPRString(elem.String()), b.receiver().String())
+		return false, b.runtimeFailure(fmt.Sprintf("%s\nis an element of operator %s", ValuesPPRString(elem.String()), b.receiver().String()))
 	}
-	return false, b.unsupported("Attempted to check if the value:\n%s\nis an element of operator %s", ValuesPPRString(elem.String()), ValuesPPR(b.receiver()))
+	return false, b.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of operator %s", ValuesPPRString(elem.String()), ValuesPPR(b.receiver())))
 }
 
 func (b *operatorValueBase) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(b.receiver(), &err)
-	return false, b.unsupported("Attempted to check if the operator %s is a finite set.", b.diagnosticString())
+	return false, b.runtimeFailure(fmt.Sprintf("Attempted to check if the operator %s is a finite set.", b.diagnosticString()))
 }
 
 func (b *operatorValueBase) Size() (resultInt int, err error) {
 	defer catchValueFailure(b.receiver(), &err)
-	return 0, b.unsupported("Attempted to compute the number of elements in the operator %s.", b.diagnosticString())
+	return 0, b.runtimeFailure(fmt.Sprintf("Attempted to compute the number of elements in the operator %s.", b.diagnosticString()))
 }
 
 func (b *operatorValueBase) Normalize() Value {
 	defer catchValueFailure(b.receiver(), nil)
-	panic(fmt.Errorf("%s", b.normalizeMessage()))
+	panic(NewWrongInvocationException(b.normalizeMessage()))
 }
 
 func (b *operatorValueBase) DeepNormalize() {}
 
 func (b *operatorValueBase) IsNormalized() bool {
 	defer catchValueFailure(b.receiver(), nil)
-	panic(fmt.Errorf("%s", b.normalizeMessage()))
+	panic(NewWrongInvocationException(b.normalizeMessage()))
 }
 
 func (b *operatorValueBase) IsDefined() bool { return true }
@@ -297,12 +308,12 @@ func (b *operatorValueBase) Permute(*MVPerm) Value {
 
 func (b *operatorValueBase) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(b.receiver(), &err)
-	return nil, b.unsupported("Attempted to appy EXCEPT construct to the operator %s.", b.diagnosticString())
+	return nil, b.runtimeFailure(fmt.Sprintf("Attempted to appy EXCEPT construct to the operator %s.", b.diagnosticString()))
 }
 
 func (b *operatorValueBase) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(b.receiver(), &err)
-	return nil, b.unsupported("Attempted to apply EXCEPT construct to the operator %s.", b.diagnosticString())
+	return nil, b.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the operator %s.", b.diagnosticString()))
 }
 
 func (b *operatorValueBase) String() string {
@@ -328,6 +339,9 @@ func (b *operatorValueBase) methodComparisonMessage(other Value) string {
 	_ = b.receiver().String()
 	if other != nil {
 		_ = other.String()
+	}
+	if other == nil {
+		panic(NewNullPointerException())
 	}
 	return ValuesPPRString(other.String())
 }
@@ -400,8 +414,12 @@ func (v *OpLambdaValue) Eval(args []Value, control int) (resultValue Value, err 
 	if v.OpDef == nil {
 		return nil, newTLCError(ECGeneral, "Attempted to apply a nil operator.")
 	}
-	if v.OpDef.Arity() != len(args) {
-		return nil, v.unsupported("Applying the operator %s with wrong number of arguments.", ValuesPPR(v))
+	arity := v.OpDef.Arity()
+	if args == nil {
+		panic(NewNullPointerException())
+	}
+	if arity != len(args) {
+		return nil, v.runtimeFailure(fmt.Sprintf("Applying the operator %s with wrong number of arguments.", ValuesPPR(v)))
 	}
 	ctx := v.Con
 	if ctx == nil {
@@ -459,7 +477,7 @@ func (v *OpRcdValue) Eval(args []Value, control int) (resultValue Value, err err
 			panic(NewNullPointerException())
 		}
 		if len(args) != len(vals) {
-			return nil, v.unsupported("Attempted to apply the operator %s\nwith wrong number of arguments.", ValuesPPR(v))
+			return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply the operator %s\nwith wrong number of arguments.", ValuesPPR(v)))
 		}
 		matched := true
 		for j := range vals {
@@ -480,7 +498,7 @@ func (v *OpRcdValue) Eval(args []Value, control int) (resultValue Value, err err
 	if args == nil {
 		panic(NewNullPointerException())
 	}
-	return nil, v.unsupported("Attempted to apply operator:\n%s\nto arguments (%s), which is undefined.", operator, joinValueStrings(args, ", "))
+	return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply operator:\n%s\nto arguments (%s), which is undefined.", operator, joinValueStrings(args, ", ")))
 }
 
 func (v *OpRcdValue) IsDefined() bool {
@@ -623,7 +641,7 @@ func newEvaluatingValue(name string, minLevel int, priority int, opDef *OpDefNod
 
 func (v *EvaluatingValue) Eval(args []Value, control int) (resultValue Value, err error) {
 	defer catchValueFailure(v.receiver(), &err)
-	return nil, fmt.Errorf("It is a TLC bug: Should use the other eval method.")
+	return nil, NewWrongInvocationException("It is a TLC bug: Should use the other eval method.")
 }
 
 func (v *EvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (resultValue Value, err error) {

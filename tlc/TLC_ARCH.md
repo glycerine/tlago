@@ -7118,6 +7118,33 @@ nonempty and allocated-empty EXCEPT arrays; source null EXCEPT arrays, arbitrary
 custom override failures and other operator-specific operations remain unverified.
 No new original-method inventory credit is claimed.
 
+Operator-record and lambda comparison/equality format the receiver before a null
+operand fails; membership dereferences the argument first. Reflected MethodValue
+and EvaluatingValue retain Java's conditional-expression precedence quirk: their
+comparison error contains only the operand text, and their membership error omits
+the intended leading prefix. Their discarded string conversions retain source
+evaluation order. Assert failures retain source/context and runtime category;
+normalization and the wrong EvaluatingValue eval entry retain typed
+WrongInvocationException, inside the existing value catch.
+
+OpRcd eval preserves wrong-arity and undefined-application runtime boundaries.
+Undefined argument rendering uses Java string conversion, including "null" for a
+null element; a null argument array remains a typed null failure. OpLambda eval
+checks the null argument array after reading arity and before comparing lengths.
+The real model C expensive operator verifies valid evaluation, nil-bound formal
+failure and wrong arity. Tool undefined/nonoperator lookup keeps the source coded
+runtime failure and expression/context. Pretty-print fallback retains its original
+input when parsing produces an out-of-range end, preserving <Operator ...> labels.
+
+All 188 complete Java/native rows agree across empty/one-row operator records,
+a real model lambda, a reflected Naturals.Plus MethodValue and an EvaluatingValue
+wrapper, with and without semantic sources. Rows include comparison/equality,
+membership, finite/size, root/nested and empty/nonempty EXCEPT, normalization and
+the applicable eval entries. Method invocation itself, arbitrary malformed row
+printing, custom evaluators and derived priority/callable wrappers are outside
+this observation. Existing fixtures and tests are unchanged; no original-method
+inventory credit is added.
+
 
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime

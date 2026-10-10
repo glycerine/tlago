@@ -351,15 +351,15 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 				return nil, err
 			}
 			return t.Eval(v.Body, c1, s0, s1, control, cm)
-		case nil:
+		default:
 			if !EvalIsEnabled(control) && EvalIsPrimed(control) && opNode.IsVariableDecl() {
 				failure := NewTLCRuntimeException(ECTLCStateNotCompletelySpecifiedLive, opNode.Name.String(), SemanticString(expr))
 				failure.Expr, failure.Ctxt = expr, c
 				return nil, failure
 			}
-			return nil, NewTLCRuntimeException(ECTLCConfigUndefinedOrNoOperator, opNode.Name.String(), semanticNodeLocationString(expr))
-		default:
-			return ValUndef, newTLCError(ECGeneral, "cannot evaluate operator %s bound to %T", opNode, val)
+			failure := NewTLCRuntimeException(ECTLCConfigUndefinedOrNoOperator, opNode.Name.String(), semanticNodeLocationString(expr))
+			failure.Expr, failure.Ctxt = expr, c
+			return nil, failure
 		}
 		if opcode == 0 {
 			return ValUndef, nil

@@ -76,7 +76,9 @@ func prettyPrintMypp(value string, width int) string {
 	if err != nil {
 		return value
 	}
-	if tree.last < len(value)-1 {
+	// Java catches the substring failure when a parsed range extends past
+	// the input (for example, an operator label with a single closing >).
+	if tree.last < len(value)-1 || tree.last >= len(value) {
 		return value
 	}
 	formatted, err := ppFormat(tree, width, 0, "")

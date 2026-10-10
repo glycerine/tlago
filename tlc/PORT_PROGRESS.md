@@ -32696,3 +32696,49 @@ also pass: 38548 terminal 8719ee (existing-values.log, 0.015s) and 73885 termina
 change. No broad sweep, race or changed original assertions. Formatting/diff checks
 pass. HANDOFF/TLC_ARCH retain scope; operator Assert/WrongInvocation boundaries
 are next. Overall core TLC parity and original-model reconciliation remain open.
+
+
+2026-10-10: Resume after power loss; operator runtime boundaries.
+Working tree initially clean at 43cbfb2. Poll original stress session 27326 directly
+(9c5ba1): still live, no terminal output; latest saved log progress 1,273,230,079
+of 2,147,483,648. Preserve original full bounds/default budget and no-race policy.
+
+Inspect original OpRcdValue, OpLambdaValue, MethodValue, EvaluatingValue, Tool and
+PrettyPrint sources. Ignored API observations in
+.codex-gotmp/operator-value-boundaries use existing model C and its real checked
+expensive definition/tool/initial state, fresh empty/one-row operator records,
+the actual reflected Naturals.Plus signature and an EvaluatingValue wrapper.
+No evaluator hook is invoked for method wrappers and no persistent test/fixture
+is added. Compile/run source and native baseline: 6cf50e terminal, 188 rows.
+Baseline differs in 176 complete outcomes (b2c40d), primarily Assert runtime/source
+metadata, typed null failures and WrongInvocationException category.
+
+Correct shared operator failures, retaining Method/Evaluating Java precedence
+quirks and discarded string conversion order. Compare/equality format receiver
+before null operand; member dereferences operand first. Normalize/IsNormalized
+and Evaluating wrong eval entry keep typed WrongInvocationException. OpRcd eval
+keeps source-aware wrong-arity/undefined failures; undefined argument rendering
+uses Java string conversion for null elements. OpLambda reads arity then rejects
+null argument arrays before length comparison. Initial corrected comparison leaves
+24 differences: operator pretty printing returns empty for an out-of-range parsed
+sequence, and a real lambda with nil-bound formal reports a generic native error.
+Restore PrettyPrint.mypp original-input fallback for out-of-range end. Tool
+undefined/nonoperator branch preserves source coded runtime failure, expression
+and context, including the source primed-variable branch. Final 188 complete rows
+match (9cfae2); source/native messages, categories, codes, parameter arrays,
+source/context references and FingerprintException frame counts agree.
+After consolidating nil/default lookup branches, rerun comparison:
+93032 terminal 1e3d61; independent equality assertion e5cd6d still 188/188.
+Actual valid lambda calls return source results. Method invocation, malformed row
+printing, custom evaluators and priority/callable wrappers remain outside this
+bounded observation; no new original-method credit.
+
+Existing focused checks initially encounter sandbox local-listener restriction:
+60964 terminal cb5e6f, existing-values.log; local cases pass, TCP cannot bind.
+Rerun unchanged selection with listener permission plus existing assignment
+pretty-print check: 5426 terminal 7465bf, final-values.log, all nine tests pass
+in 0.023s. Original ConstantRank2AssertError and ValueSemanticsAssume model tests
+pass initially (20922 terminal cb5e6f, original-models.log, 2.350s).
+Final rerun after consolidating lookup branch passes (92008 terminal bbf28c,
+final-models.log). No changed assertions, broad sweep, race or shortened workload.
+HANDOFF and TLC_ARCH updated with bounded contracts and pending stress result.

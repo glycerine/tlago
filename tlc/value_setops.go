@@ -1030,7 +1030,11 @@ func takeExceptsOnSet(v Value, exs []ValueExcept) (Value, error) {
 func joinValueStrings(values []Value, sep string) string {
 	parts := make([]string, len(values))
 	for i, value := range values {
-		parts[i] = value.String()
+		if value == nil {
+			parts[i] = "null"
+		} else {
+			parts[i] = value.String()
+		}
 	}
 	return strings.Join(parts, sep)
 }
