@@ -35,8 +35,12 @@ type SymbolNode struct {
 
 // Parser-backed symbol views share their declaration/definition's semantic
 // owner. Native lookup aliases retain their separate adapter fields.
+func (s *SymbolNode) hasSourceSyntax() bool {
+	return s != nil && s.SemanticBase.hasSourceSyntax()
+}
+
 func (s *SymbolNode) GetSourceLocation() SourceLocation {
-	if s.SemanticBase != nil && s.SemanticBase.syntaxLocation != nil {
+	if s.hasSourceSyntax() {
 		return s.SemanticBase.GetSourceLocation()
 	}
 	return s.Location
@@ -45,14 +49,14 @@ func (s *SymbolNode) GetSourceLocation() SourceLocation {
 func (s *SymbolNode) SetSourceLocation(location SourceLocation) { s.Location = location }
 
 func (s *SymbolNode) GetTreeNode() any {
-	if s.SemanticBase != nil && s.SemanticBase.syntaxLocation != nil {
+	if s.hasSourceSyntax() {
 		return s.SemanticBase.GetTreeNode()
 	}
 	return s.TreeNode
 }
 
 func (s *SymbolNode) SetTreeNode(tree any) {
-	if s.SemanticBase != nil && s.SemanticBase.syntaxLocation != nil {
+	if s.hasSourceSyntax() {
 		s.SemanticBase.SetTreeNode(tree)
 	}
 	s.TreeNode = tree

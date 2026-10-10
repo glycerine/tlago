@@ -141,6 +141,9 @@ func (n *OpDefNode) GetDeclarationLocation() SourceLocation {
 }
 
 func (n *OpDefNode) String() string {
+	if n != nil && n.hasSourceSyntax() {
+		return semanticNodeJavaString(n)
+	}
 	if n == nil || n.Name == nil {
 		return "<anonymous>"
 	}

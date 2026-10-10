@@ -11111,8 +11111,24 @@ location/syntax views, primarily OpDef symbols. A pinned-Java/native standalone
 comparison loads unchanged Test219 and Debug02, then observes owner/view syntax
 replacement, removal, typed-null removal and restoration on definition, formal
 and variable symbols. All 15 rows agree; baseline differed throughout. General
-semantic name/body/parameter mutation and the remaining direct string-formatting
-paths remain separate work.
+semantic name/body/parameter mutation remains separate work.
+
+SemanticString now selects the source zero-argument semantic formatter for
+parser-owned nodes and symbol views. Parser-owned base, application, operator
+definition and theorem-definition String methods use that formatter too. This
+honors current source locations and presence-based showPlainFormulae syntax
+images, while NumeralNode/DecimalNode keep their literal overrides. Canonical
+literal creation installs the same source syntax-location reader as other
+parser-owned bases. Native lookup aliases still stringify as names; asking for
+their parser-owned SemanticString renders the actual semantic node.
+
+On the existing original/Bitwise observation, all 20,390 absent/present-property
+rows now agree with source formatting; baseline had 11,918 mismatches. A separate
+pinned-Java comparison loads unchanged Test219 and observes definition, formal,
+application, string and numeral formatting in four property modes. All 20 rows
+agree, including native formal alias names compared with Java getName. These
+are bounded observations, not exhaustive formatter or graph-sharing proof.
+Specialized OpDef comment/human-readable formatting remains a separate audit.
 
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target

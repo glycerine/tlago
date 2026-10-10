@@ -61,30 +61,24 @@ configuration and precedes symmetry setup; alias lookup stays inside trace
 rendering's error boundary.
 
 Unnamed INSTANCE convenience aliases and early registration reuse canonical
-source exports and symbols. All 544 observed export conversions and 1,378 early
-registrations match their source identities. Module setup now retains checked
+source exports and symbols. Module setup retains checked
 source locality and ownership, including public RECURSIVE declarations completed
-by LOCAL bodies. Action declaration lookup no longer substitutes definition
-locations for absent declarations; all 6,014 observed locations match syntax
-children. Parser-backed declaration lookup now reads the current syntax child,
-including after replacement or removal. Seven mutation observations match Java;
-3,775 canonical definition observations agree after the change.
-Action strings now delegate to the semantic formatter, retaining the
-`showPlainFormulae` property's presence-based selection of syntax text.
-Parser-owned semantic bases also read current syntax locations for TLC getters,
-common human-readable locations and standard-module classification. Eight
-mutation cases match Java; 10,195 unchanged graph-location observations agree.
-Action definition display preserves an unknown location after syntax removal.
-Parser-backed symbol location/syntax accessors now use that shared owner too;
-all 4,637 observed symbol rows agree, including 3,072 previously missing views.
-Fifteen mutation rows across definition, formal and variable symbols match Java.
-General source generation, graph mutation sharing and source-less
-fallback lowering remain unproven. Keep those gaps distinct from the completed
-bounded observations.
+by LOCAL bodies. Parser-backed action declarations read the current syntax child;
+absent declarations stay unknown. Shared semantic bases and symbol views read
+current syntax locations, and symbol syntax setters update the same owner.
+Formal path lookup and variable-location capture during setup use those getters.
 
-Next concrete source audit: `SemanticString` and direct semantic `String` methods
-still contain cached-location/name paths. Compare their source formatting before
-changing them; preserve the separate native lookup alias contract.
+Parser-owned diagnostic strings use the source semantic formatter, including
+presence-based `showPlainFormulae` selection and numeric overrides. Generated
+literals join that source-owned path. Native lookup aliases retain name strings.
+All 20,390 observed diagnostic strings agree, and 20 independent Java formatting
+rows match; detailed bounded observations and run receipts are in `PORT_PROGRESS.md`.
+General source generation, graph mutation sharing, state-variable maps after
+setup and source-less fallback lowering remain unproven.
+
+Next concrete source audit: compare `OpDefNode.GetComment` and
+`GetHumanReadableImage`, including absent syntax. Java's specialized image method
+uses comment access and can fail before the common location formatter.
 
 ## Verification baseline and test credit
 

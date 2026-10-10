@@ -28956,3 +28956,60 @@ work. General graph mutation sharing and state-variable map behavior after setup
 remain unproven. Next concrete source audit: SemanticString/direct String methods
 still use cached location/name paths; compare source formatting before changing
 them and retain native lookup alias behavior.
+
+
+Parser-owned diagnostic strings use source semantic formatting (2026-10-09)
+
+Previous turn made authoritative progress with commit 70f5bee. Revalidated clean
+HEAD and polled full off-heap random session 27326, still live. Latest observed
+progress exceeds 110 million of 2,147,483,648 iterations; completion remains
+unproven. Java HEAD remains 8f4bc8b73ad1202774a6bf70143436f8ba50aab0.
+
+Java semantic zero-argument toString normally renders getLocation; presence of
+showPlainFormulae selects the actual syntax image, and numeric nodes override
+this with their literal strings. Native SemanticString called fmt.Stringer,
+whose application/base methods used cached locations and whose definition/formal
+methods often returned names. An ignored overlay on existing Github817/1244,
+Test219, LET, cyclic and Debug02 originals plus the existing Bitwise bridge check
+compares actual runtime diagnostic strings against source formatting in absent
+and present-false property modes. Baseline has 11,918 mismatches among 20,390 rows.
+Receipt: .codex-gotmp/semantic-string-before-observation.log, terminal dbd70c,
+status 0, 1.637 seconds. The observer restores its environment property immediately
+after each node comparison; original assertions are unchanged.
+
+Parser-owned SemanticString and direct base/application/OpDef/theorem-definition
+String methods now delegate to the existing source formatter. Numeric overrides
+remain intact. Canonical literals install the common source syntax-location
+reader too, closing the generated StringNode formatting path. The source-owned
+predicate is shared by symbol getters and diagnostic formatting; native aliases
+retain name strings and source-less evaluator helpers retain their native paths.
+All 20,390 observed rows now agree: semantic-string-after-observation.log,
+terminal ce037c, status 0, 1.529 seconds; count receipt 49489a, zero mismatches.
+
+A standalone pinned-Java/native comparison loads unchanged original Test219,
+selects definition/formal/application/string/numeral nodes, and observes absent,
+empty, false and true property modes. All 20 rows agree on diagnostic strings
+and direct semantic strings. Formal alias direct strings are deliberately compared
+with Java getName, since native lookup aliases name their declarations. Numeric
+literal overrides remain the same in all modes. UTF-8 text is base64 encoded only
+in the observation output, preserving exact whitespace for comparison. Receipts:
+semantic-string-native.log, terminal 16b448, status 0;
+semantic-string-java.log, terminal 305a36, status 0;
+comparison/count receipt 211c1c, status 0. Drivers/overlay remain ignored under
+semantic-string-observation. javac reports only its deprecated frontend overload.
+No original Java source, persistent test or fixture changes.
+
+Existing focused TLC checker/trace-retention/original coverage/tool getter/
+simulation trace checks pass: semantic-string-tlc-checks.log, terminal 5bcf8b,
+status 0, 0.056 seconds. Selected original model, coverage, Debug02-Debug05 and
+incremental semantic/context methods pass without observers:
+semantic-string-originals.log, terminal c78310, status 0, 7.342 seconds.
+Short SANY suite passes: semantic-string-sany-checks.log, terminal eb6c77,
+status 0, 2.561 seconds. Additional original ValueSemanticsAssume, postconditions,
+EvalException/liveness, invalid invariant and init-evaluation-error checks pass:
+semantic-string-diagnostic-originals.log, terminal 75016d, status 0, 7.256 seconds.
+Formatting and git diff --check pass. No original-method credit, assertion or
+workload-bound changes; no full-workspace/XML/ApalacheIR sweep, long race workload
+or excluded email work. General graph mutation sharing and specialized formatting
+remain unproven. Next concrete audit: OpDef comment/human-readable formatting,
+including absent syntax and its source failure boundary.

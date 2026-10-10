@@ -13,6 +13,7 @@ type sanyLiteralLevelView struct {
 }
 
 func sanyCanonicalLiteral(literal sanySemanticGraphNode, base *tlc.SemanticNodeBase) *sanyLiteralLevelView {
+	base.SetSyntaxLocationResolver(sanyTreeLocation)
 	if base.CanonicalLevelData == nil {
 		base.CanonicalLevelData = newSanyLevelData(base)
 	}

@@ -116,6 +116,10 @@ func (n *SemanticNodeBase) SetSyntaxLocationResolver(resolve func(any) SourceLoc
 	n.syntaxLocation = resolve
 }
 
+func (n *SemanticNodeBase) hasSourceSyntax() bool {
+	return n != nil && n.syntaxLocation != nil
+}
+
 // SemanticNode.toString normally prints the location. Numeral and Decimal
 // override it, while showPlainFormulae selects the actual SANY syntax image.
 // SemanticNodeJavaString exposes the source zero-argument formatting to SANY.
@@ -240,6 +244,9 @@ func (n *SemanticNodeBase) SetToolObjectAt(toolID int32, object any) {
 }
 
 func (n *SemanticNodeBase) String() string {
+	if n.hasSourceSyntax() {
+		return semanticNodeJavaString(n)
+	}
 	if n != nil && !n.Location.IsNull() {
 		return n.Location.String()
 	}
@@ -452,6 +459,9 @@ func NewBuiltinOpApplNode(op *UniqueString, args ...SemanticNode) *OpApplNode {
 }
 
 func (n *OpApplNode) String() string {
+	if n != nil && n.hasSourceSyntax() {
+		return semanticNodeJavaString(n)
+	}
 	if n != nil && !n.Location.IsNull() {
 		return n.Location.String()
 	}
@@ -873,6 +883,9 @@ func (n *ThmOrAssumpDefNode) GetSource() *ThmOrAssumpDefNode {
 }
 
 func (n *ThmOrAssumpDefNode) String() string {
+	if n != nil && n.hasSourceSyntax() {
+		return semanticNodeJavaString(n)
+	}
 	if n == nil || n.Name == nil {
 		return "<theorem>"
 	}
@@ -1001,6 +1014,9 @@ func SetSemanticToolObjectForToolID(toolID int32, node SemanticNode, value any) 
 func SemanticString(node SemanticNode) string {
 	if node == nil {
 		return "<nil>"
+	}
+	if source, ok := node.(interface{ hasSourceSyntax() bool }); ok && source.hasSourceSyntax() {
+		return semanticNodeJavaString(node)
 	}
 	if s, ok := node.(fmt.Stringer); ok {
 		return s.String()
