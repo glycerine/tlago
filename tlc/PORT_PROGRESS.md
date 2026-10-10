@@ -35328,3 +35328,44 @@ session 53494 exits zero (bb0f27), root 5.498s and tlc 2.511s (4620bb). The prio
 40,392 function-access rows per default/threshold-2 mode still match Java, 80,784
 total (dbc056). No long workload is shortened or run with race. Handoff and
 architecture now record threshold capture/reporting and the remaining boundaries.
+
+
+### 2026-10-10: Scalar string reads and diagnostic failure boundaries
+
+Previous goal turn made verified progress in 4e56620; confirm clean worktree
+(195fe5). Original full stress 27326 remains live on direct polls d08905 and
+b51fb8. Continue the source-inspected StringValue gaps: native UniqueString's
+nil-friendly Length/String helpers incorrectly hid null string values, and
+comparison/equality checked a null other operand before rendering the receiver.
+
+Ignored string-access observer uses actual test206 Def2 nodes, real runtime
+constructors/arrays and independently attached receiver/argument sources. Initial
+1,288 comparisons expose 44 differences (535fd6): 16 string API failures/frame
+boundaries and 28 comparison signs attributable to parsed empty/debug-placeholder
+intern-token ordering. This reinforces the existing parsed token-allocation gap;
+do not change UniqueString comparison to lexical ordering. Use fresh genuine
+Java/native InternTables for exact string comparison tokens and exclude debugger
+subclass arguments from this scalar-only scope. Controlled baseline has 1,204
+rows and the expected 16 differences (bbae1b).
+
+Add typed null UniqueString checks to Length/FingerPrint and unquoted conversion.
+Keep Length/FingerPrint catches; unquoted null failure occurs before PrintVersion
+and has no source frame. Comparison/equality render the receiver before a null
+other operand, retaining its rendering frames under the outer operation. All
+1,204 rows agree (7bdd92). Expand arguments with genuine typed/untyped ModelValues;
+all 1,372 rows agree (a2fe5f). Matrix covers seven receiver payloads, independent
+receiver/argument source flags, thirteen arguments and comparison/equality/member,
+length/fingerprint/unquoted/direct-buffer rendering, finite/size failures and
+normalization/copy/permutation/defined state. No fabricated semantic nodes,
+evaluator callbacks, persistent tests/fixtures or original-method credit.
+
+Relevant original value/model/context/EXCEPT/spec/stream/rendering checks plus
+original StringDeserialize, StringHelper and Sequences pass. Session 34402 exits
+zero (1c4e6a); root 5.464s and tlc 2.527s (a2fe5f). Existing composite fingerprint
+and tuple/record access observers complete (e60c1c, 2a9e2b): all 13,056 and 15,686
+rows still agree (7a7e68). No broad suite, race or shortened workload. Logs remain
+under string-access. Update handoff and architecture with contracts and limits.
+Latest full stress saved progress is 1,742,145,441 / 2,147,483,648 (a2fe5f), without
+terminal result or long-method credit. Preserve its original handle and bounds.
+Parsed intern allocation and DebuggerValue subclass dispatch/identity remain
+concrete core parity work; controlled token comparisons do not close either gap.

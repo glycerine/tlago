@@ -8088,6 +8088,26 @@ public value methods initialize compatibility literals on use. General JVM
 classloading, arbitrary stream callbacks and concurrent loader resets are not
 established by these observations.
 
+StringValue length and fingerprinting reject null UniqueStrings with a typed
+NullPointerException under their existing source catch boundaries. Fingerprinting
+still extends the kind before reading string length. Unquoted conversion reads
+`val.toString()` before entering PrintVersion, so its null failure has no source
+wrapper. Wrong-type comparison/equality diagnostics render the receiver before
+reading a null other operand; rendering failure retains its source frames before
+the outer comparison frame. Ordinary escaped/UTF-16 text, scalar normalization,
+deep-copy/permutation identity and defined/normalized state retain their behavior.
+All 1,372 observations agree across seven receiver strings (null, empty, ordinary,
+escaped, BMP and supplementary text), independent receiver/argument source flags,
+thirteen arguments and thirteen operations. Runtime arrays and actual test206
+Def2 nodes provide malformed composites and source metadata. Fresh genuine intern
+tables control string tokens for exact comparison results. An initial observation
+using parsed runtimes exposed empty/debug-placeholder token-order differences;
+controlled-token agreement does not establish parsed-model intern allocation.
+Existing 13,056 composite fingerprint and 15,686 tuple/record access rows still
+agree. No original-test credit or new persistent fixture/test is added. General
+StringValue subclasses, debugger receiver identity/dispatch, stream callbacks and
+parsed token ordering remain separate requirements.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

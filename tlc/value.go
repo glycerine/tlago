@@ -539,6 +539,9 @@ func (v *StringValue) Kind() ValueKind    { return StringValueKind }
 func (v *StringValue) KindString() string { return v.KindStringFor(v.Kind()) }
 func (v *StringValue) Length() int {
 	defer catchValueFailure(v, nil)
+	if v.Val == nil {
+		panic(NewNullPointerException())
+	}
 	return v.Val.Length()
 }
 
@@ -552,10 +555,11 @@ func (v *StringValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
+		selfText := ValuesPPR(v)
 		if other == nil {
 			panic(NewNullPointerException())
 		}
-		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare string %s with non-string:\n%s", ValuesPPR(v), ValuesPPR(other)))
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare string %s with non-string:\n%s", selfText, ValuesPPR(other)))
 	}
 	if v.Val == nil || o.Val == nil {
 		panic(NewNullPointerException())
@@ -573,10 +577,11 @@ func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
+		selfText := ValuesPPR(v)
 		if other == nil {
 			panic(NewNullPointerException())
 		}
-		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of string %s with non-string:\n%s", ValuesPPR(v), ValuesPPR(other)))
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of string %s with non-string:\n%s", selfText, ValuesPPR(other)))
 	}
 	if v.Val == nil || o.Val == nil {
 		panic(NewNullPointerException())
@@ -612,6 +617,9 @@ func (v *StringValue) Permute(*MVPerm) Value { return v }
 func (v *StringValue) FingerPrint(fp uint64) uint64 {
 	defer catchValueFailure(v, nil)
 	fp = FP64ExtendByte(fp, byte(StringValueKind))
+	if v.Val == nil {
+		panic(NewNullPointerException())
+	}
 	fp = FP64ExtendInt(fp, int32(v.Val.Length()))
 	return FP64ExtendString(fp, v.Val.String())
 }
@@ -655,6 +663,10 @@ func (v *StringValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 }
 
 func (v *StringValue) UnquotedString() string {
+	// Java reads val before entering PrintVersion's catch boundary.
+	if v.Val == nil {
+		panic(NewNullPointerException())
+	}
 	return tlaStringPrintVersion(v.Val.String())
 }
 
