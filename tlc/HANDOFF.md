@@ -76,9 +76,11 @@ rows match; detailed bounded observations and run receipts are in `PORT_PROGRESS
 General source generation, graph mutation sharing, state-variable maps after
 setup and source-less fallback lowering remain unproven.
 
-Next concrete source audit: compare `OpDefNode.GetComment` and
-`GetHumanReadableImage`, including absent syntax. Java's specialized image method
-uses comment access and can fail before the common location formatter.
+Operator comments and human-readable images retain source failure boundaries,
+the nil-versus-empty child-array branch and property-aware fallback formatting.
+All 44 observed Java/native cases agree. Builtin and null syntax expose Java's
+empty comment/child arrays. Next source audit: compare variable-location maps
+after tool setup with Java's retained declaration nodes.
 
 ## Verification baseline and test credit
 

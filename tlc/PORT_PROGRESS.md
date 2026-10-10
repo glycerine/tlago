@@ -29013,3 +29013,54 @@ workload-bound changes; no full-workspace/XML/ApalacheIR sweep, long race worklo
 or excluded email work. General graph mutation sharing and specialized formatting
 remain unproven. Next concrete audit: OpDef comment/human-readable formatting,
 including absent syntax and its source failure boundary.
+
+
+Operator comments and specialized human-readable images match Java (2026-10-09)
+
+Previous turn made authoritative progress with commit 6f17b64. Revalidated clean
+HEAD and polled full off-heap random session 27326, still live. Latest observed
+progress exceeds 143 million of 2,147,483,648 iterations; no terminal result or
+execution credit. No second stress copy or bound/race setting change.
+
+Pinned OpDefOrDeclNode.getComment calls SemanticNode.getPreComments, which casts
+syntax to SyntaxTreeNode and fails for absent/unsupported syntax. Native source
+OpDefs silently returned an empty comment. OpDefNode.getHumanReadableImage calls
+getComment first, joins one-child images, and falls back to toString only when
+one is null. Native fallback always used the location, bypassing the plain-formula
+property. Builtin syntax had nil arrays although Java's SyntaxTreeNode(name)
+constructor uses empty arrays, selecting the wrong image branch.
+
+Source OpDef comments now throw the generic native NullPointerException for
+missing/typed-null syntax and ClassCastException when its comment contract is
+unsupported. Source image fallback uses the already ported semantic formatter.
+Builtin constructors retain empty zero/one/heir/comment arrays; null semantic
+syntax exposes empty comments and one-child images. Syntax comment/image methods
+map nil receiver/child failures to the source null category. Native source-less
+OpDef helper behavior remains separate. Literal newline-dollar replacement and
+Java trim behavior were already correct and remain unchanged.
+
+Ignored standalone drivers load unchanged original Test219 in pinned Java and Go.
+They observe original operator/builtin FALSE, missing and typed-null syntax, null
+builtin syntax, nil/empty one arrays, comment/child formatting, nil child/leftmost
+heir and unsupported TreeNode across absent/empty/false/true property modes.
+Each row records comment and image text or exact exception class. All 44 final
+rows agree byte for byte; the baseline overlay has 31 mismatching rows.
+Receipts under .codex-gotmp/: opdef-image-before.log, terminal ed5099, status 0;
+opdef-image-after.log, terminal 4eb511, status 0; opdef-image-java.log,
+terminal 394127, status 0; comparison/count receipt 4be027, status 0.
+Drivers/baseline overlays remain ignored under opdef-image-observation. javac
+reports only the deprecated frontend overload. No Java source, original fixture
+or persistent test changes. Source test searches found no direct original tests
+for these accessors, so original-method credit is unchanged.
+
+Selected existing original model/coverage/Debug02-Debug05/value-semantics/
+postcondition/evaluation-error/incremental-semantic/context checks pass:
+opdef-image-originals.log, terminal c96e54, status 0, 13.824 seconds.
+Focused TLC checker/trace-retention/original coverage/tool getter/simulation trace/
+debugger-variable checks pass: opdef-image-tlc-checks.log, terminal 6e97e4,
+status 0, 0.031 seconds. Short SANY suite passes: opdef-image-sany-checks.log,
+terminal 963351, status 0, 2.619 seconds. Formatting and git diff --check pass.
+No full-workspace/XML/ApalacheIR sweep, long race workload or excluded email work.
+General formatter/graph mutation sharing and state-variable maps after setup
+remain unproven. Next concrete source audit: compare those variable-location maps
+with Java's retained declaration nodes.

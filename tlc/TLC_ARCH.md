@@ -11128,7 +11128,23 @@ pinned-Java comparison loads unchanged Test219 and observes definition, formal,
 application, string and numeral formatting in four property modes. All 20 rows
 agree, including native formal alias names compared with Java getName. These
 are bounded observations, not exhaustive formatter or graph-sharing proof.
-Specialized OpDef comment/human-readable formatting remains a separate audit.
+Specialized OpDef comment/human-readable formatting follows its separate source
+algorithm. Missing or typed-null source syntax throws NullPointerException;
+unsupported syntax without the comment contract throws ClassCastException.
+GetHumanReadableImage first gets comments, then joins syntax.one child images
+with spaces. A nil one array falls back to the source toString (including the
+plain-formula property), while an empty one array contributes no text. Builtin
+syntax constructors and the null semantic syntax adapter expose empty arrays,
+matching Java's constructor. Nil leftmost comment heirs and nil image children
+retain the source null failure instead of a native panic category.
+
+An independent pinned-Java/native comparison covers unchanged Test219 operator
+formatting, builtin FALSE, missing/typed-null syntax, null builtin syntax, nil and
+empty one arrays, comments, child images, nil children/heirs and unsupported tree
+objects across four property modes. All 44 rows agree; baseline differed in 31.
+No original Java test directly covers these accessors. Existing model/debugger
+tests remain the regression checks; no original-method credit is added. These
+observations do not establish every specialized formatter or graph mutation.
 
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target

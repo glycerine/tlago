@@ -37,7 +37,8 @@ func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemOpDefNode {
 	// OpDefNode(BuiltInOperator) creates syntax and phony formals before
 	// initializing levels. Operators without both metadata arrays remain unchecked.
 	position := Position{File: "--TLA+ BUILTINS--"}
-	node.TreeNode = &SanySyntaxNode{Image: info.name, FileName: position.File, Range: SanyRange{Begin: position, End: position}, ProofLevel: -1, Level: -1}
+	node.TreeNode = &SanySyntaxNode{Image: info.name, FileName: position.File, Range: SanyRange{Begin: position, End: position},
+		Zero: []*SanySyntaxNode{}, One: []*SanySyntaxNode{}, Heirs: []*SanySyntaxNode{}, PreComments: []string{}, ProofLevel: -1, Level: -1}
 	node.Location = tlc.NewSourceLocation(position.File, 0, 0, 0, 0)
 	if info.arity >= 0 {
 		node.formalNodes = make([]*sanyFormalParamNode, info.arity)

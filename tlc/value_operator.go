@@ -170,11 +170,17 @@ func (n *OpDefNode) GetSignature() string {
 
 func (n *OpDefNode) GetComment() string {
 	var out strings.Builder
-	if tree, ok := n.GetTreeNode().(interface{ GetAttachedComments() []string }); ok {
+	syntax := n.GetTreeNode()
+	if n.hasSourceSyntax() && semanticExploreNull(syntax) {
+		panic(NewNullPointerException())
+	}
+	if tree, ok := syntax.(interface{ GetAttachedComments() []string }); ok {
 		for _, comment := range tree.GetAttachedComments() {
 			out.WriteString(comment)
 			out.WriteByte('\n')
 		}
+	} else if n.hasSourceSyntax() {
+		panic(NewClassCastException())
 	}
 	return strings.TrimFunc(strings.ReplaceAll(out.String(), "\n$", ""), func(r rune) bool { return r <= 0x20 })
 }
@@ -194,7 +200,11 @@ func (n *OpDefNode) GetHumanReadableImage() string {
 			out.WriteByte(' ')
 		}
 	} else {
-		out.WriteString(n.GetSourceLocation().String())
+		if n.hasSourceSyntax() {
+			out.WriteString(n.String())
+		} else {
+			out.WriteString(n.GetSourceLocation().String())
+		}
 	}
 	return strings.TrimFunc(out.String(), func(r rune) bool { return r <= 0x20 })
 }

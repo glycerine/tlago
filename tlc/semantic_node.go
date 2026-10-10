@@ -94,7 +94,9 @@ type NullSemanticNode struct{ SemanticNodeBase }
 
 type nullSemanticSyntax struct{}
 
-func (nullSemanticSyntax) GetHumanReadableImage() string { return "***I do not exist***" }
+func (nullSemanticSyntax) GetHumanReadableImage() string       { return "***I do not exist***" }
+func (nullSemanticSyntax) GetAttachedComments() []string       { return []string{} }
+func (nullSemanticSyntax) GetOneHumanReadableImages() []string { return []string{} }
 
 func (n *NullSemanticNode) LevelDataToString() string { return "-2147483648" }
 
