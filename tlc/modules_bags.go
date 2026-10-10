@@ -333,24 +333,44 @@ func BagUnion(set Value) (Value, error) {
 }
 
 func SqSubseteq(b1 Value, b2 Value) (*BoolValue, error) {
-	fcn1, err := requireBagFunction("\\sqsubseteq", b1)
-	if err != nil {
-		return nil, err
+	if b1 == nil {
+		panic(NewNullPointerException())
 	}
-	fcn2, err := requireBagFunction("\\sqsubseteq", b2)
-	if err != nil {
-		return nil, err
+	fcn1 := asFcnRcdValue(b1)
+	if b2 == nil {
+		panic(NewNullPointerException())
 	}
+	fcn2 := asFcnRcdValue(b2)
+	if fcn1 == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "\\sqsubseteq", "a function with a finite domain", ValuesPPR(b1))
+	}
+	if fcn2 == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "\\sqsubseteq", "a function with a finite domain", ValuesPPR(b2))
+	}
+	domain1 := fcn1.DomainAsValues()
+	values1 := fcn1.Values
 	domain2 := fcn2.DomainAsValues()
-	for i, dval := range fcn1.DomainAsValues() {
-		v1 := fcn1.Values[i].(*IntValue).Val
-		for j, d2 := range domain2 {
-			eq, err := dval.Equal(d2)
+	values2 := fcn2.Values
+	if domain1 == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(domain1); i++ {
+		// The left count is captured before equality can normalize shared arrays.
+		v1 := bagMultiplicity(values1, i)
+		if domain2 == nil {
+			panic(NewNullPointerException())
+		}
+		for j := 0; j < len(domain2); j++ {
+			left, right := domain1[i], domain2[j]
+			if left == nil {
+				panic(NewNullPointerException())
+			}
+			eq, err := left.Equal(right)
 			if err != nil {
 				return nil, err
 			}
 			if eq {
-				v1 -= fcn2.Values[j].(*IntValue).Val
+				v1 -= bagMultiplicity(values2, j)
 				break
 			}
 		}

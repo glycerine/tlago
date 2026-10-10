@@ -36697,3 +36697,52 @@ now record final verification rather than pending runs. Original random stress
 session 27326 remains live by direct poll 1ed5d4; latest saved progress is
 2,070,212,245 / 2,147,483,648, without terminal result or new long-test credit.
 The overall Java-to-Go goal remains active; next source target is SqSubseteq.
+
+2026-10-10: SqSubseteq conversion, capture and comparison order
+
+Previous goal turn made verified progress in 0e69b6b. Inspect the clean current
+worktree and poll original stress session 27326 directly (748b92); it remains
+live with no new long-test credit. Java SqSubseteq converts both operands before
+diagnosing either null conversion, then captures domain1/values1 and domain2/
+values2. Native diagnosed the first conversion too early, reversed domain
+capture order and exposed raw Go nil/cast failures. Cached keys skipped source
+rereads after equality normalization.
+
+Build ignored .codex-gotmp/sqsubseteq observers from the expanded BagDiff actual
+constructors, coupled arrays and parser-backed test206 setup. No fabricated
+semantic graphs or evaluator callbacks. Source/native baseline runs both finish
+zero (71354 ed20de / 83111 1f47e7), all 50,208 rows; 18,344 raw differences and
+17,200 outside native/JVM stack text (aa30e1). The serializer uses the previously
+verified linear StringBuilder encoding without changing UTF16/WTF8 output.
+
+Fix null input dereferences, convert both before diagnostics, capture domain1/
+values1 then domain2/values2, and read the left domain length before looping.
+Cast/read each visited left count before touching the right domain length, so
+empty left domains bypass a null right domain. Reread each current left key
+for equality; matched right counts are read afterward. Preserve signed int32
+subtraction and immediate FALSE for a positive difference. No positive-count
+bag validation is added. Full native rerun exits zero (45344 c31aee); all 50,208
+rows agree outside 1,152 JVM/native stack locations/elision lines, zero other
+differences (0612a3). Codes, nullable details, exception/cause headers, source
+frames and raw post-call arrays/cache/normalization state remain checked.
+No persistent test/fixture or original-method credit is added. Arbitrary
+equality mutation and allocation exhaustion remain unproven.
+
+Focused original BagsTest model/value/EXCEPT/Sequences/TLCModule/streams/MP and
+model-override checks pass (10300 76406e), root 2.054s and tlc 2.769s. Complete
+unchanged CommunityModules all/shiviz runs with timeout zero in session 87436,
+log .codex-gotmp/sqsubseteq/community-ant.log, retaining both original phases
+and bounds without race. Handoff/architecture record current contracts and
+pending full verification. The verified focused chunk is ready to commit while
+that immutable test binary continues running.
+
+Inspect next BagOfAll source without changing production during the first part
+of that run. Its null operand/cast/array boundaries differ. Build an ignored
+actual-runtime baseline using 56 independent bag constructors, eight actual
+operator forms and source/direct/MethodValue modes: 7,168 rows. OpRcdValue
+constructors use actual finite unary tables (constant integer, constant boolean,
+null output and identity keys), without evaluator callbacks. Raw snapshots also
+retain actual operator domains/outputs. Source exits zero (53143 e8a90d), native
+baseline exits zero (62461 477e54); 1,688 raw / 1,448 non-stack differences
+(d0f199). Preserve these receipts for the following feature chunk. No persistent
+tests/fixtures or original credit. Overall goal remains active.

@@ -8701,6 +8701,26 @@ unproven. No persistent test/fixture or original-method credit is added.
 Focused original bag/value/model checks, original set-value checks and the
 complete unchanged CommunityModules all/shiviz target pass after these changes.
 
+SqSubseteq converts both inputs before diagnosing either null conversion result.
+It captures domain1/values1 then domain2/values2, reads the left domain length,
+and casts each visited left count before reading the right domain length. Empty
+left domains bypass that latter read. Equality rereads the current left domain
+slot at every comparison; matched right counts are read afterward. Left counts
+remain captured across normalization of shared arrays, and subtraction wraps as
+int32. A positive difference returns FALSE immediately; otherwise traversal
+continues and returns TRUE. It adds no bag positivity validation.
+
+All 50,208 direct/MethodValue observations agree outside 1,152 JVM/native stack
+locations/elision lines, using the same 56 independent actual runtime forms and
+two coupled-domain cases as the BagDiff audit. Existing parsed source nodes,
+actual constructors and registered methods retain nullable details, codes,
+exception/cause headers, owner frames and raw arrays/cache/normalization state.
+The minimum int count minus 1 wraps to MAX_INT and returns FALSE. Shared-count
+normalization preserves the earlier left capture; coupled domains reread current
+keys. No persistent test/fixture or original-method credit is added. Arbitrary
+equality mutation and allocation exhaustion remain unproven. Original bag/model/
+value/EXCEPT/Sequences/TLCModule/stream/MP checks pass.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

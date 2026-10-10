@@ -451,9 +451,14 @@ each count after rendering its key. All 95,904 observations agree outside
 12,478 native/JVM stack-text differences with debugger initialization aligned;
 the original setup retains 32 intern-order differences, documented in the
 progress log. Focused original checks, original set-value checks and the complete
-CommunityModules all/shiviz target pass. Continue with `SqSubseteq`; broader
-equality mutation, parsed intern allocation and allocation exhaustion remain
-unproven.
+CommunityModules all/shiviz target pass. Broader equality mutation, parsed
+intern allocation and allocation exhaustion remain unproven.
+`SqSubseteq` converts both operands before diagnostics and captures left counts
+before equality. It retains domain/count arrays, rereads keys, and preserves
+conditional null-array reads plus typed count casts and signed wraparound. All
+50,208 observations agree outside 1,152 native/JVM stack-text differences.
+Original bag/focused checks pass; complete CommunityModules verification is
+running. Continue with `BagOfAll` conversion/operator/aggregation order.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
