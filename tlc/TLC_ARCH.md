@@ -11410,6 +11410,35 @@ coverage, not a fresh proof of all packed arithmetic or concurrent CAS retries.
 The previous 28 trace-reporting observations and focused original simulation
 checks pass. No persistent tests/fixtures or method credit.
 
+Simulator statistics selection retains the actual simulation worker in the
+existing goroutine execution scope, separately from its numeric worker ID.
+SimulationWorker.SimulateAndReport pushes and restores that context. Source-backed
+Simulator reporting selects that worker's statistics even if it is unregistered
+or its ID matches another registered worker. Ordinary callers and ID-only worker
+contexts use the first registered worker; empty lists and null first workers
+raise the source bounds/null failures. Standalone native simulator adapters keep
+their existing fallback behavior. Other worker-ID consumers retain the same ID
+stack and nesting behavior.
+
+GetStatistics captures generated traces first, then duration and generated states,
+reads behavior, worker ID and the other statistics getters in source order, and
+reads packed moments afterward. It reselects statistics for each getter. Variance
+uses the initially captured trace count, even if a later getter changes it.
+
+All 20 ignored pinned-Java/native selection/report observations agree in standard
+and extended mode. Actual Java SimulationWorker threads and an ordinary IdThread
+exercise dispatch; native uses the equivalent execution scope. A source subclass
+and ignored native method-entry overlay replace the registered worker and change
+counters during behavior reporting. Every field is compared recursively by field
+name; only duration is replaced with zero because wall clocks differ. Field order
+is unspecified across independently interned names. This checks record contents
+and capture order, not serialized record byte order or elapsed-time accuracy.
+A short native race run checks 100 scopes across two goroutines, including nested
+numeric-ID restoration and cleanup. Focused original simulation and fingerprint
+reader-ID checks pass normally. No persistent tests/fixtures or method credit.
+Concurrent report mutation, arbitrary thread lifecycle and other Simulator
+trace/local-register dispatch remain separate verification work.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

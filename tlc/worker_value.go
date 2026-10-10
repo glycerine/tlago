@@ -7,10 +7,16 @@ import (
 	"sync"
 )
 
+type currentWorkerContext struct {
+	id int
+	// Simulator statistics dispatch on the worker itself, not its numeric ID.
+	simulation *SimulationWorker
+}
+
 var currentWorkerScope = struct {
 	sync.Mutex
-	stack map[uint64][]int
-}{stack: make(map[uint64][]int)}
+	stack map[uint64][]currentWorkerContext
+}{stack: make(map[uint64][]currentWorkerContext)}
 
 var currentStateScope = struct {
 	sync.Mutex
@@ -81,9 +87,17 @@ func MuxWorkerValue(value any, workerID int) Value {
 }
 
 func PushCurrentWorkerID(workerID int) func() {
+	return pushCurrentWorkerContext(currentWorkerContext{id: workerID})
+}
+
+func pushCurrentSimulationWorker(worker *SimulationWorker) func() {
+	return pushCurrentWorkerContext(currentWorkerContext{id: worker.ID, simulation: worker})
+}
+
+func pushCurrentWorkerContext(context currentWorkerContext) func() {
 	gid := currentGoroutineID()
 	currentWorkerScope.Lock()
-	currentWorkerScope.stack[gid] = append(currentWorkerScope.stack[gid], workerID)
+	currentWorkerScope.stack[gid] = append(currentWorkerScope.stack[gid], context)
 	currentWorkerScope.Unlock()
 	return func() {
 		currentWorkerScope.Lock()
@@ -105,7 +119,18 @@ func CurrentWorkerID() (int, bool) {
 	if len(stack) == 0 {
 		return 0, false
 	}
-	return stack[len(stack)-1], true
+	return stack[len(stack)-1].id, true
+}
+
+func currentSimulationWorker() *SimulationWorker {
+	gid := currentGoroutineID()
+	currentWorkerScope.Lock()
+	defer currentWorkerScope.Unlock()
+	stack := currentWorkerScope.stack[gid]
+	if len(stack) == 0 {
+		return nil
+	}
+	return stack[len(stack)-1].simulation
 }
 
 func CurrentThreadIDOr(otherID int) int {

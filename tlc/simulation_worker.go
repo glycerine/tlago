@@ -614,7 +614,7 @@ func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 	if w == nil {
 		return false
 	}
-	restoreWorkerID := PushCurrentWorkerID(w.ID)
+	restoreWorkerID := pushCurrentSimulationWorker(w)
 	defer restoreWorkerID()
 	defer ResetCurrentState()
 	defer func() {

@@ -420,12 +420,7 @@ func (s *Simulator) GetAllNamedValues(key *UniqueString) []Value {
 
 func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
 	ensureTLCGetSetUniqueStrings()
-	stats := s.currentWorkerStatistics()
-	m2AndMean := s.WelfordM2Mean.Load()
-	mean := int64(m2AndMean & 0xffffffff)
-	m2 := uint64(m2AndMean) >> 32
 	traces := s.NumGenTraces.Load()
-	states := s.NumGenStates.Load()
 	names := []*UniqueString{
 		tlcGetTraces,
 		tlcGetDuration,
@@ -439,19 +434,21 @@ func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
 		tlcGetLevelMean,
 		tlcGetLevelVar,
 	}
-	values := []Value{
-		intValueFromInt64(traces),
-		intValueFromDurationSince(s.StartTime),
-		intValueFromInt64(states),
-		stats.GetTraceStatistics(state),
-		NewIntValue(int32(currentWorkerIDOrZero())),
-		stats.GetDistinctStates(),
-		stats.GetDistinctValues(),
-		stats.GetNextRetries(),
-		stats.GetActions(),
-		intValueFromInt64(mean),
-		intValueFromInt64(int64(math.Round(float64(m2) / (float64(traces) + 1)))),
-	}
+	values := make([]Value, len(names))
+	values[0] = intValueFromInt64(traces)
+	values[1] = intValueFromDurationSince(s.StartTime)
+	values[2] = intValueFromInt64(s.NumGenStates.Load())
+	values[3] = s.currentWorkerStatistics().GetTraceStatistics(state)
+	values[4] = NewIntValue(int32(currentWorkerIDOrZero()))
+	values[5] = s.currentWorkerStatistics().GetDistinctStates()
+	values[6] = s.currentWorkerStatistics().GetDistinctValues()
+	values[7] = s.currentWorkerStatistics().GetNextRetries()
+	values[8] = s.currentWorkerStatistics().GetActions()
+	m2AndMean := s.WelfordM2Mean.Load()
+	mean := int64(m2AndMean & 0xffffffff)
+	m2 := uint64(m2AndMean) >> 32
+	values[9] = intValueFromInt64(mean)
+	values[10] = intValueFromInt64(int64(math.Round(float64(m2) / (float64(traces) + 1))))
 	return NewRecordValue(names, values, false)
 }
 
@@ -530,6 +527,18 @@ func (s *Simulator) createConfig() Value {
 }
 
 func (s *Simulator) currentWorkerStatistics() *SimulationWorkerStatistics {
+	if s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil {
+		if worker := currentSimulationWorker(); worker != nil {
+			return worker.Statistics
+		}
+		if len(s.Workers) == 0 {
+			panic(NewIndexOutOfBoundsException(0, 0))
+		}
+		if s.Workers[0] == nil {
+			panic(NewNullPointerException())
+		}
+		return s.Workers[0].Statistics
+	}
 	if s == nil || len(s.Workers) == 0 {
 		return NewSimulationWorkerStatistics(nil, "", nil, nil, nil)
 	}

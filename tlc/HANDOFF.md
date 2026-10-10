@@ -136,10 +136,13 @@ original simulation checks pass. Source-backed post-trace collection now throws
 for a missing final state and clamps to the owning worker's raw depth limit,
 including negative limits. Base retry collection is a no-op. All 560 bounded
 post-trace/retry observations agree; the 28 trace reports and focused original
-simulation checks remain green. Next source audit: Simulator worker-statistics
-selection and statistics-record capture order. General `Vect` invalid-count and
-exception behavior remains unproven; original model-test reconciliation remains
-open.
+simulation checks remain green. Simulator statistics now select the actual scoped
+simulation worker; ordinary and ID-only callers use the first registered worker
+with source empty/null failures. Reports retain Java's getter and capture order.
+All 20 selection/report observations and 100 short race-instrumented worker scopes
+pass, along with focused original checks. Next source audit: Simulator local-
+register and trace dispatch. General `Vect` invalid-count and exception behavior
+remains unproven; original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

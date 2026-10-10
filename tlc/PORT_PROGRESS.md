@@ -30007,3 +30007,75 @@ worker-statistics selection and statistics-record capture order. Source repeated
 selects statistics and reads packed moments after worker reports; native currently
 captures both before assembling those reports. Verify concrete effects before
 claiming a mismatch or changing behavior.
+
+
+2026-10-09: Preserve Simulator statistics selection and capture order
+
+Previous goal turn made verified progress in 01f94f2. Source getWorkerStatistics
+selects the actual current SimulationWorker, whereas native used a numeric ID as
+an index into the registered worker list. Ordinary and IdThread-only callers in
+Java use the first registered worker. Native also fabricated statistics for an
+empty/null first worker. Source-backed selection now preserves those contracts.
+The existing goroutine worker-context stack retains an optional simulation-worker
+pointer alongside the unchanged numeric ID. SimulationWorker.SimulateAndReport
+pushes and restores that context. Numeric-ID consumers and nesting still use the
+same stack; native standalone Simulator adapters retain their previous fallback.
+Other Simulator local-register and trace dispatch is not claimed corrected here.
+
+GetStatistics now follows source assembly order: capture trace count, duration
+and generated-state count; read behavior and worker ID; reselect statistics for
+each distinct/value/retry/action getter; read packed moments afterward. Variance
+still uses the initially captured trace count. A deterministic source subclass
+changes registered workers, packed moments and shared counters during behavior
+reporting; an ignored native method-entry overlay performs the equivalent change
+before the real statistics method. Source and native then agree on every report
+field, including early generated/trace counts and later worker/moment values.
+
+All 20 final pinned-Java/native observations agree, ten per standard/extended
+mode; the previous implementation differs on nine rows per mode, 18 total.
+Seven selection cases cover empty/null-first registration, ordinary caller,
+generic IdThread with ID 1, unregistered simulation worker, different simulation
+worker with an existing ID, and a simulation worker with no registered workers.
+Java uses actual SimulationWorker threads with a bounded overridden simulation
+step and one ordinary IdThread. Three report cases cover the controlled change
+and empty/null-first failures. Actual unchanged BasicMultiTrace Init/Next states
+supply the behavior and counters. No full model search or reduced original bounds.
+
+Records are compared recursively by field name. Independent UniqueString intern
+orders produce different field print order, so the comparison canonicalizes
+record fields and replaces only duration with zero. It retains all other fields,
+nested membership, values and exceptions. Earlier raw-order comparison logs are
+preserved; this proves record contents/capture order, not serialized text order
+or elapsed-time accuracy. Final comparison 2330e6 returned status 0.
+
+Ignored observers, overlays and baseline files are under
+.codex-gotmp/simulator-report-observation/. Corrected source compilation 656707
+and final canonical compilation 40813c returned status 0. Final Java extended /
+standard f37d0a / 3054c0, final native baseline fc1622 / 94a499 and corrected native
+0d977a / aed60c returned status 0. Logs:
+.codex-gotmp/simulator-report-canonical-{java,before,current}-{true,false}.log.
+Earlier selection and raw-order logs remain separate. Native instrumentation is
+limited to the behavior-method entry; production has no observer hook.
+
+A short focused race observer passed 100 isolated simulation-worker scopes across
+two goroutines, including nested numeric-ID restoration and scope cleanup,
+session 99401 terminal 1a9ec6, status 0. Log:
+.codex-gotmp/simulator-report-focused-race.log. This is native concurrency
+verification, not original-method credit or proof of concurrent record mutation.
+Focused original SimulationWorker, SimulatorCorrectness, SimulatorPrintBehavior,
+CoverageStatistics, TLCGetAll and TLCGetLevel selections plus existing native
+Simulator/SimulationWorker and fingerprint reader-ID checks pass normally.
+Final session 35931 terminal 5c8840 returned status 0: root 1.559 seconds, TLC
+0.020 seconds; log simulator-report-final-originals.log. The earlier focused run
+also passed, session 61712 terminal e12ad3, root 1.487/TLC 0.017 seconds.
+Inputs, assertions and workload bounds are unchanged. Formatting and git diff
+--check pass. No persistent tests/fixtures, inventory changes or new method
+credit. No broad suite, XML/ApalacheIR sweep or long race workload. No email work.
+
+Original full off-heap stress session 27326 remains live, poll 3be7b0. Latest saved
+progress is 569,951,360 / 2,147,483,648 iterations, with no terminal result or method
+credit. Overall TLC parity remains incomplete. Next source audit: Simulator
+local-register and trace dispatch. Source local-value getters read the first
+registered worker, while source trace dispatch selects an actual simulation
+worker or falls back to the first worker with its assertion boundary. Compare
+those contracts before changing additional helper behavior.
