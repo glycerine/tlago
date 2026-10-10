@@ -34061,3 +34061,55 @@ contracts updated.
 Original full stress session 27326 remains live on direct poll (e8108c).
 Latest saved progress is 1,526,394,254 / 2,147,483,648 (bf8759), with no terminal
 result or long-method credit. Preserve its original handle, artifacts and bounds.
+
+
+2026-10-10: Tuple-formal and retained parameter-array binding boundaries
+
+Previous turn completed verified enumeration fix ad91fbf. Continue against Java
+FcnLambdaValue.apply/select and Tool.getFcnContext. Ignored
+.codex-gotmp/tuple-lambda-arguments retains legacy test209's actual S formals/body
+and F application, using copied runtime parameter arrays with a tuple-first
+formal group. Eight arguments include valid, short, extra, non-tuple and
+wrong-length inner tuples. Both captured-context variants across initial/next/
+ENABLED/direct evaluation/Select match all 80 rows without correction (Java
+c36e4f, native 66d156, comparison 311db9). No fabricated semantic graph or
+membership/evaluator callback.
+
+Expand in ignored .codex-gotmp/lambda-binding-arrays to twelve retained runtime
+array shapes: original, null/empty/short domains, null domain element,
+null/empty formals, null/empty first group and null/empty/short flags. Parameters
+are constructed before replacement so their captured argument count is retained.
+The 960-row mixed-formal baseline exposes 570 differences (Java 12953c, native
+ee9499, comparison 2dc3ff). Native raw indexes/panics and nil slice loops skip
+source failures. Add narrow function-binding array/length access helpers used
+by Apply, Select and getFcnContext, preserving captured arrays and source read
+order. Delay domain receiver null failure until after argument-element access.
+Single ordinary groups now always read the first formal; null and empty groups
+retain distinct source failures. All 960 final mixed rows match (24700 terminal
+f0a211, comparison 981a39).
+
+Extend to single tuple binding, retaining the actual S body with z captured.
+All 1,920 rows match after normalizing only process-specific FastTool/native Tool
+identity strings in 48 diagnostics (Java 6d8716, native 9190ad, comparison 24039e).
+Extend to single ordinary binding with x/y captured: initial 2,880 rows exposed
+36 observer setup differences (509c79), because Java's shortened flag array
+hardcoded true while native retained false. Preserve the flag value when
+shortening the Java array; no production change. Corrected Java run exits 0
+(db0073); native final-expanded run exits 0 (314aeb). All 2,880 final rows match
+after the same 48 identity normalizations (04b683). Logs retain raw identities.
+No persistent test/fixture or original-method inventory credit. Null parameter
+objects, malformed-array materialization, arbitrary conversion/membership
+callbacks and mutation during evaluation remain separate work.
+
+Eleven unchanged original model checks pass (97019 terminal 66ed71, 4.403s):
+EchoDebugger, LegacySuiteTest14/16/206/209, LegacySuiteETest15,
+ValueSemanticsAssume, ConstantRank2AssertError, Debug02Debugger and
+ActionCompositionA/B. Original TupleValue/FcnLambdaValue/EvalControl and focused
+function-context, fallback rendering and lambda stream checks pass (73400
+terminal 1d1178, 0.017s). Earlier 160 Java short-argument rows still match the
+current native driver (a28f6b, comparison 2b3dbb). No broad suite, race, reduced
+bounds or changed original assertions. Handoff/contracts updated.
+
+Original full stress session 27326 remains live on direct poll (c4cc12).
+Latest saved progress is 1,537,636,072 / 2,147,483,648 (6bfe46), without a terminal
+result or long-method credit. Preserve original handle, artifacts and bounds.

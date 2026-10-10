@@ -1312,15 +1312,15 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 		return nil, err
 	}
 	if plen == 1 {
-		member, err := domains[0].Member(argVal)
+		member, err := fcnParameterDomainMember(domains, 0, argVal)
 		if err != nil {
 			return nil, err
 		}
 		if !member {
 			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%swhich is not in its domain.\n%s", ValuesPPR(fcn), ValuesPPR(argVal), SemanticString(expr.Args[0])), expr.Args[0], c)
 		}
-		if isTuples[0] {
-			ids := formals[0]
+		if fcnParameterIsTuple(isTuples, 0) {
+			ids := fcnParameterFormals(formals, 0)
 			tuple := asTupleValue(argVal)
 			matches := tuple != nil
 			if matches {
@@ -1328,7 +1328,7 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 				if err != nil {
 					return nil, err
 				}
-				matches = size == len(ids)
+				matches = size == fcnFormalCount(ids)
 			}
 			if !matches {
 				// Java intentionally prints this.toString(), including subclass overrides.
@@ -1342,7 +1342,11 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 				fcon = fcon.Cons(id, tuple.Elems[i])
 			}
 		} else {
-			fcon = fcon.Cons(formals[0][0], argVal)
+			ids := fcnParameterFormals(formals, 0)
+			if fcnFormalCount(ids) == 0 {
+				panic(NewArrayIndexOutOfBoundsException(0, 0))
+			}
+			fcon = fcon.Cons(ids[0], argVal)
 		}
 		return fcon, nil
 	}
@@ -1352,13 +1356,16 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 	}
 	argn := 0
 	elems := tuple.Elems
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
 	for i, ids := range formals {
-		domain := domains[i]
-		if isTuples[i] {
+		domain := fcnParameterDomain(domains, i)
+		if fcnParameterIsTuple(isTuples, i) {
 			if argn >= len(elems) {
 				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
-			member, err := domain.Member(elems[argn])
+			member, err := fcnDomainMember(domain, elems[argn])
 			if err != nil {
 				return nil, err
 			}
@@ -1367,18 +1374,19 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 			}
 			inner := asTupleValue(elems[argn])
 			argn++
-			if inner == nil || len(inner.Elems) != len(ids) {
+			if inner == nil || len(inner.Elems) != fcnFormalCount(ids) {
 				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%swhich does not match its formal parameter.\n%s", ValuesPPR(fcn), argn, ValuesPPR(elems[argn-1]), SemanticString(expr.Args[0])), expr.Args[0], c)
 			}
 			for j, id := range ids {
 				fcon = fcon.Cons(id, inner.Elems[j])
 			}
 		} else {
+			_ = fcnFormalCount(ids)
 			for _, id := range ids {
 				if argn >= len(elems) {
 					panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 				}
-				member, err := domain.Member(elems[argn])
+				member, err := fcnDomainMember(domain, elems[argn])
 				if err != nil {
 					return nil, err
 				}

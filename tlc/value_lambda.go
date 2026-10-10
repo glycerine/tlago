@@ -176,6 +176,57 @@ func (p *FcnParams) String() string {
 	return strings.Join(parts, ", ")
 }
 
+// Function binding captures the parameter arrays before evaluating membership.
+// Keep the source null/index checks at each read rather than validating all
+// arrays up front: an earlier argument or membership failure must still win.
+func fcnParameterDomain(domains []Value, i int) Value {
+	if domains == nil {
+		panic(NewNullPointerException())
+	}
+	if i < 0 || i >= len(domains) {
+		panic(NewArrayIndexOutOfBoundsException(i, len(domains)))
+	}
+	return domains[i]
+}
+
+func fcnParameterDomainMember(domains []Value, i int, arg Value) (bool, error) {
+	return fcnDomainMember(fcnParameterDomain(domains, i), arg)
+}
+
+func fcnDomainMember(domain, arg Value) (bool, error) {
+	if domain == nil {
+		panic(NewNullPointerException())
+	}
+	return domain.Member(arg)
+}
+
+func fcnParameterIsTuple(flags []bool, i int) bool {
+	if flags == nil {
+		panic(NewNullPointerException())
+	}
+	if i < 0 || i >= len(flags) {
+		panic(NewArrayIndexOutOfBoundsException(i, len(flags)))
+	}
+	return flags[i]
+}
+
+func fcnParameterFormals(formals [][]*SymbolNode, i int) []*SymbolNode {
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	if i < 0 || i >= len(formals) {
+		panic(NewArrayIndexOutOfBoundsException(i, len(formals)))
+	}
+	return formals[i]
+}
+
+func fcnFormalCount(ids []*SymbolNode) int {
+	if ids == nil {
+		panic(NewNullPointerException())
+	}
+	return len(ids)
+}
+
 type fcnParamsEnumeration struct {
 	params       *FcnParams
 	enums        []ValueEnumeration
@@ -451,15 +502,15 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 	domains := v.Params.Domains
 	isTuples := v.Params.IsTuples
 	if v.Params.Length() == 1 {
-		in, err := domains[0].Member(arg)
+		in, err := fcnParameterDomainMember(domains, 0, arg)
 		if err != nil {
 			return nil, false, err
 		}
 		if !in {
 			return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%s\nwhich is not in its domain.\n", ValuesPPR(v), ValuesPPR(arg)))
 		}
-		if isTuples[0] {
-			ids := formals[0]
+		if fcnParameterIsTuple(isTuples, 0) {
+			ids := fcnParameterFormals(formals, 0)
 			if arg == nil {
 				panic(NewNullPointerException())
 			}
@@ -467,7 +518,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 			if argTuple == nil {
 				return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg)))
 			}
-			if len(argTuple.Elems) != len(ids) {
+			if len(argTuple.Elems) != fcnFormalCount(ids) {
 				return nil, true, nil
 			}
 			for i, id := range ids {
@@ -475,9 +526,11 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 			}
 			return ctx, false, nil
 		}
-		if len(formals[0]) != 0 {
-			ctx = ctx.Cons(formals[0][0], arg)
+		ids := fcnParameterFormals(formals, 0)
+		if fcnFormalCount(ids) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, 0))
 		}
+		ctx = ctx.Cons(ids[0], arg)
 		return ctx, false, nil
 	}
 	if arg == nil {
@@ -489,13 +542,16 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 	}
 	elems := argTuple.Elems
 	argn := 0
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
 	for i, ids := range formals {
-		domain := domains[i]
-		if isTuples[i] {
+		domain := fcnParameterDomain(domains, i)
+		if fcnParameterIsTuple(isTuples, i) {
 			if argn >= len(elems) {
 				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
-			in, err := domain.Member(elems[argn])
+			in, err := fcnDomainMember(domain, elems[argn])
 			if err != nil {
 				return nil, false, err
 			}
@@ -504,7 +560,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 			}
 			tv := asTupleValue(elems[argn])
 			argn++
-			if tv == nil || len(tv.Elems) != len(ids) {
+			if tv == nil || len(tv.Elems) != fcnFormalCount(ids) {
 				return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(elems[argn-1])))
 			}
 			for j, id := range ids {
@@ -512,11 +568,12 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 			}
 			continue
 		}
+		_ = fcnFormalCount(ids)
 		for _, id := range ids {
 			if argn >= len(elems) {
 				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
-			in, err := domain.Member(elems[argn])
+			in, err := fcnDomainMember(domain, elems[argn])
 			if err != nil {
 				return nil, false, err
 			}
@@ -578,12 +635,12 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 	domains := v.Params.Domains
 	isTuples := v.Params.IsTuples
 	if v.Params.Length() == 1 {
-		in, err := domains[0].Member(arg)
+		in, err := fcnParameterDomainMember(domains, 0, arg)
 		if err != nil || !in {
 			return ctx, false, err
 		}
-		if isTuples[0] {
-			ids := formals[0]
+		if fcnParameterIsTuple(isTuples, 0) {
+			ids := fcnParameterFormals(formals, 0)
 			if arg == nil {
 				panic(NewNullPointerException())
 			}
@@ -591,7 +648,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 			if argTuple == nil {
 				return ctx, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg)))
 			}
-			if len(argTuple.Elems) != len(ids) {
+			if len(argTuple.Elems) != fcnFormalCount(ids) {
 				return ctx, false, nil
 			}
 			for i, id := range ids {
@@ -599,10 +656,11 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 			}
 			return ctx, true, nil
 		}
-		if len(formals[0]) == 0 {
-			return ctx, true, nil
+		ids := fcnParameterFormals(formals, 0)
+		if fcnFormalCount(ids) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, 0))
 		}
-		return ctx.Cons(formals[0][0], arg), true, nil
+		return ctx.Cons(ids[0], arg), true, nil
 	}
 	if arg == nil {
 		panic(NewNullPointerException())
@@ -613,13 +671,16 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 	}
 	elems := argTuple.Elems
 	argn := 0
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
 	for i, ids := range formals {
-		domain := domains[i]
-		if isTuples[i] {
+		domain := fcnParameterDomain(domains, i)
+		if fcnParameterIsTuple(isTuples, i) {
 			if argn >= len(elems) {
 				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
-			in, err := domain.Member(elems[argn])
+			in, err := fcnDomainMember(domain, elems[argn])
 			if err != nil || !in {
 				return ctx, false, err
 			}
@@ -628,7 +689,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 			if tv == nil {
 				return ctx, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(elems[argn-1])))
 			}
-			if len(tv.Elems) != len(ids) {
+			if len(tv.Elems) != fcnFormalCount(ids) {
 				return ctx, false, nil
 			}
 			for j, id := range ids {
@@ -636,11 +697,12 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 			}
 			continue
 		}
+		_ = fcnFormalCount(ids)
 		for _, id := range ids {
 			if argn >= len(elems) {
 				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
-			in, err := domain.Member(elems[argn])
+			in, err := fcnDomainMember(domain, elems[argn])
 			if err != nil || !in {
 				return ctx, false, err
 			}

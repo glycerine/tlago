@@ -7585,8 +7585,9 @@ runtime array replacement confirms retained arrays and captured argument counts;
 the observer uses copied outer arrays and preserves semantic graphs. The large
 interval exercises overflow and formatting failures without enumeration or
 materialization. Other String failures follow source inspection; direct binding
-of malformed parameter arrays, tuple-formal mismatches, concurrent mutation and
-arbitrary size callbacks remain outside these observations.
+of malformed parameter arrays and tuple-formal mismatches is covered separately
+below; concurrent mutation and arbitrary size callbacks remain outside these
+constructor/size observations.
 
 Parameter enumeration delegates directly to the domain for one argument. Other
 argument counts use the source product traversal, including repeated empty tuples
@@ -7603,6 +7604,27 @@ copied runtime arrays and two read/reset schedules. Zero-argument products are
 observed with bounded reads only. Mutated argument counts, malformed flag/formal
 arrays after construction, arbitrary enumeration callbacks and concurrent
 mutation remain outside this comparison.
+
+Function-context generation, Apply and Select capture the parameter arrays and
+preserve source reads of domain entries, tuple flags and formal groups. Null
+arrays/groups and short arrays retain typed failures at the source read, rather
+than Go panics or skipped binding. Domain receiver null checks occur after the
+argument element read, so a short argument still wins over a null domain. A
+null ordinary group fails at its length read; an empty group remains distinct.
+A single ordinary argument always reads its first formal, retaining the source
+indexed failure for an empty group. Membership rejection and tuple conversion
+still precede later formal-length reads. These checks use the captured arrays
+rather than rereading the current parameter fields after membership.
+All 80 mixed tuple-formal observations agree without correction. The expanded
+retained-array comparison covers 2,880 observations across mixed/single tuple
+and single ordinary binding, twelve array shapes, two captured contexts, eight
+arguments and five evaluator/generation/Select paths. All agree after replacing
+only process-specific FastTool/native Tool identity strings in 48 diagnostics.
+Actual test209 semantic nodes and bodies are retained; runtime parameter arrays
+are copied or replaced without mutating the semantic graph. The earlier 160
+short-argument observations still agree. Null parameter objects, malformed-array
+materialization, arbitrary conversion/membership callbacks, mutation during
+evaluation and concurrent mutation remain outside these comparisons.
 
 Membership generation with an unassigned variable and a non-enumerable domain
 retains a GENERAL detailed runtime failure with the whole predicate and incoming

@@ -345,8 +345,11 @@ and Select; all 160 compared cases agree. Function-parameter construction and
 size calculation now preserve source array failures and overflow diagnostics;
 all 144 combined rows agree. Parameter enumeration now preserves zero-argument
 products, exhausted-product reset behavior and source runtime/null failures; all
-30 bounded observations agree. Tuple-formal and remaining runtime binding-array
-failures remain separate comparison targets.
+30 bounded observations agree. Mixed tuple-formal binding matches all 80 observed
+cases. Binding through retained parameter arrays now preserves source null/index
+failures and read order; all 2,880 mixed/single tuple and ordinary observations
+agree after normalizing process-specific tool identities. Malformed-array
+materialization and mutation during evaluation remain separate targets.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.
