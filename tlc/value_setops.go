@@ -1,6 +1,9 @@
 package tlc
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type SetCupValue struct {
 	BaseValue
@@ -806,7 +809,8 @@ func (v *UnionValue) Elements() (enumeration ValueEnumeration) {
 	}
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
-		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate the nonenumerable set:\n" + ValuesPPR(v.Set)))
+		iterator := &unionEnumeration{owner: v}
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate the nonenumerable set:\n" + iterator.diagnosticIdentity()))
 	}
 	return newUnionEnumeration(enum.Elements(), v)
 }
@@ -879,16 +883,37 @@ type unionEnumeration struct {
 	err         error
 }
 
+// diagnosticIdentity has no value-formatting side effects, like Java's default
+// Enumerator.toString. Use Go's type and pointer rather than a JVM identity.
+func (e *unionEnumeration) diagnosticIdentity() string {
+	return fmt.Sprintf("%T(%p)", e, e)
+}
+
 func newUnionEnumeration(enum ValueEnumeration, owner *UnionValue) *unionEnumeration {
 	out := &unionEnumeration{enum: enum, owner: owner}
-	out.advanceElementSet()
+	out.advanceElementSet(true)
 	return out
 }
 
 func (e *unionEnumeration) Reset() {
 	e.err = nil
 	e.enum.Reset()
-	e.advanceElementSet()
+	e.elemSet = e.enum.NextElement()
+	if err := e.enum.Err(); err != nil {
+		e.err = err
+		return
+	}
+	// Unlike construction, the source reset casts and dereferences the first
+	// inner set without an enumerable guard or an empty-outer special case.
+	if e.elemSet == nil {
+		panic(NewNullPointerException())
+	}
+	enum, ok := asEnumerable(e.elemSet)
+	if !ok {
+		panic(valueStreamClassCast(e.elemSet, "tlc2.value.impl.Enumerable"))
+	}
+	e.elemSetEnum = enum.Elements()
+	e.err = e.elemSetEnum.Err()
 }
 
 func (e *unionEnumeration) NextElement() Value {
@@ -901,7 +926,7 @@ func (e *unionEnumeration) NextElement() Value {
 			e.err = err
 			return nil
 		}
-		e.advanceElementSet()
+		e.advanceElementSet(false)
 		if e.err != nil || e.elemSet == nil {
 			return nil
 		}
@@ -921,14 +946,20 @@ func (e *unionEnumeration) Err() error {
 	return e.enum.Err()
 }
 
-func (e *unionEnumeration) advanceElementSet() {
+func (e *unionEnumeration) advanceElementSet(initial bool) {
 	e.elemSet = e.enum.NextElement()
 	if e.elemSet == nil {
 		return
 	}
 	enum, ok := asEnumerable(e.elemSet)
 	if !ok {
-		e.err = e.owner.runtimeFailure("Attempted to enumerate UNION(s), but some element of s is nonenumerable.")
+		if initial {
+			e.err = e.owner.runtimeFailure("Attempted to enumerate UNION(s), but some element of s is nonenumerable.")
+		} else {
+			// Source nextElement uses its iterator identity, not the outer set,
+			// whose formatting could normalize values or raise another failure.
+			e.err = e.owner.runtimeFailure("Attempted to enumerate the nonenumerable set:\n" + ValuesPPR(e.elemSet) + "\nwhen enumerating:\n" + e.diagnosticIdentity())
+		}
 		return
 	}
 	e.elemSetEnum = enum.Elements()

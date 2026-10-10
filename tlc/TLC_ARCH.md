@@ -6986,12 +6986,30 @@ covers finite/nonfinite intersections, differences, nonenumerable UNION outer
 sets and first inner sets, valid later-inner continuation, membership, size,
 enumeration and EXCEPT overloads. Complete outcomes match in 194 rows; six outer
 UNION enumeration/size diagnostics retain an explicit text difference: Java
-prints UnionValue$Enumerator@identity while Go prints the offending outer set.
+prints UnionValue$Enumerator@identity while Go prints its iterator type/pointer.
 Error categories, source/context and wrapper counts match for those six; no JVM
 identity emulation is added and no full-message parity is claimed for them.
-Later nonenumerable inner-set failures and iterator resets remain unverified;
-the native shared advance helper still uses the first-inner failure message for
-later-inner failures. No original-test inventory credit comes from this matrix.
+Native identity formatting has no value-formatting side effects: neither this
+branch nor later-inner failure diagnostics stringify the outer set.
+
+UNION construction retains its fixed first-inner failure message; continuation
+uses the source's distinct nonenumerable-inner message and iterator identity.
+Later-inner failures retain detailed source/context without a receiver catch frame.
+Reset directly casts and dereferences the new first inner set, so an empty outer
+set or null first element raises an unwrapped typed NPE, and a nonenumerable first
+element raises the source cast failure. These failures remain unwrapped even for
+a sourced UNION owner. Normal reset restarts the outer and first inner iterators.
+
+Explicit-set enumeration retains its owner instead of a copied element slice.
+Each nextElement reads the current vector and length, observing element changes,
+appends and vector replacement. Reset only resets the index. A null current vector
+raises typed NPE at nextElement without a receiver catch. The 69 iteration rows
+cover empty/valid outer sets, later Nat failures, reset before/after consumption,
+first-element mutation and five direct vector ownership controls. Full outcomes
+match in 53 rows; 16 later-inner failures differ only in native versus JVM iterator
+identity text, with matching message prefixes and complete metadata. Recovery
+after a caught iteration/reset failure and arbitrary nested enumerators remain
+unverified. These observations earn no original-test inventory credit.
 
 
 Record comparison/equality shape failures, membership, single-argument Apply and

@@ -32423,3 +32423,58 @@ ConstantRank2AssertError and ValueSemanticsAssume, pass: 40410 terminal 6ea73f,
 original-models.log, 2.376s. No broad sweep, race run, changed original assertion
 or shortened workload. HANDOFF and TLC_ARCH retain the exact scope and remaining
 diagnostic gaps. Core TLC parity and original-model reconciliation remain open.
+
+
+2026-10-10: UNION continuation/reset and explicit-set iterator ownership.
+
+Previous goal turn made progress in cd715f5; worktree starts clean. Direct poll
+of original full stress session 27326 remains live (37ad41). Latest saved log
+is 1,213,656,035 / 2,147,483,648, no terminal result or original-method credit.
+No duplicate, race run or changed workload bounds.
+
+Inspect source UnionValue.Enumerator and SetEnumValue.Enumerator. Construction
+and continuation have distinct nonenumerable-inner messages; reset directly casts
+and dereferences the first element without a guard. Native previously shared one
+guarded advance method for all three paths. Explicit-set source enumeration reads
+the current owner vector; native copied it, hiding mutation and replacement.
+
+Ignored .codex-gotmp/union-iteration compares eight UNION shapes, two source states
+and four consumption/reset schedules, plus four direct vector controls: 68 rows.
+Shapes cover empty outer, empty inner, one/two valid inner sets, later Nat after
+one/two inner sets, and first-slot replacement by integer/null after iterator
+construction. Observations use public existing values and API methods, with
+TLCGlobals.expand=false and no synthetic evaluator hooks or persistent tests.
+Baseline differs in 38 full rows (221645). Correct reset to source direct
+cast/dereference with typed, unwrapped failures; use existing class-cast formatting.
+Give later-inner failure its own source message and metadata. Retain the set owner
+in a dedicated explicit-set iterator, reading its current Elems and length at each
+call. This also observes whole-vector replacement, not just shared backing slots.
+
+Replace outer-set formatting in iterator diagnostics with native Go type/pointer
+identity. Source uses Object.toString, which does not normalize or inspect values;
+formatting the outer set can introduce additional mutations or failure precedence.
+Native diagnosticIdentity uses fmt %T/%p and performs no JVM identity emulation.
+Both outer- and later-inner failures retain this explicit platform text difference.
+
+Add one ignored direct-vector null-replacement observation. Java throws typed NPE
+without a receiver catch; initial native emits runtime.errorString (80b8e2).
+Preserve before-null-vector.log; add typed NPE at the actual current-vector
+size dereference, after coverage accounting. Final 69-row comparison (b71f58)
+matches 53 full rows. Remaining 16 match complete message prefixes and exact
+source/context/frame metadata, differing only in checked JVM/native iterator
+identity patterns. Twenty-two baseline full-row differences are corrected; the
+extra null-vector observation is separately verified. Recheck the previous 200
+set-operation rows: 194 full matches and six checked identity-only differences,
+with no changed result/category/source/frame behavior. Keep raw logs intact.
+
+Final 21 focused existing Go checks pass: 74129 terminal 17bad5, final-values.log,
+0.018s. These include all ten unchanged InitializeValue original methods, the
+existing ValueTest empty-set constructor translation, and ten existing enumeration,
+vector and reducible-set checks. Two unchanged original Go models,
+ConstantRank2AssertError and ValueSemanticsAssume, pass: 83095 terminal cc6724,
+original-models.log, 2.325s. No new persistent original tests or inventory credit.
+Earlier focused selection also passes (29791 terminal 9efaf1); final selection
+expands to all InitializeValue methods because explicit-set ownership changed.
+Formatting/diff checks pass. HANDOFF/TLC_ARCH state exact scope; recovery after
+caught iterator failures and arbitrary nested enumerators remains unverified.
+Overall TLC parity and original-model reconciliation remain incomplete.

@@ -643,7 +643,7 @@ func (v *SetEnumValue) Elements() ValueEnumeration {
 	if _, err := v.normalizeSet(); err != nil {
 		return newErrorEnumeration(wrapValueFailure(v, err))
 	}
-	return &sliceValueEnumeration{values: v.Elems.ToArray(), cm: v.CM}
+	return &setEnumEnumeration{owner: v}
 }
 
 func (v *SetEnumValue) String() string {
@@ -905,6 +905,30 @@ func (e *intervalValueEnumeration) NextElement() Value {
 func (e *intervalValueEnumeration) Err() error {
 	return nil
 }
+
+// setEnumEnumeration retains the set owner: Java's Enumerator reads the
+// current elems vector on every call, including after reset or replacement.
+type setEnumEnumeration struct {
+	owner *SetEnumValue
+	index int
+}
+
+func (e *setEnumEnumeration) Reset() { e.index = 0 }
+
+func (e *setEnumEnumeration) NextElement() Value {
+	e.owner.CM.incValueSecondary()
+	if e.owner.Elems == nil {
+		panic(NewNullPointerException())
+	}
+	if e.index >= e.owner.Elems.Len() {
+		return nil
+	}
+	value := e.owner.Elems.At(e.index)
+	e.index++
+	return value
+}
+
+func (e *setEnumEnumeration) Err() error { return nil }
 
 type sliceValueEnumeration struct {
 	cm     CostModel
