@@ -7524,6 +7524,22 @@ inspected shared temporal-quantifier branch; no direct original fixture was
 available. Arbitrary action-list kinds, malformed CASE arrays and coverage side
 effects remain outside these comparisons.
 
+Function applications used as initial/next/ENABLED predicates retain GENERAL
+runtime failures with the whole application and incoming context when the
+function value is not a function. Non-boolean results retain runtime code 2248,
+the original phase/boolean/application parameters, the argument expression and
+incoming context. Direct Eval non-function failures retain GENERAL with the
+whole application/context. All 224 observations on actual Echo IsSymmetric's
+R[x,y] application and MCEcho R1's edge[1] application agree across direct Eval
+and all three generation paths, two base contexts and 14 runtime values per
+application: booleans, integer, string, empty set, singleton explicit functions
+and tuples with boolean/integer/string results, and a record. The same comparison
+retains original tuple/record argument failures and successful state counts.
+Original nodes and argument/formal bindings are used without graph mutation.
+Lazy/cached function-lambda paths, CounterExample record conversion, malformed
+function application graphs, arbitrary controls and null values remain outside
+this observation.
+
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays
 before arguments, and preserves null-array failures at those dereferences.

@@ -1000,7 +1000,7 @@ func (t *Tool) applyPredicateFunction(where string, expr *OpApplNode, fval Value
 		}
 	case *FcnRcdValue, *TupleValue, *RecordValue, *CounterExample:
 	default:
-		return nil, newTLCError(ECGeneral, "In computing %s, a non-function (%s) was applied as a function.\n%s", where, fval.KindString(), SemanticString(expr))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing %s, a non-function (%s) was applied as a function.\n%s", where, fval.KindString(), SemanticString(expr)), expr, c)
 	}
 	value, err := t.applyEvaluatedFunction(expr, fval, c, s0, s1, control, cm, false)
 	if err != nil {
@@ -1008,7 +1008,9 @@ func (t *Tool) applyPredicateFunction(where string, expr *OpApplNode, fval Value
 	}
 	bval, ok := value.(*BoolValue)
 	if !ok {
-		return nil, newTLCErrorCode(ECTLCExpectedExpressionInComputing2, where, "boolean", SemanticString(expr))
+		failure := NewTLCRuntimeException(ECTLCExpectedExpressionInComputing2, where, "boolean", SemanticString(expr))
+		failure.Expr, failure.Ctxt = expr.Args[1], c
+		return nil, failure
 	}
 	return bval, nil
 }

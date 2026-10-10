@@ -1290,7 +1290,7 @@ func (t *Tool) applyEvaluatedFunction(expr *OpApplNode, fval Value, c *Context, 
 		}
 		return record.Apply(argVal)
 	default:
-		return nil, newTLCError(ECGeneral, "A non-function (%s) was applied as a function.\n%s", valueKindString(fval), SemanticString(expr))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("A non-function (%s) was applied as a function.\n%s", valueKindString(fval), SemanticString(expr)), expr, c)
 	}
 }
 

@@ -33766,3 +33766,50 @@ architecture contracts.
 Original full stress session 27326 remains live on direct poll (c1237b).
 Latest saved progress is 1,481,620,312 / 2,147,483,648 (9f55fb); no terminal result
 or long-method credit. Preserve the original handle, bounds, budget and artifacts.
+
+
+2026-10-10: Function-application predicate and Eval failure ownership
+
+Previous goal turn made verified progress in 4de287f. Source Tool retains the
+whole function application/context for non-function failures, but the argument
+expression/context for non-boolean function results during initial/next generation
+and ENABLED. Native's shared predicate helper discarded runtime metadata.
+
+Ignored .codex-gotmp/function-predicate-metadata uses Echo IsSymmetric's actual
+R[x,y] application and MCEcho R1's actual edge[1] application. Bind existing
+formals/symbols to booleans, integer, string, empty set, singleton explicit
+functions and tuples with boolean/integer/string results, and a record. Use two
+base contexts and all three generation phases. Match local Relation module paths
+on both sides. Source 85619 terminal e8b187 and native-before.log yield 168 rows
+with 96 differences (1f8df2), all missing runtime metadata. Restore GENERAL
+whole-application errors for non-functions and coded runtime 2248 with argument
+ownership for non-boolean predicate results. All 168 final rows agree (42782
+terminal 73c92d; comparison 213256), including message/category/code/parameters,
+exact expression/context, frame counts, invalid tuple/record applications,
+successful results and emitted-state counts.
+
+Extend the same original-node matrix to direct Eval: 224 total rows reveal
+20 remaining non-function Eval metadata failures (44480 terminal 7b0b30;
+comparison 16ffcd). Restore GENERAL detailed runtime failures with the whole
+application and incoming context at that source branch. All 224 final rows agree
+(91484 terminal c20782; comparison 967d50). Source numeric argument ownership
+also agrees for the multiple-argument relation application. Java enhanced NPE
+messages disabled. No graph mutation, fabricated semantic nodes, evaluator
+callbacks, persistent tests or fixtures. Lazy/cached function-lambda paths,
+CounterExample record conversion, null values, malformed graphs and arbitrary
+controls remain outside this bounded comparison.
+
+Nine original model checks pass unchanged (44439 terminal 8154d6;
+original-models.log, 4.234s): EchoDebugger, LegacySuiteTest14/206/209,
+ValueSemanticsAssume, ConstantRank2AssertError, Debug02Debugger and
+ActionCompositionA/B. Focused function-context, bounded CHOOSE, lazy-subset,
+StateFunctor and original EvalControl checks pass (79917 terminal 258abd;
+existing-checks.log, 0.017s). After the expanded Eval correction, the same final
+selection passes again (28594 terminal e4faf3; final-checks.log, root 4.298s and
+tlc 0.019s; outputs ad963a). No broad suite, race, changed assertions, reduced
+bounds or original-method inventory credit. Update current handoff/contracts.
+
+Original full stress session 27326 remains live on direct poll (abf45d).
+Latest saved progress is 1,488,777,742 / 2,147,483,648 (ad963a), with no terminal
+result or long-method credit. Preserve its original handle, bounds, budget and
+artifacts.
