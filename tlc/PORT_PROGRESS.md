@@ -35520,3 +35520,66 @@ architecture; arbitrary callbacks, SequencesExt and other module-specific casts
 remain open. Direct stress poll edf770 confirms original session 27326 stays
 live. Latest saved progress is 1,801,492,127 / 2,147,483,648 (f688db), without
 terminal result or long-method credit. Preserve original handle, log and bounds.
+
+
+### 2026-10-10: SequencesExt fold/search boundaries and operator invocation casts
+
+Previous goal turn made verified progress in ca6d2e6; clean worktree confirmed
+(7b18a0). Direct poll da2754 confirms original full stress session 27326 remains
+live. Inspect actual CommunityModules SequencesExt.java and the native helpers.
+Ignored sequences-ext-callbacks compiles that actual Java source against pinned
+TLC classes and existing dependencies. Observers use actual test206 source nodes
+and runtime operator-record constructors and arrays, with no fabricated evaluator
+callbacks, semantic graph mutations or persistent fixtures.
+
+Eight sequence forms, nine null/unary/binary operator maps, nine helpers, six
+bound forms and four source settings yield 22,752 rows. Initial complete runs
+have 7,792 differences (141540). Preserve direct tuple conversion/null reads,
+array/Size failures, operator-null call boundaries and retained/shared argument
+arrays. FoldLeft/FoldRight retain the initial element array; FoldLeftDomain
+reads current size at every loop check. RemoveFirstMatch reads current elements
+and size and stops predicate calls after a match. Bounded forward/reverse searches
+validate bound types before shortcuts, return zero on reversed bounds before
+size, and short circuit nonpositive bounds before size/domain diagnostics.
+The first native build identifies two unused captured lengths (65a3dd); correct
+loop forms to the Java source before collecting results. All 22,752 rows agree
+(6c00d2). Callback mutation contracts follow source inspection, not a fabricated
+mutating operator. Simplify the bound helper to direct source-ordered size calls;
+final direct matrices still agree (df93a5).
+
+The source OpValue parameter also causes invocation-time casts before the body.
+Ignored sequences-ext-methods invokes actual Java MethodValue.get on reflected
+source methods and actual native registered MethodValues with source metadata.
+Its 2,912 rows include invalid boolean operators and FoldSeq cast checks. Initial
+matrices have 716 differences (920aa8). Add the OpValue cast to the ten actual
+SequencesExt registrations, permitting null through the cast. All 320 cast
+mismatches resolve; 396 raw-text differences remain (28e945). Inspect those:
+MethodValue prints the stack of a message-less FingerprintException. All 2,912
+rows agree outside platform stack locations and elision counts (2db804), retaining
+cause names/messages, signatures, codes, nullable parameters and outer source
+frame counts. Final matrices confirm the same limits (df93a5). Do not claim
+raw JVM stack parity or original-method credit from these observers.
+
+Focused original value/model/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass. Session 91466 exits zero (f9f6d0), root 5.538s
+and tlc 2.451s (df568a). Start the complete original CommunityModules Ant target,
+including all and shiviz phases, normally with timeout zero and no changed
+bounds/assertions (session 59667, 22eac1). Its original SequencesExtTests source
+contains noncommutative folds, 25/250-element folds, lambda/domain folds,
+forward/reverse range searches, empty searches and RemoveFirstMatch assertions
+(18d4ab). The all phase progresses beyond SequencesExtTests and remains live at
+4b5cd0. Handoff and architecture updated; other SequencesExt helpers, arbitrary
+callback mutation and broader module casts remain open. No race or broad
+workspace suite. Full stress latest saved progress is
+1,812,830,776 / 2,147,483,648 (cf8635), without terminal result or long credit.
+Preserve original stress handle, log and bounds.
+
+Complete original CommunityModules target session 59667 exits zero (6c3777).
+Both unchanged all/shiviz phases pass, with original expected liveness exit and
+6 generated/5 distinct/depth 5 for ShiViz (748309). Whole parent target takes
+315.086s; all phase 314.02s and shiviz 0.65s. Record only the existing parent
+original method, not its two subprocess PASS lines, and add no inventory credit.
+Final direct poll aac64b confirms full stress 27326 remains live; latest saved
+progress is 1,816,010,562 / 2,147,483,648 (da00e3). No terminal stress result or
+long-method credit. Handoff/architecture include final original regression
+results and explicit platform stack-text limits. Diff check passes (3f92a4).

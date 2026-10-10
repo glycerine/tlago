@@ -387,10 +387,15 @@ console traces agree. `SelectInSeq`, `SelectSeq` and `Insert` retain predicate
 validation/size order, shared argument arrays and source null failures. `Insert`
 compares values only after a true predicate. All 2,112 finite-map observations
 agree, including diagnostic source frames and non-boolean/null results.
-Arbitrary callback mutation, `SequencesExt` and other module-specific casts remain
-separate work.
-All bounded comparisons agree, including the prior lambda conversion and deep-
-normalization matrices; contracts and limits are in `TLC_ARCH.md`.
+`SequencesExt` folds, forward/reverse searches and `RemoveFirstMatch` preserve
+source tuple reads, argument reuse and bound shortcuts. Their typed operator
+parameters reject invalid values at invocation. All 22,752 direct rows agree;
+2,912 invocation cases agree outside platform stack locations/elision counts
+(396 retain stack-text differences). The complete original CommunityModules
+`all`/`shiviz` target and focused regressions pass. Other `SequencesExt` helpers,
+arbitrary callback mutation and module-specific casts remain separate work.
+Prior lambda conversion and deep-normalization matrices also agree; contracts
+and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
 Verified EXCEPT installation and scalar, set, tuple and record updates retain
 typed path/batch failures, source wrappers and warning parameters. Record updates allocate and

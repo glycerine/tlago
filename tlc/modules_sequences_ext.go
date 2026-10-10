@@ -169,14 +169,19 @@ func SequencesExtFoldSeq(op Value, base Value, seq Value) (Value, error) {
 }
 
 func SequencesExtFoldLeft(op Value, base Value, seq Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "FoldLeft", "sequence", ValuesPPR(seq))
 	}
+	length, err := tuple.Size()
+	if err != nil {
+		return nil, err
+	}
 	args := []Value{base, nil}
-	for _, elem := range tuple.Elems {
-		args[1] = elem
-		value, err := EvalOperatorValue(op, args, EvalClear)
+	elems := tuple.Elems
+	for i := 0; i < length; i++ {
+		args[1] = elems[i]
+		value, err := sequenceOperatorEval(op, args)
 		if err != nil {
 			return nil, err
 		}
@@ -186,14 +191,19 @@ func SequencesExtFoldLeft(op Value, base Value, seq Value) (Value, error) {
 }
 
 func SequencesExtFoldRight(op Value, seq Value, base Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "FoldRight", "sequence", ValuesPPR(seq))
 	}
+	length, err := tuple.Size()
+	if err != nil {
+		return nil, err
+	}
 	args := []Value{nil, base}
-	for i := len(tuple.Elems) - 1; i >= 0; i-- {
-		args[0] = tuple.Elems[i]
-		value, err := EvalOperatorValue(op, args, EvalClear)
+	elems := tuple.Elems
+	for i := length - 1; i >= 0; i-- {
+		args[0] = elems[i]
+		value, err := sequenceOperatorEval(op, args)
 		if err != nil {
 			return nil, err
 		}
@@ -203,14 +213,14 @@ func SequencesExtFoldRight(op Value, seq Value, base Value) (Value, error) {
 }
 
 func SequencesExtFoldLeftDomain(op Value, base Value, seq Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "FoldLeftDomain", "sequence", ValuesPPR(seq))
 	}
 	args := []Value{base, nil}
-	for i := range tuple.Elems {
+	for i := 0; i < sequenceSize(tuple); i++ {
 		args[1] = NewIntValue(int32(i + 1))
-		value, err := EvalOperatorValue(op, args, EvalClear)
+		value, err := sequenceOperatorEval(op, args)
 		if err != nil {
 			return nil, err
 		}
@@ -220,14 +230,18 @@ func SequencesExtFoldLeftDomain(op Value, base Value, seq Value) (Value, error) 
 }
 
 func SequencesExtFoldRightDomain(op Value, seq Value, base Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "FoldRightDomain", "sequence", ValuesPPR(seq))
 	}
+	length, err := tuple.Size()
+	if err != nil {
+		return nil, err
+	}
 	args := []Value{nil, base}
-	for i := len(tuple.Elems) - 1; i >= 0; i-- {
+	for i := length - 1; i >= 0; i-- {
 		args[0] = NewIntValue(int32(i + 1))
-		value, err := EvalOperatorValue(op, args, EvalClear)
+		value, err := sequenceOperatorEval(op, args)
 		if err != nil {
 			return nil, err
 		}
@@ -350,12 +364,18 @@ func SequencesExtIsPrefix(left Value, right Value) (Value, error) {
 }
 
 func SequencesExtSelectInSeq(seq Value, test Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectInSeq", "sequence", ValuesPPR(seq))
 	}
-	for i, elem := range tuple.Elems {
-		value, err := EvalOperatorValue(test, []Value{elem}, EvalClear)
+	length, err := tuple.Size()
+	if err != nil {
+		return nil, err
+	}
+	args := make([]Value, 1)
+	for i := 0; i < length; i++ {
+		args[0] = tuple.Elems[i]
+		value, err := sequenceOperatorEval(test, args)
 		if err != nil {
 			return nil, err
 		}
@@ -371,16 +391,22 @@ func SequencesExtSelectInSeq(seq Value, test Value) (Value, error) {
 }
 
 func SequencesExtSelectInSubSeq(seq Value, from Value, to Value, test Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectInSubSeq", "sequence", ValuesPPR(seq))
 	}
 	fromInt, ok := from.(*IntValue)
 	if !ok {
+		if from == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectInSubSeq", "natural", ValuesPPR(from))
 	}
 	toInt, ok := to.(*IntValue)
 	if !ok {
+		if to == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "SelectInSubSeq", "natural", ValuesPPR(to))
 	}
 	start := int(fromInt.Val)
@@ -388,14 +414,16 @@ func SequencesExtSelectInSubSeq(seq Value, from Value, to Value, test Value) (Va
 	if start > end {
 		return IntZero, nil
 	}
-	if start < 1 || start > len(tuple.Elems) {
+	if start < 1 || start > sequenceSize(tuple) {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "second", "SelectInSubSeq", "first", ValuesPPR(seq), ValuesPPR(from))
 	}
-	if end < 1 || end > len(tuple.Elems) {
+	if end < 1 || end > sequenceSize(tuple) {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "third", "SelectInSubSeq", "first", ValuesPPR(seq), ValuesPPR(to))
 	}
+	args := make([]Value, 1)
 	for i := start; i <= end; i++ {
-		value, err := EvalOperatorValue(test, []Value{tuple.Elems[i-1]}, EvalClear)
+		args[0] = tuple.Elems[i-1]
+		value, err := sequenceOperatorEval(test, args)
 		if err != nil {
 			return nil, err
 		}
@@ -411,12 +439,18 @@ func SequencesExtSelectInSubSeq(seq Value, from Value, to Value, test Value) (Va
 }
 
 func SequencesExtSelectLastInSeq(seq Value, test Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectLastInSeq", "sequence", ValuesPPR(seq))
 	}
-	for i := len(tuple.Elems) - 1; i >= 0; i-- {
-		value, err := EvalOperatorValue(test, []Value{tuple.Elems[i]}, EvalClear)
+	length, err := tuple.Size()
+	if err != nil {
+		return nil, err
+	}
+	args := make([]Value, 1)
+	for i := length - 1; i >= 0; i-- {
+		args[0] = tuple.Elems[i]
+		value, err := sequenceOperatorEval(test, args)
 		if err != nil {
 			return nil, err
 		}
@@ -432,16 +466,22 @@ func SequencesExtSelectLastInSeq(seq Value, test Value) (Value, error) {
 }
 
 func SequencesExtSelectLastInSubSeq(seq Value, from Value, to Value, test Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectLastInSubSeq", "sequence", ValuesPPR(seq))
 	}
 	fromInt, ok := from.(*IntValue)
 	if !ok {
+		if from == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectLastInSubSeq", "natural", ValuesPPR(from))
 	}
 	toInt, ok := to.(*IntValue)
 	if !ok {
+		if to == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "SelectLastInSubSeq", "natural", ValuesPPR(to))
 	}
 	start := int(fromInt.Val)
@@ -449,14 +489,16 @@ func SequencesExtSelectLastInSubSeq(seq Value, from Value, to Value, test Value)
 	if start > end {
 		return IntZero, nil
 	}
-	if start < 1 || start > len(tuple.Elems) {
+	if start < 1 || start > sequenceSize(tuple) {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "second", "SelectLastInSubSeq", "first", ValuesPPR(seq), ValuesPPR(from))
 	}
-	if end < 1 || end > len(tuple.Elems) {
+	if end < 1 || end > sequenceSize(tuple) {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "third", "SelectLastInSubSeq", "first", ValuesPPR(seq), ValuesPPR(to))
 	}
+	args := make([]Value, 1)
 	for i := end; i >= start; i-- {
-		value, err := EvalOperatorValue(test, []Value{tuple.Elems[i-1]}, EvalClear)
+		args[0] = tuple.Elems[i-1]
+		value, err := sequenceOperatorEval(test, args)
 		if err != nil {
 			return nil, err
 		}
@@ -495,15 +537,21 @@ func SequencesExtRemoveFirst(seq Value, elem Value) (Value, error) {
 }
 
 func SequencesExtRemoveFirstMatch(seq Value, test Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "RemoveFirstMatch", "sequence", ValuesPPR(seq))
 	}
-	out := make([]Value, 0, len(tuple.Elems))
+	length, err := tuple.Size()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Value, 0, length)
+	args := make([]Value, 1)
 	found := false
-	for _, elem := range tuple.Elems {
+	for i := 0; i < sequenceSize(tuple); i++ {
 		if !found {
-			value, err := EvalOperatorValue(test, []Value{elem}, EvalClear)
+			args[0] = tuple.Elems[i]
+			value, err := sequenceOperatorEval(test, args)
 			if err != nil {
 				return nil, err
 			}
@@ -516,7 +564,7 @@ func SequencesExtRemoveFirstMatch(seq Value, test Value) (Value, error) {
 				continue
 			}
 		}
-		out = append(out, elem)
+		out = append(out, tuple.Elems[i])
 	}
 	return NewTupleValue(out), nil
 }
@@ -615,4 +663,20 @@ func sequencesExtTupleEqual(left []Value, right []Value) bool {
 		}
 	}
 	return true
+}
+
+// These helpers retain direct Java dereferences without adding a module catch.
+func sequenceOperatorEval(operator Value, args []Value) (Value, error) {
+	if operator == nil {
+		panic(NewNullPointerException())
+	}
+	return EvalOperatorValue(operator, args, EvalClear)
+}
+
+func sequenceSize(sequence *TupleValue) int {
+	size, err := sequence.Size()
+	if err != nil {
+		panic(err)
+	}
+	return size
 }

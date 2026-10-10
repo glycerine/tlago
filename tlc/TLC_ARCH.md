@@ -8193,6 +8193,35 @@ No persistent tests/fixtures or original-test credit are added. Arbitrary
 callback mutation, broader operator behavior, SequencesExt and other module
 casts remain separate work; shared-argument mutation behavior is source-inspected.
 
+CommunityModules SequencesExt folds and searches retain source dereference and
+iteration boundaries. FoldLeft/FoldRight retain the initial element array;
+FoldLeftDomain reads current size at each loop check, while FoldRightDomain reads
+size before reverse iteration. SelectInSeq/SelectLastInSeq read size before
+calling the operator. Bounded searches validate bound types before numeric
+shortcuts; reversed bounds return zero before size reads, and nonpositive bounds
+short circuit size checks before producing source domain diagnostics. Predicate
+arguments are reused. RemoveFirstMatch reads current sequence elements and length
+and stops calling the predicate after the first match. Null operators fail only
+when a call is reached, so an empty sequence preserves the base/empty result.
+The actual method boundary casts OpValue parameters before entering the body,
+including FoldSeq, and preserves Java's class-cast diagnostic through MethodValue.
+All 22,752 direct observations agree across eight sequence forms, nine actual
+operator-map forms, nine helpers, six bound forms and independent source flags.
+All 2,912 actual MethodValue observations agree in values, typed errors, method
+signatures, parameters, nullable details and source-frame counts after excluding
+platform stack locations and their elision counts. Of these, 2,516 match raw text;
+396 retain native stack-text differences when Java's method wrapper prints a
+message-less FingerprintException. Do not infer JVM stack-location parity.
+The complete unchanged CommunityModules Ant target passes both all and shiviz
+phases, including its original parsed SequencesExt assumptions. Focused original
+model/value/stream checks also pass. These ignored observers use the actual
+CommunityModules Java source, pinned TLC runtime, actual test206 parsed source
+nodes and runtime constructors/arrays. No
+fabricated evaluator callbacks or persistent tests/fixtures are added. Arbitrary
+callback mutation is source-inspected, not observed. LongestCommonPrefix,
+replacement shortcuts, other SequencesExt helpers and broader module casts remain
+separate requirements.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

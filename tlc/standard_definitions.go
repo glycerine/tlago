@@ -238,44 +238,44 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("LongestCommonPrefix", 1, func(args []Value) (Value, error) {
 		return SequencesExtLongestCommonPrefix(args[0])
 	})
-	t.defineStandardMethod("FoldSeq", 3, func(args []Value) (Value, error) {
+	t.defineStandardMethod("FoldSeq", 3, standardOperatorMethod(0, func(args []Value) (Value, error) {
 		return SequencesExtFoldSeq(args[0], args[1], args[2])
-	})
-	t.defineStandardMethod("FoldLeft", 3, func(args []Value) (Value, error) {
+	}))
+	t.defineStandardMethod("FoldLeft", 3, standardOperatorMethod(0, func(args []Value) (Value, error) {
 		return SequencesExtFoldLeft(args[0], args[1], args[2])
-	})
-	t.defineStandardMethod("FoldRight", 3, func(args []Value) (Value, error) {
+	}))
+	t.defineStandardMethod("FoldRight", 3, standardOperatorMethod(0, func(args []Value) (Value, error) {
 		return SequencesExtFoldRight(args[0], args[1], args[2])
-	})
-	t.defineStandardMethod("FoldLeftDomain", 3, func(args []Value) (Value, error) {
+	}))
+	t.defineStandardMethod("FoldLeftDomain", 3, standardOperatorMethod(0, func(args []Value) (Value, error) {
 		return SequencesExtFoldLeftDomain(args[0], args[1], args[2])
-	})
-	t.defineStandardMethod("FoldRightDomain", 3, func(args []Value) (Value, error) {
+	}))
+	t.defineStandardMethod("FoldRightDomain", 3, standardOperatorMethod(0, func(args []Value) (Value, error) {
 		return SequencesExtFoldRightDomain(args[0], args[1], args[2])
-	})
+	}))
 	t.defineStandardEvaluating("ReplaceFirstSubSeq", 3, standardSequencesExtReplaceFirstSubSeq)
 	t.defineStandardEvaluating("ReplaceAllSubSeqs", 3, standardSequencesExtReplaceAllSubSeqs)
 	t.defineStandardMethod("IsPrefix", 2, func(args []Value) (Value, error) {
 		return SequencesExtIsPrefix(args[0], args[1])
 	})
-	t.defineStandardMethod("SelectInSeq", 2, func(args []Value) (Value, error) {
+	t.defineStandardMethod("SelectInSeq", 2, standardOperatorMethod(1, func(args []Value) (Value, error) {
 		return SequencesExtSelectInSeq(args[0], args[1])
-	})
-	t.defineStandardMethod("SelectInSubSeq", 4, func(args []Value) (Value, error) {
+	}))
+	t.defineStandardMethod("SelectInSubSeq", 4, standardOperatorMethod(3, func(args []Value) (Value, error) {
 		return SequencesExtSelectInSubSeq(args[0], args[1], args[2], args[3])
-	})
-	t.defineStandardMethod("SelectLastInSeq", 2, func(args []Value) (Value, error) {
+	}))
+	t.defineStandardMethod("SelectLastInSeq", 2, standardOperatorMethod(1, func(args []Value) (Value, error) {
 		return SequencesExtSelectLastInSeq(args[0], args[1])
-	})
-	t.defineStandardMethod("SelectLastInSubSeq", 4, func(args []Value) (Value, error) {
+	}))
+	t.defineStandardMethod("SelectLastInSubSeq", 4, standardOperatorMethod(3, func(args []Value) (Value, error) {
 		return SequencesExtSelectLastInSubSeq(args[0], args[1], args[2], args[3])
-	})
+	}))
 	t.defineStandardMethod("RemoveFirst", 2, func(args []Value) (Value, error) {
 		return SequencesExtRemoveFirst(args[0], args[1])
 	})
-	t.defineStandardMethod("RemoveFirstMatch", 2, func(args []Value) (Value, error) {
+	t.defineStandardMethod("RemoveFirstMatch", 2, standardOperatorMethod(1, func(args []Value) (Value, error) {
 		return SequencesExtRemoveFirstMatch(args[0], args[1])
-	})
+	}))
 	t.defineStandardMethod("Suffixes", 1, func(args []Value) (Value, error) { return SequencesExtSuffixes(args[0]) })
 	t.defineStandardMethod("AllSubSeqs", 1, func(args []Value) (Value, error) {
 		return SequencesExtAllSubSeqs(args[0])
@@ -931,4 +931,15 @@ func standardTLCGetAndSet(tool *Tool, args []SemanticNode, con *Context, state *
 		return nil, err
 	}
 	return oldValue, nil
+}
+
+// Typed operator parameters are cast by the Java method handle before the
+// override body runs. Null passes that cast and fails only when evaluated.
+func standardOperatorMethod(index int, eval func([]Value) (Value, error)) func([]Value) (Value, error) {
+	return func(args []Value) (Value, error) {
+		if args[index] != nil && !isOperatorValue(args[index]) {
+			return nil, NewClassCastException("Cannot cast " + javaValueClassName(args[index]) + " to tlc2.value.impl.OpValue")
+		}
+		return eval(args)
+	}
 }
