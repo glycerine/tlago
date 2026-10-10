@@ -7673,6 +7673,20 @@ and a genuine materialized S record installed as their cache. These observations
 add no original-test inventory credit and do not cover arbitrary callbacks or
 concurrent cache publication.
 
+Lambda tuple conversion reads the parameter object and captured argument count
+before consulting any cached record. A non-single argument count returns null.
+A single argument reads the first domain with typed null/index array failures;
+a null domain fails before conversion to an explicit set. These initial reads
+have no lambda source wrapper, matching the source method. Subsequent Select
+failures retain their existing wrappers. All 1,242 conversion observations agree
+on values, full failures, source frames and cache presence using the original
+test209 S body/formals and copied runtime parameter arrays. Domains include
+small tuple-valued sets, integer intervals, empty sets, unsorted duplicates,
+gaps, zero origins and non-enumerable integer/boolean/string values. The matrix
+includes zero/mixed/single arguments and cached/uncached null parameter objects.
+It adds no original-test credit; arbitrary conversion callbacks, mutation during
+evaluation and concurrent mutation remain unproven.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

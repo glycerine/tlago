@@ -34436,3 +34436,37 @@ workload bounds or changed source assertions. Handoff and architecture updated.
 
 Original full stress latest saved progress is 1,593,491,029 / 2,147,483,648
 (c4f06d). No terminal result or long-method credit; preserve handle and bounds.
+
+
+### 2026-10-10: Lambda tuple conversion parameter access boundaries
+
+Previous goal turn made verified progress in cde03aa. Confirm the current clean
+HEAD and read Java FcnLambdaValue.toTuple plus normalization (5e3baa). Original
+full stress 27326 is live on direct poll (c8bd32); retain its handle and bounds.
+Source tuple conversion has no outer failure catch: it reads params.length even
+with a cached record, then domains[0] for single arguments. Native returned null
+for null parameters, used a raw Go index for domain arrays and treated null
+domains as a non-enumerable conversion. Restore typed null/index failures at
+those reads without adding a lambda source wrapper to the method.
+
+Ignored lambda-tuple-conversion adapts the previous null-parameter observer,
+using actual parsed test209 S formals/body and copied runtime arrays. Initial
+594 rows have 100 differences (Java cc0b07, native 10ec87, comparison ba57c8).
+Expand its eight domains to seventeen with unsorted duplicate integer sets,
+gaps, a zero origin, non-enumerable integer/boolean/string values, and empty or
+non-one-origin intervals. No semantic graph mutation, arbitrary evaluator
+callback, persistent test/fixture or original-method credit is introduced.
+Expanded Java d429ff and native session 84992 (terminal c2a5ff) complete; all
+1,242 rows agree (040fdf), including successful tuples, null results, full
+failures, source frames and cache presence. Source-attached entry failures
+remain unwrapped; Select failures keep their existing source frames.
+
+The unchanged fourteen original model checks and original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests pass alongside focused numeric,
+context, rendering and stream checks. Session 40400 exits zero (01bf1e); root
+5.123s and tlc 2.193s (81e40e). Logs and observer sources remain ignored under
+lambda-tuple-conversion. No race, broad suite, shortened workload or changed
+original assertion. Handoff and architecture contracts updated.
+
+Latest full stress saved progress is 1,600,292,186 / 2,147,483,648 (d1b3c8),
+without a terminal result or long-method credit. Preserve original process.

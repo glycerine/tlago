@@ -962,10 +962,13 @@ func (v *FcnLambdaValue) DeepNormalize() {
 }
 
 func (v *FcnLambdaValue) ToTuple() *TupleValue {
-	if v.Params == nil || v.Params.Length() != 1 {
+	if v.Params == nil {
+		panic(NewNullPointerException())
+	}
+	if v.Params.Length() != 1 {
 		return nil
 	}
-	domain := v.Params.Domains[0]
+	domain := fcnParameterDomain(v.Params.Domains, 0)
 	if intv, ok := domain.(*IntervalValue); ok {
 		size, err := intv.Size()
 		if err != nil {
@@ -984,6 +987,9 @@ func (v *FcnLambdaValue) ToTuple() *TupleValue {
 		}
 		v.CM.incValueSecondary(int64(len(elems)))
 		return NewTupleValue(elems, v.CM)
+	}
+	if domain == nil {
+		panic(NewNullPointerException())
 	}
 	set, err := tryToSetEnumValue(domain)
 	if err != nil {
