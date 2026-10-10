@@ -1,7 +1,7 @@
 package tlc
 
 func (t *Tool) ensureActionsPrepared() error {
-	if t == nil || t.actionsPrepared || t.GetNextStateSpec() == nil || len(t.Actions) != 0 {
+	if t == nil || t.actionsPrepared || len(t.Actions) != 0 {
 		return nil
 	}
 	return t.PrepareActionsFromNextStateSpec()
@@ -13,7 +13,9 @@ func (t *Tool) PrepareActionsFromNextStateSpec() error {
 	}
 	next := t.GetNextStateSpec()
 	if next == nil {
-		t.Actions = nil
+		// Tool constructs an allocated, zero-length action array when the
+		// specification has no next-state predicate (e.g. assumptions only).
+		t.Actions = make([]*Action, 0)
 		t.actionsPrepared = true
 		return nil
 	}

@@ -1783,6 +1783,21 @@ WorkerValue demux decisions are ported above.
 No permanent test was invented; the existing original TLCEval and TLCCache
 model methods remain unchanged and pass.
 
+The conversion helper rejects a null evaluated Value with NullPointerException;
+it must not replace null with ValUndef. State-level and nonempty-context paths
+reach this conversion directly, while constant demux already rejects null before
+normalization. Twenty-one bounded observations compare these three paths with
+null, integer, interval, tuple, record, UndefValue and evaluation failures,
+retaining incoming evaluation scope on uncached paths. They do not establish
+all lazy-value conversions or worker-sharing behavior.
+
+An assumption-only specification has no next-state predicate. Java Tool still
+constructs a non-null, zero-length actions array. Native lazy action preparation
+must allocate that empty slice, including when GetActions triggers preparation;
+otherwise coverage's source-shaped null-array check fails on a valid model.
+The check itself remains strict. The unchanged Java Github652Test and its Go
+translation pass with depth zero and 0/0/0 state statistics.
+
 ## Numeric proof-step conversion
 
 The parser's proof-step helper uses signed 32-bit parsing, as Java's

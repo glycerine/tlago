@@ -56,7 +56,7 @@ func TLCEval(value Value) Value {
 
 func TLCEvalChecked(value Value) (Value, error) {
 	if value == nil {
-		return ValUndef, nil
+		panic(NewNullPointerException())
 	}
 	if canConvertToSetEnum(value) {
 		set, err := toSetEnumValue(value)

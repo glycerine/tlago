@@ -31778,3 +31778,68 @@ Original full random handle 27326 remains live on direct polling (9d039f).
 Latest saved progress is 1,083,295,084 / 2,147,483,648 (4b3910), without terminal
 result or method credit. Preserve its handle, original bounds, default budget
 and artifacts. Overall TLC parity and original-model reconciliation remain open.
+
+
+2026-10-10: TLCEval null conversion and assumption-only action initialization.
+
+Previous goal turn was progress: verified commit 1ddb1aa. Revalidate clean
+worktree and original full random handle 27326 (a9c313 live). Source TLCEval
+convert dereferences the evaluated Value; native TLCEvalChecked instead returned
+ValUndef on null. Replace that invented undefined value with typed
+NullPointerException. The constant demux path already rejects null before
+DeepNormalize and remains unchanged. No cache/lock/mux audit was repeated.
+
+Ignored .codex-gotmp/tlceval-null observations use existing C state-level body c,
+actual initial/successor states, a nonempty context, enabled control and a distinct
+incoming cost model. EvalProbeTool is a renamed pinned FastTool adapter that
+records arguments and supplies results/errors; source TLCEval is unchanged.
+Three paths (state-level, constant with nonempty context, and deep-empty constant)
+combine null, integer, interval, tuple, record, UndefValue and evaluation failure.
+Full value class/text, error messages and evaluation-scope events are retained;
+NPE compares category rather than enhanced JVM text. NumWorkers stays one for
+this conversion audit; this does not prove all worker-sharing behavior.
+
+Initial StringNode observations omitted LevelCheck and correctly failed its
+precondition in both implementations; preserve java.log/before.log rather than
+claiming those rows cover constant conversion. Check the literal nodes' levels
+before evaluation. Rebuild a valid baseline from exact 1ddb1aa modules_tlc_extra.go
+through an ignored compiler overlay, without checkout/reset/rebase. All 21 valid
+rows then match (acfa3f), correcting the two state/context null-result rows.
+The constant null-result case already matched source. Rebuild final observer
+after the action initialization correction below; all 21 still match (69449
+terminal f76328, java-current.log versus after-final.log). No persistent test
+or fixture was invented and no original-method completion credit was added.
+
+The relevant original selection exposed an independent existing Github652
+failure during coverage construction, before any TLCEval conversion. The exact
+pre-conversion-change overlay also fails that unchanged method (e042e5,
+github652-baseline.log), so do not attribute it to this null correction. Java
+Tool constructs new Action[0] when getNextStateSpec is null. Native
+ensureActionsPrepared skipped that path and PrepareActionsFromNextStateSpec
+explicitly wrote nil. Permit lazy preparation with no next predicate and allocate
+an empty slice in that branch. Preserve requireActionArray's null failure rather
+than weakening the coverage check. No SetActions or generic array semantics were
+changed.
+
+Seven unchanged original conversion-related model methods pass after both fixes
+(93839 terminal 9b080f, originals-final.log, 2.118s): ConstantRank1TLCEval,
+ConstantContextTLCCache, TLCExtModel, Github648, Github648wN, Github652 and
+Github361. Four additional original assumption methods pass (34918 terminal
+0fbeea, assumption-originals.log, 4.679s): ValueSemanticsAssume, EmptySetEqAssume,
+KSubsetAssume and PostAssumption. Existing focused action-ID/order checks pass
+(11001 terminal 154147, actions-related.log, 0.013s). The first seven-method
+selection, originals.log (55908 terminal 7c38d2), preserves the pre-fix failure.
+
+Run unchanged Java Github652Test independently through JUnitCore with source
+basedir and working/temp directory under the ignored observation folder.
+Original inherited/body assertions pass: OK (1 test), 837d99 terminal, 0.525s,
+java-github652-original.log. Source files remain read-only; generated metadata
+and dump files remain in the ignored native workspace. Native translation retains
+all original assertions, including successful exit, no GENERAL, depth zero and
+0/0/0 statistics. No broad suite, long race workload, shortened bounds or inventory
+credit. Formatting/diff checks pass; HANDOFF and TLC_ARCH record both fixes.
+
+Full random handle 27326 remains live on direct poll 9d1e9b. Latest saved progress
+is 1,098,174,186 / 2,147,483,648 (ef389b), without terminal result or original-method
+credit. Preserve handle, original bounds, default budget and artifacts. Overall
+TLC parity and original-model reconciliation remain incomplete.
