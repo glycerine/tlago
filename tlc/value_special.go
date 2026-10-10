@@ -129,7 +129,11 @@ func (v *UserValue) Compare(other Value) (resultInt int, err error) {
 	if _, ok := other.(*ModelValue); ok {
 		return 1, nil
 	}
-	return 0, v.unsupported("Attempted to compare overridden value %s with non-overridden value:\n%s", v, other)
+	message := "Attempted to compare overridden value " + ValuesPPR(v) + " with non-overridden value:\n"
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	return 0, v.runtimeFailure(message + ValuesPPR(other))
 }
 
 func (v *UserValue) Equal(other Value) (resultBool bool, err error) {

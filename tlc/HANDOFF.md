@@ -270,8 +270,12 @@ relevant original value/model checks pass. Record-set membership, EXCEPT,
 enumeration, overflow and duplicate-field construction now preserve their source
 runtime boundaries. All 267 observations match, including error codes/parameters
 and partially mutated constructor arrays. The full original record-set suites pass.
-Continue with function-set Assert boundaries against source and the original-test
-inventory.
+Function-set membership, overflow, EXCEPT and domain/range enumeration now retain
+source runtime failures, and size queries preserve Java's repeated range-size call
+order. UserValue comparison also retains runtime metadata and formats the receiver
+before a null operand fails. All 562 observations match; all 16 original function-set
+methods and relevant model checks pass. Continue with remaining special-value and
+shared default value failures against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
@@ -280,7 +284,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,236,133,170 of 2,147,483,648 iterations, without a terminal result. The previous
+1,250,353,796 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

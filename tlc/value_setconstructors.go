@@ -671,12 +671,15 @@ func (v *SetOfFcnsValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *SetOfFcnsValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
 	fcn := asFcnRcdValue(elem)
 	if fcn == nil {
 		if mv, ok := elem.(*ModelValue); ok {
 			return mv.modelValueMember(v)
 		}
-		return false, v.unsupported("Attempted to check if \n%s\nwhich is not a TLC function value, is in the set of functions:\n%s", elem, ValuesPPR(v))
+		return false, v.runtimeFailure("Attempted to check if \n" + elem.String() + "\nwhich is not a TLC function value, is in the set of functions:\n" + ValuesPPR(v))
 	}
 	if fcn.Intv == nil {
 		if err := fcn.normalizeFcn(); err != nil {
@@ -776,11 +779,16 @@ func (v *SetOfFcnsValue) Size() (resultInt int, err error) {
 	if err != nil {
 		return 0, err
 	}
+	// The source asks for the range size again after the domain size.
+	rangeSize, err = v.Range.Size()
+	if err != nil {
+		return 0, err
+	}
 	size := int64(1)
 	for i := 0; i < domainSize; i++ {
 		size *= int64(rangeSize)
 		if size < -2147483648 || size > 2147483647 {
-			return 0, v.unsupported("Overflow when computing the number of elements in:\n%s", ValuesPPR(v))
+			return 0, v.runtimeFailure("Overflow when computing the number of elements in:\n" + ValuesPPR(v))
 		}
 	}
 	return int(size), nil
@@ -844,7 +852,7 @@ func (v *SetOfFcnsValue) Permute(perm *MVPerm) Value {
 func (v *SetOfFcnsValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of functions:\n%s", ValuesPPR(v))
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of functions:\n" + ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
@@ -852,7 +860,7 @@ func (v *SetOfFcnsValue) TakeExcept(ex ValueExcept) (resultValue Value, err erro
 func (v *SetOfFcnsValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of functions:\n%s", ValuesPPR(v))
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of functions:\n" + ValuesPPR(v))
 	}
 	return v, nil
 }
@@ -905,7 +913,7 @@ func (v *SetOfFcnsValue) Elements() (enumeration ValueEnumeration) {
 		return newErrorEnumeration(err)
 	}
 	if domSet == nil {
-		return newErrorEnumeration(v.unsupported("Attempted to enumerate a set of the form [D -> R],but the domain D:\n%s\ncannot be enumerated.", ValuesPPR(v.Domain)))
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate a set of the form [D -> R],but the domain D:\n" + ValuesPPR(v.Domain) + "\ncannot be enumerated."))
 	}
 	if _, err := domSet.normalizeSet(); err != nil {
 		return newErrorEnumeration(err)
@@ -921,7 +929,7 @@ func (v *SetOfFcnsValue) intervalDomainElements(intv *IntervalValue) ValueEnumer
 	}
 	rangeEnum, ok := asEnumerable(v.Range)
 	if size > 0 && !ok {
-		return newErrorEnumeration(v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range)))
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate a set of the form [D -> R],but the range R:\n" + ValuesPPR(v.Range) + "\ncannot be enumerated."))
 	}
 	sets := make([]Value, size)
 	for i := range sets {
@@ -934,14 +942,14 @@ func (v *SetOfFcnsValue) intervalDomainElements(intv *IntervalValue) ValueEnumer
 	return newProductEnumeration(sets, func(elems []Value) Value {
 		return NewFcnRcdIntervalValue(intv, elems, v.CM)
 	}, func(i int, value Value) error {
-		return v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range))
+		return v.runtimeFailure("Attempted to enumerate a set of the form [D -> R],but the range R:\n" + ValuesPPR(v.Range) + "\ncannot be enumerated.")
 	}, v.CM)
 }
 
 func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
 	rangeEnum, ok := asEnumerable(v.Range)
 	if len(dom) > 0 && !ok {
-		return newErrorEnumeration(v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range)))
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate a set of the form [D -> R],but the range R:\n" + ValuesPPR(v.Range) + "\ncannot be enumerated."))
 	}
 	if len(dom) == 0 {
 		return &singleValueEnumeration{value: NewFcnRcdValue(dom, []Value{}, true, v.CM), cm: v.CM, secondary: 1}
@@ -954,7 +962,7 @@ func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
 	return newProductEnumeration(sets, func(elems []Value) Value {
 		return NewFcnRcdValue(dom, elems, true, v.CM)
 	}, func(i int, value Value) error {
-		return v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range))
+		return v.runtimeFailure("Attempted to enumerate a set of the form [D -> R],but the range R:\n" + ValuesPPR(v.Range) + "\ncannot be enumerated.")
 	}, v.CM)
 }
 

@@ -7034,7 +7034,7 @@ cover valid/negative/too-large k-subsets and direct sourced/unsourced scalar
 isEmpty and UserValue size/emptiness controls, using a fresh Nat wrapper to avoid
 changing the shared singleton's source. These observations do not establish
 all lazy-function conversions, nested membership failures or product reset paths;
-function-set Assert boundaries remain separate work. No new original-method
+function-set boundaries are verified separately below. No new original-method
 inventory credit is claimed.
 
 
@@ -7060,6 +7060,36 @@ source/context and wrapper counts. The full seven-method original record-set
 suites pass without reduced bounds or race instrumentation. This does not establish
 all lazy-record conversions, arbitrary null fields or product-reset paths. No new
 original-method inventory credit is claimed.
+
+
+Function-set non-function membership, cardinality overflow, both EXCEPT overloads
+and nonenumerable domain/range failures use source-aware Assert runtime errors.
+Null membership fails at elem.toFcnRcd before formatting; other invalid members
+retain the raw argument String followed by the pretty-printed receiver. Cardinality
+preserves the source order: domain emptiness, range emptiness, first range size for
+the singleton shortcut, domain size, then range size again before multiplication.
+The repeated call order is ported from source inspection; the observations compare
+real values without invented call-count hooks. Empty domains and ranges retain
+their existing finiteness, size and enumeration short-circuits.
+
+UserValue comparisons with non-overridden, non-model values now preserve Assert
+runtime metadata. They format the receiver before dereferencing a null comparison
+operand. Equal retains its additional catch frame around Compare. Comparisons with
+other UserValues still delegate to the override, and model values still return 1.
+Fresh Nat wrappers verify sourced/unsourced Compare and Equal against scalar, set,
+Nat, model and null operands without changing singleton metadata.
+
+All 542 function-set and 20 direct override-comparison full rows match Java with
+expand=false, including codes, parameter arrays, source/context and exact wrapper
+counts. Sixteen set shapes cover explicit/interval/string domains; Nat, scalar,
+empty and singleton domains/ranges; finite controls and 2^32 overflow. Operations
+cover valid/invalid/null membership, finite/size, EXCEPT overloads and first
+enumeration; the overflowing set is not enumerated. All 16 original function-set
+methods pass at unchanged bounds, including their four huge indexed-sampling
+profiles. Arbitrary lazy-function conversion, mutable custom overrides and
+iterator reset/recovery remain outside these observations. Other UserValue EXCEPT
+and shared default value failures remain separate work; no new original-method
+inventory credit is claimed.
 
 
 Record comparison/equality shape failures, membership, single-argument Apply and

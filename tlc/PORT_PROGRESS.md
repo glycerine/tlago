@@ -32581,3 +32581,61 @@ pass: 43259 terminal af19ff, original-models.log, 2.287s. No race, broad sweep o
 shortened bounds. Formatting/diff checks pass. HANDOFF and TLC_ARCH record the
 scope; remaining function-set Assert boundaries are next. Overall core TLC parity
 and original-model reconciliation remain incomplete.
+
+
+2026-10-10: Function-set runtime boundaries and overridden-value comparisons.
+
+Previous goal turn makes progress in 9f97f6e; worktree starts clean. Direct poll
+of full original stress session 27326 remains live (6dc256). Latest saved progress
+is 1,250,353,796 / 2,147,483,648, without terminal result or original-method credit.
+Preserve full bounds, no duplicate and no race.
+
+Inspect SetOfFcnsValue source membership, size, EXCEPT and both domain-enumerator
+constructors. Native generic errors lose Assert runtime/source metadata. Correct
+all remaining source-backed domain/range constructor and product-callback failures,
+non-function membership, overflow and EXCEPT overloads. Null member raises typed
+NPE at elem.toFcnRcd; invalid member formatting uses raw argument String before
+pretty-printing the receiver. Size now repeats range.Size after domain.Size,
+preserving source call order instead of reusing the singleton-check size. This
+order is ported from direct source inspection, not an invented call-count test.
+
+Ignored .codex-gotmp/function-set-boundaries compares 542 full rows across sixteen
+set shapes, two source states and seventeen operations, excluding first enumeration
+of the 2^32-overflow set. Shapes exercise explicit/interval/string domains, Nat,
+scalar, empty and singleton bounds, valid finite controls and overflow. Operations
+cover membership with scalar/null/Boolean/tuple/integer- and string-domain function/
+newline-string/empty-tuple arguments, finite/size, EXCEPT root/nested/empty-array
+and first enumeration. expand=false; no persistent invented tests or fixtures.
+The initial comparison has 212 full-row differences (13b555).
+
+Initial correction passes original function-set suites but strict comparison
+still fails in twelve rows (fcc5f1). Preserve after.log and the failure receipt.
+All remaining failures come from UserValue.Compare when a Nat function domain
+compares with an enumerated function domain (b567cc), not the function-set layer.
+Inspect UserValue.java and add a separate 20-row direct comparison/equality matrix
+using fresh Nat wrappers, scalar/set/Nat/model/null operands and source states.
+Its baseline has twelve differences (588c9c). Correct the shared Compare runtime
+failure, retaining receiver formatting before null dereference; Equal's outer
+source catch remains unchanged. The receiver formats before typed NPE, and sourced
+Equal adds two frames rather than one. No singleton source mutation.
+
+Final strict comparisons match all 542 function-set and 20 direct UserValue rows
+(df2c13; driver-final.log and user_compare-final.log). Include full error message,
+category, errorCode, full parameters array, source/context and wrapper count;
+enhanced JVM NPE text alone is excluded. Correct all 212 initial matrix differences
+and all twelve independently measured direct-comparison differences. No new
+original-method inventory credit or synthetic evaluator hooks.
+
+Final Go full unchanged SetOfFcnsValueTest (16 methods), three existing function-set
+checks and both IsEmpty checks pass: 45006 terminal 63c37c, final-values.log, 7.534s.
+Source full unchanged SetOfFcnsValueTest passes JUnit OK (16 tests): 76033 terminal
+11b01c, java-original-values.log, 2.350s. All four huge sampling profiles retain
+11/44/121/321 domain sizes and original samples 0,1,2,799,1024,8932,16933. Earlier
+Go selection before shared UserValue correction passes (8426 terminal aa3325,
+original-values.log, 7.258s); final rerun is justified by that new leaf correction.
+Two original Go models, ConstantRank2AssertError and ValueSemanticsAssume, pass
+on the final code: 94646 terminal 1eb656, final-models.log, 2.512s. Earlier model
+receipt is 32964 terminal 7d9693, original-models.log, 2.331s. No race, broad sweep,
+changed original assertions or shortened bounds. Formatting/diff checks pass.
+HANDOFF/TLC_ARCH state scope and remaining special/default value failures. Overall
+core TLC parity and original-model reconciliation remain incomplete.
