@@ -8804,6 +8804,33 @@ tests positivity; CopiesIn returns that same count even if zero or negative.
 Direct null failures reach MethodValue's existing invocation catch, rather than
 constructing a Java wrapper inside the operation.
 
+Bag receiver and visited-key guards recognize native interfaces containing
+typed-null pointers. IsABag rejects a null count as invalid. BagCardinality and
+matched BagIn/CopiesIn counts enter their source invalid-count diagnostic path;
+arithmetic bagMultiplicity requires the count receiver only when visited.
+Empty domains continue to bypass unused null elements/counts. Both operand
+conversions and captured domain/count evaluation order remain unchanged.
+
+Function rendering requires non-null keys/counts at each source dereference;
+record/tuple shape detection treats null keys as failing instanceof checks.
+Its existing owner catch retains source frames. Scalar equality excludes
+logical null from same-type fast branches. Set, tuple and function equality
+skip right-operand conversion for logical null, matching Java's instanceof Value
+conditional. Existing mismatch paths retain receiver formatting before null
+right-operand failures, including the tuple-to-function delegation and its owner
+frames. Global conversion behavior and CompareTo are unchanged.
+
+An additional 82,256 direct/registered runtime observations cover ten bag
+operators, 53 bag shapes, lookup elements and independent operand source flags.
+Seven concrete typed-null native receiver classes and corresponding count/key
+slots map to actual Java null. All cases agree outside 4,476 stack locations;
+full messages, codes, nullable parameters and source-owner frames remain compared.
+No cases are deferred. Existing 3,328 FoldBag and 7,200 BagOfAll observations
+still agree outside their 140 and 240 stack differences. Original bag/module,
+scalar, set/value, model and replay regressions pass. These observations do not
+prove all BagOfAll/BagUnion internal typed-null cases or arbitrary mutation.
+No persistent tests/fixtures or original-method credit are added.
+
 All 13,952 direct/MethodValue observations agree outside 1,336 native/JVM stack
 locations and repeated-frame elision lines. Forty-eight baseline bag forms cover
 actual parsed lazy lambdas, tuples, records, functions, malformed arrays and

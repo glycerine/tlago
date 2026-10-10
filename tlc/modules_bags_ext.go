@@ -48,7 +48,7 @@ func BagsExtFoldBag(op Value, base Value, bag Value) (Value, error) {
 // The source captures the values array, but re-reads its slot for each bound.
 func bagMultiplicity(values []Value, index int) int32 {
 	value := fcnParameterDomain(values, index)
-	if value == nil {
+	if isNil(value) {
 		panic(NewNullPointerException())
 	}
 	count, ok := value.(*IntValue)

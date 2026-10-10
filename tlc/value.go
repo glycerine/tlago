@@ -274,11 +274,11 @@ func (v *BoolValue) Compare(other Value) (resultInt int, err error) {
 func (v *BoolValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	o, ok := other.(*BoolValue)
-	if !ok {
+	if !ok || o == nil {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		if other == nil {
+		if isNil(other) {
 			panic(NewNullPointerException())
 		}
 		return false, v.runtimeFailure(fmt.Sprintf("Attempted to compare equality of boolean %s with non-boolean:\n%s", ValuesPPR(v), ValuesPPR(other)))
@@ -438,11 +438,11 @@ func (v *IntValue) Compare(other Value) (resultInt int, err error) {
 func (v *IntValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	o, ok := other.(*IntValue)
-	if !ok {
+	if !ok || o == nil {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		if other == nil {
+		if isNil(other) {
 			panic(NewNullPointerException())
 		}
 		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of integer %s with non-integer:\n%s", ValuesPPR(v), ValuesPPR(other)))
@@ -587,13 +587,17 @@ func (v *StringValue) Compare(other Value) (resultInt int, err error) {
 
 func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v.receiver(), &err)
-	o, ok := asStringValue(other)
+	var o *StringValue
+	var ok bool
+	if !isNil(other) {
+		o, ok = asStringValue(other)
+	}
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v.receiver())
 		}
 		selfText := ValuesPPR(v.receiver())
-		if other == nil {
+		if isNil(other) {
 			panic(NewNullPointerException())
 		}
 		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of string %s with non-string:\n%s", selfText, ValuesPPR(other)))

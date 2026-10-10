@@ -350,7 +350,10 @@ func (v *TupleValue) Compare(other Value) (resultInt int, err error) {
 
 func (v *TupleValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	o := asTupleValue(other)
+	var o *TupleValue
+	if !isNil(other) {
+		o = asTupleValue(other)
+	}
 	if o == nil {
 		return asFcnRcdValue(v).Equal(other)
 	}
@@ -687,7 +690,10 @@ func (v *SetEnumValue) Compare(other Value) (resultInt int, err error) {
 
 func (v *SetEnumValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	o, err := tryToSetEnumValue(other)
+	var o *SetEnumValue
+	if !isNil(other) {
+		o, err = tryToSetEnumValue(other)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -696,7 +702,7 @@ func (v *SetEnumValue) Equal(other Value) (resultBool bool, err error) {
 			return mv.modelValueEquals(v)
 		}
 		setText := ValuesPPR(v)
-		if other == nil {
+		if isNil(other) {
 			panic(NewNullPointerException())
 		}
 		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the set %s with the value:\n%s", setText, ValuesPPR(other)))

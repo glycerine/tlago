@@ -37882,3 +37882,92 @@ assertion or workload bound changes and no race instrumentation. This receiver
 correction has focused verification; the full original CommunityModules pass
 from 1b883a4 is retained without claiming it ran after this change. Handoff and
 architecture updated. No original-method completion credit; goal remains active.
+
+
+## Bag receiver/count dispatch, function diagnostics and scalar equality
+
+The preceding goal turn made verified progress in 33ab010. Inspect the clean
+worktree, Bags.java and existing runtime observers. New ignored observer
+.codex-gotmp/bags-null reuses actual constructors and checked test206 source
+nodes. It covers ten operators: IsABag, BagCardinality, BagIn, CopiesIn, BagCup,
+BagToSet, SetToBag, BagUnion, BagDiff and SqSubseteq. Retain 32 existing bag
+forms; add seven typed-null native receiver classes, seven typed-null count
+slots and seven typed-null domain slots, corresponding to actual Java null.
+The native classes are IntValue, StringValue, TupleValue, FcnRcdValue,
+FcnLambdaValue, RecordValue and CounterExample. Lookup arguments add the same
+seven null forms to eight existing element forms. Actual Java reflected methods
+and installed native standard MethodValues exercise direct/registered calls
+with independent operand source flags. No semantic graph or evaluator callback
+is fabricated; native observer serialization/source assignment recognizes logical
+null without altering production. No persistent test or fixture is added.
+
+Source session 13929 terminal 051a56 exits zero. Baseline native 75542 terminal
+8ac227 exits zero: 82,256 rows, no missing/deferred calls, 24,730 raw differences
+and 21,162 outside stack locations. Bag entry and visited-key guards now recognize
+typed-null pointers. IsABag treats a typed-null IntValue count as invalid;
+BagCardinality and matched BagIn/CopiesIn counts enter their existing invalid
+count diagnostics rather than dereferencing the pointer or returning it.
+Arithmetic bagMultiplicity raises the source null failure at the visited count.
+Empty-domain branches still bypass unused null elements/counts. Both operand
+conversions and retained array/count read order remain unchanged.
+
+First native correction session 77085 terminal 3d0261 exits zero: 7,392 raw and
+3,700 outside-stack differences remain. Diagnostic function rendering must
+recognize typed-null keys/counts at its source dereferences, keeping the function
+owner catch. Record/tuple shape detection treats null keys as failing Java
+instanceof checks rather than reading a typed-null StringValue/IntValue payload.
+Avoid changing BagOfAll and BagUnion internal guards beyond this observer's
+coverage; those require their own additional evidence. Their existing normal
+paths remain covered by retained observers.
+
+Second correction session 49418 terminal bdbb52 exits zero: 5,544 raw and 1,852
+outside-stack differences remain. These expose scalar equality against typed-null
+right operands. BoolValue and IntValue exclude typed-null same-class pointers
+from their fast equality branch. StringValue skips string dispatch for logical
+null. Existing mismatch branches require the right receiver at the source
+position; string self-rendering still precedes that failure. No comparison,
+module wrapping or global conversion behavior changes.
+
+First focused original/native session 79369 terminal c64476 exits zero: root
+7.621s, tlc 14.681s, including unchanged SubsetValue matrices and original
+bag/sequence/function/stream/model/replay checks. After the scalar correction,
+focused session 23789 terminal 99216f exits zero: root 7.102s, tlc 10.428s,
+including scalar/model-value checks and relevant original bag/module/model tests.
+No assertion/bound changes or race instrumentation.
+
+Retained FoldBag observer session 70211 terminal 7a6def and BagOfAll observer
+session 24897 terminal 1b7036 exit zero. Comparison a804df confirms all 3,328
+FoldBag rows agree outside 140 stack-location differences and all 7,200 BagOfAll
+rows agree outside 240 stack-location differences. No calls are missing.
+Final full bag comparison remains on the existing native session 83992 pending
+terminal completion; do not restart solely because polling yields. Goal active.
+
+Final comparison session 83992 terminal c35009 exits zero. Comparison 5ded7d
+finds 4,592 raw differences, including 172 remaining outside stack locations;
+its earlier pending status is resolved, but this is not a full matching receipt.
+All remaining keys are BagIn/CopiesIn calls comparing an actual set or tuple
+element against one of the seven typed-null domain slots. Set/tuple/function
+equality converts the right operand only when it is non-null, matching Java's
+instanceof Value conditional. FcnRcdValue's existing mismatch path renders the
+receiver before dereferencing a null right operand. SetEnumValue retains the
+same self-rendering order. This also removes CounterExample's inappropriate
+empty-record conversion on a logical null operand. Owner catches remain at
+their original boundaries. Native session 61938 now runs the complete unchanged
+82,256-case observer again; no partial rows are credited as completion.
+
+Verified native session 61938 terminal 4095dc exits zero. Final comparison 83ebfa
+confirms all 82,256 Java/native rows are present, none deferred: 4,476 raw
+differences are solely platform stack locations/elision and zero remain outside
+those locations. Preserve all intermediate logs and counts; none of the earlier
+partial/intermediate comparisons is represented as full parity. Canonicalization
+retains exception/cause headers, full UTF-16 messages, codes, nullable parameters
+and source-owner frames. Successful result structure is compared without claiming
+post-call input/cache mutation coverage beyond the retained existing observers.
+
+Final focused session 60157 terminal 024792 exits zero: root 7.032s, tlc 11.094s,
+including original bag/module/tuple/function/scalar/stream/model/replay methods
+and relevant set/subset regressions. Original assertions/bounds remain unchanged;
+no race instrumentation. Full CommunityModules receipt from 1b883a4 is retained
+without claiming a post-change rerun. Handoff/architecture now describe this
+contract and its limits. No original-test credit or long-workload credit changes.
+The three original sequential long methods remain pending; goal active.

@@ -1320,13 +1320,16 @@ func (v *FcnRcdValue) compareToInterval(fcn *FcnRcdValue) (int, error) {
 func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
 	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
-	fcn := asFcnRcdValue(other)
+	var fcn *FcnRcdValue
+	if !isNil(other) {
+		fcn = asFcnRcdValue(other)
+	}
 	if fcn == nil {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
 		selfText := ValuesPPR(v)
-		if other == nil {
+		if isNil(other) {
 			panic(NewNullPointerException())
 		}
 		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the function %s with the value:\n%s", selfText, ValuesPPR(other)))
@@ -1952,7 +1955,7 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 			key, _ := asStringValue(fcnParameterDomain(v.Domain, i))
 			sb.WriteString(key.Val.String() + recordArrow)
 			value := fcnParameterDomain(v.Values, i)
-			if value == nil {
+			if isNil(value) {
 				panic(NewNullPointerException())
 			}
 			sb = appendValueString(value, sb, offset, swallow)
@@ -1965,7 +1968,7 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 				sb.WriteString(", ")
 			}
 			value := fcnParameterDomain(v.Values, i)
-			if value == nil {
+			if isNil(value) {
 				panic(NewNullPointerException())
 			}
 			sb = appendValueString(value, sb, offset, swallow)
@@ -1979,7 +1982,7 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 				sb.WriteString(" @@ ")
 			}
 			element := fcnParameterDomain(domain, i)
-			if element == nil {
+			if isNil(element) {
 				panic(NewNullPointerException())
 			}
 			sb = appendValueString(element, sb, offset, swallow)
@@ -1987,7 +1990,7 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 			// Formatting a key can normalize a set sharing the values array.
 			// Read the current slot only after the key has been rendered.
 			value := fcnParameterDomain(v.Values, i)
-			if value == nil {
+			if isNil(value) {
 				panic(NewNullPointerException())
 			}
 			sb = appendValueString(value, sb, offset, swallow)
@@ -2005,6 +2008,9 @@ func (v *FcnRcdValue) isRecordLike() bool {
 		panic(NewNullPointerException())
 	}
 	for _, dval := range v.Domain {
+		if isNil(dval) {
+			return false
+		}
 		sv, ok := asStringValue(dval)
 		if !ok {
 			return false
@@ -2024,7 +2030,7 @@ func (v *FcnRcdValue) isTupleLike() bool {
 		return v.Intv.Low == 1 || mustIntervalSize(v.Intv) == 0
 	}
 	for _, dval := range v.Domain {
-		if _, ok := dval.(*IntValue); !ok {
+		if number, ok := dval.(*IntValue); !ok || number == nil {
 			return false
 		}
 	}

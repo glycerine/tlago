@@ -460,7 +460,13 @@ counts only after equality succeeds and leave invocation wrapping to `MethodValu
 All 13,952 observations agree outside 1,336 native/JVM stack-text differences,
 including 128 actual shared-array normalization cases. The original bag model
 and focused regressions plus the complete CommunityModules all/shiviz target
-pass. Arbitrary equality mutation remains unproven.
+pass. Typed-null receiver, visited-key and count handling now also follows Java
+across ten bag operators. Validation treats null counts as invalid; arithmetic
+fails only when a count is visited. Function diagnostics and scalar/set/tuple/
+function equality retain null dispatch and source frames. All 82,256 additional
+direct/registered observations agree outside 4,476 stack-location differences;
+original/native regressions pass. Retained `FoldBag` and `BagOfAll` comparisons
+still agree. Arbitrary equality mutation remains unproven.
 `BagCup` converts both operands before validation and reads original captured
 counts after equality. It rereads shared domain entries on each comparison.
 All 46,672 observations agree outside 2,624 native/JVM stack-text differences,

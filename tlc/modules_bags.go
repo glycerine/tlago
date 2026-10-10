@@ -5,7 +5,7 @@ func EmptyBag() Value {
 }
 
 func IsABag(value Value) (*BoolValue, error) {
-	if value == nil {
+	if isNil(value) {
 		panic(NewNullPointerException())
 	}
 	fcn := asFcnRcdValue(value)
@@ -18,7 +18,7 @@ func IsABag(value Value) (*BoolValue, error) {
 	}
 	for _, value := range values {
 		count, ok := value.(*IntValue)
-		if !ok || count.Val <= 0 {
+		if !ok || count == nil || count.Val <= 0 {
 			return BoolFalse, nil
 		}
 	}
@@ -26,7 +26,7 @@ func IsABag(value Value) (*BoolValue, error) {
 }
 
 func BagCardinality(value Value) (*IntValue, error) {
-	if value == nil {
+	if isNil(value) {
 		panic(NewNullPointerException())
 	}
 	fcn := asFcnRcdValue(value)
@@ -40,7 +40,7 @@ func BagCardinality(value Value) (*IntValue, error) {
 	}
 	for _, elem := range values {
 		count, ok := elem.(*IntValue)
-		if !ok || count.Val <= 0 {
+		if !ok || count == nil || count.Val <= 0 {
 			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagCardinality", "a bag", ValuesPPR(value))
 		}
 		total += count.Val
@@ -49,7 +49,7 @@ func BagCardinality(value Value) (*IntValue, error) {
 }
 
 func BagIn(elem Value, bag Value) (*BoolValue, error) {
-	if bag == nil {
+	if isNil(bag) {
 		panic(NewNullPointerException())
 	}
 	fcn := asFcnRcdValue(bag)
@@ -62,7 +62,7 @@ func BagIn(elem Value, bag Value) (*BoolValue, error) {
 		panic(NewNullPointerException())
 	}
 	for i, dval := range domain {
-		if elem == nil {
+		if isNil(elem) {
 			panic(NewNullPointerException())
 		}
 		eq, err := elem.Equal(dval)
@@ -71,7 +71,7 @@ func BagIn(elem Value, bag Value) (*BoolValue, error) {
 		}
 		if eq {
 			count, ok := fcnParameterDomain(values, i).(*IntValue)
-			if !ok {
+			if !ok || count == nil {
 				return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "BagIn", "bag", ValuesPPR(bag))
 			}
 			return NewBoolValue(count.Val > 0), nil
@@ -81,7 +81,7 @@ func BagIn(elem Value, bag Value) (*BoolValue, error) {
 }
 
 func CopiesIn(elem Value, bag Value) (*IntValue, error) {
-	if bag == nil {
+	if isNil(bag) {
 		panic(NewNullPointerException())
 	}
 	fcn := asFcnRcdValue(bag)
@@ -94,7 +94,7 @@ func CopiesIn(elem Value, bag Value) (*IntValue, error) {
 		panic(NewNullPointerException())
 	}
 	for i, dval := range domain {
-		if elem == nil {
+		if isNil(elem) {
 			panic(NewNullPointerException())
 		}
 		eq, err := elem.Equal(dval)
@@ -103,7 +103,7 @@ func CopiesIn(elem Value, bag Value) (*IntValue, error) {
 		}
 		if eq {
 			count, ok := fcnParameterDomain(values, i).(*IntValue)
-			if !ok {
+			if !ok || count == nil {
 				return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "CopiesIn", "bag", ValuesPPR(bag))
 			}
 			return count, nil
@@ -113,11 +113,11 @@ func CopiesIn(elem Value, bag Value) (*IntValue, error) {
 }
 
 func BagCup(b1 Value, b2 Value) (Value, error) {
-	if b1 == nil {
+	if isNil(b1) {
 		panic(NewNullPointerException())
 	}
 	fcn1 := asFcnRcdValue(b1)
-	if b2 == nil {
+	if isNil(b2) {
 		panic(NewNullPointerException())
 	}
 	fcn2 := asFcnRcdValue(b2)
@@ -166,7 +166,7 @@ func BagCup(b1 Value, b2 Value) (Value, error) {
 			// Equality may normalize arrays retained by either operand. Read the
 			// captured domain and original multiplicities again after those effects.
 			right, left := domain2[i], domain1[j]
-			if right == nil {
+			if isNil(right) {
 				panic(NewNullPointerException())
 			}
 			eq, err := right.Equal(left)
@@ -190,11 +190,11 @@ func BagCup(b1 Value, b2 Value) (Value, error) {
 }
 
 func BagDiff(b1 Value, b2 Value) (Value, error) {
-	if b1 == nil {
+	if isNil(b1) {
 		panic(NewNullPointerException())
 	}
 	fcn1 := asFcnRcdValue(b1)
-	if b2 == nil {
+	if isNil(b2) {
 		panic(NewNullPointerException())
 	}
 	fcn2 := asFcnRcdValue(b2)
@@ -222,7 +222,7 @@ func BagDiff(b1 Value, b2 Value) (Value, error) {
 		}
 		for j := 0; j < len(domain2); j++ {
 			left, right := domain1[i], domain2[j]
-			if left == nil {
+			if isNil(left) {
 				panic(NewNullPointerException())
 			}
 			eq, err := left.Equal(right)
@@ -243,7 +243,7 @@ func BagDiff(b1 Value, b2 Value) (Value, error) {
 }
 
 func BagUnion(set Value) (Value, error) {
-	if set == nil {
+	if isNil(set) {
 		panic(NewNullPointerException())
 	}
 	setEnum, err := tryToSetEnumValue(set)
@@ -333,11 +333,11 @@ func BagUnion(set Value) (Value, error) {
 }
 
 func SqSubseteq(b1 Value, b2 Value) (*BoolValue, error) {
-	if b1 == nil {
+	if isNil(b1) {
 		panic(NewNullPointerException())
 	}
 	fcn1 := asFcnRcdValue(b1)
-	if b2 == nil {
+	if isNil(b2) {
 		panic(NewNullPointerException())
 	}
 	fcn2 := asFcnRcdValue(b2)
@@ -362,7 +362,7 @@ func SqSubseteq(b1 Value, b2 Value) (*BoolValue, error) {
 		}
 		for j := 0; j < len(domain2); j++ {
 			left, right := domain1[i], domain2[j]
-			if left == nil {
+			if isNil(left) {
 				panic(NewNullPointerException())
 			}
 			eq, err := left.Equal(right)
@@ -446,7 +446,7 @@ func BagOfAll(op Value, bag Value) (Value, error) {
 }
 
 func BagToSet(bag Value) (Value, error) {
-	if bag == nil {
+	if isNil(bag) {
 		panic(NewNullPointerException())
 	}
 	fcn := asFcnRcdValue(bag)
@@ -457,7 +457,7 @@ func BagToSet(bag Value) (Value, error) {
 }
 
 func SetToBag(set Value) (Value, error) {
-	if set == nil {
+	if isNil(set) {
 		panic(NewNullPointerException())
 	}
 	setEnum, err := tryToSetEnumValue(set)
