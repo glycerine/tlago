@@ -449,7 +449,7 @@ func tlcSpecRecord(tool *Tool) Value {
 		tlcSpecImplActs,
 	}
 	values := []Value{
-		initActionSetValue(tool.GetInitStateSpec().ToSlice()),
+		initActionSetValue(tool.GetInitStateSpec()),
 		nextActionSetValue(tool.GetActions()),
 		propertyActionSetValue(tool.requireActionArray(tool.GetTemporals())),
 		propertyActionSetValue(filterInternalActions(tool.requireActionArray(tool.GetInvariants()))),
@@ -489,8 +489,19 @@ func javaRevisionDate(buildDate time.Time) string {
 	return buildDate.Format("2006-01-02T15:04:05.") + strconv.Itoa(millis) + "Z"
 }
 
-func initActionSetValue(actions []*Action) Value {
-	return actionSetValue(actions, initActionRecordValue)
+func initActionSetValue(actions *Vect[*Action]) Value {
+	values := []Value{}
+	for i := 0; i < actions.Size(); i++ {
+		action := actions.ElementAt(i)
+		if action == nil {
+			panic(NewNullPointerException())
+		}
+		values = append(values, initActionRecordValue(action))
+	}
+	if len(values) == 0 {
+		return EmptySet
+	}
+	return NewSetEnumValue(values, false)
 }
 
 func nextActionSetValue(actions []*Action) Value {

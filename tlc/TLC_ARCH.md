@@ -11245,8 +11245,35 @@ logical size, including unused null slots, and advances its index even when a
 read throws. Existing enumerators observe subsequent growth of the vector.
 Focused existing container, function-lambda and initial-state/trace tests pass.
 No persistent test or original-method credit was added; the source tree has no
-TLC Vect-specific original test class. General invalid element counts, other
-vector exceptions and concurrent mutation remain unproven.
+TLC Vect-specific original test class.
+
+`Vect` additionally retains an independent signed 32-bit count, rather than
+using Go slice length. `RemoveAll` assigns it without bounds validation. Add and
+removal preserve count mutations before a failing backing-array access, including
+integer overflow. Capacity growth installs the new zeroed backing array before
+validating the copy length; failed growth therefore retains the replacement.
+CopyInto validates the full source/destination bounds before copying and rejects
+a nil destination even for zero elements. RemoveElementAt preserves sequential
+shifts and any completed changes before a later failure. String/equality/search
+read slots in source order and reject a null dereferenced element. Polymorphic
+Java object equality/hash behavior is not established by these container checks.
+The native ToSlice snapshot helper validates its logical count; it does not
+implement Java Stream behavior.
+
+All 330 ordered count observations match, correcting 242 baseline differences.
+They include negative and excessive counts, both signed-int extremes, insertion,
+removal, first/last access, growth, destination-copy contents, string formatting,
+concatenation, equality and indexed search. All 83 earlier boundary, 13 cached-
+vector and 53 predicate/metadata rows still agree. Actual TLCGetLevel integration
+adds 27 rows covering nine counts through initial generation, combined actions
+and TLCGet("spec"); all agree after correcting 11 consumer differences. Negative
+counts skip forward concatenation/metadata loops. Minimum-int initial generation
+wraps its backward-loop starting index and fails at backing access. Metadata
+converts each current slot before advancing, preserving a null-slot failure ahead
+of a later bounds failure. Focused existing container/function-value checks and
+nine original model/generated-trace tests pass normally. No new persistent tests,
+fixtures or original-method credit. Concurrent mutation, every container operation,
+all initial-vector consumers and VM-generated exception detail remain unproven.
 
 Assumption checking captures current assumption/axiom arrays once, as Java does.
 Axiom flags mask evaluation, including null predicates. A null assumption array

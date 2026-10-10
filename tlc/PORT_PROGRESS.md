@@ -30405,3 +30405,64 @@ saved progress is 659,140,156 / 2,147,483,648; no terminal result or credit. Do
 not restart or shorten it. Overall TLC parity remains incomplete. Next inspect
 Vect invalid-count representation, removal and copy failure ordering against
 source before changing behavior. No email-related work.
+
+
+2026-10-09: Preserve raw Vect counts and initial-vector consumer failures
+
+Previous goal turn made verified progress in 462d5d2 and 2704a63. Current tree
+started clean. Replaced Vect's slice-length logical count with a separate int32
+count and full backing storage. Source removeAll accepts arbitrary signed counts;
+Go slicing previously rejected negative/excessive values. Source add increments
+the count before a failing write, removals decrement before clearing, and signed
+int arithmetic wraps. Growth publishes its new zeroed backing before validating
+System.arraycopy, so failed copies retain changed capacity and contents. Native
+copy validation now precedes writes and preserves nil-destination failures even
+for zero length. Sequential removal preserves earlier shifts on failure. String,
+equality and search visit logical slots in source order with null dereferences.
+The native ToSlice snapshot helper has an explicit bounds guard; it is not a
+translation of Java Streams. General polymorphic object equality/hash and array-
+store type failures are not proved by the chosen integer observations.
+
+Exactly 330 new ordered pinned-Java/native observations match; 242 baseline rows
+differed. Ten counts include -2/-1/0, valid/excessive sizes and signed-int extremes;
+each covers 33 operations with full backing images and copy destinations. These
+include insertion/removal index extremes, empty removal, first/last, no-op/growing
+capacity, nil/short/exact/long destination copies, string/equality/search and
+concatenation. Ignored observers and before/after logs are under
+.codex-gotmp/vect-count-observation/. Setup/baseline session 84106 terminal 0227c2
+and corrected observer session 41699 terminal 430c88 returned status 0. A local
+review corrected removal RHS-read versus target bounds-check order before final
+verification; final count/boundary rerun session 65212 terminal 7067b0 passed.
+
+Extended the observer through unchanged TLCGetLevel with nine actual initial-
+vector counts. All 27 final initial-generation, combined-action and TLCGet("spec")
+rows agree after correcting 11 consumer differences. Combined actions now use
+source concatenation; metadata converts current slots directly rather than making
+a validated whole-vector snapshot. Null slots throw before later out-of-bounds
+access. The initial backward loop uses signed 32-bit subtraction, preserving the
+minimum-int overflow. Source/native consumer baseline session 90173 terminal
+124d1e and corrected session 12545 terminal e2e380 returned status 0. Observer
+source setup initially called a nonexistent public TLCGet signature; corrected
+to the existing actual TLCGetEval semantic-node entry point before execution.
+No Java source, model fixtures, original assertions or original bounds changed.
+
+All earlier 83 boundary, 13 cached-vector and 53 predicate/metadata observations
+still agree. Final regression observers session 62462 terminal 4892b0 passed.
+Final compare.py receipt 18895a requires exactly 330 + 27 + 83 + 13 + 53 ordered
+rows and exact source/native equality; status 0. Logs retain the earlier native
+consumer state separately from final results. No persistent test was invented;
+no direct original TLC Vect class exists to port. Inventory credit is unchanged.
+
+Focused existing native Vect/table checks and complete Java FcnLambdaValue
+translation pass, session 46772 terminal 1bb40f, TLC 0.014s. Original TLCGetLevel,
+TLCGetLevelTTrace, TraceWithLargeSetOfInitialStatesTTrace, ViewMapTTrace and all
+five TraceExpressionSpec tests pass at unchanged bounds. Final root rerun after
+consumer corrections: session 71955 terminal 9a6998, 6.166s, status 0, saved as
+root-final-tests.log. The earlier 6.286s root result preceded consumer changes and
+is not substituted for this final run. No race or broad workspace sweep.
+Formatting and git diff --check pass. No email-related work.
+
+Full original off-heap random stress session 27326 remains live (poll 372f3f).
+Latest saved progress is 677,480,635 / 2,147,483,648; no terminal result or method
+credit. Overall TLC parity remains incomplete. Next audit coverage consumers of
+initial predicate vectors, especially null slots, side effects and failure order.

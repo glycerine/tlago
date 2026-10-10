@@ -719,11 +719,7 @@ func (t *Tool) GetSpecActions() []*Action {
 	}
 	initPred := t.GetInitStateSpec()
 	actions := t.GetActions()
-	init := initPred.ToSlice()
-	out := make([]*Action, 0, len(init)+len(actions))
-	out = append(out, init...)
-	out = append(out, actions...)
-	return out
+	return initPred.Concat(NewVectFrom(actions)).ToSlice()
 }
 
 func (t *Tool) GetInvariants() []*Action {

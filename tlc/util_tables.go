@@ -508,100 +508,119 @@ func longObjTableElemPresent[V any](elem V) bool {
 
 type Vect[E any] struct {
 	data []E
+	// Java's elementCount is independent of backing storage, including invalid
+	// counts assigned by removeAll. Keep its signed 32-bit arithmetic.
+	count int32
 }
 
-func NewVect[E any]() *Vect[E] {
-	return NewVectWithCapacity[E](10)
-}
+func NewVect[E any]() *Vect[E] { return NewVectWithCapacity[E](10) }
 
 func NewVectWithCapacity[E any](capacity int) *Vect[E] {
 	if capacity < 0 {
 		panic(NewNegativeArraySizeException(fmtInt(capacity)))
 	}
-	return &Vect[E]{data: make([]E, 0, capacity)}
+	return &Vect[E]{data: make([]E, capacity)}
 }
 
 func NewVectFrom[E any](values []E) *Vect[E] {
 	out := make([]E, len(values))
 	copy(out, values)
-	return &Vect[E]{data: out}
+	return &Vect[E]{data: out, count: int32(len(values))}
 }
 
 func (v *Vect[E]) AddElement(elem E) {
 	if v == nil {
 		panic(NewNullPointerException())
 	}
-	if len(v.data) == cap(v.data) {
-		v.EnsureCapacity(len(v.data) + 1)
+	if v.count == int32(len(v.data)) {
+		v.EnsureCapacity(int(v.count + 1))
 	}
-	v.data = append(v.data, elem)
+	// elementData[elementCount++] increments before the array bounds check.
+	index := int(v.count)
+	v.count++
+	v.SetElementAt(elem, index)
 }
 
 func (v *Vect[E]) Concat(other *Vect[E]) *Vect[E] {
 	out := NewVect[E]()
-	for _, elem := range v.data {
-		out.AddElement(elem)
+	for i := 0; i < v.Size(); i++ {
+		out.AddElement(v.ElementAt(i))
 	}
-	for _, elem := range other.data {
-		out.AddElement(elem)
+	for i := 0; i < other.Size(); i++ {
+		out.AddElement(other.ElementAt(i))
 	}
 	return out
 }
 
 func (v *Vect[E]) Capacity() int {
-	return cap(v.data)
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return len(v.data)
 }
 
-func (v *Vect[E]) Contains(elem E) bool {
-	return v.IndexOf(elem) != -1
-}
+func (v *Vect[E]) Contains(elem E) bool { return v.IndexOf(elem) != -1 }
 
 func (v *Vect[E]) CopyInto(array []E) {
-	copy(array, v.data)
+	if v == nil || array == nil {
+		panic(NewNullPointerException())
+	}
+	n := v.Size()
+	if n < 0 || n > len(v.data) || n > len(array) {
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
+	}
+	copy(array[:n], v.data[:n])
 }
 
 func (v *Vect[E]) ElementAt(index int) E {
 	if v == nil {
 		panic(NewNullPointerException())
 	}
-	if index < 0 || index >= cap(v.data) {
-		panic(NewArrayIndexOutOfBoundsException(index, cap(v.data)))
+	if index < 0 || index >= len(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(v.data)))
 	}
-	// Vect exposes its backing array, including slots past elementCount.
-	return v.data[:cap(v.data)][index]
+	return v.data[index]
 }
 
 func (v *Vect[E]) Elements() *VectEnumerator[E] {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
 	return &VectEnumerator[E]{vect: v}
 }
 
 func (v *Vect[E]) EnsureCapacity(minCapacity int) {
-	if cap(v.data) >= minCapacity {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if len(v.data) >= minCapacity {
 		return
 	}
-	next := cap(v.data) * 2
-	if next < minCapacity {
-		next = minCapacity
+	next := int32(len(v.data)) * 2
+	if int(next) < minCapacity {
+		next = int32(minCapacity)
 	}
-	if next < 1 {
-		next = 1
+	old := v.data
+	v.data = make([]E, int(next))
+	// The source publishes the replacement before System.arraycopy validates
+	// elementCount; a failed copy therefore leaves the new array installed.
+	n := v.Size()
+	if n < 0 || n > len(old) || n > len(v.data) {
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
 	}
-	out := make([]E, len(v.data), next)
-	copy(out, v.data)
-	v.data = out
+	copy(v.data[:n], old[:n])
 }
 
-func (v *Vect[E]) FirstElement() E {
-	return v.ElementAt(0)
-}
-
-func (v *Vect[E]) IndexOf(elem E) int {
-	return v.IndexOfFrom(elem, 0)
-}
+func (v *Vect[E]) FirstElement() E    { return v.ElementAt(0) }
+func (v *Vect[E]) IndexOf(elem E) int { return v.IndexOfFrom(elem, 0) }
 
 func (v *Vect[E]) IndexOfFrom(elem E, index int) int {
-	for pos := index; pos < len(v.data); pos++ {
-		if reflect.DeepEqual(elem, v.data[pos]) {
+	for pos := index; pos < v.Size(); pos++ {
+		current := v.ElementAt(pos)
+		if !longObjTableElemPresent(elem) {
+			panic(NewNullPointerException())
+		}
+		if reflect.DeepEqual(elem, current) {
 			return pos
 		}
 	}
@@ -612,61 +631,70 @@ func (v *Vect[E]) InsertElementAt(elem E, index int) {
 	if v == nil {
 		panic(NewNullPointerException())
 	}
-	// Java grows a full backing array before checking the insertion index.
-	if len(v.data) == cap(v.data) {
-		v.EnsureCapacity(len(v.data) + 1)
+	if v.count == int32(len(v.data)) {
+		v.EnsureCapacity(int(v.count + 1))
 	}
-	if index < 0 || index > len(v.data) {
+	if index < 0 || index > v.Size() {
 		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
 	}
-	var zero E
-	v.data = append(v.data, zero)
-	copy(v.data[index+1:], v.data[index:])
-	v.data[index] = elem
+	if index < v.Size() {
+		n := v.Size() - index
+		if index >= len(v.data) || n > len(v.data)-index-1 {
+			panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
+		}
+		copy(v.data[index+1:index+1+n], v.data[index:index+n])
+	}
+	v.SetElementAt(elem, index)
+	v.count++
 }
 
-func (v *Vect[E]) IsEmpty() bool {
-	return len(v.data) == 0
-}
-
+func (v *Vect[E]) IsEmpty() bool { return v.Size() == 0 }
 func (v *Vect[E]) LastElement() E {
-	return v.ElementAt(v.Size() - 1)
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.ElementAt(int(v.count - 1))
 }
 
 func (v *Vect[E]) RemoveLastElement() {
 	if v == nil {
 		panic(NewNullPointerException())
 	}
-	if len(v.data) == 0 {
+	if v.count == 0 {
 		panic(NewNoSuchElementException())
 	}
+	v.count--
 	var zero E
-	v.data[len(v.data)-1] = zero
-	v.data = v.data[:len(v.data)-1]
+	v.SetElementAt(zero, int(v.count))
 }
 
 func (v *Vect[E]) SetElementAt(elem E, index int) {
 	if v == nil {
 		panic(NewNullPointerException())
 	}
-	if index < 0 || index >= cap(v.data) {
-		panic(NewArrayIndexOutOfBoundsException(index, cap(v.data)))
+	if index < 0 || index >= len(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(v.data)))
 	}
-	v.data[:cap(v.data)][index] = elem
+	v.data[index] = elem
 }
 
 func (v *Vect[E]) RemoveElementAt(index int) {
-	if index < 0 || index >= len(v.data) {
-		panic("Vect index out of bounds")
+	if v == nil {
+		panic(NewNullPointerException())
 	}
-	copy(v.data[index:], v.data[index+1:])
+	for i := int32(index) + 1; i < v.count; i++ {
+		v.SetElementAt(v.ElementAt(int(i)), int(i-1))
+	}
+	v.count--
 	var zero E
-	v.data[len(v.data)-1] = zero
-	v.data = v.data[:len(v.data)-1]
+	v.SetElementAt(zero, int(v.count))
 }
 
 func (v *Vect[E]) RemoveAll(cnt int) {
-	v.data = v.data[:cnt]
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	v.count = int32(cnt)
 }
 
 func (v *Vect[E]) Pop() E {
@@ -674,36 +702,41 @@ func (v *Vect[E]) Pop() E {
 	v.RemoveLastElement()
 	return elem
 }
-
-func (v *Vect[E]) Push(elem E) {
-	v.AddElement(elem)
-}
+func (v *Vect[E]) Push(elem E) { v.AddElement(elem) }
 
 func (v *Vect[E]) Size() int {
 	if v == nil {
 		panic(NewNullPointerException())
 	}
-	return len(v.data)
+	return int(v.count)
 }
 
+// ToSlice is a native snapshot helper, not Java Vect.stream. It rejects counts
+// that cannot address the backing array before allocating the snapshot.
 func (v *Vect[E]) ToSlice() []E {
-	if v == nil {
-		panic(NewNullPointerException())
+	n := v.Size()
+	if n < 0 || n > len(v.data) {
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
 	}
-	out := make([]E, len(v.data))
-	copy(out, v.data)
+	out := make([]E, n)
+	copy(out, v.data[:n])
 	return out
 }
 
 func (v *Vect[E]) Equal(other *Vect[E]) bool {
-	if v == nil || other == nil {
-		return v == other
+	if v == nil {
+		panic(NewNullPointerException())
 	}
-	if len(v.data) != len(other.data) {
+	if other == nil || v.count != other.count {
 		return false
 	}
-	for i := range v.data {
-		if !reflect.DeepEqual(v.data[i], other.data[i]) {
+	for i := 0; i < v.Size(); i++ {
+		elem := v.ElementAt(i)
+		otherElem := other.ElementAt(i)
+		if !longObjTableElemPresent(elem) {
+			panic(NewNullPointerException())
+		}
+		if !reflect.DeepEqual(elem, otherElem) {
 			return false
 		}
 	}
@@ -711,29 +744,40 @@ func (v *Vect[E]) Equal(other *Vect[E]) bool {
 }
 
 func (v *Vect[E]) String() string {
-	parts := make([]string, len(v.data))
-	for i, elem := range v.data {
-		parts[i] = fmt.Sprint(elem)
+	parts := []string{}
+	appendElement := func(index int) {
+		elem := v.ElementAt(index)
+		if !longObjTableElemPresent(elem) {
+			panic(NewNullPointerException())
+		}
+		parts = append(parts, fmt.Sprint(elem))
+	}
+	if v.Size() != 0 {
+		appendElement(0)
+	}
+	for i := 1; i < v.Size(); i++ {
+		appendElement(i)
 	}
 	return "{" + strings.Join(parts, ",") + "}"
 }
 
 type VectEnumerator[E any] struct {
 	vect  *Vect[E]
-	index int
+	index int32
 }
 
 func (e *VectEnumerator[E]) HasMoreElements() bool {
-	return e != nil && e.vect != nil && e.index < len(e.vect.data)
+	if e == nil || e.vect == nil {
+		panic(NewNullPointerException())
+	}
+	return e.index < e.vect.count
 }
 
 func (e *VectEnumerator[E]) NextElement() E {
 	if e == nil || e.vect == nil {
 		panic(NewNullPointerException())
 	}
-	// The source uses elementData[index++], without an elementCount check.
-	// Increment even when the backing-array access fails.
-	index := e.index
+	index := int(e.index)
 	e.index++
 	return e.vect.ElementAt(index)
 }

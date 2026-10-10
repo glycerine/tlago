@@ -14,8 +14,8 @@ const (
 func (t *Tool) GetInitStatesImpl(functor *StateFunctor) error {
 	init := t.GetInitStateSpec()
 	acts := emptyActionItemListExt
-	for i := init.Size() - 1; i > 0; i-- {
-		elem := init.ElementAt(i)
+	for i := int32(init.Size()) - 1; i > 0; i-- {
+		elem := init.ElementAt(int(i))
 		if elem == nil {
 			panic(NewNullPointerException())
 		}

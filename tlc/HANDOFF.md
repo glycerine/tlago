@@ -138,11 +138,13 @@ was needed for these cases. Action-composition accounting and functor delegation
 also match all 98 observations across seven existing configurations in ordinary
 and probabilistic modes; all seven original composition tests pass. This includes
 Java's unsupported probabilistic composition paths and partial register effects.
-`Vect` now preserves source insertion growth before index failure, negative-
-capacity and empty-removal exceptions, and enumerator backing-array access and
-advancement on failure. All 83 bounded observations and focused existing tests
-pass. Next source audit: `Vect` invalid-count behavior, removal and copy failure
-ordering. Original model-test reconciliation remains open.
+`Vect` now keeps its signed 32-bit logical count separately from backing storage,
+preserving invalid counts, overflow and mutation before failures. All 330 count
+observations, 27 real-model consumer observations and 149 earlier observations
+match Java. Initial generation, combined actions and `TLCGet("spec")` preserve
+source iteration and first failures. Focused original tests pass. Next audit:
+coverage consumers of the initial-predicate vector, including null slots and
+failure ordering. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
