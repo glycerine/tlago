@@ -33633,3 +33633,47 @@ original-method inventory credit. Update current handoff and contracts.
 Original full stress handle 27326 remains live (b82857), latest saved progress
 1,459,177,864 / 2,147,483,648 (ee75cf). No terminal result or long-method credit;
 preserve its original handle, memory budget, bounds and artifacts.
+
+
+2026-10-10: Resume generation boolean failure parity after power outage
+
+Resume from clean ede012c. Initial process-list visibility misleadingly suggested
+that original full stress session 27326 had stopped; direct polling confirms it
+remains live (50ffbe). Preserve the original handle, budget, bounds and artifacts.
+Latest saved progress is 1,466,731,906 / 2,147,483,648 (722d4a), with no terminal
+result or long-method credit.
+
+Ignored .codex-gotmp/generation-boolean-metadata compares actual Github817
+CheckBoth's formal application, opRec's invalid IF guard, TypeOK's existing set
+expression and legacy test14's nested CASE. Use original parsed semantic nodes,
+boolean/integer/string bindings and two base contexts, with separate source JVMs
+per model. No invented persistent test, fixture, evaluator callback or graph
+mutation. Initial 132 rows show 120 differences (d59623), all failures. Restore
+runtime category and exact expression/context ownership for direct values, IF,
+CASE and literal predicates. Invalid CASE guards retain the RHS arm. Source
+Assert's expression-only overload supplies Context.Empty for next user-defined
+value failures, not a null context; inspected Assert.java and observed identity
+correct the initial inference from the call signature.
+
+All initial 132 final rows agree (439cd6). Add six actual builtin-set predicate
+rows to distinguish the shared helpers' source paths. These expose initial
+builtin GENERAL/null-parameter failures (c68e42) and confirm next builtin failures
+retain the incoming context, unlike user-defined values. Separate initial builtin
+validation and pass the correct context at each next helper call. All 138 final
+rows agree (84499 terminal 11a295; comparison 0bcc54): complete messages,
+category/code/parameters, expression/context identity including Empty/null,
+fingerprint frames, short-circuit results and emitted-state counts. Java enhanced
+NPE messages disabled. Action-list optimizations, implication and temporal
+predicate-generation diagnostics remain separate comparisons.
+
+Eight original checks pass unchanged: Github817/b/c/d/e, LegacySuiteTest14,
+ValueSemanticsAssume and Debug02Debugger (65956 terminal 2410ae; original-models.log,
+2.820s). Focused StateFunctor, bounded CHOOSE, function-context and original
+EvalControl checks pass (87308 terminal bc0ba7; existing-checks.log, 0.017s).
+The expanded helper distinction receives a final rerun recorded below. No race,
+broad suite, reduced bounds, changed assertions or original-method inventory
+credit. Update current handoff and architecture contracts.
+
+Final checks pass after the builtin distinction (22174 terminal 6d7c78;
+final-checks.log, root 2.742s and tlc 0.018s; inspected 968ff6). Original stress
+27326 remains live on final direct poll (061f49), without terminal credit.

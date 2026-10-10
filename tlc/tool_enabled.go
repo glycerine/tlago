@@ -1,5 +1,7 @@
 package tlc
 
+import "fmt"
+
 func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(pred)
 	defer func() { done(err) }()
@@ -33,7 +35,7 @@ func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, 
 	case *LabelNode:
 		return t.EnabledImpl(pred.Body, acts, c, s0, s1, cm)
 	default:
-		return nil, newTLCError(ECGeneral, "attempted to compute ENABLED on a non-boolean expression: %s", SemanticString(pred))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to compute ENABLED on a non-boolean expression.\n"+SemanticString(pred), pred, c)
 	}
 }
 
@@ -107,9 +109,9 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 				if err != nil {
 					return nil, err
 				}
-				return t.enabledContinueIfBool(pred, bval, acts, s0, s1, cm)
+				return t.enabledContinueIfBool(pred, bval, c, acts, s0, s1, cm)
 			}
-			return t.enabledContinueIfBool(pred, v, acts, s0, s1, cm)
+			return t.enabledContinueIfBool(pred, v, c, acts, s0, s1, cm)
 		default:
 			if val == nil {
 				return nil, newTLCError(ECGeneral, "undefined operator in ENABLED expression: %s", opNode)
@@ -167,7 +169,7 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 		}
 		bguard, ok := guard.(*BoolValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "In computing ENABLED, a non-boolean expression(%s) was used as the guard condition of an IF.\n%s", guard.KindString(), SemanticString(pred))
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, a non-boolean expression(%s) was used as the guard condition of an IF.\n%s", guard.KindString(), SemanticString(pred)), pred, c)
 		}
 		idx := 2
 		if bguard.Val {
@@ -230,14 +232,16 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 		if err != nil {
 			return nil, err
 		}
-		return t.enabledContinueIfBool(pred, bval, acts, s0, s1, cm)
+		return t.enabledContinueIfBool(pred, bval, c, acts, s0, s1, cm)
 	}
 }
 
-func (t *Tool) enabledContinueIfBool(pred SemanticNode, value Value, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) enabledContinueIfBool(pred SemanticNode, value Value, c *Context, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
 	bval, ok := value.(*BoolValue)
 	if !ok {
-		return nil, newTLCErrorCode(ECTLCExpectedExpressionInComputing, "ENABLED", "boolean", value.String(), SemanticString(pred))
+		failure := NewTLCRuntimeException(ECTLCExpectedExpressionInComputing, "ENABLED", "boolean", value.String(), SemanticString(pred))
+		failure.Expr, failure.Ctxt = pred, c
+		return nil, failure
 	}
 	if bval.Val {
 		return t.EnabledFromActionList(acts, s0, s1, cm)
@@ -327,14 +331,14 @@ func (t *Tool) enabledCase(pred *OpApplNode, acts *ActionItemList, c *Context, s
 		}
 		bval, ok := value.(*BoolValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "In computing ENABLED, a non-boolean expression(%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1]))
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, a non-boolean expression(%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1])), pair.Args[1], c)
 		}
 		if bval.Val {
 			return t.EnabledImpl(pair.Args[1], acts, c, s0, s1, cm)
 		}
 	}
 	if other == nil {
-		return nil, newTLCError(ECGeneral, "In computing ENABLED, TLC encountered a CASE with no conditions true.\n%s", SemanticString(pred))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, TLC encountered a CASE with no conditions true.\n%s", SemanticString(pred)), pred, c)
 	}
 	return t.EnabledImpl(other, acts, c, s0, s1, cm)
 }

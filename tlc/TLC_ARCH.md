@@ -7489,7 +7489,20 @@ bound-value identity and action short circuits. The tuple-mismatch carrier follo
 the inspected source branch and existing focused diagnostics; it is not directly
 covered by this comparison. Lazy subset predicates, arbitrary mid-evaluation graph
 mutation and malformed quantifier arrays remain outside these observations.
-Generation-specific boolean diagnostics remain a separate comparison.
+Initial/next generation and ENABLED boolean failures use detailed runtime
+carriers for direct user-defined values, builtin results, IF, CASE and literal
+predicates. Coded value failures retain code 2247 and their original parameters;
+initial builtin failures instead use GENERAL with null parameters. Next
+user-defined value failures use the source Assert overload's `Context.Empty`,
+while builtin failures retain the incoming context. IF and no-arm CASE failures
+retain the whole application; invalid CASE guards retain the arm's RHS, matching
+source generation rather than Eval's guard ownership. Literal ENABLED diagnostics
+preserve source capitalization, punctuation and line break. All 138 bounded
+observations on actual Github817 and legacy test14 nodes agree, including exact
+expression/context identity, messages, category/code/parameters, frame counts,
+short circuits and emitted-state counts. No semantic graphs were fabricated or
+mutated. Action-list optimizations, implication, temporal-generation diagnostics,
+malformed CASE arrays and coverage side effects remain outside this comparison.
 
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays

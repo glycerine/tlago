@@ -87,7 +87,7 @@ func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList
 	case *LabelNode:
 		return t.GetInitStatesForPredicate(init.Body, acts, c, ps, states, cm)
 	default:
-		return newTLCError(ECGeneral, "The init state relation is not a boolean expression.\n%s", SemanticString(init))
+		return NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("The init state relation is not a boolean expression.\n%s", SemanticString(init)), init, c)
 	}
 }
 
@@ -192,9 +192,9 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 				if err != nil {
 					return err
 				}
-				return t.continueInitIfBool(init, bval, acts, ps, states, cm)
+				return t.continueInitIfBool(init, bval, c, acts, ps, states, cm)
 			}
-			return t.continueInitIfBool(init, v, acts, ps, states, cm)
+			return t.continueInitIfBool(init, v, c, acts, ps, states, cm)
 		default:
 			if val == nil {
 				return newTLCError(ECGeneral, "undefined operator in initial predicate: %s", opNode)
@@ -243,7 +243,7 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 		}
 		bguard, ok := guard.(*BoolValue)
 		if !ok {
-			return newTLCError(ECGeneral, "In computing initial states, a non-boolean expression (%s) was used as the condition of an IF.\n%s", guard.KindString(), SemanticString(init))
+			return NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing initial states, a non-boolean expression (%s) was used as the condition of an IF.\n%s", guard.KindString(), SemanticString(init)), init, c)
 		}
 		idx := 2
 		if bguard.Val {
@@ -280,14 +280,23 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 		if err != nil {
 			return err
 		}
-		return t.continueInitIfBool(init, bval, acts, ps, states, cm)
+		value, ok := bval.(*BoolValue)
+		if !ok {
+			return NewTLCDetailedRuntimeException(ECGeneral, "In computing initial states, TLC expected a boolean expression,\nbut instead found "+bval.String()+".\n"+SemanticString(init), init, c)
+		}
+		if value.Val {
+			return t.GetInitStatesFromActionList(acts, ps, states, cm)
+		}
+		return nil
 	}
 }
 
-func (t *Tool) continueInitIfBool(init SemanticNode, value Value, acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
+func (t *Tool) continueInitIfBool(init SemanticNode, value Value, c *Context, acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
 	bval, ok := value.(*BoolValue)
 	if !ok {
-		return newTLCErrorCode(ECTLCExpectedExpressionInComputing, "initial states", "boolean", value.String(), SemanticString(init))
+		failure := NewTLCRuntimeException(ECTLCExpectedExpressionInComputing, "initial states", "boolean", value.String(), SemanticString(init))
+		failure.Expr, failure.Ctxt = init, c
+		return failure
 	}
 	if bval.Val {
 		return t.GetInitStatesFromActionList(acts, ps, states, cm)
@@ -331,14 +340,14 @@ func (t *Tool) initCase(init *OpApplNode, acts *ActionItemList, c *Context, ps *
 		}
 		bval, ok := value.(*BoolValue)
 		if !ok {
-			return newTLCError(ECGeneral, "In computing initial states, a non-boolean expression (%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1]))
+			return NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing initial states, a non-boolean expression (%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1])), pair.Args[1], c)
 		}
 		if bval.Val {
 			return t.GetInitStatesForPredicate(pair.Args[1], acts, c, ps, states, cm)
 		}
 	}
 	if other == nil {
-		return newTLCError(ECGeneral, "In computing initial states, TLC encountered a CASE with no conditions true.\n%s", SemanticString(init))
+		return NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing initial states, TLC encountered a CASE with no conditions true.\n%s", SemanticString(init)), init, c)
 	}
 	return t.GetInitStatesForPredicate(other, acts, c, ps, states, cm)
 }
@@ -486,7 +495,7 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 	case *LabelNode:
 		return t.GetNextStatesForPredicate(action, pred.Body, acts, c, s0, s1, nss, cm)
 	default:
-		return s1, newTLCError(ECGeneral, "The next state relation is not a boolean expression.\n%s", SemanticString(pred))
+		return s1, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("The next state relation is not a boolean expression.\n%s", SemanticString(pred)), pred, c)
 	}
 }
 
@@ -656,9 +665,9 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 				if err != nil {
 					return s1, err
 				}
-				return t.continueNextIfBool(action, pred, bval, acts, s0, s1, nss, cm)
+				return t.continueNextIfBool(action, pred, bval, EmptyContext, acts, s0, s1, nss, cm)
 			}
-			return t.continueNextIfBool(action, pred, v, acts, s0, s1, nss, cm)
+			return t.continueNextIfBool(action, pred, v, EmptyContext, acts, s0, s1, nss, cm)
 		default:
 			if val == nil {
 				return s1, newTLCError(ECGeneral, "undefined operator in next-state predicate: %s", opNode)
@@ -729,7 +738,7 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		}
 		bguard, ok := guard.(*BoolValue)
 		if !ok {
-			return s1, newTLCError(ECGeneral, "In computing next states, a non-boolean expression (%s) was used as the condition of an IF.%s", guard.KindString(), SemanticString(pred))
+			return s1, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing next states, a non-boolean expression (%s) was used as the condition of an IF.%s", guard.KindString(), SemanticString(pred)), pred, c)
 		}
 		idx := 2
 		if bguard.Val {
@@ -770,7 +779,7 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		if err != nil {
 			return s1, err
 		}
-		return t.continueNextIfBool(action, pred, bval, acts, s0, s1, nss, cm)
+		return t.continueNextIfBool(action, pred, bval, c, acts, s0, s1, nss, cm)
 	}
 }
 
@@ -799,10 +808,13 @@ func (t *Tool) initFcnApply(init *OpApplNode, acts *ActionItemList, c *Context, 
 	return nil
 }
 
-func (t *Tool) continueNextIfBool(action *Action, pred SemanticNode, value Value, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) continueNextIfBool(action *Action, pred SemanticNode, value Value, c *Context, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
 	bval, ok := value.(*BoolValue)
 	if !ok {
-		return s1, newTLCErrorCode(ECTLCExpectedExpressionInComputing, "next states", "boolean", value.String(), SemanticString(pred))
+		failure := NewTLCRuntimeException(ECTLCExpectedExpressionInComputing, "next states", "boolean", value.String(), SemanticString(pred))
+		// User-defined values supply Context.Empty; builtin evaluation retains c.
+		failure.Expr, failure.Ctxt = pred, c
+		return s1, failure
 	}
 	if bval.Val {
 		return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
@@ -957,14 +969,14 @@ func (t *Tool) nextCase(action *Action, pred *OpApplNode, acts *ActionItemList, 
 		}
 		bval, ok := value.(*BoolValue)
 		if !ok {
-			return s1, newTLCError(ECGeneral, "In computing next states, a non-boolean expression (%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1]))
+			return s1, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing next states, a non-boolean expression (%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1])), pair.Args[1], c)
 		}
 		if bval.Val {
 			return t.GetNextStatesForPredicate(action, pair.Args[1], acts, c, s0, s1, nss, armCM)
 		}
 	}
 	if other == nil {
-		return s1, newTLCError(ECGeneral, "In computing next states, TLC encountered a CASE with no conditions true.\n%s", SemanticString(pred))
+		return s1, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing next states, TLC encountered a CASE with no conditions true.\n%s", SemanticString(pred)), pred, c)
 	}
 	otherCM := cm
 	if CoverageEnabled() && len(pred.Args) > 0 {
