@@ -91,8 +91,11 @@ current processor arrays; all 56 ownership/metadata/filter observations match,
 including empty/null arrays. Invariant, implied-property and temporal action/name
 getters now share current processor arrays; all 128 observed rows match Java.
 Config processing preserves non-null empty arrays, and metadata/liveness array
-failures match. Next source audit: initial/next predicates and assumption getters;
-other action-array consumers' null behavior remains unproven.
+failures match. Initial/next predicates and assumptions now read current processor
+values, including initial generation and axiom checking; all 53 observations match
+Java. Next source audit: reward/periodic predicates, whose consumers still read
+setup fields. Other action-array null behavior and cached initial-vector growth
+remain unproven.
 
 ## Verification baseline and test credit
 

@@ -115,16 +115,34 @@ func (t *Tool) CheckAssumptionsImpl() int {
 			return PrintError(err.Code, err.Params...)
 		}
 	}
-	for i, assumption := range t.Assumptions {
-		if i < len(t.AssumptionIsAxiom) && t.AssumptionIsAxiom[i] {
+	assumptions := t.GetAssumptions()
+	semanticGraphArrayLength(t.SpecProcessor != nil, assumptions)
+	axioms := t.GetAssumptionIsAxiom()
+	for i, assumption := range assumptions {
+		if t.SpecProcessor != nil && (axioms == nil || i >= len(axioms)) {
+			if semanticExploreNull(assumption) {
+				panic(NewNullPointerException())
+			}
+			var failure error = NewNullPointerException()
+			if axioms != nil {
+				failure = NewArrayIndexOutOfBoundsException(i, len(axioms))
+			}
+			return PrintErrorNullable(ECTLCAssumptionEvaluationError, javaString(SemanticString(assumption)), javaThrowableDetailMessage(failure))
+		}
+		if i < len(axioms) && axioms[i] {
 			continue
 		}
+		if t.SpecProcessor != nil && semanticExploreNull(assumption) {
+			panic(NewNullPointerException())
+		}
 		description := SemanticString(assumption)
-		switch assumption.(type) {
-		case *NumeralNode, *DecimalNode:
-		default:
-			if location, ok := semanticNodeSourceLocation(assumption); ok {
-				description = location.String()
+		if t.SpecProcessor == nil {
+			switch assumption.(type) {
+			case *NumeralNode, *DecimalNode:
+			default:
+				if location, ok := semanticNodeSourceLocation(assumption); ok {
+					description = location.String()
+				}
 			}
 		}
 		ok, err := t.IsValidExpr(assumption, EmptyContext)

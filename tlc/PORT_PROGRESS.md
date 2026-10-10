@@ -29275,3 +29275,59 @@ Stress session 27326 remains live (poll 474edb), latest saved observation
 Overall parity remains incomplete. Other action-array consumers' null handling is
 unproven. Next concrete ownership audit: initial/next predicate and assumption
 getters through the processor and tool.
+
+
+2026-10-09: Current initial/next predicates and assumptions
+
+Java Spec reads current initial/next predicates and assumption/axiom arrays from
+the processor. Go retained setup snapshots and copied getter arrays. Several
+consumers bypassed getters entirely. Tool getters now delegate; processor initial,
+assumption and axiom arrays retain slices. Initial-state generation (including
+debugger dispatch), action ID assignment and combined spec-action construction
+read the initial getter. Next-action preparation reads the next getter, while an
+already prepared action cache remains stable under direct processor replacement,
+as in Java. The native explicit next setter updates the processor and resets its
+native cache. Initial/assumption containers start non-null empty. Source initial
+metadata/generation reject a null collection.
+
+Assumption checks capture current arrays, respect axiom masking and preserve
+source null/missing-flag diagnostic boundaries. Unmasked null predicates throw
+the generic null exception; missing/short axiom arrays return the assumption-
+evaluation code. Source descriptions now call SemanticString rather than forcing
+a cached location, preserving plain-formula formatting. Native adapters retain
+their optional flag and location-description behavior.
+
+Ignored standalone drivers load unchanged TLCGetLevel in pinned Java and Go.
+Initial sharing/writes/replacement/empty/null/restoration compare metadata and
+actual generated-state counts. Next replacement/null/restoration also checks the
+unchanged prepared action cache. Assumption/axiom sharing, false replacement,
+masking, missing/short flags, empty/null containers and null predicates compare
+results/exception categories. All 49 rows agree. Four additional rows compare
+complete captured false-assumption diagnostic text across absent/empty/false/true
+plain-formula modes; all agree byte for byte. Total 53 rows, baseline differs in
+39; final comparison bd7397, status 0. Logs under .codex-gotmp/:
+predicate-owner-java.log, predicate-owner-before.log, predicate-owner-after.log;
+drivers/baseline overlays stay ignored under predicate-owner-observation. javac
+emits only the deprecated frontend overload note. No persistent test/fixture
+changes and no original-method inventory credit. VM-generated detail messages
+for missing/short flags and growth through previously cached slice headers are
+not established by these bounded observations.
+
+Selected existing original TLCGetAll/TLCGetLevel/TLCSetInit, A/B/C coverage,
+Debug02-Debug05, ReportCoverage01-04, PostAssumption, ValueSemanticsAssume,
+EmptySetEqAssume, KSubsetAssume and SimulationTestAssumption plus native Tool,
+initialization/successor checks pass normally: predicate-owner-originals.log,
+terminal a03f4e, status 0; root 10.946 seconds, TLC 7.142 seconds.
+All original DoInitFunctor methods and simulator initial invariant/evaluation/
+underspecification checks pass: predicate-owner-init-originals.log,
+terminal a60e11, status 0, 0.821 seconds. Existing original generated-trace safety
+BFS/simulation, runtime, deadlock and lasso tests pass; these inspect processor
+initial/next getters and execute their source trace states:
+predicate-owner-trace-originals.log, terminal cc649c, status 0, 4.015 seconds.
+Formatting and git diff --check pass. No full workspace/XML/ApalacheIR sweep,
+shortened bounds or long race selection.
+
+Stress session 27326 remains live (poll 0a1d0b), latest saved observation
+291,218,175 / 2,147,483,648 iterations, with no terminal result or method credit.
+Overall parity remains incomplete. Next concrete audit: reward/periodic getters
+and consumers, which still read setup fields instead of current processor values.

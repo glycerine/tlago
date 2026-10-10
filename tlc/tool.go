@@ -324,6 +324,9 @@ func (t *Tool) SetNextStateSpec(action *Action) {
 		return
 	}
 	t.NextStateSpec = action
+	if t.SpecProcessor != nil {
+		t.SpecProcessor.NextPred = action
+	}
 	t.Actions = nil
 	t.actionsPrepared = false
 }
@@ -337,7 +340,7 @@ func (t *Tool) AssignActionIDs() {
 
 func (t *Tool) assignActionIDs(actions []*Action) {
 	id := 0
-	for _, action := range t.InitStateSpec {
+	for _, action := range t.requireActionArray(t.GetInitStateSpec()) {
 		if action != nil {
 			action.SetID(id)
 		}
@@ -358,7 +361,7 @@ func (t *Tool) GetInitStates(functor *StateFunctor) error {
 	if t == nil || functor == nil {
 		return nil
 	}
-	if len(t.InitStateSpec) != 0 {
+	if t.SpecProcessor != nil || len(t.GetInitStateSpec()) != 0 {
 		return t.GetInitStatesImpl(functor)
 	}
 	for _, state := range t.InitStates {
@@ -700,6 +703,9 @@ func (t *Tool) GetInitStateSpec() []*Action {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetInitPred()
+	}
 	return append([]*Action(nil), t.InitStateSpec...)
 }
 
@@ -708,8 +714,9 @@ func (t *Tool) GetSpecActions() []*Action {
 		return nil
 	}
 	actions := t.GetActions()
-	out := make([]*Action, 0, len(t.InitStateSpec)+len(actions))
-	out = append(out, t.InitStateSpec...)
+	init := t.requireActionArray(t.GetInitStateSpec())
+	out := make([]*Action, 0, len(init)+len(actions))
+	out = append(out, init...)
 	out = append(out, actions...)
 	return out
 }
@@ -905,6 +912,9 @@ func (t *Tool) GetNextStateSpec() *Action {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetNextPred()
+	}
 	return t.NextStateSpec
 }
 
@@ -1024,12 +1034,18 @@ func (t *Tool) GetAssumptions() []SemanticNode {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetAssumptions()
+	}
 	return append([]SemanticNode(nil), t.Assumptions...)
 }
 
 func (t *Tool) GetAssumptionIsAxiom() []bool {
 	if t == nil {
 		return nil
+	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetAssumptionIsAxiom()
 	}
 	return append([]bool(nil), t.AssumptionIsAxiom...)
 }

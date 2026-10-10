@@ -11189,8 +11189,37 @@ empty/null arrays and restoration. It compares action/name lengths, sharing and
 first values, full source spec metadata and the implied-temporal liveness
 predicate. All 128 rows agree; baseline differs in 105. Original empty families
 remain non-null in Go after processing. No new source fixtures or persistent
-tests. These observations do not establish other action-array consumers' null
-behavior or initial/next predicate and assumption ownership.
+tests. Other action-array consumers' null behavior remains unproven.
+
+Initial/next predicate and assumption getters now delegate to current processor
+values. Processor initial-predicate, assumption and axiom-flag getters retain
+their slices. Initial generation, debugger initial-generation dispatch, action ID
+assignment and combined spec-action construction use the initial getter. Action
+preparation reads the next getter; an already prepared next-action cache remains
+stable under direct processor replacement, matching Java's cached actions. The
+native explicit next setter updates the processor as well as invalidating its
+native action cache. Source initial and assumption arrays start non-null empty;
+source initial generation and metadata reject a null initial collection.
+
+Assumption checking captures current assumption/axiom arrays once, as Java does.
+Axiom flags mask evaluation, including null predicates. A null assumption array
+throws the source null exception. Missing/short axiom arrays yield the source
+assumption-evaluation diagnostic code; an unmasked null assumption throws the
+null exception. Source diagnostic descriptions use `SemanticString`, preserving
+presence-based plain-formula formatting; native helpers retain their existing
+location descriptions and optional flags. VM-generated exception detail text
+for missing/short flag arrays is not established by this comparison.
+
+An ignored pinned-Java/native driver loads unchanged TLCGetLevel. It observes
+initial getter sharing and replacement, actual generated-state counts and init
+metadata; next replacement/null/restoration with cached actions; assumption and
+axiom sharing, false predicates, masking, replacement, empty/null containers,
+short flags and null predicates. All 49 rows agree. Four additional rows compare
+the complete false-assumption diagnostic output across absent/empty/false/true
+plain-formula properties; they agree byte for byte. Baseline differs in 39 of the
+53 rows. Java initial predicates use a mutable Vect while the native API exposes
+slices; growth observed through previously cached slice headers is not proven.
+Reward and periodic consumers still use setup fields and need their own audit.
 
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing

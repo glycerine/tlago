@@ -198,7 +198,7 @@ func debugToolGetInitStates(t *Tool, functor *StateFunctor) error {
 	}
 	wrapped := debugWrapStateFunctor(t, functor)
 	_, err := t.withDebugEvalModeAny(DebugEvalState, func() (any, error) {
-		if len(t.InitStateSpec) != 0 {
+		if t.SpecProcessor != nil || len(t.GetInitStateSpec()) != 0 {
 			return nil, t.GetInitStatesImpl(wrapped)
 		}
 		for _, state := range t.InitStates {

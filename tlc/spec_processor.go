@@ -273,13 +273,16 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 		config = newModelConfig("", false)
 	}
 	p := &SpecProcessor{
-		RootFile:         rootFile,
-		ToolID:           specToolID(),
-		Defns:            defns,
-		Config:           config,
-		ProcessedDefs:    NewInsMap[*OpDefNode, struct{}](),
-		UnprocessedDefns: NewDefns(),
-		ConstantDefns:    NewInsMap[*ModuleNode, *InsMap[SemanticNode, any]](),
+		RootFile:          rootFile,
+		InitPred:          []*Action{},
+		Assumptions:       []SemanticNode{},
+		AssumptionIsAxiom: []bool{},
+		ToolID:            specToolID(),
+		Defns:             defns,
+		Config:            config,
+		ProcessedDefs:     NewInsMap[*OpDefNode, struct{}](),
+		UnprocessedDefns:  NewDefns(),
+		ConstantDefns:     NewInsMap[*ModuleNode, *InsMap[SemanticNode, any]](),
 	}
 	p.PreConstantSnap = p.Defns.Snapshot()
 	p.Snapshot = p.Defns.Snapshot()
@@ -382,7 +385,7 @@ func (p *SpecProcessor) ProcessConfig() {
 
 func (p *SpecProcessor) resetProcessedConfig() {
 	p.ConfigErrors = nil
-	p.InitPred = nil
+	p.InitPred = []*Action{}
 	p.NextPred = nil
 	// Java materializes non-null arrays even when a property family is empty.
 	p.Temporals = []*Action{}
@@ -473,7 +476,7 @@ func (p *SpecProcessor) GetInitPred() []*Action {
 	if p == nil {
 		return nil
 	}
-	return append([]*Action(nil), p.InitPred...)
+	return p.InitPred
 }
 
 func (p *SpecProcessor) GetNextPred() *Action {
@@ -585,14 +588,14 @@ func (p *SpecProcessor) GetAssumptions() []SemanticNode {
 	if p == nil {
 		return nil
 	}
-	return append([]SemanticNode(nil), p.Assumptions...)
+	return p.Assumptions
 }
 
 func (p *SpecProcessor) GetAssumptionIsAxiom() []bool {
 	if p == nil {
 		return nil
 	}
-	return append([]bool(nil), p.AssumptionIsAxiom...)
+	return p.AssumptionIsAxiom
 }
 
 func (p *SpecProcessor) GetUnprocessedDefns() *Defns {

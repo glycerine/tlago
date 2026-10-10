@@ -12,7 +12,7 @@ const (
 )
 
 func (t *Tool) GetInitStatesImpl(functor *StateFunctor) error {
-	init := t.GetInitStateSpec()
+	init := t.requireActionArray(t.GetInitStateSpec())
 	acts := emptyActionItemListExt
 	for i := len(init) - 1; i > 0; i-- {
 		elem := init[i]

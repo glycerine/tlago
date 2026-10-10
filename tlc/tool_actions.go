@@ -1,7 +1,7 @@
 package tlc
 
 func (t *Tool) ensureActionsPrepared() error {
-	if t == nil || t.actionsPrepared || t.NextStateSpec == nil || len(t.Actions) != 0 {
+	if t == nil || t.actionsPrepared || t.GetNextStateSpec() == nil || len(t.Actions) != 0 {
 		return nil
 	}
 	return t.PrepareActionsFromNextStateSpec()
@@ -11,7 +11,7 @@ func (t *Tool) PrepareActionsFromNextStateSpec() error {
 	if t == nil {
 		return nil
 	}
-	next := t.NextStateSpec
+	next := t.GetNextStateSpec()
 	if next == nil {
 		t.Actions = nil
 		t.actionsPrepared = true
