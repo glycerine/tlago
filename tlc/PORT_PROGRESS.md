@@ -30269,3 +30269,62 @@ bounded-choice and nested-disjunction successor generation. Consult prior RNG
 arithmetic/thread-local ownership receipts and the source's intentional ordinary
 enumeration after exhausted probabilistic membership before changing behavior.
 Do not reopen the source's unsupported probabilistic CASE path.
+
+
+2026-10-09: Verify probabilistic bounded choices and functor stopping
+
+Previous goal turn made verified progress in 8fc1df8. Extended verification to
+unchanged BasicMultiTrace, I, H, ChooseTableauSymmetryMCa and EWD840/MC02. All 275
+final ordered pinned-Java/native observations agree; no production correction was
+needed. Full actual Init enumeration is preserved, with counts 1, 5, 1, 1 and 16.
+Each model performs ten actual full-Next generation attempts in ordinary, worker
+seed 7, worker seed 19 and ID-only caller contexts. Of the 200 attempts, 152 return
+successors and 48 return none; a zero result retains the prior state for the next
+API call. Full successor bindings/counts, owner identity and coordinator/worker
+stream advancement match. Enumerable seed 41 is reset once per context, then
+its stream runs continuously through the attempts; its final draw also matches.
+Java uses actual sequential worker/IdThread threads; native uses existing scopes.
+
+Three additional functor policies per model expose natural hasStates, always false
+and always true. Full ADD/HAS event order, every successor image and both stream
+tails match. The always-false BasicMultiTrace functor receives 20 successors from
+the randomized membership pass followed by Java's ordinary enumeration pass.
+That second pass is intentional source behavior and must not be removed. The
+corresponding counts are I 3, H 8, symmetry 2 and EWD840 1. Always-true symmetry
+and EWD840 functors stop after a failed candidate without adding a successor,
+matching the source's reliance on the callback rather than a private state count.
+
+Two abrupt-callback cases per model fail at the first or second added state,
+using the source IllegalStateException and the corresponding native error-return
+boundary. Exception categories, exact callback prefixes, retained state bindings
+and both RNG tails agree. EWD840 produces only one state, so the second-add
+failure is not reached and both return normally. These are focused API observers,
+not newly invented persistent tests or original-method translations. Record and
+function entries are canonically rendered by key, retaining every key/value,
+null and tuple position; successor and callback event order is compared exactly.
+No source models, original assertions, seeds or original workload bounds changed.
+
+Ignored observers and comparison script are under
+.codex-gotmp/probabilistic-choice-observation/. Final source compile 262e3e returned
+status 0. Final complete source/native receipts: BasicMultiTrace 2ea8af / session
+29584 terminal 9f1ad7; I 756a34 / a13c3f; H 6b9c03 / e0e164; symmetry 78e4c2 /
+cc77c8; EWD840 455162 / session 20916 terminal 740d32. All return status 0. Logs:
+.codex-gotmp/probabilistic-choice-complete-{java,native}-{model}.log. Final compare.py
+run 0091bc returned status 0, requiring exactly 55 ordered rows per model and
+exact equality. Initial 250-row and intermediate 265-row logs remain separate.
+No listener, full model search or race workload is involved.
+
+No production code changed, so focused original simulation, behavior printing,
+coverage, TLCGetAll/TLCGetLevel and complete existing RandomizationTest receipts
+from 8fc1df8 remain applicable: root 1.528/TLC 0.282 seconds, status 0. No redundant
+original suite run, broad suite or XML/ApalacheIR sweep. Formatting and git diff
+--check pass. No persistent tests/fixtures, inventory changes or new original-
+method credit. No email-related work. General concurrent enumeration, every
+probabilistic operator and full TLC parity are not proved by these observations.
+
+Original full off-heap stress session 27326 remains live, poll 503de1. Latest saved
+progress is 640,041,082 / 2,147,483,648 iterations, with no terminal result or method
+credit. Overall TLC parity remains incomplete. Next source audit: action-
+composition functor delegation and intermediate-state accounting in probabilistic
+mode. Consult earlier CopyWith/metadata/diagnostic receipts; compare actual source
+callback behavior rather than broadening the experimental source feature.

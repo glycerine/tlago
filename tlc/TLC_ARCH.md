@@ -11520,6 +11520,34 @@ RandomizationTest translations pass normally. No persistent tests/fixtures or
 original-method credit. Arbitrary concurrent simulation, bounded-choice random
 enumeration and all probabilistic CLI behavior remain separate verification work.
 
+Probabilistic bounded-choice and nested-disjunction behavior was additionally
+verified on unchanged BasicMultiTrace, I, H, ChooseTableauSymmetryMCa and EWD840 /
+MC02. All 275 ignored pinned-Java/native ordered observations agree: full initial
+counts, 200 generation attempts across ordinary, worker and ID-only contexts,
+complete successor bindings/counts, owner identity and both random-stream tails.
+There are 152 nonempty results and 48 zero-successor results; zero results retain
+the prior state for another API call. Initial enumeration remains complete at
+1, 5, 1, 1 and 16 states respectively. Each context resets only its enumerable
+stream at entry, then observes its continued advancement across the attempts.
+
+Three functor policies per model report natural presence, always false and always
+true. Complete ADD/HAS callback order, successor images and RNG tails match.
+BasicMultiTrace's always-false policy collects 20 successors: its randomized
+membership pass and the source's subsequent ordinary pass. That fallback is
+intentional source behavior. I, H, the symmetry model and EWD840 collect 3, 8, 2
+and 1 successors under that policy. An always-true functor can stop after a failed
+candidate without producing a successor, as observed in the latter two models.
+
+Two abrupt-callback cases per model fail on the first or second added successor.
+Exception category, callback prefix, retained state bindings and random tails
+match; EWD840 produces only one successor, so its second-add failure is never
+reached and both implementations return normally. Function/record entries are
+rendered canonically by key; successor and callback order is preserved. No
+production correction, persistent tests/fixtures or original-method credit.
+This is bounded API verification, not full searches, concurrent enumeration or
+proof of every probabilistic operator. Existing original checks at 8fc1df8 remain
+applicable because production code did not change.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses
