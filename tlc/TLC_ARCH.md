@@ -8586,6 +8586,34 @@ remain unproven beyond source control-flow inspection and these runtime cases.
 Focused original regressions and the complete unchanged CommunityModules
 all/shiviz target pass after the source-order sort and set diagnostic fixes.
 
+Core Bags IsABag rejects null input/conversion dereferences while retaining FALSE
+for a non-function or a nonpositive/noninteger count. Null backing values arrays
+fail before iteration; empty arrays remain valid. BagCardinality preserves the
+same array read and invalid-count diagnostics, including int32 wraparound sums.
+BagIn and CopiesIn dereference conversion results, capture values and then obtain
+the domain. A null domain fails before traversal, but empty domains bypass a
+null element argument and null values array. Equality uses the supplied element
+as its receiver; matched count reads preserve typed array bounds/null failures.
+Counts are read after equality's side effects. BagIn accepts any integer and
+tests positivity; CopiesIn returns that same count even if zero or negative.
+Direct null failures reach MethodValue's existing invocation catch, rather than
+constructing a Java wrapper inside the operation.
+
+All 13,952 direct/MethodValue observations agree outside 1,336 native/JVM stack
+locations and repeated-frame elision lines. Forty-eight baseline bag forms cover
+actual parsed lazy lambdas, tuples, records, functions, malformed arrays and
+counts, nested sets, debugger values and overflow. Eight element forms and
+independent bag/element/method source flags retain diagnostic and raw cache/input
+state. Unary calls skip unused element combinations. Another 128 rows use actual
+SetEnumValue equality to normalize the same array retained by a function's
+multiplicities: [2,1] yields count 1 and [1,0] yields count 0 after equality.
+This uses real runtime values with shared arrays, not an evaluator callback or
+fabricated semantic graph. Arbitrary equality mutation remains unproven. No
+persistent tests/fixtures or original-method credit are added. The original
+BagsTest model and focused original regressions pass.
+The complete unchanged CommunityModules all/shiviz target also passes after
+these core bag changes. BagCup conversion/validation order remains a next target.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

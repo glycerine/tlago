@@ -36431,3 +36431,71 @@ exits or workload bounds changed. Original stress session 27326 remains live
 by direct poll 663093; latest saved progress is 2,010,598,684 / 2,147,483,648
 (f7c9b5), with no terminal result or long-test credit. Handoff replaces the
 sixteen pending sorting cases with their resolved contracts and checked limits.
+
+2026-10-10: Core Bags validation, cardinality and membership boundaries
+
+Previous turn made verified progress in bcdad7a. Inspect clean current tree and
+handoff/inventory (80efdd); original random stress session 27326 remains live by
+direct poll aa5eda. Remaining nine main original contexts retain their recorded
+upstream/JVM/assumption discrepancies; no new credits or skips. Standard zero-arity
+registrations already use the generic MethodValue arity guard, so do not infer a
+new missing implementation from the handoff's older open wording. Identify
+concrete source gaps in core Bags instead (b71435/19c313).
+
+Core BagIn/CopiesIn constructed Java invocation wrappers inside direct methods,
+with hardcoded enhanced-null text. Source fails naturally and its MethodValue
+owns wrapping. IsABag accepted null input and null values arrays; BagCardinality
+accepted a null values array. Membership exposed untyped Go array/nil receiver
+failures. Build ignored .codex-gotmp/bags-core observers using actual parsed
+test206 nodes/Def5 lambda bodies, constructors and direct/real MethodValue calls.
+Correct the observer-only MethodValue.get result cast before compiling source
+(702244 -> 5c149c); no production failure or test credit from compilation.
+
+Forty-eight bag forms, four methods, eight element forms, eight independent
+bag/element/method source flags and direct/registered modes yield 13,824 rows.
+Unary operations omit unused element combinations. Include null/empty/malformed
+arrays, records/functions/tuples, actual lazy lambda conversion, nested sets,
+debugger values, duplicate domains and int32 overflow counts. Complete source
+and native baseline exit zero (a2247f/66c459): 3,400 raw differences, 2,080 outside
+stack locations (0c5aa8).
+
+Fix typed null input and backing-array reads in IsABag/BagCardinality, preserving
+non-function FALSE, rejected null/nonpositive counts and int32 arithmetic.
+BagIn/CopiesIn now capture the values array before obtaining the domain, retain
+null conversion/domain boundaries, dereference the supplied equality receiver
+only inside the loop and read matched slots with the existing typed array helper.
+Do not eagerly reject a null values array or null element for an empty domain.
+Remove only their obsolete hardcoded wrapper signatures; BagCup's separate
+requireBag wrapper remains for its future source-order audit. MethodValue's
+existing catch owns invocation errors. Complete native rerun exits zero (18294c),
+all 13,824 rows agree outside 1,320 native/JVM stack locations/elision lines
+(86ed1d). Diagnostic/cause headers, codes, nullable parameters, owner frames and
+raw input/cache state remain checked; do not fabricate JVM stacks.
+
+Add 128 actual shared-array equality observations without callbacks: a function
+and supplied SetEnumValue retain the same multiplicity array. Comparing to its
+set-valued domain key normalizes that array before the matched count read. Check
+[2,1] -> count 1, [1,0] -> count 0, [1,-1] -> nonpositive result, and null-element
+normalization failure, across both lookups and all source/invocation modes.
+Complete expanded source and native runs exit zero (bc1b7e/cc2b43). All 13,952
+rows agree outside 1,336 stack differences; the 128 added rows retain sixteen
+stack-only differences and zero others (db320f). No fabricated semantic node,
+evaluator callback or persistent fixture/test is introduced. Arbitrary equality
+mutation remains unproven; original-method credit is unchanged.
+
+Original BagsTest model and focused original model/value/EXCEPT/stream/Sequences/
+TLCModule/FP64/string/MP/debugger/rendering checks pass, root 5.725s and tlc
+2.606s (session 71586, terminal 24bbcf). Complete unchanged CommunityModules
+all/shiviz target starts with timeout zero (session 90729, 7b3bcc), preserving its
+original phases and workload bounds. No race or shortened workload. BagCup's
+conversion of both operands before validation and remaining direct wrapper are
+concrete next source-audit targets; do not assume current requireBag is faithful.
+
+Complete unchanged CommunityModules target exits zero (session 90729, terminal
+31f28f). Both original phases pass: root 308.701s, all 308.03s and shiviz 0.25s
+(687d70). This is the current full-suite baseline. Formatting/diff checks pass;
+no original assumptions, expected phase exits or workload bounds changed.
+Original random stress session 27326 remains live by direct poll e112d7;
+latest saved progress is 2,022,159,282 / 2,147,483,648 (d1a294), without terminal
+result or long-test credit. Handoff/architecture retain the core bag contracts,
+checked real aliasing behavior and next BagCup conversion/validation audit.

@@ -425,6 +425,14 @@ Set comparison/equality formats and normalizes its receiver before a null-right
 operand failure; all 64 direct observations agree. Arbitrary comparison mutation
 and allocation exhaustion remain unproven. Original set/value checks and the
 complete CommunityModules all/shiviz target pass.
+Core `Bags` validation, cardinality and lookup preserve null conversion/array
+failures. `BagIn` and `CopiesIn` capture values before obtaining the domain, read
+counts only after equality succeeds and leave invocation wrapping to `MethodValue`.
+All 13,952 observations agree outside 1,336 native/JVM stack-text differences,
+including 128 actual shared-array normalization cases. The original bag model
+and focused regressions plus the complete CommunityModules all/shiviz target
+pass. Arbitrary equality mutation remains unproven. Next audit `BagCup` operand
+conversion/validation order and its remaining direct invocation wrapper.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -508,7 +516,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,010,598,684 of 2,147,483,648 iterations, without a terminal result. The previous
+2,022,159,282 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

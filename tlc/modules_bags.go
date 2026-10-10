@@ -1,21 +1,24 @@
 package tlc
 
-const (
-	javaBagsBagInSignature    = "public static tlc2.value.IBoolValue tlc2.module.Bags.BagIn(tlc2.value.impl.Value,tlc2.value.impl.Value)"
-	javaBagsCopiesInSignature = "public static tlc2.value.impl.IntValue tlc2.module.Bags.CopiesIn(tlc2.value.impl.Value,tlc2.value.impl.Value)"
-	javaBagsBagCupSignature   = "public static tlc2.value.impl.Value tlc2.module.Bags.BagCup(tlc2.value.impl.Value,tlc2.value.impl.Value)"
-)
+const javaBagsBagCupSignature = "public static tlc2.value.impl.Value tlc2.module.Bags.BagCup(tlc2.value.impl.Value,tlc2.value.impl.Value)"
 
 func EmptyBag() Value {
 	return emptyFcnValue()
 }
 
 func IsABag(value Value) (*BoolValue, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	fcn := asFcnRcdValue(value)
 	if fcn == nil {
 		return BoolFalse, nil
 	}
-	for _, value := range fcn.Values {
+	values := fcn.Values
+	if values == nil {
+		panic(NewNullPointerException())
+	}
+	for _, value := range values {
 		count, ok := value.(*IntValue)
 		if !ok || count.Val <= 0 {
 			return BoolFalse, nil
@@ -25,12 +28,19 @@ func IsABag(value Value) (*BoolValue, error) {
 }
 
 func BagCardinality(value Value) (*IntValue, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	fcn := asFcnRcdValue(value)
 	if fcn == nil {
 		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagCardinality", "a function with a finite domain", ValuesPPR(value))
 	}
 	total := int32(0)
-	for _, elem := range fcn.Values {
+	values := fcn.Values
+	if values == nil {
+		panic(NewNullPointerException())
+	}
+	for _, elem := range values {
 		count, ok := elem.(*IntValue)
 		if !ok || count.Val <= 0 {
 			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagCardinality", "a bag", ValuesPPR(value))
@@ -41,18 +51,28 @@ func BagCardinality(value Value) (*IntValue, error) {
 }
 
 func BagIn(elem Value, bag Value) (*BoolValue, error) {
+	if bag == nil {
+		panic(NewNullPointerException())
+	}
 	fcn := asFcnRcdValue(bag)
 	if fcn == nil {
-		return nil, javaMethodOverrideError(javaBagsBagInSignature, `Cannot read field "values" because "fcn" is null`)
+		panic(NewNullPointerException())
 	}
+	values := fcn.Values
 	domain := fcn.DomainAsValues()
+	if domain == nil {
+		panic(NewNullPointerException())
+	}
 	for i, dval := range domain {
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
 		eq, err := elem.Equal(dval)
 		if err != nil {
 			return nil, err
 		}
 		if eq {
-			count, ok := fcn.Values[i].(*IntValue)
+			count, ok := fcnParameterDomain(values, i).(*IntValue)
 			if !ok {
 				return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "BagIn", "bag", ValuesPPR(bag))
 			}
@@ -63,18 +83,28 @@ func BagIn(elem Value, bag Value) (*BoolValue, error) {
 }
 
 func CopiesIn(elem Value, bag Value) (*IntValue, error) {
+	if bag == nil {
+		panic(NewNullPointerException())
+	}
 	fcn := asFcnRcdValue(bag)
 	if fcn == nil {
-		return nil, javaMethodOverrideError(javaBagsCopiesInSignature, `Cannot read field "values" because "fcn" is null`)
+		panic(NewNullPointerException())
 	}
+	values := fcn.Values
 	domain := fcn.DomainAsValues()
+	if domain == nil {
+		panic(NewNullPointerException())
+	}
 	for i, dval := range domain {
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
 		eq, err := elem.Equal(dval)
 		if err != nil {
 			return nil, err
 		}
 		if eq {
-			count, ok := fcn.Values[i].(*IntValue)
+			count, ok := fcnParameterDomain(values, i).(*IntValue)
 			if !ok {
 				return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "CopiesIn", "bag", ValuesPPR(bag))
 			}
