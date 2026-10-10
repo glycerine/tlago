@@ -290,7 +290,7 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 				simulator.SetAllValues(int(idx.Val), val)
 			}
 		} else {
-			return nil, newTLCError(ECGeneral, "TLCSet cannot set integer register %d without a checker or simulator", idx.Val)
+			panic(NewNullPointerException())
 		}
 		return BoolTrue, nil
 	case *StringValue:
@@ -338,10 +338,16 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 				return BoolTrue, nil
 			}
 			if strings.HasPrefix(keyString, "-D") {
+				if val == nil {
+					panic(NewNullPointerException())
+				}
 				tlcSetSystemProperty(keyString[2:], val.String())
 				return BoolTrue, nil
 			}
 		}
+	}
+	if vidx == nil {
+		panic(NewNullPointerException())
 	}
 	return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "TLCSet", "nonnegative integer", ValuesPPR(vidx))
 }

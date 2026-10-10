@@ -7266,6 +7266,25 @@ Java enhanced NPE descriptions are disabled for nullable-detail comparisons.
 General class reflection, arbitrary method-handle casts and unrepresented native
 methods remain outside this verification. No persistent test or fixture is added.
 
+TLCGetSet.TLCSet is registered as its source TLAPlusOperator MethodValue, with the
+actual value-array signature and level 0. The former native EvaluatingValue
+adapter is removed. Direct value-array calls enter TLCSet; semantic arguments
+use inherited OpValue evaluation and escape its argument failures before the
+method catch. Invalid non-null indices retain their coded leaf EvalException.
+A null index, null property value or ownerless nonnegative integer register raises
+typed NPE at the corresponding source dereference. MethodValue converts those
+null failures to coded EvalException with nullable detail, then retains its
+existing source-value wrapping. Named-register and false-exit controls remain
+successful without an owner, as in Java.
+
+All 24 bounded sourced/unsourced direct and semantic-entry outcomes match Java,
+using real model C expressions for argument evaluation. Original TLCSet BFS,
+initialization, simulation and distributed startup tests pass unchanged; both
+simulation profiles retain depth 4,224. These checks preserve existing checker
+and simulator register routing. General external-thread register ownership and
+additional method-handle arity diagnostics are not established by this audit.
+
+
 
 
 
@@ -7530,9 +7549,10 @@ Go mapping:
   `Any`, plus `MethodValue` entries for pure module operators.
 - Java's `TLARegistry` aliases are installed beside the method names, e.g.
   `Plus` and `+`, `Concat` and `\o`, `MakeFcn` and `:>`.
-- Context-sensitive operators such as `TLCGet` and `TLCSet` use
-  `EvaluatingValue` so their implementations receive the concrete `Tool`,
-  context, current state, successor state, eval control, and cost model.
+- `TLCGet` uses `EvaluatingValue` so its implementation receives the concrete
+  `Tool`, context, current/successor states, eval control and cost model.
+  `TLCSet` uses the source value-array `MethodValue`; its arguments are evaluated
+  by the inherited operator entry before register dispatch.
 - JSON, TLCExt, `_TLCTrace`, and `_Possible` overrides follow the same table.
   `TLCExt!TLCCache` uses a concrete `TLCExtCache` for constant-level
   expressions and the concrete `TLCStateMut` cache for state-level

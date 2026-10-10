@@ -115,6 +115,7 @@ type standardAnnotatedValueMethod struct {
 // Metadata from the represented TLAPlusOperator annotations. Qualified keys
 // distinguish same-named graph operators without changing their lookup aliases.
 var standardAnnotatedValueMethods = map[string]standardAnnotatedValueMethod{
+	"TLCSet":                               {"public static tlc2.value.impl.Value tlc2.module.TLCGetSet.TLCSet(tlc2.value.impl.Value,tlc2.value.impl.Value)", 0},
 	"ndJsonSerialize":                      {"public static synchronized tlc2.value.impl.BoolValue tlc2.overrides.Json.ndSerialize(tlc2.value.impl.StringValue,tlc2.value.impl.Value) throws java.io.IOException", 0},
 	"JsonSerialize":                        {"public static synchronized tlc2.value.impl.BoolValue tlc2.overrides.Json.serialize(tlc2.value.impl.StringValue,tlc2.value.impl.Value) throws java.io.IOException", 0},
 	"JsonDeserialize":                      {"public static tlc2.value.IValue tlc2.overrides.Json.deserialize(tlc2.value.impl.StringValue) throws java.io.IOException", 0},

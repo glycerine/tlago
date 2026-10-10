@@ -33016,3 +33016,52 @@ Formatting/diff checks pass. Latest saved full stress progress is
 credit. Preserve original session/budget/bounds/artifacts.
 HANDOFF/TLC_ARCH updated. Continue concrete native override gaps; full TLC parity
 and original-model reconciliation remain incomplete.
+
+
+2026-10-10: TLCSet source MethodValue registration and leaf null failures.
+Previous goal turn made verified progress in 3e496d8. Revalidate clean tree;
+poll original full stress handle 27326 (b62fc4 live). Inspect TLCGetSet.TLCSet:
+Java uses TLAPlusOperator over evaluated values, while native still registered
+EvaluatingValue through a hand-written argument evaluator. This changes direct
+calls, image metadata and argument/error wrapping. Ignored
+.codex-gotmp/tlcset-method-boundaries compares actual Java MethodValue.get with
+the current native standard registration, using real model C semantic source,
+initial state, c expression and undefined expensive formal. Twenty-four cases
+cover sourced/unsourced image, nil array/index, ownerless integer register,
+negative/unknown index, nil property value, named-register/false-exit controls,
+nil semantic array and real argument failure/success. Baseline all 24 rows differ
+(5986b5), including wrong direct entry and wrong wrapping on argument evaluation.
+
+Register TLCSet through defineStandardMethod and retain its actual annotation
+signature/level 0. Remove the now-unused standardTLCSet argument evaluator.
+Preserve existing leaf register routing and runtime controls. Replace the native
+ownerless integer-register generic error with typed NPE, retain null property
+value dereference and null index failure before formatting the coded leaf error.
+The method catch now preserves original coded EvalExceptions and converts null
+failures to coded EvalException with nullable detail. Semantic argument failures
+escape before that catch, without a source-value frame. All 24 complete rows match
+(92147 terminal f75f33), including categories/messages, codes/parameters, nullable
+details, source/context and wrapping depth. Java enhanced NPE messages disabled;
+no JVM reflection/method-handle emulation. General external-thread ownership and
+other arity diagnostics remain outside this bounded observation.
+
+Seven original models pass unchanged (80024 terminal 4d70fe,
+original-models.log, 29.651s): TLCSet BFS, TLCSetInit, TLCSetSim,
+TLCSetMultiSim, TLCExtModel, ValueSemanticsAssume and ConstantRank2AssertError.
+The two source simulation profiles preserve original depth 4,224 and all
+register/statistics/coverage assertions; no race or shortened workload.
+Original distributed TLCSet also passes with local-listener permission:
+28051 terminal bae645, distributed-original.log, 0.117s. Preserve original
+unsupported-feature reporting and no GENERAL assertion. Five existing focused
+callable/state/special/cache/payload checks pass (98203 terminal fb0f21,
+existing-values.log, 0.013s). No invented persistent test/fixture, changed
+assertion, broad suite or original-method credit.
+
+Condense the overlapping override-status detail in HANDOFF into current contracts
+and retained full-test scope; detailed receipts stay here and contracts in
+TLC_ARCH. Correct the older architecture claim that TLCSet is EvaluatingValue.
+Formatting/diff checks pass. Latest saved stress progress is
+1,332,961,545 / 2,147,483,648 (a5532a), without terminal result or long-method
+credit; preserve original handle, budget, bounds and artifacts.
+Continue concrete source registration/invocation gaps. Full TLC parity and
+original-model reconciliation remain incomplete.

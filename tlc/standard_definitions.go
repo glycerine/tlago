@@ -95,7 +95,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("ToString", 1, func(args []Value) (Value, error) { return TLCToString(args[0]), nil })
 	t.defineStandardEvaluating("TLCEval", 1, standardTLCEval)
 	t.defineStandardEvaluatingWithMinLevel("TLCGet", 1, TLCLevelState, standardTLCGet)
-	t.defineStandardEvaluating("TLCSet", 2, standardTLCSet)
+	t.defineStandardMethod("TLCSet", 2, func(args []Value) (Value, error) { return TLCSet(args[0], args[1]) })
 
 	t.defineStandardMethod("RandomSubset", 2, func(args []Value) (Value, error) { return RandomSubset(args[0], args[1]) })
 	t.defineStandardMethod("RandomSetOfSubsets", 3, func(args []Value) (Value, error) {
@@ -722,18 +722,6 @@ func castTLCEvalObject(object any) Value {
 
 func setSemanticTLCEvalValue(tool *Tool, node SemanticNode, value Value) {
 	SetSemanticToolObjectForTool(tool, node, value)
-}
-
-func standardTLCSet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	index, err := tool.Eval(args[0], con, state, pstate, control, cm)
-	if err != nil {
-		return nil, err
-	}
-	value, err := tool.Eval(args[1], con, state, pstate, control, cm)
-	if err != nil {
-		return nil, err
-	}
-	return TLCSet(index, value)
 }
 
 func standardAssertError(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

@@ -278,35 +278,22 @@ methods and relevant model checks pass. Undefined-value failures, overridden-val
 EXCEPT, and default fingerprint/permutation failures now preserve runtime metadata.
 ANY emptiness retains its source-less root failure inside the value catch; Nat/Int
 null membership fails before constructing a coded evaluation error. All 132 special
-value observations and relevant existing/original checks pass. Operator-record,
-lambda, reflected-method and evaluating-wrapper failures now preserve source
-runtime metadata, typed null failures and WrongInvocationException. All 188
-bounded observations match Java, including real lambda evaluation from model C.
-Operator labels survive pretty-print fallback, and undefined formal bindings
-retain the source expression/context and coded runtime failure. Relevant existing
-distributed checks and original models pass. Priority-wrapper registration now
-rejects null handlers and preserves runtime failures for incompatible definitions
-or levels; 14 registration and 40 inherited-operation observations agree with
-Java. Empty runtime messages stay empty. Callable evaluation now rejects nil argument
-arrays before override handling, preserves unwrapped argument failures, and keeps
-the null successor error's nullable detail parameter. Ten invocation observations
-and 40 inherited callable operations agree with Java; relevant original model and
-existing checks pass. MethodValue now preserves typed null-array failure inside
-its override catch, while inherited OpValue semantic-array failures remain outside
-that catch. FiniteSets null values retain their original leaf failures. All 60
-direct/inherited invocation observations match; relevant existing and original
-checks pass. Numeric method images and diagnostics now retain actual Naturals or
-Integers signatures, including the distinct GT return types. All 102 observations
-across 34 real-model bindings agree. Eager native constants use an allocated empty
-argument array. Sequences, Bags, TLC, FiniteSets and Randomization value-array
-methods now also retain complete source signatures. All 105 direct-method and
-102 loaded-binding observations agree; the original module suites and relevant
-model checks pass. Represented annotated value methods now retain full source
-signatures, including renamed methods, qualifiers, throws clauses and annotation
-levels. The four IO command overrides retain level 1. All 296 observed rows and
-the unchanged IOUtils Unix assumptions agree with Java; focused existing/original
-checks pass. Continue concrete native override gaps against source and the
-original-test inventory.
+value observations and relevant existing/original checks pass. Operator
+records, lambdas and reflected/evaluating/priority/callable wrappers retain the
+observed runtime metadata, typed null failures, WrongInvocationException and
+argument/catch ordering. Numeric and represented core/annotated method metadata
+retain actual declaring classes, signatures and annotation levels; four IO
+command overrides retain level 1. Bounded Java/native comparisons and the
+relevant original module/model checks pass; detailed bounds are in TLC_ARCH and
+PORT_PROGRESS.
+
+TLCSet now uses Java's value-array MethodValue registration. Argument evaluation
+failures escape before its method catch; nil inputs and ownerless integer registers
+retain typed source failures. All 24 boundary observations and the original BFS,
+initialization, two full 4,224-depth simulation profiles and distributed startup
+checks pass. Eager native constants use allocated-empty argument arrays.
+Continue concrete native override gaps against source and the original-test
+inventory.
 Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
@@ -315,7 +302,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,324,780,410 of 2,147,483,648 iterations, without a terminal result. The previous
+1,332,961,545 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,
