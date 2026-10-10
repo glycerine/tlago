@@ -10,6 +10,7 @@ import (
 
 type Simulator struct {
 	Tool             *Tool
+	invariants       []*Action
 	CheckDeadlock    bool
 	TraceDepth       int
 	TraceNum         int64
@@ -118,6 +119,9 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		StartTime:     time.Now(),
 		ResultQueue:   NewSimulationWorkerResultQueue(),
 		workerCount:   max(NumWorkers(), 1),
+	}
+	if tool != nil {
+		simulator.invariants = tool.GetInvariants()
 	}
 	simulator.WorkerMode = simulator.selectWorkerMode()
 	for _, opt := range opts {
@@ -621,14 +625,14 @@ func (s *Simulator) collectInitialStates() (filtered *StateVec, code int) {
 		if !s.Tool.IsGoodState(curState) {
 			return nil, PrintError(ECTLCStateNotCompletelySpecifiedInitial, curState.String())
 		}
-		for j, invariant := range s.Tool.GetInvariants() {
+		for j, invariant := range s.Tool.requireActionArray(s.invariants) {
 			valid, err := s.Tool.IsValidState(invariant, curState)
 			if err != nil {
 				panic(err)
 			}
 			if !valid {
 				alias := s.Tool.EvalAlias(curState, curState)
-				result := PrintError(ECTLCInvariantViolatedInitial, nameAt(s.Tool.GetInvNames(), j), alias.String())
+				result := PrintError(ECTLCInvariantViolatedInitial, s.Tool.propertyNameAt(s.Tool.GetInvNames(), j), alias.String())
 				s.Tool.CheckPostConditionWithCounterExample(NewCounterExampleFromInitialState(curState))
 				return nil, result
 			}

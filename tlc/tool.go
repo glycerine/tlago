@@ -1030,6 +1030,18 @@ func (t *Tool) requireActionArray(actions []*Action) []*Action {
 	return actions
 }
 
+func (t *Tool) propertyNameAt(names []string, index int) string {
+	if t != nil && t.SpecProcessor != nil {
+		if names == nil {
+			panic(NewNullPointerException())
+		}
+		if index < 0 || index >= len(names) {
+			panic(NewArrayIndexOutOfBoundsException(index, len(names)))
+		}
+	}
+	return nameAt(names, index)
+}
+
 func (t *Tool) GetAssumptions() []SemanticNode {
 	if t == nil {
 		return nil

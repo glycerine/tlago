@@ -680,29 +680,57 @@ func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *
 	return nil
 }
 
-func (w *SimulationWorker) CheckInvariants(state *TLCStateMut) *SimulationWorkerError {
-	names := w.Tool.GetInvNames()
-	for i, invariant := range w.Tool.GetInvariants() {
+func (w *SimulationWorker) CheckInvariants(state *TLCStateMut) (failure *SimulationWorkerError) {
+	i := 0
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err, ok := recovered.(error)
+			if !ok || isJavaError(err) {
+				panic(recovered)
+			}
+			if workerError, ok := err.(*SimulationWorkerError); ok {
+				failure = workerError
+				return
+			}
+			failure = newSimulationWorkerErrorNullable(ECTLCInvariantEvaluationFailed, []*string{javaString(w.Tool.propertyNameAt(w.Tool.GetInvNames(), i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
+		}
+	}()
+	for ; i < len(w.Tool.requireActionArray(w.Tool.GetInvariants())); i++ {
+		invariant := w.Tool.requireActionArray(w.Tool.GetInvariants())[i]
 		valid, err := w.Tool.IsValidState(invariant, state)
 		if err != nil {
-			return newSimulationWorkerErrorNullable(ECTLCInvariantEvaluationFailed, []*string{javaString(nameAt(names, i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
+			return newSimulationWorkerErrorNullable(ECTLCInvariantEvaluationFailed, []*string{javaString(w.Tool.propertyNameAt(w.Tool.GetInvNames(), i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
 		}
 		if !valid {
-			return NewSimulationWorkerError(ECTLCInvariantViolatedBehavior, []string{nameAt(names, i)}, w.GetTrace(state))
+			return NewSimulationWorkerError(ECTLCInvariantViolatedBehavior, []string{w.Tool.propertyNameAt(w.Tool.GetInvNames(), i)}, w.GetTrace(state))
 		}
 	}
 	return nil
 }
 
-func (w *SimulationWorker) CheckImpliedActions(state *TLCStateMut) *SimulationWorkerError {
-	names := w.Tool.GetImpliedActNames()
-	for i, action := range w.Tool.GetImpliedActions() {
+func (w *SimulationWorker) CheckImpliedActions(state *TLCStateMut) (failure *SimulationWorkerError) {
+	i := 0
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err, ok := recovered.(error)
+			if !ok || isJavaError(err) {
+				panic(recovered)
+			}
+			if workerError, ok := err.(*SimulationWorkerError); ok {
+				failure = workerError
+				return
+			}
+			failure = newSimulationWorkerErrorNullable(ECTLCActionPropertyEvaluationFailed, []*string{javaString(w.Tool.propertyNameAt(w.Tool.GetImpliedActNames(), i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
+		}
+	}()
+	for ; i < len(w.Tool.requireActionArray(w.Tool.GetImpliedActions())); i++ {
+		action := w.Tool.requireActionArray(w.Tool.GetImpliedActions())[i]
 		valid, err := w.Tool.IsValidTransition(action, w.CurState, state)
 		if err != nil {
-			return newSimulationWorkerErrorNullable(ECTLCActionPropertyEvaluationFailed, []*string{javaString(nameAt(names, i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
+			return newSimulationWorkerErrorNullable(ECTLCActionPropertyEvaluationFailed, []*string{javaString(w.Tool.propertyNameAt(w.Tool.GetImpliedActNames(), i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
 		}
 		if !valid {
-			return NewSimulationWorkerError(ECTLCActionPropertyViolatedBehavior, []string{nameAt(names, i)}, w.GetTrace(state))
+			return NewSimulationWorkerError(ECTLCActionPropertyViolatedBehavior, []string{w.Tool.propertyNameAt(w.Tool.GetImpliedActNames(), i)}, w.GetTrace(state))
 		}
 	}
 	return nil

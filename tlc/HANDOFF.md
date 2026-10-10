@@ -96,9 +96,13 @@ values, including initial generation and axiom checking; all 53 observations mat
 Java. Reward and periodic predicates now read the processor with source capture
 lifetimes; the simulator reporter captures before startup returns and keeps
 reporting until shutdown after a false predicate. Bounded Java/native observations
-and focused original checks pass; see the progress log for receipts. Next source
-audit: invariant/implied-action consumers in the checker and simulator, including
-null-array boundaries. Cached initial-vector growth remains unproven.
+and focused original checks pass; see the progress log for receipts. Simulator
+initial checks now retain the constructor's invariant array; worker successor
+checks re-read current arrays as they loop and fetch names only for diagnostics.
+All 49 bounded capture/replacement/null/failure observations agree with Java.
+Next source audit: checker invariant/implied-action and initial-property loops,
+which still capture arrays or accept null arrays. Cached initial-vector growth
+remains unproven.
 
 ## Verification baseline and test credit
 

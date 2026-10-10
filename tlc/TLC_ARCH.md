@@ -11237,6 +11237,38 @@ are bounded ownership/lifecycle observations, not full reward or periodic-error
 parity or original-method credit. Other action-array consumers' null behavior
 remains separate work.
 
+Simulator initial checks retain the invariant array returned at construction,
+matching the source final field. Processor-array replacement does not replace
+that captured array; element replacement remains visible. Initial violation
+names come from the current tool names. A captured null source array fails
+inside the existing initial-state exception boundary, while an empty array
+checks no invariants. Source diagnostic name indexing rejects null and short
+arrays; native tools without a processor retain their optional-name adapter.
+
+SimulationWorker successor checks follow Java's repeated array getters in the
+loop condition and element lookup. Shrinking or growing/replacing the current
+processor array during an evaluation affects the next iteration. Diagnostic
+names are read only when a predicate fails or evaluation throws. Source null
+array exceptions become invariant/action evaluation failures at the current
+index; missing diagnostic names can throw from the catch itself. Java Error
+subclasses still escape. Existing native returned evaluator errors and recovered
+source exceptions use the same worker failure categories.
+
+Ignored observations load unchanged BasicMultiTrace expressions in pinned Java
+and Go. All 17 simulator rows agree on initial result codes and violation names,
+covering constructor capture, replacement, shared elements, null arrays/elements,
+evaluation errors and current/null/short names. The Java observer executes the
+real initial-check loop, overriding only the later worker-simulation phase; the
+Go observer exposes the existing initial collector through an ignored overlay.
+All 32 worker rows agree on predicate evaluation order, error code/name and
+escaping exception class for invariants and implied actions. The Java observer
+uses an ITool proxy around the real tool and calls actual addElement; the native
+observer calls AddGeneratedSuccessor. Both install simulation state metadata
+before generating states and retain trace assertions. Replacements occur inside
+evaluation callbacks, without concurrent writes. These comparisons do not prove
+VM-generated null-detail messages or arbitrary concurrent graph mutation.
+Checker successor/initial loops still need their separate capture/null audit.
+
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing
 location/syntax views, primarily OpDef symbols. A pinned-Java/native standalone

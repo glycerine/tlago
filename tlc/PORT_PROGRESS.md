@@ -29375,3 +29375,56 @@ latest saved observation 325,154,867 / 2,147,483,648 iterations. No terminal res
 or method credit. Overall TLC parity remains incomplete. Next source audit:
 invariant/implied-action consumers in the checker and simulator, including null
 array boundaries; cached initial-vector growth remains unproven.
+
+
+2026-10-09: Simulator invariant capture and worker property-loop ownership
+
+Previous goal turn made verified progress in commit d02ed24. Simulator initial
+checks now retain the constructor's invariant array instead of re-fetching the
+processor array. Replacing the processor array leaves that captured array in
+place; mutation of its elements remains visible. Initial violation names remain
+current. Source null arrays and null/short diagnostic-name arrays fail within
+the original initial-state exception boundary; native optional-name behavior is
+retained for tools without a processor.
+
+SimulationWorker invariant and implied-action checks now re-read current arrays
+at loop conditions and element lookups, as Java does. They no longer capture
+names before evaluation. Recoverable source exceptions, including null arrays,
+produce the source worker evaluation-failure category at the current index;
+missing names can throw from the catch itself. Java Error subclasses still
+escape. No original method bodies or bounds were modified.
+
+Final ignored pinned-Java/native comparisons use unchanged BasicMultiTrace:
+17 simulator initial-result/name rows and 32 actual successor-worker rows all
+agree, comparison ef364c, status 0. Baseline differs in eight simulator rows and
+20 worker rows. Simulator rows cover constructor array replacement, shared
+elements, null arrays/elements, evaluation errors and current/null/short names.
+Java executes Simulator.simulate's actual initial loop and overrides only the
+later worker phase to return OK. Native calls collectInitialStates through an
+ignored overlay. Worker rows call actual Java addElement through an ITool proxy
+and native AddGeneratedSuccessor, observing predicate order, code/name and
+escaping exception class after shrink/growth/replacement/mutation, name changes,
+evaluation errors and null/short arrays. Source simulation mode and native state
+tool metadata are installed before generating states; all trace assertions stay
+on. Earlier driver attempts using model-checking state metadata failed trace
+assertions and supply no parity evidence. Final runs complete with assertions.
+No VM-generated null-detail message or concurrent graph-write parity is claimed.
+
+Logs under .codex-gotmp/: simulator-invariant-{java,before,after}.log and
+worker-property-{java,before,after}.log; drivers and baseline overlays remain in
+ignored simulator-invariant-observation and worker-property-observation dirs.
+Final Java simulator terminal 435d71, native 785364, baseline 32da38: status 0.
+Final Java worker terminal e06346, native a7dc90, baseline 252b45: status 0.
+No persistent tests/fixtures added and no original-method inventory credit.
+
+Selected existing original SimulatorCorrectness, all SimulationWorker methods,
+TLCGetAll/TLCGetLevel and A/B/C coverage, plus native simulator checks pass
+normally: simulator-invariant-originals.log, terminal 87f760, status 0;
+root 4.290 seconds, TLC 0.012 seconds. No long race selection or full workspace
+sweep. Formatting and git diff --check pass.
+
+Full original off-heap random stress session 27326 remains live, poll 3b34c1;
+latest saved observation 347,422,863 / 2,147,483,648 iterations, without terminal
+result or method credit. Overall parity remains incomplete. Next source audit:
+checker invariant/implied-action and initial-property loops, which still capture
+arrays or accept source null arrays. Cached initial-vector growth remains unproven.
