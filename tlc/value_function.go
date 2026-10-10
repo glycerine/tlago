@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -924,13 +925,23 @@ func (v *RecordValue) FingerPrint(fp uint64) uint64 {
 	if err := v.normalizeRecord(); err != nil {
 		panic(err)
 	}
+	if v.Names == nil {
+		panic(NewNullPointerException())
+	}
 	fp = FP64ExtendByte(fp, byte(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Names)))
 	for i, name := range v.Names {
+		if name == nil {
+			panic(NewNullPointerException())
+		}
 		fp = FP64ExtendByte(fp, byte(StringValueKind))
 		fp = FP64ExtendInt(fp, int32(name.Length()))
 		fp = FP64ExtendString(fp, name.String())
-		fp = v.Values[i].FingerPrint(fp)
+		value := fcnParameterDomain(v.Values, i)
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
+		fp = value.FingerPrint(fp)
 	}
 	return fp
 }
@@ -1597,18 +1608,35 @@ func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
 	if err := v.normalizeFcn(); err != nil {
 		panic(err)
 	}
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	fp = FP64ExtendByte(fp, byte(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Values)))
 	if v.Intv == nil {
 		for i := range v.Values {
-			fp = v.Domain[i].FingerPrint(fp)
+			domain := fcnParameterDomain(v.Domain, i)
+			if isNil(domain) {
+				panic(NewNullPointerException())
+			}
+			fp = domain.FingerPrint(fp)
+			if isNil(v.Values[i]) {
+				panic(NewNullPointerException())
+			}
 			fp = v.Values[i].FingerPrint(fp)
 		}
 		return fp
 	}
 	for i := range v.Values {
 		fp = FP64ExtendByte(fp, byte(IntValueKind))
-		fp = FP64ExtendInt(fp, v.Intv.Low+int32(i))
+		index := int64(v.Intv.Low) + int64(i)
+		if index > math.MaxInt32 {
+			panic(NewArithmeticException("integer overflow"))
+		}
+		fp = FP64ExtendInt(fp, int32(index))
+		if isNil(v.Values[i]) {
+			panic(NewNullPointerException())
+		}
 		fp = v.Values[i].FingerPrint(fp)
 	}
 	return fp

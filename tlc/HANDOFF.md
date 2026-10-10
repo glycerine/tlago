@@ -357,6 +357,9 @@ failures and traversal order; record sorting retains partial changes and source
 failure frames. Independent parent/child source attachment also agrees.
 Composite permutation follows source name/value traversal counts, typed failures
 and result identity; null, identity and model-swap observations agree.
+Composite fingerprinting retains typed traversal failures and checked interval
+index addition. Bounded hashes agree with controlled model intern tokens;
+parsed-model token allocation order remains a separate requirement.
 All bounded comparisons agree, including the prior lambda conversion and deep-
 normalization matrices; contracts and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.

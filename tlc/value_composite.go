@@ -343,11 +343,17 @@ func (v *TupleValue) Permute(perm *MVPerm) Value {
 
 func (v *TupleValue) FingerPrint(fp uint64) uint64 {
 	defer catchValueFailure(v, nil)
+	if v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	fp = FP64ExtendByte(fp, byte(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Elems)))
 	for i, elem := range v.Elems {
 		fp = FP64ExtendByte(fp, byte(IntValueKind))
 		fp = FP64ExtendInt(fp, int32(i+1))
+		if isNil(elem) {
+			panic(NewNullPointerException())
+		}
 		fp = elem.FingerPrint(fp)
 	}
 	return fp

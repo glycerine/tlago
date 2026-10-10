@@ -7995,6 +7995,27 @@ test credit, general array/child ownership or arbitrary-permutation callback
 claim is added. Other mappings, domain kinds and concurrent mutation remain
 outside the comparison.
 
+Composite fingerprints retain typed null-array/child and indexed-array failures
+under their source wrappers. Tuple element length is read before extending the
+fingerprint. Records normalize before reading name count and fingerprint each
+name before its corresponding value. Functions normalize before reading value
+count, and explicit domains are visited before their paired values. Interval
+functions use checked integer addition for `low + i`, matching Math.addExact:
+overflow raises `ArithmeticException("integer overflow")` before visiting that
+value. Empty values do not read an explicit null domain.
+All 13,056 observations agree across tuple/record/function forms, fourteen record
+name arrays (including empty and Unicode names), fourteen explicit domains,
+seven interval constructors (including signed integer boundaries), seventeen
+value/child forms, normalized flags, independent parent/child source attachment
+and three starting fingerprints. Raw state records normalization during hashing
+without incidental malformed-value rendering. Observer model-value token fields
+use genuine fresh intern tables in both runtimes; unrelated parser allocation
+orders otherwise produce different token-based fingerprints. This controlled
+runtime setup does not establish full parsed-model token-order parity. No
+semantic graph mutation, persistent test/fixture, new original-test credit or
+broad ownership/callback claim is involved. Other value kinds, polynomials,
+model intern allocation order and concurrent mutation remain separate targets.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

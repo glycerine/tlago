@@ -35131,3 +35131,51 @@ composite-permutation. Handoff and architecture updated. Latest full stress
 saved progress is 1,694,041,553 / 2,147,483,648 (cbac5b), without terminal result
 or long-method credit. Preserve original handle/artifacts/bounds. Other domain
 kinds/mappings, arbitrary callbacks and concurrency remain separate targets.
+
+
+### 2026-10-10: Composite fingerprint array and interval-overflow boundaries
+
+Previous turn made verified progress in 4a1377b; confirm clean HEAD (15364a).
+Original full stress 27326 remains live on direct polls 10eb62 and a203ae.
+Compare tuple/record/function fingerprints to source. Native null arrays and
+children lost source failures; indexed reads exposed Go bounds errors. Interval
+function indices wrapped rather than preserving Java Math.addExact overflow.
+
+Ignored composite-fingerprint adapts the actual test206 source-attached runtime
+array observer. Fourteen record-name forms include empty and Unicode strings;
+fourteen explicit function domains include integers/models/nulls. Seven interval
+constructors include empty/non-one-origin and signed integer boundary cases.
+Seventeen value forms include ordinary/null arrays, undefined/null children,
+unsorted sets, nested tuples/records and genuine model values. Observe normalized
+flags, independent parent/child source attachment and three starting fingerprints
+(zero, FP64.New and all bits set). Raw result/state output avoids malformed-value
+rendering. Initial Java/native complete 13,056 rows with 6,822 differences
+(1a116f), including source arithmetic-overflow cases.
+
+Restore typed null array/child/index failures at source accesses, retaining
+normalization/traversal order and existing wrappers. Check interval low+i in a
+widened integer and reject above MaxInt32 with ArithmeticException integer
+overflow before the corresponding value is visited. Native 39721 completes
+(19b629); 1,596 differences remain, all involving model values (8f57b0).
+Inspect actual source: model fingerprints hash intern tokens, and parser/tool
+startup assigned different token numbers across runtimes. This is an observer
+setup difference, not evidence for changing ModelValue fingerprint semantics.
+Assign the observer's runtime model token fields using matching genuine fresh
+InternTable constructors; preserve the parsed source graph and global tables.
+Java a469a5/native 64985 (terminal 88e890) complete; all 13,056 rows agree
+(5ed23c). This does not establish parsed-model token allocation parity. No
+fabricated semantic graph/evaluator, persistent test/fixture, changed original
+assertion or original-method credit.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests plus focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream/permutation/symmetry/special-value
+checks pass. Session 65437 finishes with exit zero (650e3e); root 5.109s and tlc
+2.180s (5ed23c). Replace the overflow bound literal with math.MaxInt32 and run
+the unchanged original FP64ExtendLongInt check: 3950 exits zero (8f792d), tlc
+0.012s (aee61d). No race, broad suite or shortened workload. Logs remain under
+composite-fingerprint. Handoff and architecture updated. Latest full stress
+saved progress is 1,704,769,167 / 2,147,483,648 (aee61d), without terminal result
+or long-method credit. Preserve original handle/artifacts/bounds. Other value
+kinds/polynomials, intern allocation order, callbacks and concurrency remain
+separate targets.
