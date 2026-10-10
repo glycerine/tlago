@@ -9362,6 +9362,27 @@ changes successor insertion order, which can alter tableau expansion and the
 serialized liveness graph. The original CodePlexBug08EWD840FL2 graph-size
 assertion exposed this during a run long enough to report coverage mid-search.
 
+Source-backed coverage creation and reporting reject null initial slots, next
+entries, invariants and implied properties at their source phase. Null action
+arrays also retain source failures. Earlier successful cost-model assignments
+remain installed, and variable counter replacement occurs only after all phases
+succeed. Reporting retains its variable/action message prefix on failure and
+does not emit the final coverage-end message after an exception. Next entries
+are validated before any next-action report, matching source TreeSet construction
+before iteration. Standalone native tools retain their existing optional entries.
+
+Implied-property getters and entries are examined only when the dynamic
+CostModelCreator.implied property is true; disabled coverage skips both families,
+even when their arrays are null. All 56 ordered source/native observations agree
+on unchanged TLCGetLevel, correcting 30 baseline rows: 24 initial-vector cases
+and 32 action-family cases with implied coverage enabled/disabled. They retain
+exception categories, initial/next cost-model replacement, variable-counter
+identity and every raw message code/parameter in order. Nineteen existing model
+coverage tests and four original reporting tests pass normally. No persistent
+fixtures/tests or original-method credit were added. Repeated creation and
+constraint ownership/report failure boundaries remain separate work; Java's
+constraint conversion can reject an Action installed by an earlier creation.
+
 LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
 ModelChecker.vetoCleanup property retains disk graph handles for subsequent
 inspection, while the liveness writer still closes. A local checkpoint cleanup

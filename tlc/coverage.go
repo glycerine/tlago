@@ -296,13 +296,19 @@ func CreateCoverageCostModels(tool *Tool) {
 	init := tool.GetInitStateSpec()
 	for i := 0; i < init.Size(); i++ {
 		action := init.ElementAt(i)
+		if action == nil && tool.SpecProcessor != nil {
+			panic(NewNullPointerException())
+		}
 		if action != nil {
 			action.CM = creator.createForAction(action, CoverageRelationInit)
 		}
 	}
 	sharedNext := NewInsMap[semanticNodeKey, CostModel]()
-	for _, action := range tool.GetActions() {
+	for _, action := range tool.requireActionArray(tool.GetActions()) {
 		if action == nil {
+			if tool.SpecProcessor != nil {
+				panic(NewNullPointerException())
+			}
 			continue
 		}
 		key := newSemanticNodeKey(action.Pred)
@@ -313,7 +319,10 @@ func CreateCoverageCostModels(tool *Tool) {
 		action.CM = creator.createForAction(action, CoverageRelationNext)
 		sharedNext.Set(key, action.CM)
 	}
-	for _, invariant := range tool.GetInvariants() {
+	for _, invariant := range tool.requireActionArray(tool.GetInvariants()) {
+		if invariant == nil && tool.SpecProcessor != nil {
+			panic(NewNullPointerException())
+		}
 		if invariant != nil && !invariant.IsInternal() {
 			invariant.CM = creator.createForAction(invariant, CoverageRelationProp)
 		}
@@ -325,12 +334,18 @@ func CreateCoverageCostModels(tool *Tool) {
 		creator.assignConstraintCostModel(constraint)
 	}
 	if coverageImpliedEnabled() {
-		for _, impliedInit := range tool.GetImpliedInits() {
+		for _, impliedInit := range tool.requireActionArray(tool.GetImpliedInits()) {
+			if impliedInit == nil && tool.SpecProcessor != nil {
+				panic(NewNullPointerException())
+			}
 			if impliedInit != nil {
 				impliedInit.CM = creator.createForAction(impliedInit, CoverageRelationProp)
 			}
 		}
-		for _, impliedAction := range tool.GetImpliedActions() {
+		for _, impliedAction := range tool.requireActionArray(tool.GetImpliedActions()) {
+			if impliedAction == nil && tool.SpecProcessor != nil {
+				panic(NewNullPointerException())
+			}
 			if impliedAction != nil {
 				impliedAction.CM = creator.createForAction(impliedAction, CoverageRelationProp)
 			}
@@ -374,13 +389,24 @@ func reportCoverage(tool *Tool) {
 	init := tool.GetInitStateSpec()
 	for i := 0; i < init.Size(); i++ {
 		action := init.ElementAt(i)
+		if action == nil && tool.SpecProcessor != nil {
+			panic(NewNullPointerException())
+		}
 		if action != nil {
 			action.CM.Report()
 		}
 	}
 	// Java reports through a separate TreeSet. Sorting the checker's action
 	// array would change successor order after a periodic coverage report.
-	actions := append([]*Action(nil), tool.GetActions()...)
+	currentActions := tool.requireActionArray(tool.GetActions())
+	if tool.SpecProcessor != nil {
+		for _, action := range currentActions {
+			if action == nil {
+				panic(NewNullPointerException())
+			}
+		}
+	}
+	actions := append([]*Action(nil), currentActions...)
 	sort.SliceStable(actions, func(i, j int) bool {
 		return coverageActionLess(actions[i], actions[j])
 	})
@@ -395,7 +421,10 @@ func reportCoverage(tool *Tool) {
 		action.CM.Report()
 		reported.Set(action.CM.node, true)
 	}
-	for _, invariant := range tool.GetInvariants() {
+	for _, invariant := range tool.requireActionArray(tool.GetInvariants()) {
+		if invariant == nil && tool.SpecProcessor != nil {
+			panic(NewNullPointerException())
+		}
 		if invariant != nil && !invariant.IsInternal() {
 			invariant.CM.Report()
 		}
@@ -403,12 +432,18 @@ func reportCoverage(tool *Tool) {
 	reportConstraintCoverage(tool, tool.requireConstraintArray(tool.GetActionConstraints()))
 	reportConstraintCoverage(tool, tool.requireConstraintArray(tool.GetModelConstraints()))
 	if coverageImpliedEnabled() {
-		for _, impliedInit := range tool.GetImpliedInits() {
+		for _, impliedInit := range tool.requireActionArray(tool.GetImpliedInits()) {
+			if impliedInit == nil && tool.SpecProcessor != nil {
+				panic(NewNullPointerException())
+			}
 			if impliedInit != nil {
 				impliedInit.CM.Report()
 			}
 		}
-		for _, impliedAction := range tool.GetImpliedActions() {
+		for _, impliedAction := range tool.requireActionArray(tool.GetImpliedActions()) {
+			if impliedAction == nil && tool.SpecProcessor != nil {
+				panic(NewNullPointerException())
+			}
 			if impliedAction != nil {
 				impliedAction.CM.Report()
 			}

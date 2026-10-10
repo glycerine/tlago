@@ -30466,3 +30466,60 @@ Full original off-heap random stress session 27326 remains live (poll 372f3f).
 Latest saved progress is 677,480,635 / 2,147,483,648; no terminal result or method
 credit. Overall TLC parity remains incomplete. Next audit coverage consumers of
 initial predicate vectors, especially null slots, side effects and failure order.
+
+
+2026-10-09: Preserve coverage-family null failures and partial effects
+
+Previous goal turn made progress in a796e49; this turn started from that clean
+commit. Pinned CostModelCreator.create/report dereference initial, next, invariant
+and implied Actions directly; Go silently skipped null entries and null arrays.
+Corrected source-backed coverage creation/reporting in tlc/coverage.go, retaining
+standalone native optional-input behavior. Initial vectors fail at the current
+slot. Next creation fails before subsequent phases; reporting rejects null next
+entries during collection, before reporting any next Action, matching TreeSet
+construction. Invariants and implied families retain current getter arrays and
+source phase boundaries. Implied getters stay inside the dynamic enabled branch.
+
+Ignored Java/native observers under .codex-gotmp/coverage-init-observation load
+unchanged TLCGetLevel and compare 56 ordered rows. Initial matrix: create/report
+with one, empty, negative, minimum/maximum counts, null first/second slots, size
+five/beyond, fully populated backing followed by bounds failure, duplicates and
+null vector. All 24 rows agree after correcting 10 baseline differences. Family
+matrix: valid, null next entry, null invariant array/entry, null implied-init
+array/entry, null implied-action array/entry; both phases and implied=true/false
+produce 32 matching rows after 20 baseline differences (14 enabled, 6 disabled).
+
+Rows retain exception categories, initial/next CM identity changes, variable
+counter identity and complete raw message codes/parameters in order. Failed
+creation preserves prior successful assignments but does not replace variable
+counters. Failed reporting retains variable/initial/next prefixes and omits the
+normal final coverage-end message. Invalid counts encounter a null slot before
+later backing bounds. With implied=false, malformed implied families are skipped.
+These API observations do not claim full searches or all coverage error phases.
+
+Initial observer reuse encountered Java's ClassCastException on repeated creation
+after constraint conversion (session 47290 terminal 29bb05). Preserved those
+initial logs separately and switched to a fresh source/native tool per matrix
+case, including one normal creation before report cases. Final initial baseline
+session 86453 terminal 482b68 returned status 0; initial-only correction session
+52618 terminal 65c04c passed 24 rows. Family baseline session 88452 terminal
+af6f2f and corrected session 52222 terminal e50fa8 returned status 0. Final
+initial rerun follows native reporting tests in session 40631 terminal b33072.
+Final compare.py receipt 38f0ee requires exactly 24 + 16 + 16 source/native rows
+and exact equality; status 0, 56 matches and 30 baseline differences. Observer
+sources, before/after logs and comparator remain ignored; no persistent tests or
+fixtures invented. No original-method credit or inventory changes.
+
+All 19 existing root coverage model tests selected from
+tlc_coverage_model_java_test.go pass at unchanged bounds, including
+CoverageStatistics, Github314/377/649 and ImpliedCoverage. Session 11036 terminal d7b85a,
+root 5.884s, status 0, original-models.log. All four existing original reporting
+methods TestJavaReportCoverage01..04 pass, session 40631 terminal b33072, TLC
+0.012s, status 0, original-reporting.log. No race, broad workspace suite or
+XML/ApalacheIR sweeps. Formatting and git diff --check pass. No email work.
+
+Original full off-heap random stress session 27326 remains live (poll e5884a).
+Latest saved progress is 689,165,632 / 2,147,483,648; no terminal result or method
+credit. Overall TLC parity remains incomplete. Next audit: coverage constraint
+ownership, repeated creation and constraint-report failures, using current actual
+source tool objects rather than assuming the creator is idempotent.

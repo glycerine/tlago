@@ -142,9 +142,11 @@ Java's unsupported probabilistic composition paths and partial register effects.
 preserving invalid counts, overflow and mutation before failures. All 330 count
 observations, 27 real-model consumer observations and 149 earlier observations
 match Java. Initial generation, combined actions and `TLCGet("spec")` preserve
-source iteration and first failures. Focused original tests pass. Next audit:
-coverage consumers of the initial-predicate vector, including null slots and
-failure ordering. Original model-test reconciliation remains open.
+source iteration and first failures. Coverage creation/reporting now preserve
+source null failures in initial, next, invariant and implied families, including
+partial updates and report prefixes. All 56 observations and 23 existing original
+coverage tests pass. Next audit: coverage constraint ownership, repeated creation
+and constraint-report failures. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
