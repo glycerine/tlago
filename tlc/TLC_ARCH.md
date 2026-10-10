@@ -8222,6 +8222,37 @@ callback mutation is source-inspected, not observed. LongestCommonPrefix,
 replacement shortcuts, other SequencesExt helpers and broader module casts remain
 separate requirements.
 
+SequencesExt LongestCommonPrefix normalizes before its traversal catch and
+catches only direct ClassCastException/NullPointerException within traversal.
+Already wrapped child failures and array/string bounds errors pass through.
+String traversal uses UTF-16 units and recognizes the debugger StringValue
+subclass. It does not clamp a shorter later input: source charAt/array access
+raises the corresponding typed bounds failure. A nonempty tuple result copies the
+prefix array while retaining child identities; replacing an output element leaves
+the input tuple unchanged. IsPrefix reads both string types, then the target
+string before the candidate prefix, and compares UTF-16 units. Tuple conversion
+runs on both operands before size reads, with typed null failures instead of
+new argument diagnostics. Tuple loops retain source size/read order.
+Tuple comparison/equality now read both element-array lengths and raise typed
+null failures for a missing receiver child at the source call. ValueVec.Sort
+raises the typed null failure at its comparison receiver, retaining existing
+set-normalization source catches and mutation boundaries.
+All 7,786 prefix observations agree with strings from genuine controlled intern
+tables, including split surrogates, empty/malformed values, debugger placeholders,
+conversion, shorter inputs, result-array ownership and independent parent/child
+source flags. All 720 direct tuple comparison/equality observations agree.
+The same prefix matrix with actual parsed-runtime intern tables retains sixteen
+differences for normalizing {"", "a"}: source/native token allocation places a
+different string first, leading to a bounds failure versus an empty prefix.
+Preserve token-based UniqueString comparison; do not infer parsed intern-order
+parity from the controlled observations. These ignored drivers use actual parsed
+source nodes, runtime constructors and arrays, without evaluator callbacks or
+persistent tests/fixtures. Other set-vector construction boundaries, replacement
+shortcuts, remaining SequencesExt helpers and parsed intern allocation stay open.
+The complete unchanged CommunityModules Ant target and focused original
+model/value/stream regressions pass on these changes; no new original-test credit
+is added.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

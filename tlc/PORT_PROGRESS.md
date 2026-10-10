@@ -35583,3 +35583,68 @@ Final direct poll aac64b confirms full stress 27326 remains live; latest saved
 progress is 1,816,010,562 / 2,147,483,648 (da00e3). No terminal stress result or
 long-method credit. Handoff/architecture include final original regression
 results and explicit platform stack-text limits. Diff check passes (3f92a4).
+
+
+### 2026-10-10: Prefix UTF-16/catch boundaries and tuple result ownership
+
+Previous goal turn made verified progress in d27831b; clean worktree confirmed
+(115561). Direct poll 43c7b1 confirms original full stress 27326 remains live.
+Inspect actual CommunityModules LongestCommonPrefix and IsPrefix source. Ignored
+sequences-ext-prefix uses actual test206 source nodes and runtime constructors
+and arrays; UTF-16 diagnostic serialization retains unpaired units. Eighteen
+value forms, both normalized flags, two helpers and four source settings plus
+special set/conversion forms produce 3,898 rows, initially with 1,517 differences
+(5ba904). Result-array replacement also directly checks ownership.
+
+LongestCommonPrefix now normalizes before installing its traversal-only direct
+cast/null catch. Wrapped child failures and bounds errors pass through. Preserve
+UTF-16 code units, debugger StringValue recognition and source failures on
+shorter later strings/tuples. Return an independent nonempty tuple array, retaining
+child identities, instead of aliasing the input prefix. IsPrefix reads the target
+string before the prefix string, compares UTF-16 units, converts both tuples
+before size reads and uses source typed null failures without new argument
+errors. Initial native build detects an obsolete unused utf16 import (7d0f63);
+remove it before collecting post-change rows. The remaining 118 differences are
+in set normalization (a28fa1), not the prefix traversal.
+
+Normalization exposes raw null comparison receivers in ValueVec.Sort and null
+arrays/children hidden by TupleValue Compare/Equal. Inspect actual source and
+collect a separate direct tuple comparison/equality matrix: 720 rows initially
+have 104 differences (de843f). Add typed null checks at those exact array/call
+boundaries under existing source catches. All 720 rows agree (14b5f5). Prefix
+rows now have only eight differences from actual parsed string-token allocation:
+normalizing {"", "a"} selects a different first string, changing a bounds
+failure into an empty prefix. Preserve token-based UniqueString.Compare instead
+of changing it to lexical ordering.
+
+A separate controlled observer uses actual InternTable instances, real string
+interning and StringValue constructors. Seed genuine tables beyond the existing
+debugger tokens and verify that precondition, without changing parsed semantic
+nodes or evaluation. The first native controlled build needs the actual debugger
+Value interface type assertion (642908); correct it before collecting data.
+All 3,898 controlled rows agree (ac57f2). Expand source flags to vary set parent
+and both children independently. All 7,786 controlled rows agree; the actual
+parsed-token run retains sixteen ordering differences (99b33c). Record these
+limits explicitly. No fabricated evaluators, persistent tests/fixtures, source
+assertion changes or original-method credit. Other set-vector constructors,
+replacement shortcuts, remaining helpers and parsed intern allocation stay open.
+
+Focused original value/model/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass. Session 60152 exits zero (18a61f), root 5.514s
+and tlc 2.284s (99b33c). Start complete unchanged CommunityModules Ant target,
+including all/shiviz phases, normally with timeout zero (3811, 88820f). Original
+SequencesExtTests retains ordinary/strict prefix assumptions, longest-prefix
+nested functions and tuple/string assertions, bounded pure-prefix equality and
+fold/search checks. Its all phase progresses beyond SequencesExtTests and remains
+live at 9371eb. No race, shortened workload or broad workspace suite. Handoff and
+architecture updated with source contracts and the remaining token-order gap.
+
+Complete original CommunityModules target session 3811 exits zero (78f3e0).
+Both unchanged all/shiviz phases pass (80c048): parent target 313.835s, all
+313.16s, shiviz 0.25s, preserving the expected ShiViz liveness result and
+6 generated/5 distinct/depth 5. Count only the existing parent original method,
+not subprocess PASS lines; inventory credit stays unchanged. Latest full stress
+saved progress is 1,832,045,926 / 2,147,483,648 (80c048), without terminal result
+or long-method credit. Preserve original stress handle, log and bounds. Final
+diff check passes; handoff and architecture retain the sixteen parsed-token
+ordering differences rather than treating controlled interning as completion.

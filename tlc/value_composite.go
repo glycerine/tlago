@@ -157,6 +157,9 @@ func (v *ValueVec) Sort(noDup bool) error {
 		for low < high {
 			idx = (low + high) >> 1
 			var err error
+			if elem == nil {
+				panic(NewNullPointerException())
+			}
 			cmp, err = elem.Compare(v.data[idx])
 			if err != nil {
 				return err
@@ -232,10 +235,16 @@ func (v *TupleValue) Compare(other Value) (resultInt int, err error) {
 	if o == nil {
 		return asFcnRcdValue(v).Compare(other)
 	}
+	if v.Elems == nil || o.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	if len(v.Elems) != len(o.Elems) {
 		return len(v.Elems) - len(o.Elems), nil
 	}
 	for i := range v.Elems {
+		if v.Elems[i] == nil {
+			panic(NewNullPointerException())
+		}
 		cmp, err := v.Elems[i].Compare(o.Elems[i])
 		if err != nil || cmp != 0 {
 			return cmp, err
@@ -250,10 +259,16 @@ func (v *TupleValue) Equal(other Value) (resultBool bool, err error) {
 	if o == nil {
 		return asFcnRcdValue(v).Equal(other)
 	}
+	if v.Elems == nil || o.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	if len(v.Elems) != len(o.Elems) {
 		return false, nil
 	}
 	for i := range v.Elems {
+		if v.Elems[i] == nil {
+			panic(NewNullPointerException())
+		}
 		eq, err := v.Elems[i].Equal(o.Elems[i])
 		if err != nil || !eq {
 			return eq, err

@@ -1,9 +1,6 @@
 package tlc
 
-import (
-	"strings"
-	"unicode/utf16"
-)
+import "strings"
 
 func SequencesExtSetToSeq(value Value) (Value, error) {
 	set, err := toSetEnumValue(value)
@@ -94,74 +91,114 @@ func SequencesExtContains(seq Value, elem Value) (Value, error) {
 	return BoolFalse, nil
 }
 
-func SequencesExtLongestCommonPrefix(value Value) (Value, error) {
-	set, err := toSetEnumValue(value)
+func SequencesExtLongestCommonPrefix(value Value) (result Value, err error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	set, err := tryToSetEnumValue(value)
 	if err != nil {
+		return nil, err
+	}
+	if set == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "LongestCommonPrefix", "non-empty set", ValuesPPR(value))
 	}
 	set.Normalize()
-	if set.Elems.Len() == 0 {
+	elems := set.Elems
+	if elems == nil {
+		panic(NewNullPointerException())
+	}
+	if elems.Empty() {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "LongestCommonPrefix", "non-empty set", ValuesPPR(value))
 	}
-
-	first := set.Elems.At(0)
-	if str, ok := first.(*StringValue); ok {
-		prefix := str.RawString()
-		prefixChars := utf16.Encode([]rune(prefix))
-		upper := len(prefixChars)
-		for i := 1; i < set.Elems.Len(); i++ {
-			other, ok := set.Elems.At(i).(*StringValue)
-			if !ok {
-				return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "LongestCommonPrefix", "sequence", ValuesPPR(value))
+	// Java catches only direct cast/null failures in the prefix traversal. A
+	// child failure already wrapped with source information passes through.
+	defer func() {
+		if failure := recover(); failure != nil {
+			switch failure.(type) {
+			case *NullPointerException, *ClassCastException:
+				result = nil
+				err = newTLCErrorCode(ECTLCModuleOneArgumentError, "LongestCommonPrefix", "sequence", ValuesPPR(value))
+			default:
+				panic(failure)
 			}
-			otherChars := utf16.Encode([]rune(other.RawString()))
+		} else {
+			switch err.(type) {
+			case *NullPointerException, *ClassCastException:
+				result = nil
+				err = newTLCErrorCode(ECTLCModuleOneArgumentError, "LongestCommonPrefix", "sequence", ValuesPPR(value))
+			}
+		}
+	}()
+	first := elems.At(0)
+	if str, ok := asStringValue(first); ok {
+		if str.Val == nil {
+			panic(NewNullPointerException())
+		}
+		prefix := javaStringUTF16(str.Val.String())
+		upper := len(prefix)
+		for i := 1; i < elems.Len(); i++ {
+			other, ok := asStringValue(elems.At(i))
+			if !ok {
+				panic(NewClassCastException("Cannot cast value to tlc2.value.impl.StringValue"))
+			}
+			if other.Val == nil {
+				panic(NewNullPointerException())
+			}
+			chars := javaStringUTF16(other.Val.String())
 			for idx := 0; idx < upper; idx++ {
-				if idx >= len(otherChars) || prefixChars[idx] != otherChars[idx] {
+				if idx >= len(chars) {
+					panic(NewStringIndexOutOfBoundsException(idx, len(chars)))
+				}
+				if prefix[idx] != chars[idx] {
 					upper = idx
 					if upper == 0 {
 						return NewStringValue(""), nil
 					}
-					break
 				}
 			}
 		}
-		return NewStringValue(utf16Substring(prefix, 0, upper)), nil
+		return NewStringValue(javaStringFromUTF16(prefix[:upper])), nil
 	}
-
-	prefixTuple := asTupleValue(first)
-	if prefixTuple == nil {
-		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "LongestCommonPrefix", "sequence", ValuesPPR(value))
+	tuple := sequenceTuple(first)
+	if tuple == nil || tuple.Elems == nil {
+		panic(NewNullPointerException())
 	}
-	prefix := prefixTuple.Elems
+	prefix := tuple.Elems
 	upper := len(prefix)
-	for i := 1; i < set.Elems.Len(); i++ {
-		otherTuple := asTupleValue(set.Elems.At(i))
+	for i := 1; i < elems.Len(); i++ {
+		otherTuple := sequenceTuple(elems.At(i))
 		if otherTuple == nil {
-			return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "LongestCommonPrefix", "sequence", ValuesPPR(value))
+			panic(NewNullPointerException())
 		}
 		other := otherTuple.Elems
 		for idx := 0; idx < upper; idx++ {
-			if idx >= len(other) {
-				upper = idx
-				break
+			if other == nil {
+				panic(NewNullPointerException())
 			}
-			eq, err := prefix[idx].Equal(other[idx])
+			if idx >= len(other) {
+				panic(NewArrayIndexOutOfBoundsException(idx, len(other)))
+			}
+			if prefix[idx] == nil {
+				panic(NewNullPointerException())
+			}
+			equal, err := prefix[idx].Equal(other[idx])
 			if err != nil {
 				return nil, err
 			}
-			if !eq {
+			if !equal {
 				upper = idx
 				if upper == 0 {
 					return EmptyTuple, nil
 				}
-				break
 			}
 		}
 	}
 	if upper == 0 {
 		return EmptyTuple, nil
 	}
-	return NewTupleValue(prefix[:upper]), nil
+	copied := make([]Value, upper)
+	copy(copied, prefix[:upper])
+	return NewTupleValue(copied), nil
 }
 
 func SequencesExtFoldSeq(op Value, base Value, seq Value) (Value, error) {
@@ -334,33 +371,48 @@ func SequencesExtReplaceAllSubSeqs(replacement Value, subseq Value, target Value
 }
 
 func SequencesExtIsPrefix(left Value, right Value) (Value, error) {
-	if s1, ok := left.(*StringValue); ok {
-		s2, ok := right.(*StringValue)
-		if ok {
-			return NewBoolValue(strings.HasPrefix(s2.RawString(), s1.RawString())), nil
+	s1, leftString := asStringValue(left)
+	s2, rightString := asStringValue(right)
+	if leftString && rightString {
+		// Java obtains the target string before the candidate prefix string.
+		if s2.Val == nil {
+			panic(NewNullPointerException())
 		}
-	}
-	s := asTupleValue(left)
-	if s == nil {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "IsPrefix", "sequence", ValuesPPR(left))
-	}
-	t := asTupleValue(right)
-	if t == nil {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "IsPrefix", "sequence", ValuesPPR(right))
-	}
-	if len(s.Elems) > len(t.Elems) {
-		return BoolFalse, nil
-	}
-	for i, elem := range s.Elems {
-		eq, err := elem.Equal(t.Elems[i])
-		if err != nil {
-			return nil, err
+		target := javaStringUTF16(s2.Val.String())
+		if s1.Val == nil {
+			panic(NewNullPointerException())
 		}
-		if !eq {
+		prefix := javaStringUTF16(s1.Val.String())
+		if len(prefix) > len(target) {
 			return BoolFalse, nil
 		}
+		for i, unit := range prefix {
+			if unit != target[i] {
+				return BoolFalse, nil
+			}
+		}
+		return BoolTrue, nil
 	}
-	return BoolTrue, nil
+	s := sequenceTuple(left)
+	t := sequenceTuple(right)
+	if sequenceSize(s) <= sequenceSize(t) {
+		for i := 0; i < sequenceSize(s); i++ {
+			elem := s.Elems[i]
+			other := t.Elems[i]
+			if elem == nil {
+				panic(NewNullPointerException())
+			}
+			equal, err := elem.Equal(other)
+			if err != nil {
+				return nil, err
+			}
+			if !equal {
+				return BoolFalse, nil
+			}
+		}
+		return BoolTrue, nil
+	}
+	return BoolFalse, nil
 }
 
 func SequencesExtSelectInSeq(seq Value, test Value) (Value, error) {
@@ -674,6 +726,9 @@ func sequenceOperatorEval(operator Value, args []Value) (Value, error) {
 }
 
 func sequenceSize(sequence *TupleValue) int {
+	if sequence == nil {
+		panic(NewNullPointerException())
+	}
 	size, err := sequence.Size()
 	if err != nil {
 		panic(err)

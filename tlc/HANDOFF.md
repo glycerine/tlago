@@ -394,6 +394,12 @@ parameters reject invalid values at invocation. All 22,752 direct rows agree;
 (396 retain stack-text differences). The complete original CommunityModules
 `all`/`shiviz` target and focused regressions pass. Other `SequencesExt` helpers,
 arbitrary callback mutation and module-specific casts remain separate work.
+`LongestCommonPrefix` and `IsPrefix` preserve UTF-16 units, subclass recognition,
+source catch/read order and bounds errors. Nonempty prefix tuples own their array.
+All 7,786 controlled-token rows and 720 tuple comparison rows agree; the parsed
+run retains sixteen known intern-order differences. Tuple comparison and set
+sorting now retain the observed typed null failures. Other set construction
+boundaries and parsed intern allocation remain open.
 Prior lambda conversion and deep-normalization matrices also agree; contracts
 and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
