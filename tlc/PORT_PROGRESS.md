@@ -34400,3 +34400,39 @@ changed original assertions. Handoff and implementation contracts updated.
 Original full stress session 27326 remains live on direct poll (87c9e9).
 Latest saved progress is 1,585,963,100 / 2,147,483,648 (5eb8f3), without a terminal
 result or long-method credit. Preserve original handle, artifacts and bounds.
+
+
+### 2026-10-10: Uncached lambda null-parameter size and materialization
+
+After the power-loss restart, confirm committed HEAD 8132132 and a clean tree
+(912bb3). Poll original full stress handle 27326 directly: still live (c0be06).
+Read the current plan, handoff, inventory and relevant source contracts.
+Java FcnLambdaValue.size and toFcnRcd delegate to the cached record first, then
+read params.size. Native shortcuts returned zero or published EmptyFcn for null
+parameters. Remove those shortcuts and retain the existing FcnParams.Size typed
+null failure and source wrapper. Failure must leave the cache unpublished.
+
+Ignored .codex-gotmp/lambda-null-parameters adapts the previous materialization
+observer using actual parsed test209 S formals/body, copied runtime arrays and
+the original body evaluation. Run size and materialization across the previous
+590 mixed/single/zero-argument array/domain cases. Add four cases per operation:
+null-parameter constructors with/without source, uncached or holding a record
+genuinely materialized from the original S expression. No fabricated semantic
+graph, custom evaluator callback or persistent test/fixture is introduced.
+Java e7c1c1/15a0a6 and native ea05cb/dbd890 complete. Each operation has 594 rows
+and exactly two baseline differences, both uncached null parameters (16d6e7).
+After removing the shortcuts, native 11588 and 62817 complete with terminal
+receipts a76403/a9ca5a. All 594 size and 594 materialization rows agree (a76dd2),
+including full failures, source frames, values and cache presence. This adds no
+original-method inventory credit; arbitrary callbacks/concurrent cache mutation
+remain outside the observation.
+
+The unchanged fourteen original model checks and original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl methods pass with focused numeric,
+function-context, lambda rendering and stream checks. Session 47890 completes
+with exit zero (727906); root 5.181s and tlc 2.170s (c4f06d), logs retained under
+lambda-null-parameters/existing-checks.log. No broad suite, race, shortened
+workload bounds or changed source assertions. Handoff and architecture updated.
+
+Original full stress latest saved progress is 1,593,491,029 / 2,147,483,648
+(c4f06d). No terminal result or long-method credit; preserve handle and bounds.

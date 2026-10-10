@@ -7663,6 +7663,16 @@ source-less/source-attached values, plus fourteen zero-argument cases. No tuple
 conversion callback, arbitrary enumerator callback, mutation during body evaluation
 or concurrent materialization is covered.
 
+Lambda sizing and materialization read parameter size when uncached, including
+the typed null-parameter failure under the existing source failure wrapper.
+Failure leaves the cache unpublished. Both operations delegate to an existing
+record before any parameter access, even with null parameters. All 594 size and
+594 materialization observations agree using the previous actual test209 S
+formals/body and runtime array matrix, extended with null-parameter constructors
+and a genuine materialized S record installed as their cache. These observations
+add no original-test inventory credit and do not cover arbitrary callbacks or
+concurrent cache publication.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

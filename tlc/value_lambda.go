@@ -913,9 +913,6 @@ func (v *FcnLambdaValue) Size() (resultInt int, err error) {
 	if v.FcnRcd != nil {
 		return v.FcnRcd.Size()
 	}
-	if v.Params == nil {
-		return 0, nil
-	}
 	return v.Params.Size()
 }
 
@@ -1050,10 +1047,6 @@ func (v *FcnLambdaValue) ToFcnRcd() *FcnRcdValue {
 func (v *FcnLambdaValue) materializeFcnRcd() (resultFcn *FcnRcdValue, err error) {
 	defer catchValueFailure(v, &err)
 	if v.FcnRcd != nil {
-		return v.FcnRcd, nil
-	}
-	if v.Params == nil {
-		v.FcnRcd = EmptyFcn
 		return v.FcnRcd, nil
 	}
 	size, err := v.Params.Size()
