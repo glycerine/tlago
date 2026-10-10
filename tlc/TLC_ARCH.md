@@ -8344,6 +8344,25 @@ then excluded from byte comparisons; parsed intern allocation remains open.
 Sixteen actual SubSeq/Concat pipelines at every cut in four strings retain exact
 string equality after rejoining, bringing the total to 9,196 compared rows.
 
+Sequence receiver guards include native interfaces containing typed-null value
+pointers. Len, Tail, Concat and SubSeq guard before string dispatch; Head, Cons,
+Append and tuple branches guard at sequenceTuple before conversion. A string
+Concat requires its right receiver before checking its string shape or reading
+the left payload. SubSeq treats a typed-null IntValue as a null Java bound:
+it fails while validating that argument, before inspecting the next bound.
+No module owner catch or global string/tuple conversion behavior changes.
+
+The expanded actual-runtime observer compares 42,048 direct/registered calls
+across 24 receiver/argument shapes, twelve bound forms, seven operations and
+four source settings. Java null corresponds to seven concrete typed-null native
+pointer classes; valid values retain their constructors and parsed source nodes.
+Results include logical UTF-16 units, wire/fingerprint/console output and returned
+identity. All cases agree outside 672 stack-location differences; full exception
+messages, codes, nullable details and source-owner frames remain compared.
+The existing 2,112 predicate rows still match exactly. Original SequencesTest
+methods and related native/model regressions pass. No persistent tests/fixtures,
+fabricated evaluator callbacks or original-method credit are added.
+
 ToolIO system output uses UTF-8 PrintStream surrogate handling. A trailing high
 surrogate remains pending across print calls; a low surrogate completes it, while
 another character or println's newline forces replacement. stdout/stderr retain

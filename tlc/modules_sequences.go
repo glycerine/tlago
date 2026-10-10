@@ -15,6 +15,9 @@ func BSeq(rangeValue Value, size int) Value {
 }
 
 func Len(s Value) (*IntValue, error) {
+	if isNil(s) {
+		panic(NewNullPointerException())
+	}
 	if sv, ok := asStringValue(s); ok {
 		return NewIntValue(int32(sv.Length())), nil
 	}
@@ -45,6 +48,9 @@ func Head(s Value) (Value, error) {
 }
 
 func Tail(s Value) (Value, error) {
+	if isNil(s) {
+		panic(NewNullPointerException())
+	}
 	if sv, ok := asStringValue(s); ok {
 		if sv.Val == nil {
 			panic(NewNullPointerException())
@@ -101,12 +107,15 @@ func Append(s Value, v Value) (Value, error) {
 }
 
 func Concat(s1, s2 Value) (Value, error) {
+	if isNil(s1) {
+		panic(NewNullPointerException())
+	}
 	if sv1, ok := asStringValue(s1); ok {
+		if isNil(s2) {
+			panic(NewNullPointerException())
+		}
 		sv2, ok := asStringValue(s2)
 		if !ok {
-			if s2 == nil {
-				panic(NewNullPointerException())
-			}
 			return nil, newTLCErrorCode(ECTLCModuleEvaluating, "t \\o s", "string", ValuesPPR(s2))
 		}
 		if sv1.Val == nil || sv2.Val == nil {
@@ -143,6 +152,9 @@ func Concat(s1, s2 Value) (Value, error) {
 }
 
 func SubSeq(s, m, n Value) (Value, error) {
+	if isNil(s) {
+		panic(NewNullPointerException())
+	}
 	var (
 		str      string
 		seq      *TupleValue
@@ -161,15 +173,15 @@ func SubSeq(s, m, n Value) (Value, error) {
 		}
 	}
 	begValue, ok := m.(*IntValue)
-	if !ok {
-		if m == nil {
+	if !ok || begValue == nil {
+		if isNil(m) {
 			panic(NewNullPointerException())
 		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SubSeq", "natural number", ValuesPPR(m))
 	}
 	endValue, ok := n.(*IntValue)
-	if !ok {
-		if n == nil {
+	if !ok || endValue == nil {
+		if isNil(n) {
 			panic(NewNullPointerException())
 		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "SubSeq", "natural number", ValuesPPR(n))
@@ -210,7 +222,7 @@ func SubSeq(s, m, n Value) (Value, error) {
 // Sequences invokes value.toTuple() directly, before checking conversion and
 // reading size. Keep that null boundary separate from the general conversion.
 func sequenceTuple(value Value) *TupleValue {
-	if value == nil {
+	if isNil(value) {
 		panic(NewNullPointerException())
 	}
 	return asTupleValue(value)

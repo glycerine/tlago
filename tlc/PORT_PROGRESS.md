@@ -37831,3 +37831,54 @@ unchanged. Log: .codex-gotmp/finite-sets/community-ant.log. The prior pending
 status above is resolved; no restart or race instrumentation was used. Handoff
 and architecture now record this receipt alongside the focused passes. Goal
 remains active; these changes do not establish full TLC completion.
+
+
+## Sequence typed-null receivers and SubSeq bound-validation precedence
+
+The preceding goal turn made verified progress in 1b883a4. Inspect the clean
+worktree and source Sequences.java, then extend the existing actual-runtime
+sequence observer in ignored .codex-gotmp/sequence-null. Keep seventeen existing
+value forms and add seven native typed-null pointer classes (StringValue,
+TupleValue, FcnRcdValue, FcnLambdaValue, RecordValue, DebuggerValue and
+CounterExample), corresponding to actual Java null. Add typed-null IntValue,
+StringValue and BoolValue bounds, likewise Java null. Native observation helpers
+recognize logical null for source assignment and successful value serialization;
+production dispatch is unchanged until the baseline is captured. Use checked
+test206 Def2 nodes, actual constructors, installed standard MethodValues and
+Java MethodValue.get of reflected methods. No semantic graphs, evaluator
+callbacks, persistent tests or fixtures are fabricated.
+
+Java session 24056 terminal 5da377 and native baseline 5820 terminal 09e541
+exit zero. Comparison 5900c1 covers 42,048 rows with none missing/deferred:
+10,468 raw differences and 9,796 outside stack locations. Native interface nil
+checks miss typed-null receivers; null tuple conversions can become shape errors
+or native runtime panics, and a typed-null integer SubSeq bound passes the type
+assertion so later bound validation can incorrectly precede its dereference.
+
+Len, Tail, Concat and SubSeq now require their first receiver before native string
+dispatch. A string Concat requires the right receiver before string validation
+and payload reads. Shared sequenceTuple rejects typed-null receivers at its
+source toTuple call. SubSeq excludes typed-null IntValue pointers from valid
+bounds and raises the null exception while validating that bound, preserving
+left-to-right failure precedence. Existing source owner catches and registered
+MethodValue adaptation stay unchanged. Remove the redundant interface-only
+right-null guard now covered by the earlier required string-branch guard.
+
+Native session 20622 terminal 046e35 exits zero. Comparison 7b4221:
+all 42,048 rows present, none deferred; 672 raw differences are solely platform
+stack locations/elision, zero differences outside those locations. Canonical
+comparison preserves exception/cause headers, full messages/codes/nullable
+parameters and source-owner frames. Successful results retain units, length,
+fingerprint, legacy bytes, console bytes and reference identity. Previous
+surrogate-pair pipeline evidence remains valid; no source identity is emulated.
+
+Existing predicate observer session 98341 terminal b8541d exits zero. Comparison
+c04c2c confirms all 2,112 rows match the retained Java expanded log exactly,
+with no missing rows. Focused original/native session 96479 terminal 76805d exits
+zero: root 7.491s, tlc 2.491s. Includes unchanged original SequencesTest methods,
+TLCTest, related tuple/function/record and sequence checks, original model
+206/conversion cases, random-element models/replay and print trace tests. No
+assertion or workload bound changes and no race instrumentation. This receiver
+correction has focused verification; the full original CommunityModules pass
+from 1b883a4 is retained without claiming it ran after this change. Handoff and
+architecture updated. No original-method completion credit; goal remains active.

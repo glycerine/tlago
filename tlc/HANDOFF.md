@@ -408,7 +408,11 @@ null/size reads, conversion order and substring shortcuts. Strings preserve
 UTF-16 units through slicing, concatenation, length, fingerprinting and legacy
 checkpoint writes. ToolIO UTF-8 output retains split surrogate state and captured
 messages preserve recombined pairs. All 9,196 sequence/composition rows and 132
-console traces agree. `SelectInSeq`, `SelectSeq` and `Insert` retain predicate
+console traces agree. Sequence receiver guards now also reject typed-null native
+pointers before conversion or string dispatch. `SubSeq` rejects a typed-null
+integer bound before inspecting the next bound. All 42,048 direct/registered
+observations agree outside 672 stack-location differences; original sequence
+and related regressions pass. `SelectInSeq`, `SelectSeq` and `Insert` retain predicate
 validation/size order, shared argument arrays and source null failures. `Insert`
 compares values only after a true predicate. All 2,112 finite-map observations
 agree, including diagnostic source frames and non-boolean/null results.
