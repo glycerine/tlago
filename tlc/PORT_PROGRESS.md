@@ -28765,3 +28765,38 @@ TestToolConstraintAndSpecGettersReturnCopies*. Receipt:
 broader original-test receipt; no full-workspace/XML/ApalacheIR sweep, email work,
 or original workload reduction. Core parity and full stress completion remain
 pending under the existing handoff priorities.
+
+
+Action strings retain source semantic formatting properties (2026-10-09)
+
+Previous turn made authoritative progress in commit 2a56427. Revalidated the clean
+worktree and polled restarted full off-heap random session 27326: still live, no
+terminal result. Its latest observed progress exceeds 22 million iterations;
+completion and original-method credit remain pending. Java source HEAD remains
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0.
+
+Compared Action.toString directly with pinned Java. Java calls pred.toString,
+whose SemanticNode implementation checks presence of showPlainFormulae. Native
+Action.String independently printed the location, bypassing the already ported
+semantic formatter. A standalone pinned-Java driver and ignored Go observation
+use three string predicates (ordinary, spaced and empty), source coordinates,
+and absent/empty/false/true property modes. The Go driver supplies the existing
+syntax-image adapter contract; it does not claim a full parser integration test.
+Baseline has nine mismatches among 12 rows. Receipts under .codex-gotmp/:
+action-format-before.log and action-format-java.log, terminal 6932e3, status 0.
+Drivers are in ignored action-format-observation; no permanent test or fixture.
+
+Action.String now delegates to semanticNodeJavaString, matching Java's predicate
+formatter and retaining its numeral/decimal overrides. All 12 observed rows now
+match Java byte for byte: action-format-after.log, terminal 8a6924, status 0;
+diff comparison terminal 1f9d9e, status 0. A present "false" property still selects
+formula text, as source behavior requires. Nil receiver behavior is unchanged.
+
+Existing focused normal TLC checker/trace-retention/original coverage/tool getter/
+simulation trace checks pass: action-format-tlc-checks.log, terminal 86f372,
+status 0, 0.081 seconds. Selected original Github817 variants, legacy Test219,
+and A/B/C coverage model methods pass: action-format-originals.log,
+terminal 2666f6, status 0, 3.862 seconds. Git diff --check passes. No original
+assertion, test inventory credit or workload bound changes. No full workspace,
+XML/ApalacheIR sweep, long race run or excluded email work. Broader semantic
+formatting, source generation and graph mutation sharing remain unproven.

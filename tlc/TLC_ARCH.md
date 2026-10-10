@@ -11057,6 +11057,17 @@ and two LAMBDA false declarations. Pinned Java on unchanged Test219 confirms tha
 FALSE and all 141 walked LAMBDA nodes are undeclared with unknown locations.
 Actual syntax mutation and source-less declaration adapters remain outside this
 bounded observation.
+
+Action.toString delegates to the predicate's source semantic formatter. This
+preserves numeric overrides and selects syntax text when the
+`tla2sany.semantic.SemanticNode.showPlainFormulae` property is present, including
+empty and "false" values. Do not reconstruct action strings directly from the
+predicate location: that bypasses SemanticNode.toString's property behavior.
+A bounded standalone pinned-Java comparison covers three string predicates and
+four property modes; all 12 native rows agree after replacing the location-only
+action formatting. This is observation evidence, not original-method credit or
+proof of every semantic node's formatting.
+
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target
 conversion helpers have been removed.

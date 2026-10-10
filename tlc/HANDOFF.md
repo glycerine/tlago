@@ -66,7 +66,9 @@ registrations match their source identities. Module setup now retains checked
 source locality and ownership, including public RECURSIVE declarations completed
 by LOCAL bodies. Action declaration lookup no longer substitutes definition
 locations for absent declarations; all 6,014 observed locations match syntax
-children. General source generation, graph mutation sharing and source-less
+children. Action strings now delegate to the semantic formatter, retaining the
+`showPlainFormulae` property's presence-based selection of syntax text.
+General source generation, graph mutation sharing and source-less
 fallback lowering remain unproven. Keep those gaps distinct from the completed
 bounded observations.
 
