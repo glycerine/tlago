@@ -163,8 +163,12 @@ now follows Java's tuple, definition and context handling, including unsupported
 expression and missing-variable warnings. All 141 entry-point, CLI-alias and
 collector observations match; 48 focused original tests pass. Native graph
 cleanup now accepts configuration failures that occur before a checker exists.
-Next audit: warning suppression/escalation in subscript collection. Original
-model-test reconciliation remains open.
+Warning suppression and escalation now match Java across 272 ordered
+observations; eight focused original tests pass. Elevated subscript and symmetry
+warnings retain non-null empty parameter arrays, preserving exception recording.
+Next audit: unresolved JSON auto-worker trace replay, starting from the existing
+source comparisons rather than treating passing repetitions as reconciliation.
+Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

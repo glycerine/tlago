@@ -9538,8 +9538,20 @@ actual private Java collector. Console warning text agrees for the reproduced
 unsupported-subscript path. Forty-eight focused original tests pass without
 changing assertions. Native graph cleanup returns when tool construction failed
 before a checker exists, matching the absence of owned graph handles. No new
-persistent tests/fixtures or original-method credit. Warning control combinations
-and complete failed-constructor side effects remain further audits.
+persistent tests/fixtures or original-method credit.
+
+Warning control comparisons now cover ordinary output, -nowarning, suppression,
+-messagesAsErrors and MP.warning2error (including -nowarning). Elevation precedes
+visibility checks. Subscript code 2139 and symmetry code 2279 explicitly pass
+non-null empty parameter arrays, as Java does; nil selects a different exception
+recording path. The generic warning API retains its null/empty distinction.
+Missing-variable code 2140 remains outside the collector's inner catch. All 66
+entry-point/control, 200 direct collector/control and six early symmetry failure
+observations agree with Java; eight focused original tests pass. Symmetry
+observations do not reconcile the original class's inherited exit expectation.
+Observer rows escape complete multiline payloads before comparison; final evidence
+was rerun with that protocol, including an ignored baseline overlay. Complete
+failed-constructor side effects remain a further audit.
 
 LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
 ModelChecker.vetoCleanup property retains disk graph handles for subsequent

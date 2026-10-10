@@ -68,7 +68,7 @@ func (c *AbstractChecker) initialize(stop func()) bool {
 		CreateCoverageCostModels(c.Tool)
 	}
 	if c.CheckLiveness && c.Tool != nil && c.Tool.HasSymmetry() {
-		PrintWarning(ECTLCFeatureUnsupportedLivenessSymmetry)
+		PrintWarning(ECTLCFeatureUnsupportedLivenessSymmetry, []string{}...)
 	}
 	if c.LiveCheck == nil {
 		if c.CheckLiveness {

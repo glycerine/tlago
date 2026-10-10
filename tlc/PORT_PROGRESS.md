@@ -30939,3 +30939,49 @@ credit. Overall TLC parity remains incomplete. Next audit: warning suppression
 and escalation in the new subscript-collection phase, then original-model
 reconciliation. Complete failed-constructor side effects, arbitrary malformed
 semantic graphs and collector Error injections have not been established.
+
+
+2026-10-10 Warning control parity and outage recovery:
+Recovered the pending two-call-site warning fix on top of e5e92b4. Java supplies
+non-null empty arrays to the subscript fallback warning (2139) and the checker
+liveness/symmetry warning (2279). Native zero varargs supplied nil, which retained
+a different parameter value in elevated TLCRuntimeException and selected the
+throwable-printing path instead of the object-valued recorder path. Both source
+call sites now pass []string{} explicitly. Generic PrintWarning semantics remain
+unchanged. Elevation precedes suppression/nowarning; missing-variable warning
+2140 remains outside the collector's inner catch.
+
+Ignored observations under .codex-gotmp/subscript-control-observation use actual
+Java runner/application entry points, the private local collector and unchanged
+upstream April25MC. Six controls across constructors, MC/simulation/DFID and
+native direct/modelcheck/mc entries produce 66 matching native rows; 33 baseline
+rows change under elevation/property controls. Twenty-five existing collector
+expressions across eight controls produce 200 matching rows. Three elevated
+symmetry controls across MC/DFID produce six matching rows, including code 2279,
+exit 255 and ordered exception events. These early failures earn no credit for
+the original LivenessSymmetryWarning class's separate inherited-exit mismatch.
+
+During observation review, raw multiline exception messages were found to allow
+splitlines-based row extraction to truncate diagnostics. All observer payloads
+now escape backslashes/newlines/CR/tabs, preserving one separating tab. Recompiled
+and reran source/native observations and rebuilt the old-call baseline through
+an ignored overlay. Final evidence does not depend on the truncated protocol.
+Final source entry session 97656 terminal 7e3fd6, source collector 70855 terminal
+907fc7, native collector 76098 terminal fc4c26 and baseline/symmetry native 52544
+terminal f26f00 all returned status 0. Comparison 91a8e0 established all 272
+ordered observations equal; recovery recheck 821f91 confirms the same counts.
+
+Eight unchanged original methods pass (88929 terminal c5e68f, 1.332s,
+originals-final.log): Github687specD, Github715b-d, LegacySuiteTestInvalidInvariant,
+LegacySuiteTest216/220 and OCoverage. Recovery rerun session 78464 also terminates
+successfully; log originals-recovery.log. No new persistent tests/fixtures,
+weakened assertions, inventory credit, broad suite, race run or email work.
+
+The full off-heap random workload handle 27326 still responds live after recovery
+(poll 85f214). Saved log progress is 863,658,639 / 2,147,483,648; no terminal result
+or completion credit. Preserve its original bounds, 64 MiB budget and live files.
+Next review remains JSON auto-worker trace replay. Earlier deterministic source
+comparisons already reproduce the excluded-successor invariant behavior and
+separate printed predecessor history from postcondition successor history;
+do not repeat green samples as proof or suppress invariant checks to force a
+prefix. Overall TLC parity remains incomplete.

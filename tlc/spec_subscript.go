@@ -13,7 +13,9 @@ func (p *SpecProcessor) checkNextStateSubscript(tool *Tool, expr SemanticNode, c
 				if !ok || isJavaError(err) {
 					panic(failure)
 				}
-				PrintWarning(ECTLCCouldNotDetermineSubscript)
+				// Java supplies a non-null empty array, which the elevated
+				// exception retains instead of selecting the null-parameter path.
+				PrintWarning(ECTLCCouldNotDetermineSubscript, []string{}...)
 			}
 		}()
 		c1 := c
