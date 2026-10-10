@@ -112,7 +112,10 @@ func sanyGraphLocation(node sanySemanticGraphNode) tlc.SourceLocation {
 	if !ok {
 		panic(tlc.NewClassCastException())
 	}
-	tree := owner.GetTreeNode()
+	return sanyTreeLocation(owner.GetTreeNode())
+}
+
+func sanyTreeLocation(tree any) tlc.SourceLocation {
 	if sanyExploreNull(tree) {
 		return tlc.NullSourceLocation
 	}

@@ -28845,3 +28845,61 @@ terminal 3c70c1, status 0, 1.530 seconds; count receipt b3c958, zero mismatches.
 No new permanent tests/fixtures, original assertions or inventory credit changes.
 Formatting and git diff --check pass. No full-workspace/XML/ApalacheIR sweep,
 long race workload, original-bound reduction or excluded email work.
+
+
+Shared parser semantic bases read current syntax locations (2026-10-09)
+
+Previous turn made authoritative progress with commit 180609f. Revalidated clean
+HEAD and polled full off-heap random session 27326, still live. Latest observed
+progress exceeds 59 million of 2,147,483,648 iterations. No terminal result or
+original-method execution credit. No additional stress process was started.
+
+Java SemanticNode.getLocation reads current stn.getLocation, or nullLoc without
+syntax. SANY graph traversal already had this behavior, but TLC's shared semantic
+base returned the cached Location field. Added a syntax-location resolver to
+parser-owned bases at construction, using the same SANY TreeNode reader as graph
+traversal. It receives the current tree directly and never calls back through a
+semantic location getter. Native evaluator bases retain their explicit Location
+field. Common human-readable location and standard-module classification now use
+the location getter. Action definition display now renders nullLoc rather than
+falling back to a predicate string containing an obsolete cached location.
+
+An ignored standalone observation loads unchanged original Test219 in Java and
+Go, selects an application body, and mutates its shared syntax/base. Eight cases
+cover coordinates (including a zero end), a standard-module filename, absent and
+typed-null syntax, all-zero coordinates, replacement syntax and builtin syntax.
+They compare location getters, the common human-readable image, standard-module
+classification, action definition location and definition display. Baseline has
+seven mismatching rows; final Go matches all eight Java rows byte for byte.
+Receipts under .codex-gotmp/: semantic-location-before-mutation.log, terminal
+f231c7, status 0; semantic-location-after-mutation.log, terminal 25eef5, status 0;
+semantic-location-java-mutation.log, terminal 34c0d0, status 0; comparison/count
+receipt 992392, status 0. Drivers and baseline overlays remain ignored under
+semantic-location-observation; no persistent tests or fixtures are added.
+
+Scratch observer corrections: moved the Go driver out of the package-overlay
+directory; selected an application rather than OpDef's specialized comment-based
+human-readable override; used explicit zero token coordinates rather than Java's
+empty-children constructor (which produces min/max sentinels). These fix observer
+construction, not production behavior. javac notes only a deprecated frontend
+overload. Original Test219 model/config and Java source remain unchanged.
+
+An ignored overlay observes all represented graph-node locations on existing
+Github817/1244, Test219, LET, cyclic and Debug02 originals plus the existing Bitwise
+bridge check. All 10,195 rows agree before and after the correction; the concrete
+defect concerns mutation, not unchanged model coordinates. Receipts:
+semantic-location-before-observation.log, terminal c30e0d, status 0, 1.578 seconds;
+semantic-location-after-observation.log, terminal b0ec9f, status 0, 1.534 seconds;
+counts/comparison receipt 82a645, status 0.
+
+Final focused TLC checker/trace-retention/original coverage/tool getter/simulation
+trace checks pass: semantic-location-final-tlc-checks.log, terminal 03ab5f,
+status 0, 0.054 seconds. Selected original model, coverage, debugger and incremental
+semantic/context methods pass without observers: semantic-location-final-originals.log,
+terminal b1dcd0, status 0, 4.547 seconds. Short SANY suite passes:
+semantic-location-sany-checks.log, terminal 071b6d, status 0, 2.703 seconds.
+Earlier pre-action-display checks also passed, but the final receipts cover that
+last change. Formatting and git diff --check pass. No original-method credit,
+assertion or workload-bound changes; no full-workspace/XML/ApalacheIR sweep,
+long race workload or excluded email work. General graph mutation sharing and
+specialized formatting remain unproven.

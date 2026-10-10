@@ -65,6 +65,7 @@ type SemanticNodeBase struct {
 	LevelParamSet      []*SymbolNode
 	Location           SourceLocation
 	TreeNode           any // The production SANY syntax node, owned by the parser package.
+	syntaxLocation     func(any) SourceLocation
 }
 
 var nextSemanticNodeUID atomic.Int32
@@ -107,7 +108,13 @@ var NullSemanticNodeInstance = func() *NullSemanticNode {
 func (n *SemanticNodeBase) GetTreeNode() any     { return n.TreeNode }
 func (n *SemanticNodeBase) SetTreeNode(node any) { n.TreeNode = node }
 
-func (n *SemanticNodeBase) GetHumanReadableImage() string { return n.Location.String() }
+func (n *SemanticNodeBase) GetHumanReadableImage() string { return n.SourceLocation().String() }
+
+// Parser-owned bases read the current syntax using the parser's TreeNode
+// contract. Native evaluator nodes retain their explicit Location field.
+func (n *SemanticNodeBase) SetSyntaxLocationResolver(resolve func(any) SourceLocation) {
+	n.syntaxLocation = resolve
+}
 
 // SemanticNode.toString normally prints the location. Numeral and Decimal
 // override it, while showPlainFormulae selects the actual SANY syntax image.
@@ -246,6 +253,9 @@ func (n *SemanticNodeBase) SourceLocation() SourceLocation {
 	if n == nil {
 		return NullSourceLocation
 	}
+	if n.syntaxLocation != nil {
+		return n.syntaxLocation(n.TreeNode)
+	}
 	return n.Location
 }
 
@@ -265,7 +275,7 @@ func (n *SemanticNodeBase) IsStandardModule() bool {
 	if n == nil {
 		return false
 	}
-	switch n.Location.Source {
+	switch n.SourceLocation().Source {
 	case "FiniteSets", "Sequences", "Bags", "Naturals", "Integers", "Reals", "RealTime", "Randomization", "TLC":
 		return true
 	default:

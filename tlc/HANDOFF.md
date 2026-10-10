@@ -71,6 +71,10 @@ including after replacement or removal. Seven mutation observations match Java;
 3,775 canonical definition observations agree after the change.
 Action strings now delegate to the semantic formatter, retaining the
 `showPlainFormulae` property's presence-based selection of syntax text.
+Parser-owned semantic bases also read current syntax locations for TLC getters,
+common human-readable locations and standard-module classification. Eight
+mutation cases match Java; 10,195 unchanged graph-location observations agree.
+Action definition display preserves an unknown location after syntax removal.
 General source generation, graph mutation sharing and source-less
 fallback lowering remain unproven. Keep those gaps distinct from the completed
 bounded observations.

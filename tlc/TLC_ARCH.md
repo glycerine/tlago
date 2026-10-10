@@ -11077,6 +11077,25 @@ four property modes; all 12 native rows agree after replacing the location-only
 action formatting. This is observation evidence, not original-method credit or
 proof of every semantic node's formatting.
 
+Parser-owned SemanticNodeBase locations use SANY's current TreeNode location
+reader, installed when the semantic base is created. The same nonrecursive reader
+serves SANY graph traversal and TLC's shared runtime views. It reads current
+coordinates and filename, returns nullLoc for absent/typed-null syntax, preserves
+the null semantic node's builtin syntax, and retains the source cast failure for
+unsupported tree objects. Native evaluator bases continue to use their explicit
+Location field. Common getHumanReadableImage and isStandardModule now consult the
+location getter too. Specialized human-readable overrides remain separate.
+
+Action definition display renders its location even when nullLoc; it no longer
+falls back to a cached predicate string. An ignored standalone observation loads
+unchanged Test219 in both implementations and mutates an actual application body
+through its shared base. All eight rows agree across coordinates, filenames,
+standard-module classification, absent/restored syntax, zero coordinates and
+builtin syntax. Before this correction seven rows differed. On existing original
+models and the Bitwise bridge check, 10,195 canonical locations agree both before
+and after the change. This establishes the observed location contracts, not
+general syntax/semantic graph mutation sharing or all specialized formatters.
+
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target
 conversion helpers have been removed.

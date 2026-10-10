@@ -388,10 +388,7 @@ func (a *Action) GetDefinition() string {
 	if a == nil {
 		return ""
 	}
-	if loc := a.GetDefinitionLocation(); !loc.IsNull() {
-		return loc.String()
-	}
-	return SemanticString(a.Pred)
+	return a.GetDefinitionLocation().String()
 }
 
 func (a *Action) GetDefinitionLocation() SourceLocation {

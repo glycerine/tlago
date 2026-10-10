@@ -15,6 +15,7 @@ func (n *sanySemanticNode) runtimeSemanticBase() *tlc.SemanticNodeBase {
 
 func newSanySemanticNode(kind sanySemKind) sanySemanticNode {
 	base := tlc.NewSemanticNodeBase(tlc.SemanticKind(kind), "")
+	base.SetSyntaxLocationResolver(sanyTreeLocation)
 	data := newSanyLevelData(&base)
 	base.CanonicalLevelData = data
 	return sanySemanticNode{SemanticNodeBase: &base, sanyLevelData: data}
