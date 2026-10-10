@@ -403,8 +403,11 @@ work.
 whole domain. Empty explicit subdomains preserve unsorted function storage and
 bypass domain failures; `FoldFunction` alone obtains its domain. Null diagnostic
 and operator dereferences retain source failures. All 10,752 direct fold rows
-agree, including real parsed lambdas and null-parameter constructors. Registered
-function-fold operator casts and arbitrary callback mutation remain separate work.
+agree, including real parsed lambdas and null-parameter constructors. Both fold
+registrations now reject non-operator arguments before entering the method. All
+21,504 invocation cases agree outside 2,672 native/JVM stack-location differences.
+Current focused original checks pass; the full CommunityModules baseline predates
+these registration guards. Arbitrary callback mutation remains separate work.
 `Contains`, `RemoveFirst`, `Suffixes`, `AllSubSeqs`, `SetToSeq` and `SetToSeqs`
 retain source conversion and null failures, copy ownership and removal shortcuts.
 All 5,312 observations agree outside four intentional native object-identity
@@ -481,7 +484,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,955,123,113 of 2,147,483,648 iterations, without a terminal result. The previous
+1,958,431,955 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

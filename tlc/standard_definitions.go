@@ -184,10 +184,12 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("Reduce", 1, func(args []Value) (Value, error) { return DyadicRationalsReduce(args[0]) })
 	t.defineStandardMethod("IsInjective", 1, func(args []Value) (Value, error) { return FunctionsIsInjective(args[0]) })
 	t.defineStandardMethod("AntiFunction", 1, func(args []Value) (Value, error) { return FunctionsAntiFunction(args[0]) })
-	t.defineStandardMethod("FoldFunction", 3, func(args []Value) (Value, error) { return FunctionsFoldFunction(args[0], args[1], args[2]) })
-	t.defineStandardMethod("FoldFunctionOnSet", 4, func(args []Value) (Value, error) {
+	t.defineStandardMethod("FoldFunction", 3, standardOperatorMethod(0, func(args []Value) (Value, error) {
+		return FunctionsFoldFunction(args[0], args[1], args[2])
+	}))
+	t.defineStandardMethod("FoldFunctionOnSet", 4, standardOperatorMethod(0, func(args []Value) (Value, error) {
 		return FunctionsFoldFunctionOnSet(args[0], args[1], args[2], args[3])
-	})
+	}))
 	t.defineStandardMethod("Quantify", 2, func(args []Value) (Value, error) { return FiniteSetsExtQuantify(args[0], args[1]) })
 	t.defineStandardMethod("kSubset", 2, func(args []Value) (Value, error) { return FiniteSetsExtKSubset(args[0], args[1]) })
 	t.defineStandardMethod("FoldSet", 3, func(args []Value) (Value, error) { return FiniteSetsExtFoldSet(args[0], args[1], args[2]) })

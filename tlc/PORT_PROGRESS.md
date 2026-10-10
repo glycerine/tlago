@@ -36130,3 +36130,50 @@ saved original random stress progress is 1,955,123,113 / 2,147,483,648 (306af4),
 without terminal result or long credit. Direct poll 154b40 confirms session
 27326 live; preserve its original seed, bounds and log. Handoff and architecture
 record verified domain/access ordering and the remaining registration-cast gap.
+
+
+2026-10-10: Registered function-fold operator casts
+
+Previous goal turn made verified progress in fc7f284. Confirm clean worktree and
+missing FoldFunction/FoldFunctionOnSet OpValue guards (62ad8e). Original random
+stress session 27326 remains directly live (3a2c71). Read actual source MethodValue
+invocation and standard method metadata (bf019d). Unlike FoldSeq, both Functions
+registrations accept non-operators until the body, which can return the base for
+empty domains or mutate/validate a function before reporting an operator error.
+Source MethodHandle casts reject the non-operator before entering the method.
+
+Create ignored source/native actual MethodValue invocation observers from the
+preceding fold driver. Fourteen function forms, eight subdomains, eight operator
+forms, eight source combinations and three folds yield 21,504 complete rows.
+Actual parsed test206 nodes and runtime constructors remain in use; source wraps
+actual reflected Functions/SequencesExt methods and native uses registered values
+with their real metadata. No fabricated semantic graph, evaluator callback or
+persistent fixture/test is introduced. Four additional operator forms are boolean,
+integer, tuple and actual debugger StringValue; null and finite operator maps
+retain the preceding valid/failing body coverage.
+
+Source matrix completes at 39400f; native baseline completes at 99f4b4. Partial
+reads at 5c4796 and 8723bb are not complete comparisons. Complete baseline has
+9,840 raw differences (280bd8), of which 7,168 remain after removing only native/
+JVM stack-location and repeated-frame elision lines. Add the existing
+standardOperatorMethod(0, ...) guard to both Functions registrations. Null passes
+the cast; valid operator behavior remains unchanged. Native corrected matrix
+completes at 04cc20. Complete comparison has 2,672 raw stack-text differences and
+zero differences outside those stack locations/elision lines (9f9d95). Exception/
+cause headers, message text, codes, nullable details, source-frame counts and
+retained function/subdomain state agree. Do not fabricate JVM stack frames.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass: root 5.474s and tlc 2.394s (821986). The complete
+CommunityModules baseline from fc7f284 predates these guards; only parameter
+validation changes, and original fold bodies retain that full run. No broad
+suite or long set rerun, race instrumentation, shortened workload, persistent
+test/fixture or new original-method credit. Neighboring FiniteSetsExt and BagsExt
+signatures also expose concrete parameter-boundary work: Quantify takes OpValue,
+FoldBag takes OpValue and FoldSet takes both OpValue and Enumerable. Keep their
+method-handle cast order and body error handling distinct in the next audit.
+Latest saved original random stress progress is 1,958,431,955 /
+2,147,483,648 (99a233), without terminal result or long credit. Preserve original
+session 27326, log, seed and bounds. Handoff and architecture now distinguish the
+verified direct fold bodies from registered parameter casting and preserve the
+native stack-text limitation.

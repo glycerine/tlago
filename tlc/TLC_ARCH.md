@@ -8484,10 +8484,30 @@ using that actual body. Results, root failures, source frames and retained
 function/subdomain state agree. Observers use actual parsed test206 nodes and
 runtime constructors without fabricated semantic graphs, evaluator callbacks or
 persistent fixtures/tests. Original-method credit is unchanged. This does not
-prove arbitrary callback mutation or registered function-fold OpValue casts;
-those registrations still lack the explicit parameter guard used by FoldSeq.
+prove arbitrary callback mutation. Registered operator casts are covered below.
 The complete unchanged original CommunityModules all/shiviz target passes after
-these fold changes, retaining its FunctionsTests and sequence-fold assumptions.
+these fold-body changes, retaining its FunctionsTests and sequence-fold assumptions.
+
+Functions FoldFunction and FoldFunctionOnSet registrations enforce their source
+OpValue parameter type before entering the method, using the existing guard
+already applied to FoldSeq. A non-null non-operator is rejected even when an
+empty function or explicit subdomain would return the base without invoking it.
+A null operator passes the cast and is only dereferenced if iteration reaches
+operator evaluation. Cast failure precedes function validation, domain lookup,
+subdomain validation and any function normalization or application.
+
+All 21,504 actual MethodValue invocation observations agree outside 2,672 raw
+native/JVM stack-location and elision-count differences. Removing only stack
+frame locations and repeated-frame elision lines leaves identical exception/
+cause headers, messages, codes, nullable details, owner source-frame counts and
+retained function/subdomain state. Cases cover fourteen function forms, eight
+subdomains, four actual finite-map/null operators plus four non-operator forms,
+eight source combinations and both Functions folds plus FoldSeq. Actual parsed
+test206 nodes and runtime constructors feed the real source reflected methods
+and native registrations. No persistent fixture/test, fabricated semantic graph
+or evaluator callback is introduced; original-method credit is unchanged.
+Focused original regressions pass. The complete CommunityModules baseline
+predates these parameter guards; its fold bodies are unchanged by this revision.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
