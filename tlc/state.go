@@ -230,6 +230,30 @@ func (s *TLCStateMut) Bind(name *UniqueString, value Value) *TLCStateMut {
 	return s
 }
 
+// BindSymbol preserves the state-specific overload used by ENABLED. Mutable
+// states only support binding by name; functional states retain the symbol in
+// a new persistent binding without changing the input state.
+func (s *TLCStateMut) BindSymbol(id *SymbolNode, value Value) *TLCStateMut {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.printState != nil {
+		return s.printState.BindSymbol(id, value)
+	}
+	if !s.functional {
+		panic(NewWrongInvocationException("TLCStateMut.bind: This is a TLC bug."))
+	}
+	s = s.functionalCopy()
+	s.functionalBindings = NewTLCStateFun(id, value, s.functionalBindings)
+	if id != nil && id.Name != nil {
+		loc := id.Name.VarLoc()
+		if loc >= 0 && loc < len(s.values) {
+			s.values[loc] = value
+		}
+	}
+	return s
+}
+
 func (s *TLCStateMut) BindWithSource(name *UniqueString, value Value, source SemanticNode) *TLCStateMut {
 	if s != nil && s.printState != nil {
 		return s.printState.BindWithSource(name, value, source)

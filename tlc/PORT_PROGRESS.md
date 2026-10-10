@@ -30741,3 +30741,106 @@ Next audit: coverage substitution lookup during evaluation when next-state and
 invariant actions share a semantic substitution, using existing model O. Graph
 construction and creator capture are now audited separately; arbitrary malformed
 semantic graphs and concurrent collector mutation remain unproven.
+
+
+2026-10-10 — Substitution evaluation ownership, ENABLED binding and config ordering
+
+Previous goal turn was progress: 8388b43 committed the collector-lifetime audit
+and changed the next action. This turn followed that action using existing model
+O, whose next-state and invariant roots share one semantic Subst. Java/source and
+native observers call the actual tool APIs and serialize complete CM graphs with
+object identity, ordered child/LET links, recursive links, substitution targets,
+root ownership, levels, primed flags and every primary/secondary counter.
+
+Per-action substitution maps already match: next/invariant targets are distinct,
+descendant lookup uses the appropriate root and the initial root returns
+DO_NOT_RECORD. Invariant-first, next-first and cost-model-rebuilding sequences
+exercise four existing states, repeated invariant checks, successor generation,
+transition validation and both public uncounted and covered ENABLED calls.
+The first 78 rows all matched (e57ec0).
+
+An initial Java observer accidentally supplied a mutable successor to ENABLED
+and received util.WrongInvocationException at bind(SymbolNode, value), whereas
+Go succeeded and mutated the target. The ordinary observer was corrected to use
+TLCStateFun.Empty / NewFunctionalState; the API discrepancy was then separately
+retained as an explicit mutable-enabled sequence. Baseline c48c62 requires 103
+source/native rows and shows six differences, all Java binding failures versus
+native success/mutation. Production adds state-specific BindSymbol, dispatches
+all ENABLED assignment paths through it and retains the actual symbol in the
+persistent functional binding. Mutable targets throw the source exception only
+when binding is attempted, retaining RHS counter effects; already-bound targets
+still compare normally. Print wrappers delegate to their state owner.
+
+Ignored assets: .codex-gotmp/coverage-substitution-observation/, with
+ObserveCoverageSubstitution.java, exports.go, overlay.json, driver/main.go,
+compare.py and complete logs. Java public enabled receives TLCStateFun.Empty;
+the covered overload receives the actual empty IActionItemList and a branched
+context. Reflection signature/setup errors were corrected before using those
+rows as evidence. Source final extended compile d0b2a8 and run 6f14ff established
+the 78-row result. Extended mutable source compile 79def5/run 06e0b1 and native
+baseline build session 31743 terminal 7411d5 all completed successfully.
+Corrected native build 10238 terminal 355171/run 976d4d matched all 103 rows.
+
+Five target shapes (empty/bound functional, empty/bound mutable, and mutable with
+only y prebound) then exercise all actual next actions in O, E, H, I, K and
+SubseteqNextState: 60 further rows covering equality, membership, UNCHANGED and
+subset assignment. Keeping y bound in SubseteqNextState reaches the subset
+binding rather than failing first at UNCHANGED y. Source compilation 964b8e,
+source session 76700 terminal b23ac1, native session 37053 terminal 50d2c7 and
+native run d0588e returned status 0 after correcting the observer's variable
+getter. Five H graph rows differed (fac798), although binding results agreed.
+
+Source OpApplNode.walkGraph always visits the semantic operator. Go instead
+walked the runtime lookup, which pre-evaluation had replaced with MyNat's
+interval value, dropping its zero-count range-expression child. Coverage now
+walks the semantic Definition for operator applications and operator arguments,
+retaining the runtime adapter for native nodes lacking that metadata. Override
+collectors remain separate. H's intermediate mismatch log is retained as
+bindings-before-H.log. Final native build session 70067 terminal 5c5346 and run
+5dcc73 returned status 0. Final compare.py receipt 4bbf34 requires exactly 103 +
+60 ordered rows, source/native equality, the six typed failures, five root-
+ownership relations, six original baseline differences and five H graph
+baseline differences. All 163 match.
+
+The first 37-original-model selection failed only Github687specD, session 46879
+terminal 5a28af, root 11.818s. Its source configuration diagnostic was masked by
+coverage creation on a partial tool. The bridge deliberately retains ConfigErrors
+for native callers, but source-backed loadTLCAppTool was letting such a tool
+enter checker construction. Loading now returns the first retained failure as a
+TLCRuntimeException before returning a tool, matching FastTool construction.
+The original Github687specD expectations and all original assertions are intact.
+After that correction, the 38-model selection including SubseteqNextState passed
+(session 89910 terminal 9fb8a4, 11.927s). After the semantic coverage traversal
+correction, the same unchanged selection passed again: session 52602 terminal
+3cf6d7, 11.243s, original-models-final2.log. It includes 19 coverage methods, two
+TLCGetLevel methods, five TraceExpressionSpec methods, three Github680 methods,
+eight Github687 methods and SubseteqNextState.
+
+Seven original configuration checks (Github715/b/c/d, Github696/b and
+ConstantOperatorConfiguration) pass, original-config.log, 1.422s. Their session
+46892 handle was missing when polled, so terminal log output was inspected
+(f2c31e); it ends with Go's ok result, not a progress-only line. Four original
+reporting checks pass after the final coverage change: session 26063 terminal
+3b26b5, 0.013s, original-reporting-final.log. Total focused original receipts:
+45 root methods + 4 reporting methods. No new persistent tests or fixtures,
+weakened assertions, inventory changes or additional original-method credit.
+No race, full workspace rerun, XML/ApalacheIR sweep or email work.
+
+The earlier collector audit was rebuilt against current production code (session
+46989 terminal fe35de); all 40 original rows still match (cc1ac8). The same graph
+comparison was extended to the remaining ordinary coverage fixtures, adding 104
+rows: A, B, C, D, F, G, H, I, J, K, M, Github314 and Github377. Source session
+27842 terminal b85a13/native f48e4c and I source/native 9bd7d3/531e5e completed
+successfully. Final compare-expanded.py receipt 047819 requires exactly 144 rows
+on 18 existing models (all 17 ordinary coverage models plus TLCGetLevel); all
+match. Unlike report snapshots, graph rows retain zero-count children.
+
+Formatting and git diff --check pass. Full original off-heap random stress
+session 27326 remains live (poll 0e5043), latest progress 789,913,600 /
+2,147,483,648. Preserve its original bounds, assertions, default 64 MiB budget
+and files; no terminal result or original-method credit. Overall parity remains
+incomplete. Next audit: configuration failure propagation through CLI,
+simulation and distributed loading, consulting existing constructor receipts
+before repeating them. Shared substitution ownership and semantic coverage
+traversal now have their own evidence; arbitrary malformed semantic graphs,
+concurrent collector mutation and every evaluator failure order remain unproven.

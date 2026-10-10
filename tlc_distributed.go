@@ -311,6 +311,14 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 	if tool == nil || diags.HasErrors() {
 		return nil, diags, nil
 	}
+	// The bridge retains configuration diagnostics for native callers. FastTool
+	// construction throws the first failure before a checker or application can
+	// observe the processor's partially initialized runtime arrays.
+	for _, failure := range tool.ConfigErrors {
+		if failure != nil {
+			return nil, diags, tlc.NewTLCRuntimeException(failure.Code, failure.Params...)
+		}
+	}
 	tool.RootFile, tool.SpecDir, tool.ConfigFile = rootFile, specDir, configFile
 	return tool, diags, nil
 }

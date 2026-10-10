@@ -357,7 +357,7 @@ func (t *Tool) enabledEquality(pred SemanticNode, left SemanticNode, right Seman
 	}
 	lval := s1.Lookup(varNode.Name)
 	if lval == nil {
-		s1 = s1.Bind(varNode.Name, rval)
+		s1 = s1.BindSymbol(varNode, rval)
 		return t.EnabledFromActionList(acts, s0, s1, cm)
 	}
 	eq, err := lval.Equal(rval)
@@ -380,7 +380,7 @@ func (t *Tool) enabledMembership(pred SemanticNode, left SemanticNode, right Sem
 	if err != nil {
 		return nil, err
 	}
-	return t.enabledEnumerateAssignment(varNode.Name, rval, pred, acts, s0, s1, cm)
+	return t.enabledEnumerateAssignment(varNode, rval, pred, acts, s0, s1, cm)
 }
 
 func (t *Tool) enabledSubsetEq(pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
@@ -396,10 +396,11 @@ func (t *Tool) enabledSubsetEq(pred SemanticNode, left SemanticNode, right Seman
 	if err != nil {
 		return nil, err
 	}
-	return t.enabledEnumerateAssignment(varNode.Name, t.setValueSource(right, NewSubsetValue(rset, cm)), pred, acts, s0, s1, cm)
+	return t.enabledEnumerateAssignment(varNode, t.setValueSource(right, NewSubsetValue(rset, cm)), pred, acts, s0, s1, cm)
 }
 
-func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) enabledEnumerateAssignment(variable *SymbolNode, domain Value, pred SemanticNode, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	varName := variable.Name
 	lval := s1.Lookup(varName)
 	if lval != nil {
 		member, err := domain.Member(lval)
@@ -414,7 +415,7 @@ func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, p
 	}
 	enum := enumerable.Elements()
 	for val := enum.NextElement(); val != nil; val = enum.NextElement() {
-		s2State := s1.Bind(varName, val)
+		s2State := s1.BindSymbol(variable, val)
 		s2, err := t.EnabledFromActionList(acts, s0, s2State, cm)
 		if err != nil || s2 != nil {
 			return s2, err
@@ -437,7 +438,7 @@ func (t *Tool) EnabledUnchanged(expr SemanticNode, acts *ActionItemList, c *Cont
 		}
 		v1 := s1.Lookup(varName)
 		if v1 == nil {
-			s1 = s1.Bind(varName, v0)
+			s1 = s1.BindSymbol(varNode, v0)
 			return t.EnabledFromActionList(acts, s0, s1, cm)
 		}
 		eq, err := v1.Equal(v0)

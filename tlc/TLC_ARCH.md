@@ -9470,6 +9470,47 @@ arbitrary malformed semantic graphs or concurrent collector mutation. No new
 persistent tests/fixtures or original-method credit; prior original-test receipts
 remain applicable because production code did not change.
 
+The subsequent evaluation audit preserves per-action substitution lookup:
+next-state and invariant roots sharing one semantic `Subst` keep distinct counter
+wrappers, descendant lookups delegate to their own root, and an initial root
+without that substitution returns `DO_NOT_RECORD`. Repeated invariant checks,
+successor generation, transition validation and covered `ENABLED` evaluation
+retain these owners regardless of call order or cost-model rebuilding. Public
+`enabled` without a cost model does not count into either root.
+
+`ENABLED` assignments dispatch the symbol-binding overload for equality,
+membership, subset assignment and `UNCHANGED`. Functional states retain the
+actual symbol in a new persistent binding. Mutable states throw the source
+`WrongInvocationException` at the attempted binding, after evaluating the right
+side and preserving its counter effects; already bound targets still perform
+their normal comparisons without attempting a bind. Print wrappers delegate
+symbol binding to their state owner.
+
+Coverage graph traversal follows an operator's semantic definition independently
+of its runtime lookup. Pre-evaluation can replace a lookup with a value without
+removing the semantic body. In model `H`, the `MyNat` call therefore retains its
+zero-count range-expression child. Operator arguments likewise traverse their
+semantic definition. Runtime override collectors remain separate, and native
+nodes without semantic definitions retain the runtime-definition adapter.
+
+All 163 ordered evaluation/ownership observations agree: 103 on existing model
+`O`, and 60 binding observations across `O`, `E`, `H`, `I`, `K` and
+`SubseteqNextState`. Six baseline binding-failure rows and five subsequent `H`
+graph rows required corrections. The graph/lifecycle comparison now covers 144
+rows on all 17 ordinary coverage models plus `TLCGetLevel`. Forty-nine focused
+original tests pass: 38 model/generated-trace/ENABLED checks, seven configuration
+checks and four reporting methods. No persistent tests/fixtures or new method
+credit. These observations do not establish arbitrary malformed semantic graphs,
+concurrent collector mutation or every evaluator failure order.
+
+The source-backed application/tool loader converts the first retained bridge
+configuration failure into `TLCRuntimeException` before returning a tool. Java's
+`FastTool` constructor fails at that phase; allowing a partial tool into checker
+construction can instead mask the configuration diagnostic with a coverage-array
+null failure. The original `Github687specD` assertion exposed this ordering and
+now passes unchanged. `BuildTLCTool` retains its native diagnostic carrier for
+callers that explicitly inspect partial construction.
+
 LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
 ModelChecker.vetoCleanup property retains disk graph handles for subsequent
 inspection, while the liveness writer still closes. A local checkpoint cleanup

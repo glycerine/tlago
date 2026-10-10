@@ -151,14 +151,16 @@ now retain the first action per predicate location, then deduplicate cost models
 module ordering follows interned tokens. Variable setup preserves partial counter
 replacement and null failures; reports read each current declaration/counter in
 the captured array instead of snapshotting the whole collection. All 175 coverage
-observations and 30 focused original tests pass. A further 40 collector lifecycle
-and graph observations match Java without code changes: primed locations are
-captured at construction, while fresh collectors read the current next predicate.
-Ordered children, LET/recursive links, substitution links and root ownership also
-agree on five existing models. Next audit: substitution lookup during evaluation
-when next-state and invariant actions share a semantic substitution, using model
-`O`. Consult earlier traversal and state-counter receipts before repeating that
-completed work. Original model-test reconciliation remains open.
+observations and 30 focused original tests pass. Collector primed locations retain
+their construction-time capture; all 144 graph/lifecycle observations on 18 models
+match Java. Coverage traversal now follows semantic operator definitions even
+after runtime pre-evaluation. Shared substitutions retain separate next/invariant
+counters. `ENABLED` now binds by symbol, retaining persistent functional states
+and Java's failure on mutable targets. Source-backed loading rejects configuration
+failures before checker construction can mask them. All 163 evaluation/ownership
+observations and 49 focused original tests pass. Next audit: configuration failure
+propagation through CLI, simulation and distributed loading, reusing existing
+constructor receipts. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

@@ -704,7 +704,9 @@ func (c *coverageCreator) walk(node SemanticNode) {
 	case *OpArgNode:
 		// SANY's OpArgNode.walkGraph visits its operator, including the
 		// otherwise unattached definition of a LAMBDA argument.
-		if def, ok := c.tool.Lookup(n.Op, EmptyContext, EmptyState, false).(*OpDefNode); ok {
+		if n.Op != nil && n.Op.Definition != nil {
+			c.walkOpDef(n.Op.Definition)
+		} else if def, ok := c.tool.Lookup(n.Op, EmptyContext, EmptyState, false).(*OpDefNode); ok {
 			c.walkOpDef(def)
 		}
 	case *LabelNode:
@@ -850,7 +852,12 @@ func (c *coverageCreator) preOpAppl(node *OpApplNode) {
 		c.root.PutSubst(subst, cm)
 	}
 	c.stack = append(c.stack, cm)
-	if def, ok := c.lookupToolOpDef(node); ok && sameSymbol(def.Symbol, node.Operator) {
+	// Graph traversal follows the semantic operator even when pre-evaluation
+	// replaced its runtime lookup with a value. Runtime overrides are linked
+	// separately above, as in CostModelCreator.preVisit.
+	if node.Operator != nil && node.Operator.Definition != nil {
+		c.walkOpDef(node.Operator.Definition)
+	} else if def, ok := c.lookupToolOpDef(node); ok && sameSymbol(def.Symbol, node.Operator) {
 		c.walkOpDef(def)
 	}
 }
