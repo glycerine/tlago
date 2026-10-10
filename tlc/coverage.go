@@ -317,10 +317,10 @@ func CreateCoverageCostModels(tool *Tool) {
 			invariant.CM = creator.createForAction(invariant, CoverageRelationProp)
 		}
 	}
-	for _, constraint := range tool.GetActionConstraints() {
+	for _, constraint := range tool.requireConstraintArray(tool.GetActionConstraints()) {
 		creator.assignConstraintCostModel(constraint)
 	}
-	for _, constraint := range tool.GetModelConstraints() {
+	for _, constraint := range tool.requireConstraintArray(tool.GetModelConstraints()) {
 		creator.assignConstraintCostModel(constraint)
 	}
 	if coverageImpliedEnabled() {
@@ -397,8 +397,8 @@ func reportCoverage(tool *Tool) {
 			invariant.CM.Report()
 		}
 	}
-	reportConstraintCoverage(tool, tool.GetActionConstraints())
-	reportConstraintCoverage(tool, tool.GetModelConstraints())
+	reportConstraintCoverage(tool, tool.requireConstraintArray(tool.GetActionConstraints()))
+	reportConstraintCoverage(tool, tool.requireConstraintArray(tool.GetModelConstraints()))
 	if coverageImpliedEnabled() {
 		for _, impliedInit := range tool.GetImpliedInits() {
 			if impliedInit != nil {

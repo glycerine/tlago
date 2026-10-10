@@ -11154,8 +11154,24 @@ observes 15 phases for C's state constraints and TLCGetLevel's state/action
 constraints. Original/operator-location/missing-syntax, actual action replacement,
 independent tool slots, null/typed-null and unsupported objects, restoration and
 null/typed-null nodes produce 45 identical rows. Baseline differs in 27 rows.
-Constraint array sharing and processor-field replacement are separate contracts;
-the current tool and processor getters copy arrays and retain setup fields.
+Source tool constraint getters now delegate to the current processor, and its
+getters return retained slices. Writes through either getter and replacement of
+the processor's array affect subsequent tool reads, metadata and filtering.
+Standalone native tools retain their copied field adapters. Constraint presence
+checks use the current getters and preserve short-circuit order. Source array
+consumers require a non-null array before iteration, matching Java's length,
+foreach and stream boundaries; native empty nil slices retain their adapter
+behavior. This applies to metadata, filtering, coverage creation/reporting and
+constrained transition explanations.
+
+An ignored pinned-Java/native observation loads unchanged C state constraints and
+TLCGetLevel action constraints. Seven phases observe initial sharing, a tool
+getter write, a processor getter write, array replacement, empty/null arrays and
+restoration. It compares array length/identity, presence checks, full constraint
+metadata and actual state/action filtering. All 56 rows agree; baseline differs
+in 28. The 45 cast/location rows still agree after selecting the actual getter
+arrays in that observation. Invariant, implied-property and temporal action/name
+array ownership remains a separate source contract.
 
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing

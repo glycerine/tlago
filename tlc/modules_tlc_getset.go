@@ -424,8 +424,8 @@ func tlcSpecRecord(tool *Tool) Value {
 		propertyActionSetValue(tool.GetImpliedInits()),
 		propertyActionSetValue(tool.GetImpliedTemporals()),
 		stateVariablesSetValue(tool),
-		semanticNodeSetValue(tool, tool.GetActionConstraints()),
-		semanticNodeSetValue(tool, tool.GetModelConstraints()),
+		semanticNodeSetValue(tool, tool.requireConstraintArray(tool.GetActionConstraints())),
+		semanticNodeSetValue(tool, tool.requireConstraintArray(tool.GetModelConstraints())),
 		propertyActionSetValue(tool.GetImpliedActions()),
 	}
 	return NewRecordValue(names, values, false)

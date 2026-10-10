@@ -86,9 +86,10 @@ location records use Java's `--unknown--` module. Spec metadata and coverage now
 use the requested tool's declarations; counters belong to those declarations.
 All 15 observed ownership/report/failure rows and 11 counter lifecycle rows match
 Java. Constraint metadata now preserves Java's operator/action casts and null
-failures; all 45 observed state/action cases agree. Next source audit: constraint
-array ownership through tool and processor getters, which currently copy arrays
-and retain setup fields rather than Java's live processor arrays.
+failures; all 45 observed state/action cases agree. Constraint getters now retain
+current processor arrays; all 56 ownership/metadata/filter observations match,
+including empty/null arrays. Next source audit: invariant, implied-property and
+temporal action/name array ownership through the processor and tool getters.
 
 ## Verification baseline and test credit
 

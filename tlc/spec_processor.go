@@ -556,14 +556,14 @@ func (p *SpecProcessor) GetModelConstraints() []SemanticNode {
 	if p == nil {
 		return nil
 	}
-	return append([]SemanticNode(nil), p.ModelConstraints...)
+	return p.ModelConstraints
 }
 
 func (p *SpecProcessor) GetActionConstraints() []SemanticNode {
 	if p == nil {
 		return nil
 	}
-	return append([]SemanticNode(nil), p.ActionConstraints...)
+	return p.ActionConstraints
 }
 
 func (p *SpecProcessor) GetRLReward() SemanticNode {

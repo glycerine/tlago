@@ -1,7 +1,7 @@
 package tlc
 
 func (t *Tool) IsInModelImpl(state *TLCStateMut) (bool, error) {
-	for _, constraint := range t.GetModelConstraints() {
+	for _, constraint := range t.requireConstraintArray(t.GetModelConstraints()) {
 		ok, err := t.IsInModelForConstraint(constraint, state)
 		if err != nil || !ok {
 			return ok, err
@@ -15,7 +15,7 @@ func (t *Tool) IsInModelForConstraintImpl(constraint SemanticNode, state *TLCSta
 }
 
 func (t *Tool) IsInActionsImpl(s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
-	for _, constraint := range t.GetActionConstraints() {
+	for _, constraint := range t.requireConstraintArray(t.GetActionConstraints()) {
 		ok, err := t.IsInActionsForConstraint(constraint, s1, s2)
 		if err != nil || !ok {
 			return ok, err

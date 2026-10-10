@@ -29187,3 +29187,48 @@ Stress session 27326 remains live (poll 39ebe2), latest saved observation
 credit. Overall parity remains incomplete. Next source audit: constraint array
 ownership. Java Tool delegates to current processor arrays; Go tool/processor
 getters currently copy arrays and retain setup fields.
+
+
+2026-10-09: Current processor constraint arrays and consumer boundaries
+
+Java Spec delegates constraint getters to its current SpecProcessor, whose
+getters return actual arrays. Go copied processor arrays during setup and again
+on each getter call. Writes through either getter and later processor replacement
+were invisible to source consumers; empty arrays also collapsed to nil copies.
+Tool getters now delegate to the processor and its getters retain the slices.
+Standalone native tools preserve their copied field adapters. Constraint presence
+checks use current getters, retaining Java's model-before-action short circuit.
+Source consumers require non-null arrays before metadata streams/iteration:
+filtering, coverage creation/reporting and constrained transition explanations.
+Native nil slices retain their empty-list adapter behavior.
+
+Ignored standalone drivers load unchanged original C and TLCGetLevel in pinned
+Java and Go. Seven phases for state/action constraint arrays compare length and
+sharing, presence checks, complete metadata and actual filtering: initial, tool
+getter write, processor getter write, replacement, empty/null arrays and restore.
+All 56 rows agree; baseline differs in 28. Final comparison fcf92d, status 0.
+Logs under .codex-gotmp/: constraint-array-java.log, constraint-array-before.log,
+constraint-array-after.log; drivers/baseline overlays remain ignored under
+constraint-array-observation. javac emits only the deprecated frontend overload
+note. The prior cast observation now selects actual getter arrays rather than
+setup adapter fields; all 45 rows still match its Java log, receipt 8db6ff,
+status 0, constraint-array-casts-check.log. Source searches found no direct
+original getter tests. No persistent tests/fixtures or original-method credit.
+
+Selected existing original TLCGetAll/TLCGetLevel, A/B/C coverage, Debug02-Debug05,
+ReportCoverage01-04, DoInitFunctorEvalException and simulation state/action
+constraint checks plus focused native successor checks pass normally:
+.codex-gotmp/constraint-array-originals.log, terminal 0fc78b, status 0;
+root 5.960 seconds, TLC 6.713 seconds. Focused native copied-getter compatibility,
+distributed constraint ordering/missing-initial-state and successor checks first
+encountered sandbox denial of local TCP listeners (d2f639, status 1; saved
+constraint-array-native-checks.log). The same selection passes with local-listener
+permission: constraint-array-native-network-checks.log, terminal 674543, status 0,
+5.134 seconds. No altered assertions, skipped TCP branch or fixture changes.
+Formatting and git diff --check pass. No full workspace/XML/ApalacheIR sweep or
+long race selection.
+
+Stress session 27326 remains live (poll 3a5369), with latest saved observation
+246,985,402 / 2,147,483,648 iterations and no terminal result or new method credit.
+Overall parity is incomplete. Next concrete audit: current processor ownership of
+invariant, implied-property and temporal action/name arrays through tool getters.

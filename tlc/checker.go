@@ -1732,7 +1732,7 @@ func (mc *ModelChecker) processSuccessorForWorker(worker *Worker, curState *TLCS
 }
 
 func (mc *ModelChecker) writeConstrainedTransitionReasons(tool *Tool, writer IStateWriter, curState *TLCStateMut, succState *TLCStateMut, action *Action) error {
-	for _, constraint := range tool.GetModelConstraints() {
+	for _, constraint := range tool.requireConstraintArray(tool.GetModelConstraints()) {
 		ok, err := tool.IsInModelForConstraint(constraint, succState)
 		if err != nil {
 			return err
@@ -1743,7 +1743,7 @@ func (mc *ModelChecker) writeConstrainedTransitionReasons(tool *Tool, writer ISt
 			}
 		}
 	}
-	for _, constraint := range tool.GetActionConstraints() {
+	for _, constraint := range tool.requireConstraintArray(tool.GetActionConstraints()) {
 		ok, err := tool.IsInActionsForConstraint(constraint, curState, succState)
 		if err != nil {
 			return err

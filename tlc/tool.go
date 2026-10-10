@@ -492,7 +492,7 @@ func (t *Tool) HasStateOrActionConstraints() bool {
 	if t.HasStateOrActionConstraintsFunc != nil {
 		return t.HasStateOrActionConstraintsFunc(t)
 	}
-	return len(t.ModelConstraints) > 0 || len(t.ActionConstraints) > 0
+	return len(t.requireConstraintArray(t.GetModelConstraints())) > 0 || len(t.requireConstraintArray(t.GetActionConstraints())) > 0
 }
 
 func (t *Tool) Enabled(pred SemanticNode, con *Context, s0 *TLCStateMut, s1 *TLCStateMut) (state *TLCStateMut, err error) {
@@ -958,6 +958,9 @@ func (t *Tool) GetModelConstraints() []SemanticNode {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetModelConstraints()
+	}
 	return append([]SemanticNode(nil), t.ModelConstraints...)
 }
 
@@ -965,7 +968,19 @@ func (t *Tool) GetActionConstraints() []SemanticNode {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetActionConstraints()
+	}
 	return append([]SemanticNode(nil), t.ActionConstraints...)
+}
+
+// Java consumers dereference the processor's constraint arrays. Standalone
+// native tools also support nil slices as their empty constraint lists.
+func (t *Tool) requireConstraintArray(nodes []SemanticNode) []SemanticNode {
+	if t != nil && t.SpecProcessor != nil && nodes == nil {
+		panic(NewNullPointerException())
+	}
+	return nodes
 }
 
 func (t *Tool) GetAssumptions() []SemanticNode {
