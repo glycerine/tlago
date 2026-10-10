@@ -295,8 +295,11 @@ checks pass. Eager native constants use allocated-empty argument arrays.
 TLCEval now reads its first argument without a registration arity guard,
 preserving null/empty input failures, ignored extra arguments and the constant
 expression's null-context failure. Four relevant original models pass. General
-evaluation's null-context normalization remains a concrete follow-up gap;
-the real `C!c` expression exposes it through TLCEval.
+evaluation, lookup, level calculation, local-definition setup and lazy values now
+preserve explicit nil contexts. Source dereferences retain typed null failures;
+literals can still evaluate without a context. All 124 bounded comparisons and
+the original 14-row TLCEval comparison match. Relevant original model and focused
+context/lazy checks pass. Other context consumers remain outside this audit.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

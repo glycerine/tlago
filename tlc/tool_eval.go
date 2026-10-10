@@ -24,11 +24,7 @@ func parseEvalArgs(args ...any) (*Context, *TLCStateMut, *TLCStateMut, int, Cost
 				stateArgs++
 			}
 		case *Context:
-			if v == nil {
-				parsed.con = EmptyContext
-			} else {
-				parsed.con = v
-			}
+			parsed.con = v
 		case *TLCStateMut:
 			if stateArgs == 0 {
 				parsed.s0 = v
@@ -88,7 +84,7 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 		return nil
 	}
 	if con == nil {
-		con = EmptyContext
+		panic(NewNullPointerException())
 	}
 	if val := con.LookupCutoff(sym, cutoff); val != nil {
 		return val
@@ -202,9 +198,6 @@ func (t *Tool) EvalPure(opDef *OpDefNode, args []SemanticNode, c *Context, s0 *T
 }
 
 func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
-	if c == nil {
-		c = EmptyContext
-	}
 	switch expr := expr.(type) {
 	case nil:
 		panic(NewNullPointerException())
@@ -645,9 +638,6 @@ func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, c
 		return c, newTLCError(ECGeneral, "applying operator %s with wrong number of arguments", opDef)
 	}
 	c1 := c
-	if c1 == nil {
-		c1 = EmptyContext
-	}
 	for i, param := range opDef.Params {
 		c1 = c1.Cons(param, t.GetVal(args[i], c, cachable, cm))
 	}
@@ -672,9 +662,6 @@ func (t *Tool) GetThmOrAssumpContext(opDef *ThmOrAssumpDefNode, args []SemanticN
 }
 
 func (t *Tool) GetLevelBound(expr SemanticNode, c *Context) int {
-	if c == nil {
-		c = EmptyContext
-	}
 	switch expr := expr.(type) {
 	case *OpApplNode:
 		return t.GetLevelBoundAppl(expr, c)
@@ -728,9 +715,6 @@ func letDefinitionsContext(c *Context, lets []*OpDefNode, bindings ...LetBinding
 }
 
 func letDefinitionsContextWithCostModel(c *Context, lets []*OpDefNode, cm CostModel, bindings ...LetBinding) *Context {
-	if c == nil {
-		c = EmptyContext
-	}
 	c1 := c
 	for _, opDef := range lets {
 		if opDef == nil || opDef.Name == nil {

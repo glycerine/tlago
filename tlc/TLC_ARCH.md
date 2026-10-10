@@ -7391,8 +7391,21 @@ their distinct source failures, while extra arguments are ignored. A null
 context fails before the cache branch for a constant expression. These failures
 remain inside the evaluating override catch, producing runtime code `2154`
 with the actual method signature and nullable detail, without a value-source
-fingerprint frame. General evaluation still normalizes null contexts; the
-observed state-variable null-context discrepancy is a separate remaining gap.
+fingerprint frame.
+
+Explicit nil contexts survive the variadic Tool evaluation adapter and EvalImpl.
+Omitting the context still supplies EmptyContext as the Go convenience default.
+Lookup fails with a typed null exception before reading semantic overrides or
+states. Level calculation follows the source expression branches: variable
+level and literal evaluation can succeed without a context, while lookup and
+local binding fail on their actual dereferences. Local-definition setup retains
+the incoming context, and Context.Cons rejects a nil receiver. GetOpContext
+returns the incoming nil context for zero arguments, but binding a parameter
+requires a non-null receiver. LazyValue retains its supplied context verbatim,
+including nil, so delayed evaluation follows the same failures. The bounded
+comparison covers actual C model expressions and APIs; other consumers such as
+theorem contexts, context enumeration and state-generation setup are not proved
+by this observation.
 
 Its Java implementation branches directly on the argument semantic level:
 state/action/temporal expressions evaluate in the incoming context and are not

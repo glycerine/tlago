@@ -17,9 +17,6 @@ type LazyValue struct {
 }
 
 func NewLazyValue(expr SemanticNode, con *Context, cacheable bool, cms ...CostModel) *LazyValue {
-	if con == nil {
-		con = EmptyContext
-	}
 	cm := DoNotRecordCostModel
 	if len(cms) > 0 {
 		cm = cms[0]

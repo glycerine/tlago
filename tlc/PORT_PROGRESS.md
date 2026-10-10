@@ -33101,3 +33101,56 @@ TLCExt cache checks pass (85871 terminal e55134, existing-values.log, 0.013s).
 No race or broad suite. Update architecture and restart notes with the exact
 contract and remaining general null-context gap. Latest saved stress progress
 is 1,347,263,796 / 2,147,483,648 (038f83), with no terminal result or credit.
+
+
+2026-10-10: Preserve explicit null contexts through core evaluation
+
+Previous goal turn made verified progress in 58409c9. Continue from the concrete
+C!c null-context discrepancy retained by the TLCEval observer. Pinned Java
+SymbolNodeValueLookupProvider.lookup dereferences the incoming context before
+semantic overrides or state lookup. Native parseEvalArgs, EvalImpl and lookup
+instead substituted EmptyContext. GetLevelBound and local-definition setup also
+substituted it. An explicitly supplied typed nil context must survive these
+layers; omission still uses the Go adapter's EmptyContext default.
+
+Ignored .codex-gotmp/eval-null-context observes actual C model expressions,
+initial state, Tool evaluation, level bounds and lookup with nil/empty contexts.
+The first 60 source/native rows expose 24 differences (8d9eba). Preserve null
+contexts in those paths and throw typed NPE at the source lookup dereference.
+All 60 then match. Add C's actual LET expression and TRUE definition; 72 rows
+expose one remaining LET evaluation difference (5ec572). Retain the incoming
+context in local-definition setup and make Context.Cons reject a nil receiver.
+All 72 match (59242 terminal 4a5c02; comparison 36d899).
+
+Extend through actual Tool.getVal and LazyValue.eval. All 120 rows expose 23
+additional capture/evaluation differences (89a143): NewLazyValue substituted
+EmptyContext. Preserve the supplied context verbatim, including nil. Four actual
+getOpContext calls using C!c and C!expensive expose two additional differences
+(69986d). Preserve its incoming context: zero arguments return it unchanged,
+while a binding on nil fails in Cons. Final 124 complete source/native rows all
+match (97695 terminal 0596dd; comparison b65b7e), including null categories,
+messages, runtime/evaluation metadata, source/context identity and wrapping depth.
+The original 14-row state-expression TLCEval observer now also matches entirely
+(0d1271), closing the previous turn's retained discrepancy. Literal evaluation
+and simple variable-level calculation still succeed without context as in Java;
+this is not a blanket rejection at the evaluation entry. Java enhanced NPE
+messages disabled. Other context consumers remain outside this bounded audit.
+
+Existing focused context/function-context/lookup/callable/cache checks pass
+before the lazy-constructor extension (12472 terminal 33c43c, 0.025s). Six
+original model tests pass after all production edits: ConstantContextTLCCache,
+ConstantRank1TLCEval, ConstantRank2AssertError, TLCExtModel, ValueSemanticsAssume
+and Github362 (44775 terminal ddfa5d, original-final.log, 3.053s). The selection's
+UserModuleOverride3 alternative matches no test; do not count it. Separately run
+the actual three original UserModuleOverride test entry points.
+Final focused context/lazy selection initially fails only for two TCP listeners
+because of sandbox permission (1481 terminal e218d5). The unchanged selection
+passes with local-listener permission (fedc95, existing-final-listeners.log,
+0.028s). No assertion or fixture changes, invented persistent tests, race, broad
+suite or original-method inventory credit. Update restart and architecture notes.
+Original full off-heap stress handle 27326 remains live (9c2c7a); latest saved
+progress 1,355,328,084 / 2,147,483,648 (a9c115), without terminal result or credit.
+
+The three actual original UserModuleOverride, UserModuleOverrideFromJar and
+UserModuleOverrideAnnotation tests also pass (71174 terminal 092027,
+original-overrides.log, 0.688s). Formatting and diff checks pass.

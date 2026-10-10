@@ -171,7 +171,7 @@ func BranchContext(base *Context) *Context {
 
 func (c *Context) Cons(name *SymbolNode, value any) *Context {
 	if c == nil {
-		c = EmptyContext
+		panic(NewNullPointerException())
 	}
 	return &Context{name: name, value: value, next: c}
 }
