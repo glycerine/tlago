@@ -32099,3 +32099,53 @@ ConstantRank2AssertError and ValueSemanticsAssume methods pass: 79567 terminal
 changed fixtures or altered workload bounds. HANDOFF consolidates the recent
 scalar/model-value contracts; TLC_ARCH records precise behavior and observation
 limits. Overall core TLC parity and original-model reconciliation remain open.
+
+
+2026-10-10: Collection value runtime failure boundaries.
+
+Previous goal turn made verified progress in 6e4ccf0. Worktree starts clean.
+Original random stress handle 27326 remains live on direct polls c6aff0 and
+a48ec1. Latest saved progress is 1,157,447,960 / 2,147,483,648 (66372a), without
+terminal result or original-method credit. Preserve its full workload and budget.
+
+Inspect Java TupleValue, SetEnumValue and IntervalValue Assert.fail boundaries.
+Eight native generic unsupported calls remain in tuple membership, set compare/
+equality/EXCEPT and interval membership/EXCEPT. Replace only those inspected
+calls with runtimeFailure and pretty-printed message arguments. Set comparisons
+raise typed NPE for null operands before message construction. Interval membership
+raises typed NPE only for nonempty intervals; empty intervals retain false without
+inspecting non-integer arguments. Tuple membership ignores even null and keeps
+its fixed runtime diagnostic. Existing value catch boundaries retain wrapping.
+
+Tuple comparison delegates through a converted FcnRcdValue, exposing two further
+native generic failures for nonfunction arguments. Correct those function-record
+shape boundaries too, including typed NPE for null operands. Leave domain/value
+comparison algorithms untouched. Source tuple conversion does not attach source
+to the temporary function: its root shape exception is ordinary runtime, with
+only the tuple wrapper sourced. A directly sourced function record instead
+creates the detailed exception with the same expression and EmptyContext.
+
+Ignored .codex-gotmp/collection-failures adapts the scalar observation harness.
+Tuple, a 30-string explicit set, nonempty interval and empty interval each run
+fourteen operations with/without receiver source. Full values/root diagnostics,
+exception categories, FingerprintException wrapping and detailed expression/
+context identity are compared. Only enhanced JVM NPE messages are excluded.
+All 112 rows match, correcting 52 baseline differences (98103 terminal 82de67).
+Add eight direct function-record compare/equality rows, with null/Boolean operands
+and sourced/unsourced receivers. Final all 120 complete rows match (86981 terminal
+b164e6), with the initial 112 source rows unchanged. Baseline claims remain only
+for the original 112; no baseline was run for the additional eight rows. No
+persistent tests or fixtures were invented, and observations add no inventory
+credit. Empty-array Go nil slices remain distinct from a Java null-array claim.
+
+All 28 original TupleValueTest/IntervalValueTest/FcnRcdValueTest translations pass
+unchanged, with two existing focused SetEnum checks: 12494 terminal 8ecfa0,
+original-values.log, 2.218s. Unchanged Java TupleValueTest and IntervalValueTest
+independently pass JUnitCore OK (15 tests), a5e1a2, java-original-values.log,
+0.027s. Do not reinterpret the earlier combined model/function-record class-order
+failure as a pass. Two relevant original model methods, ConstantRank2AssertError
+and ValueSemanticsAssume, pass unchanged: 95528 terminal cc1b1e,
+original-models.log, 2.507s. No broad sweep, race workload, changed original bounds
+or original-method credit. Formatting/diff checks pass. HANDOFF and TLC_ARCH
+record the precise collection boundaries and observation limits. Overall TLC
+parity and original-model reconciliation remain incomplete.

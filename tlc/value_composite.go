@@ -261,7 +261,7 @@ func (v *TupleValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *TupleValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check set membership in a tuple value.")
+	return false, v.runtimeFailure("Attempted to check set membership in a tuple value.")
 }
 
 func (v *TupleValue) IsFinite() (bool, error) { return true, nil }
@@ -465,7 +465,10 @@ func (v *SetEnumValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("Attempted to compare the set %s with the value:\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the set %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	if _, err := v.normalizeSet(); err != nil {
 		return 0, err
@@ -495,7 +498,10 @@ func (v *SetEnumValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("Attempted to check equality of the set %s with the value:\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the set %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	if _, err := v.normalizeSet(); err != nil {
 		return false, err
@@ -603,7 +609,7 @@ func (v *SetEnumValue) FingerPrint(fp uint64) uint64 {
 func (v *SetEnumValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("Attempted to apply EXCEPT to the set %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT to the set %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
@@ -611,7 +617,7 @@ func (v *SetEnumValue) TakeExcept(ex ValueExcept) (resultValue Value, err error)
 func (v *SetEnumValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, v.unsupported("Attempted to apply EXCEPT to the set %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT to the set %s.", ValuesPPR(v)))
 	}
 	return v, nil
 }
@@ -722,7 +728,10 @@ func (v *IntervalValue) Member(elem Value) (resultBool bool, err error) {
 			if mv, ok := elem.(*ModelValue); ok && mv.Type == typedModelValueUntypedCodeUnit {
 				return false, nil
 			}
-			return false, v.unsupported("Attempted to check if the value:\n%s\nis in the integer interval %s", elem, v)
+			if elem == nil {
+				panic(NewNullPointerException())
+			}
+			return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis in the integer interval %s", ValuesPPR(elem), ValuesPPR(v)))
 		}
 		return false, nil
 	}
@@ -792,7 +801,7 @@ func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
 func (v *IntervalValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the interval value %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the interval value %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
@@ -800,7 +809,7 @@ func (v *IntervalValue) TakeExcept(ex ValueExcept) (resultValue Value, err error
 func (v *IntervalValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the interval value %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the interval value %s.", ValuesPPR(v)))
 	}
 	return v, nil
 }

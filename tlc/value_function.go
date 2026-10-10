@@ -903,7 +903,10 @@ func (v *FcnRcdValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("Attempted to compare the function %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other))
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the function %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	if err := v.normalizeFcn(); err != nil {
 		return 0, err
@@ -1008,7 +1011,10 @@ func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("Attempted to check equality of the function %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other))
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the function %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	if err := v.normalizeFcn(); err != nil {
 		return false, err

@@ -6936,6 +6936,19 @@ twelve names and nineteen operations with/without receiver source; ten further
 rows cover prefix classification, including unpaired surrogates. Prefix-only
 observations do not prove all later string operations on malformed UTF-16 names.
 
+The same source-aware runtime boundary covers tuple membership; explicit-set
+invalid comparison/equality and EXCEPT; interval invalid membership and EXCEPT;
+and function-record comparison/equality when the other value cannot convert.
+Each diagnostic pretty-prints arguments separately. Null comparison operands
+fail at the source dereference; an empty interval still returns false for any
+non-integer member without inspecting it. Tuple membership ignores the argument
+and always raises its fixed runtime diagnostic, including for null. A tuple's
+function conversion has no receiver source: its root shape failure stays an
+ordinary runtime exception, then the tuple boundary wraps it. Directly sourced
+function records retain detailed source metadata instead. These 120 observations
+do not establish every function-record domain comparison or other value subtype.
+
+
 
 `Randomization` validates public arguments in Java order and reports
 `TLC_MODULE_ARGUMENT_ERROR`. `RandomSetOfSubsets` checks first-argument count,
