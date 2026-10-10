@@ -33253,3 +33253,48 @@ state/action-list parameters remain outside this bounded observation.
 Full original off-heap stress handle 27326 remains live (8462f0). Latest saved
 progress is 1,376,912,629 / 2,147,483,648 (318918), with no terminal result or
 long-method credit. Preserve its original handle, memory budget and bounds.
+
+
+2026-10-10: Retain contexts in enumerator and action constructors
+
+Previous goal turn made verified progress in 4e58492. Source ContextEnumerator
+and Action constructors preserve their supplied contexts. Native constructors
+still replaced nil with EmptyContext, bypassing the newly corrected source
+binding and lookup failures. Compare these actual producers before editing.
+
+Ignored .codex-gotmp/enumerator-action-context uses the existing I model's
+function constructors F/N, its bounded existential under Spec and its Inv bound.
+Tool.contexts produces the enumerators. A direct source constructor observes
+zero-enumerator behavior without a fabricated semantic graph. Each enumerator
+is called six times with nil/empty bases, recording values/errors and isDone.
+Initial source traversal fails because the observer helper assumes a non-null
+bounded-formal array (3e48dd, fb3f7d); it is an observer error, not source parity
+or original-test credit. Correct the helper. All 64 source/native rows complete,
+with 24 differences (dec75d): failed nil-base bindings must not advance the
+cursor, and zero-enumerator calls retain the actual nil base without setting
+the done flag. Remove only the constructor context replacement. All 64 final
+rows match (97811 terminal 690b79; comparison a12b71).
+
+Actual C model predicates Init, A and U1 exercise unnamed, explicitly named and
+OpDef-backed Action constructors, metadata and public successor generation.
+All 36 initial rows complete with 18 differences (58eb30): native loses nil
+context identity and generates successors where Java fails at lookup. Remove
+NewAction's context replacement, also fixing NewActionFromOpDef through its
+existing constructor path. All 36 final rows match (85468 terminal 4f9a4f;
+comparison a12b71), including names, contexts, declaration identity, flags,
+state order and failure metadata. Source null/empty context distinction remains
+visible through the actual successor runner. Java enhanced NPE messages disabled.
+No invented persistent test/fixture or evaluator callback. Additional array and
+context-factory failure branches remain outside this bounded comparison.
+
+Eight original checks pass unchanged (95790 terminal fb936a,
+original-models.log, 2.356s): ICoverage, CCoverage, EmptyExistentialQuantifier,
+LegacySuiteTest215, ActionCompositionA/B, Github362 and Debug02Debugger.
+Existing context/function-context/bounded-CHOOSE/action-order/state-callable
+checks pass (51632 terminal 7cc1f8, existing-contexts.log, 0.020s).
+No changed assertions, race, broad suite, shortened workload or original-method
+inventory credit. Update current handoff and architecture contracts.
+
+Original full stress handle 27326 remains live (0b5e86); latest saved progress
+is 1,384,348,328 / 2,147,483,648 (e18882), with no terminal result or credit.
+Preserve the original workload, memory budget, handle and artifacts.

@@ -5099,6 +5099,12 @@ Port guidance:
 
 ## Action Decomposition
 
+Action constructors retain the supplied context verbatim, including nil, across
+unnamed, explicitly named and OpDef-backed forms. Native NewActionFromOpDef
+retains that context through NewAction, together with declaration identity and
+init/internal flags. Tool successor generation uses the action's retained
+context, so a nil context fails at its first source dereference.
+
 `Tool.getActions` splits a next-state predicate for performance. Instead of
 treating `Next` as one large action, Java TLC decomposes the maximum prefix of:
 
@@ -5730,6 +5736,12 @@ Context is used for:
 `ContextEnumerator` enumerates bindings for bounded quantifiers and set-based
 operator parameters. Enumeration order is user-visible in traces, random
 simulation, and sometimes coverage, so preserve Java order.
+Its constructor retains the supplied base context, including nil. It primes
+the value enumerators before binding. A failed binding leaves the cursor and
+done flag unchanged; repeated calls repeat the source failure. With zero value
+enumerators, nextElement returns the supplied base and leaves isDone false.
+The bounded comparison covers real I model function/quantifier nodes and the
+direct zero-enumerator constructor; it adds no general null-array proof.
 
 ## Utility Collections
 
@@ -7409,9 +7421,8 @@ evaluation leaves the cache and cache count unchanged. GetVar and GetPrimedVar
 also preserve the incoming context. Their lookup branch follows the operator's
 declared arity, including zero-arity builtins, rather than the argument slice
 length; prime recognition still precedes that branch. The bounded
-comparison covers actual C model expressions and APIs; other consumers such as
-theorem contexts and context enumeration are not proved
-by this observation.
+comparison covers actual C model expressions and APIs. Theorem contexts and
+additional context-factory failures remain outside this observation.
 
 Initial-state, next-state and ENABLED predicate entry points preserve explicit
 nil contexts. A failure at the

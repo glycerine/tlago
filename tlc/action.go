@@ -295,9 +295,6 @@ const unnamedActionName = "UnnamedAction"
 var UnknownAction = &Action{Pred: NullSemanticNodeInstance, Con: EmptyContext, Name: unnamedActionName}
 
 func NewAction(pred SemanticNode, con *Context, name string) *Action {
-	if con == nil {
-		con = EmptyContext
-	}
 	if name == "" {
 		name = unnamedActionName
 	}

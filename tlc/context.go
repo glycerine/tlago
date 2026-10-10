@@ -335,9 +335,6 @@ func NewContextEnumerator(vars []any, enums []ValueEnumeration, con *Context) *C
 		enums:        enums,
 		currentElems: make([]Value, len(enums)),
 	}
-	if out.con == nil {
-		out.con = EmptyContext
-	}
 	for i, enum := range enums {
 		out.currentElems[i] = enum.NextElement()
 		if err := enum.Err(); err != nil {

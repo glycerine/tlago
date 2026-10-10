@@ -301,8 +301,10 @@ without a context. Initial membership assignment retains runtime error metadata;
 functional ENABLED states and partial mutations match. The 14 TLCEval, 124 core,
 384 cache/recognition and 144 generation observations agree with Java, and
 relevant original model/debugger and focused checks pass. Detailed bounds and
-receipts stay in TLC_ARCH and PORT_PROGRESS. Theorem contexts, enumeration setup
-and action construction remain separate audit gaps.
+receipts stay in TLC_ARCH and PORT_PROGRESS. Enumerators and action constructors
+also retain their supplied contexts; 64 enumeration and 36 action observations
+match, including failed-binding cursor state and successor generation. Theorem
+contexts and additional context-factory failures remain separate audit gaps.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.
