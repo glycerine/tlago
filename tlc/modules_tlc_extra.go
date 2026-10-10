@@ -1,7 +1,5 @@
 package tlc
 
-const javaTLCRandomElementSignature = "public static tlc2.value.impl.Value tlc2.module.TLC.RandomElement(tlc2.value.impl.Value)"
-
 func SortSeq(seq Value, cmp Value) (Value, error) {
 	tuple := asTupleValue(seq)
 	if tuple == nil {
@@ -83,9 +81,18 @@ func canConvertToSetEnum(value Value) bool {
 }
 
 func RandomElement(value Value) (Value, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	switch v := value.(type) {
 	case *SetOfFcnsValue:
+		if v == nil {
+			panic(NewNullPointerException())
+		}
 		v.Normalize()
+		if v.Domain == nil {
+			panic(NewNullPointerException())
+		}
 		domain, err := tryToSetEnumValue(v.Domain)
 		if err != nil {
 			return nil, err
@@ -94,9 +101,11 @@ func RandomElement(value Value) (Value, error) {
 			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "RandomElement", "a finite set", ValuesPPR(value))
 		}
 		domain.Normalize()
-		dom := domain.Elems.ToArray()
-		vals := make([]Value, len(dom))
+		elems := domain.Elems
+		dom := make([]Value, valueStreamArrayLength(int32(elems.Len())))
+		vals := make([]Value, valueStreamArrayLength(int32(elems.Len())))
 		for i := range vals {
+			dom[i] = elems.At(i)
 			elem, err := RandomElement(v.Range)
 			if err != nil {
 				return nil, err
@@ -105,10 +114,16 @@ func RandomElement(value Value) (Value, error) {
 		}
 		return NewFcnRcdValue(dom, vals, true), nil
 	case *SetOfRcdsValue:
+		if v == nil {
+			panic(NewNullPointerException())
+		}
 		v.Normalize()
-		vals := make([]Value, len(v.Values))
+		if v.Names == nil {
+			panic(NewNullPointerException())
+		}
+		vals := make([]Value, len(v.Names))
 		for i := range vals {
-			elem, err := RandomElement(v.Values[i])
+			elem, err := RandomElement(v.fieldValue(i))
 			if err != nil {
 				return nil, err
 			}
@@ -116,7 +131,13 @@ func RandomElement(value Value) (Value, error) {
 		}
 		return NewRecordValue(v.Names, vals, true), nil
 	case *SetOfTuplesValue:
+		if v == nil {
+			panic(NewNullPointerException())
+		}
 		v.Normalize()
+		if v.Sets == nil {
+			panic(NewNullPointerException())
+		}
 		vals := make([]Value, len(v.Sets))
 		for i := range vals {
 			elem, err := RandomElement(v.Sets[i])
@@ -127,16 +148,14 @@ func RandomElement(value Value) (Value, error) {
 		}
 		return NewTupleValue(vals), nil
 	case *IntervalValue:
-		size, err := v.Size()
-		if err != nil {
-			return nil, err
+		if v == nil {
+			panic(NewNullPointerException())
 		}
-		if size == 0 {
-			return nil, javaMethodOverrideError(javaTLCRandomElementSignature, "Attempted to retrieve out-of-bounds element from the interval value "+ValuesPPR(v)+".")
-		}
-		index := int(RandomEnumerableGenerator().NextDouble() * float64(size))
-		return NewIntValue(v.Low + int32(index)), nil
+		return v.RandomElement()
 	default:
+		if set, ok := value.(*SetEnumValue); ok && set == nil {
+			panic(NewNullPointerException())
+		}
 		set, err := tryToSetEnumValue(value)
 		if err != nil {
 			return nil, err
@@ -144,11 +163,7 @@ func RandomElement(value Value) (Value, error) {
 		if set == nil {
 			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "RandomElement", "a finite set", ValuesPPR(value))
 		}
-		if set.Elems.Len() == 0 {
-			return nil, javaMethodOverrideError(javaTLCRandomElementSignature, "Index 0 out of bounds for length 0")
-		}
-		index := int(RandomEnumerableGenerator().NextDouble() * float64(set.Elems.Len()))
-		return set.Elems.At(index), nil
+		return set.RandomElement()
 	}
 }
 

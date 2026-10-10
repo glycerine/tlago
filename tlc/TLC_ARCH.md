@@ -9216,6 +9216,32 @@ Java-compatible random enumerable generator here, not Go's process-global
 random source, so seeded simulation and trace replay consume random values in
 the same places Java does.
 
+SetEnumValue sampling first calls size(), retaining normalization and its
+failure ownership, then draws and applies Java's floor/int conversion. It reads
+the physical vector slot even for a zero logical size; default-capacity empty
+predicate results can therefore return null. SetPredValue.toSetEnum starts with
+Java's default capacity of ten. Interval sampling also draws before elementAt
+rejects an empty interval, retaining source-aware runtime diagnostics. Neither
+sampling method adds an owner catch or a Java-method wrapper. Registered
+MethodValue evaluation owns override adaptation.
+
+The TLC operator requires its receiver. Function sets normalize, convert and
+normalize their domain, capture its ValueVec, and allocate domain/results from
+the captured logical sizes with typed negative-array failures. Each domain slot
+is read before recursively sampling its range. Record sets allocate results
+from names.length and use typed null/bounds reads of the current values array;
+tuple sets require their component array even when a cache bypasses normalizing
+the components. Function-set normalization retains typed null failures under
+its existing owner boundary. No synthetic operator-level catch is added.
+
+The ignored actual-runtime observer covers 1,220 direct/registered observations
+across 61 shapes, source/no-source and five seeds. Results, diagnostics,
+normalization/backing-storage state and subsequent random-double bits agree;
+55 raw differences contain only JVM/native stack locations. Focused original
+tests pass, including random-element models and trace replay. No persistent
+tests/fixtures or original-method credit are added. Null RNG restoration,
+concurrent mutation and allocation-resource behavior remain unproven.
+
 `RandomEnumerableValues` is mode-sensitive in Java. During BFS model checking,
 worker evaluation and trace reconstruction set the current predecessor state on
 the current worker thread; the random-enumerable generator is then seeded with

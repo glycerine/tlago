@@ -902,7 +902,13 @@ func (v *SetOfFcnsValue) Normalize() Value {
 	if v.FcnSet != nil && !v.FcnSetDummy {
 		v.FcnSet.Normalize()
 	} else {
+		if v.Domain == nil {
+			panic(NewNullPointerException())
+		}
 		v.Domain.Normalize()
+		if v.Range == nil {
+			panic(NewNullPointerException())
+		}
 		v.Range.Normalize()
 	}
 	return v

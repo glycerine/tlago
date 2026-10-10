@@ -37532,3 +37532,56 @@ original test bounds/assertions unchanged. Prior broad baseline retained; this
 correction has focused verification. Handoff/architecture updated; goal active.
 Concurrent vector replacement and larger allocation-resource behavior remain
 unproven.
+
+
+TLC.RandomElement continuation after power-loss recovery at verified 84e9429.
+Checkout clean and active port goal recovered. Inspect pinned TLC.java,
+SetEnumValue.randomElement, IntervalValue.randomElement/elementAt and actual
+registered MethodValue boundary. Native bypasses explicit-set normalization,
+skips empty-input draws, prewraps direct failures, truncates negative random
+indices, and sizes record results from values rather than names.
+
+Prepare ignored .codex-gotmp/tlc-random-element using actual constructors,
+checked test206 predicates/source nodes, actual vector storage/count fields and
+actual constructor-set caches. No semantic graphs or evaluator callbacks are
+fabricated. Java MethodValue.get wraps the actual reflected TLC method; Go uses
+the installed standard MethodValue. Source e22e66 and native 46092 terminal
+ac0d16 exit zero, 188 rows. There are 98 raw differences, 93 outside stack
+locations. Compare both direct and registered results, source failure heads,
+input vector normalization/storage and exact next-double bits.
+
+Native now calls value-owned sampling methods: size/normalize first, source
+floor/int conversion, random draw before physical-slot or interval validation,
+and source exceptions before registered-method adaptation. Function sampling
+captures the domain vector and uses typed array allocation/ordered slot reads.
+Record sampling uses names.length and typed values reads. Tuple sampling requires
+the component array even with a constructor cache. Function-set normalization
+now throws typed null failures under its existing owner catch.
+
+Initial native 85951 terminal 93fafa exits zero with four remaining predicate
+empty-set differences. Trace actual SetPredValue.toSetEnum: Java creates a
+capacity-ten ValueVec, while Go creates capacity zero. Correct that constructor
+capacity; an empty logical set retains physical null storage, so randomElement
+can return null after drawing. Native 95292 terminal f4ff75 exits zero: all
+188 rows agree outside nine stack-location differences. Preserve initial logs
+as *-base.log. No persistent tests or fixtures are added.
+
+Expand to 61 shapes and five original-compatible seeds: 15041980, 0, 1, -1 and
+Long.MIN_VALUE. Add actual cached constructor arrays, null ranges, negative and
+partial domain vectors, empty names with null values and nested duplicate sets.
+An attempted null-RNG extension stops at observer restoration: both actual
+set(saved) APIs first call get(), which fails on the installed null generator.
+This is observer setup, not sampling credit. Remove null-RNG execution from the
+completed matrix; do not claim restoration coverage or change the RNG API.
+Final Java dfc410 and native 17636 terminal d57fb2 exit zero. All 1,220 rows
+agree outside 55 stack-location differences; no calls are deferred. Compare
+exception/cause headers, messages/codes/nullable parameters and owner frames;
+canonicalization removes only stack locations and repeated-frame elision.
+
+Focused original/native 4322 terminal 9b8401 exits zero: root 9.371s and tlc
+2.341s. Selection includes unchanged original random-element models, simulation,
+four-worker and trace-replay methods; existing module/value, predicate, symmetry,
+stream, override and tool assertions remain unchanged. No original-method
+credit. Prior broad baseline retained; this correction has focused verification.
+Handoff/architecture updated; goal active. Null RNG restoration, concurrent
+mutation and larger allocation-resource behavior remain unproven.

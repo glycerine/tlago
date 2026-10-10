@@ -556,7 +556,7 @@ func (v *SetPredValue) ToSetEnum() (*SetEnumValue, error) {
 		}
 		return set, nil
 	}
-	values := NewValueVec(0)
+	values := NewValueVec(10)
 	enum := v.Elements()
 	for {
 		elem := enum.NextElement()

@@ -560,6 +560,15 @@ All 74 observations match, including result/domain sharing, partial input
 normalization and safe negative-overflow cases. Focused original/native tests
 pass with the original five-element permutation method unchanged. Larger
 allocation-resource behavior and concurrent vector replacement remain unproven.
+`TLC.RandomElement` now normalizes explicit sets before sampling and consumes
+the source random draw even when an empty set or interval fails. Direct calls
+retain the source exception; registered methods own override wrapping. Record
+sampling follows the names array, and function sampling captures the domain
+vector. Empty predicate conversion retains Java's default vector capacity.
+All 1,220 observations agree outside 55 stack-location differences; focused
+original tests pass, including random-element models and trace replay. No new
+original-method credit. Null RNG restoration, concurrent mutation and larger
+allocation-resource behavior remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

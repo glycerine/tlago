@@ -734,6 +734,19 @@ func (v *SetEnumValue) Size() (resultInt int, err error) {
 	return v.Elems.Len(), nil
 }
 
+func (v *SetEnumValue) RandomElement() (Value, error) {
+	size, err := v.Size()
+	if err != nil {
+		return nil, err
+	}
+	rng := RandomEnumerableGenerator()
+	if rng == nil {
+		panic(NewNullPointerException())
+	}
+	index := javaDoubleToInt(math.Floor(rng.NextDouble() * float64(size)))
+	return v.Elems.At(int(index)), nil
+}
+
 func (v *SetEnumValue) IsNormalized() bool { return v.IsNorm }
 func (v *SetEnumValue) Normalize() Value {
 	normalized, err := v.normalizeSet()
@@ -981,6 +994,19 @@ func (v *IntervalValue) ElementAt(index int) (Value, error) {
 		}
 	}
 	return nil, v.intervalAssertFailure("Attempted to retrieve out-of-bounds element from the interval value " + ValuesPPR(v) + ".")
+}
+
+func (v *IntervalValue) RandomElement() (Value, error) {
+	size, err := v.Size()
+	if err != nil {
+		return nil, err
+	}
+	rng := RandomEnumerableGenerator()
+	if rng == nil {
+		panic(NewNullPointerException())
+	}
+	index := javaDoubleToInt(math.Floor(rng.NextDouble() * float64(size)))
+	return v.ElementAt(int(index))
 }
 
 func (v *IntervalValue) intervalAssertFailure(message string) *TLCError {
