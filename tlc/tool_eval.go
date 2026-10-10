@@ -456,11 +456,11 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		}
 		return t.setValueSource(expr, NewTupleValue(values, cm)), nil
 	case OpcodeUC:
-		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded CHOOSE.\nMake sure that the expression is of form CHOOSE x \\in S: P(x).\n%s", SemanticString(expr))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("TLC attempted to evaluate an unbounded CHOOSE.\nMake sure that the expression is of form CHOOSE x \\in S: P(x).\n%s", SemanticString(expr)), expr, c)
 	case OpcodeUE:
-		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded \\E.\nMake sure that the expression is of form \\E x \\in S: P(x).\n%s", SemanticString(expr))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("TLC attempted to evaluate an unbounded \\E.\nMake sure that the expression is of form \\E x \\in S: P(x).\n%s", SemanticString(expr)), expr, c)
 	case OpcodeUF:
-		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded \\A.\nMake sure that the expression is of form \\A x \\in S: P(x).\n%s", SemanticString(expr))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("TLC attempted to evaluate an unbounded \\A.\nMake sure that the expression is of form \\A x \\in S: P(x).\n%s", SemanticString(expr)), expr, c)
 	case OpcodeLnot:
 		value, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {

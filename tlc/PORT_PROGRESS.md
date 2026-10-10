@@ -33721,3 +33721,48 @@ inventory credit. Update handoff and implementation contracts.
 Original full stress session 27326 remains live on direct poll (d0e050).
 Latest saved progress is 1,474,172,599 / 2,147,483,648 (bee0f8); no terminal result
 or long-method credit. Preserve original handle, artifacts, budget and bounds.
+
+
+2026-10-10: Temporal and unbounded predicate failure parity
+
+Previous turn made verified progress in 025ef05. Source inspection shows initial
+and next generation normally evaluate temporal/unbounded predicates, while
+ENABLED rejects them directly. Native temporal Eval already retained its runtime
+carrier; unbounded Eval and ENABLED rejection sites still used generic failures.
+
+Ignored .codex-gotmp/temporal-generation-metadata observes actual legacy test206
+Def13/Def17/Def18/Def22/Def23 (unbounded forall/exists/CHOOSE, WF and temporal
+exists), test209 Q (SF), EWD840 Spec's box child/TokenPermanentlyBlack/Liveness
+(box, diamond, leads-to), and test51's actual TempTest body with Foo1/Foo2's
+original operator arguments bound through GetOpContext (arrow/leads-to).
+Use two base contexts across direct Eval, initial/next generation and ENABLED.
+Source runs each model in its own JVM; native uses matching local library paths.
+No fabricated/mutated semantic graphs, evaluator callbacks, persistent tests or
+fixtures. Temporal forall has no direct fixture in the retained model corpus;
+its correction follows source inspection of the shared temporal-quantifier branch.
+
+Source receipts 5dbba9/d2f8fc/1c6290/e7242b and native 87049 terminal 65e0ce produce
+88 rows with 40 differences (d844df). Restore GENERAL detailed runtime carriers
+for unbounded CHOOSE/existential/universal Eval and ENABLED rejection paths.
+SF/WF/box/diamond ENABLED failures preserve runtime code 2260, original form/
+expression parameters and exact expression/context references. Existing temporal
+Eval already agrees, including the original arrow operator argument. All 88 final
+rows agree (86577 terminal 257035; comparison 9f55fb), including complete messages,
+category/code/parameters, expression/context identity, frames and emitted-state
+counts. Original phase-specific diagnostics remain unchanged. Java enhanced NPE
+messages disabled. Arbitrary action-list kinds, malformed graphs and coverage
+side effects remain unproven; function-application generation error ownership
+is a concrete remaining source gap.
+
+Eleven original model checks pass unchanged (12586 terminal a8fbab;
+original-models.log, 4.029s): LegacySuiteTest51/206/209, ExamplesEWD840,
+Github817/b/c/d/e, ValueSemanticsAssume and Debug02Debugger. EWD840 retains its
+original full bounds and settings. Focused bounded CHOOSE, function-context and
+original EvalControl checks pass (42906 terminal 3667fc; existing-checks.log,
+0.018s; outputs inspected 3780db). No broad suite, race, changed assertions,
+reduced bounds or original-method inventory credit. Update current handoff and
+architecture contracts.
+
+Original full stress session 27326 remains live on direct poll (c1237b).
+Latest saved progress is 1,481,620,312 / 2,147,483,648 (9f55fb); no terminal result
+or long-method credit. Preserve the original handle, bounds, budget and artifacts.

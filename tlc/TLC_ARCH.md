@@ -7510,9 +7510,19 @@ warning switch selects the all-assigned successor optimization. Implication's
 non-boolean antecedent errors retain GENERAL, the whole application and incoming
 context in initial/next generation and ENABLED. All 96 observations on actual
 EWD840 TerminationDetection agree, including consequent value failures and
-FALSE antecedent short circuits. Temporal-generation diagnostics, arbitrary
-action-list kinds, malformed CASE arrays and coverage side effects remain
-outside these comparisons.
+FALSE antecedent short circuits. Unbounded CHOOSE/existential/universal Eval
+failures retain GENERAL, the whole application and incoming context. Initial and
+next generation reach those same evaluator failures. ENABLED rejects unbounded
+and temporal quantifiers and leads-to/arrow with GENERAL; SF/WF/box/diamond use
+code 2260 with the source form/expression parameters. These failures all retain
+the whole application and incoming context. All 88 comparisons on existing
+legacy test206/test209/test51 and EWD840 nodes agree across direct Eval,
+initial/next generation and ENABLED with two base contexts. The existing
+TempTest body and original Foo1/Foo2 operator arguments exercise arrow/leads-to
+through source operator-context construction. Temporal forall follows the
+inspected shared temporal-quantifier branch; no direct original fixture was
+available. Arbitrary action-list kinds, malformed CASE arrays and coverage side
+effects remain outside these comparisons.
 
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays
