@@ -11439,6 +11439,38 @@ reader-ID checks pass normally. No persistent tests/fixtures or method credit.
 Concurrent report mutation, arbitrary thread lifecycle and other Simulator
 trace/local-register dispatch remain separate verification work.
 
+Source-backed direct Simulator local-register getters read the first registered
+worker regardless of caller context. An empty list returns null; a null first
+worker throws. Numeric negative indices and null named-register keys retain the
+source worker's array/map failures. Source-backed workers initialize four local
+slots, matching IdThread's backing array.
+
+The module layer is distinct: TLCGet, TLCSet and TLCExt's TLCGetOrDefault select
+the actual scoped simulation worker before simulator/checker fallback. An absent
+worker-local value stays undefined/default instead of reading another worker.
+Writes target that worker even if it is unregistered or the simulator list is
+empty. Native standalone Simulator adapters retain their existing behavior.
+
+Source-backed Simulator trace getters select the actual scoped simulation worker
+independently of registration. For other callers they enforce Java's assertion
+that declared worker count is one and matches list size, then delegate to the
+first worker. A null first worker throws. The existing compressed/uncompressed
+trace algorithms are unchanged; nil input is handled only after worker dispatch.
+
+All 80 ignored pinned-Java/native observations agree with Java assertions enabled.
+Seven direct-caller/list phases exercise numeric/named/null/negative reads and
+both trace getters on actual three-state BasicMultiTrace behavior and null.
+Actual Java worker threads and an IdThread are compared with native scopes.
+Unregistered workers with two/zero registered workers exercise module reads,
+writes, missing local values and defaults, including the negative-index failure.
+Comparison keys identify each operation because independent local/named setter
+calls are interleaved differently in the observers; all keys and results are
+retained. Trace observations check dispatch, size and exceptions; original worker
+trace tests retain their full content/predecessor assertions. Focused originals,
+including unchanged 4,224-depth register simulations, pass. No persistent tests,
+fixtures or original-method credit. Aggregate snapshot and setter failure parity
+remain separate from these getter/dispatch contracts.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

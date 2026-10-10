@@ -30079,3 +30079,65 @@ local-register and trace dispatch. Source local-value getters read the first
 registered worker, while source trace dispatch selects an actual simulation
 worker or falls back to the first worker with its assertion boundary. Compare
 those contracts before changing additional helper behavior.
+
+
+2026-10-09: Preserve Simulator register and trace dispatch
+
+Previous goal turn made verified progress in b75ace7. Source direct Simulator
+register getters always read the first registered worker, while TLCGet/TLCSet
+and TLCExt.tlcGetOrDefault first select the calling IdThread. The earlier no-code
+audit conflated those layers. Source-backed direct getters now preserve the first-
+worker, empty-list and null-first behavior. Module reads/writes/defaults use the
+actual scoped simulation worker before fallback, including unregistered workers
+and empty simulator lists. Missing worker-local values do not fall through to a
+registered worker. Source-backed workers initialize four local slots and retain
+negative-index/null-key getter failures. Standalone native adapters are preserved.
+
+Source-backed compressed/uncompressed Simulator trace getters select the actual
+scoped simulation worker independently of its ID or registration. Ordinary and
+ID-only callers enforce the source assertion: declared worker count is one and
+equals the worker-list size. Null first workers throw before delegation. Existing
+worker trace algorithms are unchanged, including compression and predecessor
+correction; nil state input does not bypass dispatch assertions.
+
+All 80 final pinned-Java/native observations agree, with 44 baseline differences.
+Seven direct phases (empty, null-first, single, two, generic ID 1, unregistered
+worker with two, and unregistered worker with empty list) each check numeric,
+named, negative and null-key reads, both trace getters on an actual three-state
+BasicMultiTrace behavior and nil. The two worker phases also check module
+numeric/named reads and writes, post-write reads, registered-worker isolation,
+missing worker-local failure and four TLCExt default cases. Source uses actual
+SimulationWorker threads with a bounded overridden step and one ordinary IdThread.
+The model itself is unchanged; no full model search is substituted for assertions.
+Java runs with -ea and the observer captures Java Error categories as well as
+exceptions. TLCGetEval receives a cached literal argument through the real Tool
+and executes its original method; native calls the actual module functions.
+
+Comparison 5d0d80 returned status 0 and requires all 80 unique operation keys and
+results. Independent local/named setter operations are interleaved differently
+in the two observers; key-based comparison preserves every observation without
+claiming equivalent textual event order. Trace rows check dispatch, sizes and
+failure categories, not new content/predecessor coverage; original trace tests
+retain their full assertions. No persistent tests/fixtures or original-method
+credit. Earlier 60/72-row intermediate logs are preserved separately.
+
+Ignored observers, overlays and baseline source files are under
+.codex-gotmp/simulator-dispatch-observation/. Final Java compile d4e222 returned
+status 0; final source e6afe9, native baseline 9f8862 and corrected eb5858 returned
+status 0. Logs: .codex-gotmp/simulator-dispatch-complete-{java,before,current}.log.
+Focused original SimulationWorker, SimulatorCorrectness, SimulatorPrintBehavior,
+CoverageStatistics, TLCGet and TLCSet selections plus existing native simulation
+and module checks pass normally: session 67593 terminal f9e6df, status 0; root
+29.249 seconds, TLC 0.012 seconds. Log simulator-dispatch-originals.log. This
+includes original TLCSetSim/TLCSetMultiSim with the full depth 4,224; no assertion,
+seed or bound changes. Baseline observer session 72561 returned status 0 at
+e95e77, corrected 72-row session 57348 at 21c2cc. Formatting and git diff --check
+pass. No broad suite, XML/ApalacheIR sweep, race workload or email-related work.
+The prior short context-isolation race receipt remains applicable; no new
+concurrency primitive or scope lifecycle changed in this chunk.
+
+Original full off-heap stress session 27326 remains live, poll 8de5ed. Latest saved
+progress is 584,728,605 / 2,147,483,648 iterations, with no terminal result or method
+credit. Overall TLC parity remains incomplete. Next source audit: Simulator
+aggregate register snapshots and setter failure boundaries. Getter dispatch is
+verified here; do not infer general register-array/map parity from those rows.

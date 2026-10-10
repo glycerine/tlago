@@ -534,6 +534,9 @@ func NewSimulationWorker(id int, tool *Tool, results *SimulationWorkerResultQueu
 		RLReward:       -10,
 	}
 	worker.Statistics.worker = worker
+	if worker.Statistics.sourceTool {
+		worker.LocalValues = make([]Value, 4)
+	}
 	return worker
 }
 
@@ -961,6 +964,9 @@ func (w *SimulationWorker) GetRNG() *JavaRandom {
 }
 
 func (w *SimulationWorker) GetLocalValue(index int) Value {
+	if w != nil && w.Statistics != nil && w.Statistics.sourceTool && index < 0 {
+		panic(NewArrayIndexOutOfBoundsException(index, len(w.LocalValues)))
+	}
 	if w == nil || index < 0 || index >= len(w.LocalValues) {
 		return nil
 	}
@@ -978,6 +984,9 @@ func (w *SimulationWorker) SetLocalValue(index int, value Value) {
 }
 
 func (w *SimulationWorker) GetNamedRegister(name *UniqueString) Value {
+	if w != nil && w.Statistics != nil && w.Statistics.sourceTool && name == nil {
+		panic(NewNullPointerException())
+	}
 	if w == nil || w.NamedRegisters == nil {
 		return nil
 	}

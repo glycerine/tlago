@@ -115,34 +115,20 @@ local/TCP worker checks pass; no production correction was needed. Initial
 predicates now retain the processor's `Vect` object instead of a slice snapshot.
 Cached growth, shrinkage, replacement and restoration match Java in 13 bounded
 observations; all 53 earlier predicate observations still agree. Focused original
-checks pass, including all five generated-trace tests. Simulation statistics now
-report current tool actions, retain the source matrix shape and use direct action
-IDs. Action-flow aggregation preserves source bounds failures; all 68 bounded
-worker/graph observations agree, and focused original simulation checks pass.
-Action-flow writers now create and overwrite empty graphs, retain source action
-labels and format integral weights with the source decimal suffix. All 12 bounded
-complete DOT artifacts match Java byte for byte. Multi-context checks on three
-existing models also agree on all 30 complete graphs; 27 are byte-identical and
-three differ only in Java's unordered cluster order. No production correction
-was needed for these cases. Extended simulation statistics now retain
-constructor-sized variable counters indexed by current variable locations. They
-preserve Java's variable, state and action update order, including partial updates
-before bounds failures. All 20 naive/HyperLogLog observations agree; the previous
-68 statistics observations and focused original simulation checks remain green.
-Trace-statistics reporting now reads the owning worker's trace ID and rejects
-missing actions with Java's null-pointer failure. All 28 standard/extended
-observations agree, including two workers sharing a trace counter; focused
-original simulation checks pass. Source-backed post-trace collection now throws
-for a missing final state and clamps to the owning worker's raw depth limit,
-including negative limits. Base retry collection is a no-op. All 560 bounded
-post-trace/retry observations agree; the 28 trace reports and focused original
-simulation checks remain green. Simulator statistics now select the actual scoped
-simulation worker; ordinary and ID-only callers use the first registered worker
-with source empty/null failures. Reports retain Java's getter and capture order.
-All 20 selection/report observations and 100 short race-instrumented worker scopes
-pass, along with focused original checks. Next source audit: Simulator local-
-register and trace dispatch. General `Vect` invalid-count and exception behavior
-remains unproven; original model-test reconciliation remains open.
+checks pass, including all five generated-trace tests. Simulation statistics preserve current actions, captured matrices and variable
+counter slots, source collection order and worker-owned trace IDs. Action-flow
+writers preserve empty files, labels, weights and context grouping. Source-backed
+Simulator statistics select the actual scoped simulation worker and retain Java's
+report capture order. Direct Simulator register getters read the first registered
+worker; `TLCGet`, `TLCSet` and `TLCGetOrDefault` use the calling simulation worker.
+Trace getters select that worker or preserve the source single-worker assertion
+and null boundaries. Bounded Java/native comparisons and focused original tests
+pass; detailed coverage and limits are in the progress log and architecture notes.
+The latest dispatch comparison covers 80 rows, and the original 4,224-depth
+simulation checks pass at unchanged bounds. The existing short scope-isolation
+race check passes. Next source audit: aggregate register snapshots and setter
+failure boundaries. General `Vect` invalid-count and exception behavior remains
+unproven; original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

@@ -136,6 +136,12 @@ func TLCGetValue(tool *Tool, vidx Value, s0 *TLCStateMut, s1 *TLCStateMut, contr
 		if idx.Val < 0 {
 			break
 		}
+		if worker := currentSimulationWorker(); worker != nil {
+			if value := worker.GetLocalValue(int(idx.Val)); value != nil {
+				return value, nil
+			}
+			return nil, newTLCErrorCode(ECTLCModuleTLCGetUndefined, fmt.Sprintf("%d", idx.Val))
+		}
 		if checker := MainChecker(); checker != nil {
 			workerID := 0
 			if id, ok := CurrentWorkerID(); ok {
@@ -232,6 +238,12 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 		}
 	default:
 		if strings.HasPrefix(keyString, TLCNamedRegisterPrefix) {
+			if worker := currentSimulationWorker(); worker != nil {
+				if value := worker.GetNamedRegister(key); value != nil {
+					return value, nil
+				}
+				return nil, newTLCErrorCode(ECTLCModuleTLCGetUndefined, keyString)
+			}
 			if checker != nil {
 				workerID := 0
 				if id, ok := CurrentWorkerID(); ok {
@@ -260,6 +272,10 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 	case *IntValue:
 		if idx.Val < 0 {
 			break
+		}
+		if worker := currentSimulationWorker(); worker != nil {
+			worker.SetLocalValue(int(idx.Val), val)
+			return BoolTrue, nil
 		}
 		if checker := MainChecker(); checker != nil {
 			if workerID, ok := CurrentWorkerID(); ok {
@@ -302,6 +318,10 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 			return BoolTrue, nil
 		default:
 			if strings.HasPrefix(keyString, TLCNamedRegisterPrefix) {
+				if worker := currentSimulationWorker(); worker != nil {
+					worker.SetNamedRegister(key, val)
+					return BoolTrue, nil
+				}
 				if checker := MainChecker(); checker != nil {
 					if workerID, ok := CurrentWorkerID(); ok {
 						checker.SetNamedValue(workerID, key, val)
@@ -359,6 +379,12 @@ func withStateQueueMonitor(queue StateQueue, fn func() error) error {
 func TLCGetOrDefault(vidx Value, defVal Value) (Value, error) {
 	switch idx := vidx.(type) {
 	case *IntValue:
+		if worker := currentSimulationWorker(); worker != nil {
+			if value := worker.GetLocalValue(int(idx.Val)); value != nil {
+				return value, nil
+			}
+			return defVal, nil
+		}
 		workerID := 0
 		if checker := MainChecker(); checker != nil {
 			if id, ok := CurrentWorkerID(); ok {
@@ -378,6 +404,12 @@ func TLCGetOrDefault(vidx Value, defVal Value) (Value, error) {
 	case *StringValue:
 		key := idx.Val
 		if key != nil && strings.HasPrefix(key.String(), TLCNamedRegisterPrefix) {
+			if worker := currentSimulationWorker(); worker != nil {
+				if value := worker.GetNamedRegister(key); value != nil {
+					return value, nil
+				}
+				return defVal, nil
+			}
 			workerID := 0
 			if checker := MainChecker(); checker != nil {
 				if id, ok := CurrentWorkerID(); ok {

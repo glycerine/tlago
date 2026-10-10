@@ -318,6 +318,15 @@ func (s *Simulator) shutdownAndJoinWorkers(workers []*SimulationWorker) {
 }
 
 func (s *Simulator) GetLocalValue(idx int) Value {
+	if s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil {
+		if len(s.Workers) == 0 {
+			return nil
+		}
+		if s.Workers[0] == nil {
+			panic(NewNullPointerException())
+		}
+		return s.Workers[0].GetLocalValue(idx)
+	}
 	if s == nil || idx < 0 {
 		return nil
 	}
@@ -363,6 +372,15 @@ func (s *Simulator) GetAllValues() Value {
 }
 
 func (s *Simulator) GetLocalNamedValue(key *UniqueString) Value {
+	if s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil {
+		if len(s.Workers) == 0 {
+			return nil
+		}
+		if s.Workers[0] == nil {
+			panic(NewNullPointerException())
+		}
+		return s.Workers[0].GetNamedRegister(key)
+	}
 	if s == nil || key == nil {
 		return nil
 	}
@@ -453,6 +471,9 @@ func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
 }
 
 func (s *Simulator) GetTrace(state *TLCStateMut) *StateVec {
+	if s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil {
+		return s.sourceTraceWorker().GetTrace(state)
+	}
 	if s == nil || len(s.Workers) == 0 {
 		return NewStateVec(0)
 	}
@@ -464,6 +485,9 @@ func (s *Simulator) GetTrace(state *TLCStateMut) *StateVec {
 }
 
 func (s *Simulator) GetUncompressedTrace(state *TLCStateMut) *StateVec {
+	if s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil {
+		return s.sourceTraceWorker().GetUncompressedTrace(state)
+	}
 	if s == nil || len(s.Workers) == 0 {
 		return NewStateVec(0)
 	}
@@ -472,6 +496,19 @@ func (s *Simulator) GetUncompressedTrace(state *TLCStateMut) *StateVec {
 		workerID = 0
 	}
 	return s.Workers[workerID].GetUncompressedTrace(state)
+}
+
+func (s *Simulator) sourceTraceWorker() *SimulationWorker {
+	if worker := currentSimulationWorker(); worker != nil {
+		return worker
+	}
+	if s.workerCount != 1 || len(s.Workers) != s.workerCount {
+		panic(NewAssertionError())
+	}
+	if s.Workers[0] == nil {
+		panic(NewNullPointerException())
+	}
+	return s.Workers[0]
 }
 
 func (s *Simulator) GetConfig() Value {
