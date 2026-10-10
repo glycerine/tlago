@@ -9511,6 +9511,36 @@ null failure. The original `Github687specD` assertion exposed this ordering and
 now passes unchanged. `BuildTLCTool` retains its native diagnostic carrier for
 callers that explicitly inspect partial construction.
 
+Next-state subscript validation now mirrors Java's local `SubscriptCollector`
+before installing the next-state action or rejecting a duplicate relation. It
+collects actual variable declarations through nested tuples, user definitions,
+lazy bindings, substitutions, LET bodies and labels. Other built-in expressions
+are ignored rather than searched for variables. Each root declaration missing
+from the collected vector emits `TLC_SUBSCRIPT_CONTAIN_NO_STATE_VAR` in declaration
+order. Substitution values use the source base context, not partially extended
+contexts. Runtime overrides that are not definitions/lazy bindings are ignored.
+Unsupported expression kinds construct `TLC_CANT_HANDLE_SUBSCRIPT`; the enclosing
+`catch(Exception)` emits `TLC_COULD_NOT_DETERMINE_SUBSCRIPT` and skips missing-
+variable checks. Java `Error` families still propagate. These recoverable warnings
+do not become retained `ConfigErrors` or prevent next-action installation.
+
+All 25 source/native entry-point observations on five existing invalid configs
+match: resolver-taking and metadata application construction, ordinary CLI,
+simulation and DFID. Rows retain typed failure codes/parameters, ordered message
+events and exit statuses; neither application path creates the supplied checkpoint
+path. Thirty additional native `modelcheck`/`mc` alias observations match their
+corresponding Java runner rows. Runtime banner parameters and elapsed time are
+normalized; the native CLI version event is excluded because the Java observer
+calls the runner API directly. Throwable-valued events retain the exception
+class and message. Eighty-six direct collector observations on existing initial,
+next, invariant and initial-argument expressions across 18 models also match the
+actual private Java collector. Console warning text agrees for the reproduced
+unsupported-subscript path. Forty-eight focused original tests pass without
+changing assertions. Native graph cleanup returns when tool construction failed
+before a checker exists, matching the absence of owned graph handles. No new
+persistent tests/fixtures or original-method credit. Warning control combinations
+and complete failed-constructor side effects remain further audits.
+
 LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
 ModelChecker.vetoCleanup property retains disk graph handles for subsequent
 inspection, while the liveness writer still closes. A local checkpoint cleanup

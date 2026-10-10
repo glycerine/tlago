@@ -30844,3 +30844,98 @@ simulation and distributed loading, consulting existing constructor receipts
 before repeating them. Shared substitution ownership and semantic coverage
 traversal now have their own evidence; arbitrary malformed semantic graphs,
 concurrent collector mutation and every evaluator failure order remain unproven.
+
+
+2026-10-10 — Configuration entry points and next-state subscript validation
+
+Previous goal turn was progress: f4f6e9a committed three verified parity fixes.
+Current clean-state inspection showed that ordinary CLI/simulation/DFID and both
+application constructors share the corrected source-backed loader. Reviewed the
+28361 configuration failure-order receipts before selecting new entry-point
+observations; config-before-SANY and first retained error were already audited.
+
+Ignored assets are in .codex-gotmp/config-entry-observation/. ObserveConfigEntry
+calls actual Java TLCApp constructors and TLC.handleParameters/process; the native
+driver calls LoadTLCApp, LoadTLCAppWithMetadata and RunCLI. Five unchanged invalid
+configs: Github687specD, Github715b/c/d and testinvalidinvariant. Two constructor
+rows plus ordinary/simulation/DFID runner rows per config retain exception class,
+code, parameters, ordered message events and exit status. The metadata constructor
+receives a nonexistent checkpoint path and verifies it remains absent. Native
+modelcheck/mc aliases add two rows per mode/config, compared to the same Java
+runner result. Banner parameters and elapsed time are normalized; native version
+recording is excluded because the Java recorder attaches after handleParameters.
+Throwable-valued events explicitly retain their source class and message.
+
+Observer setup initially omitted the native standard-module classpath, then the
+model user directory. The final native setup uses the default application resolver
+with the actual model user directory; Java uses its standard resolver with that
+same directory. Those initial parse failures were setup failures, not evidence
+of a port gap. Source compile 54b153/run 764ef8 and native build session 28046
+terminal 622226/run 702617 then produced five rows each (790e37).
+
+Typed constructor failures matched, but actual Github687specD runner records
+exposed missing source events 2238 [7] and 2139 [] before the final 2237 failure.
+SpecProcessor's boxed next-state handling had omitted the entire local Java
+SubscriptCollector. It is now translated in tlc/spec_subscript.go and called before
+next-action installation or duplicate-relation failure. The collector recognizes
+variable declarations, nested tuples, user definitions, lazy bindings, substitution
+contexts, LET bodies and labels. Other built-in expressions are ignored. Missing
+root declarations warn in source order using declaration names. Unsupported kinds
+construct the source TLCRuntimeException, whose formatting event remains visible;
+catch(Exception) then warns that the subscript could not be determined and skips
+missing-variable checks. Error families propagate. Substitution RHS values use
+the source base context, not partially extended contexts. No recoverable warning
+is added to ConfigErrors. A final review uses SymbolNode.GetName for source opcode
+and warning-name access rather than the potentially qualified runtime lookup key.
+
+All 25 actual Java/native entry-point rows match after implementation (e8589c).
+Source final matrix session 77513 terminal aba656 and native run e6a096 returned
+status 0. Native alias expansion build 47375 terminal 0b9ed9/run b70e43 also
+returned status 0. Final build after declaration-name review: native entry build
+32291 terminal 70db1a, collector build 17636 terminal 687e9e; all status 0. Final
+matrix rerun session 86682 terminal 11b2af returns status 0 and requires exactly
+25 source entry rows + 30 alias rows, with every normalized value equal.
+
+ObserveSubscript.java reflects the actual compiled private local
+SpecProcessor$1SubscriptCollector constructor/enter/getComponents. Its wrapper
+performs the source outer catch and declaration-warning loop. The native overlay
+calls the new helper on identical existing initial, next, invariant and first two
+initial-argument expressions with their actual action contexts. It creates no
+new semantic fixtures. All 86 ordered rows agree across A-M, O, Github314,
+Github377, Github649 and TLCGetLevel. Source compile 5f039d, source session 63549
+terminal af5d92, native build 16984 terminal ab3018/run 0961f0 and comparison
+b219d1 returned status 0. The final native rebuild/rerun also agrees (11b2af).
+compare.py requires explicit per-model counts summing to 86, equality, five
+entry rows and eleven native rows per config. Total native comparisons: 141.
+Console warning text for the reproduced unsupported path also matches exactly,
+including the one-time -nowarning hint and subsequent repeated-warning behavior
+(receipt 92dda0). Warning-control combinations remain a further audit.
+
+The initial original selection failed only in the native retained-graph cleanup
+helper for TestJavaLegacySuiteTestInvalidInvariant (session 53449 terminal 4a2fa9,
+11.252s). Its early configuration failure now correctly leaves mainChecker null;
+source TestInvalidInvariant and ModelCheckerTestCase.tearDown only assert the
+original diagnostic/exit outcome and do not access graph handles on that path.
+retainJavaCodePlexGraphs now returns when no checker exists, since it owns no
+native descriptors. No model assertion, fixture or inherited exit expectation
+changed. Two successful original legacy lifecycle methods also exercise the
+non-null cleanup path.
+
+All 48 selected original methods pass after that adapter correction: session
+58746 terminal 291dec, 13.989s, originals-final.log. After the declaration-name
+review, the same unchanged selection passes again: session 25438 terminal d016d4,
+14.259s, originals-final2.log. Selection: 19 coverage methods, two TLCGetLevel,
+five TraceExpressionSpec, three Github680, eight Github687, SubseteqNextState,
+four Github715, two Github696, ConstantOperatorConfiguration and three legacy
+lifecycle methods. No new persistent tests/fixtures, weakened assertions,
+inventory changes or original-method credit. No race, broad workspace suite,
+XML/ApalacheIR sweep, source Java edits or email work. Formatting and git diff
+--check pass.
+
+Original full off-heap random stress session 27326 remains live (poll 7aeae7),
+latest saved progress 823,334,880 / 2,147,483,648. Keep the full bounds, assertions,
+default 64 MiB budget and live files; no terminal result or original-method
+credit. Overall TLC parity remains incomplete. Next audit: warning suppression
+and escalation in the new subscript-collection phase, then original-model
+reconciliation. Complete failed-constructor side effects, arbitrary malformed
+semantic graphs and collector Error injections have not been established.

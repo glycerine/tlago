@@ -67,6 +67,11 @@ func requireJavaNodeAndPtrSizes(t *testing.T, nodesSize, ptrsSize int64) {
 // ModelCheckerTestCase sets VETO_CLEANUP to retain graphs for its assertions.
 func retainJavaCodePlexGraphs(t *testing.T) {
 	t.Helper()
+	// Configuration failures precede checker construction, so there are no
+	// native graph handles to close on that path.
+	if tlc.Globals.MainChecker == nil {
+		return
+	}
 	live := tlc.Globals.MainChecker.LiveCheck
 	t.Cleanup(func() {
 		for _, checker := range live.Checkers {

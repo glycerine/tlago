@@ -1551,6 +1551,9 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 			return true
 		}
 		if boxArg != nil && boxArg.Operator != nil && GetOpCode(boxArg.Operator.Name) == OpcodeSA && len(boxArg.Args) > 0 {
+			if len(boxArg.Args) > 1 {
+				p.checkNextStateSubscript(tool, boxArg.Args[1], c, subs)
+			}
 			if p.NextPred == nil {
 				p.NextPred = NewAction(SpecsAddSubsts(boxArg.Args[0], subs), c, "")
 			} else {

@@ -158,9 +158,13 @@ after runtime pre-evaluation. Shared substitutions retain separate next/invarian
 counters. `ENABLED` now binds by symbol, retaining persistent functional states
 and Java's failure on mutable targets. Source-backed loading rejects configuration
 failures before checker construction can mask them. All 163 evaluation/ownership
-observations and 49 focused original tests pass. Next audit: configuration failure
-propagation through CLI, simulation and distributed loading, reusing existing
-constructor receipts. Original model-test reconciliation remains open.
+observations and 49 focused original tests pass. Next-state subscript collection
+now follows Java's tuple, definition and context handling, including unsupported
+expression and missing-variable warnings. All 141 entry-point, CLI-alias and
+collector observations match; 48 focused original tests pass. Native graph
+cleanup now accepts configuration failures that occur before a checker exists.
+Next audit: warning suppression/escalation in subscript collection. Original
+model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
