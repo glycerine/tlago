@@ -284,7 +284,11 @@ runtime metadata, typed null failures and WrongInvocationException. All 188
 bounded observations match Java, including real lambda evaluation from model C.
 Operator labels survive pretty-print fallback, and undefined formal bindings
 retain the source expression/context and coded runtime failure. Relevant existing
-distributed checks and original models pass. Continue concrete core parity gaps
+distributed checks and original models pass. Priority-wrapper registration now
+rejects null handlers and preserves runtime failures for incompatible definitions
+or levels; 14 registration and 40 inherited-operation observations agree with
+Java. Empty runtime messages stay empty. Continue with callable invocation
+boundaries and concrete core parity gaps
 against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -294,7 +298,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,273,230,079 of 2,147,483,648 iterations, without a terminal result. The previous
+1,287,482,480 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

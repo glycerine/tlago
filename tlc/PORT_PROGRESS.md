@@ -32742,3 +32742,40 @@ pass initially (20922 terminal cb5e6f, original-models.log, 2.350s).
 Final rerun after consolidating lookup branch passes (92008 terminal bbf28c,
 final-models.log). No changed assertions, broad sweep, race or shortened workload.
 HANDOFF and TLC_ARCH updated with bounded contracts and pending stress result.
+
+
+2026-10-10: Priority operator registration and empty runtime messages.
+Previous goal turn made verified progress in 4dd72a0. Worktree clean; poll original
+stress handle 27326 (b4d356) confirms still live, no terminal result or credit.
+Inspect PriorityEvaluatingValue Java constructor/add and current native Add.
+Native silently ignores nil handlers and raises legacy EvalException for identity
+or level mismatch. Ignored .codex-gotmp/priority-operator-boundaries observations
+reuse real model C OpDefs and reflected Naturals.Plus metadata. No evaluator hook
+is invoked and no persistent tests/fixtures are invented. Fourteen registration
+cases cover valid construction, incompatible definition/minimum level at both
+construction/add, null secondary/add and sourced/unsourced existing wrappers.
+Baseline differs in twelve cases (1a5851); source constructor/add errors have no
+value catch, including sourced parent wrappers.
+
+Correct Add null handling to typed NPE and incompatible metadata to source-less
+NewTLCRuntimeException(GENERAL). Preserve primary clone/owner and stable insertion.
+Source GENERAL has an empty message; TLCError.Error now preserves empty runtime
+messages rather than substituting the generic native label. Legacy nonruntime
+fallback remains unchanged. All fourteen complete outcome rows match (51408
+terminal 5076ab), including category, message, code/parameters and frame count.
+Extend earlier operator observer with a real PriorityEvaluatingValue wrapper:
+all 188 complete rows match, including forty new priority-specific inherited
+operations (cc23c9). Earlier unchanged 188 operator rows also remain exact.
+This does not verify priority invocation/order, arbitrary native factory-only
+construction or callable invocation; those are not implied by constructor parity.
+
+Five existing focused callable/state/checker/error checks pass unchanged:
+66594 terminal 2a2868, existing-values.log. Three original models pass:
+24852 terminal 5e6c3d, original-models.log (TLCExtModel,
+ConstantRank2AssertError, ValueSemanticsAssume). No broad sweep, race, persistent
+test, altered assertion or original-method credit. Handoff/architecture updated;
+next concrete source gap is callable invocation null-array/failure boundaries.
+Overall TLC parity and original-model reconciliation remain incomplete.
+
+Latest saved stress progress: 1,287,482,480 / 2,147,483,648 (167779),
+without terminal result; focused tests took 0.698s and original models 2.609s.

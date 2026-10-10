@@ -29,7 +29,7 @@ func (e *TLCError) Error() string {
 	if e == nil {
 		return ""
 	}
-	if e.Msg == "" {
+	if e.Msg == "" && !e.Runtime {
 		return fmt.Sprintf("TLC error %d", e.Code)
 	}
 	return e.Msg

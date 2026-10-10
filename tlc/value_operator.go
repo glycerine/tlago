@@ -672,10 +672,10 @@ func NewPriorityEvaluatingValue(primary *EvaluatingValue, secondary *EvaluatingV
 
 func (v *PriorityEvaluatingValue) Add(ev *EvaluatingValue) {
 	if ev == nil {
-		return
+		panic(NewNullPointerException())
 	}
 	if v.EvaluatingValue != nil && (v.OpDef != ev.OpDef || v.MinLevel != ev.MinLevel) {
-		panic(newTLCErrorCode(ECGeneral))
+		panic(NewTLCRuntimeException(ECGeneral))
 	}
 	if v.EvaluatingValue == nil {
 		// Java constructs a new wrapper from the primary method and adds this

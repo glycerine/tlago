@@ -7145,6 +7145,17 @@ printing, custom evaluators and derived priority/callable wrappers are outside
 this observation. Existing fixtures and tests are unchanged; no original-method
 inventory credit is added.
 
+PriorityEvaluatingValue registration raises typed NPE for null secondary/add
+handlers and source-less Assert runtime failures for incompatible OpDef identity
+or minimum level. These constructor/add failures stay outside value wrapping,
+even when the existing priority wrapper has a semantic source. Stable handler
+insertion and the primary method metadata remain unchanged. Runtime errors with
+an empty Java message preserve that empty string rather than substituting the
+native generic error label. All 14 registration outcomes and 40 additional
+inherited-operation outcomes match Java; the earlier 188 operator rows still
+match. Priority handler invocation/order and arbitrary factory-only construction
+are not established by these observations.
+
 
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime
