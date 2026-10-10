@@ -1,6 +1,9 @@
 package tlc
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 const lazyValueOffProperty = "tlc2.value.impl.LazyValue.off"
 
@@ -313,9 +316,6 @@ type SetPredValue struct {
 }
 
 func NewSetPredValue(vars any, inVal Value, pred SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *SetPredValue {
-	if con == nil {
-		con = EmptyContext
-	}
 	cm := DoNotRecordCostModel
 	if len(cms) > 0 {
 		cm = cms[0]
@@ -382,6 +382,9 @@ func (v *SetPredValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *SetPredValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if v.InVal == nil {
+		panic(NewNullPointerException())
+	}
 	if v.Converted {
 		return v.InVal.Member(elem)
 	}
@@ -412,13 +415,16 @@ func (v *SetPredValue) memberUnconverted(elem Value) (resultBool bool, err error
 		return false, err
 	}
 	// Unlike enumeration, Java member() uses the overload without a cost model.
+	if v.Tool == nil {
+		panic(NewNullPointerException())
+	}
 	res, err := v.Tool.Eval(v.Pred, ctx, v.State, v.PState, v.Control)
 	if err != nil {
 		return false, err
 	}
 	boolValue, ok := res.(*BoolValue)
 	if !ok {
-		return false, v.unsupported("The evaluation of predicate %s yielded non-Boolean value.", v.Pred)
+		return false, v.runtimeFailure("The evaluation of predicate " + v.predicateImage() + " yielded non-Boolean value.")
 	}
 	return boolValue.Val, nil
 }
@@ -436,17 +442,34 @@ func isValueEvalException(err error) bool {
 }
 
 func (v *SetPredValue) membershipUndecidable(elem Value) error {
-	return v.unsupported("Cannot decide if element:\n%s\n is element of:\n%s\nand satisfies the predicate %s", ValuesPPR(elem), ValuesPPR(v.InVal), v.Pred)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	elementText := ValuesPPR(elem)
+	if v.InVal == nil {
+		panic(NewNullPointerException())
+	}
+	return v.runtimeFailure("Cannot decide if element:\n" + elementText + "\n is element of:\n" + ValuesPPR(v.InVal) + "\nand satisfies the predicate " + v.predicateImage())
+}
+
+func (v *SetPredValue) predicateImage() string {
+	if v.Pred == nil {
+		return "null"
+	}
+	return toContextString(v.Pred)
 }
 
 func (v *SetPredValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if v.InVal == nil {
+		panic(NewNullPointerException())
+	}
 	finite, err := v.InVal.IsFinite()
 	if err != nil {
 		return false, err
 	}
 	if !finite {
-		return false, v.unsupported("Attempted to check if expression of form {x \\in S : p(x)} is a finite set, but cannot check if S:\n%s\nis finite.", ValuesPPR(v.InVal))
+		return false, v.runtimeFailure("Attempted to check if expression of form {x \\in S : p(x)} is a finite set, but cannot check if S:\n" + ValuesPPR(v.InVal) + "\nis finite.")
 	}
 	return true, nil
 }
@@ -462,17 +485,26 @@ func (v *SetPredValue) Size() (resultInt int, err error) {
 
 func (v *SetPredValue) Normalize() Value {
 	defer catchValueFailure(v, nil)
+	if v.InVal == nil {
+		panic(NewNullPointerException())
+	}
 	v.InVal.Normalize()
 	return v
 }
 
 func (v *SetPredValue) DeepNormalize() {
 	defer catchValueFailure(v, nil)
+	if v.InVal == nil {
+		panic(NewNullPointerException())
+	}
 	v.InVal.DeepNormalize()
 }
 
 func (v *SetPredValue) IsNormalized() bool {
 	defer catchValueFailure(v, nil)
+	if v.InVal == nil {
+		panic(NewNullPointerException())
+	}
 	return v.InVal.IsNormalized()
 }
 func (v *SetPredValue) IsDefined() bool { return true }
@@ -535,7 +567,13 @@ func (v *SetPredValue) ToSetEnum() (*SetEnumValue, error) {
 func (v *SetPredValue) Elements() ValueEnumeration {
 	defer catchValueFailure(v, nil)
 	if v.Converted {
-		set := v.InVal.(*SetEnumValue)
+		if v.InVal == nil {
+			panic(NewNullPointerException())
+		}
+		set, ok := v.InVal.(*SetEnumValue)
+		if !ok {
+			panic(valueStreamClassCast(v.InVal, "tlc2.value.impl.SetEnumValue"))
+		}
 		enum := set.Elements()
 		if err := enum.Err(); err != nil {
 			return newErrorEnumeration(wrapValueFailure(v, err))
@@ -544,7 +582,10 @@ func (v *SetPredValue) Elements() ValueEnumeration {
 	}
 	enum, ok := asEnumerable(v.InVal)
 	if !ok {
-		return newErrorEnumeration(wrapValueFailure(v, v.unsupported("Attempted to enumerate { x \\in S : p(x) } when S:\n%s\nis not enumerable", ValuesPPR(v.InVal))))
+		if v.InVal == nil {
+			panic(NewNullPointerException())
+		}
+		return newErrorEnumeration(wrapValueFailure(v, v.runtimeFailure("Attempted to enumerate { x \\in S : p(x) } when S:\n"+ValuesPPR(v.InVal)+"\nis not enumerable")))
 	}
 	elements := enum.Elements()
 	if err := elements.Err(); err != nil {
@@ -555,24 +596,46 @@ func (v *SetPredValue) Elements() ValueEnumeration {
 
 func (v *SetPredValue) bind(elem Value) (*Context, error) {
 	ctx := v.Con
-	if ctx == nil {
-		ctx = EmptyContext
-	}
 	switch vars := v.Vars.(type) {
 	case *SymbolNode:
+		if vars == nil {
+			return v.bindTuple(elem, nil, ctx)
+		}
+		if ctx == nil {
+			panic(NewNullPointerException())
+		}
 		return ctx.Cons(vars, elem), nil
 	case []*SymbolNode:
-		tuple := asTupleValue(elem)
-		if tuple == nil || len(tuple.Elems) != len(vars) {
-			return nil, v.unsupported("Attempted to check if the value:\n%s\nis an element of a set of %d-tuples.", ValuesPPR(elem), len(vars))
-		}
-		for i, variable := range vars {
-			ctx = ctx.Cons(variable, tuple.Elems[i])
-		}
-		return ctx, nil
+		return v.bindTuple(elem, vars, ctx)
+	case nil:
+		return v.bindTuple(elem, nil, ctx)
 	default:
 		return nil, v.unsupported("unsupported set predicate variables %T", v.Vars)
 	}
+}
+
+func (v *SetPredValue) bindTuple(elem Value, vars []*SymbolNode, ctx *Context) (*Context, error) {
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	tuple := asTupleValue(elem)
+	if tuple != nil && tuple.Elems == nil {
+		panic(NewNullPointerException())
+	}
+	if vars == nil {
+		panic(NewNullPointerException())
+	}
+	if tuple == nil || len(tuple.Elems) != len(vars) {
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of a set of %d-tuples.", ValuesPPR(elem), len(vars)))
+	}
+	values := tuple.Elems
+	for i := 0; i < len(vars); i++ {
+		if ctx == nil {
+			panic(NewNullPointerException())
+		}
+		ctx = ctx.Cons(vars[i], fcnParameterDomain(values, i))
+	}
+	return ctx, nil
 }
 
 func (v *SetPredValue) String() string {
@@ -610,7 +673,7 @@ func (v *SetPredValue) ToString(sb *strings.Builder, offset int, swallow bool) *
 		inText = v.InVal.String()
 	}
 	sb.WriteString(" \\in " + inText + " : <expression ")
-	sb.WriteString(toContextString(v.Pred) + "> }")
+	sb.WriteString(v.predicateImage() + "> }")
 	return sb
 }
 
@@ -643,6 +706,9 @@ func (e *setPredEnumeration) NextElement() Value {
 			e.err = err
 			return nil
 		}
+		if e.set.Tool == nil {
+			panic(NewNullPointerException())
+		}
 		res, err := e.set.Tool.Eval(e.set.Pred, ctx, e.set.State, e.set.PState, e.set.Control, e.set.CM)
 		if err != nil {
 			e.err = err
@@ -650,7 +716,7 @@ func (e *setPredEnumeration) NextElement() Value {
 		}
 		boolValue, ok := res.(*BoolValue)
 		if !ok {
-			e.err = e.set.unsupported("Evaluating predicate %s yielded non-Boolean value.", e.set.Pred)
+			e.err = e.set.runtimeFailure("Evaluating predicate " + e.set.predicateImage() + " yielded non-Boolean value.")
 			return nil
 		}
 		if boolValue.Val {

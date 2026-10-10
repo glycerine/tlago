@@ -36921,3 +36921,83 @@ predicate traversal baseline as the next source target. Original random stress
 session 27326 remains live by direct poll c2a88d; latest saved progress is
 2,099,810,229 / 2,147,483,648, without terminal result or new long-test credit.
 Overall Java-to-Go goal remains active.
+
+2026-10-10: Predicate membership, inner-value traversal and binding boundaries
+
+Previous goal turn made verified progress in f8220ab. Inspect the clean source
+(329987) and poll original stress session 27326 directly (b11ff2), still live.
+The saved 240-row predicate traversal comparison has 48 actual differences.
+Source delegates inner-value methods under its existing owner catch; native
+exposes raw Go nil panics. Converted enumeration uses a raw Go assertion rather
+than a typed cast, and unconverted non-enumerable bounds use EvalException
+instead of Assert.fail with source metadata (74a011).
+
+Preserve typed null receiver failures for Member, IsFinite, Normalize,
+DeepNormalize and IsNormalized. Converted Elements preserves typed null/casts;
+unconverted Elements rejects null before formatting and uses runtimeFailure for
+non-enumerable bounds. Native rerun completes zero (38259 7d2560): all 240 rows
+match exactly (28f11f), down from 48 differences (19d692). No new owner catch
+is introduced around enumeration callbacks.
+
+Extend actual parser-backed constructors to test retained null context/tool,
+non-Boolean parsed predicates, scalar versus formal-array binding, zero/one
+formal arrays, null/short/long tuple storage, function-to-tuple conversion and
+the real Int bound. Twenty-five forms cross two source modes, seven membership
+arguments and five other operations. No fabricated semantic graphs or evaluator
+callbacks. Source/native expanded baseline both finish zero (5df973/88ee35),
+600 rows, 46 actual differences after the first null/cast correction (9bd7c1).
+The Int bound naturally exercises EvalException rewriting for non-integer
+arguments; no artificial failing operator is introduced (efaeb8).
+
+Preserve null context until binding actually calls Cons; zero-formal tuple
+binding can retain null context. Convert the element before tuple/formal lengths,
+retain its values array and use typed slot reads while binding. Check a null
+tool after binding and before Eval. Non-Boolean predicate results, incompatible
+tuples, infinite bounds and undecidable membership now use the source runtime
+assertion metadata and messages. Only EvalException is rewritten by the existing
+membership catch; assertions and FingerprintException remain intact. Nullable
+predicate images use source null concatenation text, including fallback printing.
+
+First expanded native rerun completes zero (55594 209b17) but leaves six actual
+differences, all null context cases (93fd09). Source inspection finds the
+constructor had already replaced null with EmptyContext before bind (a93666).
+Remove that constructor fallback, retaining the original input. The 600-row
+rerun completes zero (76228 36bc49), no differences (4e00dc). Add explicit actual
+context/tool/variables null-state snapshots. Source completes zero (dd7f0e),
+native completes zero (99684 31619a): all 600 rows match exactly (624742).
+Extend with direct formatting to verify the changed predicate-image path;
+source/native both finish zero (194c64/b27394), all 650 rows match exactly
+(6856ac). Diagnostic/cause headers, nullable details, source metadata and raw
+state remain checked without filtering. No persistent test/fixture or original
+method credit. Invalid variable-object types and broader lazy variants remain
+unproven.
+
+Focused original bag/predicate/model/value/EXCEPT/Sequences/TLCModule/stream/MP/
+override and lazy-subset checks pass after binding fixes (81572 fd2cad/63847b),
+root 2.343s and tlc 2.712s, then after retained constructor context (80942
+8ec583), root 2.251s and tlc 2.633s. Full unchanged CommunityModules all/shiviz
+runs on final production code in session 92862 (0ff87f), log
+.codex-gotmp/predicate-traversal/community-ant.log, timeout zero and original
+bounds without race. Handoff/architecture record observed contracts and pending
+full verification.
+
+While that immutable binary runs, inspect adjacent constructor source and
+prepare ignored .codex-gotmp/predicate-constructors baseline. Actual parsed
+predicates/states and constructors cross direct/copy forms, null context/tool/
+predecessor/successor/variables/predicate, converted-copy reset and input source.
+No semantic node or callback is fabricated. Source/native finish zero (e39835/
+c9d057); all 36 rows are present, ten actual differences (ecc6c2): null predecessor
+state is accepted, null copy sources return silently and supplied null tools are
+replaced. Other retained reference/control/source/copy-state observations agree.
+Preserve these receipts for the next feature chunk; no production edits for
+those remaining constructor paths while full verification runs. Overall
+Java-to-Go goal remains active.
+
+Full unchanged CommunityModules session 92862 exits zero (cca044), root
+308.311s, all 307.61s and shiviz 0.22s (2926b2). Both original phases and
+bounds pass on final predicate traversal/rendering code. Formatting/diff checks
+pass. Handoff/architecture record completed verification and the saved 36-row
+constructor baseline. Original random stress session 27326 remains live by
+direct poll d12813; latest saved progress is 2,122,596,786 / 2,147,483,648,
+without terminal result or new long-test credit. Overall Java-to-Go goal remains
+active.

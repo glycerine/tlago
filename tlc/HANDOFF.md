@@ -471,9 +471,15 @@ typed casts and null returns; materialization stores null before its next
 dereference, and fallback printing uses Java's null text. All 1,312 conversion
 observations agree outside 86 native/JVM stack-text differences, and all 96
 materialization observations match exactly. Original bag/predicate/focused checks
-and the complete CommunityModules all/shiviz target pass. Continue with
-`SetPredValue` membership and inner-value traversal: the saved 240-row baseline
-identifies 48 differences outside stack text. Broader lazy conversions remain
+and the complete CommunityModules all/shiviz target pass.
+`SetPredValue` membership and inner-value traversal preserve typed null/cast
+failures and runtime assertion metadata. Tuple binding converts before reading
+lengths, retains null contexts until a binding needs them, and checks the tool
+after binding. Constructor context is retained. All 650 traversal/rendering
+observations match exactly, including retained null state. Focused original
+checks and the complete CommunityModules all/shiviz target pass. Continue
+with predicate constructors: the saved 36-row baseline identifies ten state/tool/
+null-source differences. Broader lazy conversions and constructor variants remain
 unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
@@ -558,7 +564,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,099,810,229 of 2,147,483,648 iterations, without a terminal result. The previous
+2,122,596,786 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

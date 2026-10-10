@@ -8779,6 +8779,39 @@ inner-value traversal remain separate targets. The complete unchanged
 CommunityModules all/shiviz target passes on the final conversion/materialization
 implementation.
 
+SetPredValue retains null constructor context and checks it only when scalar or
+tuple binding calls Cons. Empty formal arrays can leave context null and proceed
+to evaluation. Inner-value membership, finiteness, normalization/deep normalization
+and normalization-status getters preserve typed null dereferences under their
+existing source catches. Converted enumeration casts to SetEnumValue, with typed
+null/cast failures; unconverted non-enumerable bounds retain Assert.fail metadata
+and null-before-diagnostic ordering.
+
+Tuple binding converts the actual element before reading tuple/formal-array
+lengths and diagnoses incompatible tuples with runtime assertion metadata. It
+captures the converted tuple's values array, then binds current slots in order.
+The tool is checked after binding, leaving empty-domain paths untouched. A null
+tool or context is not silently replaced. Non-Boolean predicate results use the
+source's distinct membership/enumeration runtime messages. Membership rewrites
+only EvalException into its undecidable-membership assertion, preserving argument
+then domain formatting order; runtime assertions and FingerprintException stay
+intact. Predicate diagnostic images retain Java's null concatenation text.
+
+The ignored comparison spans 650 actual membership, finiteness, normalization,
+deep normalization, normalization status, enumeration/reset and formatting rows.
+All match exactly, including source frames, runtime detailed metadata, retained
+backing/converted state and explicit null context/tool/variables. Actual checked
+test206 scalar/formal-array nodes and predicates are reused; constructors supply
+null contexts/tools, zero/one formal arrays, tuple/function elements, non-Boolean
+parsed predicates and the real Int bound. No source semantic graph, evaluator
+callback, persistent test/fixture or original-method credit is fabricated.
+Original bag/predicate/model/value/EXCEPT/Sequences/TLCModule/stream/MP and
+lazy-subset checks and the complete unchanged CommunityModules all/shiviz target
+pass. Predicate constructor state/copy/tool boundaries remain a separate next
+target, with a
+36-row actual-constructor baseline identifying ten differences. General invalid
+variable-object types and additional lazy producer variants remain unproven.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid
