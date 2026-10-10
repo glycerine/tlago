@@ -37230,3 +37230,40 @@ passes at unchanged num=100 settings, session 9469 terminal 54498f, root
 CommunityModules baseline rather than expanding testing without a new concern.
 No new original-method credit or persistent test/fixture. Formatting/diff checks
 pass; handoff/architecture state verification scope. Overall goal remains active.
+
+ToTuple continuation after verified 8e21749. Previous turn was progress;
+overall goal remains active. Source captures explicit normalized domain size
+for allocation/iteration. Prepare ignored .codex-gotmp/lambda-to-tuple using
+checked test206 lambda/formals/predicate and real interval/set/ANY/Int/domain
+constructors, malformed runtime vectors and parameter arrays, null tool/context,
+actual cached records, source flags and actual cost-model wrappers. Source
+fd23ce/native 027ff4 finish 1,088 rows; initial 52 differences (9dabcc)
+include 20 observer-cost setup differences. Source wrapper counters created
+with coverage disabled are no-op; native custom recording counters count.
+Preserve original java-nonrecording-cost.log; create source recording wrappers
+while coverage is enabled, restore setting before calling, without changing
+production. Corrected source 87156 exits zero (9e914f); 1,088 rows now have
+32 actual allocation differences, all negative logical count (859c0d).
+
+Native ToTuple now calls set.Size after normalization, captures the result for
+allocation and iteration, and raises typed NegativeArraySizeException on negative
+size before making a slice. Element reads retain the current set vector; no
+new lambda owner catch. Native 49136 exits zero (f04ae0), all 1,088 exact
+(73d279). Focused original/native 5142 exits zero (6c66d5), root 2.674s
+and tlc 2.784s. Expand domain source flags independently, using fresh empty
+sets to avoid mutating shared singletons. Source 147922/native 467fc7
+exit zero; all 2,176 rows exactly equal (b091d4), retaining normalized domain,
+cache and secondary counters. Dynamic mutation during selection remains
+unproven. No persistent test/fixture or additional original-method credit.
+
+Inspect adjacent record conversion: pinned source explicitly permits null
+materialization and interval domains; native already matches those guards.
+Prepare next ignored .codex-gotmp/predicate-variable-casts baseline from actual
+checked formals/arrays, real value objects, interned string, checked declaration/
+definition/application nodes, membership, enumeration, conversion and printing
+with source/expansion modes. Source 965db3/native 03a0e8 exit zero, 210
+rows present, 144 actual differences (5e5adf). Native generic unsupported/type-
+assertion failures and acceptance of a parsed non-formal declaration differ
+from source FormalParamNode[] class casts. No production predicate edit in
+this chunk; preserve baseline for next target. Formatting/diff checks pass.
+Handoff/architecture state verification scope, counts and remaining work.

@@ -8876,6 +8876,21 @@ Focused originals/native checks and the unchanged original simulation.NQSpecTest
 pass. This change has focused verification; the earlier full CommunityModules
 pass remains the baseline. Further conversion and EXCEPT variants remain unproven.
 
+Lambda ToTuple normalizes an explicit domain, reads its size through the source
+set-size method, then captures that size for allocation and iteration. Negative
+sizes raise typed NegativeArraySizeException before allocation, without adding
+a lambda owner catch. Element reads still use the current set vector. The
+ignored comparison spans 2,176 actual interval/set/predicate/ANY/Int/null and
+malformed-vector/parameter domains, independent lambda/domain source flags,
+captured caches, null contexts/tools and default/recording cost models. All rows
+match Java exactly, including normalized domain, cache, exception and secondary
+count snapshots. The original 1,088-row baseline had 32 allocation failures.
+Source recording counters are constructed while coverage is enabled, then the
+setting is restored; constructing no-op source counters cannot be compared to
+recording native counters. Focused original/native checks pass. No persistent
+test/fixture or original-method credit is added. Dynamic size mutation during
+selection and additional malformed domains remain unproven.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

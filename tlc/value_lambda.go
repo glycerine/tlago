@@ -1020,8 +1020,15 @@ func (v *FcnLambdaValue) ToTuple() *TupleValue {
 	if _, err := set.normalizeSet(); err != nil {
 		panic(err)
 	}
-	elems := make([]Value, set.Elems.Len())
-	for i := 0; i < set.Elems.Len(); i++ {
+	size, err := set.Size()
+	if err != nil {
+		panic(err)
+	}
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(size)))
+	}
+	elems := make([]Value, size)
+	for i := 0; i < size; i++ {
 		arg := set.Elems.At(i)
 		iv, ok := arg.(*IntValue)
 		if !ok || iv.Val != int32(i+1) {

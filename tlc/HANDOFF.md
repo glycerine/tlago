@@ -504,9 +504,13 @@ exactly. Focused original/native checks and the unchanged original `NQSpec`
 simulation pass. The earlier full CommunityModules pass remains the baseline;
 this latest change has focused verification. Further lambda conversion and
 EXCEPT variants remain unproven.
-Next inspect lambda `ToTuple`: Java captures explicit-domain size once, while
-Go currently rereads vector length, and its allocation uses an unguarded native
-slice length. These are source-inspection candidates without a saved comparison.
+Lambda `ToTuple` now captures explicit-domain size for allocation and iteration,
+preserving typed negative-array failures and source-owned size failures. All
+2,176 domain/cache/source/cost observations match Java exactly, and focused
+original/native checks pass. Dynamic mutation during selection remains unproven.
+Next fix predicate-variable casts: the saved 210-row comparison identifies
+144 differences for invalid variable objects, including actual parsed declarations
+and definitions. Preserve valid formals, null handling and source failure ownership.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
