@@ -9400,8 +9400,7 @@ foreign-slot retention is compared. All 56 earlier coverage rows still agree.
 Twenty-six original model/generated-trace tests and four original reporting tests
 pass normally. No new persistent tests/fixtures or original-method credit.
 Failures inside arbitrary malformed semantic graphs and VM-generated exception
-detail text are not established; variable-counter setup boundaries remain a
-separate audit.
+detail text are not established.
 
 Coverage reports retain Java's TreeSet selection: the first input action at each
 predicate location survives, independent of names, contexts or its cost model.
@@ -9424,6 +9423,30 @@ ordering, not a general mixed-module producer sweep. All 94 earlier coverage
 observations and 30 original model/reporting tests remain green. No persistent
 tests, fixture changes or original-method credit. General concurrent mutation,
 extreme intern-token arithmetic and every coverage producer remain unproven.
+
+Variable-counter setup captures the processor declaration array and installs a
+fresh synchronized HyperLogLog(10) per current slot, preserving earlier changes
+when a null entry fails. A null array throws the source null exception; an empty
+array completes without installing counters. Reports also capture the array once,
+but read each current slot and its current counter during iteration, after prior
+recorder notifications. Replacing the processor's array during a report leaves
+the captured array in use; changing its later slots or counters affects the next
+iteration. A missing slot/counter fails after the source message prefix, and Noop
+counters are skipped before name/location lookup. Native standalone record tools
+retain their snapshot adapter.
+
+All 36 ordered source/native observations on TLCGetLevel agree after correcting
+11 baseline rows. Eighteen shapes run through creation/reporting: valid, empty,
+null array/first/last, duplicates, reverse order, missing counters, Noop counters,
+and recorder changes to later counters/slots or the processor's array. Rows retain
+initial/next CM replacement, every original declaration's counter identity/count
+and all raw messages in order. The seven recorder-change shapes act only after
+the first variable message; creation emits no such message and is a control.
+All 139 prior coverage rows and 30 original tests still pass. No new persistent
+tests/fixtures or original-method credit. Arbitrary concurrent mutation and custom
+counter implementations are not established. Coverage collector primed-location
+and substitution/context capture remain further source audits; enqueue counting
+ownership already has separate lifecycle verification.
 
 LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
 ModelChecker.vetoCleanup property retains disk graph handles for subsequent

@@ -30631,3 +30631,58 @@ Latest saved progress is 722,371,117 / 2,147,483,648; no terminal result or meth
 credit. Overall parity remains incomplete. Next audit coverage variable-counter
 setup/reporting boundaries against current processor declarations, retaining
 source partial updates and output before failures.
+
+
+2026-10-10: Preserve coverage variable iteration and counter failure order
+
+Previous goal turn made progress in 3b7ffa1; current tree started clean. Java
+coverage creation captures the processor's variablesNodes array and assigns new
+synchronized HLL(10) counters sequentially. It rejects null arrays/entries and
+preserves prior assignments before a later failure. Native range over nil arrays
+previously skipped the phase; nil slots raised Go runtime panics. Corrected
+source-backed creation guards in tlc/coverage.go. Reporting previously built an
+eager StateVariable snapshot before iterating; Java reads each current slot and
+counter after the preceding message callback. Source-backed reporting now walks
+the captured declaration array directly, gets each counter once, preserves null
+failures/prefixes, and skips Noop before name/location access. Standalone native
+record adapters remain unchanged.
+
+Exactly 36 new ordered pinned-Java/native observations on unchanged TLCGetLevel
+match after correcting 11 baseline rows. Eighteen shapes run through create and
+report: valid, empty/null arrays, null first/last entries, duplicates/reverse order,
+missing first/last counters, first/all Noops, and seven callback mutations. A first
+variable message changes the next counter to zero/Noop/nil, changes the next
+array entry to nil/another original declaration, or replaces/nulls the processor
+array. Java continues the captured array after owner replacement, while observing
+changes to its later contents/counters. Native now agrees, including output
+prefixes and exceptions. Creation has no variable messages and supplies controls
+for callback shapes. Seeded actual Naive counters expose original counts 1..4;
+new setup counters reset to zero. Rows compare every original declaration's
+counter identity/count, initial/next CM identity and complete raw message order.
+
+Ignored observers/logs/comparator are in
+.codex-gotmp/coverage-variable-observation/. Source compile/source and native
+baseline session 63462 terminal 785e49 returned status 0. Initial corrected native
+session 14736 terminal 0100d2 matched all 36 rows. A local review then made the
+counter getter single-read, following source capture order; final observer rerun
+is in session 46389 terminal 0bc6f6, status 0. All 139 previous coverage rows also
+match, session 53849 terminal 4dc17d. Final compare.py receipt c5644f requires
+exactly 36 + 139 ordered rows and equality; status 0, all 175 match, 11 current
+baseline differences. No persistent tests or fixtures invented, no source model
+changes, no inventory changes or original-method credit. Arbitrary concurrent
+mutation, custom counters and VM-generated exception detail remain unproven.
+
+All 26 selected original root model/generated-trace checks pass at unchanged
+bounds: 19 coverage models, TLCGetLevel/TLCGetLevelTTrace and five
+TraceExpressionSpec methods. Session 86121 terminal 883e1f, root 10.159s, status 0,
+original-models.log. All four original TestJavaReportCoverage01..04 methods pass,
+session 46389 terminal 0bc6f6, TLC 0.012s, status 0, original-reporting.log. No race,
+broad workspace suite or XML/ApalacheIR sweep. Formatting and git diff --check
+pass. No email work.
+
+Original full off-heap random stress session 27326 remains live (poll 82a0a1).
+Latest saved progress is 737,999,395 / 2,147,483,648; no terminal result or method
+credit. Overall parity remains incomplete. Next audit coverage collector primed-
+location and substitution/context capture, consulting earlier receipts first.
+Worker enqueue/value-counting ownership already has an 11-observation lifecycle
+audit in TLC_ARCH.md; do not restart it without a concrete additional contract.

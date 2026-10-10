@@ -352,7 +352,14 @@ func CreateCoverageCostModels(tool *Tool) {
 		}
 	}
 	if processor := tool.GetSpecProcessor(); processor != nil {
-		for _, node := range processor.GetVariablesNodes() {
+		nodes := processor.GetVariablesNodes()
+		if nodes == nil {
+			panic(NewNullPointerException())
+		}
+		for _, node := range nodes {
+			if node == nil {
+				panic(NewNullPointerException())
+			}
 			node.SetCountDistinct(NewCountDistinctSyncedHyperLogLog(10))
 		}
 	} else {
@@ -374,16 +381,41 @@ func reportCoverage(tool *Tool) {
 		return
 	}
 	PrintMessage(ECTLCCoverageStart)
-	for _, variable := range stateVariablesForTool(tool) {
-		if variable.CountDistinct == nil {
-			if variable.declaration != nil {
+	if processor := tool.GetSpecProcessor(); processor != nil {
+		nodes := processor.GetVariablesNodes()
+		if nodes == nil {
+			panic(NewNullPointerException())
+		}
+		// Capture the declaration array, then read each current slot and counter
+		// in order. Recorder callbacks can change later entries or counters.
+		for _, node := range nodes {
+			if node == nil {
 				panic(NewNullPointerException())
 			}
-			continue
+			counter := node.GetCountDistinct()
+			if counter == nil {
+				panic(NewNullPointerException())
+			}
+			count := counter.Count()
+			if count >= 0 {
+				if node.Name == nil {
+					panic(NewNullPointerException())
+				}
+				PrintMessage(ECTLCCoverageVar, node.Name.String(), node.GetSourceLocation().String(), fmt.Sprint(count))
+			}
 		}
-		count := variable.CountDistinct.Count()
-		if count >= 0 {
-			PrintMessage(ECTLCCoverageVar, variable.Name.String(), variable.GetSourceLocation().String(), fmt.Sprint(count))
+	} else {
+		for _, variable := range stateVariablesForTool(tool) {
+			if variable.CountDistinct == nil {
+				if variable.declaration != nil {
+					panic(NewNullPointerException())
+				}
+				continue
+			}
+			count := variable.CountDistinct.Count()
+			if count >= 0 {
+				PrintMessage(ECTLCCoverageVar, variable.Name.String(), variable.GetSourceLocation().String(), fmt.Sprint(count))
+			}
 		}
 	}
 	init := tool.GetInitStateSpec()

@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 9, 2026. Active branch: `master`.
+Updated: October 10, 2026. Active branch: `master`.
 
 The user authorized fixing the upstream off-heap flusher lifecycle bug in Go.
 The fix and upstream report are in [JAVA_BUG_FOUND.md](../JAVA_BUG_FOUND.md).
@@ -148,9 +148,13 @@ partial updates and report prefixes. Constraint creation now requires the source
 OpDef cast, installs a fresh Action after building its cost model, and preserves
 repeated-creation failures. Constraint reports retain null/cast failures. Reports
 now retain the first action per predicate location, then deduplicate cost models;
-module ordering follows interned tokens. All 139 coverage observations and 30
-focused original tests pass. Next audit: coverage variable-counter setup and
-reporting boundaries. Original model-test reconciliation remains open.
+module ordering follows interned tokens. Variable setup preserves partial counter
+replacement and null failures; reports read each current declaration/counter in
+the captured array instead of snapshotting the whole collection. All 175 coverage
+observations and 30 focused original tests pass. Next audit: coverage collector
+primed-location and substitution/context capture. Consult earlier state-counter
+ownership receipts before repeating that completed work. Original model-test
+reconciliation remains open.
 
 ## Verification baseline and test credit
 
