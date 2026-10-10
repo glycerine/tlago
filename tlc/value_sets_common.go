@@ -7,6 +7,9 @@ import (
 
 func IsEmptyValue(value Value) (resultBool bool, err error) {
 	defer catchValueFailure(value, &err)
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	switch v := value.(type) {
 	case *SetEnumValue:
 		return v.Elems.Len() == 0, nil
@@ -49,6 +52,9 @@ func IsEmptyValue(value Value) (resultBool bool, err error) {
 		}
 		return elem == nil, nil
 	case *SetOfTuplesValue:
+		if v.Sets == nil {
+			panic(NewNullPointerException())
+		}
 		for _, set := range v.Sets {
 			empty, err := IsEmptyValue(set)
 			if err != nil {
@@ -60,6 +66,9 @@ func IsEmptyValue(value Value) (resultBool bool, err error) {
 		}
 		return false, nil
 	case *SetOfRcdsValue:
+		if v.Values == nil {
+			panic(NewNullPointerException())
+		}
 		for _, set := range v.Values {
 			empty, err := IsEmptyValue(set)
 			if err != nil {
@@ -256,11 +265,12 @@ func shouldExpandFcnSet(domain, rangeValue Value) bool {
 }
 
 // Only failures already present when elements() returns belong to its Java
-// catch boundary. Failures from later nextElement/reset calls stay unwrapped.
-func wrapInitialEnumerationFailure(value Value, enumeration *ValueEnumeration) {
+// catch boundary. Raise them before returning, so the enclosing catch adds its
+// source frame once. Later nextElement/reset failures stay outside this catch.
+func raiseInitialEnumerationFailure(enumeration *ValueEnumeration) {
 	if *enumeration != nil {
 		if err := (*enumeration).Err(); err != nil {
-			*enumeration = newErrorEnumeration(wrapValueFailure(value, err))
+			panic(err)
 		}
 	}
 }

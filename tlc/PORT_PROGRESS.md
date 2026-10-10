@@ -35811,3 +35811,67 @@ Original full off-heap random stress session 27326 remains directly confirmed
 live (501fdc). Latest saved progress is 1,883,403,206 / 2,147,483,648 (1b27b7),
 with no terminal result or long credit. Keep the same handle, log and bounds.
 Update handoff and architecture with verification scope and remaining limits.
+
+
+2026-10-10: Immediate lazy-set enumeration failures and null boundaries
+
+Previous goal turn is verified progress in caa64f8. Clean worktree and inspect
+all eight callers of wrapInitialEnumerationFailure (1cb849). Original random
+stress session 27326 is directly confirmed live (964830). Read pinned Java
+Elements/Enumerator bodies for SetCup/SetCap/SetDiff/Union and tuple/record/
+function products and Subset (99db7d/ab8cd0). Initial construction errors throw
+inside each owner's catch; native returns a pending error enumeration instead.
+
+Create ignored source/native actual-runtime observers with real parsed test206
+source nodes. Eight owners, sixteen actual constructor forms, eight source-flag
+combinations and four protocols (create, first read, reset/read, repeated reads/
+reset) produce 50,176 rows. First native compile needs the existing record-set
+constructor error return handled (5e917b); correct only the ignored driver.
+Initial raw comparison has 17,120 differences across all owners (2ff6a2).
+Raise pending construction errors inside the existing owner catch, rather than
+wrapping and returning them. The enclosing catch adds its source frame once.
+Preserve typed null IsEmpty receiver, membership receiver and diagnostic operand
+reads. After this change 3,456 raw differences remain (5eb4ff); most are observer
+trace artifacts because Java appends a next prefix before evaluating while Go
+appends after evaluation. Align Java observation timing without changing the
+feature. Corrected comparison has 376 differences (d7a29b): 240 typed null gaps
+in nested SetCup.Member and 136 native Union iterator-identity strings.
+
+Expand actual runtime observation to direct Subset.elementsNormalized via the
+real package-private method invoked with reflection, and null product arrays.
+The 50,752 rows have 536 differences (8e1f04), including 96 direct subset
+construction failures deferred until reading and 64 null product-array cases.
+Raise initial errors in direct ElementsNormalized without adding its own catch;
+keep the source caller's distinct frame count. Preserve typed NPE for null tuple/
+record product arrays and SetCup.Member operands, retaining its successful-left
+short-circuit. All rows agree outside 136 established iterator identity strings
+(77839f). Add 128 cases for successful/unsuccessful left membership with a null
+right operand. All 50,880 complete rows retain only the 136 native iterator
+identity differences; canonicalizing just those strings yields zero differences
+(dde0e0). Do not fabricate JVM identity text. Prior 5,328 sequence conversion/
+allocation rows retain only their four established identity differences (4f4ff3).
+No persistent test/fixture, evaluator callback or fabricated semantic graph is
+introduced. Cached delegates and continuation after a caught iterator failure
+remain unproven; these protocols stop at the first failure.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass: session 72715 exits zero (4b7c29), root 5.591s
+and tlc 2.415s (72b1f2). Initial full original set selection fails with an uncaught
+Elements exception in existing testNonEnumerableRange (e52058): inspect original
+SetOfFcnsValueTest (065ed3), whose two nonenumerable-range methods catch the
+exception from elements itself, then check its exact message. Update those two
+existing translations to catch the immediate native exception, retaining source
+type/message assertions. The first mechanical message replacement hits an earlier
+assertion and causes undefined raised (4f4ff3); correct that unintended replacement
+before rerunning. Full original set/subset/randomization/debugger/initialization
+selection plus native vector sharing/reference checks then runs normally at
+original bounds and passes: session 45979 exits zero (a70288), tlc 90.362s
+(dde0e0). Existing short native set/product/subset checks pass, tlc 0.013s
+(b50aa6). No race, shortened long workload or CommunityModules rerun; its previous
+complete target predates this change. Original-method credit is unchanged.
+
+Original random stress handle 27326 remains directly confirmed live (8a3334).
+Latest saved progress is 1,898,575,746 / 2,147,483,648 (71a298), without terminal
+result or long credit. Preserve the same handle, log, seed and original bounds.
+Update concise handoff and architecture with current contracts and remaining
+cached-state and recovered-iteration limits.

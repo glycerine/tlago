@@ -247,7 +247,7 @@ func (v *SetOfTuplesValue) convertAndCache() (*SetEnumValue, error) {
 
 func (v *SetOfTuplesValue) Elements() (enumeration ValueEnumeration) {
 	defer catchValueFailure(v, nil)
-	defer wrapInitialEnumerationFailure(v, &enumeration)
+	defer raiseInitialEnumerationFailure(&enumeration)
 	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet.Elements()
 	}
@@ -541,7 +541,7 @@ func (v *SetOfRcdsValue) convertAndCache() (*SetEnumValue, error) {
 
 func (v *SetOfRcdsValue) Elements() (enumeration ValueEnumeration) {
 	defer catchValueFailure(v, nil)
-	defer wrapInitialEnumerationFailure(v, &enumeration)
+	defer raiseInitialEnumerationFailure(&enumeration)
 	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet.Elements()
 	}
@@ -912,7 +912,7 @@ func (v *SetOfFcnsValue) convertAndCache() (*SetEnumValue, error) {
 
 func (v *SetOfFcnsValue) Elements() (enumeration ValueEnumeration) {
 	defer catchValueFailure(v, nil)
-	defer wrapInitialEnumerationFailure(v, &enumeration)
+	defer raiseInitialEnumerationFailure(&enumeration)
 	if v.FcnSet != nil && !v.FcnSetDummy {
 		return v.FcnSet.Elements()
 	}
@@ -1215,7 +1215,7 @@ func (v *SubsetValue) convertAndCache() (*SetEnumValue, error) {
 
 func (v *SubsetValue) Elements() (enumeration ValueEnumeration) {
 	defer catchValueFailure(v, nil)
-	defer wrapInitialEnumerationFailure(v, &enumeration)
+	defer raiseInitialEnumerationFailure(&enumeration)
 	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet.Elements()
 	}
@@ -1224,7 +1224,11 @@ func (v *SubsetValue) Elements() (enumeration ValueEnumeration) {
 
 // ElementsNormalized ports the direct SubsetValue.elementsNormalized entry
 // point, independently of the cached powerset used by Elements.
-func (v *SubsetValue) ElementsNormalized() ValueEnumeration {
+func (v *SubsetValue) ElementsNormalized() (enumeration ValueEnumeration) {
+	defer raiseInitialEnumerationFailure(&enumeration)
+	if v == nil || v.Set == nil {
+		panic(NewNullPointerException())
+	}
 	size, err := v.Set.Size()
 	if err != nil {
 		return newErrorEnumeration(err)

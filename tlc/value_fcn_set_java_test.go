@@ -450,11 +450,15 @@ func TestJavaSetOfFcnsValue(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := NewSetOfFcnsValue(tc.domain, Nat())
-			e := f.Elements()
-			err := e.Err()
+			var raised any
+			func() {
+				defer func() { raised = recover() }()
+				f.Elements()
+			}()
+			err, _ := raised.(error)
 			failure := javaRuntimeException(err)
 			if failure == nil {
-				t.Fatalf("expected TLCRuntimeException, got %T: %v", err, err)
+				t.Fatalf("expected TLCRuntimeException, got %T: %v", raised, raised)
 			}
 			expected := "Attempted to enumerate a set of the form [D -> R],but the range R:\nNat\ncannot be enumerated."
 			if failure.Error() != expected {

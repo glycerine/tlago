@@ -40,9 +40,15 @@ func (v *SetCupValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *SetCupValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if v.Set1 == nil {
+		panic(NewNullPointerException())
+	}
 	ok, err := v.Set1.Member(elem)
 	if err != nil || ok {
 		return ok, err
+	}
+	if v.Set2 == nil {
+		panic(NewNullPointerException())
 	}
 	return v.Set2.Member(elem)
 }
@@ -154,7 +160,7 @@ func (v *SetCupValue) convertAndCache() (*SetEnumValue, error) {
 
 func (v *SetCupValue) Elements() (enumeration ValueEnumeration) {
 	defer catchValueFailure(v, nil)
-	defer wrapInitialEnumerationFailure(v, &enumeration)
+	defer raiseInitialEnumerationFailure(&enumeration)
 	if v.CupSet != nil && !v.CupSetDummy {
 		return v.CupSet.Elements()
 	}
@@ -380,7 +386,7 @@ func (v *SetCapValue) convertAndCache() (*SetEnumValue, error) {
 
 func (v *SetCapValue) Elements() (enumeration ValueEnumeration) {
 	defer catchValueFailure(v, nil)
-	defer wrapInitialEnumerationFailure(v, &enumeration)
+	defer raiseInitialEnumerationFailure(&enumeration)
 	if v.CapSet != nil && !v.CapSetDummy {
 		return v.CapSet.Elements()
 	}
@@ -390,7 +396,7 @@ func (v *SetCapValue) Elements() (enumeration ValueEnumeration) {
 	if enum2, ok := asEnumerable(v.Set2); ok {
 		return &setFilterEnumeration{enum: enum2.Elements(), predicate: v.Set1, includeWhenMember: true, cm: v.CM}
 	}
-	return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\cap T when neither S:\n" + ValuesPPR(v.Set1) + "\nnor T:\n" + ValuesPPR(v.Set2) + "\nis enumerable"))
+	return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\cap T when neither S:\n" + enumerableDiagnosticValue(v.Set1) + "\nnor T:\n" + enumerableDiagnosticValue(v.Set2) + "\nis enumerable"))
 }
 
 func (v *SetCapValue) String() string {
@@ -578,13 +584,13 @@ func (v *SetDiffValue) convertAndCache() (*SetEnumValue, error) {
 
 func (v *SetDiffValue) Elements() (enumeration ValueEnumeration) {
 	defer catchValueFailure(v, nil)
-	defer wrapInitialEnumerationFailure(v, &enumeration)
+	defer raiseInitialEnumerationFailure(&enumeration)
 	if v.DiffSet != nil && !v.DiffSetDummy {
 		return v.DiffSet.Elements()
 	}
 	enum1, ok := asEnumerable(v.Set1)
 	if !ok {
-		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\ T when S:\n" + ValuesPPR(v.Set1) + "\nis not enumerable."))
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\ T when S:\n" + enumerableDiagnosticValue(v.Set1) + "\nis not enumerable."))
 	}
 	return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.Set2, includeWhenMember: false, cm: v.CM}
 }
@@ -818,7 +824,7 @@ func (v *UnionValue) convertAndCache() (*SetEnumValue, error) {
 
 func (v *UnionValue) Elements() (enumeration ValueEnumeration) {
 	defer catchValueFailure(v, nil)
-	defer wrapInitialEnumerationFailure(v, &enumeration)
+	defer raiseInitialEnumerationFailure(&enumeration)
 	if v.RealSet != nil && !v.RealSetDummy {
 		return v.RealSet.Elements()
 	}
@@ -872,6 +878,9 @@ func (e *setFilterEnumeration) NextElement() Value {
 			return nil
 		}
 		e.cm.incValueSecondary()
+		if e.predicate == nil {
+			panic(NewNullPointerException())
+		}
 		member, err := e.predicate.Member(elem)
 		if err != nil {
 			e.err = err
@@ -1058,4 +1067,12 @@ func joinValueStrings(values []Value, sep string) string {
 		}
 	}
 	return strings.Join(parts, sep)
+}
+
+// Java calls the operand's toString while building enumerator diagnostics.
+func enumerableDiagnosticValue(value Value) string {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	return ValuesPPR(value)
 }

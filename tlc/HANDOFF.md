@@ -401,8 +401,7 @@ retain source conversion and null failures, copy ownership and removal shortcuts
 All 5,312 observations agree outside four intentional native object-identity
 strings in UnionValue diagnostics; sixteen allocation/factorial boundary cases
 agree. SetCup diagnostic operand reads now preserve typed null failures. Original
-set/subset and focused regressions pass; broader lazy-set failure timing and
-heap exhaustion remain unproven.
+set/subset and focused regressions pass; heap exhaustion remains unproven.
 `LongestCommonPrefix` and `IsPrefix` preserve UTF-16 units, subclass recognition,
 source catch/read order and bounds errors. Nonempty prefix tuples own their array.
 All 7,786 controlled-token rows and 720 tuple comparison rows agree; the parsed
@@ -417,6 +416,15 @@ access, insertion, sorting, growth and failed-store mutations match all 17,700
 observations; five transfer observations preserve exceptional counts and null
 backing arrays. Existing original set/subset checks and focused regressions pass.
 Parsed intern allocation and broader value subclass behavior remain open.
+The eight lazy-set families raise initial enumeration failures before returning,
+inside their existing source catch. Direct `SubsetValue.ElementsNormalized`
+raises errors without adding an owner frame. Empty checks, diagnostic rendering
+and filtering preserve typed null failures and union membership shortcuts.
+All 50,880 creation/read/reset observations agree outside 136 native iterator
+identity strings. Original nonenumerable-range tests now catch the immediate
+exception as their Java bodies do; full set/subset and focused checks pass.
+Cached delegate matrices and continued iteration after a caught failure remain
+unproven. The earlier complete CommunityModules run predates these changes.
 Prior lambda conversion and deep-normalization matrices also agree; contracts
 and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
@@ -451,7 +459,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,883,403,206 of 2,147,483,648 iterations, without a terminal result. The previous
+1,898,575,746 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

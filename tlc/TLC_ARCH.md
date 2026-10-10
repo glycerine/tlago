@@ -8339,6 +8339,36 @@ predates the later SetCup diagnostic and oversized AllSubSeqs checks; those
 specific error paths have separate runtime comparisons, and the SetCup change
 is also covered by the subsequent original set and focused selections.
 
+Lazy-set Elements methods raise failures already present during construction
+before returning an enumerator. The shared initial-failure helper raises the
+underlying error; each existing owner catch adds its source frame once. This
+covers SetCup, SetCap, SetDiff, Union, tuple/record/function products and Subset.
+Direct Subset.ElementsNormalized raises its pending failures without adding a
+catch of its own, preserving the distinct direct entry point. Later read/reset
+failures stay outside the constructor's catch. IsEmptyValue preserves typed null
+receiver and null product-array failures. SetCap/SetDiff diagnostic construction
+calls operand formatting in source order with typed null dereferences. Filtering
+raises typed NPE for a null membership receiver; SetCup.Member retains both its
+left-to-right dereferences and a successful left operand's short-circuit.
+
+All 50,880 actual-runtime observations complete across eight owners, sixteen
+input forms, eight owner/operand source combinations and creation, first read,
+reset/read and repeated read/reset protocols. Additional cases call the real
+package-private Subset.elementsNormalized by reflection, pass actual null tuple/
+record product arrays and exercise a missing union membership right operand.
+All agree except 136 native Union Enumerator identity strings, whose remaining
+root cause, code, detail/context and frame fields agree. Drivers use actual
+parsed test206 nodes and runtime constructors; no evaluator callback, fabricated
+semantic graph or persistent fixture/test is introduced. Two existing original
+SetOfFcns nonenumerable-range translations now catch the immediate Elements
+exception, retaining the source type/message assertions; they previously checked
+Err on a returned enumerator. Full original set/subset selections and focused
+regressions pass. Prior 5,328 sequence conversion/allocation observations retain
+only their four established identity differences. Original-method credit stays
+unchanged. Cached delegate states and iteration resumed after a caught failure
+remain unproven; protocols stop at the first failure. The last complete original
+CommunityModules all/shiviz run predates this enumeration change.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes
