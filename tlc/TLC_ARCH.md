@@ -7002,7 +7002,27 @@ distinct relation endpoints in first-seen order from relation enumeration.
 
 Core `TLC` module operators also carry observable Java validation order.
 `Assert` throws `TLC_VALUE_ASSERT_FAILED` with `Values.ppr` of the second
-argument. `@@` converts both operands to finite functions, left then right,
+argument. Null conditions take that failing branch, including typed-null native
+boolean pointers. A true condition returns its original object without reading
+the message. The failing branch requires the message receiver before formatting;
+a null message raises the source null exception instead of a coded assertion
+with literal-null text. Print and PrintT require their operand receivers before
+deep copying. Print copies left then right before normalizing either copy, so
+left-copy failures precede right-receiver failures. ToString also requires its
+receiver before unchecked rendering. These operators retain existing value
+owner catches and registered MethodValue override adaptation.
+
+The actual-runtime observer covers 25,984 direct/registered console/writer cases
+using separately constructed booleans, malformed tuples/records/functions/sets,
+actual checked lazy functions/predicates, null model-value names, multiline
+values and an unpaired UTF-16 surrogate. Results, returned reference identity,
+output code units, messages/codes/nullable details and source heads agree outside
+2,328 stack-location differences. No evaluator callbacks or semantic graphs are
+fabricated, and no persistent tests/fixtures or original-method credit are added.
+Focused original assertion/module/print-trace and replay tests pass. Writer I/O
+failure handling and malformed variants beyond this matrix remain unproven.
+
+`@@` converts both operands to finite functions, left then right,
 before checking either conversion result. A lazy right operand is materialized
 even when the left conversion returned null, and its conversion failure precedes
 the first-argument shape error. Null operand receivers fail at their conversion

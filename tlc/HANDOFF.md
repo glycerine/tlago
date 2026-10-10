@@ -233,6 +233,13 @@ All 9,800 storage/conversion/cache observations agree outside 128 stack-location
 differences. Focused original tests pass, including all five `TLCTest` methods.
 The earlier ten conversion-event observations remain valid. Concurrent field
 replacement and allocation-resource behavior remain unproven.
+Core `Print`, `PrintT` and `ToString` now reject null receivers at their source
+dereferences. `Assert` treats null conditions as false and dereferences its
+message only on failure; a true condition returns unchanged. All 25,984 direct/
+registered console/writer observations agree outside 2,328 stack-location
+differences, including multiline output and UTF-16 surrogates. Focused original
+assertion, module, print-trace and replay tests pass. Writer I/O failures and
+further malformed-value variants remain separate work.
 `_Possible!_Counts` now accepts only function records, normalizes each source
 record, preserves malformed-count failures and wraps integer sums. Its raw output
 uses Java HashMap merge iteration order. Twelve bounded source comparisons,

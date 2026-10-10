@@ -42,7 +42,13 @@ func Cardinality(value Value) (*IntValue, error) {
 }
 
 func TLCPrint(v1, v2 Value) Value {
+	if isNil(v1) {
+		panic(NewNullPointerException())
+	}
 	v1c := v1.DeepCopy()
+	if isNil(v2) {
+		panic(NewNullPointerException())
+	}
 	v2c := v2.DeepCopy()
 	v1c.DeepNormalize()
 	v2c.DeepNormalize()
@@ -58,6 +64,9 @@ func TLCPrint(v1, v2 Value) Value {
 }
 
 func TLCPrintT(v Value) Value {
+	if isNil(v) {
+		panic(NewNullPointerException())
+	}
 	vc := v.DeepCopy()
 	vc.DeepNormalize()
 	if TLCOutput == nil {
@@ -73,12 +82,18 @@ func TLCPrintT(v Value) Value {
 }
 
 func TLCToString(v Value) Value {
+	if isNil(v) {
+		panic(NewNullPointerException())
+	}
 	return NewStringValue(ValueToStringUnchecked(v))
 }
 
 func TLCAssert(condition Value, message Value) (Value, error) {
-	if b, ok := condition.(*BoolValue); ok && b.Val {
+	if b, ok := condition.(*BoolValue); ok && b != nil && b.Val {
 		return condition, nil
+	}
+	if isNil(message) {
+		panic(NewNullPointerException())
 	}
 	return nil, newTLCErrorCode(ECTLCValueAssertFailed, ValuesPPR(message))
 }

@@ -37710,3 +37710,62 @@ method credit. Prior broad baseline retained; this correction has focused
 verification. Handoff/architecture updated; goal active. Concurrent field
 replacement, equality variants beyond these inputs and larger allocation
 resource behavior remain unproven.
+
+
+TLC diagnostic-operator continuation after verified e3defde. Previous goal
+turn made progress; checkout clean. Inspect pinned TLC.Print, PrintT, ToString
+and Assert. Print receivers are dereferenced at each deepCopy step; ToString
+requires its receiver. Assert's null condition is false, but a true condition
+returns its original object without examining the message. A failing assertion
+requires the message receiver before toString/ppr. Native typed-null booleans
+panic while reading the condition, and ValuesPPR silently accepts a null
+message as literal-null text. Print dereferences can leak Go runtime failures.
+
+Prepare ignored .codex-gotmp/tlc-diagnostics with actual constructors, checked
+test206 source nodes/lazy functions/predicates, actual model-value name fields,
+ToolIO capture and actual StringWriter/strings.Builder output owners. Java
+registered calls use MethodValue.get for the actual reflected methods; native
+calls use installed standard MethodValues. No semantic graphs or evaluator
+callbacks are fabricated. Initial Java 47227 terminal 27f162 and native 51614
+terminal 0a867e exit zero, 19,200 rows. There are 3,988 raw differences and 2,076
+outside stack locations; these initial counts include 64 observer-constructor
+identity mismatches and are not all production-failure credit.
+
+Native now requires Print's left receiver before copying, then its right
+receiver after the left copy; existing copy/normalize/render order remains.
+PrintT and ToString require their receivers. Assert excludes typed-null BoolValue
+from the true branch and requires the message only after that branch. Source
+exceptions propagate directly; registered MethodValue owns override adaptation.
+Native 23806 terminal 022766 exits zero, leaving 64 differences outside stack
+locations. These all involve boolean reference identity: source new BoolValue
+constructs independent objects while native NewBoolValue returns shared globals.
+
+Preserve initial native logs as *-observer-constructor.log. Correct the observer
+to construct independent actual BoolValue objects on both sides, retaining the
+source constructors. Recompile baseline via Go's read-only overlay of HEAD's
+modules_misc.go; do not replace or revert the production worktree. Corrected
+baseline 93847 terminal c5f5e7 exits zero: 3,924 raw differences, 2,012 actual
+differences outside stack locations. Native 33219 terminal e881bd exits zero:
+all 19,200 rows agree outside 1,944 stack-location differences. Preserve corrected
+matching/baseline logs as *-base.log. No tests/fixtures are committed.
+
+Expand to 28 shapes with long tuples/records, empty intervals and an unpaired
+UTF-16 surrogate. Serialize successful value text as UTF-16 hex as well as
+captured console/writer output, preserving logical code units. Source 96480
+terminal 4c70a8 and native 74397 terminal f668ee exit zero, 25,984 rows. Initial
+comparison decoder rejects an unpaired surrogate in a failure message; fix only
+the observer decoder to use surrogatepass, without deleting or replacing units.
+Final comparison f18b17 exits zero: all 25,984 rows agree outside 2,328 stack
+locations. Canonicalization removes only stack locations and repeated-frame
+elision, retaining exception/cause headers, messages/codes/nullable parameters,
+source heads, result identity and exact output units. No calls are deferred.
+
+Focused original/native 34639 terminal e95164 exits zero: root 12.363s and tlc
+2.439s. Selection includes original ConstantRank2AssertError, ValueSemanticsAssume,
+PrintTraceRace and its four-worker trace replay, test43, five-method TLCTest,
+random-element models/replay and existing value/worker/trace boundaries. Original
+assertions and bounds remain unchanged. No race selection is needed for these
+sequential receiver/branch changes. No persistent tests/fixtures or original
+method credit. Prior broad baseline retained; this correction has focused
+verification. Handoff/architecture updated; goal active. Writer I/O failures,
+additional malformed values and arbitrary mutation remain unproven.
