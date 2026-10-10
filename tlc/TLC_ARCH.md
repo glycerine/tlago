@@ -8365,9 +8365,36 @@ exception, retaining the source type/message assertions; they previously checked
 Err on a returned enumerator. Full original set/subset selections and focused
 regressions pass. Prior 5,328 sequence conversion/allocation observations retain
 only their four established identity differences. Original-method credit stays
-unchanged. Cached delegate states and iteration resumed after a caught failure
-remain unproven; protocols stop at the first failure. The last complete original
-CommunityModules all/shiviz run predates this enumeration change.
+unchanged. These constructor protocols stop at the first failure; resumed
+iteration is covered below. Cached delegate states remain unproven. The last
+complete original CommunityModules all/shiviz run predates this change.
+
+Lazy-set iteration preserves the source state when a caller catches a failure
+and reads or resets the same iterator again. Filter membership failures and
+Union inner/outer failures raise immediately without storing a permanent error.
+A later call proceeds from the cursor state reached before the throw. Shared
+read/reset helpers raise returned native errors before assigning the result to
+the caller's array slot or child reference; the callee can still advance before
+throwing. SetCup delegates in source order. Products publish a new done flag only
+where the source does, and retain previous current elements after failed reads.
+An empty first element clears the product's enumeration array during construction;
+its reset then does nothing even if the retained input array later changes.
+Successful resets can retain null current elements, as the source does.
+
+All 1,600 actual-runtime traces complete across twelve failure/valid scenarios,
+eight direct/nested owners, source combinations and four per-operation recovery
+protocols, plus 64 retained-array mutation pipelines. Each event catches its own
+failure and continues. Cases cover filters, Union, SetCup, tuple/record/function
+products, interval/general function domains, empty resets and failed resets
+before/after exhaustion. All agree outside 404 native Union iterator identity
+strings; all remaining cause/code/detail/frame fields and subsequent events agree.
+The earlier 50,880 boundary cases retain only their 136 established identity
+differences. Full original set/subset and focused regressions pass. Drivers use
+actual parsed test206 nodes, real runtime constructors and retained arrays; no
+persistent test/fixture, fabricated semantic graph or evaluator callback is
+added. These traces do not establish arbitrary mutation, user-provided iterator
+error protocols or cached delegate parity. Original-method credit is unchanged;
+the complete CommunityModules run has not been repeated for this change.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

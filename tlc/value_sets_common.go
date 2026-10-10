@@ -301,13 +301,9 @@ func newProductEnumeration(sets []Value, makeValue func([]Value) Value, errf fun
 			return out
 		}
 		out.enums[i] = enum.Elements()
-		out.currentElems[i] = out.enums[i].NextElement()
-		if err := out.enums[i].Err(); err != nil {
-			out.err = err
-			out.done = true
-			return out
-		}
+		out.currentElems[i] = nextEnumerationElement(out.enums[i])
 		if out.currentElems[i] == nil {
+			out.enums = nil
 			out.done = true
 			return out
 		}
@@ -316,39 +312,25 @@ func newProductEnumeration(sets []Value, makeValue func([]Value) Value, errf fun
 }
 
 func (e *productEnumeration) Reset() {
-	if e.err != nil {
+	if e.enums == nil {
 		return
 	}
 	for i := range e.enums {
-		e.enums[i].Reset()
-		e.currentElems[i] = e.enums[i].NextElement()
-		if err := e.enums[i].Err(); err != nil {
-			e.err = err
-			e.done = true
-			return
-		}
-		if e.currentElems[i] == nil {
-			e.done = true
-			return
-		}
+		resetEnumeration(e.enums[i])
+		e.currentElems[i] = nextEnumerationElement(e.enums[i])
 	}
 	e.done = false
 }
 
 func (e *productEnumeration) NextElement() Value {
-	if e.done || e.err != nil {
+	if e.done {
 		return nil
 	}
 	elems := make([]Value, len(e.currentElems))
 	e.cm.incValueSecondary(int64(len(elems)))
 	copy(elems, e.currentElems)
 	for i := len(e.currentElems) - 1; i >= 0; i-- {
-		e.currentElems[i] = e.enums[i].NextElement()
-		if err := e.enums[i].Err(); err != nil {
-			e.err = err
-			e.done = true
-			return nil
-		}
+		e.currentElems[i] = nextEnumerationElement(e.enums[i])
 		if e.currentElems[i] != nil {
 			break
 		}
@@ -356,17 +338,36 @@ func (e *productEnumeration) NextElement() Value {
 			e.done = true
 			break
 		}
-		e.enums[i].Reset()
-		e.currentElems[i] = e.enums[i].NextElement()
-		if err := e.enums[i].Err(); err != nil {
-			e.err = err
-			e.done = true
-			return nil
-		}
+		resetEnumeration(e.enums[i])
+		e.currentElems[i] = nextEnumerationElement(e.enums[i])
 	}
 	return e.makeValue(elems)
 }
 
 func (e *productEnumeration) Err() error {
 	return e.err
+}
+
+// Raise a failed source invocation before the caller assigns its result. The
+// iterator may advance internally before throwing; its caller retains the
+// previous array slot or child reference.
+func nextEnumerationElement(enumeration ValueEnumeration) Value {
+	if enumeration == nil {
+		panic(NewNullPointerException())
+	}
+	value := enumeration.NextElement()
+	if err := enumeration.Err(); err != nil {
+		panic(err)
+	}
+	return value
+}
+
+func resetEnumeration(enumeration ValueEnumeration) {
+	if enumeration == nil {
+		panic(NewNullPointerException())
+	}
+	enumeration.Reset()
+	if err := enumeration.Err(); err != nil {
+		panic(err)
+	}
 }

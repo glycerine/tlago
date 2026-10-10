@@ -35875,3 +35875,61 @@ Latest saved progress is 1,898,575,746 / 2,147,483,648 (71a298), without termina
 result or long credit. Preserve the same handle, log, seed and original bounds.
 Update concise handoff and architecture with current contracts and remaining
 cached-state and recovered-iteration limits.
+
+
+2026-10-10: Lazy iterator recovery and partial-state preservation
+
+Previous goal turn is verified progress in 5d6524d. Recheck clean worktree and
+inspect filter, Union, product and SetCup iterators (54feae); original stress
+handle 27326 remains directly live (ebb1f2). Read pinned Java read/reset bodies
+(273a10): failures propagate directly, with cursor/assignment side effects
+already performed retained for later invocations. Native filter and Union store
+sticky errors, while products mark themselves done on returned errors and update
+array slots before checking Err. This changes later reads after a caught failure.
+
+Create ignored source/native actual-runtime recovery observers with real parsed
+test206 nodes. Twelve valid/failing filter/Union scenarios, eight direct/nested
+wrappers, four source combinations and four protocols produce 1,536 complete
+traces. Each read/reset catches its own exception and continues. Initial traces
+have 716 differences (3b81ba), including repeated native sticky errors where
+source proceeds to later elements. No evaluator callback, fabricated semantic
+graph or persistent fixture/test is introduced.
+
+Remove sticky filter/Union errors. Propagate failures immediately and retain
+source cursor state. Add read/reset helpers that raise a returned native error
+before its caller assigns the result, preserving the previous array slot or
+child reference while permitting callee side effects. Products keep their done
+flag unchanged until the source publishes it. A constructor that encounters an
+empty first element clears its enumerator array, matching the source's inert
+reset; successful product resets retain null current elements rather than
+short-circuiting to done. SetCup delegates read/reset in source order. After the
+change all 1,536 traces complete with 404 raw iterator-identity text differences
+(4fe659). The first diagnostic canonicalizer omits capitalized createFailure;
+include both event labels, confirming zero other differences (387097). Do not
+fabricate JVM identity text.
+
+Add 64 actual retained-array mutation pipelines: turn a null first element into
+a value after construction; turn a value into null before reset; replace a first
+inner set with a nonenumerable value during iteration or after exhaustion, then
+restore it. Exercise tuple/record products and interval/general function domains.
+These distinguish inert empty construction, retained null elements and partial
+failed reset state. All 1,600 complete traces retain only the same 404 established
+identity differences; earlier 50,880 boundary rows retain only their 136 identity
+differences (a3af41). Source roots, codes, detail/context/frame fields and all
+subsequent events otherwise agree. Cached delegates, arbitrary mutation and
+user-provided iterator error protocols remain unproven. No original credit added.
+
+Full original set/subset/randomization/debugger/initialization selection plus
+native vector sharing/reference checks runs normally at original bounds: session
+80447 exits zero (0493ba), tlc 88.950s (192747). Focused original model/value/
+EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/debugger/rendering checks pass:
+session 72038 exits zero (727dc4), root 5.427s and tlc 2.515s (0a0e5c). Existing
+short native set/product/subset checks pass, tlc 0.014s (ca620e). No race,
+shortened workload or complete CommunityModules rerun. Final code-only follow-up
+adds normal spacing between functions and clarifies the caller-versus-callee
+assignment comment, without changing behavior (d4abb5).
+
+Latest saved original random stress progress is 1,906,230,912 / 2,147,483,648
+(0a0e5c), without terminal result or long credit. Preserve original session 27326,
+log, seed and bounds. Handoff and architecture record recovered iteration evidence
+and the remaining cached-delegate gap.

@@ -17,7 +17,8 @@ func NewSetCupValue(set1, set2 Value, cms ...CostModel) *SetCupValue {
 	return &SetCupValue{BaseValue: newBaseValue(cms...), Set1: set1, Set2: set2}
 }
 
-func (v *SetCupValue) Kind() ValueKind    { return SetCupValueKind }
+func (v *SetCupValue) Kind() ValueKind { return SetCupValueKind }
+
 func (v *SetCupValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *SetCupValue) Compare(other Value) (resultInt int, err error) {
@@ -204,17 +205,17 @@ type setCupEnumeration struct {
 }
 
 func (e *setCupEnumeration) Reset() {
-	e.enum1.Reset()
-	e.enum2.Reset()
+	resetEnumeration(e.enum1)
+	resetEnumeration(e.enum2)
 }
 
 func (e *setCupEnumeration) NextElement() Value {
 	e.cm.incValueSecondary()
-	elem := e.enum1.NextElement()
+	elem := nextEnumerationElement(e.enum1)
 	if elem != nil {
 		return elem
 	}
-	return e.enum2.NextElement()
+	return nextEnumerationElement(e.enum2)
 }
 
 func (e *setCupEnumeration) Err() error {
@@ -236,7 +237,8 @@ func NewSetCapValue(set1, set2 Value) *SetCapValue {
 	return &SetCapValue{Set1: set1, Set2: set2}
 }
 
-func (v *SetCapValue) Kind() ValueKind    { return SetCapValueKind }
+func (v *SetCapValue) Kind() ValueKind { return SetCapValueKind }
+
 func (v *SetCapValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *SetCapValue) Compare(other Value) (resultInt int, err error) {
@@ -427,7 +429,8 @@ func NewSetDiffValue(set1, set2 Value) *SetDiffValue {
 	return &SetDiffValue{Set1: set1, Set2: set2}
 }
 
-func (v *SetDiffValue) Kind() ValueKind    { return SetDiffValueKind }
+func (v *SetDiffValue) Kind() ValueKind { return SetDiffValueKind }
+
 func (v *SetDiffValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *SetDiffValue) Compare(other Value) (resultInt int, err error) {
@@ -654,7 +657,8 @@ func Union(set Value) (Value, error) {
 	return NewUnionValue(set, set.GetCostModel()), nil
 }
 
-func (v *UnionValue) Kind() ValueKind    { return UnionValueKind }
+func (v *UnionValue) Kind() ValueKind { return UnionValueKind }
+
 func (v *UnionValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *UnionValue) Compare(other Value) (resultInt int, err error) {
@@ -752,6 +756,7 @@ func (v *UnionValue) IsDefined() bool {
 	defer catchValueFailure(v, nil)
 	return v.Set.IsDefined()
 }
+
 func (v *UnionValue) DeepCopy() Value { return v }
 
 func (v *UnionValue) FingerPrint(fp uint64) uint64 {
@@ -860,20 +865,13 @@ type setFilterEnumeration struct {
 	enum              ValueEnumeration
 	predicate         Value
 	includeWhenMember bool
-	err               error
 }
 
-func (e *setFilterEnumeration) Reset() {
-	e.err = nil
-	e.enum.Reset()
-}
+func (e *setFilterEnumeration) Reset() { resetEnumeration(e.enum) }
 
 func (e *setFilterEnumeration) NextElement() Value {
-	if e.err != nil {
-		return nil
-	}
 	for {
-		elem := e.enum.NextElement()
+		elem := nextEnumerationElement(e.enum)
 		if elem == nil {
 			return nil
 		}
@@ -883,8 +881,7 @@ func (e *setFilterEnumeration) NextElement() Value {
 		}
 		member, err := e.predicate.Member(elem)
 		if err != nil {
-			e.err = err
-			return nil
+			panic(err)
 		}
 		if member == e.includeWhenMember {
 			return elem
@@ -892,26 +889,18 @@ func (e *setFilterEnumeration) NextElement() Value {
 	}
 }
 
-func (e *setFilterEnumeration) Err() error {
-	if e.err != nil {
-		return e.err
-	}
-	return e.enum.Err()
-}
+func (e *setFilterEnumeration) Err() error { return e.enum.Err() }
 
 type unionEnumeration struct {
 	enum        ValueEnumeration
 	elemSet     Value
 	elemSetEnum ValueEnumeration
 	owner       *UnionValue
-	err         error
 }
 
 // diagnosticIdentity has no value-formatting side effects, like Java's default
 // Enumerator.toString. Use Go's type and pointer rather than a JVM identity.
-func (e *unionEnumeration) diagnosticIdentity() string {
-	return fmt.Sprintf("%T(%p)", e, e)
-}
+func (e *unionEnumeration) diagnosticIdentity() string { return fmt.Sprintf("%T(%p)", e, e) }
 
 func newUnionEnumeration(enum ValueEnumeration, owner *UnionValue) *unionEnumeration {
 	out := &unionEnumeration{enum: enum, owner: owner}
@@ -920,15 +909,9 @@ func newUnionEnumeration(enum ValueEnumeration, owner *UnionValue) *unionEnumera
 }
 
 func (e *unionEnumeration) Reset() {
-	e.err = nil
-	e.enum.Reset()
-	e.elemSet = e.enum.NextElement()
-	if err := e.enum.Err(); err != nil {
-		e.err = err
-		return
-	}
-	// Unlike construction, the source reset casts and dereferences the first
-	// inner set without an enumerable guard or an empty-outer special case.
+	resetEnumeration(e.enum)
+	e.elemSet = nextEnumerationElement(e.enum)
+	// Source reset casts and dereferences without a guard or empty special case.
 	if e.elemSet == nil {
 		panic(NewNullPointerException())
 	}
@@ -937,57 +920,46 @@ func (e *unionEnumeration) Reset() {
 		panic(valueStreamClassCast(e.elemSet, "tlc2.value.impl.Enumerable"))
 	}
 	e.elemSetEnum = enum.Elements()
-	e.err = e.elemSetEnum.Err()
+	if err := e.elemSetEnum.Err(); err != nil {
+		panic(err)
+	}
 }
 
 func (e *unionEnumeration) NextElement() Value {
-	if e.err != nil || e.elemSet == nil {
+	if e.elemSet == nil {
 		return nil
 	}
-	val := e.elemSetEnum.NextElement()
+	val := nextEnumerationElement(e.elemSetEnum)
 	if val == nil {
-		if err := e.elemSetEnum.Err(); err != nil {
-			e.err = err
-			return nil
-		}
 		e.advanceElementSet(false)
-		if e.err != nil || e.elemSet == nil {
+		if e.elemSet == nil {
 			return nil
 		}
 		val = e.NextElement()
-		if e.err != nil {
-			return nil
-		}
 	}
 	e.owner.CM.incValueSecondary()
 	return val
 }
 
-func (e *unionEnumeration) Err() error {
-	if e.err != nil {
-		return e.err
-	}
-	return e.enum.Err()
-}
+func (e *unionEnumeration) Err() error { return e.enum.Err() }
 
 func (e *unionEnumeration) advanceElementSet(initial bool) {
-	e.elemSet = e.enum.NextElement()
+	e.elemSet = nextEnumerationElement(e.enum)
 	if e.elemSet == nil {
 		return
 	}
 	enum, ok := asEnumerable(e.elemSet)
 	if !ok {
 		if initial {
-			e.err = e.owner.runtimeFailure("Attempted to enumerate UNION(s), but some element of s is nonenumerable.")
-		} else {
-			// Source nextElement uses its iterator identity, not the outer set,
-			// whose formatting could normalize values or raise another failure.
-			e.err = e.owner.runtimeFailure("Attempted to enumerate the nonenumerable set:\n" + ValuesPPR(e.elemSet) + "\nwhen enumerating:\n" + e.diagnosticIdentity())
+			panic(e.owner.runtimeFailure("Attempted to enumerate UNION(s), but some element of s is nonenumerable."))
 		}
-		return
+		// The source uses iterator identity, avoiding formatting the outer set.
+		panic(e.owner.runtimeFailure("Attempted to enumerate the nonenumerable set:\n" + ValuesPPR(e.elemSet) + "\nwhen enumerating:\n" + e.diagnosticIdentity()))
 	}
 	e.elemSetEnum = enum.Elements()
-	e.err = e.elemSetEnum.Err()
+	if err := e.elemSetEnum.Err(); err != nil {
+		panic(err)
+	}
 }
 
 type errorEnumeration struct {
@@ -998,9 +970,11 @@ func newErrorEnumeration(err error) *errorEnumeration {
 	return &errorEnumeration{err: err}
 }
 
-func (e *errorEnumeration) Reset()             {}
+func (e *errorEnumeration) Reset() {}
+
 func (e *errorEnumeration) NextElement() Value { return nil }
-func (e *errorEnumeration) Err() error         { return e.err }
+
+func (e *errorEnumeration) Err() error { return e.err }
 
 func asEnumerable(value Value) (Enumerable, bool) {
 	enum, ok := value.(Enumerable)
