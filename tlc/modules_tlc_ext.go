@@ -47,14 +47,47 @@ func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*Bool
 	return BoolFalse, nil
 }
 
+// tlcExtPickSuccessorSeen is the pre-evaluation phase of the source override.
+// An I/O failure prints its stack and accepts the state, skipping the guard.
+func tlcExtPickSuccessorSeen(succState *TLCStateMut) (seen bool) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err := panicValueAsError(failure)
+			if !isJavaIOException(err) {
+				panic(failure)
+			}
+			_, _ = fmt.Fprint(os.Stderr, javaThrowableStackTrace(err))
+			seen = true
+		}
+	}()
+	checker := MainChecker()
+	if checker == nil {
+		return false
+	}
+	// Java captures the contains receiver before evaluating its argument,
+	// then dereferences it only after fingerprinting has completed.
+	set := checker.FPSet
+	if succState == nil {
+		panic(NewNullPointerException())
+	}
+	fp := succState.FingerPrint()
+	if set == nil {
+		panic(NewNullPointerException())
+	}
+	return set.Contains(fp)
+}
+
 func TLCExtPickSuccessor(tool *Tool, guard Value, curState *TLCStateMut, succState *TLCStateMut) (*BoolValue, error) {
 	tlcExtClassMonitor.Lock()
 	defer tlcExtClassMonitor.Unlock()
-	if checker := MainChecker(); checker != nil && checker.FPSet != nil && succState != nil {
-		if checker.FPSet.Contains(succState.FingerPrint()) {
-			return BoolTrue, nil
-		}
+	if tlcExtPickSuccessorSeen(succState) {
+		return BoolTrue, nil
 	}
+	return tlcExtPickSuccessorGuard(tool, guard, curState, succState)
+}
+
+// The caller owns the class monitor and has already checked fingerprint history.
+func tlcExtPickSuccessorGuard(tool *Tool, guard Value, curState *TLCStateMut, succState *TLCStateMut) (*BoolValue, error) {
 	boolGuard, ok := guard.(*BoolValue)
 	if !ok {
 		return nil, newTLCError(ECGeneral, "PickSuccessor guard must be boolean, got %s", guard)
@@ -62,7 +95,10 @@ func TLCExtPickSuccessor(tool *Tool, guard Value, curState *TLCStateMut, succSta
 	if boolGuard.Val {
 		return BoolTrue, nil
 	}
-	if succState == nil || succState == EmptyState || !succState.AllAssigned() {
+	if succState == nil {
+		panic(NewNullPointerException())
+	}
+	if succState == EmptyState || !succState.AllAssigned() {
 		return BoolTrue, nil
 	}
 	action, err := pickSuccessorAction(tool, curState, succState)

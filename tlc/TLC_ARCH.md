@@ -9197,6 +9197,22 @@ verify order, state/control and return/failure categories; enhanced JVM null/cas
 messages are outside this observation claim. Shared class-monitor behavior is
 verified separately below.
 
+PickSuccessor performs the successor fingerprint/membership phase before guard
+evaluation. Seen states return TRUE without evaluating or validating the guard.
+Unseen states evaluate it once with the supplied tool arguments. A non-Boolean
+guard raises source's uncoded runtime diagnostic; null raises NullPointerException.
+The registered callback and value helper share a precheck and enter a separate
+post-check helper, avoiding a second membership lookup. A false guard accepts the
+source EmptyState or a partially assigned successor; a null successor instead
+raises the source null-pointer failure. The fingerprint-set receiver is captured before fingerprinting the successor;
+a null receiver fails after that argument is evaluated. An absent checker skips
+the lookup. The source IOException catch around fingerprinting/membership is
+translated through the existing native I/O classifier and stack printer, accepting
+the successor on that failure. The current 22 bounded observations use healthy
+memory sets and verify ordering, one lookup, actual seen/unseen states, guard
+failures and absent-checker/empty/partial/null controls; they do not establish
+failure-path I/O parity or the interactive prompt path.
+
 TLCExt's synchronized AssertError, PickSuccessor, TLCModelValue and TLCFP methods
 share one class monitor with Trace's noninitial model-checking reconstruction
 block. The native implementation reuses distributedServerMonitor, also used by

@@ -771,18 +771,24 @@ func standardAssertError(tool *Tool, args []SemanticNode, con *Context, state *T
 func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 	tlcExtClassMonitor.Lock()
 	defer tlcExtClassMonitor.Unlock()
+	if tlcExtPickSuccessorSeen(pstate) {
+		return BoolTrue, nil
+	}
 	guard, err := tool.Eval(args[0], con, state, pstate, control, cm)
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := guard.(*BoolValue); !ok {
-		kind := "<nil>"
-		if guard != nil {
-			kind = guard.KindString()
+	boolGuard, ok := guard.(*BoolValue)
+	if !ok {
+		if guard == nil {
+			panic(NewNullPointerException())
 		}
-		return nil, newTLCError(ECGeneral, "In evaluating TLCExt!PickSuccessor, a non-boolean expression (%s) was used as the condition of an IF.\n%s", kind, SemanticString(args[0]))
+		panic(NewTLCRuntimeExceptionMessage(fmt.Sprintf("In evaluating TLCExt!PickSuccessor, a non-boolean expression (%s) was used as the condition of an IF.\n%s", guard.KindString(), SemanticString(args[0]))))
 	}
-	return TLCExtPickSuccessor(tool, guard, state, pstate)
+	if boolGuard == nil {
+		panic(NewNullPointerException())
+	}
+	return tlcExtPickSuccessorGuard(tool, guard, state, pstate)
 }
 
 func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

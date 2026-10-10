@@ -31481,3 +31481,78 @@ with original handle live and no terminal result or original-method credit.
 Preserve bounds, default budget and files. Next audit: PickSuccessor's seen-state
 fingerprint check before guard evaluation, against source behavior and existing
 model states. Overall TLC parity and original-model reconciliation remain open.
+
+
+2026-10-10 PickSuccessor fingerprint precheck and guard boundaries:
+Previous turn made verified progress in e570505; working tree clean on entry.
+Original full random stress handle 27326 is live (3e16e3), no restart. Source
+PickSuccessor checks the successor fingerprint against mainChecker.theFPSet
+before evaluating its guard, and immediately returns TRUE for seen states.
+Native registered callback evaluated and type-checked the guard first; only
+its value helper queried fingerprints. Source non-Boolean diagnostic also uses
+Assert.fail(String), while Go raised a legacy evaluation carrier; null guard
+should raise NullPointerException before diagnostic formatting.
+
+Ignored .codex-gotmp/pick-successor-order uses unchanged C model/config, actual
+initial and generated successor states, source FastTool/ModelChecker and real
+memory fingerprint sets. Observer-only renamed PickProbeTool intercepts guard
+evaluation and records control. Source ProbeSet delegates contains to MemFPSet;
+native wrapper delegates to the checker's actual set. Both record lookup order
+and result. Seven seen-state guard modes, six unseen modes, six absent-owner
+modes and EmptyState/partial-state false controls yield twenty-one rows, without
+interactive input or invented persistent models/tests. Source assertions enabled.
+Initial Java compilation has ambiguous List import; qualify java.util.List.
+The initial action-index-1 successor is B's stuttering state, so its nominal
+unseen label is invalid (ebca87); do not claim that row as unseen coverage.
+Correct both observers to existing action A at index 0 and assert actual seen/
+unseen membership before the matrix. Preserve initial logs, use final-labelled
+logs and new metadirs for corrected runs. Corrected baseline 16309 terminal
+ad4290 has fifteen differences among twenty-one rows.
+
+Split fingerprint precheck from post-check guard/prompt processing. Both the
+registered callback and value helper check history under the shared class monitor;
+the callback bypasses the value helper's precheck after evaluating the guard,
+so source performs exactly one lookup. Return immediately on seen fingerprints.
+Use existing uncoded runtime exception/panic for non-Boolean guards and typed
+null-pointer failure for null guard or false guard with null successor. Preserve
+EmptyState and incomplete false-guard acceptance. Required nil fingerprint owners
+raise typed null failure instead of an invented empty-set fallback. Translate
+source's IOException catch using the existing native classifier/stack printer;
+that source-owned catch is inspected, but the healthy-set observations do not
+claim verified storage-failure parity. No manufactured filesystem fault scenario.
+
+Final native build 41804 terminal 818377 and comparison f71f22 match all corrected
+21 source rows, including exact query counts/order and fifteen baseline fixes.
+Extend direct API observations with absent-checker/null-successor/false guard;
+source/native 18444 terminal 4cbdda matches this additional typed null boundary.
+Final java-current.log and after-current.log contain all 22 matching rows;
+original corrected baseline remains 21 rows, not manufactured new method credit.
+Null-pointer rows compare class only; other failures compare full messages with
+escaped newlines and all events. There is no original Java PickSuccessor test
+method in the pinned tlc2 tree; no persistent test was invented.
+
+Twenty unchanged original methods pass, 36545 terminal 5a56dc, 4.660s, originals.log.
+Selection retains prior ConstantContextTLCCache, ConstantRank2AssertError,
+TLCExtModel, Github696/b and trace/alias/level/construction/single-worker round-trip
+methods. Rebuild prior monitor and AssertError observers against final code:
+58732 terminal 28de42 and comparison aaab97 preserve all 18 monitor and 11
+AssertError source rows. No new race run is needed for the unchanged monitor;
+its previous short race receipt remains distinct from this normal run. No
+persistent fixtures, upstream source edits, weakened assertions, workload changes,
+method credit, broad suite, long race run or email work. Formatting and git diff
+--check pass. Consolidate recent TLCExt status in HANDOFF rather than adding
+another overlapping chronology block.
+
+Latest saved original full random progress is 1,012,535,709 / 2,147,483,648
+(441fc3), without terminal result or original-method credit. Preserve handle,
+bounds, default budget and artifacts. Next audit: PickSuccessor action
+reconstruction and console input lifetime using existing model states. Overall
+TLC parity and original-model reconciliation remain incomplete.
+
+Final review also preserves Java receiver/argument timing: capture the current
+FPSet before fingerprinting, then apply its null dereference after fingerprinting.
+This avoids changing the receiver if fingerprint evaluation has side effects.
+Final rebuild and original selection 75547 terminal 2840c0, comparison 70d6a7,
+retain all 22 source rows and 20 original methods (4.720s, originals-final.log).
+These healthy-set rows do not add coverage for receiver mutation or I/O failure.
+Latest saved random progress is 1,016,659,522 / 2,147,483,648 (70d6a7).

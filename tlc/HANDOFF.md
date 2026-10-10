@@ -178,27 +178,24 @@ and repeated-state observations match; 15 focused original methods pass.
 Incomplete `TLCExt!Trace` states now raise the source coded runtime exception
 with its parameters and formatting event; evaluator wrapping retains the full
 method signature. All 48 diagnostic observations and 15 original methods pass.
-All seven TLCExt evaluating overrides now retain source method signatures,
-including synchronization and declared exceptions. Fourteen registration rows
-match Java at bootstrap and after actual model loading; all 48 prior trace
-diagnostic rows and 20 focused original methods pass. TLCEval, both trace-state
-helpers and both sequence replacement overrides
-also retain their source signatures. Trace-state registrations use distinct
-module-qualified values so the JSON helper reports its own declaring class.
-Five bootstrap and five loaded-model metadata rows match Java. The complete
-original CommunityModules Ant target and eight focused original methods pass.
-AssertError now catches only source evaluation/runtime failures and evaluates
-the expected message through the tool after a caught failure. It preserves the
-state-expression overload, cast/null failures and the literal precondition's
-runtime exception. Eleven bounded comparisons match Java, and 19 related
-original methods pass. AssertError, PickSuccessor, TLCModelValue, TLCFP and
-noninitial model-checking Trace now share Java's reentrant class monitor.
-Cross-method exclusion and nested calls match all 18 bounded source rows,
-also under short race instrumentation; 20 related original methods pass.
-Initial traces and unrelated unsynchronized methods retain their bypass paths.
-Next audit: PickSuccessor's seen-fingerprint check before guard evaluation, using
-source behavior and existing model states. Original model-test reconciliation
-remains open.
+TLCExt evaluating overrides, TLCEval, the trace-state helpers and sequence
+replacement overrides retain source method signatures. JSON and TLC trace-state
+helpers retain distinct declaring classes. Bootstrap and loaded-module metadata
+comparisons match Java; the complete original CommunityModules Ant target passes.
+
+AssertError catches only source evaluation/runtime failures, then evaluates its
+expected message with the state-expression overload. PickSuccessor checks seen
+fingerprints before guard evaluation and performs one lookup. Seen states skip
+the guard; null and non-Boolean guards retain source exception categories.
+AssertError, PickSuccessor, TLCModelValue, TLCFP and noninitial model-checking
+Trace share Java's reentrant class monitor. Initial and simulation traces retain
+their bypass paths; TLCCache keeps its separate read/write lock.
+
+Twenty related original methods pass. Current bounded comparisons cover 22
+PickSuccessor cases, 18 monitor cases (also checked with short race instrumentation)
+and 11 AssertError boundaries; detailed receipts and limits are in PORT_PROGRESS.md.
+Next audit: PickSuccessor action reconstruction and console input lifetime against
+source, using existing model states. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
@@ -206,7 +203,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-994,361,575 of 2,147,483,648 iterations, without a terminal result. The previous
+1,016,659,522 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,
