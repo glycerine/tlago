@@ -6922,6 +6922,21 @@ The 84 bounded comparisons cover seven invalid operations, three null arguments
 and four successful controls per scalar, with and without receiver source; they
 do not establish parity for every value subtype or nil Go slice representation.
 
+Model-value construction reads the first two UTF-16 code units and the code-unit
+length for Java's typed-prefix rule. A supplementary leading character before
+an underscore therefore remains untyped; an unpaired leading surrogate can be a
+type code. The existing Java-string helper retains those units in native strings.
+Model-value failures for comparison/equality (including reverse scalar dispatch),
+membership, finiteness, size and EXCEPT retain source-aware runtime metadata and
+pretty-print each argument. Untyped comparison/equality and reverse dispatch
+keep their permissive source results, including null comparison/equality; typed
+null arguments fail when Java dereferences them. Direct model-value membership
+always formats its element and thus rejects null. The 468 observed rows cover
+twelve names and nineteen operations with/without receiver source; ten further
+rows cover prefix classification, including unpaired surrogates. Prefix-only
+observations do not prove all later string operations on malformed UTF-16 names.
+
+
 `Randomization` validates public arguments in Java order and reports
 `TLC_MODULE_ARGUMENT_ERROR`. `RandomSetOfSubsets` checks first-argument count,
 second-argument subset size, third-argument finite set, requested number of

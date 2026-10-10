@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -241,9 +242,9 @@ func (p *MVPerm) emptyLike() *MVPerm {
 
 func newModelValueLocked(name string) *ModelValue {
 	typ := typedModelValueUntypedCodeUnit
-	runes := []rune(name)
-	if len(runes) > 2 && runes[1] == typedModelValueSeparatorRune {
-		typ = runes[0]
+	units := javaStringUTF16(name)
+	if len(units) > 2 && units[1] == uint16(typedModelValueSeparatorRune) {
+		typ = rune(units[0])
 	}
 	mv := &ModelValue{
 		Val:   UniqueStringOf(name),
@@ -276,9 +277,12 @@ func (v *ModelValue) Compare(other Value) (resultInt int, err error) {
 		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
 			return v.Val.Compare(o.Val), nil
 		}
-		return 0, v.unsupported("Attempted to compare the differently-typed model values %s and %s", v, o)
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the differently-typed model values %s and %s", ValuesPPR(v), ValuesPPR(o)))
 	}
-	return 0, v.unsupported("Attempted to compare the typed model value %s and non-model value\n%s", v, other)
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the typed model value %s and non-model value\n%s", ValuesPPR(v), ValuesPPR(other)))
 }
 
 func (v *ModelValue) Equal(other Value) (resultBool bool, err error) {
@@ -291,15 +295,21 @@ func (v *ModelValue) Equal(other Value) (resultBool bool, err error) {
 		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
 			return o.Val == v.Val || o.Val.Equal(v.Val), nil
 		}
-		return false, v.unsupported("Attempted to check equality of the differently-typed model values %s and %s", v, o)
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the differently-typed model values %s and %s", ValuesPPR(v), ValuesPPR(o)))
 	}
-	return false, v.unsupported("Attempted to check equality of typed model value %s and non-model value\n%s", v, other)
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of typed model value %s and non-model value\n%s", ValuesPPR(v), ValuesPPR(other)))
 }
 
 func (v *ModelValue) modelValueCompareTo(other Value) (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
 	if v.Type != typedModelValueUntypedCodeUnit {
-		return 0, v.unsupported("Attempted to compare the typed model value %s and the non-model value\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the typed model value %s and the non-model value\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	return 1, nil
 }
@@ -307,7 +317,10 @@ func (v *ModelValue) modelValueCompareTo(other Value) (resultInt int, err error)
 func (v *ModelValue) modelValueEquals(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	if v.Type != typedModelValueUntypedCodeUnit {
-		return false, v.unsupported("Attempted to check equality of the typed model value %s and the non-model value\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the typed model value %s and the non-model value\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	return false, nil
 }
@@ -315,24 +328,30 @@ func (v *ModelValue) modelValueEquals(other Value) (resultBool bool, err error) 
 func (v *ModelValue) modelValueMember(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	if v.Type != typedModelValueUntypedCodeUnit {
-		return false, v.unsupported("Attempted to check if the typed model value %s is an element of\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the typed model value %s is an element of\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	return false, nil
 }
 
 func (v *ModelValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the model value %s", elem, v)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the model value %s", ValuesPPR(elem), ValuesPPR(v)))
 }
 
 func (v *ModelValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the model value %s is a finite set.", v)
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the model value %s is a finite set.", ValuesPPR(v)))
 }
 
 func (v *ModelValue) Size() (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
-	return 0, v.unsupported("Attempted to compute the number of elements in the model value %s.", v)
+	return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compute the number of elements in the model value %s.", ValuesPPR(v)))
 }
 
 func (v *ModelValue) Normalize() Value   { return v }
@@ -357,7 +376,7 @@ func (v *ModelValue) FingerPrint(fp uint64) uint64 {
 func (v *ModelValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the model value %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the model value %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
@@ -365,7 +384,7 @@ func (v *ModelValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 func (v *ModelValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the model value %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the model value %s.", ValuesPPR(v)))
 	}
 	return v, nil
 }

@@ -32045,3 +32045,57 @@ classes pass together, 59 methods (a962cd, java-other-values.log, 0.034s).
 Class isolation changes the source result; it does not establish a combined pass.
 No native assertion changes, broad sweep or race workload. HANDOFF and TLC_ARCH
 record the bounded scalar contracts. Overall core TLC parity remains incomplete.
+
+
+2026-10-10: Model-value UTF-16 type prefixes and runtime boundaries.
+
+Previous goal turn made verified progress in aeb43f3. Worktree starts clean.
+Direct poll 6eb0a8 confirms original full random session 27326 remains live.
+Latest saved progress is 1,150,260,693 / 2,147,483,648 (406934), with no terminal
+result or method credit. Preserve that workload's existing bounds and budget.
+
+Inspect ModelValue.java against native typed and untyped construction/dispatch.
+Source uses String.length and charAt(0/1) for its type prefix; native used runes.
+Names such as the supplementary-face prefix followed by _x became typed in Go
+but untyped in Java. Use existing javaStringUTF16 rather than runes. An initial
+implementation used utf16.Encode, then inspection of the existing Java-string
+contract exposed its loss of unpaired surrogates. Final implementation uses the
+existing WTF-8-preserving helper. Do not claim later malformed-name operations
+from a constructor-only observation.
+
+The twelve ModelValue Assert.fail boundaries also still used generic unsupported
+errors. Route exactly those inspected methods through runtimeFailure, formatting
+each argument with ValuesPPR. Preserve detailed source/EmptyContext metadata,
+existing FingerprintException catch boundaries and permissive untyped results.
+Typed non-model null arguments raise typed NPE at message construction; untyped
+compare/equality and reverse helpers retain success. Direct membership rejects
+null regardless of model type. Reverse compare/equality helpers are exercised
+through BoolValue; reverse membership uses the actual Naturals.Nat user value.
+No global unsupported-error reclassification and no persistent invented tests.
+
+Ignored .codex-gotmp/model-value-boundaries derives observers from the scalar
+comparison harness. Twelve names include ordinary typed/untyped, supplementary
+prefixes, typed supplementary suffixes, short underscore names, BMP non-ASCII
+and zero-code-unit prefixes. For each name, nineteen operations run with/without
+receiver source: the prior fourteen scalar operations, reverse scalar compare/
+equality, Nat membership and compare/equality to B_b. Include one type-code row
+per name. All 468 full rows match (50153 terminal c0f49b), with 269 baseline
+differences. The final helper revision retains all 468 matches (fc50a6).
+Compare full values, runtime category/message, FingerprintException wrapping,
+source expression and EmptyContext identity. Only JVM-specific enhanced NPE
+messages remain outside the comparison. Ten additional prefix-only rows retain
+high/low unpaired surrogates, short names, paired supplementary prefixes, FFFF,
+zero and empty string; all match source (37676 terminal 640636). These ten
+constructor observations do not prove malformed-name comparison/printing parity.
+
+Existing original ModelValueTest (44 methods) and FcnRcdValueTest (13 methods)
+translations pass with unchanged assertions, alongside four existing focused
+permutation/config checks: 60741 terminal 1ba3e9, original-values.log, 2.173s.
+Source ModelValueTest independently passes unchanged JUnitCore OK (44 tests),
+c05636, java-model-only.log, 0.033s. Keep the earlier combined Java class-order
+failure separate; it is not reconciled by a class-isolated pass. Relevant original
+ConstantRank2AssertError and ValueSemanticsAssume methods pass: 79567 terminal
+1406f1, original-models.log, 2.461s. No inventory credit, broad sweep, race work,
+changed fixtures or altered workload bounds. HANDOFF consolidates the recent
+scalar/model-value contracts; TLC_ARCH records precise behavior and observation
+limits. Overall core TLC parity and original-model reconciliation remain open.
