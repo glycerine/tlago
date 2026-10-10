@@ -50,7 +50,7 @@ func NewTupleFcnParam(formals []*SymbolNode, domain Value) *FcnParams {
 
 func (p *FcnParams) Length() int {
 	if p == nil {
-		return 0
+		panic(NewNullPointerException())
 	}
 	return p.ArgLen
 }

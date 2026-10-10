@@ -34551,3 +34551,40 @@ context, rendering and stream checks: 28982 terminal 48dbcc, root 5.125s and tlc
 original assertions. Logs remain under lambda-except-application; handoff and
 architecture updated. Latest full stress saved progress is 1,607,676,298 /
 2,147,483,648 (1f8418), with no terminal result or long-method credit.
+
+
+### 2026-10-10: Null function parameters during generation context binding
+
+Previous goal turn made verified progress in 979f1df. Confirm current clean HEAD
+(3acd60), compare Java Tool.getFcnContext and FcnParams.length. Original full
+stress handle 27326 remains live on direct poll bd7c8c. Source reads the captured
+parameter count before formals/domains/flags and before evaluating its argument.
+Native Length returned zero for a null receiver, postponing failure to a raw Go
+field read. Restore the typed null failure in Length itself; existing uncached
+lambda operations already guard or delegate through typed parameter operations.
+
+Ignored lambda-null-context extends the earlier retained-array binding observer
+using actual parsed test209 application/S nodes, runtime parameter arrays and
+captured contexts. Add a thirteenth shape: a null parameter object, with source
+attached for the second captured-context variant. The existing 2,880 cases remain
+unchanged; 240 additional observations cover three captured-binding forms, two
+contexts, eight argument values and five routes: initial/next/enabled generation,
+evaluation and selection. No fabricated semantic graph/evaluator, persistent
+fixture/test or original-method inventory credit is introduced.
+Java 7c64b1 and native daf8ec complete all 3,120 rows. There are 144 baseline
+semantic differences after the prior tool identity normalization (a4741b); all
+are the new null-parameter generation routes. The other 48 differing rows retain
+only process-specific FastTool/native Tool pointer strings, as in the prior audit.
+Native 52888 completes with terminal e1bcac. All 3,120 rows agree (a4741b),
+normalizing exactly those 48 tool identity strings and no other content. Source
+metadata does not wrap getFcnContext's initial parameter failure, while Eval and
+Select retain their own source wrappers. Arbitrary argument callbacks and
+concurrent mutation remain outside this comparison.
+
+Existing fourteen original model checks and original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl plus focused numeric/context/EXCEPT/rendering/stream checks
+pass: 16728 terminal da2ca7, root 5.011s and tlc 2.149s (0963e6). No race, broad
+suite, shortened workload or changed original assertions. Observer/test logs
+remain under lambda-null-context. Handoff and architecture updated. Latest full
+stress saved progress is 1,608,297,180 / 2,147,483,648 (0963e6), without a terminal
+result or long-method credit. Preserve original handle and bounds.

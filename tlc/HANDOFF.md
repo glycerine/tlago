@@ -361,6 +361,8 @@ Deep normalization now retains typed null failures and partial EXCEPT/domain
 normalization order; all 1,266 result/error/mutation observations agree.
 Lambda EXCEPT lookup now preserves typed path failures and null-replacement body
 fallback; all 1,088 application/selection observations agree.
+State-generation lambda binding now rejects null parameters at the count read;
+all 3,120 binding observations agree after tool-identity normalization.
 Numeric override casts preserve source failure messages and last-argument-first
 order; implicit null failures retain nullable details. All 36 expression and 350
 override observations agree. Numeric module selection now chooses the source

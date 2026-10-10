@@ -7724,6 +7724,21 @@ replaced where needed. No semantic graph mutation, fabricated evaluator or
 original-method credit is involved. Arbitrary equality/body callbacks, null body
 results with pending matches and concurrent mutation remain unproven.
 
+Function-parameter Length rejects a null receiver with a typed null failure.
+State-generation getFcnContext therefore fails at the parameter-count read,
+before formal/domain/flag reads and argument evaluation, matching source order.
+This helper has no lambda failure wrapper; initial/next/enabled generation
+retains an unwrapped null failure even when the lambda has source metadata.
+Direct evaluation and selection retain their own existing failure wrappers.
+All 3,120 observations agree using the previous actual test209 application and
+S constructor/body: 2,880 retained-array cases plus 240 null-parameter cases
+across three captured-binding forms, two captured contexts, eight arguments
+and five routes (initial/next/enabled generation, evaluation, selection).
+Only the same 48 process-specific FastTool/native Tool identity strings require
+normalization. No semantic graph mutation, fabricated evaluator or original-test
+credit is involved; arbitrary argument callbacks and concurrent mutation remain
+unproven.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes
