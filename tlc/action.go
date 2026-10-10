@@ -385,10 +385,12 @@ func (a *Action) GetDeclarationLocation() SourceLocation {
 	if a == nil || a.OpDef == nil {
 		return NullSourceLocation
 	}
+	// Java requires a declaration child in the operator's syntax. A builtin
+	// or LAMBDA's definition location is not a declaration location.
 	if loc := a.OpDef.GetDeclarationLocation(); !loc.IsNull() {
 		return loc
 	}
-	return semanticNodeLocation(a.OpDef)
+	return NullSourceLocation
 }
 
 func (a *Action) GetDefinition() string {

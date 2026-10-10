@@ -11047,6 +11047,16 @@ Java SANY reports all seven as public, owned by their original modules. Across
 fall from 26 to zero; ownership and recursive flags agree throughout. Source-less
 views retain their existing AST fallback. This observation does not prove every
 source metadata field or general graph mutation sharing.
+
+Action declaration lookup returns the retained declaration location or nullLoc;
+it no longer substitutes the whole operator's definition location when no
+declaration is present. Java Action.getDeclaration requires opDef syntax one[0].
+On 6,014 observed canonical definitions in existing original/bridge checks, all
+returned locations now agree with that source rule. Baseline had 2,520 builtin
+and two LAMBDA false declarations. Pinned Java on unchanged Test219 confirms that
+FALSE and all 141 walked LAMBDA nodes are undeclared with unknown locations.
+Actual syntax mutation and source-less declaration adapters remain outside this
+bounded observation.
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target
 conversion helpers have been removed.

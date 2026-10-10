@@ -28666,3 +28666,64 @@ selection passes: definition-metadata-broad-originals.log, terminal 859535,
 status 0, 178.973 seconds. Git diff --check passes. The same original full
 off-heap random run remains live beyond 498 million iterations; completion
 credit remains pending.
+
+
+Action declarations require an actual declaration location (2026-10-09)
+
+Previous goal turn committed 8fb0648, a concrete checked-locality correction.
+Revalidated the clean workspace and same live full off-heap session 77502.
+Compared Java Action.getDeclaration (opDef syntax one[0], otherwise nullLoc)
+with native Action.GetDeclarationLocation. The native fallback used the full
+operator definition's location when no declaration location was available.
+
+An ignored overlay on existing original Github817/Github1244, Test219, LET, cyclic,
+Debug02 and trace methods plus the existing Bitwise bridge check observes 6,014
+canonical definition locations. Baseline has 2,522 mismatches: 2,520 builtin
+locations and two anonymous LAMBDA locations. All actual declaration-child
+locations agree. Receipt: declaration-location-before-observation.log,
+terminal c19221, status 0, 5.625 seconds. Removed the definition-location fallback;
+a missing declaration now returns NullSourceLocation. Repeating the same
+observation has 6,014 rows and zero mismatches:
+declaration-location-after-observation.log, terminal 00b2c6, status 0, 5.338 seconds.
+
+A standalone pinned-Java driver loads unchanged original Test219 and walks its
+source graph. FALSE and all 141 observed LAMBDA nodes have isDeclared=false and
+Unknown location, corroborating the absent-declaration rule. Receipt:
+declaration-location-java-observation.log, terminal 55a3e4, status 0; javac emits
+only its deprecated frontend overload note. No Java source, persistent test,
+fixture, translated assertion or original-method credit changes. Syntax mutation
+and source-less declaration adapters remain unproven.
+
+Focused originals and the existing Bitwise bridge check pass without observation:
+declaration-location-focused-originals.log, terminal 376a51, status 0,
+5.461 seconds. A broader native Action/Coverage selection fails:
+declaration-location-runtime-checks.log, terminal f74efd, status 1, 0.139 seconds.
+It exposes two separate conditions: the existing native checker assertion expects
+one in-memory Trace.Records entry from a disk-backed checker, and TCP checks
+cannot listen inside the socket-restricted sandbox. Neither failure is hidden.
+The exact checker method also fails with the pre-change action.go overlay, with
+the same zero-record assertion: declaration-location-runtime-baseline.log,
+terminal 04b1e9, status 1, 0.020 seconds. This is a pre-existing reconciliation gap.
+
+Focused existing original coverage and tool action/getter checks pass:
+declaration-location-coverage-checks.log, terminal c366a6, status 0, 0.012 seconds.
+The existing short loopback worker-action checks pass outside the socket-restricted
+sandbox: declaration-location-network-checks.log, terminal 6ed251, status 0,
+0.020 seconds. Broad original verification is recorded below when terminal.
+
+Next concrete reconciliation: preserve the native checker's existing enqueue/
+validation assertions while comparing its trace assertion with persistent TLCTrace
+storage and Java's trace behavior. Do not restore a disk trace's in-memory mirror.
+General source generation, graph mutation sharing and source-less fallbacks remain
+unproven. The same original full off-heap random run remains live beyond 510 million
+of 2,147,483,648 iterations; no completion credit. No long-workload restart, race
+instrumentation, full-workspace/XML/ApalacheIR sweep, email work or workload-bound
+change.
+
+Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and trace
+selection passes: declaration-location-broad-originals.log, terminal ba50e5,
+status 0, 179.279 seconds. Java checkout HEAD is reverified as the pinned
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0. Git diff --check passes.
+The same full off-heap random workload remains live beyond 513 million iterations;
+completion credit remains pending. The separate baseline native trace assertion
+remains unresolved and is the next reconciliation task.

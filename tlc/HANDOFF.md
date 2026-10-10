@@ -64,10 +64,11 @@ Unnamed INSTANCE convenience aliases and early registration reuse canonical
 source exports and symbols. All 544 observed export conversions and 1,378 early
 registrations match their source identities. Module setup now retains checked
 source locality and ownership, including public RECURSIVE declarations completed
-by LOCAL bodies. Next: compare source-definition declaration locations with actual
-syntax children before changing remaining AST-derived metadata. General source
-generation, graph mutation sharing and source-less fallback lowering remain
-unproven. Keep those gaps distinct from the completed bounded observations.
+by LOCAL bodies. Action declaration lookup no longer substitutes definition
+locations for absent declarations; all 6,014 observed locations match syntax
+children. General source generation, graph mutation sharing and source-less
+fallback lowering remain unproven. Keep those gaps distinct from the completed
+bounded observations.
 
 ## Verification baseline and test credit
 
@@ -80,6 +81,13 @@ assertions, with the default 64 MiB direct-memory budget and no race
 instrumentation. Source translation is committed, but full execution and
 original-method credit remain pending. Temporary storage is under
 `.codex-gotmp/`. Do not remove live files or infer completion from progress lines.
+
+Next concrete reconciliation: the existing native
+`TestModelCheckerDoNextEnqueuesOnlyUnseenInModelSuccessorsButChecksAllImpliedActions`
+expects an in-memory trace record from a disk-backed checker. It fails unchanged
+with the pre-declaration-fix action overlay too. Reconcile that assertion with
+persistent trace storage; preserve the source disk trace rather than restoring
+an in-memory mirror. Details and receipts are in `PORT_PROGRESS.md`.
 
 The user supplied a green full-suite baseline. Do not rerun that approximately
 45-minute suite. The earlier recorded full-workspace run verified `23f046e`:
