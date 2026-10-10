@@ -33065,3 +33065,39 @@ Formatting/diff checks pass. Latest saved stress progress is
 credit; preserve original handle, budget, bounds and artifacts.
 Continue concrete source registration/invocation gaps. Full TLC parity and
 original-model reconciliation remain incomplete.
+
+
+2026-10-10: Resume after outage; TLCEval invocation boundary
+
+Resume from clean HEAD 5c87f1e. Original full off-heap random stress handle
+27326 is still live (70c10a); do not restart it. Registration review identifies
+a concrete TLCEval shortcut: the standard helper rejects arrays whose length
+is not one before the Java-equivalent method can read argument zero.
+
+Ignored .codex-gotmp/tlceval-invocation compares the pinned Java EvaluatingValue
+around its actual TLCEval method with the native standard registration. Both
+use the existing C model, its real initial state, c expression and undefined
+expensive formal. Initial 14 observations cover sourced/unsourced null array,
+empty array, null first argument, valid state expression, null context, extra
+arguments and real evaluation failure. Eight rows differ (e55e40). Remove the
+registration arity guard only for TLCEval; preserve typed null and array bounds
+failures in the source method's access order. Constant expressions must reject
+a null context before the cache lookup. Extra arguments are ignored.
+
+The initial state-expression/null-context observation also identifies a broader
+remaining shortcut: general Go evaluation normalizes null contexts to empty.
+Do not claim this fixed by TLCEval's constant-level check. Preserve java.log and
+native-after.log as evidence (96dfbc). The final observer uses the real C module's
+constant-level Nat body for the null-context branch; all 14 complete rows match
+(65688 terminal 4084e6; comparison 038f83). This includes runtime code 2154,
+actual method signature, nullable detail and absence of source fingerprint
+frames. No invented persistent test or fixture, changed assertion or new
+original-method credit. Java enhanced NPE messages are disabled as before.
+
+Four existing original model tests pass unchanged: ConstantContextTLCCache,
+ConstantRank1TLCEval, ConstantRank2AssertError and TLCExtModel (65079 terminal
+d92481, original-models.log, 0.597s). Existing callable, state-callable and
+TLCExt cache checks pass (85871 terminal e55134, existing-values.log, 0.013s).
+No race or broad suite. Update architecture and restart notes with the exact
+contract and remaining general null-context gap. Latest saved stress progress
+is 1,347,263,796 / 2,147,483,648 (038f83), with no terminal result or credit.

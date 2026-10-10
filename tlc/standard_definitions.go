@@ -93,7 +93,8 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("SortSeq", 2, func(args []Value) (Value, error) { return SortSeq(args[0], args[1]) })
 	t.defineStandardMethod("RandomElement", 1, func(args []Value) (Value, error) { return RandomElement(args[0]) })
 	t.defineStandardMethod("ToString", 1, func(args []Value) (Value, error) { return TLCToString(args[0]), nil })
-	t.defineStandardEvaluating("TLCEval", 1, standardTLCEval)
+	t.defineStandardValue("TLCEval", NewEvaluatingValue(standardEvaluatingMethodSignature("TLCEval"), 0, 100,
+		standardSyntheticOpDef("TLCEval", 1, NewValueNode(ValUndef)), standardTLCEval))
 	t.defineStandardEvaluatingWithMinLevel("TLCGet", 1, TLCLevelState, standardTLCGet)
 	t.defineStandardMethod("TLCSet", 2, func(args []Value) (Value, error) { return TLCSet(args[0], args[1]) })
 
@@ -660,9 +661,22 @@ func standardTLCGet(tool *Tool, args []SemanticNode, con *Context, state *TLCSta
 }
 
 func standardTLCEval(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	// The source reads only args[0], before inspecting its level or context.
+	if args == nil {
+		return nil, NewNullPointerException()
+	}
+	if len(args) == 0 {
+		return nil, NewArrayIndexOutOfBoundsException(0, 0)
+	}
 	expr := args[0]
+	if expr == nil {
+		return nil, NewNullPointerException()
+	}
 	level := SemanticLevel(expr)
-	if level > TLCLevelConstant || (con != nil && !con.IsDeepEmpty()) {
+	if level <= TLCLevelConstant && con == nil {
+		return nil, NewNullPointerException()
+	}
+	if level > TLCLevelConstant || !con.IsDeepEmpty() {
 		value, err := tool.Eval(expr, con, state, pstate, control, cm)
 		if err != nil {
 			return nil, err

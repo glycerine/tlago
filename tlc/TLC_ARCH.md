@@ -7385,6 +7385,15 @@ interactive output rather than writing directly to stdout.
 Preserve Java override annotations when registering standard operators.
 `TLC!TLCEval` is an evaluating override because it receives the unevaluated
 expression and caches converted constant-level results on the semantic node.
+Registration must not impose an argument-count check. The method reads only
+argument zero, so a null array, empty array and null first expression retain
+their distinct source failures, while extra arguments are ignored. A null
+context fails before the cache branch for a constant expression. These failures
+remain inside the evaluating override catch, producing runtime code `2154`
+with the actual method signature and nullable detail, without a value-source
+fingerprint frame. General evaluation still normalizes null contexts; the
+observed state-variable null-context discrepancy is a separate remaining gap.
+
 Its Java implementation branches directly on the argument semantic level:
 state/action/temporal expressions evaluate in the incoming context and are not
 cached; constant-level expressions with a non-empty context also evaluate

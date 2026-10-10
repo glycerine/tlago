@@ -292,6 +292,11 @@ failures escape before its method catch; nil inputs and ownerless integer regist
 retain typed source failures. All 24 boundary observations and the original BFS,
 initialization, two full 4,224-depth simulation profiles and distributed startup
 checks pass. Eager native constants use allocated-empty argument arrays.
+TLCEval now reads its first argument without a registration arity guard,
+preserving null/empty input failures, ignored extra arguments and the constant
+expression's null-context failure. Four relevant original models pass. General
+evaluation's null-context normalization remains a concrete follow-up gap;
+the real `C!c` expression exposes it through TLCEval.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.
