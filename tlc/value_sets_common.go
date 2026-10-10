@@ -105,7 +105,7 @@ func IsEmptyValue(value Value) (resultBool bool, err error) {
 		if obj, ok := v.UserObj.(UserObjWithIsEmpty); ok {
 			return obj.IsEmpty()
 		}
-		return false, v.unsupported("Shouldn't call isEmpty() on value %s", v.UserObj.String())
+		return false, NewTLCRuntimeExceptionMessage("Shouldn't call isEmpty() on value " + v.UserObj.String())
 	default:
 		message := "Shouldn't call isEmpty() on value " + ValuesPPR(value)
 		if source := valueSource(value); source != nil {

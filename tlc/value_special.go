@@ -27,23 +27,26 @@ func (v *UndefValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *UndefValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element %s", elem, v)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	return false, v.runtimeFailure("Attempted to check if the value:\n" + ValuesPPR(elem) + "\nis an element " + ValuesPPR(v))
 }
 
 func (v *UndefValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the value %s is a finite set.", v)
+	return false, v.runtimeFailure("Attempted to check if the value " + ValuesPPR(v) + " is a finite set.")
 }
 
 func (v *UndefValue) Size() (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
-	return 0, v.unsupported("Attempted to compute the number of elements in the value %s.", v)
+	return 0, v.runtimeFailure("Attempted to compute the number of elements in the value " + ValuesPPR(v) + ".")
 }
 
 func (v *UndefValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the value %s.", v)
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the value " + ValuesPPR(v) + ".")
 	}
 	return ex.Value, nil
 }
@@ -51,7 +54,7 @@ func (v *UndefValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 func (v *UndefValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the value %s.", v)
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the value " + ValuesPPR(v) + ".")
 	}
 	return v, nil
 }
@@ -160,7 +163,7 @@ func (v *UserValue) Size() (resultInt int, err error) {
 func (v *UserValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("Attempted to apply EXCEPT to the overridden value %s.", v)
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the overridden value " + ValuesPPR(v) + ".")
 	}
 	return ex.Value, nil
 }
@@ -168,7 +171,7 @@ func (v *UserValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 func (v *UserValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, v.unsupported("Attempted to apply EXCEPT to the overridden value %s.", v)
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the overridden value " + ValuesPPR(v) + ".")
 	}
 	return v, nil
 }
@@ -193,14 +196,24 @@ func (v *UserValue) ToString(sb *strings.Builder, offset int, swallow bool) *str
 	return sb
 }
 
+// invalidStateValueFailure is the source Value fingerprint/permutation Assert.
+// Format before reading the source, preserving failures from value formatting.
+func invalidStateValueFailure(value Value) error {
+	message := "TLC has found a state in which the value of a variable contains " + ValuesPPR(value)
+	if source := valueSource(value); source != nil {
+		return NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+	}
+	return NewTLCRuntimeExceptionMessage(message)
+}
+
 func unsupportedValueFingerprint(value Value) uint64 {
 	defer catchValueFailure(value, nil)
-	panic(newTLCError(ECGeneral, "TLC has found a state in which the value of a variable contains %s", ValuesPPR(value)))
+	panic(invalidStateValueFailure(value))
 }
 
 func unsupportedValuePermutation(value Value) Value {
 	defer catchValueFailure(value, nil)
-	panic(newTLCError(ECGeneral, "TLC has found a state in which the value of a variable contains %s", ValuesPPR(value)))
+	panic(invalidStateValueFailure(value))
 }
 
 type AnySet struct{}

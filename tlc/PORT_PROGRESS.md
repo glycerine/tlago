@@ -32639,3 +32639,60 @@ receipt is 32964 terminal 7d9693, original-models.log, 2.331s. No race, broad sw
 changed original assertions or shortened bounds. Formatting/diff checks pass.
 HANDOFF/TLC_ARCH state scope and remaining special/default value failures. Overall
 core TLC parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10: Special/default value runtime failures and numeric member nulls.
+
+Previous goal turn makes progress in 876aadc; worktree starts clean. Direct poll
+of original full stress session 27326 remains live (afea16). Latest saved progress
+is 1,265,323,301 / 2,147,483,648, without terminal result or original-method credit.
+No duplicate, shortened bounds or race instrumentation.
+
+Inspect UndefValue, UserValue EXCEPT, inherited Value fingerprint/permutation and
+UserObj default emptiness failures. Native generic errors lose Assert categories,
+source metadata and undefined-member pretty-printing/null precedence. Correct
+Undef Member/IsFinite/Size/EXCEPT and UserValue EXCEPT through runtimeFailure.
+Member now formats with ValuesPPR and raises typed NPE before the null toString
+call. Shared default fingerprint/permutation failures use invalidStateValueFailure,
+formatting before reading source, preserving each existing catch boundary. The
+factory itself adds no catch frame; ValueJavaHashCode retains its extra outer frame.
+ANY's default UserObj.isEmpty uses Assert.fail without source, so fix its root to
+ordinary runtime rather than incorrectly adding detailed receiver metadata.
+
+Ignored .codex-gotmp/special-value-boundaries initially compares 116 full rows,
+with fresh Undef/Nat/ANY receivers and OpRcd limited to inherited fingerprint,
+permutation and hash. Source states and operations cover comparison/equality,
+wide/null membership, finite/size, EXCEPT root/nested/arrays, default failures,
+empty/defined/normalize/copy controls. expand=false, no singleton source mutation,
+persistent invented tests or fixtures. Initial comparison has 46 differences
+(40e37a); all 116 match after correction (e78e05), including code/parameters,
+source/context and exact wrapper counts. Wide undefined membership retains Java's
+multiline pretty-printing. Sourced hash failure adds two frames, not one.
+
+Extend to 132 rows to include Nat membership, an Int override and positive member
+controls. Add EvalException code/parameter getters to the source observer so
+runtime and evaluation errors both retain complete metadata. Before the numeric
+leaf correction four rows differ (aef7c2; before-number-null.log): Nat/Int null
+membership builds a coded error for null instead of failing at val.toString.
+Inspect both original module methods and add typed NPE at that dereference, after
+integer/model-value branches and before constructing the coded EvalException.
+Non-null invalid membership stays EvalException with its original parameters;
+ANY still accepts null and Undef still raises its source-wrapped typed failure.
+All 132 final complete rows match (bbf194; java-final.log/after-final.log).
+The sixteen added rows have no initial-116 baseline claim. Source null EXCEPT
+arrays and arbitrary custom override/other operator-specific failures remain
+unverified; no new original-method inventory credit.
+
+Final eleven focused existing Go checks pass: 94311 terminal 59ce7c,
+final-values.log, 0.015s. They include the special fingerprint/permutation check,
+both original ValueTest emptiness translations, three distributed payload checks
+(sharing/depth, representations, constant operator), and five existing numeric
+module checks. Independent original Java ValueTest passes JUnit OK (1 test):
+440242, java-original-values.log, 0.016s. Two original Go models,
+ConstantRank2AssertError and ValueSemanticsAssume, pass on final code: 7482 terminal
+efb608, final-models.log, 2.467s. Earlier checks before numeric leaf correction
+also pass: 38548 terminal 8719ee (existing-values.log, 0.015s) and 73885 terminal
+920bbb (original-models.log, 2.448s). Final reruns are justified by the new leaf
+change. No broad sweep, race or changed original assertions. Formatting/diff checks
+pass. HANDOFF/TLC_ARCH retain scope; operator Assert/WrongInvocation boundaries
+are next. Overall core TLC parity and original-model reconciliation remain open.

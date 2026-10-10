@@ -7088,8 +7088,35 @@ enumeration; the overflowing set is not enumerated. All 16 original function-set
 methods pass at unchanged bounds, including their four huge indexed-sampling
 profiles. Arbitrary lazy-function conversion, mutable custom overrides and
 iterator reset/recovery remain outside these observations. Other UserValue EXCEPT
-and shared default value failures remain separate work; no new original-method
-inventory credit is claimed.
+and shared default value failures are verified separately below; no new original-
+method inventory credit is claimed.
+
+
+Undefined-value membership, finite/size queries and nested EXCEPT failures retain
+source-aware Assert runtime metadata. Member pretty-prints the argument before
+formatting UNDEF and raises typed NPE at the null argument dereference. UserValue
+EXCEPT failures use the same source boundary. Root replacement and allocated-empty
+EXCEPT arrays retain their successful behavior. Default Value fingerprint and
+permutation failures format the value before capturing source metadata, retain the
+runtime root, and keep the existing receiver catch. HashCode retains its second
+catch around fingerprint failure. The shared helper also serves operator values;
+an empty OpRcdValue verifies that inherited path without changing operator-specific
+operations. Nil permutation arguments are unused by the default failing method.
+
+UserObj's default isEmpty failure, reached by ANY, has no semantic source argument.
+It stays an ordinary runtime root even when the surrounding sourced UserValue
+adds a FingerprintException frame. Nat and Int member methods dereference a null
+argument before constructing their coded EvalException; non-null invalid membership
+retains EvalException category, full parameter array and value wrapping.
+
+All 132 complete observations match for fresh Undef, Nat, ANY, OpRcd and Int values,
+with sourced/unsourced receivers. They compare runtime and coded evaluation errors,
+parameters, source/context and frame counts, wide argument pretty-printing, default
+fingerprint/permutation/hash failures, membership, EXCEPT and unchanged valid
+controls. Shared singletons keep their existing metadata. The observations cover
+nonempty and allocated-empty EXCEPT arrays; source null EXCEPT arrays, arbitrary
+custom override failures and other operator-specific operations remain unverified.
+No new original-method inventory credit is claimed.
 
 
 Record comparison/equality shape failures, membership, single-argument Apply and

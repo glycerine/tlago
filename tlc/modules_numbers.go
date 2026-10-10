@@ -157,6 +157,9 @@ func (naturalsObj) Member(val Value) (bool, error) {
 	if mv, ok := val.(*ModelValue); ok {
 		return mv.modelValueMember(NatValue)
 	}
+	if val == nil {
+		panic(NewNullPointerException())
+	}
 	return false, newTLCErrorCode(ECTLCModuleCheckMemberOf, ValuesPPR(val), "Nat")
 }
 
@@ -195,6 +198,9 @@ func (integersObj) Member(val Value) (bool, error) {
 	}
 	if mv, ok := val.(*ModelValue); ok {
 		return mv.modelValueMember(IntValueSet)
+	}
+	if val == nil {
+		panic(NewNullPointerException())
 	}
 	return false, newTLCErrorCode(ECTLCModuleCheckMemberOf, ValuesPPR(val), "Int")
 }
