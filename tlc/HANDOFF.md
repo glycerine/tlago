@@ -437,8 +437,14 @@ counts after equality. It rereads shared domain entries on each comparison.
 All 46,672 observations agree outside 2,624 native/JVM stack-text differences,
 including shared count/domain normalization and duplicate-key behavior. Direct
 failures now use the existing `MethodValue` boundary. Original bag/focused checks
-and the complete CommunityModules all/shiviz target pass. Continue with `BagDiff`
-conversion order and count casts; broader equality mutation remains unproven.
+and the complete CommunityModules all/shiviz target pass.
+`BagDiff` converts both operands before diagnostics, captures the left count
+before equality and rereads its domain key afterward. Empty left domains bypass
+the right-domain length read. Typed casts/null/bounds and signed wraparound match
+all 50,208 observations outside 1,152 native/JVM stack-text differences. Original
+bag/focused checks and the complete CommunityModules all/shiviz target pass.
+Continue with `BagUnion`; broader equality mutation and allocation exhaustion
+remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -522,7 +528,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,033,498,187 of 2,147,483,648 iterations, without a terminal result. The previous
+2,047,824,942 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

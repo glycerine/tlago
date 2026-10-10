@@ -36562,3 +36562,68 @@ random stress session 27326 remains live by direct poll 03dfbd, latest saved
 progress 2,033,498,187 / 2,147,483,648 (d05c32), without terminal result or long
 credit. Handoff/architecture retain observed BagCup contracts and next BagDiff
 conversion/count audit. The overall Java-to-Go goal remains active.
+
+2026-10-10: BagDiff conversion, cast and retained-array traversal boundaries
+
+Previous turn made verified progress in b5089fe. Inspect clean current source
+(9ecb3d); original random stress session 27326 remains live by direct poll 1ff811.
+Source BagDiff converts both operands before validating conversion results.
+Unlike BagCup, it performs no positive-count bag validation: each left count is
+cast before the inner loop, each matched right count is cast afterward, and
+signed arithmetic wraps. Native validation happened too early, casts exposed
+Go runtime text, and its cached left key skipped source rereads after equality.
+
+Build ignored .codex-gotmp/bag-diff runtime observers from the prior BagCup
+constructors/parser-backed nodes, changing only the actual module operation.
+Source/native baseline complete successfully (64d8db/cb9ed1), all 46,672 rows:
+18,152 raw differences, 17,056 outside native/JVM stack text (5780a4). E.g. 1/9
+converts the malformed right record before a left non-function diagnostic;
+41/3 casts an actual DebuggerValue to IntValue and throws ClassCastException,
+rather than Go TypeAssertionError. Existing javaValueClassName already preserves
+that real debugger class name; no new class emulation is needed.
+
+Fix typed null input dereferences, convert both operands before diagnostics,
+and capture domain1/values1 then domain2/values2. Allocate by the first domain's
+length, retain typed array/count reads, and read right-domain length only after
+the visited left count cast. Empty first domains bypass this read completely.
+Capture the left integer before equality; read matched right integers after it.
+Reread left domain entries for every equality and for retained output. Preserve
+first-function final normalization status and int32 wrapping. No new validation
+of zero/negative counts or eager right-domain rejection. Complete native rerun
+exits zero (45e3bc); all 46,672 rows agree outside 1,104 native/JVM stack-location
+and repeated-frame elision differences, zero others (7aac46).
+
+Extend with two independent input forms (left count array shared by its set key,
+and minimum int count), plus a second coupled-domain-array pipeline. The latter
+uses a right set key sharing the first function's domain array; equality sorts
+that array between inner-loop comparisons and before output-key selection.
+Both coupled cases use actual unnormalized functions with distinct set keys,
+positive counts and ordinary constructors; there are no cycles, fabricated
+semantic nodes or evaluator callbacks. Complete expanded source/native runs
+exit zero (dcd6ae/9dfe14); 50,208 rows agree outside 1,152 native/JVM stack text
+(17a550). Case 55/55 yields counts [1,4] with matching shared-domain mutations;
+56/53 captures left count 2 before normalization changes its array to [1,2],
+then returns 1 after subtraction; 57/4 wraps MIN_INT minus 1 to MAX_INT.
+Exception/cause headers, codes, nullable parameters, source frames and raw
+post-call/cache states remain checked. No persistent test/fixture or original
+method credit is added. Broader equality mutation and allocation exhaustion
+remain unproven; BagUnion conversion/aggregation is the next source target.
+
+Original BagsTest model and focused original model/value/EXCEPT/stream/Sequences/
+TLCModule/FP64/string/MP/debugger/rendering checks pass, root 5.750s and tlc
+2.258s (session 48989, terminal b43d47). Complete unchanged CommunityModules
+all/shiviz target runs with timeout zero (session 23598, dfb87d), retaining its
+original phases and workload bounds. Comments clarify the source count-capture
+and conditional length-read order; no semantic changes after those checks.
+No race or shortened workload. Handoff/architecture record the observed BagDiff
+contracts and limits without claiming complete Bags-module parity.
+
+Complete unchanged CommunityModules target exits zero (session 23598, terminal
+54d185). Both original phases pass: root 306.305s, all 305.19s and shiviz 0.65s
+(59cab1). This is the current full-suite baseline. Formatting/diff checks pass;
+no original assumptions, expected phase exits or workload bounds changed.
+Original random stress session 27326 remains live by direct poll bc2bac; latest
+saved log progress at the final handoff update is 2,047,824,942 / 2,147,483,648,
+without terminal result or long-test credit. Handoff/architecture retain the
+observed BagDiff contracts and next BagUnion target. The overall port goal
+remains active.

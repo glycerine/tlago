@@ -8639,9 +8639,38 @@ cases preserve count 2 where the prior native output-vector read returned 3.
 These observations use actual runtime constructors and parsed test206 nodes,
 not fabricated semantic graphs or equality callbacks. No persistent test/fixture
 or original-method credit is added. Broader equality mutation and allocation
-exhaustion remain unproven; BagDiff conversion/count boundaries remain separate.
+exhaustion remain unproven beyond the observed actual runtime sharing cases.
 Original bag/focused regressions and the complete unchanged CommunityModules
 all/shiviz target pass after these BagCup changes.
+
+BagDiff converts both operands before checking either null conversion result.
+Null input dereferences remain typed failures; a second conversion exception
+precedes a first non-function diagnostic. It obtains domain1/values1 and then
+domain2/values2, allocating vectors by the first domain length. Each visited
+left multiplicity is cast/read before touching the right domain's length, so an
+empty left domain bypasses a null right domain and a left count-cast failure
+precedes that null-array failure. Values are not validated as positive bags:
+source permits zero/negative counts and int32 wraparound arithmetic. Left count
+capture precedes equality normalization; matched right count reads follow it.
+Every equality and retained output key rereads the current left domain slot.
+Result normalization status is read from the first function after traversal.
+
+All 50,208 actual direct/MethodValue observations agree outside 1,152 native/JVM
+stack locations/elision lines. Fifty-six independently constructed input forms
+are crossed with source/invocation modes; two additional coupled-domain cases
+span the same sixteen modes. Existing parsed test206 nodes/lambdas and actual
+runtime constructors cover conversions, malformed/null arrays, count casts,
+debugger values, overflow and real array sharing. A right set key normalizing
+the left domain yields [1,4] rather than retaining the stale key. A set sharing
+left multiplicities normalizes [2,1] to [1,2], but the left count was already
+captured as 2 before subtracting 1. MIN_INT minus 1 wraps to MAX_INT. Snapshots
+retain input arrays, cache/normalization state, nullable details, source frames
+and diagnostic/cause headers. No persistent test/fixture or original-method
+credit is added. Broader equality mutation and allocation exhaustion remain
+unproven; BagUnion conversion/aggregation is a separate next target. Original
+BagsTest model and focused original regressions pass.
+The complete unchanged CommunityModules all/shiviz target passes after the
+BagDiff conversion/cast/read-order changes.
 
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking

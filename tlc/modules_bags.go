@@ -190,31 +190,52 @@ func BagCup(b1 Value, b2 Value) (Value, error) {
 }
 
 func BagDiff(b1 Value, b2 Value) (Value, error) {
+	if b1 == nil {
+		panic(NewNullPointerException())
+	}
 	fcn1 := asFcnRcdValue(b1)
+	if b2 == nil {
+		panic(NewNullPointerException())
+	}
+	fcn2 := asFcnRcdValue(b2)
 	if fcn1 == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "(-)", "bag", ValuesPPR(b1))
 	}
-	fcn2 := asFcnRcdValue(b2)
 	if fcn2 == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "(-)", "bag", ValuesPPR(b2))
 	}
-	domain := NewValueVec(0)
-	values := NewValueVec(0)
+	domain1 := fcn1.DomainAsValues()
+	values1 := fcn1.Values
 	domain2 := fcn2.DomainAsValues()
-	for i, dval := range fcn1.DomainAsValues() {
-		v1 := fcn1.Values[i].(*IntValue).Val
-		for j, d2 := range domain2 {
-			eq, err := dval.Equal(d2)
+	values2 := fcn2.Values
+	if domain1 == nil {
+		panic(NewNullPointerException())
+	}
+	domain := NewValueVec(len(domain1))
+	values := NewValueVec(len(domain1))
+	for i := 0; i < len(domain1); i++ {
+		// Capture the count before equality can normalize retained arrays.
+		v1 := bagMultiplicity(values1, i)
+		// An empty first domain bypasses this read; the count cast precedes it.
+		if domain2 == nil {
+			panic(NewNullPointerException())
+		}
+		for j := 0; j < len(domain2); j++ {
+			left, right := domain1[i], domain2[j]
+			if left == nil {
+				panic(NewNullPointerException())
+			}
+			eq, err := left.Equal(right)
 			if err != nil {
 				return nil, err
 			}
 			if eq {
-				v1 -= fcn2.Values[j].(*IntValue).Val
+				v1 -= bagMultiplicity(values2, j)
 				break
 			}
 		}
 		if v1 > 0 {
-			domain.Add(dval)
+			domain.Add(domain1[i])
 			values.Add(NewIntValue(v1))
 		}
 	}
