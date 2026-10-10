@@ -35179,3 +35179,55 @@ saved progress is 1,704,769,167 / 2,147,483,648 (aee61d), without terminal resul
 or long-method credit. Preserve original handle/artifacts/bounds. Other value
 kinds/polynomials, intern allocation order, callbacks and concurrency remain
 separate targets.
+
+
+### 2026-10-10: Tuple/record access, domain and diagnostic rendering order
+
+Previous turn made verified progress in daa0981; confirm clean HEAD (bffc27).
+Original full stress 27326 remains live on direct polls b40f4c and ee6b52.
+Inspect tuple/record Apply, Select, ApplyArgs and domain construction. Access
+errors format arguments/receivers before throwing, so include their actual
+rendering paths rather than substituting a null failure earlier in evaluation.
+
+Ignored tuple-record-access uses actual test206 Def2 source attachment and
+fresh runtime arrays/children. Eleven receiver array forms and eleven record
+name arrays cover null/empty, ordinary/undefined/null values, nested values and
+null/duplicate names. Observe normalized flags and sourced/unsourced receivers/
+children. Eleven single arguments include null, negative/zero/positive indices,
+existing/missing/null string names, boolean and empty/null-array tuples; seven
+argument arrays cover null/empty/single/wrong arity. Five operations include
+prefixed direct buffer rendering, recording partial buffers after failure.
+Raw structural results keep wrapped null strings in domain results observable
+without invoking their rendering. Initial setup fails to compile because Java
+Value is not FunctionValue and native boolean uses BoolTrue; correct the casts,
+native identifier and Java class launch package. Those failures have zero rows
+and no semantic conclusion. Java/native then complete 15,686 rows with 4,094
+differences (2a6848).
+
+Restore tuple null-argument/positive-index length reads while preserving
+nonpositive short-circuiting and diagnostic rendering. Restore record name-
+length, null typed-equality and matched-value index failures; empty-record null
+requested names retain source missing-field formatting. Restore record domain
+null-name-array failure. Tuple rendering keeps the opening delimiter before a
+length failure; record rendering reads length first, formats null names as the
+literal null, then reads values with typed failure. StringValue rendering rejects
+null UniqueString fields before writing quotes. Native first completes with 276
+remaining differences (8ebda9), exposing UniqueString's typed null-argument
+failure. A guard patch initially changes the similarly named StateString check;
+inspection catches this, restores it and places the guard in Apply. Final native
+21320 completes (f04e7e); all 15,686 rows agree (93eab8). No fabricated semantic
+graph/evaluator, persistent test/fixture, altered original assertions or original
+method credit. Other StringValue/subclass APIs and callbacks remain outside this
+comparison.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests plus focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream/rendering checks pass after the final
+lookup change. Session 5484 finishes with exit zero (f75291); root 5.110s and tlc
+2.199s (799fec). Earlier tuple/record EXCEPT observer completes (a96d29); all 756
+rows still agree (2ec86f), checking rendering-related diagnostic regression.
+No race, broad suite or shortened workload. Logs remain under tuple-record-access.
+Handoff and architecture updated. Latest full stress saved progress is
+1,712,215,497 / 2,147,483,648 (799fec), without terminal result or long-method
+credit. Preserve original handle/artifacts/bounds. Other overloads, arbitrary
+callbacks and concurrency remain separate parity targets.

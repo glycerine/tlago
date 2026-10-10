@@ -750,12 +750,22 @@ func (v *RecordValue) Apply(arg Value) (resultValue Value, err error) {
 		arg = debugger.StringValue
 	}
 	if sv, ok := arg.(*StringValue); ok {
+		if v.Names == nil {
+			panic(NewNullPointerException())
+		}
 		for i, name := range v.Names {
+			if sv.Val == nil || name == nil {
+				panic(NewNullPointerException())
+			}
 			if sv.Val.Equal(name) {
-				return v.Values[i], nil
+				return fcnParameterDomain(v.Values, i), nil
 			}
 		}
-		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to access nonexistent field '%s' of record\n%s", sv.Val, ValuesPPR(v)))
+		name := "null"
+		if sv.Val != nil {
+			name = sv.Val.String()
+		}
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to access nonexistent field '%s' of record\n%s", name, ValuesPPR(v)))
 	}
 	return nil, v.runtimeFailure(fmt.Sprintf("Attempted to access record by a non-string argument: %s", ValuesPPR(arg)))
 }
@@ -792,9 +802,15 @@ func (v *RecordValue) Select(arg Value) (resultValue Value, err error) {
 	if sv == nil {
 		panic(NewNullPointerException())
 	}
+	if v.Names == nil {
+		panic(NewNullPointerException())
+	}
 	for i, name := range v.Names {
+		if sv.Val == nil || name == nil {
+			panic(NewNullPointerException())
+		}
 		if sv.Val.Equal(name) {
-			return v.Values[i], nil
+			return fcnParameterDomain(v.Values, i), nil
 		}
 	}
 	return nil, nil
@@ -802,6 +818,9 @@ func (v *RecordValue) Select(arg Value) (resultValue Value, err error) {
 
 func (v *RecordValue) DomainValue() Value {
 	defer catchValueFailure(v, nil)
+	if v.Names == nil {
+		panic(NewNullPointerException())
+	}
 	values := make([]Value, len(v.Names))
 	for i, name := range v.Names {
 		values[i] = NewStringValueFromUnique(name)
@@ -976,13 +995,24 @@ func (v *RecordValue) String() string {
 
 func (v *RecordValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
+	if v.Names == nil {
+		panic(NewNullPointerException())
+	}
 	sb.WriteString("[")
 	for i, name := range v.Names {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(name.String() + recordArrow)
-		sb = appendValueString(v.Values[i], sb, offset, swallow)
+		text := "null"
+		if name != nil {
+			text = name.String()
+		}
+		sb.WriteString(text + recordArrow)
+		value := fcnParameterDomain(v.Values, i)
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
+		sb = appendValueString(value, sb, offset, swallow)
 	}
 	sb.WriteString("]")
 	return sb

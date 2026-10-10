@@ -360,6 +360,8 @@ and result identity; null, identity and model-swap observations agree.
 Composite fingerprinting retains typed traversal failures and checked interval
 index addition. Bounded hashes agree with controlled model intern tokens;
 parsed-model token allocation order remains a separate requirement.
+Tuple/record access and domains retain source null/index failures and diagnostic
+rendering order, including partial buffers and literal null record names.
 All bounded comparisons agree, including the prior lambda conversion and deep-
 normalization matrices; contracts and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.

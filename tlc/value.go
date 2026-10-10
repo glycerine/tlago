@@ -641,6 +641,9 @@ func (v *StringValue) String() string {
 
 func (v *StringValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
+	if v.Val == nil {
+		panic(NewNullPointerException())
+	}
 	sb.WriteString(`"` + tlaStringPrintVersion(v.Val.String()) + `"`)
 	return sb
 }

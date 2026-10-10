@@ -8016,6 +8016,32 @@ semantic graph mutation, persistent test/fixture, new original-test credit or
 broad ownership/callback claim is involved. Other value kinds, polynomials,
 model intern allocation order and concurrent mutation remain separate targets.
 
+Tuple application/selection retain null-argument and positive-index null-array
+failures at source accesses. Nonpositive selection returns null without reading
+the array; nonpositive application formats its receiver for the diagnostic, so
+rendering failures retain their separate source frames. Record lookup reads name
+length after extracting a string's name, compares using the source typed
+UniqueString equality contract (null receiver/argument fails), then reads only
+the matched value through typed array access. An empty-name record does not
+compare a null requested name: select returns null, while apply includes the
+literal null name in its missing-field diagnostic. Record domain construction
+rejects null name arrays but retains wrapped null name elements in its result.
+Tuple rendering appends its opening delimiter before reading element length;
+record rendering reads name length before appending its opening delimiter.
+Record null name entries render as the literal null through Java concatenation,
+and value access/child failures retain the buffer prefix already written.
+String rendering rejects a null UniqueString before appending a quoted value,
+preserving failures encountered while formatting access diagnostics.
+All 15,686 observations agree for direct apply/select, argument-array apply,
+domain and direct buffer rendering, with eleven receiver array/child forms,
+eleven record-name arrays, normalized flags, optional source attachment, eleven
+single arguments and seven argument-array forms. Actual test206 source nodes
+supply attachment; raw structural result serialization avoids incidental failure
+when domain results contain null strings. Earlier 756 tuple/record EXCEPT rows
+still agree. No original-test credit, arbitrary formatting callback or complete
+StringValue/subclass API claim is added. Other overloads and concurrent mutation
+remain separate targets.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

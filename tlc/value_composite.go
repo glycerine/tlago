@@ -369,6 +369,9 @@ func (v *TupleValue) Apply(arg Value) (resultValue Value, err error) {
 		return nil, v.tupleAssertFailure("Attempted to access tuple at a non integral index: " + ValuesPPR(arg))
 	}
 	idx := int(i.Val)
+	if idx > 0 && v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	if idx <= 0 || idx > len(v.Elems) {
 		return nil, v.tupleAssertFailure(fmt.Sprintf("Attempted to access index %d of tuple\n%s\nwhich is out of bounds.", idx, ValuesPPR(v)))
 	}
@@ -399,11 +402,17 @@ func (v *TupleValue) tupleAssertFailure(message string) *TLCError {
 
 func (v *TupleValue) Select(arg Value) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if isNil(arg) {
+		panic(NewNullPointerException())
+	}
 	i, ok := arg.(*IntValue)
 	if !ok {
 		return nil, v.tupleAssertFailure("Attempted to access tuple at a non integral index: " + ValuesPPR(arg))
 	}
 	idx := int(i.Val)
+	if idx > 0 && v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	if idx > 0 && idx <= len(v.Elems) {
 		return v.Elems[idx-1], nil
 	}
@@ -497,6 +506,9 @@ func (v *TupleValue) String() string {
 func (v *TupleValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	sb.WriteString("<<")
+	if v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	for i, elem := range v.Elems {
 		if i > 0 {
 			sb.WriteString(", ")
