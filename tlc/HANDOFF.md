@@ -105,9 +105,11 @@ including source null boundaries, retained initial exceptions and empty diagnost
 names; all 147 bounded observations agree with Java. DFID preserves captured
 successor property lengths, current elements/names and its shared loop index;
 initial loops and early-failure arrays now follow Java. All 152 bounded DFID
-observations agree. Next source audit: distributed TLCApp's captured property
-arrays and CheckState null/name boundaries. Cached initial-vector growth remains
-unproven.
+observations agree. Distributed `TLCApp` now preserves source null-array/name
+boundaries across tool replacement; all 109 observations agree. Checker and DFID
+comparisons also pass with action inputs that fail in the predecessor state.
+Next source audit: distributed worker property failures and their cause/state
+ownership. Growth of a cached initial vector remains unproven.
 
 ## Verification baseline and test credit
 

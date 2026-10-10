@@ -11322,6 +11322,36 @@ observations, not storage or whole-model equivalence. Existing original DFID
 trace models separately retain their full bounds. VM-generated exception detail
 text and arbitrary concurrent graph mutation remain unproven.
 
+Distributed TLCApp keeps its constructor arrays and reads its current public app
+arrays during indexed checks and generation. Processor-array replacement does
+not replace app arrays; shared-element writes remain visible. Parser-backed apps
+now retain their source null-array/name boundaries even if the public Tool is
+replaced or cleared. A null selected property/action array throws the source
+null exception; an unselected implied-property array is not accessed. Diagnostic
+names remain current and are read only after a predicate fails. Null and short
+name arrays retain distinct exception classes. Standalone native adapters retain
+their existing optional-list behavior.
+
+All 109 ignored pinned-Java/native app observations agree: one constructor
+capture row, 100 property cases across initial/successor invariants and implied
+initial/action predicates, and eight successor-generation rows. Comparisons
+include public versus processor array replacement, shared elements, null arrays,
+current/null/short/empty names, tool replacement, evaluation exceptions and
+unselected null arrays. Full WorkerException messages, predecessor/successor
+identity and keepCallStack=false agree. Generation rows cover empty/null arrays,
+null tools/actions, actual generation and nulling the action array after a call.
+The actual Java TLCApp constructor loads unchanged BasicMultiTrace, then an ITool
+proxy delegates evaluations to that tool while observing supported field writes.
+Native uses the production parser bridge and actual TLCApp methods. These
+bounded observations add no original-method credit.
+
+Action predicates evaluate unprimed expressions in the predecessor state. The
+checker/DFID comparison inputs were corrected to use the existing predicate that is false in the predecessor for action-violation cases, retaining the existing predicate that is false in the successor for invariant cases. All 147 checker and 152 DFID rows still
+agree; the corrected observations explicitly exercise action violations and
+name failures that some earlier labels did not. No production change was needed
+for those corrected inputs. VM-generated null-detail messages and arbitrary
+concurrent mutation remain unproven.
+
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing
 location/syntax views, primarily OpDef symbols. A pinned-Java/native standalone

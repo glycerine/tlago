@@ -29535,3 +29535,65 @@ latest saved observation 391,241,737 / 2,147,483,648 iterations, without termina
 result or method credit. Overall parity remains incomplete. Next source audit:
 distributed TLCApp's captured property arrays and CheckState null/name boundaries.
 Cached initial-vector growth remains unproven.
+
+
+2026-10-09: Distributed app array/name boundaries and action-input correction
+
+Previous goal turn made verified progress in commit 923b89a. Parser-backed
+TLCApp now rejects null selected property/action arrays and null diagnostic-name
+arrays with the source null exception, preserving the distinct short-name bounds
+exception. Constructor origin retains this behavior if the public Tool changes
+or becomes null; standalone native adapters retain their optional-list behavior.
+Indexed public-array reads, constructor captures, current names and unselected
+implied-property branches keep the source behavior. The action-array boundary
+also applies to GetNextStates, including nulling that array during generation.
+
+All 109 final pinned-Java/native app observations agree; baseline differs in 23.
+Final comparison de9c70, status 0: one actual constructor capture row, 100 property
+cases (four families, 25 cases) and eight generation cases. Cases observe app vs
+processor array replacement, shared-element mutation, null arrays/elements,
+current/null/short/empty names, evaluation failures, tool replacement and unused
+null arrays. Full WorkerException messages, predecessor/successor identity and
+keepCallStack=false agree. Generation covers empty/null action arrays, null tool
+and action, actual generation of ten successors and clearing the action array
+after a generator call. Java uses actual TLCApp construction with unchanged
+BasicMultiTrace/MCInvInitState and delegates evaluation through an ITool proxy;
+Go uses the production parser bridge and actual TLCApp methods. No new source
+fixtures or persistent tests were introduced, and no original-method credit.
+
+The comparison exposed an observation-input error: an unprimed expression false
+in the successor can be true in the predecessor, where action validity evaluates
+it. Earlier checker/DFID inputs therefore did not exercise every named action-
+violation case, although Java and Go agreed on those inputs. Corrected the ignored
+drivers to use the existing predecessor-false InvInitState predicate for action
+families and the existing successor-false subexpression for invariant families.
+All corrected 147 checker and 152 DFID rows agree; their baselines differ in 101
+and 90 respectively. Final comparison 4cb89c, status 0. This explicitly verifies
+actual implied-action violations, full names and exception classes in those cases.
+No further production change was required for the corrected inputs. Earlier
+logs remain separate evidence; they do not prove the previously unexercised paths.
+
+Logs under .codex-gotmp/: distributed-property-{java,before,after}.log,
+checker-property-action-{java,before,after}.log and
+dfid-property-action-{java,before,after}.log. Drivers and baseline overlays stay
+ignored in the corresponding observation dirs. Final app Java terminal 6dc58d,
+native 175a3b and baseline 614f68: status 0. Corrected checker Java 6a3297,
+native 1bc1ef, baseline 52a329; corrected DFID Java 9d3576, native c7ebba,
+baseline c9b19a: all status 0. VM-generated exception detail messages and general
+concurrent graph mutation remain unproven.
+
+Existing native distributed app generation/property/array tests, initialization
+publication/missing-state/nested-failure checks and Tool checks pass normally:
+distributed-property-native.log, terminal d4c270, status 0, TLC 0.040 seconds.
+Original distributed DieHard, distributed initialization continuation,
+DoInitFunctor and DepthFirst tests pass normally with unchanged bounds:
+distributed-property-originals.log, terminal fe3cd9, status 0, root 2.374 seconds.
+The original distributed run used sandbox escalation solely for its required
+local coordinator/worker listeners. No remote transport emulation was added.
+Formatting and git diff --check pass. No broad sweep or long race workload.
+
+Full original off-heap random stress session 27326 remains live, poll e469d8;
+latest saved observation 417,437,478 / 2,147,483,648 iterations, without terminal
+result or method credit. Overall parity remains incomplete. Next source audit:
+distributed worker property-failure cause/state ownership. Cached initial-vector
+growth remains unproven.

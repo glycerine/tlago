@@ -19,13 +19,14 @@ type TLCApp struct {
 	metadir        string
 	metadataSet    bool
 	fpSetConfig    *FPSetConfiguration
+	sourceArrays   bool // Preserve parser-backed null boundaries across Tool replacement.
 }
 
 func NewTLCApp(tool *Tool, deadlock bool) *TLCApp {
 	if tool == nil {
 		panic(NewNullPointerException())
 	}
-	app := &TLCApp{Tool: tool, checkDeadlock: deadlock, config: tool.GetConfigFile()}
+	app := &TLCApp{Tool: tool, checkDeadlock: deadlock, config: tool.GetConfigFile(), sourceArrays: tool.SpecProcessor != nil}
 	app.ImpliedInits = tool.GetImpliedInits()
 	app.Invariants = tool.GetInvariants()
 	app.ImpliedActions = tool.GetImpliedActions()
@@ -107,7 +108,7 @@ func (a *TLCApp) GetNextStates(state *TLCStateMut) (*StateVec, error) {
 		panic(NewNullPointerException())
 	}
 	out := NewStateVec(10)
-	for i := 0; i < len(a.Actions); i++ {
+	for i := 0; i < len(a.requireActionArray(a.Actions)); i++ {
 		action := a.Actions[i]
 		next, err := a.requireTool().GetNextStates(action, state)
 		if err != nil {
@@ -143,40 +144,54 @@ func (a *TLCApp) CheckState(predecessor, successor *TLCStateMut) error {
 	if a == nil {
 		panic(NewNullPointerException())
 	}
-	for i := 0; i < len(a.Invariants); i++ {
+	for i := 0; i < len(a.requireActionArray(a.Invariants)); i++ {
 		invariant := a.Invariants[i]
 		valid, err := a.requireTool().IsValidState(invariant, successor)
 		if err != nil {
 			return err
 		}
 		if !valid {
-			return NewWorkerException(fmt.Sprintf("Error: Invariant %s is violated.", distributedActionName(a.Tool.GetInvNames(), i)), predecessor, successor, false)
+			return NewWorkerException(fmt.Sprintf("Error: Invariant %s is violated.", a.propertyNameAt(a.Tool.GetInvNames(), i)), predecessor, successor, false)
 		}
 	}
 	if predecessor == nil {
-		for i := 0; i < len(a.ImpliedInits); i++ {
+		for i := 0; i < len(a.requireActionArray(a.ImpliedInits)); i++ {
 			implied := a.ImpliedInits[i]
 			valid, err := a.requireTool().IsValidState(implied, successor)
 			if err != nil {
 				return err
 			}
 			if !valid {
-				return NewWorkerException(fmt.Sprintf("Error: Implied-init %s is violated.", distributedActionName(a.Tool.GetImpliedInitNames(), i)), predecessor, successor, false)
+				return NewWorkerException(fmt.Sprintf("Error: Implied-init %s is violated.", a.propertyNameAt(a.Tool.GetImpliedInitNames(), i)), predecessor, successor, false)
 			}
 		}
 	} else {
-		for i := 0; i < len(a.ImpliedActions); i++ {
+		for i := 0; i < len(a.requireActionArray(a.ImpliedActions)); i++ {
 			implied := a.ImpliedActions[i]
 			valid, err := a.requireTool().IsValidTransition(implied, predecessor, successor)
 			if err != nil {
 				return err
 			}
 			if !valid {
-				return NewWorkerException(fmt.Sprintf("Error: Implied-action %s is violated.", distributedActionName(a.Tool.GetImpliedActNames(), i)), predecessor, successor, false)
+				return NewWorkerException(fmt.Sprintf("Error: Implied-action %s is violated.", a.propertyNameAt(a.Tool.GetImpliedActNames(), i)), predecessor, successor, false)
 			}
 		}
 	}
 	return nil
+}
+
+func (a *TLCApp) requireActionArray(actions []*Action) []*Action {
+	if a.sourceArrays && actions == nil {
+		panic(NewNullPointerException())
+	}
+	return actions
+}
+
+func (a *TLCApp) propertyNameAt(names []string, index int) string {
+	if a.sourceArrays && names == nil {
+		panic(NewNullPointerException())
+	}
+	return distributedActionName(names, index)
 }
 
 func distributedActionName(names []string, index int) string {
