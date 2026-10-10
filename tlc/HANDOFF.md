@@ -294,15 +294,15 @@ initialization, two full 4,224-depth simulation profiles and distributed startup
 checks pass. Eager native constants use allocated-empty argument arrays.
 TLCEval now reads its first argument without a registration arity guard,
 preserving null/empty input failures, ignored extra arguments and the constant
-expression's null-context failure. Four relevant original models pass. General
-evaluation, lookup, level calculation, local-definition setup and lazy values now
-preserve explicit nil contexts. Source dereferences retain typed null failures;
-literals can still evaluate without a context. All 124 bounded comparisons and
-the original 14-row TLCEval comparison match. Relevant original model and focused
-context/lazy checks pass. Lazy cache reads/evaluation and variable recognition
-also preserve their source context and null-tool boundaries; all 384 additional
-observations and relevant original debugger/model checks pass. Other context
-consumers remain outside this audit.
+expression's null-context failure. Evaluation, lookup, level calculation, local
+definitions, lazy caching, variable recognition and state generation retain
+explicit nil contexts and source dereference order. Literals can still evaluate
+without a context. Initial membership assignment retains runtime error metadata;
+functional ENABLED states and partial mutations match. The 14 TLCEval, 124 core,
+384 cache/recognition and 144 generation observations agree with Java, and
+relevant original model/debugger and focused checks pass. Detailed bounds and
+receipts stay in TLC_ARCH and PORT_PROGRESS. Theorem contexts, enumeration setup
+and action construction remain separate audit gaps.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

@@ -33199,3 +33199,57 @@ theorem contexts and context enumeration remain outside this observation.
 Original full stress handle 27326 remains live (fe7a3f); latest saved progress
 1,362,615,471 / 2,147,483,648 (212afd), without terminal result or long-method
 credit. Preserve its original bounds, memory budget, handle and artifacts.
+
+
+2026-10-10: State generation and ENABLED retain explicit contexts
+
+Previous goal turn made verified progress in 5685e82. Continue the remaining
+context consumers against the pinned Java source. Initial-state, next-state
+and enabled predicate entry points still replaced explicit nil with EmptyContext.
+Java passes the incoming context through to lookup and local binding.
+
+Ignored .codex-gotmp/generation-context invokes actual FastTool protected
+methods from an observer in tlc2.tool.impl. Initial attempts to subclass the
+final FastTool and locate ActionItemList fail at compilation (a62204, 249c8e,
+c0ac75), with no source observation credit. Use the actual same-package
+ActionItemList and FastTool without source changes, reflection or evaluator
+substitution. The first source run produces 58 rows before StackOverflowError
+when evaluating C's existing quantified invariant as a successor predicate
+(b0e84b). Run this API observer with -Xss64m; no expression or quantifier bounds
+change. All 72 rows then complete (f5b56c), exposing 39 differences from native.
+Go stack behavior remains native; this observer setup is not original-model
+or Java stack-limit completion credit.
+
+Remove context replacement in GetInitStatesForPredicate,
+GetNextStatesForPredicate and EnabledImpl. All 36 nil-context cases now match;
+three remaining original C predicates A, B and Inv expose an initial-assignment
+error-category gap (6d3643). Carry the current context into the internal
+initial-assignment enumerator. A nonenumerable right side for an unbound
+variable preserves source detailed runtime GENERAL failure, expression and
+context, before assignment. The assigned-variable membership path stays intact.
+All 72 complete rows match after these edits (50466 terminal 201f00;
+comparison a5ea57).
+
+Extend the same observer to a real nonempty context binding C!expensive's actual
+formal N and to functional ENABLED states, alongside the mutable state boundary.
+All 144 source/native rows match (5e0ff2, d1f840; comparison a5ea57): values,
+exception categories/messages, runtime codes/parameters, source/context metadata,
+fingerprint-frame depth, generated-state order and retained partial state.
+The real C model supplies Init, A/B/C/D, U1/U2/U3, Constraint, Inv and its actual
+LET/TRUE nodes; no invented semantic fixture or evaluator. Java enhanced NPE
+messages disabled. Source -Xss64m applies only to this ignored API observer.
+
+Seven existing original checks pass unchanged (85746 terminal 924292,
+original-models.log, 5.022s): CCoverage, Debug04DebuggerSim (including its
+ENABLED breakpoint behavior and original simulation settings), both
+ActionCompositionA/B, Github362, ValueSemanticsAssume and ConstantRank1TLCEval.
+Focused existing context/function-context/lookup/action-order/lazy-subset checks
+pass (8281 terminal a1a04e, existing-contexts.log, 0.019s). No persistent tests or
+fixtures added, changed assertions, race, broad suite, shortened workload or
+original-method inventory credit. Update current handoff and contracts.
+Theorem contexts, enumeration setup, action construction and arbitrary null
+state/action-list parameters remain outside this bounded observation.
+
+Full original off-heap stress handle 27326 remains live (8462f0). Latest saved
+progress is 1,376,912,629 / 2,147,483,648 (318918), with no terminal result or
+long-method credit. Preserve its original handle, memory budget and bounds.

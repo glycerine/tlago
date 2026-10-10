@@ -57,9 +57,6 @@ func (t *Tool) MakeStateImpl(pred SemanticNode) (*TLCStateMut, error) {
 func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) (err error) {
 	done := t.callStackEnter(init)
 	defer func() { done(err) }()
-	if c == nil {
-		c = EmptyContext
-	}
 	if acts == nil {
 		acts = EmptyActionItemList
 	}
@@ -389,7 +386,7 @@ func (t *Tool) initMembership(init SemanticNode, left SemanticNode, right Semant
 	if err != nil {
 		return err
 	}
-	return t.enumerateInitAssignment(varNode.Name, rval, init, acts, ps, states, cm)
+	return t.enumerateInitAssignment(varNode.Name, rval, init, c, acts, ps, states, cm)
 }
 
 func (t *Tool) initSubsetEq(init SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
@@ -405,10 +402,10 @@ func (t *Tool) initSubsetEq(init SemanticNode, left SemanticNode, right Semantic
 	if err != nil {
 		return err
 	}
-	return t.enumerateInitAssignment(varNode.Name, t.setValueSource(right, NewSubsetValue(rset, cm)), init, acts, ps, states, cm)
+	return t.enumerateInitAssignment(varNode.Name, t.setValueSource(right, NewSubsetValue(rset, cm)), init, c, acts, ps, states, cm)
 }
 
-func (t *Tool) enumerateInitAssignment(varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
+func (t *Tool) enumerateInitAssignment(varName *UniqueString, domain Value, pred SemanticNode, c *Context, acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
 	lval := ps.Lookup(varName)
 	if lval != nil {
 		member, err := domain.Member(lval)
@@ -419,7 +416,7 @@ func (t *Tool) enumerateInitAssignment(varName *UniqueString, domain Value, pred
 	}
 	enumerable, ok := asEnumerable(domain)
 	if !ok {
-		return newTLCError(ECGeneral, "In computing initial states, the right side of \\IN is not enumerable.\n%s", SemanticString(pred))
+		return NewTLCDetailedRuntimeException(ECGeneral, "In computing initial states, the right side of \\IN is not enumerable.\n"+SemanticString(pred), pred, c)
 	}
 	enum := enumerable.Elements()
 	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
@@ -455,9 +452,6 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 	defer func() { done(err) }()
 	if debugToolActive(t) && t.DebugEvalMode == DebugEvalDebugger {
 		return t.NoDebug().GetNextStatesForPredicate(action, pred, acts, c, s0, s1, nss, cm)
-	}
-	if c == nil {
-		c = EmptyContext
 	}
 	if acts == nil {
 		acts = EmptyActionItemList

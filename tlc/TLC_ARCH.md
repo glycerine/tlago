@@ -7410,8 +7410,22 @@ also preserve the incoming context. Their lookup branch follows the operator's
 declared arity, including zero-arity builtins, rather than the argument slice
 length; prime recognition still precedes that branch. The bounded
 comparison covers actual C model expressions and APIs; other consumers such as
-theorem contexts, context enumeration and state-generation setup are not proved
+theorem contexts and context enumeration are not proved
 by this observation.
+
+Initial-state, next-state and ENABLED predicate entry points preserve explicit
+nil contexts. A failure at the
+first source lookup or local binding occurs before state assignment. Subsequent
+generation retains source state order and partial mutations, including ordinary
+mutable states and functional ENABLED states. Initial membership assignment to
+an unbound variable requires an enumerable right operand; failure is a detailed
+runtime GENERAL error carrying the membership predicate and incoming context.
+A bound variable follows membership checking.
+The bounded generation comparison uses the existing C predicates, nil/empty/
+nonempty contexts and both ENABLED state representations. It does not prove
+arbitrary null action-list or state arguments. The Java observer uses a larger
+stack for C's existing quantified invariant as a successor predicate, preserving
+its bounds; Java stack limits are not native Go emulation requirements.
 
 Its Java implementation branches directly on the argument semantic level:
 state/action/temporal expressions evaluate in the incoming context and are not

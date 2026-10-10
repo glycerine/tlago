@@ -3,9 +3,6 @@ package tlc
 func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(pred)
 	defer func() { done(err) }()
-	if c == nil {
-		c = EmptyContext
-	}
 	if acts == nil {
 		acts = EmptyActionItemList
 	}
