@@ -34023,3 +34023,41 @@ Original full stress session 27326 remains live on direct poll (5fb9ad).
 Latest saved progress is 1,518,779,649 / 2,147,483,648 (01feea), without a terminal
 result or long-method credit. Preserve original handle, artifacts, budget and
 bounds.
+
+
+2026-10-10: Resume function-parameter enumeration after interrupted session
+
+Working tree retained the uncommitted FcnParams enumeration correction after
+0b9021d. Ignored .codex-gotmp/function-parameter-enumeration compares actual
+legacy test209 S formal nodes through copied runtime arrays and two bounded
+read/reset schedules. Baseline 26 rows exposed 18 differences: zero arguments,
+reset after product exhaustion, runtime error category and typed null failures.
+Expand to 30 rows with null/empty single-argument domain arrays. Preserve Java's
+existing mixed-formal initialization order and early empty-domain termination.
+Restore repeated empty tuples for zero arguments, exhausted product reset as a
+no-op, source GENERAL runtime failures and typed domain/enumerator failures.
+The delegated single-domain reset remains unchanged. No zero-argument product
+is materialized or traversed to exhaustion.
+
+Resumed final comparison exposed two remaining formatting differences: partially
+populated parameter tuples reached TupleValue.ToString with a null element.
+Restore its typed null failure under the existing value failure wrapper. Final
+native observer exits 0 (64901, terminal 52aa5f), and all 30 Java/native rows agree
+(130642), including preceding results and failure stage/category/message/code/
+parameters. Java enhanced NPE messages are disabled. No persistent fixture,
+fabricated semantic graph or original-method credit. Mutated argument counts,
+post-construction malformed flag/formal arrays and arbitrary enumeration
+callbacks remain outside the bounded comparison.
+
+Nine unchanged original model checks pass (22189, terminal b49c7e, 4.330s):
+EchoDebugger, LegacySuiteTest14/206/209, ValueSemanticsAssume,
+ConstantRank2AssertError, Debug02Debugger and ActionCompositionA/B.
+Original TupleValue, FcnLambdaValue and EvalControl plus focused function-context,
+fallback rendering and lambda stream checks pass (54489, terminal 4ee793,
+0.018s). Logs remain in the ignored observer directory. No broad suite, race,
+reduced workload bounds or changed original assertions. Handoff and architecture
+contracts updated.
+
+Original full stress session 27326 remains live on direct poll (e8108c).
+Latest saved progress is 1,526,394,254 / 2,147,483,648 (bf8759), with no terminal
+result or long-method credit. Preserve its original handle, artifacts and bounds.

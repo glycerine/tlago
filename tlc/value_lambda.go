@@ -105,13 +105,19 @@ func (p *FcnParams) Size() (int, error) {
 }
 
 func (p *FcnParams) Elements() ValueEnumeration {
-	if p == nil || p.ArgLen == 0 {
-		return EmptySet.Elements()
+	if p == nil {
+		panic(NewNullPointerException())
 	}
 	if p.ArgLen == 1 {
+		if p.Domains == nil {
+			panic(NewNullPointerException())
+		}
+		if len(p.Domains) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, len(p.Domains)))
+		}
 		enum, ok := asEnumerable(p.Domains[0])
 		if !ok {
-			return newErrorEnumeration(newTLCError(ECGeneral, "The domains of formal parameters must be enumerable."))
+			return newErrorEnumeration(NewTLCRuntimeExceptionMessage("The domains of formal parameters must be enumerable."))
 		}
 		return enum.Elements()
 	}
@@ -185,10 +191,13 @@ func newFcnParamsEnumeration(params *FcnParams) *fcnParamsEnumeration {
 		currentElems: make([]Value, params.ArgLen),
 	}
 	idx := 0
+	if params.Domains == nil {
+		panic(NewNullPointerException())
+	}
 	for i, domain := range params.Domains {
 		enumDomain, ok := asEnumerable(domain)
 		if !ok {
-			out.err = newTLCError(ECGeneral, "The domains of the parameters must be enumerable.")
+			out.err = NewTLCRuntimeExceptionMessage("The domains of the parameters must be enumerable.")
 			out.done = true
 			return out
 		}
@@ -198,6 +207,9 @@ func newFcnParamsEnumeration(params *FcnParams) *fcnParamsEnumeration {
 			// not enums[idx].  When earlier groups expanded to multiple formals,
 			// this consumes the earlier domain's enumerator for the initial tuple
 			// slot.  Preserve the quirk for byte-for-byte TLC behavior.
+			if out.enums[i] == nil {
+				panic(NewNullPointerException())
+			}
 			out.currentElems[idx] = out.enums[i].NextElement()
 			if err := out.enums[i].Err(); err != nil {
 				out.err = err
@@ -230,10 +242,13 @@ func newFcnParamsEnumeration(params *FcnParams) *fcnParamsEnumeration {
 }
 
 func (e *fcnParamsEnumeration) Reset() {
-	if e.err != nil {
+	if e.done || e.err != nil {
 		return
 	}
 	for i := range e.enums {
+		if e.enums[i] == nil {
+			panic(NewNullPointerException())
+		}
 		e.enums[i].Reset()
 		e.currentElems[i] = e.enums[i].NextElement()
 		if err := e.enums[i].Err(); err != nil {
@@ -256,6 +271,9 @@ func (e *fcnParamsEnumeration) NextElement() Value {
 	elems := make([]Value, len(e.currentElems))
 	copy(elems, e.currentElems)
 	for i := range e.currentElems {
+		if e.enums[i] == nil {
+			panic(NewNullPointerException())
+		}
 		e.currentElems[i] = e.enums[i].NextElement()
 		if err := e.enums[i].Err(); err != nil {
 			e.err = err

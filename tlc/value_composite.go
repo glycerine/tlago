@@ -436,6 +436,9 @@ func (v *TupleValue) ToString(sb *strings.Builder, offset int, swallow bool) *st
 		if i > 0 {
 			sb.WriteString(", ")
 		}
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
 		sb = appendValueString(elem, sb, offset, swallow)
 	}
 	sb.WriteString(">>")

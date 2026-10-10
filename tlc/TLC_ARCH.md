@@ -7588,6 +7588,22 @@ materialization. Other String failures follow source inspection; direct binding
 of malformed parameter arrays, tuple-formal mismatches, concurrent mutation and
 arbitrary size callbacks remain outside these observations.
 
+Parameter enumeration delegates directly to the domain for one argument. Other
+argument counts use the source product traversal, including repeated empty tuples
+for zero arguments and the source's mixed-formal initialization through enums[i]
+rather than enums[idx]. Product exhaustion makes Reset a no-op; a delegated
+single-domain enumeration retains its own reset behavior. An empty domain stops
+construction before later domains are inspected. Non-enumerable domains retain
+GENERAL runtime failures with the source message and null parameter array.
+Null domain arrays and missing enumeration slots retain typed null failures;
+a missing single-argument domain retains its typed indexed failure. Formatting
+a tuple with a null element also retains the source typed null failure.
+All 30 bounded observations match using actual legacy test209 S formal nodes,
+copied runtime arrays and two read/reset schedules. Zero-argument products are
+observed with bounded reads only. Mutated argument counts, malformed flag/formal
+arrays after construction, arbitrary enumeration callbacks and concurrent
+mutation remain outside this comparison.
+
 Membership generation with an unassigned variable and a non-enumerable domain
 retains a GENERAL detailed runtime failure with the whole predicate and incoming
 context. Initial generation already retained that contract; successor generation
