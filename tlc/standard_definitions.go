@@ -350,16 +350,35 @@ func (t *Tool) defineStandardEvaluating(name string, arity int, eval EvaluatingE
 	t.defineStandardEvaluatingWithMinLevel(name, arity, 0, eval, aliases...)
 }
 
+// standardEvaluatingMethodSignature retains Method.toString() for override
+// diagnostics and operator images. Lookup and fallback still use the TLA+ name.
+func standardEvaluatingMethodSignature(name string) string {
+	const params = "(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel)"
+	switch name {
+	case "TLCGet":
+		return "public static tlc2.value.impl.Value tlc2.module.TLCGetSet.TLCGetEval" + params
+	case "AssertError":
+		return "public static synchronized tlc2.value.impl.Value tlc2.module.TLCExt.assertError" + params
+	case "PickSuccessor":
+		return "public static synchronized tlc2.value.impl.Value tlc2.module.TLCExt.pickSuccessor" + params
+	case "CounterExample":
+		return "public static tlc2.value.impl.Value tlc2.module.TLCExt.error" + params + " throws java.io.IOException"
+	case "Trace":
+		return "public static tlc2.value.impl.TupleValue tlc2.module.TLCExt.getTrace" + params + " throws java.io.IOException"
+	case "TLCDefer":
+		return "public static tlc2.value.impl.Value tlc2.module.TLCExt.tlcDefer" + params
+	case "TLCCache":
+		return "public static tlc2.value.impl.Value tlc2.module.TLCExt.tlcEval2" + params
+	case "TLCEvalDefinition":
+		return "public static tlc2.value.impl.Value tlc2.module.TLCExt.tlcDefByName" + params
+	default:
+		return name
+	}
+}
+
 func (t *Tool) defineStandardEvaluatingWithMinLevel(name string, arity int, minLevel int, eval EvaluatingEvalFunc, aliases ...string) {
 	opDef := &OpDefNode{SemanticNodeBase: &SemanticNodeBase{}, Name: UniqueStringOf(name), Symbol: NewSymbolNode(name)}
-	method := name
-	if name == "TLCGet" {
-		// EvaluatingValue's catch(Throwable) reports Method.toString(), including
-		// the source override's declaring class and complete parameter types.
-		method = "public static tlc2.value.impl.Value tlc2.module.TLCGetSet.TLCGetEval(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel)"
-	} else if name == "Trace" {
-		method = "public static tlc2.value.impl.TupleValue tlc2.module.TLCExt.getTrace(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel) throws java.io.IOException"
-	}
+	method := standardEvaluatingMethodSignature(name)
 	value := NewEvaluatingValue(method, minLevel, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
@@ -378,7 +397,7 @@ func (t *Tool) defineStandardEvaluatingIdentity(name string, arity int, identity
 	if identityArg >= 0 && identityArg < len(params) {
 		opDef.Body = NewOpApplNode(params[identityArg])
 	}
-	value := NewEvaluatingValue(name, 0, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	value := NewEvaluatingValue(standardEvaluatingMethodSignature(name), 0, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
 		}

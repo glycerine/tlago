@@ -9182,6 +9182,15 @@ catch. Normal and race compiler escape analysis confirm the markers stay on the
 stack; finite expansion and the two original overflow tests all pass.
 
 
+TLCExt evaluating override diagnostics and operator images retain the complete
+source Method.toString() metadata for AssertError, PickSuccessor, CounterExample,
+Trace, TLCDefer, TLCCache and TLCEvalDefinition. This includes synchronized
+modifiers and the IOException declarations on CounterExample and Trace.
+The shared signature helper serves level-aware and identity-fallback factories;
+lookup names, fallback OpDefs, callback selection, levels and priorities retain
+their existing contracts. Fourteen annotation/bootstrap and loaded-module rows
+match source; this bounded metadata audit does not establish full module parity.
+
 Native MethodValue diagnostics retain Java reflection's full method signature,
 including Print and PrintT's declared return and parameter types. Call-stack
 replay uses the ordinary evaluator's hooks: Java CallStackTool constructs a Tool

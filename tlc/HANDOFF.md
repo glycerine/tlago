@@ -178,23 +178,25 @@ and repeated-state observations match; 15 focused original methods pass.
 Incomplete `TLCExt!Trace` states now raise the source coded runtime exception
 with its parameters and formatting event; evaluator wrapping retains the full
 method signature. All 48 diagnostic observations and 15 original methods pass.
-Next audit: evaluating-method metadata for the other existing TLCExt overrides,
-using source registrations and prior receipts. Original model-test reconciliation
-remains open.
+All seven TLCExt evaluating overrides now retain source method signatures,
+including synchronization and declared exceptions. Fourteen registration rows
+match Java at bootstrap and after actual model loading; all 48 prior trace
+diagnostic rows and 20 focused original methods pass. Next audit: remaining
+standard evaluating override metadata outside TLCExt, consulting source
+registrations and prior receipts. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
-Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
-`-tags=tlc_fp_stress -timeout=0`, was restarted after the power outage in native
-exec session `27326`. Its log is
-`.codex-gotmp/offheap-random-full-after-outage.log`. The interrupted run's log,
-`.codex-gotmp/offheap-random-full.log`, ends at 521,200,868 iterations without a
-terminal result and earns no completion credit. Poll the new handle before
-starting another copy. It preserves all 2,147,483,648 iterations and original
-assertions, with the default 64 MiB direct-memory budget and no race
-instrumentation. Source translation is committed, but full execution and
-original-method credit remain pending. Temporary storage is under
-`.codex-gotmp/`. Do not remove live files or infer completion from progress lines.
+Interrupted full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`,
+with `-tags=tlc_fp_stress -timeout=0`, has no surviving test process after the
+latest outage. Its former native exec session was `27326`; its log,
+`.codex-gotmp/offheap-random-full-after-outage.log`, ends at 946,424,435 of
+2,147,483,648 iterations without a terminal result. The earlier interrupted log,
+`.codex-gotmp/offheap-random-full.log`, ends at 521,200,868 iterations. Neither
+run earns completion credit. A future full run must retain the original bounds,
+assertions and default 64 MiB direct-memory budget, without race instrumentation.
+Source translation is committed; full execution and original-method credit remain
+pending. Preserve the existing logs and temporary storage in `.codex-gotmp/`.
 
 The existing native
 `TestModelCheckerDoNextEnqueuesOnlyUnseenInModelSuccessorsButChecksAllImpliedActions`

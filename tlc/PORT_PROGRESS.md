@@ -31274,3 +31274,41 @@ the same handle is live, without terminal result or original-method credit.
 Preserve full bounds, default budget and files. Next audit: evaluating-method
 metadata for other existing TLCExt overrides, consulting source registrations and
 prior receipts before repeating completed work. Overall TLC parity is incomplete.
+
+
+2026-10-10 Outage recovery and remaining TLCExt evaluating signatures:
+Recovered clean master at 3c57c8a. No go or tlc.test process survives; former
+full off-heap handle 27326 is no longer treated as live. Saved log ends at
+946,424,435 / 2,147,483,648 with no terminal result. Preserve artifacts and
+original workload bounds; no completion credit or replacement run this chunk.
+
+Source TLCExt annotations and Method.toString() expose six remaining native
+short-name placeholders. Ignored .codex-gotmp/tlcext-metadata-observation Java
+reflection driver records all seven source signatures, minimum levels and
+priorities; native bootstrap driver records the matching existing registrations.
+Baseline 37102 terminal 71ad72 has six signature differences; Trace already
+matches. Reflection confirms CounterExample also declares IOException (unlike
+the preliminary saved summary); PickSuccessor ActionLevel is 2, already correct.
+
+Add standardEvaluatingMethodSignature for the seven TLCExt overrides and existing
+TLCGet metadata; use it in both level-aware and identity-fallback factories.
+Preserve callback, arity, level, priority, lookup and fallback behavior. Source
+assertions-enabled actual FastTool loading of unchanged TLCExtTrace/Alias config
+reads protected method/level/priority fields from each real module-body override.
+Native actual module symbols resolve through Tool.Lookup after BuildTLCTool.
+Source run 5a698a and native 44630 terminal 1f8fcc yield fourteen matching rows
+(annotation/bootstrap plus actual loaded registrations); compare 4601ed confirms
+all rows and exactly six corrected baseline signatures.
+
+Twenty unchanged original methods pass, 79229 terminal a8e362, 4.733s,
+originals.log: prior fifteen trace, alias, level, construction and single-worker
+round-trip methods, plus ConstantContextTLCCache, TLCExtModel,
+ConstantRank2AssertError and Github696/b. Initial receipt script counted nested
+subtests too; corrected top-level method count in 2550e3 is exactly twenty.
+Rebuild prior incomplete-trace driver against final code and compare all six
+model/mode outputs with saved Java rows: 54736 terminal 1c1de9 and 2550e3 confirm
+all 48 full diagnostics unchanged. No persistent tests or fixtures, source edits,
+new original-method credit, broad suite, race run or email work. Formatting and
+git diff --check pass. Next audit: remaining standard evaluating override metadata
+outside TLCExt against source registrations and prior receipts. Overall TLC
+parity and original-model reconciliation remain incomplete.
