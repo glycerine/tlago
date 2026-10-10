@@ -34510,3 +34510,44 @@ ValueVec and reducible-set stream checks separately pass in 0.013s (341fc4,
 broad suite, shortened workload or changed original assertions. Handoff and
 architecture updated. Latest full stress saved progress is 1,600,887,422 /
 2,147,483,648 (423b61), with no terminal result or long-method credit.
+
+
+### 2026-10-10: Lambda EXCEPT lookup and null replacement fallback
+
+Previous goal turn made verified progress in 7f94554 and 6f0dff8. Confirm the
+current clean tree (ec278e), compare Java apply/select/ValueExcept.current and
+native helpers. Original full stress 27326 remains live on direct polls f383c9
+and 626f78. Native EXCEPT lookup silently skipped null/out-of-range current paths
+and marked a matching null replacement as a terminal result. Source stops the
+scan at that match but evaluates the body when its replacement is null.
+Uncached Apply/Select also silently returned null for null parameter objects.
+
+Ignored lambda-except-application uses actual parsed test209 S formals/body,
+runtime parameters and EXCEPTs installed via TakeExcept. Retained fields are
+replaced afterward for malformed path cases, without semantic graph mutation.
+Seventeen forms include no updates, matching/missing terminal updates, null
+replacement, nested tuple updates in both orders, multiple nested updates,
+null/empty paths, null current elements, negative/exhausted indices, older
+terminal updates shadowed by null replacements and outside-domain updates.
+Observe four arguments (valid tuple/outside-domain tuple/null/boolean), null or
+valid parameters, cached/uncached records, sourced/unsourced lambdas and both
+Apply/Select. Cache uses a genuine materialized original S record copied per row.
+Java 213ef2 and native 5e4d5e complete all 1,088 rows: 232 differences (90666b).
+
+Restore typed current-path array reads and null receiver failures, retain the
+scan break on a terminal null replacement but continue with body binding, and
+reject null parameters only when body binding is reached. Pending matches still
+apply in source order. The source receiver failure for a null result with pending
+matches is explicit; arbitrary null-returning body callbacks are not observed.
+Native 38066 completes (4af32f); all 1,088 rows agree (9f8458), including source
+frames and cache bypass. No persistent test/fixture, invented semantic graph,
+callback or original-method inventory credit. Concurrent mutation is unproven.
+
+The existing fourteen original model checks and original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests pass alongside focused numeric,
+context, rendering and stream checks: 28982 terminal 48dbcc, root 5.125s and tlc
+2.034s (1f8418). Both existing ToolExcept checks separately pass in 0.018s
+(89eb06, 1f8418). No race, broad suite, shortened original bounds or changed
+original assertions. Logs remain under lambda-except-application; handoff and
+architecture updated. Latest full stress saved progress is 1,607,676,298 /
+2,147,483,648 (1f8418), with no terminal result or long-method credit.

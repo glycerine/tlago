@@ -502,7 +502,7 @@ func (v *FcnLambdaValue) ApplyArgs(args []Value, control int) (Value, error) {
 
 func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error) {
 	if v.Params == nil {
-		return v.Con, true, nil
+		panic(NewNullPointerException())
 	}
 	ctx := v.Con
 	if ctx == nil {
@@ -635,7 +635,7 @@ func (v *FcnLambdaValue) evalBody(ctx *Context, control int) (Value, error) {
 
 func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 	if v.Params == nil {
-		return v.Con, false, nil
+		panic(NewNullPointerException())
 	}
 	ctx := v.Con
 	if ctx == nil {
@@ -802,7 +802,7 @@ func (v *FcnLambdaValue) matchExcepts(arg Value) (Value, []ValueExcept, bool, er
 		ex := v.Excepts[i]
 		cur := ex.Current()
 		if cur == nil {
-			continue
+			panic(NewNullPointerException())
 		}
 		eq, err := cur.Equal(arg)
 		if err != nil {
@@ -813,7 +813,7 @@ func (v *FcnLambdaValue) matchExcepts(arg Value) (Value, []ValueExcept, bool, er
 		}
 		if ex.IsLast() {
 			res = ex.Value
-			matchedTerminal = true
+			matchedTerminal = res != nil
 			break
 		}
 		matches = append(matches, ex.Advanced())
@@ -825,8 +825,11 @@ func (v *FcnLambdaValue) matchExcepts(arg Value) (Value, []ValueExcept, bool, er
 }
 
 func takeMatchedExcepts(value Value, matches []ValueExcept) (Value, error) {
-	if len(matches) == 0 || value == nil {
+	if len(matches) == 0 {
 		return value, nil
+	}
+	if value == nil {
+		panic(NewNullPointerException())
 	}
 	return value.TakeExcepts(matches)
 }
@@ -1171,8 +1174,11 @@ func (v *FcnLambdaValue) ToString(sb *strings.Builder, offset int, swallow bool)
 }
 
 func (ex ValueExcept) Current() Value {
+	if ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < 0 || ex.Index >= len(ex.Path) {
-		return nil
+		panic(NewArrayIndexOutOfBoundsException(ex.Index, len(ex.Path)))
 	}
 	return ex.Path[ex.Index]
 }

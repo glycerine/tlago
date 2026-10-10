@@ -7704,6 +7704,26 @@ uncached, sourced and unsourced lambdas are observed. No semantic graph mutation
 arbitrary callback or original-test credit is involved. Null EXCEPT object
 entries, mutation during callbacks and concurrent mutation remain unproven.
 
+Lambda application and selection scan retained EXCEPTs from newest to oldest.
+Current path reads retain typed null/index array failures; a null current path
+element fails before equality. A matching terminal update stops the scan, but a
+null replacement still requires body evaluation, rather than searching older
+updates or returning null. Nonterminal matches collected before that stop are
+reversed into source order and applied after the body/terminal result. A null
+result with pending matches fails at that receiver. Uncached body binding rejects
+null parameters; a non-null terminal match bypasses parameter reads. Cached
+records delegate before retained EXCEPT/parameter access.
+All 1,088 direct application/selection observations agree on values, errors,
+source frames and cache presence using actual parsed test209 S formals/body.
+The matrix includes seventeen retained EXCEPT forms, valid/out-of-domain/null/
+boolean arguments, null/valid parameters, actual materialized cached records
+and sourced/unsourced lambdas. It checks update ordering, nested tuple updates,
+null replacement fallback, null/empty paths and negative/exhausted indices.
+Runtime EXCEPTs are installed through TakeExcept, then retained fields are
+replaced where needed. No semantic graph mutation, fabricated evaluator or
+original-method credit is involved. Arbitrary equality/body callbacks, null body
+results with pending matches and concurrent mutation remain unproven.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes
