@@ -697,6 +697,17 @@ exercised here are unchanged since its build; later string-fingerprint changes
 are outside this random-long workload. The preserved log is
 `.codex-gotmp/offheap-random-full-after-outage.log`. Long-test inventory credit
 is now 19 of 22 contexts; the three original sequential workloads remain pending.
+Full sequential off-heap reconciliation is now running: unchanged Java session
+`69494` and native draft session `85088`. Logs are
+`.codex-gotmp/fpset-sequential/java-offheap-full.log` and
+`.codex-gotmp/fpset-sequential/native-offheap-full.log`. Both retain the original
+3,221,225,473-iteration bound, all assertions and default 64 MiB configuration,
+without race instrumentation. Poll those same handles; no terminal result exists.
+The original generator produces a duplicate at `i = 1,073,741,825`, equal to the
+previous iteration's fingerprint. Keep this source issue visible; do not alter
+assertions, bounds or production semantics to obtain a pass. Faithful drafts for
+all three factories compile in ignored `.codex-gotmp/fpset-sequential/driver`;
+compilation and partial execution earn no original-method credit.
 Do not restart this completed workload. Older interrupted runs and the duplicate
 session `7371` stopped with exit 130 earn no credit. Namespace process lists
 alone cannot establish that a tool-owned process has stopped; poll its original

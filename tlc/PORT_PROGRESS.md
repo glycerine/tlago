@@ -37971,3 +37971,57 @@ no race instrumentation. Full CommunityModules receipt from 1b883a4 is retained
 without claiming a post-change rerun. Handoff/architecture now describe this
 contract and its limits. No original-test credit or long-workload credit changes.
 The three original sequential long methods remain pending; goal active.
+
+
+## Original sequential fingerprint workloads: faithful drafts and live reconciliation
+
+The previous goal turn made verified progress in 1fcacdf. Inspect the clean
+worktree, complete pinned test-long FPSetTest.java, all three concrete factories,
+AbstractFPSetTest setup/teardown and the retained long-test receipts. The original
+sequential loop uses l = 2,147,483,649 and i from -1,073,741,824 through
+2,147,483,648 inclusive: 3,221,225,473 iterations. Odd indices use l-i and even
+indices use i. Each put must be new, every size must equal ++counter, checkpoint
+begin/commit follow the loop, and the final original assertion demands size l.
+At i = 1,073,741,824 and 1,073,741,825, both branches produce fingerprint
+1,073,741,824. Preserve this generator and all assertions; it cannot justify a
+production duplicate-insertion workaround. A full source execution is needed
+before claiming the exact observed failure point or crediting reconciliation.
+
+Create faithful drafts for LSBDiskFPSet, MSBDiskFPSet and OffHeapDiskFPSet in
+ignored .codex-gotmp/fpset-sequential/driver/sequential_test.go. Retain every loop,
+branch, assertion and checkpoint operation, default configuration and one reader.
+The off-heap factory ignores its argument and selects source ratio 1.0. Native
+progress logging adds completed iteration counts and normal Go cleanup closes
+owned handles; neither changes the assertion body. No reduced bounds, new skip,
+weakened assertion, race instrumentation or persistent test/fixture. Since the
+source generator demonstrably repeats a fingerprint, these are reconciliation
+drafts, not completed persistent ports. Long inventory stays 19/22.
+
+Compile unchanged Java AbstractFPSetTest and test-long FPSetTest plus its three
+concrete classes into ignored java-classes, with source JUnit 4.12. The small
+RunSequential entry point invokes actual setUp, testMaxFPSetSize and tearDown
+in finally; it does not replace, instrument or shorten the method body. Java
+compilation and native compile-only check terminal 7b2e49 exit zero. Go's
+compile.log records compilation only, not body-pass evidence.
+
+Start the full off-heap pair at 2026-10-10 17:44:53 CDT, no timeout or race.
+Java session 69494 (start 2b44cc) invokes the unchanged original method with
+default VM memory settings, source JUnit/Hamcrest and local temporary storage:
+java -Djava.io.tmpdir="$PWD/.codex-gotmp/fpset-sequential" \
+  -XX:-ShowCodeDetailsInExceptionMessages \
+  -cp .codex-gotmp/fpset-sequential/java-classes:../tlaplus/tlatools/org.lamport.tlatools/class:../tlaplus/tlatools/org.lamport.tlatools/lib/junit-4.12.jar:../tlaplus/tlatools/org.lamport.tlatools/lib/hamcrest-core-1.3.jar \
+  RunSequential offheap > .codex-gotmp/fpset-sequential/java-offheap-full.log 2>&1
+
+Native session 85088 (start 42eef3) uses the source default 64 MiB direct budget:
+env -u TLAGO_MAX_DIRECT_MEMORY GOCACHE="$PWD/.codex-gocache" \
+  GOTMPDIR="$PWD/.codex-gotmp" TMPDIR="$PWD/.codex-gotmp" \
+  GOPROXY=off GOSUMDB=off go test ./.codex-gotmp/fpset-sequential/driver \
+  -run '^TestJavaOffHeapDiskFPSetLong_testMaxFPSetSize$' \
+  -count=1 -timeout=0 -v > .codex-gotmp/fpset-sequential/native-offheap-full.log 2>&1
+
+Both handles are live, with test-start output. Poll the same handles across goal
+turns; a progress line, observation timeout or namespace process listing cannot
+establish termination. No duplicate run is started. Heap drafts compile but are
+not running. Prior random-long PASS is retained and its stale test-file comment
+is corrected; do not rerun it. Handoff now records the two live handles and the
+source generator issue. No main/long test credit changes; goal remains active.

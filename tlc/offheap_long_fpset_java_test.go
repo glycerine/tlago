@@ -6,8 +6,8 @@ import "testing"
 // Original OffHeapDiskFPSetLongTest collision/position methods and inherited testSimpleFill.
 // The full multiple-flush method is in offheap_multiple_flushes_java_test.go
 // behind tlc_fp_stress; the full inherited random method is in
-// offheap_long_fpset_stress_java_test.go. Its full execution and the inherited
-// sequential method remain pending.
+// offheap_long_fpset_stress_java_test.go; its full random workload passed. The
+// inherited sequential method remains pending source reconciliation.
 // The source factory ignores the supplied config, selecting ratio 1.0 instead.
 func TestJavaOffHeapDiskFPSetLong(t *testing.T) {
 	newSet := func(t *testing.T) *OffHeapDiskFPSet {
