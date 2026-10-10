@@ -11229,6 +11229,22 @@ Worker.addElement wraps Exception with the successor state but lets Java Error
 subclasses escape. Worker.run's inner catch around next-state generation is
 separate from its outer loop catch; both preserve the original throwable.
 
+LazyValue.Eval rejects a null tool before entering the native evaluator. The
+native evaluator can evaluate constant expressions with a null receiver, so
+this source call-site guard is necessary. Eval retains its existing source
+attachment behavior and adds no lazy-value owner catch. Unevaluated null
+expressions render as Java's literal null inside the LAZY marker; cached values
+still own their rendering path. An ignored observer uses actual checked test206
+expressions and runtime value constructors, reflecting only LazyValue's actual
+private cache field in Java. The 704-row baseline has 32 differences; all 1,024
+expanded rows now match exactly. These cover delegation, prefixed rendering,
+source flags, null tools/expressions, cached/null/undefined values, repeated
+reads, null/empty states, clear/primed/enabled controls and uncached Eval after
+getValue. Cache identities, values and counts are retained. Focused original
+checks pass, including both Github798 models and ConstantContextTLCCache. No
+persistent test/fixture or original-method credit is added. Additional state
+mutation, child-source and constructor/coverage variants remain unproven.
+
 LazyValue.getValue and LazySupplierValue.getValue do not attach source metadata
 in Java and now preserve that distinction in Go. LazyValue.eval retains its
 source-if-missing behavior. Adding a source in the getValue path could turn an

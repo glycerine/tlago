@@ -516,6 +516,13 @@ ownership and expansion modes. Focused original/native checks pass. Generic nati
 lookup symbols do not stand in for source formals; existing test setups now create
 explicit formals with their assertions preserved. Further malformed runtime
 objects and mutation lifetimes remain unproven.
+`LazyValue.Eval` now rejects a null tool before evaluating, and unevaluated null
+expressions render as Java's literal `null`. All 1,024 observed delegation,
+rendering, evaluation and repeated-cache cases match exactly. Focused
+original/native checks pass, including both GitHub 798 models and
+`ConstantContextTLCCache`. These observations cover actual constant expressions,
+null/empty states and selected control changes; arbitrary state mutation and
+additional constructor/coverage variants remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

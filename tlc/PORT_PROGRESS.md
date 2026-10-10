@@ -37296,3 +37296,37 @@ tlc 2.918s. Reuse prior full CommunityModules baseline; no new concern warrants
 another broad workload. Non-formal elements in unified native symbol slices
 have no claimed source array-class identity. Further runtime objects/mutation
 lifetimes remain unproven. Handoff and architecture updated; overall goal active.
+
+Lazy-value continuation after verified e42134c. Previous goal turn made progress;
+checkout clean. Inspect adjacent pinned LazyValue source and native delegation,
+cache, eval and rendering. Source eval invokes a required tool; native Tool.Eval
+can evaluate pure constants with a null receiver. Source concatenates null expr
+as literal null; native semantic formatting returns <nil>.
+
+Prepare ignored .codex-gotmp/lazy-value-boundaries with actual checked test206
+expressions and real lazy/value constructors. Java reflects only the actual
+private lazy cache field and actual empty MVPerm constructor. No fabricated
+semantic graphs or evaluator callbacks. First observer compilation requires
+access to the package-private permutation constructor; use reflection rather
+than substituting an implementation. Remove unused native setup binding.
+Source a22953 and native 49c460 exit zero. All 704 rows present; 32 actual
+differences, 16 null-tool evaluation and 16 null-expression rendering/deep-copy
+rendering. Cached delegation, failure ownership and other observed operations
+already agree.
+
+LazyValue.Eval now throws typed NullPointerException before invoking a null tool,
+without adding an owner catch. Unevaluated null expressions print Java's null;
+cached rendering stays delegated. Native 38676 exits zero (566431); all 704
+rows exactly match. Focused original/native 50106 exits zero (1eff47), root
+3.588s and tlc 2.719s, including both original Github798 regressions and Test219.
+
+Preserve initial source/native logs as *-base.log. Expand observer with repeated
+getValue/cache reads, clear/primed/enabled control changes, null states,
+null-tool cache access after evaluation, uncached Eval after getValue, and
+post-cache copy/rendering. Source c3565a/native e436bd exit zero; all 1,024
+rows match exactly, including cache identity, contents, count, source ownership
+and prefixed buffers. Original ConstantContextTLCCache passes independently,
+terminal bd7f35, root 0.258s. No persistent tests/fixtures or original-method
+credit added. Prior broad CommunityModules baseline retained; this change has
+focused verification. Handoff/architecture updated. Additional state mutation,
+child-source and constructor/coverage variants remain unproven. Goal active.

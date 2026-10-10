@@ -212,6 +212,9 @@ func (v *LazyValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err erro
 }
 
 func (v *LazyValue) Eval(tool *Tool, state *TLCStateMut, pstate *TLCStateMut) (Value, error) {
+	if tool == nil {
+		panic(NewNullPointerException())
+	}
 	value, err := tool.Eval(v.Expr, v.Con, state, pstate, EvalClear, v.CM)
 	if err != nil {
 		return nil, err
@@ -227,7 +230,11 @@ func (v *LazyValue) String() string {
 func (v *LazyValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if v.Val == nil || v.Val == ValUndef {
-		sb.WriteString("<LAZY " + semanticNodeJavaString(v.Expr) + ">")
+		image := "null"
+		if v.Expr != nil {
+			image = semanticNodeJavaString(v.Expr)
+		}
+		sb.WriteString("<LAZY " + image + ">")
 		return sb
 	}
 	return appendValueString(v.Val, sb, offset, swallow)
