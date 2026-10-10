@@ -5509,6 +5509,32 @@ ModelValueTest methods pass. No persistent tests/fixtures or original-method
 credit are added. Concurrent mutation, allocation-resource behavior and further
 arbitrary field changes remain unproven.
 
+ModelValue.Compare checks both names at the source UniqueString comparison
+call, preserving null failures under the model-value owner catch. Compatible
+typed and untyped comparisons retain their separate branch order. Typed-null
+Go model-value arguments follow Java null branches in Compare, Equal and Member.
+Rendering appends Java's literal null for an absent name, so diagnostics and
+completed EXCEPT rendering use the same source text. FingerPrint extends the
+kind byte before requiring the name pointer; the nullable native UniqueString
+fingerprint helper cannot bypass that source dereference. The ignored observer
+uses actual model/value constructors, actual EXCEPT cursor/path fields and
+checked test206 source metadata. All 6,656 rows match exactly, spanning direct
+and reverse calls, source flags, null/typed/untyped/shared/empty/Unicode names,
+null and typed-null operands, prefixed rendering, EXCEPT cursors, permutation
+and fingerprints. The corrected 4,608-row baseline has 776 differences; the
+expanded fingerprint cases expose 64 further null-name failures before repair.
+Observer setup initializes the actual Java debugger constant before resetting
+both intern tables. Without that step, Java lazily interns its question-mark
+name during the comparison while Go has already initialized the constant,
+shifting later tokens. Earlier loaded-table and pre-initialization logs remain
+preserved. Null native references are formatted as null by the observer. This
+proves the bounded method contracts under controlled interning, not general
+whole-model intern ordering. Focused original/native checks, including all 44
+ModelValueTest methods, pass. The earlier 672 deduplication rows still match.
+No persistent tests/fixtures or original-method credit are added. Whole-model
+interning histories, other typed-null classes and additional mutations remain
+unproven.
+
 - `TLCStateMut.toString` also honors VIEW, but only when the global `useView`
   flag is enabled; fingerprinting uses VIEW whenever the active tool has one.
 - `setPredecessor` is also the level increment path. Java fails with

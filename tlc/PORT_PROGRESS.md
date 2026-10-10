@@ -37448,3 +37448,49 @@ persistent tests/fixtures or original-method credit added. Prior broad baseline
 retained; this correction has focused verification. Handoff/architecture updated;
 goal active. Concurrent mutation, allocation-resource behavior and arbitrary
 field changes beyond these observations remain unproven.
+
+Model-value boundary continuation after verified 8e81789. Previous goal turn
+made progress; checkout clean. Pinned Compare invokes non-null UniqueString
+receivers/arguments, while native Compare tolerates absent names. Source
+rendering appends literal null; native renders an absent name as empty text.
+Prepare ignored .codex-gotmp/model-value-boundaries with actual model/value
+constructors, EXCEPT objects/cursors and checked test206 source metadata.
+No semantic graph or evaluator callback is fabricated.
+
+Initial parsed-intern source 2f94fc/native 25797 terminal f51ec0 complete all
+4,608 rows, 816 differences. Preserve java/native-before-parsed-intern.log.
+Reset both actual intern tables to compare method contracts under common
+initial state, and format null native references as null in the observer.
+Source cbdf30/native 52393 terminal bef523 complete 4,608, 800 differences.
+Native comparison now requires both name pointers at the source call boundary;
+Compare/Equal/Member normalize typed-null model arguments to source null branches.
+Rendering uses Java's null text. Native 5363 terminal 9c2809 leaves 24 token
+magnitude differences, all later empty-name comparisons; no stack differences.
+
+Inspect actual intern snapshots rather than suppressing token values. Source
+0e3544/native 35977 terminal 0feb9e show Java's extra question-mark entry:
+accessing the actual debugger constant lazily initializes its class after reset;
+Go package initialization occurred before reset. Initialize the actual source
+constant before reset, retaining pre-initialization logs as
+*-reset-before-debug-init.log. Source d6e3ab exits zero; all 4,608 rows now
+match exactly. Corrected initial native baseline has 776 differences under the
+matching source setup. Whole-model interning histories remain outside this
+bounded observation. Focused original/native 49574 passes (e6ebb0), root
+6.578s and tlc 2.663s, including all 44 original ModelValueTest methods.
+
+Preserve matching initial logs as *-base.log. Expand actual EXCEPT cursors with
+null paths, negative and oversized positions, empty/swap permutations, deep-copy
+identity, flags and direct fingerprints. Source 938693/native 44904 terminal
+58deb6 complete 6,656 rows; 64 actual null-name fingerprint differences remain.
+Native nullable UniqueString.FingerPrint returns its input for null; source
+ModelValue must fail at its call-site dereference after extending the kind byte.
+Add the model-value guard under its existing owner catch, retaining that order.
+Final native 11192 exits zero (4d79e8); all 6,656 rows exactly match. Final
+focused original/native 74181 exits zero (989e03), root 6.553s and tlc 2.609s.
+Prior deduplication observer rerun 27007f exits zero, all 672 rows still exact;
+the final fingerprint-only guard does not change that path.
+
+No persistent tests/fixtures or original-method credit. Existing assertions
+remain unchanged. Prior broad baseline retained; this correction has focused
+verification. Handoff/architecture updated; goal active. Whole-model interning
+histories, other typed-null classes and arbitrary mutation remain unproven.

@@ -321,14 +321,23 @@ func (v *ModelValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *ModelValue) Compare(other Value) (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
+	if o, ok := other.(*ModelValue); ok && o == nil {
+		other = nil
+	}
 	if v.Type == typedModelValueUntypedCodeUnit {
 		if o, ok := other.(*ModelValue); ok {
+			if v.Val == nil || o.Val == nil {
+				panic(NewNullPointerException())
+			}
 			return v.Val.Compare(o.Val), nil
 		}
 		return -1, nil
 	}
 	if o, ok := other.(*ModelValue); ok {
 		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
+			if v.Val == nil || o.Val == nil {
+				panic(NewNullPointerException())
+			}
 			return v.Val.Compare(o.Val), nil
 		}
 		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the differently-typed model values %s and %s", ValuesPPR(v), ValuesPPR(o)))
@@ -341,6 +350,9 @@ func (v *ModelValue) Compare(other Value) (resultInt int, err error) {
 
 func (v *ModelValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if o, ok := other.(*ModelValue); ok && o == nil {
+		other = nil
+	}
 	if v.Type == typedModelValueUntypedCodeUnit {
 		o, ok := other.(*ModelValue)
 		if !ok || o == nil {
@@ -398,6 +410,9 @@ func (v *ModelValue) modelValueMember(other Value) (resultBool bool, err error) 
 
 func (v *ModelValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if o, ok := elem.(*ModelValue); ok && o == nil {
+		elem = nil
+	}
 	if elem == nil {
 		panic(NewNullPointerException())
 	}
@@ -433,7 +448,11 @@ func (v *ModelValue) Permute(perm *MVPerm) Value {
 
 func (v *ModelValue) FingerPrint(fp uint64) uint64 {
 	defer catchValueFailure(v, nil)
-	return v.Val.FingerPrint(FP64ExtendByte(fp, byte(ModelValueKind)))
+	fp = FP64ExtendByte(fp, byte(ModelValueKind))
+	if v.Val == nil {
+		panic(NewNullPointerException())
+	}
+	return v.Val.FingerPrint(fp)
 }
 
 func (v *ModelValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
@@ -472,7 +491,11 @@ func (v *ModelValue) String() string {
 
 func (v *ModelValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	sb.WriteString(v.Val.String())
+	if v.Val == nil {
+		sb.WriteString("null")
+	} else {
+		sb.WriteString(v.Val.String())
+	}
 	return sb
 }
 

@@ -547,6 +547,13 @@ model-value equality now preserves null-name failures, and typed equality uses
 source name-reference identity. Focused original/native checks and all 44
 original `ModelValueTest` methods pass. Mutation variants beyond these
 observations remain unproven.
+Model-value comparison and fingerprinting now retain null-name failures;
+rendering prints a null name as Java's `null`. Null model-value arguments retain
+their source branches. All 6,656 direct/reverse, rendering, EXCEPT, permutation
+and fingerprint observations match with controlled intern-table setup, and
+focused original/native tests pass, including all 44 `ModelValueTest` methods.
+The observer initializes Java's debugger constant before resetting both intern
+tables; whole-model interning histories and further mutations remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
