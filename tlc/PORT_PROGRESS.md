@@ -31843,3 +31843,57 @@ Full random handle 27326 remains live on direct poll 9d1e9b. Latest saved progre
 is 1,098,174,186 / 2,147,483,648 (ef389b), without terminal result or original-method
 credit. Preserve handle, original bounds, default budget and artifacts. Overall
 TLC parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10: CombineFcn operand conversion order.
+
+Previous goal turn was progress: verified commit 87621be. Revalidate clean
+worktree and original full random handle 27326 (c3e183 live). Source TLC.CombineFcn
+calls both operands' toFcnRcd methods before checking either conversion result.
+Native instead returned the first-argument shape error immediately when the
+left conversion returned nil. This skips right-lambda materialization and hides
+its conversion exception. Move right conversion before the shape checks, keeping
+left-to-right conversion order. Null operand receivers now raise typed
+NullPointerException at their respective conversion step. Preserve existing
+combination/domain/value logic and generic conversion helper policy.
+
+Ignored .codex-gotmp/combine-conversion observations construct finite lazy
+functions using the actual existing C model formal Op(S), bodies c/d, initial
+and successor states. CombineProbeTool is a renamed pinned FastTool adapter that
+records each bound-domain body evaluation and supplies its value or conversion
+failure; Java TLC.CombineFcn and FcnLambdaValue remain unchanged. Domains 1..2
+and 2..3 expose overlap, right-side traversal and left-biased combination. Ten
+pairs cover invalid/lazy, invalid/failing, invalid/null, null/lazy, lazy/invalid,
+failing/lazy, lazy/lazy, both invalid, explicit/lazy and lazy/null. Outputs retain
+full value text/error messages, each lambda's materialized-record flag and ordered
+L/R domain-point events. NPE comparisons retain the category rather than JVM
+enhanced detail messages. No persistent test/fixture was invented.
+
+The initial simple line filter truncated native multiline error messages and
+would falsely report differences in unchanged shape-error controls. Preserve raw
+java.log, before.log and after.log; reconstruct each complete named record across
+its embedded newlines before comparison. Strict complete-record comparison
+(0a73fe) matches all ten rows and confirms five genuine baseline differences:
+bad/lazy, bad/fail, bad/null, null/lazy and lazy/null. The invalid-left/lazy-right
+source row records R:2,R:3 and retains the right materialization even though it
+finally throws the first-argument error. The invalid-left/failing-right source
+row throws the right conversion failure after R:2. Existing left failure and
+successful combination controls retain their exact events/results. These bounded
+observations do not claim every lazy-function failure or all conversion types.
+
+All five unchanged original TLCTest methods pass in native TestJavaTLCModule:
+testA, testB, both maximum-int interval tests and testPermutations. Existing
+focused CombineFcn checks pass in the same normal selection (5081 terminal
+781677, original-module.log, 0.012s). Unchanged Java TLCTest independently passes
+JUnitCore: OK (5 tests), 15aed6 terminal, 0.012s, java-original-module.log. Run in
+the ignored workspace; upstream remains read-only. Four relevant original native
+model methods pass: Github652, TLCExtModel, ValueSemanticsAssume and
+ConstantRank1TLCEval (11904 terminal 077693, original-models.log, 2.748s).
+No original-method credit was added; the existing translations retain all source
+assertions. No broad suite, race workload, changed bound or mail work. Formatting
+and diff checks pass; HANDOFF and TLC_ARCH record the final conversion contract.
+
+Original full random handle 27326 remains live on direct poll 8ce78a. Latest
+saved progress is 1,108,881,454 / 2,147,483,648 (a332a5), without terminal result
+or original-method credit. Preserve its handle, bounds, default budget and
+artifacts. Core TLC parity and original-model reconciliation remain incomplete.

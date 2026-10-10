@@ -87,11 +87,19 @@ func MakeFcn(domain Value, elem Value) Value {
 }
 
 func CombineFcn(f1, f2 Value) (Value, error) {
+	if f1 == nil {
+		panic(NewNullPointerException())
+	}
 	fcn1 := asFcnRcdValue(f1)
+	if f2 == nil {
+		panic(NewNullPointerException())
+	}
+	// Java converts both operands before checking either conversion result.
+	// Materializing the second lambda can evaluate its body or throw.
+	fcn2 := asFcnRcdValue(f2)
 	if fcn1 == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "@@", "function", ValuesPPR(f1))
 	}
-	fcn2 := asFcnRcdValue(f2)
 	if fcn2 == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "@@", "function", ValuesPPR(f2))
 	}

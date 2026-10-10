@@ -6892,8 +6892,14 @@ distinct relation endpoints in first-seen order from relation enumeration.
 
 Core `TLC` module operators also carry observable Java validation order.
 `Assert` throws `TLC_VALUE_ASSERT_FAILED` with `Values.ppr` of the second
-argument. `@@` reports first/second function-shape errors with
-`TLC_MODULE_ARGUMENT_ERROR`. `SortSeq` checks that its first argument converts
+argument. `@@` converts both operands to finite functions, left then right,
+before checking either conversion result. A lazy right operand is materialized
+even when the left conversion returned null, and its conversion failure precedes
+the first-argument shape error. Null operand receivers fail at their conversion
+step. Nonfunction conversion results report first/second function-shape errors
+with `TLC_MODULE_ARGUMENT_ERROR`. Ten bounded source/native observations retain
+full diagnostics, left/right evaluation events and lambda materialization state;
+the unchanged five-method `TLCTest` passes in Java and Go. `SortSeq` checks that its first argument converts
 to a tuple, then checks that the comparator is an operator before returning for
 an empty sequence; Java's first-argument message says "natural number" and the
 Go port intentionally preserves that wording. `Permutations` and the finite-set
