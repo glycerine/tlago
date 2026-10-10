@@ -585,24 +585,27 @@ func semanticNodeSetValue(tool *Tool, nodes []SemanticNode) Value {
 func constraintRecordValue(tool *Tool, node SemanticNode) Value {
 	ensureTLCGetSetUniqueStrings()
 	ensureCounterExampleUniqueStrings()
-	switch value := SemanticToolObjectForTool(tool, node).(type) {
+	if semanticExploreNull(node) {
+		panic(NewNullPointerException())
+	}
+	object := SemanticToolObjectForTool(tool, node)
+	if semanticExploreNull(object) {
+		panic(NewNullPointerException())
+	}
+	switch value := object.(type) {
 	case *OpDefNode:
 		return opDefRecordValue(value)
 	case *Action:
 		return value.ToRecordValue()
 	}
-	return NewRecordValue(
-		[]*UniqueString{actionRecordName},
-		[]Value{NewStringValue(fmt.Sprint(node))},
-		false,
-	)
+	panic(NewClassCastException("constraint tool object is not an Action"))
 }
 
 func opDefRecordValue(op *OpDefNode) Value {
 	ensureTLCGetSetUniqueStrings()
 	ensureCounterExampleUniqueStrings()
 	if op == nil {
-		return EmptyRecord
+		panic(NewNullPointerException())
 	}
 	name := ""
 	if op.Name != nil {

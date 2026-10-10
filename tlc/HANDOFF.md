@@ -85,8 +85,10 @@ observed rows after setup, including replacement in the retained array. Null
 location records use Java's `--unknown--` module. Spec metadata and coverage now
 use the requested tool's declarations; counters belong to those declarations.
 All 15 observed ownership/report/failure rows and 11 counter lifecycle rows match
-Java. Next source audit: constraint metadata's tool-object casts and failure
-boundaries; the native fallback currently differs from the source cast.
+Java. Constraint metadata now preserves Java's operator/action casts and null
+failures; all 45 observed state/action cases agree. Next source audit: constraint
+array ownership through tool and processor getters, which currently copy arrays
+and retain setup fields rather than Java's live processor arrays.
 
 ## Verification baseline and test credit
 

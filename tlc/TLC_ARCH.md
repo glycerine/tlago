@@ -11140,6 +11140,23 @@ observes unset/reset, Noop, Naive and synchronized HyperLogLog lifecycle and nul
 boundaries on an actual original declaration. All 11 rows agree. These contracts
 do not establish general semantic graph mutation sharing.
 
+Constraint metadata reads the current tool-indexed object from each constraint
+node. It accepts `OpDefNode`, otherwise requires `Action`, matching Java's cast.
+Unsupported objects throw the generic `ClassCastException`; null/typed-null
+objects or nodes throw `NullPointerException`. Operator record construction also
+rejects null instead of returning an empty record. Valid records retain current
+source locations and action parameters. This metadata path no longer returns a
+name-only substitute or converts null actions to the native unknown-action
+record. Other native unknown-action helpers keep their existing contract.
+
+An ignored pinned-Java/native driver loads unchanged C and TLCGetLevel and
+observes 15 phases for C's state constraints and TLCGetLevel's state/action
+constraints. Original/operator-location/missing-syntax, actual action replacement,
+independent tool slots, null/typed-null and unsupported objects, restoration and
+null/typed-null nodes produce 45 identical rows. Baseline differs in 27 rows.
+Constraint array sharing and processor-field replacement are separate contracts;
+the current tool and processor getters copy arrays and retain setup fields.
+
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing
 location/syntax views, primarily OpDef symbols. A pinned-Java/native standalone

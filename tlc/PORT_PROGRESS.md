@@ -29148,3 +29148,42 @@ inventory's stale pre-outage session/log reference without changing its pending
 credit. Overall parity is incomplete. Next concrete audit: constraint metadata
 casts current tool objects to OpDefNode or Action; Go currently has a name-only
 fallback instead of the source failure boundary.
+
+
+2026-10-09: Constraint metadata casts and null failures
+
+Java TLCGetSet.constraint2Value accepts OpDefNode, otherwise casts to Action;
+RecordValue then dereferences the result. Go returned a name-only fallback for
+unsupported objects and used empty/unknown records for typed-null definitions
+and actions. Constraint metadata now checks null nodes/objects, reads the current
+tool-indexed object, accepts the two source types and throws generic native null
+or class-cast exceptions at the corresponding boundaries. Its private operator
+record constructor rejects null too. Valid record fields/location behavior and
+other native unknown-action helpers remain unchanged.
+
+Ignored standalone drivers use unchanged original C and TLCGetLevel in pinned
+Java and Go. Fifteen phases run against C state constraints and TLCGetLevel state
+and action constraints: original operator, mutated/missing source syntax, actual
+action replacement, a separate tool slot, null/typed-null values, three unsupported
+object classes, restoration and null/typed-null nodes. All 45 record/exception
+rows agree; baseline differs in 27. Final comparison terminal 459ccb, status 0.
+Logs under .codex-gotmp/: constraint-record-java.log, constraint-record-before.log
+and constraint-record-after.log; driver/baseline overlay remain ignored under
+constraint-record-observation. javac emits only the deprecated frontend overload
+note. Source searches found no direct originals for constraint2Value or these
+semantic RecordValue constructors. No persistent tests or fixtures were added,
+and original-method credit is unchanged.
+
+Selected existing original TLCGetAll/TLCGetLevel (including the source model's
+exact spec-record postcondition), A/B/C coverage, Debug02-Debug05,
+ReportCoverage01-04 and DoInitFunctorEvalException checks plus focused native
+counterexample/successor checks pass normally. Log:
+.codex-gotmp/constraint-record-originals.log, terminal c71cce, status 0;
+root 5.856 seconds, TLC 0.077 seconds. Formatting and git diff --check pass.
+No full workspace/XML/ApalacheIR sweep or long race selection.
+
+Stress session 27326 remains live (poll 39ebe2), latest saved observation
+217,865,173 / 2,147,483,648 iterations, with no terminal result or new method
+credit. Overall parity remains incomplete. Next source audit: constraint array
+ownership. Java Tool delegates to current processor arrays; Go tool/processor
+getters currently copy arrays and retain setup fields.
