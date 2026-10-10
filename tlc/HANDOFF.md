@@ -111,8 +111,13 @@ comparisons also pass with action inputs that fail in the predecessor state.
 Distributed worker property failures now agree in six direct Java/native
 observations using existing model predicates: messages, original causes, state
 references, replay flags, generation counters and computation cleanup. Focused
-local/TCP worker checks pass; no production correction was needed. Next source
-audit: initial-predicate vector ownership and growth, which remains unproven.
+local/TCP worker checks pass; no production correction was needed. Initial
+predicates now retain the processor's `Vect` object instead of a slice snapshot.
+Cached growth, shrinkage, replacement and restoration match Java in 13 bounded
+observations; all 53 earlier predicate observations still agree. Focused original
+checks pass, including all five generated-trace tests. Continue core source
+parity and remaining original model-test reconciliation. General `Vect` invalid-
+count and exception behavior remains unproven.
 
 ## Verification baseline and test credit
 

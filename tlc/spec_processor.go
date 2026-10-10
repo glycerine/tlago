@@ -238,7 +238,7 @@ type SpecProcessor struct {
 	ConstantDefns     *InsMap[*ModuleNode, *InsMap[SemanticNode, any]]
 	Snapshot          *Defns
 	PreConstantSnap   *Defns
-	InitPred          []*Action
+	InitPred          *Vect[*Action]
 	NextPred          *Action
 	Temporals         []*Action
 	TemporalNames     []string
@@ -274,7 +274,7 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 	}
 	p := &SpecProcessor{
 		RootFile:          rootFile,
-		InitPred:          []*Action{},
+		InitPred:          NewVectWithCapacity[*Action](5),
 		Assumptions:       []SemanticNode{},
 		AssumptionIsAxiom: []bool{},
 		ToolID:            specToolID(),
@@ -341,7 +341,7 @@ func (p *SpecProcessor) ProcessConfig() {
 	} else {
 		if initName := p.Config.GetInit(); initName != "" {
 			if action := p.actionFromConfigName(initName, true, "initial predicate"); action != nil {
-				p.InitPred = append(p.InitPred, action)
+				p.InitPred.AddElement(action)
 			}
 		}
 		if nextName := p.Config.GetNext(); nextName != "" {
@@ -385,7 +385,7 @@ func (p *SpecProcessor) ProcessConfig() {
 
 func (p *SpecProcessor) resetProcessedConfig() {
 	p.ConfigErrors = nil
-	p.InitPred = []*Action{}
+	p.InitPred = NewVectWithCapacity[*Action](5)
 	p.NextPred = nil
 	// Java materializes non-null arrays even when a property family is empty.
 	p.Temporals = []*Action{}
@@ -438,7 +438,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	}
 	p.applyDefinitionsToTool(tool)
 	tool.ModelConfig = p.Config
-	tool.InitStateSpec = append([]*Action(nil), p.InitPred...)
+	tool.InitStateSpec = p.InitPred.ToSlice()
 	tool.NextStateSpec = p.NextPred
 	tool.Temporals = append([]*Action(nil), p.Temporals...)
 	tool.TemporalNames = append([]string(nil), p.TemporalNames...)
@@ -472,7 +472,7 @@ func (p *SpecProcessor) GetVariablesNodes() []*SymbolNode {
 	return p.VariablesNodes
 }
 
-func (p *SpecProcessor) GetInitPred() []*Action {
+func (p *SpecProcessor) GetInitPred() *Vect[*Action] {
 	if p == nil {
 		return nil
 	}
@@ -1415,7 +1415,7 @@ func (p *SpecProcessor) processMissingInitNextConfig() {
 	if p == nil {
 		return
 	}
-	if len(p.InitPred) == 0 && (len(p.ImpliedInits) != 0 || len(p.ImpliedActions) != 0 || len(p.Variables) != 0 || len(p.Invariants) != 0 || len(p.ImpliedTemporals) != 0) {
+	if p.InitPred.Size() == 0 && (len(p.ImpliedInits) != 0 || len(p.ImpliedActions) != 0 || len(p.Variables) != 0 || len(p.Invariants) != 0 || len(p.ImpliedTemporals) != 0) {
 		p.addConfigError(ECTLCConfigMissingInit)
 	}
 	if p.NextPred == nil && (len(p.ImpliedActions) != 0 || len(p.Invariants) != 0 || len(p.ImpliedTemporals) != 0) {
@@ -1465,7 +1465,7 @@ func (p *SpecProcessor) processConfigSpec(tool *Tool, pred SemanticNode, c *Cont
 
 	level := tool.GetLevelBound(pred, c)
 	if level <= TLCLevelState {
-		p.InitPred = append(p.InitPred, NewAction(SpecsAddSubsts(pred, subs), c, ""))
+		p.InitPred.AddElement(NewAction(SpecsAddSubsts(pred, subs), c, ""))
 		return
 	}
 	if level == TLCLevelTemporal {
@@ -1492,7 +1492,7 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 				return true
 			}
 			if tool.GetLevelBound(v.Body, c) == TLCLevelState {
-				p.InitPred = append(p.InitPred, NewActionFromOpDef(SpecsAddSubsts(v.Body, subs), c, v, true, false))
+				p.InitPred.AddElement(NewActionFromOpDef(SpecsAddSubsts(v.Body, subs), c, v, true, false))
 				return true
 			}
 			p.processConfigSpec(tool, v.Body, c, subs, stack)

@@ -417,7 +417,7 @@ func tlcSpecRecord(tool *Tool) Value {
 		tlcSpecImplActs,
 	}
 	values := []Value{
-		initActionSetValue(tool.requireActionArray(tool.GetInitStateSpec())),
+		initActionSetValue(tool.GetInitStateSpec().ToSlice()),
 		nextActionSetValue(tool.GetActions()),
 		propertyActionSetValue(tool.requireActionArray(tool.GetTemporals())),
 		propertyActionSetValue(filterInternalActions(tool.requireActionArray(tool.GetInvariants()))),

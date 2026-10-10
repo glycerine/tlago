@@ -3202,8 +3202,8 @@ func (d *TLCDebugger) PushInitStatesFrame(tool *Tool, functor *StateFunctor) *TL
 	initAction := UnknownAction
 	if tool != nil {
 		inits := tool.GetInitStateSpec()
-		if len(inits) > 0 && inits[0] != nil {
-			initAction = inits[0]
+		if inits.Size() > 0 && inits.ElementAt(0) != nil {
+			initAction = inits.ElementAt(0)
 		}
 	}
 	frame := NewTLCInitStatesStackFrame(d.topBaseFrame(), initAction.Pred, initAction.Con, tool, functor)

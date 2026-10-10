@@ -44,7 +44,7 @@ func TestToolSpecActionsPreserveInitThenNextOrder(t *testing.T) {
 		t.Fatalf("spec actions order = %#v, want init, nextA, nextB", specActions)
 	}
 	specActions[0] = nil
-	if tool.GetInitStateSpec()[0] != init {
+	if tool.GetInitStateSpec().ElementAt(0) != init {
 		t.Fatalf("GetSpecActions returned slice aliases internal storage")
 	}
 }

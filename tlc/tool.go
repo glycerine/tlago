@@ -340,7 +340,9 @@ func (t *Tool) AssignActionIDs() {
 
 func (t *Tool) assignActionIDs(actions []*Action) {
 	id := 0
-	for _, action := range t.requireActionArray(t.GetInitStateSpec()) {
+	init := t.GetInitStateSpec()
+	for i := 0; i < init.Size(); i++ {
+		action := init.ElementAt(i)
 		if action != nil {
 			action.SetID(id)
 		}
@@ -361,7 +363,7 @@ func (t *Tool) GetInitStates(functor *StateFunctor) error {
 	if t == nil || functor == nil {
 		return nil
 	}
-	if t.SpecProcessor != nil || len(t.GetInitStateSpec()) != 0 {
+	if t.SpecProcessor != nil || t.GetInitStateSpec().Size() != 0 {
 		return t.GetInitStatesImpl(functor)
 	}
 	for _, state := range t.InitStates {
@@ -699,22 +701,25 @@ func (t *Tool) HasSymmetry() bool {
 	return len(t.SymmetryPerms) > 0
 }
 
-func (t *Tool) GetInitStateSpec() []*Action {
+// GetInitStateSpec retains the processor's vector object so cached callers see
+// its current size and backing storage after additions or removals.
+func (t *Tool) GetInitStateSpec() *Vect[*Action] {
 	if t == nil {
 		return nil
 	}
 	if t.SpecProcessor != nil {
 		return t.SpecProcessor.GetInitPred()
 	}
-	return append([]*Action(nil), t.InitStateSpec...)
+	return NewVectFrom(t.InitStateSpec)
 }
 
 func (t *Tool) GetSpecActions() []*Action {
 	if t == nil {
 		return nil
 	}
+	initPred := t.GetInitStateSpec()
 	actions := t.GetActions()
-	init := t.requireActionArray(t.GetInitStateSpec())
+	init := initPred.ToSlice()
 	out := make([]*Action, 0, len(init)+len(actions))
 	out = append(out, init...)
 	out = append(out, actions...)

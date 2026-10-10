@@ -12,16 +12,22 @@ const (
 )
 
 func (t *Tool) GetInitStatesImpl(functor *StateFunctor) error {
-	init := t.requireActionArray(t.GetInitStateSpec())
+	init := t.GetInitStateSpec()
 	acts := emptyActionItemListExt
-	for i := len(init) - 1; i > 0; i-- {
-		elem := init[i]
+	for i := init.Size() - 1; i > 0; i-- {
+		elem := init.ElementAt(i)
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
 		acts = acts.ConsAction(elem, ActionItemPred)
 	}
-	if len(init) == 0 {
+	if init.Size() == 0 {
 		return nil
 	}
-	elem := init[0]
+	elem := init.ElementAt(0)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
 	ps := NewEmptyState()
 	if acts.IsEmpty() {
 		acts.SetAction(elem)

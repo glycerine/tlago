@@ -127,7 +127,7 @@ func testJavaTraceExpressionSpecSafety(t *testing.T, mode string) {
 	if len(invariants) != 1 {
 		t.Fatalf("invariants=%d, want 1", len(invariants))
 	}
-	if len(processor.GetInitPred()) != 1 || processor.GetNextPred() == nil {
+	if processor.GetInitPred().Size() != 1 || processor.GetNextPred() == nil {
 		t.Fatal("expected one init predicate and a next-state relation")
 	}
 	states := javaGeneratedInitialStates(t, tool)
@@ -176,7 +176,7 @@ func TestJavaTraceExpressionSpecRuntime(t *testing.T) {
 	if len(invariants) != 1 {
 		t.Fatalf("invariants=%d, want 1", len(invariants))
 	}
-	if len(processor.GetInitPred()) != 1 || processor.GetNextPred() == nil {
+	if processor.GetInitPred().Size() != 1 || processor.GetNextPred() == nil {
 		t.Fatal("expected one init predicate and a next-state relation")
 	}
 	states := javaGeneratedInitialStates(t, tool)
@@ -228,7 +228,7 @@ func TestJavaTraceExpressionSpecDeadlock(t *testing.T) {
 	if len(invariants) != 1 {
 		t.Fatalf("invariants=%d, want 1", len(invariants))
 	}
-	if len(processor.GetInitPred()) != 1 || processor.GetNextPred() == nil {
+	if processor.GetInitPred().Size() != 1 || processor.GetNextPred() == nil {
 		t.Fatal("expected one init predicate and a next-state relation")
 	}
 	states := javaGeneratedInitialStates(t, tool)
@@ -265,7 +265,7 @@ func TestJavaTraceExpressionSpecLasso(t *testing.T) {
 	if len(processor.GetImpliedTemporals()) != 1 {
 		t.Fatalf("properties=%d, want 1", len(processor.GetImpliedTemporals()))
 	}
-	if len(processor.GetInitPred()) != 1 || processor.GetNextPred() == nil {
+	if processor.GetInitPred().Size() != 1 || processor.GetNextPred() == nil {
 		t.Fatal("expected one init predicate and a next-state relation")
 	}
 	if tool.GetModelConfig().GetAlias() == "" || tool.GetModelConfig().GetCheckDeadlock() {

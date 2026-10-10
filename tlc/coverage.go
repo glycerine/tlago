@@ -294,7 +294,8 @@ func CreateCoverageCostModels(tool *Tool) {
 	}
 	creator := newCoverageCreator(tool)
 	init := tool.GetInitStateSpec()
-	for _, action := range init {
+	for i := 0; i < init.Size(); i++ {
+		action := init.ElementAt(i)
 		if action != nil {
 			action.CM = creator.createForAction(action, CoverageRelationInit)
 		}
@@ -370,7 +371,9 @@ func reportCoverage(tool *Tool) {
 			PrintMessage(ECTLCCoverageVar, variable.Name.String(), variable.GetSourceLocation().String(), fmt.Sprint(count))
 		}
 	}
-	for _, action := range tool.GetInitStateSpec() {
+	init := tool.GetInitStateSpec()
+	for i := 0; i < init.Size(); i++ {
+		action := init.ElementAt(i)
 		if action != nil {
 			action.CM.Report()
 		}

@@ -11192,14 +11192,38 @@ remain non-null in Go after processing. No new source fixtures or persistent
 tests. Other action-array consumers' null behavior remains unproven.
 
 Initial/next predicate and assumption getters now delegate to current processor
-values. Processor initial-predicate, assumption and axiom-flag getters retain
-their slices. Initial generation, debugger initial-generation dispatch, action ID
+values. The initial-predicate getter retains the processor's `Vect` object;
+assumption and axiom-flag getters retain their arrays. Initial generation,
+debugger initial-generation dispatch, action ID
 assignment and combined spec-action construction use the initial getter. Action
 preparation reads the next getter; an already prepared next-action cache remains
 stable under direct processor replacement, matching Java's cached actions. The
 native explicit next setter updates the processor as well as invalidating its
-native action cache. Source initial and assumption arrays start non-null empty;
-source initial generation and metadata reject a null initial collection.
+native action cache. Source initial vectors and assumption arrays start non-null
+empty; source initial generation and metadata reject a null initial collection.
+
+The initial-predicate vector starts with the source capacity of five. Cached
+getters see additions, removals and backing-array growth through either owner;
+processor replacement leaves old cached vectors separate, and restoration
+reconnects them. Initial generation and coverage loops use current vector sizes
+and elements. Combined-action construction captures the initial vector before
+reading next actions, then copies its current contents. Native standalone tool
+adapters retain their copied initial fields. `Vect.AddElement` now uses source
+capacity doubling; element reads/writes address backing capacity, including stale
+slots after `RemoveAll`, with source null and index exceptions at those accesses.
+
+All 13 pinned-Java/native observations on unchanged TLCGetLevel agree on vector
+identity, sizes, capacities, actual generated initial-state counts and combined
+spec-action counts. They cover cached growth, processor removal, clear, backing
+slot access/write, re-expansion, processor replacement, isolated old/new growth,
+restoration and explicit capacity changes. A baseline comparison demonstrates
+that processor growth and clear leave a cached slice's length stale; the retained
+vector fixes both. All 53 earlier predicate/assumption/metadata observations
+still agree with Java. Existing original model checks retain their bounds and
+assertions; four generated-trace helper sites now use `Size` for the same original
+one-predicate assertions. No added persistent tests or original-method credit.
+General invalid element counts, other vector exceptions and concurrent mutation
+remain unproven.
 
 Assumption checking captures current assumption/axiom arrays once, as Java does.
 Axiom flags mask evaluation, including null predicates. A null assumption array

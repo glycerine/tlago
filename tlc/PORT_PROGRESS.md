@@ -29636,3 +29636,61 @@ used normal instrumentation and retained existing assertions. No full-suite,
 XML/ApalacheIR or broad race sweep. Inventory totals and method credit unchanged.
 Next audit is initial-predicate vector ownership and growth. Overall Java/Go
 parity remains incomplete.
+
+
+2026-10-09: Preserve the initial-predicate vector object across growth
+
+Previous goal turn made verified progress in 017b491. Source SpecProcessor owns
+a Vect<Action>, whereas the Go getter returned a retained slice. Cached slice
+headers did not observe length or backing-array changes. Replaced the processor's
+initial-predicate slice with the existing generic Vect implementation, starting
+at Java's capacity of five, and made Tool.GetInitStateSpec return that retained
+object. Initial generation, action IDs, debugger dispatch, coverage, metadata and
+combined-action consumers now use the vector. Combined-action construction keeps
+source getter order and copies current vector contents. Standalone native tool
+fields retain copied adapters. Vector additions use source capacity doubling;
+ElementAt/SetElementAt access backing capacity and preserve slots after raw
+RemoveAll. Null vector/initial actions and invalid backing indexes use source
+exception categories at the translated access sites. This is not a claim of
+complete Vect invalid-count or exception parity.
+
+All 13 pinned-Java/native ownership/growth observations agree: initial shape,
+cached growth, processor pop, clear and retained backing slot, backing write and
+re-expansion, processor replacement, separate old/new growth, restoration,
+explicit capacity reservation, shrink and regrowth. Observations include shared
+object identity, both lengths/capacities, actual initial generation and combined
+spec-action counts on unchanged TLCGetLevel. Java compile 61a8e7 and run c3de90
+returned status 0; native session 19965 completed status 0 (66e495). Comparison
+b7f9ae returned status 0. Baseline overlay at 017b491 demonstrates the bug:
+processor growth leaves cached/current lengths 1/7 and processor clear leaves
+1/0; the new vector reports 7/7 and 0/0. Baseline session 92597 completed status 0
+(3ed6e8); current d20125 returned status 0. Ignored observations are under
+.codex-gotmp/init-vector-observation/; logs are init-vector-{java,native}.log and
+init-vector-cache-{before,after}.log in .codex-gotmp/.
+
+Adapted the ignored earlier predicate observer to vector access; all 53 retained
+initial/next/assumption/metadata/format rows still agree with its pinned Java log.
+Comparison b31ac5 returned status 0, native 550718 returned status 0;
+init-vector-predicate-native.log. No prior checks were weakened or discarded.
+
+Focused original TLCGetAll/TLCGetLevel, A/B/C coverage and Debug02-05 checks plus
+existing Tool/Vect checks pass: init-vector-focused.log, session 33242 terminal
+dc349f, status 0; root 6.077 seconds and TLC 0.024 seconds. Original generated
+trace (all five methods), DoInitFunctor and SimulatorCorrectness selections plus
+native coverage/debugger/Tool/Vect checks pass: init-vector-originals.log,
+session 80761 terminal 7e2ccf, status 0; root 5.148 seconds, TLC 0.025 seconds.
+The four generated-trace helper assertions and one existing native Tool test
+were mechanically adapted from slice indexing/len to vector ElementAt/Size;
+all original inputs and assertions remain unchanged. No new persistent tests or
+fixtures, no inventory credit, broad sweep or race workload.
+
+Full off-heap stress session 27326 remains live, poll fa1809; latest saved progress
+447,738,787 / 2,147,483,648 iterations, no terminal result or method credit.
+Overall parity remains incomplete. Continue core source parity and remaining
+original model-test reconciliation; general Vect invalid-count/exception behavior
+and concurrent mutation remain unproven.
+
+Final getter-order adjustment retains all 13 vector observations; final native
+session 32353 completed status 0 (9048ea). Final Tool/Vect checks pass normally,
+session 68352 completed status 0 (4070ab); see init-vector-final-native.log and
+init-vector-final-tool.log. Formatting and git diff --check pass.

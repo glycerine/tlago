@@ -528,6 +528,12 @@ func NewVectFrom[E any](values []E) *Vect[E] {
 }
 
 func (v *Vect[E]) AddElement(elem E) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if len(v.data) == cap(v.data) {
+		v.EnsureCapacity(len(v.data) + 1)
+	}
 	v.data = append(v.data, elem)
 }
 
@@ -555,7 +561,14 @@ func (v *Vect[E]) CopyInto(array []E) {
 }
 
 func (v *Vect[E]) ElementAt(index int) E {
-	return v.data[index]
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= cap(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, cap(v.data)))
+	}
+	// Vect exposes its backing array, including slots past elementCount.
+	return v.data[:cap(v.data)][index]
 }
 
 func (v *Vect[E]) Elements() *VectEnumerator[E] {
@@ -579,7 +592,7 @@ func (v *Vect[E]) EnsureCapacity(minCapacity int) {
 }
 
 func (v *Vect[E]) FirstElement() E {
-	return v.data[0]
+	return v.ElementAt(0)
 }
 
 func (v *Vect[E]) IndexOf(elem E) int {
@@ -610,7 +623,7 @@ func (v *Vect[E]) IsEmpty() bool {
 }
 
 func (v *Vect[E]) LastElement() E {
-	return v.data[len(v.data)-1]
+	return v.ElementAt(v.Size() - 1)
 }
 
 func (v *Vect[E]) RemoveLastElement() {
@@ -623,7 +636,13 @@ func (v *Vect[E]) RemoveLastElement() {
 }
 
 func (v *Vect[E]) SetElementAt(elem E, index int) {
-	v.data[index] = elem
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= cap(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, cap(v.data)))
+	}
+	v.data[:cap(v.data)][index] = elem
 }
 
 func (v *Vect[E]) RemoveElementAt(index int) {
@@ -651,10 +670,16 @@ func (v *Vect[E]) Push(elem E) {
 }
 
 func (v *Vect[E]) Size() int {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
 	return len(v.data)
 }
 
 func (v *Vect[E]) ToSlice() []E {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
 	out := make([]E, len(v.data))
 	copy(out, v.data)
 	return out
