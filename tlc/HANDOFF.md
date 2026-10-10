@@ -372,8 +372,12 @@ one startup message from concurrent construction.
 String length and fingerprinting retain typed null-string failures; unquoted
 conversion fails before its source catch boundary. Comparison diagnostics render
 the receiver before a null argument. All 1,372 scalar observations agree with
-controlled string intern tokens; parsed token allocation and debugger subclass
-behavior remain separate work.
+controlled string intern tokens. Debugger placeholder methods retain concrete
+identity, source-frame ownership and unquoted diagnostic dispatch. String-backed
+record lookup/EXCEPT and function/lambda record conversion accept the subclass;
+value streams retain its object handles. All 240 scalar and 1,960 composite
+observations agree. Parsed token allocation, module-specific string casts and
+distributed serialization of the subclass remain separate work.
 All bounded comparisons agree, including the prior lambda conversion and deep-
 normalization matrices; contracts and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.

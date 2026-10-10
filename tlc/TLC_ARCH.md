@@ -8105,8 +8105,35 @@ using parsed runtimes exposed empty/debug-placeholder token-order differences;
 controlled-token agreement does not establish parsed-model intern allocation.
 Existing 13,056 composite fingerprint and 15,686 tuple/record access rows still
 agree. No original-test credit or new persistent fixture/test is added. General
-StringValue subclasses, debugger receiver identity/dispatch, stream callbacks and
-parsed token ordering remain separate requirements.
+StringValue subclasses, stream callbacks and parsed token ordering remain separate
+requirements; the concrete debugger placeholder is addressed below.
+
+The concrete DebuggerValue placeholder retains Java StringValue inheritance.
+Shared string methods keep the concrete receiver for virtual diagnostic printing,
+model-value delegation, fingerprint exception ownership, normalization/copy/
+permutation identity, empty EXCEPT batches and checked/unchecked string wrappers.
+The placeholder constructor binds this immutable owner before publication; ordinary
+strings retain their own identity. Core string subclass recognition is shared by
+record application/selection/EXCEPT, function/lambda record conversion, function
+name classification/rendering, STRING membership and the standard argument helper.
+String stream writes use the concrete object's handle, including a base-string
+view of the placeholder, while retaining ordinary StringValue wire encoding.
+All 240 scalar observations agree across independent receiver/argument sources,
+thirteen arguments and twenty-four operations. Fingerprint error frames identify
+the actual placeholder, not its embedded base. Stream checks confirm each runtime
+writes its actual intern token and compare the other bytes, including repeated
+object references; absolute tokens differ under the existing parsed allocation
+gap and are not claimed equal. All 1,960 composite observations agree across
+seven name/domain forms, null/short value arrays, normalization/source flags and
+record apply/select/EXCEPT, function select/render/record conversion and cached
+lambda record conversion. The cached lambda uses the actual parsed test206 body
+and real constructor/cache fields, without fabricated evaluator/semantic graphs.
+Prior 1,372 scalar-string, 40,392 function-access and 756 composite EXCEPT rows
+still agree. No persistent test/fixture or original-test credit is added. Other
+module-specific casts, distributed serialization of the subtype, arbitrary
+subclasses/stream callbacks and parsed singleton/token initialization remain
+separate parity requirements. Native callers bypassing the private source
+constructor with a raw Go debugger literal are outside these observations.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

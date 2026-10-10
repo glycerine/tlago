@@ -1061,7 +1061,7 @@ func (v *FcnLambdaValue) ToRecord() *RecordValue {
 	}
 	names := make([]*UniqueString, len(fcn.Domain))
 	for i, elem := range fcn.Domain {
-		str, ok := elem.(*StringValue)
+		str, ok := asStringValue(elem)
 		if !ok {
 			return nil
 		}

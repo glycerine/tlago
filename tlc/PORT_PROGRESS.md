@@ -35369,3 +35369,55 @@ Latest full stress saved progress is 1,742,145,441 / 2,147,483,648 (a2fe5f), wit
 terminal result or long-method credit. Preserve its original handle and bounds.
 Parsed intern allocation and DebuggerValue subclass dispatch/identity remain
 concrete core parity work; controlled token comparisons do not close either gap.
+
+
+### 2026-10-10: Debugger placeholder StringValue inheritance
+
+Previous goal turn made verified progress in a8a1135; confirm clean worktree
+(9708b3). Direct polls 93d795 and 26121c confirm full original stress 27326 remains
+live. Inspect source TLCStateStackFrame.DebuggerValue: it inherits final scalar
+string operations and overrides virtual rendering/kind/type text. Go embedding
+lost its concrete receiver in inherited methods and several instanceof/cast sites.
+
+Ignored debugger-value observer invokes the actual NOT_EVAL singleton with
+independent source attachment and actual runtime argument arrays/children. All
+236 baseline rows complete with 108 differences (151ed8): quoted diagnostics,
+normalization/permutation/empty-EXCEPT identity, delimiter wrappers, STRING
+membership and unsupported stream writes. Add an immutable concrete owner to
+StringValue, bound by the native placeholder constructor, following the existing
+operator-owner pattern. Shared methods retain owner identity for virtual printing,
+model-value delegation and source frames. Remove the now-redundant placeholder
+DeepCopy override. Shared string recognition accepts the actual subtype for core
+record/function/lambda operations, STRING membership and the standard string
+argument gate. String stream writes retain the concrete handle, including callers
+using the embedded base view.
+
+After the initial implementation only four stream token fields differ (31ac53):
+source NOT_EVAL has parsed-runtime token 595 while native retains package token 1.
+This is the existing parsed singleton/token initialization gap, not a wire-format
+change. Observer verifies each serialized token equals its actual runtime value,
+then compares all remaining stream bytes. Add actual placeholder identity counts
+for fingerprint error frames, plus mixed concrete/base-view repeated writes.
+Final 240 scalar observations agree (4db479). No raw-token equality claim.
+
+Ignored debugger-composite uses actual constructors, mutable runtime arrays and
+real test206 source nodes: seven name/domain forms include placeholder/question
+keys, null names, null-string keys and reordered fields; five value lengths include
+null/short arrays; normalization and independent source flags cover record apply,
+select and EXCEPT, function select/render/record conversion. All initial 1,680
+rows agree (30984d). Extend with an actual FcnLambdaValue constructor using parsed
+Def2's body and a genuine function-record cache; all 1,960 rows agree (4db479).
+No fabricated semantic nodes/evaluator callbacks, persistent tests/fixtures or
+original-method credit. Remaining module-specific string casts, distributed subtype
+serialization and parsed class/token initialization remain concrete follow-up work.
+
+Prior scalar string observer still matches all 1,372 rows (30984d). Existing
+function-access/default and tuple/record EXCEPT observers finish (541042/6c6917):
+all 40,392 and 756 rows still agree (4db479). Relevant original model/value/
+context/EXCEPT/stream/rendering checks, including EchoDebugger, Debug02Debugger,
+StringDeserialize, StringHelper and Sequences pass after final owner/stream changes.
+Session 91399 exits zero (8c6ca6); root 5.440s and tlc 2.498s (4db479).
+No broad suite, race, shortened workload or original assertion changes. Handoff
+and architecture updated. Latest full stress saved progress is
+1,756,827,297 / 2,147,483,648 (4db479), without terminal result or long-method
+credit; preserve original handle, artifacts and bounds.

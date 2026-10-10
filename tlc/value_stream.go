@@ -193,6 +193,17 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 	return s.Write(value)
 }
 
+// StringValue.write inherits the concrete object's stream handle identity.
+func (s *ValueOutputStream) writeStringValue(value Value, str *StringValue) error {
+	if idx := s.Put(value); idx >= 0 {
+		return s.writeDummy(idx)
+	}
+	if err := s.WriteByte(byte(StringValueKind)); err != nil {
+		return err
+	}
+	return s.WriteUniqueString(str.Val)
+}
+
 func (s *ValueOutputStream) writeValue(value Value) error {
 	if value == nil {
 		panic(NewNullPointerException())
@@ -212,13 +223,9 @@ func (s *ValueOutputStream) writeValue(value Value) error {
 		}
 		return s.WriteInt(v.Val)
 	case *StringValue:
-		if idx := s.Put(v); idx >= 0 {
-			return s.writeDummy(idx)
-		}
-		if err := s.WriteByte(byte(StringValueKind)); err != nil {
-			return err
-		}
-		return s.WriteUniqueString(v.Val)
+		return s.writeStringValue(v.receiver(), v)
+	case *DebuggerValue:
+		return s.writeStringValue(v, v.StringValue)
 	case *ModelValue:
 		if err := s.WriteByte(byte(ModelValueKind)); err != nil {
 			return err

@@ -519,7 +519,7 @@ func standardBoolArg(name string, args []Value, index int) (*BoolValue, error) {
 }
 
 func standardStringArg(name string, args []Value, index int) (*StringValue, error) {
-	value, ok := args[index].(*StringValue)
+	value, ok := asStringValue(args[index])
 	if !ok {
 		return nil, newTLCError(ECGeneral, "%s argument %d must be a string, got %s", name, index+1, args[index])
 	}

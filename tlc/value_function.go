@@ -587,7 +587,7 @@ func (v *RecordValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error)
 		rlen := len(v.Names)
 		newValues := make([]Value, rlen)
 		arcVal := ex.Current()
-		if arc, ok := arcVal.(*StringValue); ok {
+		if arc, ok := asStringValue(arcVal); ok {
 			for i := 0; i < rlen; i++ {
 				if v.Names[i] == nil {
 					panic(NewNullPointerException())
@@ -746,10 +746,7 @@ func (v *RecordValue) Apply(arg Value) (resultValue Value, err error) {
 	if arg == nil {
 		return nil, NewNullPointerException()
 	}
-	if debugger, ok := arg.(*DebuggerValue); ok {
-		arg = debugger.StringValue
-	}
-	if sv, ok := arg.(*StringValue); ok {
+	if sv, ok := asStringValue(arg); ok {
 		if v.Names == nil {
 			panic(NewNullPointerException())
 		}
@@ -789,7 +786,7 @@ func (v *RecordValue) Select(arg Value) (resultValue Value, err error) {
 		// Java formats arg.toString() before Assert.fail for a non-string.
 		panic(NewNullPointerException())
 	}
-	sv, ok := arg.(*StringValue)
+	sv, ok := asStringValue(arg)
 	if !ok {
 		message := "Attempted to access record by a non-string argument: " + ValuesPPR(arg)
 		if source := v.GetSource(); source != nil {
@@ -1551,7 +1548,7 @@ func (v *FcnRcdValue) ToRecord() *RecordValue {
 	}
 	names := make([]*UniqueString, len(v.Domain))
 	for i, d := range v.Domain {
-		s, ok := d.(*StringValue)
+		s, ok := asStringValue(d)
 		if !ok {
 			return nil
 		}
@@ -1809,7 +1806,8 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(fcnParameterDomain(v.Domain, i).(*StringValue).Val.String() + recordArrow)
+			key, _ := asStringValue(fcnParameterDomain(v.Domain, i))
+			sb.WriteString(key.Val.String() + recordArrow)
 			if value == nil {
 				panic(NewNullPointerException())
 			}
@@ -1859,7 +1857,7 @@ func (v *FcnRcdValue) isRecordLike() bool {
 		panic(NewNullPointerException())
 	}
 	for _, dval := range v.Domain {
-		sv, ok := dval.(*StringValue)
+		sv, ok := asStringValue(dval)
 		if !ok {
 			return false
 		}

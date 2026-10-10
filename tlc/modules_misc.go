@@ -303,7 +303,7 @@ func (stringsObj) Compare(val Value) (int, error) {
 }
 
 func (stringsObj) Member(val Value) (bool, error) {
-	if _, ok := val.(*StringValue); ok {
+	if _, ok := asStringValue(val); ok {
 		return true, nil
 	}
 	if mv, ok := val.(*ModelValue); ok {

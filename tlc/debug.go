@@ -493,9 +493,13 @@ func (v *DebuggerValue) ToString(sb *strings.Builder, offset int, swallow bool) 
 	sb.WriteString("?")
 	return sb
 }
-func (v *DebuggerValue) DeepCopy() Value { return v }
+func newDebuggerValue() *DebuggerValue {
+	v := &DebuggerValue{NewStringValue("?")}
+	v.StringValue.owner = v
+	return v
+}
 
-var DebuggerNotEvaluatedValue Value = &DebuggerValue{NewStringValue("?")}
+var DebuggerNotEvaluatedValue Value = newDebuggerValue()
 
 const (
 	debugScopeException  = "Exception"

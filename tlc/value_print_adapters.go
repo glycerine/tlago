@@ -21,11 +21,11 @@ func (v *IntValue) StringUnchecked(delimiter ...string) string {
 }
 
 func (v *StringValue) StringWithDelimiter(delimiter string) string {
-	return ValueToString(v, delimiter, true)
+	return ValueToString(v.receiver(), delimiter, true)
 }
 
 func (v *StringValue) StringUnchecked(delimiter ...string) string {
-	return ValueToStringUnchecked(v, delimiter...)
+	return ValueToStringUnchecked(v.receiver(), delimiter...)
 }
 
 func (v *ModelValue) StringWithDelimiter(delimiter string) string {

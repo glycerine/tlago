@@ -524,7 +524,28 @@ func NarrowToIntValue(value int64) Value {
 
 type StringValue struct {
 	BaseValue
-	Val *UniqueString
+	Val   *UniqueString
+	owner Value
+}
+
+// Inherited StringValue methods retain the concrete Java receiver, including
+// virtual diagnostic printing and identity returns for the debugger subclass.
+func (v *StringValue) receiver() Value {
+	if v.owner != nil {
+		return v.owner
+	}
+	return v
+}
+
+func asStringValue(value any) (*StringValue, bool) {
+	switch v := value.(type) {
+	case *StringValue:
+		return v, true
+	case *DebuggerValue:
+		return v.StringValue, true
+	default:
+		return nil, false
+	}
 }
 
 func NewStringValue(s string, cms ...CostModel) *StringValue {
@@ -538,7 +559,7 @@ func NewStringValueFromUnique(s *UniqueString, cms ...CostModel) *StringValue {
 func (v *StringValue) Kind() ValueKind    { return StringValueKind }
 func (v *StringValue) KindString() string { return v.KindStringFor(v.Kind()) }
 func (v *StringValue) Length() int {
-	defer catchValueFailure(v, nil)
+	defer catchValueFailure(v.receiver(), nil)
 	if v.Val == nil {
 		panic(NewNullPointerException())
 	}
@@ -546,16 +567,13 @@ func (v *StringValue) Length() int {
 }
 
 func (v *StringValue) Compare(other Value) (resultInt int, err error) {
-	defer catchValueFailure(v, &err)
-	if pending, ok := other.(*DebuggerValue); ok {
-		other = pending.StringValue
-	}
-	o, ok := other.(*StringValue)
+	defer catchValueFailure(v.receiver(), &err)
+	o, ok := asStringValue(other)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
-			return mv.modelValueCompareTo(v)
+			return mv.modelValueCompareTo(v.receiver())
 		}
-		selfText := ValuesPPR(v)
+		selfText := ValuesPPR(v.receiver())
 		if other == nil {
 			panic(NewNullPointerException())
 		}
@@ -568,16 +586,13 @@ func (v *StringValue) Compare(other Value) (resultInt int, err error) {
 }
 
 func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
-	defer catchValueFailure(v, &err)
-	if pending, ok := other.(*DebuggerValue); ok {
-		other = pending.StringValue
-	}
-	o, ok := other.(*StringValue)
+	defer catchValueFailure(v.receiver(), &err)
+	o, ok := asStringValue(other)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
-			return mv.modelValueEquals(v)
+			return mv.modelValueEquals(v.receiver())
 		}
-		selfText := ValuesPPR(v)
+		selfText := ValuesPPR(v.receiver())
 		if other == nil {
 			panic(NewNullPointerException())
 		}
@@ -590,32 +605,32 @@ func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
 }
 
 func (v *StringValue) Member(elem Value) (resultBool bool, err error) {
-	defer catchValueFailure(v, &err)
+	defer catchValueFailure(v.receiver(), &err)
 	if elem == nil {
 		panic(NewNullPointerException())
 	}
-	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the string %s", ValuesPPR(elem), ValuesPPR(v)))
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the string %s", ValuesPPR(elem), ValuesPPR(v.receiver())))
 }
 
 func (v *StringValue) IsFinite() (resultBool bool, err error) {
-	defer catchValueFailure(v, &err)
-	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the string %s is a finite set.", ValuesPPR(v)))
+	defer catchValueFailure(v.receiver(), &err)
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the string %s is a finite set.", ValuesPPR(v.receiver())))
 }
 
 func (v *StringValue) Size() (resultInt int, err error) {
-	defer catchValueFailure(v, &err)
-	return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compute the number of elements in the string %s.", ValuesPPR(v)))
+	defer catchValueFailure(v.receiver(), &err)
+	return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compute the number of elements in the string %s.", ValuesPPR(v.receiver())))
 }
 
-func (v *StringValue) Normalize() Value      { return v }
+func (v *StringValue) Normalize() Value      { return v.receiver() }
 func (v *StringValue) DeepNormalize()        {}
 func (v *StringValue) IsNormalized() bool    { return true }
 func (v *StringValue) IsDefined() bool       { return true }
-func (v *StringValue) DeepCopy() Value       { return v }
-func (v *StringValue) Permute(*MVPerm) Value { return v }
+func (v *StringValue) DeepCopy() Value       { return v.receiver() }
+func (v *StringValue) Permute(*MVPerm) Value { return v.receiver() }
 
 func (v *StringValue) FingerPrint(fp uint64) uint64 {
-	defer catchValueFailure(v, nil)
+	defer catchValueFailure(v.receiver(), nil)
 	fp = FP64ExtendByte(fp, byte(StringValueKind))
 	if v.Val == nil {
 		panic(NewNullPointerException())
@@ -625,7 +640,7 @@ func (v *StringValue) FingerPrint(fp uint64) uint64 {
 }
 
 func (v *StringValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
-	defer catchValueFailure(v, &err)
+	defer catchValueFailure(v.receiver(), &err)
 	if ex == nil {
 		panic(NewNullPointerException())
 	}
@@ -633,28 +648,28 @@ func (v *StringValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error)
 		panic(NewNullPointerException())
 	}
 	if ex.Index < len(ex.Path) {
-		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the string %s.", ValuesPPR(v)))
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the string %s.", ValuesPPR(v.receiver())))
 	}
 	return ex.Value, nil
 }
 
 func (v *StringValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
-	defer catchValueFailure(v, &err)
+	defer catchValueFailure(v.receiver(), &err)
 	if exs == nil {
 		panic(NewNullPointerException())
 	}
 	if len(exs) != 0 {
-		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the string %s.", ValuesPPR(v)))
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the string %s.", ValuesPPR(v.receiver())))
 	}
-	return v, nil
+	return v.receiver(), nil
 }
 
 func (v *StringValue) String() string {
-	return ValueToString(v, "", true)
+	return ValueToString(v.receiver(), "", true)
 }
 
 func (v *StringValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
-	defer catchValueFailure(v, nil)
+	defer catchValueFailure(v.receiver(), nil)
 	if v.Val == nil {
 		panic(NewNullPointerException())
 	}
