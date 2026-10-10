@@ -669,6 +669,9 @@ func (t *Tool) GetThmOrAssumpContext(opDef *ThmOrAssumpDefNode, args []SemanticN
 }
 
 func (t *Tool) GetLevelBound(expr SemanticNode, c *Context) int {
+	if expr == nil {
+		panic(NewNullPointerException())
+	}
 	switch expr := expr.(type) {
 	case *OpApplNode:
 		return t.GetLevelBoundAppl(expr, c)
@@ -746,7 +749,7 @@ func letDefinitionsContextWithCostModel(c *Context, lets []*OpDefNode, cm CostMo
 
 func (t *Tool) GetLevelBoundAppl(expr *OpApplNode, c *Context) int {
 	if expr == nil || expr.Operator == nil || expr.Operator.Name == nil {
-		return TLCLevelConstant
+		panic(NewNullPointerException())
 	}
 	opNode := expr.Operator
 	opName := opNode.Name
@@ -763,6 +766,9 @@ func (t *Tool) GetLevelBoundAppl(expr *OpApplNode, c *Context) int {
 	}
 
 	level := TLCLevelConstant
+	if expr.BdedQuantBounds == nil {
+		panic(NewNullPointerException())
+	}
 	for _, bound := range expr.BdedQuantBounds {
 		if boundLevel := t.GetLevelBound(bound, c); boundLevel > level {
 			level = boundLevel
@@ -773,6 +779,9 @@ func (t *Tool) GetLevelBoundAppl(expr *OpApplNode, c *Context) int {
 		c = c.Cons(expr.UnbdedQuantSymbols[0], IntOne)
 	}
 
+	if expr.Args == nil {
+		panic(NewNullPointerException())
+	}
 	for _, arg := range expr.Args {
 		if arg == nil {
 			continue

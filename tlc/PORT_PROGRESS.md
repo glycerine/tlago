@@ -33378,3 +33378,37 @@ LNBool/LNState tests. No race, broad suite, reduced bounds or inventory credit.
 Original full stress handle 27326 remains live (6b875f), latest saved progress
 1,411,026,213 / 2,147,483,648 (9eb313). No terminal result or long-method credit;
 preserve its original handle, memory budget, bounds and artifacts.
+
+
+2026-10-10: Level calculation null and child-array boundaries
+
+Previous goal turn made verified progress in 1c5c103. Pinned
+SymbolNodeValueLookupProvider dereferences expression/operator and child arrays;
+native level calculation instead returned constant level or treated null arrays
+as empty. Ignored .codex-gotmp/level-array-boundaries observes actual C bodies
+c, a, vars, Constraint, Init and expensive. Both public level APIs, nil/empty
+contexts and nine original/null/empty/operator/element shapes yield 216 rows.
+Observers temporarily replace fields on those actual nodes and restore them;
+no fabricated semantic graph, persistent test or fixture is added. Source
+25f841 and native baseline f6e1eb expose 92 differences (5baff7).
+
+Use typed NullPointerException at the source expression/operator/array access.
+Preserve action/temporal/ENABLED early returns before child access, domain-before-
+argument order, and skipping null argument elements. All 216 final rows match
+(8746 terminal b9024e; comparison e1bc53), including failures and level results.
+Java enhanced NPE messages disabled. Recursive-function array failures, malformed
+LET/substitution arrays and other typed-null semantic classes remain unproven.
+
+Focused existing level/liveness/lookup/bounded-CHOOSE checks pass (71726 terminal
+ace7f1; existing-checks.log, 0.013s). Eleven original model checks pass unchanged
+(5636 terminal bc9a36; original-models.log, 5.659s): LegacySuiteTest216/219/220,
+ConstantContextTLCCache, ConstantRank1TLCEval, ConstantRank2AssertError,
+ValueSemanticsAssume, Debug02Debugger, CCoverage, ICoverage and
+EmptyExistentialQuantifier. The original PossibleCounts check also passes
+(8e6dac; original-level.log), preserving its level-sensitive postcondition.
+No changed assertions, broad suite, race, reduced bound or inventory credit.
+Update current handoff and architecture contracts.
+
+Original full stress handle 27326 remains live (7af100), latest saved progress
+1,415,018,452 / 2,147,483,648 (b5947f). No terminal result or long-method credit;
+preserve its original handle, memory budget, bounds and artifacts.

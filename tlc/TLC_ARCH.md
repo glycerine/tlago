@@ -7444,6 +7444,16 @@ imported and theorem definitions agree, using actual literal/operator arguments,
 three incoming contexts and both caching modes. These observations do not prove
 all malformed formal arrays or arbitrary graph mutation behavior.
 
+GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
+application/operator before opcode classification, reads bounded-domain arrays
+before arguments, and preserves null-array failures at those dereferences.
+Temporal, action and ENABLED opcode shortcuts still return before child access.
+Null bounded-domain elements fail recursively; null argument elements are skipped.
+All 216 observations on six actual C expressions agree across both level APIs,
+nil/empty contexts and original/null/empty/replaced child arrays. This does not
+establish all recursive-function arrays, LET/substitution arrays or typed-null
+representations of other semantic node classes.
+
 Initial-state, next-state and ENABLED predicate entry points preserve explicit
 nil contexts. A failure at the
 first source lookup or local binding occurs before state assignment. Subsequent

@@ -311,7 +311,10 @@ helpers now bind by supplied argument count, retaining short arrays and source
 lookup-before-index failure order. All 288 argument-boundary observations match.
 Generated zero-argument applications carry allocated-empty arrays; explicit null
 arrays retain their source failure. Relevant original model and generated-node
-checks pass.
+checks pass. Level calculation now retains null-expression, operator and child-array
+failures at Java's dereferences, while action shortcuts still return before
+reading children and null argument elements remain ignored. All 216 bounded
+level observations and relevant original model checks pass.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.
