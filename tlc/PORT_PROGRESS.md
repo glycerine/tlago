@@ -35231,3 +35231,57 @@ Handoff and architecture updated. Latest full stress saved progress is
 1,712,215,497 / 2,147,483,648 (799fec), without terminal result or long-method
 credit. Preserve original handle/artifacts/bounds. Other overloads, arbitrary
 callbacks and concurrency remain separate parity targets.
+
+
+### 2026-10-10: Function-record lookup, domain and rendering boundaries
+
+Previous turn made verified progress in 1416c28; confirm clean HEAD (959011).
+Original full stress 27326 remains live on direct polls a40a5d and 89ba81.
+Continue function application/selection/domain. Native interval selection treated
+null values as empty; explicit lookup lost null/index failures in both searches.
+Application diagnostics additionally depend on actual function rendering.
+
+Ignored function-access uses actual test206 Def2 source attachment, fresh runtime
+arrays/children and raw structural serialization. Initial nineteen explicit
+domain forms include nulls, reordered/duplicate integers, strings with null
+UniqueStrings, invalid-name strings, booleans, undefined and mixed keys; add
+lengths 31/32/33 for default binary threshold coverage. Six interval constructors
+include null, ordinary/empty/non-one-origin and signed integer boundaries.
+Eleven value/child forms and sixteen arguments run across normalization/source
+flags and Apply/Select/domain/direct prefixed-buffer rendering. Use separate
+processes for default threshold 32 and property-configured threshold 2. Native
+setup initially rejects an unused inherited shapes variable; remove it before
+collecting rows (5b37bb). Initial complete matrices have 37,400 rows per mode,
+with 7,921/default and 7,753/threshold-2 differences (36bc47).
+
+Restore interval in-domain value-length reads, explicit domain length/receiver
+failures and typed matching-value reads while retaining binary comparison then
+equality. Restore domain constructor null reads after normalization. Function
+rendering retains value-length and record-like helper reads before buffer writes,
+then typed record/generic domain accesses. String compare/equality retain typed
+null UniqueString reads on string/string branches. Source name classification
+uses charAt UTF-16 units, unlike native rune iteration; port that traversal and
+length, expanding the matrix with one BMP and one supplementary letter key.
+No semantic graph mutation, fabricated evaluator/permutation callback or
+persistent fixture/test is introduced.
+
+Expanded Java/native finish 40,392 rows per threshold. A comparison initially
+has message-only ArrayIndexOutOfBoundsException differences (a58dac): JVM
+OmitStackTraceInFastThrow caches repeated exceptions without ordinary messages.
+Rerun Java with -XX:-OmitStackTraceInFastThrow, retaining the existing disabled
+helpful-NPE-detail setting (ab1575/d60f01). All 80,784 rows agree (3e178c).
+No source change emulates this JVM optimization, and no original-method credit
+is added. Threshold startup console reporting is not established by tagged-row
+comparison; source's nondefault-threshold line remains a concrete separate check.
+Other Unicode character classifications and overload/subclass APIs remain open.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests plus focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream/rendering checks pass. Session 99674
+finishes with exit zero (c58343); root 5.093s and tlc 2.691s (02292e). Previous
+permutation and tuple/record access observers complete (4ebcf1/fe3fe0); all
+11,220 and 15,686 rows still agree (cf3e6c), checking shared rendering changes.
+No race, broad suite, shortened workload or changed original assertions. Logs
+remain under function-access. Handoff and architecture updated. Latest full
+stress saved progress is 1,720,406,490 / 2,147,483,648 (02292e), without terminal
+result or long-method credit. Preserve original handle/artifacts/bounds.

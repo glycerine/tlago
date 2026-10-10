@@ -557,6 +557,9 @@ func (v *StringValue) Compare(other Value) (resultInt int, err error) {
 		}
 		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare string %s with non-string:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
+	if v.Val == nil || o.Val == nil {
+		panic(NewNullPointerException())
+	}
 	return v.Val.Compare(o.Val), nil
 }
 
@@ -574,6 +577,9 @@ func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
 			panic(NewNullPointerException())
 		}
 		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of string %s with non-string:\n%s", ValuesPPR(v), ValuesPPR(other)))
+	}
+	if v.Val == nil || o.Val == nil {
+		panic(NewNullPointerException())
 	}
 	return v.Val.Equal(o.Val), nil
 }

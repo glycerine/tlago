@@ -1275,11 +1275,17 @@ func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
 		}
 		if iv.Val >= v.Intv.Low && iv.Val <= v.Intv.High {
 			offset := int64(iv.Val) - int64(v.Intv.Low)
+			if v.Values == nil {
+				panic(NewNullPointerException())
+			}
 			if offset < int64(len(v.Values)) {
 				return v.Values[int(offset)], nil
 			}
 		}
 		return nil, nil
+	}
+	if v.Domain == nil {
+		panic(NewNullPointerException())
 	}
 	if v.IsNorm && len(v.Domain) >= fcnRcdLinearSearchThreshold() {
 		// Arrays.binarySearch uses an inclusive upper bound and returns at the
@@ -1288,6 +1294,9 @@ func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
 		low, high := 0, len(v.Domain)-1
 		for low <= high {
 			mid := (low + high) >> 1
+			if isNil(v.Domain[mid]) {
+				panic(NewNullPointerException())
+			}
 			cmp, err := v.Domain[mid].Compare(arg)
 			if err != nil {
 				return nil, err
@@ -1301,18 +1310,21 @@ func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
 				if err != nil || !eq {
 					return nil, err
 				}
-				return v.Values[mid], nil
+				return fcnParameterDomain(v.Values, mid), nil
 			}
 		}
 		return nil, nil
 	}
 	for i, value := range v.Domain {
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
 		eq, err := value.Equal(arg)
 		if err != nil {
 			return nil, err
 		}
 		if eq {
-			return v.Values[i], nil
+			return fcnParameterDomain(v.Values, i), nil
 		}
 	}
 	return nil, nil
@@ -1415,6 +1427,9 @@ func (v *FcnRcdValue) DomainValue() Value {
 	}
 	if err := v.normalizeFcn(); err != nil {
 		panic(err)
+	}
+	if v.Domain == nil {
+		panic(NewNullPointerException())
 	}
 	return NewSetEnumValue(v.Domain, true)
 }
@@ -1721,6 +1736,9 @@ func (v *FcnRcdValue) String() string {
 
 func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	if len(v.Values) == 0 {
 		sb.WriteString("<<>>")
 	} else if v.isRecordLike() {
@@ -1729,7 +1747,7 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(v.Domain[i].(*StringValue).Val.String() + recordArrow)
+			sb.WriteString(fcnParameterDomain(v.Domain, i).(*StringValue).Val.String() + recordArrow)
 			if value == nil {
 				panic(NewNullPointerException())
 			}
@@ -1755,10 +1773,11 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 			if i > 0 {
 				sb.WriteString(" @@ ")
 			}
-			if domain[i] == nil {
+			element := fcnParameterDomain(domain, i)
+			if element == nil {
 				panic(NewNullPointerException())
 			}
-			sb = appendValueString(domain[i], sb, offset, swallow)
+			sb = appendValueString(element, sb, offset, swallow)
 			sb.WriteString(" :> ")
 			if value == nil {
 				panic(NewNullPointerException())
@@ -1774,9 +1793,18 @@ func (v *FcnRcdValue) isRecordLike() bool {
 	if v.Intv != nil {
 		return false
 	}
+	if v.Domain == nil {
+		panic(NewNullPointerException())
+	}
 	for _, dval := range v.Domain {
 		sv, ok := dval.(*StringValue)
-		if !ok || !isTLAName(sv.Val.String()) {
+		if !ok {
+			return false
+		}
+		if sv.Val == nil {
+			panic(NewNullPointerException())
+		}
+		if !isTLAName(sv.Val.String()) {
 			return false
 		}
 	}
@@ -1805,7 +1833,9 @@ func (v *FcnRcdValue) isTupleLike() bool {
 
 func isTLAName(name string) bool {
 	hasLetter := false
-	for _, ch := range name {
+	chars := javaStringUTF16(name)
+	for _, unit := range chars {
+		ch := rune(unit)
 		if ch == '_' {
 			continue
 		}
@@ -1814,7 +1844,7 @@ func isTLAName(name string) bool {
 		}
 		hasLetter = hasLetter || unicode.IsLetter(ch)
 	}
-	return hasLetter && (len(name) < 4 || (!strings.HasPrefix(name, "WF_") && !strings.HasPrefix(name, "SF_")))
+	return hasLetter && (len(chars) < 4 || (!strings.HasPrefix(name, "WF_") && !strings.HasPrefix(name, "SF_")))
 }
 
 func asRecordValue(value Value) *RecordValue {

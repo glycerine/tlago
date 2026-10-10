@@ -8042,6 +8042,34 @@ still agree. No original-test credit, arbitrary formatting callback or complete
 StringValue/subclass API claim is added. Other overloads and concurrent mutation
 remain separate targets.
 
+Function-record interval selection reads value length only after confirming an
+in-domain integer index, preserving null-array failure and wide offset arithmetic.
+Explicit selection rejects null domains, retains linear/binary search order and
+uses typed null receiver/index reads at visited entries and matching values.
+Binary lookup still checks equality after comparison. Apply preserves its own
+wrapper around Select and renders the function before the missing argument.
+Domain construction retains normalization before the domain-array constructor's
+null read. Rendering reads value length before modifying its buffer; record-like
+and generic branches retain typed domain access and null string-key failures.
+Record-like name classification now traverses UTF-16 characters, rejecting a
+supplementary letter represented as surrogate units while accepting the observed
+BMP letter. String equality/comparison retain typed null UniqueString failures
+when both operands are strings.
+All 80,784 observations agree across Apply, Select, domain and direct buffer
+rendering, twenty-four explicit domain forms, six interval constructors, eleven
+value/child forms, sixteen arguments, normalized/source flags and thresholds 32
+and 2 in separate processes. Explicit forms include lengths 31/32/33 and null,
+integer, string, undefined, mixed and Unicode keys. Java observers disable
+OmitStackTraceInFastThrow so repeated bounds exceptions retain ordinary messages;
+otherwise JVM optimization introduces message-less cached exceptions. Input/raw
+result state and partial buffers are compared without incidental rendering.
+The previous 11,220 permutation and 15,686 tuple/record access observations still
+agree. No original-test credit, broad Unicode Character-table claim, arbitrary
+callback or general subclass/overload claim is added. Configured-threshold startup
+reporting, dynamic configuration semantics, other Unicode classifications and
+concurrent mutation remain separate parity work; tagged observation rows do not
+establish startup console-output equivalence.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes
