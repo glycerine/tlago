@@ -302,7 +302,8 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		}
 		return TLCTraceSerialize(args[0], path)
 	})
-	t.defineStandardEvaluatingWithMinLevel("_TLCState", 1, TLCLevelState, standardTLCState, "_TLCTrace!_TLCState", "_JsonTrace!_TLCState")
+	t.defineStandardEvaluatingWithMinLevel("_TLCState", 1, TLCLevelState, standardTLCState, "_TLCTrace!_TLCState")
+	t.defineStandardEvaluatingWithMinLevel("_JsonTrace!_TLCState", 1, TLCLevelState, standardTLCState)
 	t.defineStandardMethodWithMinLevel("_Counts", 0, TLCLevelState, func(args []Value) (Value, error) { return PossibleCounts(), nil })
 
 	return t
@@ -355,6 +356,16 @@ func (t *Tool) defineStandardEvaluating(name string, arity int, eval EvaluatingE
 func standardEvaluatingMethodSignature(name string) string {
 	const params = "(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel)"
 	switch name {
+	case "TLCEval":
+		return "public static tlc2.value.impl.Value tlc2.module.TLCEval.tlcEval" + params
+	case "_TLCState":
+		return "public static tlc2.value.impl.Value tlc2.module._TLCTrace.tlcState" + params
+	case "_JsonTrace!_TLCState":
+		return "public static tlc2.value.impl.Value tlc2.module._JsonTrace.tlcState" + params
+	case "ReplaceFirstSubSeq":
+		return "public static tlc2.value.impl.Value tlc2.overrides.SequencesExt.replaceFirstSubSeq" + params
+	case "ReplaceAllSubSeqs":
+		return "public static tlc2.value.impl.Value tlc2.overrides.SequencesExt.replaceAllSubSeq" + params
 	case "TLCGet":
 		return "public static tlc2.value.impl.Value tlc2.module.TLCGetSet.TLCGetEval" + params
 	case "AssertError":

@@ -9182,6 +9182,15 @@ catch. Normal and race compiler escape analysis confirm the markers stay on the
 stack; finite expansion and the two original overflow tests all pass.
 
 
+Standard evaluating signatures also retain TLCEval and SequencesExt's two
+replacement-method names. The module-qualified _TLCTrace and _JsonTrace state
+helpers use distinct EvaluatingValue registrations with the same implementation,
+level and priority, retaining each source declaring class through bridge OpDef
+replacement. Unqualified _TLCState retains the TLC trace helper; qualified module
+registration selects the JSON helper independently. All five bootstrap metadata
+rows and five real module-body override rows match Java annotations and methods.
+These observations do not establish full behavior of the represented modules.
+
 TLCExt evaluating override diagnostics and operator images retain the complete
 source Method.toString() metadata for AssertError, PickSuccessor, CounterExample,
 Trace, TLCDefer, TLCCache and TLCEvalDefinition. This includes synchronized

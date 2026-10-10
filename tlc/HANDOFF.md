@@ -181,22 +181,31 @@ method signature. All 48 diagnostic observations and 15 original methods pass.
 All seven TLCExt evaluating overrides now retain source method signatures,
 including synchronization and declared exceptions. Fourteen registration rows
 match Java at bootstrap and after actual model loading; all 48 prior trace
-diagnostic rows and 20 focused original methods pass. Next audit: remaining
-standard evaluating override metadata outside TLCExt, consulting source
-registrations and prior receipts. Original model-test reconciliation remains open.
+diagnostic rows and 20 focused original methods pass. TLCEval, both trace-state
+helpers and both sequence replacement overrides
+also retain their source signatures. Trace-state registrations use distinct
+module-qualified values so the JSON helper reports its own declaring class.
+Five bootstrap and five loaded-model metadata rows match Java. The complete
+original CommunityModules Ant target and eight focused original methods pass.
+Next audit: AssertError exception delivery and catch boundaries against source.
+Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
-Interrupted full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`,
-with `-tags=tlc_fp_stress -timeout=0`, has no surviving test process after the
-latest outage. Its former native exec session was `27326`; its log,
-`.codex-gotmp/offheap-random-full-after-outage.log`, ends at 946,424,435 of
-2,147,483,648 iterations without a terminal result. The earlier interrupted log,
-`.codex-gotmp/offheap-random-full.log`, ends at 521,200,868 iterations. Neither
-run earns completion credit. A future full run must retain the original bounds,
-assertions and default 64 MiB direct-memory budget, without race instrumentation.
-Source translation is committed; full execution and original-method credit remain
-pending. Preserve the existing logs and temporary storage in `.codex-gotmp/`.
+Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
+`-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
+confirmed by polling the handle directly. Its log is
+`.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
+967,807,826 of 2,147,483,648 iterations, without a terminal result. The previous
+handoff incorrectly inferred interruption from process-list visibility. Always
+poll the original session before restarting; namespace process lists alone do
+not establish that a tool-owned process has stopped. An accidental duplicate,
+session `7371`, was stopped with exit 130; its preserved log is
+`.codex-gotmp/offheap-random-full-second-recovery.log` and earns no credit.
+The earlier interrupted `.codex-gotmp/offheap-random-full.log` ends at 521,200,868
+iterations without a terminal result. Preserve original bounds, assertions,
+default 64 MiB direct-memory budget and files; do not add race instrumentation.
+Full execution and original-method credit remain pending.
 
 The existing native
 `TestModelCheckerDoNextEnqueuesOnlyUnseenInModelSuccessorsButChecksAllImpliedActions`

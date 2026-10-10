@@ -31312,3 +31312,60 @@ new original-method credit, broad suite, race run or email work. Formatting and
 git diff --check pass. Next audit: remaining standard evaluating override metadata
 outside TLCExt against source registrations and prior receipts. Overall TLC
 parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10 Standard evaluating signatures and original workload recovery:
+Previous turn made verified progress in ea44561; working tree clean on entry.
+Inspect all remaining standard evaluating registrations and source annotations;
+prior IOUtils receipt at lines 14194ff already establishes Serialize/Deserialize
+signatures and priority handling, so no repeat production change there. TLCSet
+and TLCGetAndSet are native adapters rather than these source @Evaluation
+registrations; do not manufacture Java signatures for them.
+
+Ignored .codex-gotmp/standard-evaluating-metadata Java reflection observes TLCEval,
+_TLCTrace/_JsonTrace _TLCState and SequencesExt ReplaceFirstSubSeq/ReplaceAllSubSeqs.
+Unchanged compiled CommunityModules SequencesExt provides its actual annotation
+metadata. Baseline 95295 terminal 8df40b shows all five signatures are placeholders;
+levels and priorities already match. Extend standardEvaluatingMethodSignature
+and split the JSON trace-state qualified registration from the TLC trace alias.
+This preserves implementation, arguments, level and priority while retaining
+source declaring classes. Final bootstrap 7521 terminal eba61f matches all five
+rows; comparison 79541f confirms exactly five baseline differences.
+
+Actual source/native module-body registrations are observed on existing
+TLCExtTrace with its unchanged Alias config and runtime module attachment.
+Trace modules use their existing postconditions/file constant mechanism;
+sequence attachment uses an existing source operator without executing a model
+or adding a persistent fixture. Java reads protected Method/minLevel/priority;
+Go resolves the actual module's source OpDef symbol via Lookup after BuildTLCTool.
+Source assertions enabled. Initial source-driver _JsonTraceSilent placeholder is
+corrected before execution to the actual _JsonTrace operator. TLC and both trace
+module source/native runs 10666 terminal e02df9 compare equal (79541f). Sequence
+runs 12750 terminal 14b234 compare equal (56df49). All ten bootstrap and loaded
+registration observations match; these are bounded metadata evidence, not full
+module parity or new original-method credit.
+
+Full original CommunityModules Ant target and eight related original methods
+pass normally: 13029 terminal b3fa4a, 314.504s, originals.log. Both unchanged all
+and shiviz phases pass (all 312s, shiviz below one second). Other methods are
+ConstantRank1TLCEval, EvaluatingValue, TLCGetLevel/TTrace, SafetyDumpLoadTrace
+JSON/TLC and SafetyDieHardAliasSub2DumpLoadTrace JSON/TLC, preserving single-worker
+round-trip bounds/assertions. Separate focused selection 54722 terminal e80985
+passes those eight methods in 2.262s while Ant is running. Receipt c5d6d5 first
+counts child-process CommunityModules PASS lines as extra methods; final receipt
+counts unique original names, nine including the whole Ant target. No skipped
+methods, persistent tests, source edits, weakened assertions, broad workspace
+suite, race run or email work. Formatting and git diff --check pass.
+
+Correct the previous turn's mistaken stress interruption diagnosis. Namespace
+process-list visibility did not establish that original handle 27326 stopped.
+Direct polling 4f5efc confirms that SAME handle live. An unnecessary duplicate
+7371 was started at c3dfca, then immediately stopped once original liveness was
+established: d5f1fd terminal exit 130. Preserve duplicate log
+.codex-gotmp/offheap-random-full-second-recovery.log, no credit. Original saved
+log advances through 961,150,316 (852523) and 967,807,826 (c5d6d5) of 2,147,483,648.
+Only original 27326 remains the tracked full stress run; poll its handle directly
+before any restart. Full bounds/default budget/assertions retained, no terminal
+result or original-method credit. Handoff corrects the prior mistaken statement.
+Next audit: AssertError exception delivery and catch boundaries against the
+actual source and existing model semantics. Overall TLC port remains incomplete.
