@@ -7443,6 +7443,14 @@ explicit null arrays. All 288 bounded observations on existing test219 ordinary,
 imported and theorem definitions agree, using actual literal/operator arguments,
 three incoming contexts and both caching modes. These observations do not prove
 all malformed formal arrays or arbitrary graph mutation behavior.
+GetVal rejects null arguments before lazy construction. A typed-nil OpArgNode
+also retains the typed source failure; an operator argument with a null symbol
+fails in lookup, which rejects null before context access. These failures precede
+formal-array indexing in ordinary/theorem binding. Direct NewLazyValue calls
+retain their separate constructor contract and can still retain a null expression.
+All 132 observations on actual test219 definitions/arguments agree across nil,
+empty and bound contexts and both caching modes. Other typed-null expression
+classes remain outside this observation.
 
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays

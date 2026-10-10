@@ -33448,3 +33448,43 @@ or original-method inventory credit. Update handoff and architecture contracts.
 Original full stress handle 27326 remains live (0e031b), latest saved progress
 1,421,849,659 / 2,147,483,648 (9ca979). No terminal result or long-method credit;
 preserve its original handle, memory budget, bounds and artifacts.
+
+
+2026-10-10: Null argument conversion and symbol lookup
+
+Previous goal turn made verified progress in 31a9ff5. Pinned
+SymbolNodeValueLookupProvider.getVal treats expressions as lazy values, otherwise
+casts/dereferences OpArgNode. Null fails immediately. Native instead constructed
+a lazy null expression; LookupWithCutoff also returned nil for a null symbol,
+where source lookup dereferences its kind before reading the context.
+
+Ignored .codex-gotmp/null-argument-lookup reuses actual test219 ordinary/theorem
+Bar, Foo, I!Foo, Thm2, I!Thm2 and LOCAL K!Thm2 with existing literal/operator
+arguments. Null element shapes test argument-before-formal failure order. Direct
+GetVal/lookup calls and temporarily clearing the existing OpArgNode symbol cover
+helper entry points. Three incoming contexts and two caching modes yield 126
+initial rows. Observer assembly initially fails Java compilation (f9e7df) and Go
+compilation (e1e86a); correct only helper braces/separator. Source 9d40ec and
+native baseline 32496 terminal 41894d expose 90 differences (0dd068).
+
+Reject null in GetVal before lazy construction and null symbols in lookup before
+context access. Typed-nil OpArgNode also throws typed NullPointerException.
+Do not change direct LazyValue constructor semantics. Extend direct observations
+with Go's typed-nil operator-argument representation of Java null. All 132 final
+rows agree (source 7e1ba6; native 77536 terminal cc63ad; comparison fa0cc1).
+An earlier comparison runs before native completion and correctly rejects its
+empty output (a97591), providing no parity credit. Java enhanced NPE messages
+disabled. No fabricated graph, persistent test/fixture or changed assertion.
+Other typed-null expression classes remain unproven.
+
+Focused context/lookup/function-context/level/bounded-CHOOSE checks pass
+(32327 terminal f2e22a; existing-checks.log, 0.020s). Eight original model checks
+pass unchanged (original-models.log, 4.007s; receipt 122782): LegacySuiteTest216,
+LegacySuiteTest219, LegacySuiteTest220, ConstantContextTLCCache,
+ConstantRank1TLCEval, ConstantRank2AssertError, ValueSemanticsAssume and
+Debug02Debugger. No race, broad suite, reduced bounds or method inventory credit.
+Update current handoff and architecture contracts.
+
+Original full stress handle 27326 remains live (fef341), latest saved progress
+1,429,093,135 / 2,147,483,648 (122782). No terminal result or long-method credit;
+preserve its original handle, memory budget, bounds and artifacts.

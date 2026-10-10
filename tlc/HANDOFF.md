@@ -317,7 +317,10 @@ reading children and null argument elements remain ignored. All 216 bounded
 level observations and relevant original model checks pass. Quantifier context
 construction now sizes and traverses formal groups in source order, preserving
 empty groups, ignored excess domains and null/index failure precedence. All 102
-factory observations and relevant original model checks pass.
+factory observations and relevant original model checks pass. Argument conversion
+now rejects null before lazy construction or formal indexing, and null-symbol
+lookup retains Java's typed failure. All 132 related observations and relevant
+original model checks pass.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

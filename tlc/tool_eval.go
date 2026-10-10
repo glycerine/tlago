@@ -81,7 +81,7 @@ func (t *Tool) LookupSymbolValue(sym *SymbolNode, con *Context, cutoff bool) any
 
 func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, state *TLCStateMut, primed bool) any {
 	if sym == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
 	if con == nil {
 		panic(NewNullPointerException())
@@ -624,7 +624,13 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 }
 
 func (t *Tool) GetVal(expr SemanticNode, c *Context, cachable bool, cm CostModel) any {
+	if expr == nil {
+		panic(NewNullPointerException())
+	}
 	if opArg, ok := expr.(*OpArgNode); ok {
+		if opArg == nil {
+			panic(NewNullPointerException())
+		}
 		return t.Lookup(opArg.Op, c, nil, false)
 	}
 	return NewLazyValue(expr, c, cachable, cm)
