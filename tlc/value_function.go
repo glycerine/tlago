@@ -645,6 +645,9 @@ func (v *RecordValue) ToFcnRcd() *FcnRcdValue {
 	if err := v.normalizeRecord(); err != nil {
 		panic(err)
 	}
+	if v.Names == nil {
+		panic(NewNullPointerException())
+	}
 	domain := make([]Value, len(v.Names))
 	for i, name := range v.Names {
 		domain[i] = NewStringValueFromUnique(name, v.CM)

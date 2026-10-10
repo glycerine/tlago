@@ -36240,3 +36240,51 @@ exits or workload bounds changed. Latest saved original random stress progress i
 Direct poll cfe6ea confirms session 27326 live; preserve original seed, bounds
 and log. Handoff and architecture record the finite-set contracts, checked
 coverage ownership, native diagnostic-text limits and current full-suite result.
+
+2026-10-10: BagsExt fold conversion, multiplicity and invocation boundaries
+
+Continue native override parity from 821b2ec. Audit the actual BagsExt Java
+source with actual runtime constructors and parsed test206 source/lambda nodes.
+The ignored .codex-gotmp/bags-ext-fold observer covers 32 bag forms, eight
+operators, eight independent source-attachment combinations and direct versus
+actual MethodValue invocation. Direct rows omit non-OpValue arguments that
+cannot enter the typed Java signature. No fabricated semantic graph, evaluator
+callback, persistent test or fixture is introduced.
+
+Complete source/native baseline contains 3,328 rows with 1,708 raw differences,
+1,568 outside stack locations (26de52). Fix FoldBag null conversion/domain
+failures, typed null/bounds reads of the captured values array, multiplicity
+validation/diagnostic ordering and null operator evaluation. Capture the values
+array once but reread its slot for every loop bound, as the source does. Registered
+FoldBag now casts its OpValue before entering the method. RecordValue.ToFcnRcd
+normalizes first, then rejects null names even if normalization was bypassed.
+The record conversion's direct dereference adds no owner catch.
+
+Complete native rerun (5fdc16) retains 140 raw differences and zero outside
+native/JVM stack locations and repeated-frame elision lines (cd8fec). A final
+review also guards the last multiplicity diagnostic dereference against null;
+rerun bf297d/df0f5e and comparison dd62f3 preserve the same complete counts.
+Exception/cause headers, messages, codes, nullable details, source frames and
+raw bag/cache states agree. Arbitrary mutation during operator evaluation or
+diagnostic formatting remains unproven. Original-method credit is unchanged.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass, root 5.794s and tlc 2.417s (session 93921,
+terminal bcb8b9). Full original set/subset/randomization/debugger/initialization
+and vector sharing/reference checks pass normally at original bounds, tlc
+87.597s (session 2606, terminal 5ecbc1). Complete unchanged CommunityModules
+all/shiviz starts with timeout zero (session 20513, 23005a); preserve both
+original phases and wait for its terminal result. No race or shortened workload.
+Original random stress session 27326 remains live by direct poll cf5d18;
+latest saved progress 1,985,163,848 / 2,147,483,648 (36c245), without terminal
+result or long-test credit. No restart or second copy is authorized by lack of
+process-list visibility.
+
+Complete unchanged CommunityModules target exits zero (session 20513, terminal
+6257f4). Both original phases pass: root 308.596s, all 307.42s and shiviz 0.67s
+(b6918a). This is the current full-suite baseline. The final diagnostic null
+guard was separately recompiled and checked across the complete observer matrix;
+it does not change the checked rows. No original assumptions, expected phase
+exits or workload bounds changed. Latest saved original stress progress is
+1,988,495,831 / 2,147,483,648 (b6918a), still without terminal result or long
+credit. Handoff and architecture retain the current bag contracts and limits.

@@ -8539,6 +8539,27 @@ credit is unchanged. Full original set/subset and focused regressions pass, alon
 with the complete unchanged CommunityModules all/shiviz target. That current
 full-suite baseline also covers the preceding function-fold registration guards.
 
+BagsExt FoldBag converts its bag before reading the domain and captures the
+converted function's values array. It assigns the current key before checking
+its multiplicity, preserves null and bounds failures while formatting invalid
+counts, and rereads the captured slot for each inner-loop bound. Successful
+operator evaluation updates the accumulator; null operators fail only when
+invoked. Registered calls cast OpValue before entering the body, including for
+empty bags. RecordValue toFcnRcd normalizes first and then rejects a null names
+array, including the already-normalized shortcut without an owner catch.
+
+All 3,328 actual direct/MethodValue observations agree outside 140 native/JVM
+stack-location and repeated-frame elision differences. Thirty-two bag forms,
+eight operator forms, independent bag/operator/method source flags and actual
+parsed lambda bodies cover conversion, diagnostics, nulls, malformed arrays,
+arity and registered cast precedence. Observers retain raw input/cache state,
+exception/cause headers, messages, codes, nullable parameters and source frames.
+They use existing parsed nodes and real runtime constructors and add no persistent
+test, fixture or original-method credit. Arbitrary operator mutation remains
+unproven; captured-array rereads follow the source loop directly.
+Focused original and full set/subset regressions pass. The complete unchanged
+CommunityModules all/shiviz target passes after these bag changes.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

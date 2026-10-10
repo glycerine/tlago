@@ -197,7 +197,9 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("FoldSet", 3, standardEnumerableMethod(2, standardOperatorMethod(0, func(args []Value) (Value, error) {
 		return FiniteSetsExtFoldSet(args[0], args[1], args[2])
 	})))
-	t.defineStandardMethod("FoldBag", 3, func(args []Value) (Value, error) { return BagsExtFoldBag(args[0], args[1], args[2]) })
+	t.defineStandardMethod("FoldBag", 3, standardOperatorMethod(0, func(args []Value) (Value, error) {
+		return BagsExtFoldBag(args[0], args[1], args[2])
+	}))
 	t.defineStandardMethod("CSVWriteRecord", 4, func(args []Value) (Value, error) {
 		return CSVWriteRecord(args[0], args[1], args[2], args[3])
 	})
