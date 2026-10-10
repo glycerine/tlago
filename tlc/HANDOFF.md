@@ -523,6 +523,13 @@ original/native checks pass, including both GitHub 798 models and
 `ConstantContextTLCCache`. These observations cover actual constant expressions,
 null/empty states and selected control changes; arbitrary state mutation and
 additional constructor/coverage variants remain unproven.
+Symmetry subgroup construction now creates its enumeration before reading size,
+preserves Java's rejection of sets of size zero or one, and reads explicit
+function domains and range slots before validating model-value types. Typed
+null/bounds failures and source runtime messages match all 440 observations,
+including multiple-generator closure order and malformed enumeration storage.
+Focused original symmetry and value/evaluator checks pass. Permutation table
+lifetimes and further malformed inputs remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

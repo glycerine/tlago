@@ -37330,3 +37330,39 @@ terminal bd7f35, root 0.258s. No persistent tests/fixtures or original-method
 credit added. Prior broad CommunityModules baseline retained; this change has
 focused verification. Handoff/architecture updated. Additional state mutation,
 child-source and constructor/coverage variants remain unproven. Goal active.
+
+Symmetry-subgroup continuation after verified 8bdb83f. Previous goal turn made
+progress; checkout clean. Inspect pinned MVPerms.permutationSubgroup against
+native modules_misc: native size precedes enumeration, lacks source initial-Set
+capacity rejection, expands interval domains and uses generic/lowercase errors.
+Actual source calls preserve direct domain/range access before type validation.
+
+Prepare ignored .codex-gotmp/symmetry-subgroup from actual model values,
+function/tuple/record/set/interval constructors and checked test206 source
+metadata. No semantic graph or evaluator callback is fabricated. Reset actual
+shared primitive source flags between rows to avoid singleton poisoning.
+Corrected source b6a901/native f0ecca exit zero: all 204 rows present, 180
+actual differences. Covers valid swaps/cycles, zero/singleton generator sets,
+wrong functions/model pairs, null/short arrays, interval domains and source flags.
+
+Native now enumerates before size, computes signed-32-bit size-minus-one capacity
+and returns typed IllegalArgumentException for nonpositive capacity. It preserves
+null input/domain failures and reads range slots with typed array boundaries
+before checking either value's type. Invalid functions/pairs retain exact unowned
+source runtime messages. Native 87792 exits zero (0a9e61). Initial comparison's
+70 differences are observer IllegalArgumentException null-message formatting;
+read GetMessage rather than Error, without production changes. Native 60397e
+exits zero; all 204 rows then match exactly. Focused original/native 90426
+exits zero (f130ae), root 6.488s and tlc 2.372s, including original
+ChooseTableauSymmetryA/TTrace and no-symmetry tableau cases plus native subgroup,
+permutation and tool checks. Existing rejection tests retain assertions.
+
+Preserve initial logs as *-base.log and expand actual constructors with multiple
+swap/cycle generators, normalized/unnormalized closure, null vector storage,
+negative logical counts and invalid domain entries paired with null/short range
+arrays. Source 9653b3/native 925eeb exit zero. All 440 rows match exactly,
+including closure order and first-failure ownership. No new persistent tests,
+fixtures or original-method credit. Prior broad CommunityModules baseline
+retained; focused verification covers this correction. Handoff/architecture
+updated; goal active. Further permutation table lifetimes, allocation-resource
+behavior and arbitrary mutation remain unproven.

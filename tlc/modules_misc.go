@@ -209,17 +209,28 @@ func Permutations(value Value) (*SetEnumValue, error) {
 }
 
 func PermutationSubgroup(value Value) ([]*MVPerm, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	enumerable, ok := asEnumerable(value)
 	if !ok {
 		return nil, newTLCError(ECGeneral, "symmetry operator must specify an enumerable set of functions")
 	}
-	if _, err := value.Size(); err != nil {
+	enum := enumerable.Elements()
+	if err := enum.Err(); err != nil {
 		return nil, err
+	}
+	size, err := value.Size()
+	if err != nil {
+		return nil, err
+	}
+	capacity := int(int32(size) - 1)
+	if capacity <= 0 {
+		return nil, NewIllegalArgumentException()
 	}
 
 	seen := make(map[string]struct{})
 	perms := make([]*MVPerm, 0)
-	enum := enumerable.Elements()
 	for {
 		elem := enum.NextElement()
 		if elem == nil {
@@ -230,18 +241,22 @@ func PermutationSubgroup(value Value) ([]*MVPerm, error) {
 		}
 		fcn := asFcnRcdValue(elem)
 		if fcn == nil {
-			return nil, newTLCError(ECGeneral, "symmetry operator must specify a set of functions")
+			return nil, NewTLCRuntimeExceptionMessage("The symmetry operator must specify a set of functions.")
 		}
 		perm := NewMVPerm()
-		domain := fcn.DomainAsValues()
+		domain := fcn.Domain
+		if domain == nil {
+			panic(NewNullPointerException())
+		}
 		for i, dval := range domain {
+			rval := fcnParameterDomain(fcn.Values, i)
 			dmv, ok := dval.(*ModelValue)
 			if !ok {
-				return nil, newTLCError(ECGeneral, "symmetry function must have model values as domain and range")
+				return nil, NewTLCRuntimeExceptionMessage("Symmetry function must have model values as domain and range.")
 			}
-			rmv, ok := fcn.Values[i].(*ModelValue)
+			rmv, ok := rval.(*ModelValue)
 			if !ok {
-				return nil, newTLCError(ECGeneral, "symmetry function must have model values as domain and range")
+				return nil, NewTLCRuntimeExceptionMessage("Symmetry function must have model values as domain and range.")
 			}
 			perm.Put(dmv, rmv)
 		}

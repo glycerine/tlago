@@ -5447,6 +5447,24 @@ It is optimized for model checking:
   set has fewer than two useful model values; the Go port mirrors this for
   direct `Permutations(S)` argument shapes whose constant set value is available
   through the processed tool definition table.
+For enumerable inputs, PermutationSubgroup creates the enumeration before
+reading size. Java's initial Set capacity is size minus one in signed 32-bit
+arithmetic; nonpositive capacities raise typed IllegalArgumentException before
+reading any generator. Conversion failures use the exact unowned source runtime
+message. Generators read their explicit function domain, so interval-backed
+functions fail on a null explicit domain rather than expanding it. Each range
+slot is read before checking domain/range model-value types, preserving null and
+bounds failures before validation. An ignored observer uses actual runtime
+constructors, checked test206 source metadata, and actual vector storage/count
+fields. Its 204-row baseline has 180 differences; all 440 expanded rows match
+exactly, including zero/singleton inputs, interval/null inputs, normalized and
+unnormalized sets, null/short function arrays, typed failures, source ownership,
+multiple generators and ordered closure. Focused original symmetry and
+value/evaluator checks pass. No persistent tests/fixtures or original-method
+credit are added. Native non-enumerable argument validation is an adapter
+boundary outside the source method's Enumerable signature. Permutation table
+lifetimes, allocation-resource behavior and further mutations remain unproven.
+
 - `TLCStateMut.toString` also honors VIEW, but only when the global `useView`
   flag is enabled; fingerprinting uses VIEW whenever the active tool has one.
 - `setPredecessor` is also the level increment path. Java fails with
