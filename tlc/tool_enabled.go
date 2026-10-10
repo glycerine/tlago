@@ -197,7 +197,7 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 		}
 		bval, ok := value.(*BoolValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "While computing ENABLED of an expression of the form P => Q, P was %s.\n%s", valueKindString(value), SemanticString(pred))
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("While computing ENABLED of an expression of the form P => Q, P was %s.\n%s", valueKindString(value), SemanticString(pred)), pred, c)
 		}
 		if bval.Val {
 			return t.EnabledImpl(args[1], acts, c, s0, s1, cm)

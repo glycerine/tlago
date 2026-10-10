@@ -33677,3 +33677,47 @@ credit. Update current handoff and architecture contracts.
 Final checks pass after the builtin distinction (22174 terminal 6d7c78;
 final-checks.log, root 2.742s and tlc 0.018s; inspected 968ff6). Original stress
 27326 remains live on final direct poll (061f49), without terminal credit.
+
+
+2026-10-10: Optimized action-list and implication generation failures
+
+Previous goal turn made verified progress in 61b79b1. Source Tool's all-assigned
+initial and warning-enabled successor action-list loops use Assert runtime
+failures retaining the current predicate/context. Native preserved diagnostics
+but dropped this category and metadata. Ignored action-list-boolean-metadata
+observer uses Github817's actual CheckBoth conjunction, both existing formals
+bound to booleans/integers/strings, two base contexts and original generated
+initial-state copies. Compare initial generation and warning-enabled/disabled
+successor generation without constructing synthetic semantic nodes or action
+lists. Source and native produce 96 rows with eight differences (20900 terminal
+68d72d; comparison b859d7). Restore coded runtime errors and current predicate/
+context ownership at the two inspected optimization sites. All 96 final rows
+agree (42762 terminal 465108; comparison b11e72), including error categories,
+messages/codes/parameters, exact expression/context, frame counts, short circuits,
+emitted states, assigned-state status, retained x and result original/copy identity.
+
+Ignored generation-implication-metadata uses actual EWD840 TerminationDetection
+with its two existing operand symbols bound to the same four values and two base
+contexts. Compare initial/next generation and ENABLED. All 96 source/native rows
+expose 48 runtime metadata differences (77596 terminal 9822f9; comparison 899b02).
+Restore GENERAL detailed runtime carriers with the whole implication and incoming
+context at each non-boolean antecedent failure. Preserve all original messages,
+including phase-specific whitespace/punctuation. All 96 final rows agree (29081
+terminal 94dbbb; combined comparison bee0f8), including consequent value failures
+and FALSE antecedent short circuits. No graph mutation, evaluator callback,
+persistent test or fixture. Arbitrary action-list kinds, coverage side effects and
+temporal-generation diagnostics remain separate comparisons. Java enhanced NPE
+messages disabled.
+
+Eleven original model checks pass unchanged (3507 terminal 3916fd;
+action-list-boolean-metadata/original-models.log, 4.441s): Github817/b/c/d/e,
+ExamplesEWD840, BCoverage, CCoverage, LegacySuiteTest14, ValueSemanticsAssume and
+Debug02Debugger. EWD840 retains original full bounds and settings. Focused
+StateFunctor, bounded CHOOSE, function-context and original EvalControl checks
+pass (2484 terminal b5c013; existing-checks.log, 0.018s; receipts inspected bee4b6).
+No broad suite, race, changed assertions, reduced bounds or original-method
+inventory credit. Update handoff and implementation contracts.
+
+Original full stress session 27326 remains live on direct poll (d0e050).
+Latest saved progress is 1,474,172,599 / 2,147,483,648 (bee0f8); no terminal result
+or long-method credit. Preserve original handle, artifacts, budget and bounds.

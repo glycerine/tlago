@@ -7501,8 +7501,18 @@ preserve source capitalization, punctuation and line break. All 138 bounded
 observations on actual Github817 and legacy test14 nodes agree, including exact
 expression/context identity, messages, category/code/parameters, frame counts,
 short circuits and emitted-state counts. No semantic graphs were fabricated or
-mutated. Action-list optimizations, implication, temporal-generation diagnostics,
-malformed CASE arrays and coverage side effects remain outside this comparison.
+mutated. Optimized all-assigned initial/next action predicates also retain coded
+runtime failures and the current predicate/context. All 96 observations on
+Github817's actual CheckBoth conjunction agree, including complete initial
+states, warning-enabled/disabled successor generation, both operand bindings,
+short circuits, retained x and returned original/copy identity. The source
+warning switch selects the all-assigned successor optimization. Implication's
+non-boolean antecedent errors retain GENERAL, the whole application and incoming
+context in initial/next generation and ENABLED. All 96 observations on actual
+EWD840 TerminationDetection agree, including consequent value failures and
+FALSE antecedent short circuits. Temporal-generation diagnostics, arbitrary
+action-list kinds, malformed CASE arrays and coverage side effects remain
+outside these comparisons.
 
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays

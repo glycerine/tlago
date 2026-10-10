@@ -111,7 +111,9 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 			}
 			bval, ok := value.(*BoolValue)
 			if !ok {
-				return newTLCErrorCode(ECTLCExpectedExpressionInComputing, "initial states", "boolean", value.String(), SemanticString(pred))
+				failure := NewTLCRuntimeException(ECTLCExpectedExpressionInComputing, "initial states", "boolean", value.String(), SemanticString(pred))
+				failure.Expr, failure.Ctxt = pred, acts.CarContext()
+				return failure
 			}
 			if !bval.Val {
 				if CoverageEnabled() {
@@ -267,7 +269,7 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 		}
 		lval, ok := value.(*BoolValue)
 		if !ok {
-			return newTLCError(ECGeneral, "In computing initial states of a predicate of form P => Q, P was %s\n.%s", valueKindString(value), SemanticString(init))
+			return NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing initial states of a predicate of form P => Q, P was %s\n.%s", valueKindString(value), SemanticString(init)), init, c)
 		}
 		if lval.Val {
 			return t.GetInitStatesForPredicate(args[1], acts, c, ps, states, cm)
@@ -565,7 +567,9 @@ func (t *Tool) getNextStatesAllAssigned(action *Action, acts *ActionItemList, s0
 			}
 			bval, ok := value.(*BoolValue)
 			if !ok {
-				return s1, newTLCErrorCode(ECTLCExpectedExpressionInComputing, "next states", "boolean", value.String(), SemanticString(pred))
+				failure := NewTLCRuntimeException(ECTLCExpectedExpressionInComputing, "next states", "boolean", value.String(), SemanticString(pred))
+				failure.Expr, failure.Ctxt = pred, c
+				return s1, failure
 			}
 			if !bval.Val {
 				return nss.AddUnsatisfiedNextState(s0, action, s1, pred, c), nil
@@ -760,7 +764,7 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		}
 		bval, ok := value.(*BoolValue)
 		if !ok {
-			return s1, newTLCError(ECGeneral, "In computing next states of a predicate of the form P => Q, P was\n%s.\n%s", valueKindString(value), SemanticString(pred))
+			return s1, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing next states of a predicate of the form P => Q, P was\n%s.\n%s", valueKindString(value), SemanticString(pred)), pred, c)
 		}
 		if bval.Val {
 			return t.GetNextStatesForPredicate(action, args[1], acts, c, s0, s1, nss, cm)
