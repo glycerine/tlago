@@ -29428,3 +29428,56 @@ latest saved observation 347,422,863 / 2,147,483,648 iterations, without termina
 result or method credit. Overall parity remains incomplete. Next source audit:
 checker invariant/implied-action and initial-property loops, which still capture
 arrays or accept source null arrays. Cached initial-vector growth remains unproven.
+
+
+2026-10-09: Checker property-loop ownership and initial failure retention
+
+Previous goal turn made verified progress in commit 20410ba. ModelChecker
+successor invariant/implied-action and initial invariant/implied-init loops now
+read the current processor arrays in their conditions and element lookups.
+Diagnostic names are read only for failures, with source null/short-array
+boundaries. Successor null exceptions use the original evaluation-failure path;
+Java Error subclasses escape. Initial violation exceptions now pass through the
+functor error handler, storing the exception before returning it, matching
+Java's catch/rethrow. Empty property names remain present in violation and
+evaluation-failure parameters. Parser-backed state, transition and action
+validity APIs return the source null exception for null Actions; standalone
+native adapters preserve their existing errors.
+
+Ignored pinned-Java/native comparison: all 147 rows agree; baseline differs in
+94. Final comparison 1201ad, status 0. There are 144 matrix rows: next/init,
+continuation off/on, invariant/implied-property families and 18 array/name cases.
+Rows observe result or escaping exception class, retained initial exception,
+diagnostic code/name and predicate order after shrink/growth/replacement/shared
+mutation, current/null/short/empty names, evaluation errors and null arrays or
+Actions. Three direct null-Action validity rows cover all validity overloads.
+Java invokes the actual private successor helpers and DoInitFunctor through
+reflection with an ITool proxy around unchanged BasicMultiTrace. Native overlays
+expose the corresponding existing helpers. The successor comes from the
+original Next action, allowing actual Java trace reconstruction. An earlier
+hand-assembled successor was not a valid Next transition and caused Java trace
+rendering to fail; those observations are superseded and supply no parity proof.
+Initial observations return false from isInModel to exercise property checks
+without fingerprint insertion. Storage, full postcondition behavior and
+VM-generated exception detail text are not established by this comparison.
+The direct initial observations exposed 12 retained-exception mismatches after
+the loop corrections; routing violations through the existing handler fixes all.
+
+Logs under .codex-gotmp/: checker-property-java.log,
+checker-property-before.log and checker-property-after.log. Drivers and baseline
+overlays remain ignored under checker-property-observation. Final Java terminal
+be9c15, native fff7b9 and baseline 1976c3 all status 0. No persistent tests or
+fixtures added and no original-method inventory credit.
+
+Selected existing original DoInitFunctor, SimulatorCorrectness, all
+SimulationWorker methods, TLCGetAll/TLCGetLevel, A/B/C coverage and Debug02-Debug05,
+plus native ModelCheckerDoNext and Tool checks pass normally:
+checker-property-originals.log, terminal ab9730, status 0;
+root 7.285 seconds, TLC 0.055 seconds. Formatting and git diff --check pass.
+No full workspace/XML/ApalacheIR sweep, shortened bounds or long race selection.
+
+Full original off-heap random stress session 27326 remains live, poll 4aeafa;
+latest saved observation 369,153,053 / 2,147,483,648 iterations, without terminal
+result or method credit. Overall parity remains incomplete. Next source audit:
+DFID property loops; Java captures successor lengths while re-fetching elements,
+and its initial loops re-read lengths. Cached initial-vector growth is unproven.

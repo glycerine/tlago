@@ -100,9 +100,11 @@ and focused original checks pass; see the progress log for receipts. Simulator
 initial checks now retain the constructor's invariant array; worker successor
 checks re-read current arrays as they loop and fetch names only for diagnostics.
 All 49 bounded capture/replacement/null/failure observations agree with Java.
-Next source audit: checker invariant/implied-action and initial-property loops,
-which still capture arrays or accept null arrays. Cached initial-vector growth
-remains unproven.
+Checker successor and initial-property loops now follow current arrays and names,
+including source null boundaries, retained initial exceptions and empty diagnostic
+names; all 147 bounded observations agree with Java. Next source audit: DFID
+property loops, whose source captures successor lengths but re-fetches elements.
+Cached initial-vector growth remains unproven.
 
 ## Verification baseline and test credit
 

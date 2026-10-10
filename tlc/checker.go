@@ -1842,23 +1842,32 @@ func (mc *ModelChecker) doNextCheckInvariants(curState *TLCStateMut, succState *
 	return mc.doNextCheckInvariantsWithTool(mc.Tool, curState, succState, true)
 }
 
-func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, withPostCondition bool) (bool, error) {
-	invariants := tool.GetInvariants()
-	names := tool.GetInvNames()
-	for i, invariant := range invariants {
+func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, withPostCondition bool) (stop bool, failure error) {
+	i := 0
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err, ok := recovered.(error)
+			if !ok || isJavaError(err) {
+				panic(recovered)
+			}
+			stop, failure = true, mc.doNextEvalFailed(curState, succState, ECTLCInvariantEvaluationFailed, tool.propertyNameAt(tool.GetInvNames(), i), err)
+		}
+	}()
+	for ; i < len(tool.requireActionArray(tool.GetInvariants())); i++ {
+		invariant := tool.requireActionArray(tool.GetInvariants())[i]
 		valid, err := tool.IsValidState(invariant, succState)
 		if err != nil {
-			return true, mc.doNextEvalFailed(curState, succState, ECTLCInvariantEvaluationFailed, nameAt(names, i), err)
+			return true, mc.doNextEvalFailed(curState, succState, ECTLCInvariantEvaluationFailed, tool.propertyNameAt(tool.GetInvNames(), i), err)
 		}
 		if !valid {
 			if continuationEnabled() {
-				mc.printContinuationViolation(curState, succState, ECTLCInvariantViolatedBehavior, nameAt(names, i))
+				mc.printContinuationViolation(curState, succState, ECTLCInvariantViolatedBehavior, tool.propertyNameAt(tool.GetInvNames(), i))
 				return false, nil
 			}
 			if withPostCondition {
-				return mc.doNextSetErrWithPostConditionTool(tool, curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
+				return mc.doNextSetErrParamsWithPostConditionTool(tool, curState, succState, false, ECTLCInvariantViolatedBehavior, tool.propertyNameAt(tool.GetInvNames(), i)), nil
 			}
-			return mc.doNextSetErr(curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
+			return mc.doNextSetErrParams(curState, succState, false, ECTLCInvariantViolatedBehavior, tool.propertyNameAt(tool.GetInvNames(), i)), nil
 		}
 	}
 	return false, nil
@@ -1868,23 +1877,32 @@ func (mc *ModelChecker) doNextCheckImplied(curState *TLCStateMut, succState *TLC
 	return mc.doNextCheckImpliedWithTool(mc.Tool, curState, succState, true)
 }
 
-func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, withPostCondition bool) (bool, error) {
-	implied := tool.GetImpliedActions()
-	names := tool.GetImpliedActNames()
-	for i, action := range implied {
+func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, withPostCondition bool) (stop bool, failure error) {
+	i := 0
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err, ok := recovered.(error)
+			if !ok || isJavaError(err) {
+				panic(recovered)
+			}
+			stop, failure = true, mc.doNextEvalFailed(curState, succState, ECTLCActionPropertyEvaluationFailed, tool.propertyNameAt(tool.GetImpliedActNames(), i), err)
+		}
+	}()
+	for ; i < len(tool.requireActionArray(tool.GetImpliedActions())); i++ {
+		action := tool.requireActionArray(tool.GetImpliedActions())[i]
 		valid, err := tool.IsValidTransition(action, curState, succState)
 		if err != nil {
-			return true, mc.doNextEvalFailed(curState, succState, ECTLCActionPropertyEvaluationFailed, nameAt(names, i), err)
+			return true, mc.doNextEvalFailed(curState, succState, ECTLCActionPropertyEvaluationFailed, tool.propertyNameAt(tool.GetImpliedActNames(), i), err)
 		}
 		if !valid {
 			if continuationEnabled() {
-				mc.printContinuationViolation(curState, succState, ECTLCActionPropertyViolatedBehavior, nameAt(names, i))
+				mc.printContinuationViolation(curState, succState, ECTLCActionPropertyViolatedBehavior, tool.propertyNameAt(tool.GetImpliedActNames(), i))
 				return false, nil
 			}
 			if withPostCondition {
-				return mc.doNextSetErrWithPostConditionTool(tool, curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
+				return mc.doNextSetErrParamsWithPostConditionTool(tool, curState, succState, false, ECTLCActionPropertyViolatedBehavior, tool.propertyNameAt(tool.GetImpliedActNames(), i)), nil
 			}
-			return mc.doNextSetErr(curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
+			return mc.doNextSetErrParams(curState, succState, false, ECTLCActionPropertyViolatedBehavior, tool.propertyNameAt(tool.GetImpliedActNames(), i)), nil
 		}
 	}
 	return false, nil
@@ -2122,11 +2140,7 @@ func (mc *ModelChecker) doNextEvalFailed(curState *TLCStateMut, succState *TLCSt
 	defer mc.nextErrorMu.Unlock()
 	if mc.SetErrState(curState, succState, true, ec) {
 		msg := javaThrowableMessage(err)
-		if param == "" {
-			PrintError(ec, msg)
-		} else {
-			PrintError(ec, param, msg)
-		}
+		PrintError(ec, param, msg)
 		mc.printBehaviorTrace(curState, succState)
 		if mc.StateQueue != nil {
 			mc.StateQueue.FinishAll()
@@ -2244,7 +2258,7 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (result any, err error
 		PrintError(ECTLCInitialState, "current state is not a legal state", curState.String())
 		f.errState = curState
 		f.returnValue = ECTLCInitialState
-		return f.returnValue, NewDoInitInvariantViolatedException()
+		return f.handleInitError(curState, NewDoInitInvariantViolatedException())
 	}
 	inModel, err := f.tool.IsInModel(curState)
 	if err != nil {
@@ -2276,7 +2290,8 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (result any, err error
 		}
 	}
 	if !seen || f.forceChecks {
-		for i, invariant := range f.tool.GetInvariants() {
+		for i := 0; i < len(f.tool.requireActionArray(f.tool.GetInvariants())); i++ {
+			invariant := f.tool.requireActionArray(f.tool.GetInvariants())[i]
 			valid, err := f.tool.IsValidState(invariant, curState)
 			if err != nil {
 				return f.handleInitError(curState, err)
@@ -2286,15 +2301,16 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (result any, err error
 				if f.tool != nil {
 					alias = f.tool.EvalAlias(curState, curState)
 				}
-				PrintError(ECTLCInvariantViolatedInitial, nameAt(f.tool.GetInvNames(), i), alias.String())
+				PrintError(ECTLCInvariantViolatedInitial, f.tool.propertyNameAt(f.tool.GetInvNames(), i), alias.String())
 				if !continuationEnabled() {
 					f.errState = curState
 					f.returnValue = ECTLCInvariantViolatedInitial
-					return f.returnValue, NewDoInitInvariantViolatedException()
+					return f.handleInitError(curState, NewDoInitInvariantViolatedException())
 				}
 			}
 		}
-		for i, implied := range f.tool.GetImpliedInits() {
+		for i := 0; i < len(f.tool.requireActionArray(f.tool.GetImpliedInits())); i++ {
+			implied := f.tool.requireActionArray(f.tool.GetImpliedInits())[i]
 			valid, err := f.tool.IsValidState(implied, curState)
 			if err != nil {
 				return f.handleInitError(curState, err)
@@ -2304,10 +2320,10 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (result any, err error
 				if f.tool != nil {
 					alias = f.tool.EvalAlias(curState, curState)
 				}
-				PrintError(ECTLCPropertyViolatedInitial, nameAt(f.tool.GetImpliedInitNames(), i), alias.String())
+				PrintError(ECTLCPropertyViolatedInitial, f.tool.propertyNameAt(f.tool.GetImpliedInitNames(), i), alias.String())
 				f.errState = curState
 				f.returnValue = ECTLCPropertyViolatedInitial
-				return f.returnValue, NewDoInitInvariantViolatedException()
+				return f.handleInitError(curState, NewDoInitInvariantViolatedException())
 			}
 		}
 	}

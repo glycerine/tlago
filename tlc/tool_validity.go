@@ -93,6 +93,9 @@ func (t *Tool) IsValidExprImpl(expr SemanticNode, ctxt *Context) (bool, error) {
 
 func (t *Tool) IsValidTransitionImpl(action *Action, s0 *TLCStateMut, s1 *TLCStateMut) (bool, error) {
 	if action == nil {
+		if t != nil && t.SpecProcessor != nil {
+			return false, NewNullPointerException()
+		}
 		return false, newTLCError(ECGeneral, "cannot validate nil action")
 	}
 	return t.evalPredicateValue(action.Pred, action.Con, s0, s1, EvalClear, action.GetName(), action.CM)
@@ -100,6 +103,9 @@ func (t *Tool) IsValidTransitionImpl(action *Action, s0 *TLCStateMut, s1 *TLCSta
 
 func (t *Tool) IsValidStateImpl(action *Action, state *TLCStateMut) (bool, error) {
 	if action == nil {
+		if t != nil && t.SpecProcessor != nil {
+			return false, NewNullPointerException()
+		}
 		return false, newTLCError(ECGeneral, "cannot validate nil action")
 	}
 	return t.evalPredicateValue(action.Pred, action.Con, state, EmptyState, EvalClear, action.GetName(), action.CM)
@@ -107,6 +113,9 @@ func (t *Tool) IsValidStateImpl(action *Action, state *TLCStateMut) (bool, error
 
 func (t *Tool) IsValidActionImpl(action *Action) (bool, error) {
 	if action == nil {
+		if t != nil && t.SpecProcessor != nil {
+			return false, NewNullPointerException()
+		}
 		return false, newTLCError(ECGeneral, "cannot validate nil action")
 	}
 	return t.evalPredicateValue(action.Pred, action.Con, EmptyState, EmptyState, EvalClear, action.GetName(), action.CM)
