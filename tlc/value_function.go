@@ -1374,9 +1374,12 @@ func (v *FcnRcdValue) ToTuple() *TupleValue {
 		}
 		return NewTupleValue(v.Values)
 	}
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	elems := make([]Value, len(v.Values))
 	for i := range v.Values {
-		iv, ok := v.Domain[i].(*IntValue)
+		iv, ok := fcnParameterDomain(v.Domain, i).(*IntValue)
 		if !ok {
 			return nil
 		}
@@ -1405,7 +1408,12 @@ func (v *FcnRcdValue) ToRecord() *RecordValue {
 		}
 		names[i] = s.Val
 	}
-	v.CM.incValueSecondary(int64(len(v.Values)))
+	if CoverageEnabled() {
+		if v.Values == nil {
+			panic(NewNullPointerException())
+		}
+		v.CM.incValueSecondary(int64(len(v.Values)))
+	}
 	return NewRecordValue(names, v.Values, v.IsNorm, v.CM)
 }
 

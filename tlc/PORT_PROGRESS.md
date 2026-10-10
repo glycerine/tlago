@@ -34957,3 +34957,44 @@ direct poll 875ae9, latest saved progress 1,671,552,789 / 2,147,483,648 (ae075c)
 No terminal result or added long-method credit; preserve original handle,
 artifacts and bounds. Other domain kinds, larger sorts, arbitrary comparison
 callbacks and concurrent mutation remain outside the bounded comparison.
+
+
+### 2026-10-10: Function-record tuple and record conversion boundaries
+
+Previous turn made verified progress in 04dbf46/fdb018f. Confirm clean HEAD
+(0a1923); original full stress session 27326 remains live on direct polls b58732
+and a391ab. Continue source function-record conversion paths.
+
+Ignored function-conversion extends the actual test206 source-attached runtime
+array observer to tuple/record conversions. Eighteen explicit domain forms cover
+null/empty, ordered/reordered and duplicate integers, null entries, string keys,
+mixed keys and zero/negative indices. Seven value forms cover null, lengths zero
+to three and two null-containing arrays. Four interval constructors cover null,
+one-origin, empty and nonempty non-one-origin cases. Run normalization flags and
+source attachment; interval constructors retain their own normalized setting.
+Configure coverage before Java Value class initialization, using separate JVMs
+for disabled/enabled modes and matching native globals. Structural result/array/
+normalized-state output avoids malformed-composite rendering side effects.
+
+Java/native initially complete 1,120 rows in each coverage mode, with 148 normal
+and 162 coverage differences (1a4132). Restore explicit-domain value-length and
+typed domain-index reads in tuple conversion after its interval shortcut. Keep
+empty values from reading the domain. In record conversion, preserve the coverage
+condition around value-length access: null values fail only when coverage is
+enabled and earlier normalization/key inspection succeeds. Add no conversion
+catch wrapper. Native 20364/72442 finish with exit zero (a9fee4/ff1ad2); all 2,240
+rows agree (c17812). No fabricated semantic graph/evaluator, persistent test or
+fixture, altered original assertions or original-method credit. No array
+ownership or coverage-counter claim is made by these comparisons.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue, EvalControl and ReportCoverage tests plus focused
+record/numeric/context/EXCEPT/lazy-subset/spec-level/stream checks pass. Session
+2152 finishes with exit zero (a8ce6a); root 5.053s and tlc 2.141s (ba4677).
+The prior lambda tuple-conversion observer rerun with its required tuple label
+completes (3e140c); all 1,242 rows still agree (77fe74). No race, broad suite or
+shortened workloads. Logs remain under function-conversion. Handoff and
+architecture updated. Latest saved full stress progress is 1,674,880,052 /
+2,147,483,648 (ba4677), without terminal result or long-method credit. Preserve
+original handle/artifacts/bounds. Other domain kinds, arbitrary callbacks,
+concurrent coverage changes and other composite operations remain separate work.

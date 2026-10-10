@@ -355,6 +355,9 @@ failures and source frame boundaries; all 64 related observations agree.
 Function-record normalization and sizing retain source array-read order, typed
 failures and normalized-state publication; all 750 observations agree, and the
 prior 1,266 lambda deep-normalization observations still agree.
+Function-record tuple/record conversion retains array failures, interval shortcuts
+and coverage-only length reads. All 2,240 conversion observations and the prior
+1,242 lambda tuple-conversion observations agree.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
 Verified EXCEPT installation and scalar, set, tuple and record updates retain
 typed path/batch failures, source wrappers and warning parameters. Record updates allocate and

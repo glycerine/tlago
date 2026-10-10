@@ -7910,6 +7910,27 @@ normalization observations still agree. Arbitrary comparison callbacks, other
 domain kinds, larger sort inputs and concurrent mutation remain outside these
 matrices; they add no original-test credit.
 
+Function-record tuple conversion retains its interval shortcut before reading
+value length. Explicit-domain conversion rejects null values at length and uses
+typed domain-array reads while filling the tuple; empty values do not read a
+null domain. Noninteger, missing, repeated and out-of-range indices retain their
+source rejection order, including the source behavior of duplicate indices whose
+previous result is null. Conversion does not normalize or add a source wrapper.
+Record conversion first rejects a null domain, then normalizes before inspecting
+string keys. Coverage alone enables the value-length read before constructing
+the record; with coverage disabled, null values can reach the result. That
+coverage failure is unwrapped even on a source-attached function.
+All 2,240 observations agree across tuple/record conversion, source attachment,
+normalization flags, coverage enabled/disabled, eighteen explicit domain forms,
+four interval constructors and seven value-array forms. The latter include
+null, lengths zero to three and two arrays with null values. Structural output
+compares results, input arrays and normalized state without printing malformed
+composites. Actual test206 Def2 provides source attachment; coverage is configured
+before Java Value class initialization in each separate process. The previous
+1,242 lambda tuple-conversion observations still agree. No original-test credit
+or ownership/counter claim is added. Arbitrary callbacks, other domain kinds,
+concurrent flag changes and remaining composite operations are separate work.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes
