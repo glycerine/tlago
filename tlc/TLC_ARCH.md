@@ -8543,11 +8543,13 @@ Functions IsInjective rejects a null input before tuple conversion. Both array
 paths distinguish null backing arrays from empty arrays. Non-destructive pair
 comparison dereferences its left value only when a pair is visited; a singleton
 null element remains injective. The destructive comparator preserves a typed
-null receiver failure. The current native sort.Slice still differs from Java
-Arrays.sort comparison order: input [2, 1, TRUE] reports TRUE against 2 instead
-of 1. Sixteen of 4,256 observed injectivity calls retain this discrepancy across
-direct/MethodValue and source attachments. This is a concrete remaining target,
-not stack text, and prevents claiming full injectivity parity.
+null receiver failure. Destructive sorting now uses a TLC Value port of OpenJDK
+ComparableTimSort: short run detection/reversal and binary insertion, run-stack
+collapse/force merging, both gallop bounds, forward/backward merging, temporary
+array growth and comparator-contract failures. Comparison errors unwind the
+sort immediately and return their original error; other panics retain identity.
+All 8,512 direct/invocation observations now agree outside 714 native/JVM stack
+text differences, resolving the sixteen previously recorded ordering cases.
 
 AntiFunction normalizes its input, converts to FcnRcd and obtains the domain.
 An explicit domain is copied before dereferencing/copying the values array;
@@ -8560,10 +8562,29 @@ uses 32 original forms plus all 125 three-element combinations of 1, 2, TRUE,
 null and a string in tuples, explicit integer/noninteger functions and record
 products. It uses actual parsed test206 nodes/lambdas and runtime constructors;
 no persistent tests or fixtures, fabricated nodes or evaluator callbacks are
-introduced. Original-method credit is unchanged. Longer destructive arrays and
-arbitrary comparison side effects remain separate verification work.
+introduced. Original-method credit is unchanged.
+
+An additional 7,200 actual runtime array observations agree exactly with
+Arrays.sort, including stable original-reference order, nested-set normalization
+and array contents after immediate failures. Twenty-five lengths from zero
+through 4,096 cover insertion/merge thresholds, stack-size thresholds and temp
+array growth. Twelve ascending/descending/duplicate/random/run patterns, scalar
+and nested-set elements, five invalid-element positions plus no invalid element,
+and two source modes use real values. An ignored Go overlay exports only the
+actual private sorting entry point for these observations; it is absent from
+production and introduces no fabricated comparator or semantic graph. OpenJDK's
+full original copyright/license header is retained with the port; repository
+OpenJDK license files already cover this source.
+
+The array comparison also found SetEnumValue diagnostic-order differences:
+receiver formatting/normalization precedes a null right operand dereference in
+both compareTo and equals. The native methods preserve this partial mutation
+before throwing. All 64 direct null-operand observations agree exactly across
+eight actual receiver forms, source flags and comparison/equality. Arbitrary
+comparison side effects, comparator-contract violations and allocation exhaustion
+remain unproven beyond source control-flow inspection and these runtime cases.
 Focused original regressions and the complete unchanged CommunityModules
-all/shiviz target pass after these null-boundary and inverse-copy changes.
+all/shiviz target pass after the source-order sort and set diagnostic fixes.
 
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking

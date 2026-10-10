@@ -661,10 +661,11 @@ func (v *SetEnumValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
+		setText := ValuesPPR(v)
 		if other == nil {
 			panic(NewNullPointerException())
 		}
-		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the set %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other)))
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare the set %s with the value:\n%s", setText, ValuesPPR(other)))
 	}
 	if _, err := v.normalizeSet(); err != nil {
 		return 0, err
@@ -694,10 +695,11 @@ func (v *SetEnumValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
+		setText := ValuesPPR(v)
 		if other == nil {
 			panic(NewNullPointerException())
 		}
-		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the set %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other)))
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of the set %s with the value:\n%s", setText, ValuesPPR(other)))
 	}
 	if _, err := v.normalizeSet(); err != nil {
 		return false, err

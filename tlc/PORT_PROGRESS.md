@@ -36354,3 +36354,80 @@ bounds changed. Original stress session 27326 remains live by direct poll
 1a7445; latest saved progress is 1,996,472,678 / 2,147,483,648 (c95a52), with no
 terminal result or long-test credit. Handoff and architecture retain the exact
 sorting discrepancy as the next task, without claiming full injectivity parity.
+
+2026-10-10: Source-order destructive sorting for Functions.IsInjective
+
+Previous turn made verified progress in adb8757 and left sixteen concrete
+sorting-order differences. Inspect the clean current tree (16d3cd); original
+random stress session 27326 remains live by direct poll e5dcab. Read actual
+OpenJDK ComparableTimSort source from openjdk/jdk21u after sandbox DNS failure
+(9d4fb9) and successful read-only elevated download (e838f3). Source SHA-256 is
+f0f160ffeb40b43d61ae6808c86735968dfbd32e118a40d71f54166ba0253537 (5d72b8).
+Retain the full original Oracle/Google copyright and GPLv2/Classpath header;
+existing tlc/licenses/openjdk-* files remain unchanged. The saved source is
+.codex-gotmp/functions-injective-anti/ComparableTimSort.java; compiled JVM 21
+bytecode saved in the preceding turn confirms the actual default Arrays.sort
+path and merge-collapse branch order.
+
+Port the full relevant ComparableTimSort path to tlc/java_value_sort.go. This
+includes run detection/reversal, stable binary insertion, run-stack invariants
+and final merging, gallopLeft/gallopRight, mergeLo/mergeHi, adaptive minGallop,
+temporary-array growth and comparator-contract failure. The caller needs only
+the whole-array/default-workspace path used by Functions. Compare errors use an
+internal unwind token to stop the sort immediately, then return the unchanged
+error; typed null and other panics retain their original identity. Replace
+sort.Slice in the destructive injectivity helper. Ordinary tuple/interval inputs
+continue through their original non-destructive pair loop.
+
+Complete existing 8,512-row Functions runtime matrix now agrees outside 714
+native/JVM stack-location/elision differences, zero other differences (session
+79500, terminal 8d3172, comparison 51e14b). All sixteen actual sorting diagnostics
+are resolved. Do not fabricate JVM stack locations.
+
+Build ignored .codex-gotmp/value-sort runtime observers with actual values and
+parsed test206 source nodes. Java calls actual Arrays.sort; an ignored native
+overlay exports only javaSortValues for the observer. The overlay adds no real
+workspace file, evaluator callback, fabricated semantic node or comparator.
+Twenty-five lengths 0..4,096, twelve ascending/descending/duplicate/random/run
+patterns, scalar ints versus nested unsorted sets, five invalid-element positions
+plus no invalid element, and two source modes yield 7,200 rows. Track reference
+identity order using actual object maps and snapshot post-sort/failure array and
+nested-set normalization without invoking formatting. Both complete runs exit
+zero (source 7de39a, native a2c621). Initial 208 differences are exclusively
+nested-set state, not sorting order or failure messages (a75950).
+
+Source SetEnumValue compareTo/equals formats its receiver before dereferencing
+a null right operand in its diagnostic. Native guards previously skipped this
+normalization. Move receiver formatting before the guard in both methods. The
+complete 7,200-row native rerun exits zero (75ac72) and agrees exactly, zero raw
+or canonical differences (24b454). No comparison callback is fabricated.
+
+Check the equality branch with .codex-gotmp/set-null-diagnostics actual receiver
+constructors and parsed nodes. Initial source/native observers both stop at the
+null Value[] constructor, which throws before an object can reach comparison
+(474bab/4b048f); omit that unreachable comparison shape. Complete source and
+native reruns exit zero (bc5e28/924f1c), all 64 observations agree exactly
+(fe2f7a), including empty, null-vector, null-element, invalid/malformed nested
+values and source flags. No persistent fixture or test is added. Runtime
+observations do not earn original-method credit. Arbitrary comparison mutation,
+contract violations and allocation exhaustion remain unproven beyond the
+ported source control flow and checked runtime cases.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass, root 5.533s and tlc 2.531s (session 89752,
+terminal 5cdf5a). Full original set/subset/randomization/debugger/initialization
+and vector sharing/reference checks pass normally at original bounds, tlc
+89.799s (session 68597, terminal 882f0d). Complete unchanged CommunityModules
+all/shiviz target runs with timeout zero (session 81601, b222d4); retain its
+original phases and wait for terminal result. No race or shortened workloads.
+
+The final production state also reruns the complete existing 8,512-row override
+matrix successfully (session 75283, terminal 9e2303): 714 raw stack differences,
+zero other differences (25ad87). Formatting and diff checks pass. Complete
+unchanged CommunityModules target exits zero (session 81601, terminal 8b2fa7).
+Both original phases pass: root 308.853s, all 308.21s and shiviz 0.22s (777126).
+This is the current full-suite baseline. No original assumptions, expected phase
+exits or workload bounds changed. Original stress session 27326 remains live
+by direct poll 663093; latest saved progress is 2,010,598,684 / 2,147,483,648
+(f7c9b5), with no terminal result or long-test credit. Handoff replaces the
+sixteen pending sorting cases with their resolved contracts and checked limits.

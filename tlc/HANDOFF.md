@@ -414,15 +414,17 @@ null operands retain source dereferences. `kSubset` preserves its input set and
 coverage model. All 11,184 direct/invocation observations agree outside 1,288 raw
 native stack/Union iterator identity differences. Actual `Nat` and `Int` values
 cover the accepted `UserValue` branch. Arbitrary predicate mutation remains open.
-`Functions.IsInjective` and `AntiFunction` now preserve observed null backing
-array failures. AntiFunction copies an explicit domain before reading/copying
-values; interval domains use their freshly allocated array. All 4,256 inverse
-observations agree outside native/JVM stack text. Of 4,256 injectivity rows,
-sixteen still differ in destructive sorting comparison order: `[2, 1, TRUE]`
-compares `TRUE` with `1` in Java and `2` in Go. Replace `sort.Slice` with the
-source sorting behavior next; retain the non-destructive tuple/interval paths.
-Focused original regressions and the complete CommunityModules all/shiviz
-target pass after these null-boundary changes.
+`Functions.IsInjective` uses the OpenJDK `ComparableTimSort` behavior for freshly
+converted tuples, preserving comparison order and immediate failures. Original
+tuples and interval functions retain non-destructive pair checks. `AntiFunction`
+copies an explicit domain before reading/copying values; interval domains use
+their freshly allocated array. All 8,512 direct/invocation rows agree outside
+714 native/JVM stack-text differences. All 7,200 sorting observations through
+length 4,096 agree exactly, including stable reference order and partial state.
+Set comparison/equality formats and normalizes its receiver before a null-right
+operand failure; all 64 direct observations agree. Arbitrary comparison mutation
+and allocation exhaustion remain unproven. Original set/value checks and the
+complete CommunityModules all/shiviz target pass.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -506,7 +508,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,996,472,678 of 2,147,483,648 iterations, without a terminal result. The previous
+2,010,598,684 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

@@ -1,7 +1,5 @@
 package tlc
 
-import "sort"
-
 func FunctionsIsInjective(value Value) (*BoolValue, error) {
 	if value == nil {
 		panic(NewNullPointerException())
@@ -31,23 +29,8 @@ func functionsIsInjectiveDestructive(values []Value) (*BoolValue, error) {
 	if values == nil {
 		panic(NewNullPointerException())
 	}
-	var sortErr error
-	sort.Slice(values, func(i int, j int) bool {
-		if sortErr != nil {
-			return false
-		}
-		if values[i] == nil {
-			panic(NewNullPointerException())
-		}
-		cmp, err := values[i].Compare(values[j])
-		if err != nil {
-			sortErr = err
-			return false
-		}
-		return cmp < 0
-	})
-	if sortErr != nil {
-		return nil, sortErr
+	if err := javaSortValues(values); err != nil {
+		return nil, err
 	}
 	for i := 1; i < len(values); i++ {
 		eq, err := values[i-1].Equal(values[i])
