@@ -191,9 +191,14 @@ AssertError now catches only source evaluation/runtime failures and evaluates
 the expected message through the tool after a caught failure. It preserves the
 state-expression overload, cast/null failures and the literal precondition's
 runtime exception. Eleven bounded comparisons match Java, and 19 related
-original methods pass. Next audit: TLCExt's shared class synchronization for its
-synchronized methods, consulting prior locking receipts. Original model-test
-reconciliation remains open.
+original methods pass. AssertError, PickSuccessor, TLCModelValue, TLCFP and
+noninitial model-checking Trace now share Java's reentrant class monitor.
+Cross-method exclusion and nested calls match all 18 bounded source rows,
+also under short race instrumentation; 20 related original methods pass.
+Initial traces and unrelated unsynchronized methods retain their bypass paths.
+Next audit: PickSuccessor's seen-fingerprint check before guard evaluation, using
+source behavior and existing model states. Original model-test reconciliation
+remains open.
 
 ## Verification baseline and test credit
 
@@ -201,7 +206,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-975,529,316 of 2,147,483,648 iterations, without a terminal result. The previous
+994,361,575 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

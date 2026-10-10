@@ -31423,3 +31423,61 @@ stress saved progress is 975,529,316 / 2,147,483,648 (0b0cca), without terminal
 result or original-method credit. Next audit: TLCExt's shared class synchronization
 for its synchronized methods, consulting prior locking receipts. Overall TLC
 parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10 TLCExt shared class monitor and nested calls:
+Previous turn made verified progress in fd46244; working tree clean on entry.
+Original full random stress handle 27326 remains live (3350b7), no restart.
+Source synchronized static AssertError, PickSuccessor, tlcModelValue and
+tlcFingerprint share TLCExt.class with getTrace's noninitial model-checking
+block. Native PickSuccessor and TLCFP had unrelated nonreentrant mutexes;
+AssertError, model values and noninitial Trace had no matching shared monitor.
+Prior fingerprint/hash receipts established standalone synchronization, not
+cross-method class ownership or recursive PickSuccessor evaluation.
+
+Ignored .codex-gotmp/tlcext-monitor-observation clones the pinned FastTool adapter
+as observer-only MonitorProbeTool; all original delegates remain unchanged except
+a controlled eval callback on the actual existing TLCExtTrace.Inv body. Source
+FastTool loads the unchanged Alias config, gets real initial state and creates
+its unwritten successor with setPredecessor. Java calls the actual unchanged
+TLCExt methods; native uses actual loaded evaluating callbacks and value helpers.
+Each bounded observation runs in its own process. A holder AssertError callback
+signals entry and waits on a latch/channel. Contender exclusion is established by
+Java Thread.State.BLOCKED or native monitor Lock stack, not merely elapsed time.
+Three controls call initial Trace, CounterExample and TLCNoOp while the holder
+still owns the monitor; all complete. Ten nested combinations use AssertError and
+PickSuccessor as holders, each invoking all five synchronized paths on the same
+thread/goroutine. Results include actual model value, fingerprint and tuple size.
+Initial source compile lacks CounterExample's IOException catch, corrected
+before observations; its native control invokes the actual CounterExample helper.
+
+Source/baseline native 28383 terminal 088bc6 yields eighteen rows. Comparison
+e5203b finds five missing cross-method exclusions and one native nested
+PickSuccessor timeout; the remaining twelve controls/nested results match.
+Initially a new native reentrant helper was drafted and verified against all
+18 rows (32000 receipt c229ff); 20 originals pass at 34170 terminal 9874cb,
+4.834s. Further source-owner search locates the existing distributedServerMonitor
+already used by JSON and FPSet. Reuse that instead and remove the uncommitted
+new helper. Final code has no new synchronization primitive or persistent test.
+The shared TLCExt monitor covers registered AssertError/PickSuccessor callbacks,
+PickSuccessor's value helper, TLCModelValue/TLCFP bodies and Trace reconstruction
+after state validation/simulation/initial fast paths. Deferred unlock preserves
+ordinary returns and unwinding. TLCCache's independent read/write lock is unchanged.
+
+Final normal/race observer builds 14040 terminal a4004b. Repeat all eighteen rows
+normally and with -race only on this short concurrency observation selection:
+4804 terminal 6b3357 matches all 36 outputs, without race diagnostics. Final
+20 original methods pass, 18658 terminal a52fd8, 4.629s, originals-final.log;
+selection is ConstantContextTLCCache plus prior nineteen AssertError/module,
+Github696, trace/alias/level/construction and single-worker round-trip methods.
+Rebuild prior AssertError observer in that same session; all eleven saved source
+boundary rows still match (6b3357). No persistent tests/fixtures, upstream source
+edits, weakened assertions, new method credit, broad suite, long race workloads
+or email work. Formatting and git diff --check pass. Bounded monitor observations
+do not prove every scheduling/storage scenario or complete module parity.
+
+Latest saved full random stress progress is 994,361,575 / 2,147,483,648 (691b2c),
+with original handle live and no terminal result or original-method credit.
+Preserve bounds, default budget and files. Next audit: PickSuccessor's seen-state
+fingerprint check before guard evaluation, against source behavior and existing
+model states. Overall TLC parity and original-model reconciliation remain open.

@@ -9194,7 +9194,22 @@ the original expression's catch. Message equality uses the throwable detail
 message, not its rendered class text. Native DebuggerValue retains its source
 StringValue inheritance at this cast. Eleven bounded Java/native observations
 verify order, state/control and return/failure categories; enhanced JVM null/cast
-messages and shared class-monitor behavior are outside this observation claim.
+messages are outside this observation claim. Shared class-monitor behavior is
+verified separately below.
+
+TLCExt's synchronized AssertError, PickSuccessor, TLCModelValue and TLCFP methods
+share one class monitor with Trace's noninitial model-checking reconstruction
+block. The native implementation reuses distributedServerMonitor, also used by
+Json and FPSet, with goroutine ownership and recursive acquisition. Trace's state
+validation, simulation and initial-state paths remain before the monitor, as in
+source. PickSuccessor's registered callback owns it across guard evaluation and
+its value helper reacquires it on the same goroutine. Model-value/fingerprint
+arguments are evaluated before entering their ordinary MethodValue callbacks;
+normalization and fingerprinting remain inside the monitor. TLCCache's separate
+class-wide read/write lock is unchanged. Eighteen source/native observations
+verify five cross-method exclusions, ten nested-call combinations and three
+unsynchronized controls; the short native observations also match under race
+instrumentation. This does not prove all scheduling or trace-storage behavior.
 
 Standard evaluating signatures also retain TLCEval and SequencesExt's two
 replacement-method names. The module-qualified _TLCTrace and _JsonTrace state

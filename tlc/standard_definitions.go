@@ -734,6 +734,8 @@ func standardTLCSet(tool *Tool, args []SemanticNode, con *Context, state *TLCSta
 }
 
 func standardAssertError(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	tlcExtClassMonitor.Lock()
+	defer tlcExtClassMonitor.Unlock()
 	if _, ok := args[0].(*StringNode); !ok {
 		panic(NewTLCRuntimeExceptionMessage(fmt.Sprintf("In computing AssertError, a non-string expression (%s) was used as the err of an AssertError(err, exp).", SemanticString(args[0]))))
 	}
@@ -767,8 +769,8 @@ func standardAssertError(tool *Tool, args []SemanticNode, con *Context, state *T
 }
 
 func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	pickSuccessorMu.Lock()
-	defer pickSuccessorMu.Unlock()
+	tlcExtClassMonitor.Lock()
+	defer tlcExtClassMonitor.Unlock()
 	guard, err := tool.Eval(args[0], con, state, pstate, control, cm)
 	if err != nil {
 		return nil, err

@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 var possibleCountsKey *UniqueString
@@ -22,8 +21,9 @@ func initTLCExtUniqueStrings() {
 	tlcExtActionField = UniqueStringOf("_action")
 }
 
-var pickSuccessorMu sync.Mutex
-var tlcExtFingerprintMu sync.Mutex
+// The synchronized static methods and Trace reconstruction share TLCExt.class.
+// TLCCache retains its separate source read/write lock.
+var tlcExtClassMonitor distributedServerMonitor
 var tlcExtCacheLock reentrantReadWriteLock
 
 func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*BoolValue, error) {
@@ -48,6 +48,8 @@ func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*Bool
 }
 
 func TLCExtPickSuccessor(tool *Tool, guard Value, curState *TLCStateMut, succState *TLCStateMut) (*BoolValue, error) {
+	tlcExtClassMonitor.Lock()
+	defer tlcExtClassMonitor.Unlock()
 	if checker := MainChecker(); checker != nil && checker.FPSet != nil && succState != nil {
 		if checker.FPSet.Contains(succState.FingerPrint()) {
 			return BoolTrue, nil
@@ -185,6 +187,8 @@ func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
 	if state.IsInitial() {
 		return NewTupleValue([]Value{NewRecordValueFromInsMap(state.Values())}), nil
 	}
+	tlcExtClassMonitor.Lock()
+	defer tlcExtClassMonitor.Unlock()
 	if state.UID == TLCStateInitUID {
 		current, _ := CurrentState()
 		if current == nil {
@@ -247,6 +251,8 @@ func TLCExtTLCNoOp(value Value) Value {
 }
 
 func TLCExtTLCModelValue(value Value) (Value, error) {
+	tlcExtClassMonitor.Lock()
+	defer tlcExtClassMonitor.Unlock()
 	str, ok := value.(*StringValue)
 	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "ModelValue", "string", ValuesPPR(value))
@@ -255,8 +261,8 @@ func TLCExtTLCModelValue(value Value) (Value, error) {
 }
 
 func TLCExtTLCFP(value Value) *IntValue {
-	tlcExtFingerprintMu.Lock()
-	defer tlcExtFingerprintMu.Unlock()
+	tlcExtClassMonitor.Lock()
+	defer tlcExtClassMonitor.Unlock()
 	value.DeepNormalize()
 	return NewIntValue(FP64Hash(value.FingerPrint(FP64New())))
 }
