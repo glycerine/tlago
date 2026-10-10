@@ -307,8 +307,11 @@ match, including failed-binding cursor state and successor generation. Theorem
 contexts now retain their incoming context, and non-enumerable quantifier bounds
 retain detailed runtime failures; 54 theorem and eight factory observations
 match, with relevant original model checks passing. Ordinary/theorem context
-helpers still impose argument-count guards absent from the source loops; examine
-those and their actual argument-array producers next.
+helpers now bind by supplied argument count, retaining short arrays and source
+lookup-before-index failure order. All 288 argument-boundary observations match.
+Generated zero-argument applications carry allocated-empty arrays; explicit null
+arrays retain their source failure. Relevant original model and generated-node
+checks pass.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

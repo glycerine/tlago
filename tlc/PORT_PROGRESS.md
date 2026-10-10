@@ -33344,3 +33344,37 @@ original-method inventory credit. Update current handoff and contracts.
 Original full stress handle 27326 remains live (2d0777), latest saved progress
 1,399,313,236 / 2,147,483,648 (32cd9a). No terminal result or long-method credit;
 preserve its original handle, memory budget, bounds and artifacts.
+
+
+2026-10-10: Ordinary and theorem context argument boundaries
+
+Resume the source-absent arity guards recorded by 43e66c8. Pinned ordinary
+SymbolNodeValueLookupProvider and Spec theorem helpers capture formals, then
+iterate args.length, resolving each argument before accessing its formal.
+Ignored .codex-gotmp/context-argument-boundaries observes actual test219 Bar,
+Foo, I!Foo, Thm2, I!Thm2 and LOCAL K!Thm2, with the existing Foo literal and
+actual assumption OpArgNode. Three incoming contexts, two cache modes and eight
+null/empty/short/excess/literal/operator argument shapes yield 288 rows.
+Source c5e240 and native baseline 24744 terminal 58cf91 expose 228 differences
+(1d1e08). Remove generic arity errors, preserve typed null/array-index failures,
+and resolve arguments before indexing the retained formals. All 288 final rows
+match (84689 terminal b58f98; comparison 1fa505), including context/binding and
+lazy expression identity, complete error metadata, parameters and frame depth.
+
+NewOpApplNode now produces allocated-empty arguments for no-argument calls,
+matching Java OpApplNode(SymbolNode)'s new ExprNode[0]. This preserves native
+zero-argument producers under the faithful context helpers. Canonical bridge
+adapters still replace the array from source operands, preserving explicit null.
+No persistent test, fixture, invented semantic graph or changed assertion.
+
+Existing context/lookup/function-context/bounded-CHOOSE/state-callable checks
+pass (existing-checks.log, 0.023s; recovered receipt 88818a). Eight original model
+checks pass unchanged (original-models.log, 3.956s): LegacySuiteTest216/219/220,
+ConstantContextTLCCache, ConstantRank1TLCEval, ConstantRank2AssertError,
+ValueSemanticsAssume and Debug02Debugger. Existing generated liveness-node
+checks pass (4c1707, generated-applications.log, 0.012s), including original
+LNBool/LNState tests. No race, broad suite, reduced bounds or inventory credit.
+
+Original full stress handle 27326 remains live (6b875f), latest saved progress
+1,411,026,213 / 2,147,483,648 (9eb313). No terminal result or long-method credit;
+preserve its original handle, memory budget, bounds and artifacts.

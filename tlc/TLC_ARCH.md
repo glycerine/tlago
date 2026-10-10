@@ -7431,8 +7431,18 @@ evaluation leaves the cache and cache count unchanged. GetVar and GetPrimedVar
 also preserve the incoming context. Their lookup branch follows the operator's
 declared arity, including zero-arity builtins, rather than the argument slice
 length; prime recognition still precedes that branch. The bounded
-comparison covers actual C model expressions and APIs. Additional argument-array
-and context-factory failure branches remain outside this observation.
+comparison covers actual C model expressions and APIs. Ordinary and theorem
+context helpers capture the formal array and iterate the supplied argument array,
+without a total-arity guard. Short arrays bind only supplied arguments. Each
+argument is resolved before indexing its formal, preserving operator-lookup
+failures before excess-argument failures. Null argument arrays fail before the
+loop; allocated-empty arrays return the exact incoming context. Generated
+NewOpApplNode applications use allocated-empty arguments when no arguments are
+supplied, following the source constructor; canonical adapters still preserve
+explicit null arrays. All 288 bounded observations on existing test219 ordinary,
+imported and theorem definitions agree, using actual literal/operator arguments,
+three incoming contexts and both caching modes. These observations do not prove
+all malformed formal arrays or arbitrary graph mutation behavior.
 
 Initial-state, next-state and ENABLED predicate entry points preserve explicit
 nil contexts. A failure at the

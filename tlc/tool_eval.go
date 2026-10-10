@@ -631,29 +631,39 @@ func (t *Tool) GetVal(expr SemanticNode, c *Context, cachable bool, cm CostModel
 }
 
 func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, cachable bool, cm CostModel) (*Context, error) {
-	if opDef == nil {
-		return c, newTLCError(ECGeneral, "attempted to apply nil operator definition")
+	if opDef == nil || args == nil {
+		panic(NewNullPointerException())
 	}
-	if len(opDef.Params) != len(args) {
-		return c, newTLCError(ECGeneral, "applying operator %s with wrong number of arguments", opDef)
-	}
+	formals := opDef.Params
 	c1 := c
-	for i, param := range opDef.Params {
-		c1 = c1.Cons(param, t.GetVal(args[i], c, cachable, cm))
+	for i, arg := range args {
+		value := t.GetVal(arg, c, cachable, cm)
+		if formals == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(formals) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(formals)))
+		}
+		c1 = c1.Cons(formals[i], value)
 	}
 	return c1, nil
 }
 
 func (t *Tool) GetThmOrAssumpContext(opDef *ThmOrAssumpDefNode, args []SemanticNode, c *Context, cachable bool) (*Context, error) {
-	if opDef == nil {
-		return c, newTLCError(ECGeneral, "attempted to apply nil theorem or assumption definition")
+	if opDef == nil || args == nil {
+		panic(NewNullPointerException())
 	}
-	if len(opDef.Params) != len(args) {
-		return c, newTLCError(ECGeneral, "applying theorem or assumption %s with wrong number of arguments", opDef)
-	}
+	formals := opDef.Params
 	c1 := c
-	for i, param := range opDef.Params {
-		c1 = c1.Cons(param, t.GetVal(args[i], c, cachable, DoNotRecordCostModel))
+	for i, arg := range args {
+		value := t.GetVal(arg, c, cachable, DoNotRecordCostModel)
+		if formals == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(formals) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(formals)))
+		}
+		c1 = c1.Cons(formals[i], value)
 	}
 	return c1, nil
 }

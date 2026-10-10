@@ -445,7 +445,7 @@ func NewOpApplNode(operator *SymbolNode, args ...SemanticNode) *OpApplNode {
 	out := &OpApplNode{
 		SemanticNodeBase: newSemanticNodeBasePointer(SemanticOpApplKind, ""),
 		Operator:         operator,
-		Args:             append([]SemanticNode(nil), args...),
+		Args:             append([]SemanticNode{}, args...),
 		BdedQuantBounds:  []SemanticNode{},
 	}
 	out.Image = out.String()
