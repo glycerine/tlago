@@ -619,7 +619,7 @@ func (t *Tool) GetStateAfter(fp uint64, predecessor *TLCStateMut) (*TLCStateInfo
 		for i := 0; nextStates != nil && i < nextStates.Size(); i++ {
 			state := nextStates.At(i)
 			if state != nil && state.FingerPrint() == fp {
-				state.attachTraceMetadata(predecessor, action)
+				state.SetPredecessor(predecessor)
 				return NewTLCStateInfo(state, action), nil
 			}
 		}
@@ -643,7 +643,7 @@ func (t *Tool) GetStateForTransition(successor *TLCStateMut, predecessor *TLCSta
 		for i := 0; nextStates != nil && i < nextStates.Size(); i++ {
 			state := nextStates.At(i)
 			if state != nil && statesEqualForReconstruction(successor, state) {
-				state.attachTraceMetadata(predecessor, action)
+				state.SetPredecessor(predecessor)
 				return NewTLCStateInfo(state, action), nil
 			}
 		}

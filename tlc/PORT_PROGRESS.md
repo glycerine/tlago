@@ -30985,3 +30985,55 @@ comparisons already reproduce the excluded-successor invariant behavior and
 separate printed predecessor history from postcondition successor history;
 do not repeat green samples as proof or suppress invariant checks to force a
 prefix. Overall TLC parity remains incomplete.
+
+
+2026-10-10 Trace reconstruction metadata ownership:
+Previous goal turn made verified progress in d7f8c4b. Worktree starts clean.
+Full off-heap random session 27326 remains live (8cd84f/10ad76 and 440cc2 polls).
+Inspect existing JSON auto-worker replay evidence before repeating work. Earlier
+source replay already demonstrates the same index-6 excluded-successor invariant
+violation in Java; source printed trace and postcondition trace also intentionally
+use different predecessor/successor histories. Do not suppress those checks,
+weaken original prefix assertions or count passing repetitions as reconciliation.
+
+Source Tool.getState(fp, state) and getState(successor, predecessor) call the
+state's setPredecessor method after generation, then wrap it with the selected
+Action. Native GetStateAfter/GetStateForTransition instead called the private
+attachTraceMetadata helper, retaining predecessor/action pointers regardless of
+state mode. Replace those two calls with SetPredecessor. This preserves depth
+while dropping graph-retaining metadata for ordinary MC states; generation keeps
+extended-state metadata and TLCStateInfo retains the action in both modes. No
+change to the separate in-memory trace adapter or original assertions.
+
+Ignored observations in .codex-gotmp/reconstruction-metadata-observation use
+actual DieHard and C initial/next predicates, three predecessor depths and both
+lookup overloads. Rows retain complete escaped state bodies, equality, level,
+predecessor identity, state action presence and info action availability. Initial
+source/native runs 21124 terminal 7ac3f5 compare 108 rows: every ordinary MC row
+(54) differs before the fix, and every simulation row (54) already matches.
+Native rebuild 76860 terminal 5bdfdd and comparison 5dc736 match all 108 rows.
+
+Extend to MC_DEBUG, explicitly enabled extended MC and explicitly enabled extended
+Executor; all 270 final rows match. Source/native final session 49534 terminal
+a76762 returned status 0 with Java assertions enabled for every source invocation.
+Final compare.py receipt b2aaad requires exact counts and complete row equality,
+and verifies the 54 ordinary baseline differences with simulation unchanged.
+Initial plain Executor observations without callable overrides differ, but that
+combination fails the source SpecProcessor constructor assertion with -ea
+(receipt 2b111f, java-DieHard-Executor-assertions.log). Those rows earn no parity
+claim. Explicit extended-state property selects the source supported branch;
+callable-triggered executor construction is not established by this observation.
+
+Fourteen unchanged original methods pass: root session 82148 terminal 6c1539,
+25.632s, originals.log. Selection: Github743, three TLCExtTrace methods, two
+ErrorTraceConstruction methods, DieHard JSON/TLC safety round trips, AliasSub2
+JSON/TLC single-worker round trips, Bidirectional JSON/TLC liveness round trips
+and RandomSubsetA/B TTrace. Existing focused worker postcondition, missing-info,
+predecessor-failure and concurrent trace reconstruction checks also pass: session
+53257 terminal 97f60d, 8.166s, native-focused.log. No persistent tests/fixtures,
+original-method credit, source changes, broad suite, race run or email work.
+Remove the obsolete architecture claim that reconstruction still uses KnownStates.
+
+Full random off-heap handle remains live; latest saved progress is 878,821,248 /
+2,147,483,648 (b2aaad). No terminal result or completion credit; preserve the full
+bounds, default budget and live files. Overall TLC parity remains incomplete.

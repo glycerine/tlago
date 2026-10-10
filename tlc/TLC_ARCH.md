@@ -6269,10 +6269,16 @@ Trace reconstruction and aliasing:
 - The Go port keeps those duties as concrete `Tool` methods:
   `GetInitState`, `GetStateAfter`, and `GetStateForTransition`; no Go
   `TraceApp` interface is needed.
-- Java regenerates states from the init and next-state predicates. The Go port
-  first checks the in-memory `KnownStates` registry when present to preserve
-  identity for existing trace records, then falls back to Java-style
-  regeneration.
+- Java regenerates states from the init and next-state predicates. Go does the
+  same; the former `KnownStates` cache has been removed. Both fingerprint and
+  transition reconstruction use the mode-aware predecessor setter. Ordinary
+  model-checking states retain depth without retaining predecessor/action
+  pointers; extended states retain metadata established by generation. The
+  returned `TLCStateInfo` still carries the selected action in either mode.
+  All 270 full state/metadata observations on DieHard and C match Java with
+  assertions enabled across MC, simulation, debugger and explicitly enabled
+  extended MC/executor states. This corrects 54 ordinary-state rows; it does not
+  reconcile the separate source-level auto-worker replay prefix limitation.
 - Unnamed actions carry Java's literal `UnnamedAction` sentinel while
   `Action.isNamed()` remains false for that sentinel. Printed
   `TLCStateInfo.info` values are action locations (`<Action ...>` or named

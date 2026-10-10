@@ -166,9 +166,13 @@ cleanup now accepts configuration failures that occur before a checker exists.
 Warning suppression and escalation now match Java across 272 ordered
 observations; eight focused original tests pass. Elevated subscript and symmetry
 warnings retain non-null empty parameter arrays, preserving exception recording.
-Next audit: unresolved JSON auto-worker trace replay, starting from the existing
-source comparisons rather than treating passing repetitions as reconciliation.
-Original model-test reconciliation remains open.
+Trace reconstruction now uses the source mode-aware predecessor setter instead
+of forcing metadata onto ordinary MC states. All 270 state/metadata observations
+match Java with assertions enabled; 14 focused original trace/alias methods pass.
+The JSON auto-worker prefix mismatch remains an explicit source limitation in
+existing deterministic replay evidence, not a reason to weaken assertions or
+suppress invariant checks. Continue core source ownership comparisons from the
+current receipts. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
