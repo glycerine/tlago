@@ -36499,3 +36499,66 @@ Original random stress session 27326 remains live by direct poll e112d7;
 latest saved progress is 2,022,159,282 / 2,147,483,648 (d1a294), without terminal
 result or long-test credit. Handoff/architecture retain the core bag contracts,
 checked real aliasing behavior and next BagCup conversion/validation audit.
+
+2026-10-10: BagCup conversion order and retained input-array reads
+
+Previous turn made verified progress in 66b5a97. Inspect clean current state and
+actual BagCup source (94d1a0); original random stress session 27326 remains live
+by direct poll a2b1bd. Java converts both operands before validating either, but
+native requireBag validated first too early and manufactured Java invocation
+errors. Source matched sums read the original multiplicity array, while native
+read its already accumulated output vector.
+
+Build ignored .codex-gotmp/bag-cup observers with the actual parsed test206
+source/lambda nodes and runtime values. Both arguments span 54 forms, including
+prior bag inputs, duplicate domains, maximum-int counts, set keys and retained
+count arrays, crossed with eight independent input/method source flags and
+direct/actual MethodValue invocation. Complete source/native baseline exits
+zero (d195fc/2be584), 46,656 rows present: 10,720 raw differences, 8,352 outside
+native/JVM stack locations (786385). Concrete source cases: 16/9 converts the
+second malformed record before reporting the first tuple's invalid count;
+48/48 returns [3,2] instead of native [4,2] for duplicated right keys; 52/53
+normalizes a set key sharing left multiplicities and returns [2,1] instead of
+native [3,1]. No fabricated semantic graph or callback is used.
+
+Correct BagCup to convert both operands first, then validate first and second
+in source order, retaining null results until the matching validation read.
+Capture domain1/values1 then domain2/values2. Preserve the first domain null
+length failure at vector creation, typed first-copy bounds reads, and second
+domain null length failure after the copy loop. Read right/left domain entries
+for each equality and reread the right key before unmatched append. Use original
+captured count arrays after equality, with typed int/null/bounds reads and int32
+sums. Remove the unused requireBag helper and hardcoded signature. Existing
+MethodValue catches now own direct-operation failures. Complete native rerun
+exits zero (77ae3c); all 46,656 rows agree outside 2,624 native/JVM stack-location
+and repeated-frame elision lines, zero others (0730e5). Keep exception/cause
+headers, codes, nullable details, source frames and raw post-call state checked.
+
+Add one coupled-domain-array pipeline across all sixteen source/invocation
+combinations. A left domain SetEnumValue retains the right function's domain
+array; its equality normalization reorders right keys between inner-loop reads.
+Actual constructors create both unnormalized function inputs with positive
+counts and distinct set-valued keys. No cycles, callbacks or fabricated semantic
+nodes are introduced. Complete expanded source/native runs exit zero
+(fe2ad5/45f4ed); all 46,672 rows agree outside the same 2,624 stack differences
+(8fdf0c). The added case returns [1,5,4] with identical retained-array mutation
+and post-call normalization flags. Broader equality mutation and allocation
+exhaustion remain unproven. No persistent tests/fixtures or original-method
+credit are added. BagDiff's conversion-before-validation and typed count reads
+are concrete next source-audit targets.
+
+Original BagsTest model and focused original model/value/EXCEPT/stream/Sequences/
+TLCModule/FP64/string/MP/debugger/rendering checks pass, root 5.954s and tlc
+2.275s (session 3610, terminal 4d913e). Complete unchanged CommunityModules
+all/shiviz target runs with timeout zero (session 74216, d31421), retaining both
+original phases and bounds. No race or shortened workload. Handoff/architecture
+replace BagCup's pending audit with observed source-order and ownership contracts.
+
+Complete unchanged CommunityModules target exits zero (session 74216, terminal
+e03d57). Both original phases pass: root 309.679s, all 309.05s and shiviz 0.25s
+(d05c32). This is the current full-suite baseline. Formatting and diff checks
+pass; no original assumptions, expected phase exits or bounds changed. Original
+random stress session 27326 remains live by direct poll 03dfbd, latest saved
+progress 2,033,498,187 / 2,147,483,648 (d05c32), without terminal result or long
+credit. Handoff/architecture retain observed BagCup contracts and next BagDiff
+conversion/count audit. The overall Java-to-Go goal remains active.

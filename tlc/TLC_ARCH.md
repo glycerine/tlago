@@ -8612,7 +8612,36 @@ fabricated semantic graph. Arbitrary equality mutation remains unproven. No
 persistent tests/fixtures or original-method credit are added. The original
 BagsTest model and focused original regressions pass.
 The complete unchanged CommunityModules all/shiviz target also passes after
-these core bag changes. BagCup conversion/validation order remains a next target.
+these core bag changes.
+
+BagCup converts both operands before validating the first and then the second
+bag. Thus a second conversion failure precedes a first bag's count diagnostic;
+a null second conversion result is dereferenced only after first validation.
+It obtains domain1/values1 and then domain2/values2 before allocating its vectors.
+The first domain's length is read at vector creation; the second domain's length
+is read only after the first copy loop. Typed null and bounds failures preserve
+these source boundaries. Captured arrays remain the input arrays; matched sums
+read original multiplicities after equality rather than output-vector counts.
+Each equality rereads the current right and left domain entries. Unmatched
+append also rereads the current right key. Duplicate right keys overwrite the
+same output slot using original left counts, matching source behavior. Direct
+failures reach the existing MethodValue catch; the old requireBag wrapper and
+hardcoded signature are removed.
+
+All 46,672 actual direct/MethodValue observations agree outside 2,624 native/JVM
+stack locations/elision lines. The 54-by-54 input matrix covers the prior bag
+forms, duplicate domains, overflow and real retained-array normalization. One
+additional coupled-array case spans all source/invocation modes: a left domain
+set retains the right function's domain array, and its equality normalization
+reorders that array between inner-loop comparisons. Source and native return
+counts [1,5,4], with matching post-call input/domain states. Other real aliasing
+cases preserve count 2 where the prior native output-vector read returned 3.
+These observations use actual runtime constructors and parsed test206 nodes,
+not fabricated semantic graphs or equality callbacks. No persistent test/fixture
+or original-method credit is added. Broader equality mutation and allocation
+exhaustion remain unproven; BagDiff conversion/count boundaries remain separate.
+Original bag/focused regressions and the complete unchanged CommunityModules
+all/shiviz target pass after these BagCup changes.
 
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking

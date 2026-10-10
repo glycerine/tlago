@@ -1,7 +1,5 @@
 package tlc
 
-const javaBagsBagCupSignature = "public static tlc2.value.impl.Value tlc2.module.Bags.BagCup(tlc2.value.impl.Value,tlc2.value.impl.Value)"
-
 func EmptyBag() Value {
 	return emptyFcnValue()
 }
@@ -115,39 +113,77 @@ func CopiesIn(elem Value, bag Value) (*IntValue, error) {
 }
 
 func BagCup(b1 Value, b2 Value) (Value, error) {
-	fcn1, err := requireBag("first", "(+)", b1)
+	if b1 == nil {
+		panic(NewNullPointerException())
+	}
+	fcn1 := asFcnRcdValue(b1)
+	if b2 == nil {
+		panic(NewNullPointerException())
+	}
+	fcn2 := asFcnRcdValue(b2)
+	// Both conversions precede validation. A failed conversion stays null until
+	// IsABag dereferences it; the first bag's count error can precede that read.
+	if fcn1 == nil {
+		panic(NewNullPointerException())
+	}
+	valid, err := IsABag(fcn1)
 	if err != nil {
 		return nil, err
 	}
-	fcn2, err := requireBag("second", "(+)", b2)
+	if !valid.Val {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "(+)", "bag", ValuesPPR(b1))
+	}
+	if fcn2 == nil {
+		panic(NewNullPointerException())
+	}
+	valid, err = IsABag(fcn2)
 	if err != nil {
 		return nil, err
 	}
-	domain := NewValueVec(0)
-	values := NewValueVec(0)
-	for i, dval := range fcn1.DomainAsValues() {
-		domain.Add(dval)
-		values.Add(fcn1.Values[i])
+	if !valid.Val {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "(+)", "bag", ValuesPPR(b2))
 	}
-	domain1Len := domain.Len()
-	for i, dval := range fcn2.DomainAsValues() {
+
+	domain1 := fcn1.DomainAsValues()
+	values1 := fcn1.Values
+	domain2 := fcn2.DomainAsValues()
+	values2 := fcn2.Values
+	if domain1 == nil {
+		panic(NewNullPointerException())
+	}
+	domain := NewValueVec(len(domain1))
+	values := NewValueVec(len(domain1))
+	for i := 0; i < len(domain1); i++ {
+		domain.Add(domain1[i])
+		values.Add(fcnParameterDomain(values1, i))
+	}
+	if domain2 == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(domain2); i++ {
 		found := false
-		for j := 0; j < domain1Len; j++ {
-			eq, err := dval.Equal(domain.At(j))
+		for j := 0; j < len(domain1); j++ {
+			// Equality may normalize arrays retained by either operand. Read the
+			// captured domain and original multiplicities again after those effects.
+			right, left := domain2[i], domain1[j]
+			if right == nil {
+				panic(NewNullPointerException())
+			}
+			eq, err := right.Equal(left)
 			if err != nil {
 				return nil, err
 			}
 			if eq {
-				left := values.At(j).(*IntValue)
-				right := fcn2.Values[i].(*IntValue)
-				values.Set(j, NewIntValue(left.Val+right.Val))
+				leftCount := bagMultiplicity(values1, j)
+				rightCount := bagMultiplicity(values2, i)
+				values.Set(j, NewIntValue(leftCount+rightCount))
 				found = true
 				break
 			}
 		}
 		if !found {
-			domain.Add(dval)
-			values.Add(fcn2.Values[i])
+			domain.Add(domain2[i])
+			values.Add(fcnParameterDomain(values2, i))
 		}
 	}
 	return NewFcnRcdValue(domain.ToArray(), values.ToArray(), false), nil
@@ -336,21 +372,6 @@ func requireBagFunction(name string, value Value) (*FcnRcdValue, error) {
 	fcn := asFcnRcdValue(value)
 	if fcn == nil {
 		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, name, "a function with a finite domain", ValuesPPR(value))
-	}
-	return fcn, nil
-}
-
-func requireBag(position string, operator string, value Value) (*FcnRcdValue, error) {
-	fcn := asFcnRcdValue(value)
-	if fcn == nil {
-		return nil, javaMethodOverrideError(javaBagsBagCupSignature, `Cannot invoke "tlc2.value.impl.Value.toFcnRcd()" because "b" is null`)
-	}
-	ok, err := IsABag(fcn)
-	if err != nil {
-		return nil, err
-	}
-	if !ok.Val {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, position, operator, "bag", ValuesPPR(value))
 	}
 	return fcn, nil
 }
