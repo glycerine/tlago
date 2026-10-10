@@ -8667,10 +8667,39 @@ captured as 2 before subtracting 1. MIN_INT minus 1 wraps to MAX_INT. Snapshots
 retain input arrays, cache/normalization state, nullable details, source frames
 and diagnostic/cause headers. No persistent test/fixture or original-method
 credit is added. Broader equality mutation and allocation exhaustion remain
-unproven; BagUnion conversion/aggregation is a separate next target. Original
-BagsTest model and focused original regressions pass.
+unproven beyond these cases. Original BagsTest model and focused original
+regressions pass.
 The complete unchanged CommunityModules all/shiviz target passes after the
 BagDiff conversion/cast/read-order changes.
+
+BagUnion converts to a set before normalizing, then retains the resulting vector
+and logical size. Empty sets return EmptyFcn; singletons return their actual
+member without function conversion. Larger sets convert the first member before
+copying its domain/count arrays, then convert later members in vector order.
+Null inputs, domains and visited count slots retain typed source failures.
+Matching keys sum the accumulated output count with the current bag count using
+int32 arithmetic; no positive-count validation is added. Every comparison and
+unmatched append rereads the current domain slot after possible normalization.
+
+Function comparison rejects null count arrays after normalizing both operands,
+then preserves branch-specific domain lengths, typed array bounds and null
+receiver failures after reading the argument. Record comparison/equality format
+the receiver before a null other-operand failure and use the captured name count
+for both domain and value loops. Function rendering captures the count length
+once, but reads each value slot after rendering its key: a shared set key can
+normalize [2,1] to [1,2] before the first count is printed.
+
+The ignored actual-runtime comparison spans 95,904 direct/MethodValue cases,
+including source ownership, normalization, malformed arrays, debugger counts,
+conversions and shared key/count arrays. All agree outside 12,478 JVM/native
+stack locations/elision lines when both observers initialize the actual debugger
+placeholder before loading the model. The initial lazy-Java/eager-Go setup retains
+32 differing string-token-order rows; those receipts are preserved separately.
+No token-order canonicalization or production interning change was made. Parsed
+intern allocation, arbitrary equality mutation and allocation exhaustion remain
+unproven. No persistent test/fixture or original-method credit is added.
+Focused original bag/value/model checks, original set-value checks and the
+complete unchanged CommunityModules all/shiviz target pass after these changes.
 
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking

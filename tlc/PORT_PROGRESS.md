@@ -36627,3 +36627,73 @@ saved log progress at the final handoff update is 2,047,824,942 / 2,147,483,648,
 without terminal result or long-test credit. Handoff/architecture retain the
 observed BagDiff contracts and next BagUnion target. The overall port goal
 remains active.
+
+2026-10-10: Recover unfinished BagUnion audit and preserve value-read boundaries
+
+After the reported power loss, recover the uncommitted modules_bags.go change
+on a25978b. Poll original handles instead of inferring interruption from process
+visibility. Native baseline observer session 13030 is terminal zero (ce6c48),
+with all 95,904 rows saved. Focused original checks session 65718 are terminal
+zero (6f4e13), root 2.005s and tlc 2.262s. CommunityModules session 75097 remains
+live initially, then exits zero (d16fc3): root 316.010s, original all 315.35s,
+shiviz 0.25s (e39882). Original random off-heap session 27326 remains live by
+direct poll c9973e; no restart, shortened bound, race or long-method credit.
+
+BagUnion now converts before diagnostics, normalizes before capturing the set
+vector/size, and retains singleton identity. Larger sets allocate vectors before
+converting the first element, capture each converted domain/count array, and
+preserve typed null/bounds/count-cast failures. Equality rereads domain keys,
+and a match adds the current count to the accumulated output-vector count.
+The result remains unnormalized; zero/negative counts are not newly rejected.
+
+The ignored actual-runtime observer uses parsed test206 nodes, existing module
+registration and 54 input forms across pairs, set normalization/singleton/non-set
+paths, source ownership and direct/MethodValue calls. Original source/native
+baseline: 95,904 rows, 37,480 raw and 27,316 non-stack differences (2eef9b).
+The recovered BagUnion implementation alone leaves 16,896 raw and 6,732 non-stack
+differences. Keep those core normalization/formatting gaps visible rather than
+filtering them from the module comparison.
+
+Source inspection identifies general value-layer fixes. FcnRcdValue.ToString
+captures length before classification and reads each count after its key renders;
+a key set sharing counts [2,1] normalizes them to [1,2] before the first print.
+Record comparison/equality format the receiver before a null other operand,
+reject null name arrays after normalization, and traverse the captured name
+count rather than the values length. Function comparison rejects null count
+arrays after both normalizations, preserves conditional domain-length reads,
+and uses typed slot reads followed by null receiver checks after argument reads.
+Native rerun after formatting (74659, b91d9b) leaves 6,586 non-stack differences;
+after comparison fixes (85880, 6d2209) leaves 32 (9b26c3), all involving the
+string count versus actual debugger placeholder and differing set sort order.
+
+The remaining 32 rows come from setup intern order: Java lazily initializes
+TLCStateStackFrame.NOT_EVAL after constructing string x; Go publishes its actual
+debugger singleton at package initialization. Preserve the original java.log and
+all native logs. A second source observer references the actual NOT_EVAL before
+model loading, aligning initialization without changing constructors, methods,
+tokens, outputs or production interning. The full source rerun exits zero
+(91777, 4d6bb8); all 95,904 cases agree outside 12,478 native/JVM stack-location
+and elision lines (75447d), with no semantic differences. The unchanged native
+baseline still has 27,316 semantic differences against this source setup.
+Original lazy-Java/eager-Go receipts retain their 32 differences; parsed intern
+allocation remains unproven. No fake semantic graphs, callbacks, persistent
+fixtures/tests, token-order filtering or original-method credit are introduced.
+
+Focused original bag/model/value/EXCEPT/Sequences/TLCModule/stream/MP checks
+pass after formatting (45599, 3e8869), root 2.153s and tlc 2.437s, and after
+comparison changes (68644, 902228/2dd591), root 1.995s and tlc 2.692s.
+Complete unchanged CommunityModules all/shiviz runs on the final production
+code in session 1162, log .codex-gotmp/bag-union/community-ant-final.log.
+Original set/function/record/tuple/subset/enumerable/model-value checks run
+normally in session 7540, log .codex-gotmp/bag-union/original-set-values.log.
+Both retain original bounds without race. Handoff/architecture record current
+contracts, observer limits and SqSubseteq as the next source target.
+
+Final production verification is terminal zero. Original set-value selection
+session 7540 exits zero (4316aa), tlc 91.210s (6f56ef). Full unchanged
+CommunityModules session 1162 exits zero (2b07be), root 308.074s, all 307.37s
+and shiviz 0.24s (eb12b8). Formatting/diff checks pass. Handoff/architecture
+now record final verification rather than pending runs. Original random stress
+session 27326 remains live by direct poll 1ed5d4; latest saved progress is
+2,070,212,245 / 2,147,483,648, without terminal result or new long-test credit.
+The overall Java-to-Go goal remains active; next source target is SqSubseteq.

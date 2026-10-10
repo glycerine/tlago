@@ -443,8 +443,17 @@ before equality and rereads its domain key afterward. Empty left domains bypass
 the right-domain length read. Typed casts/null/bounds and signed wraparound match
 all 50,208 observations outside 1,152 native/JVM stack-text differences. Original
 bag/focused checks and the complete CommunityModules all/shiviz target pass.
-Continue with `BagUnion`; broader equality mutation and allocation exhaustion
-remain unproven.
+`BagUnion` retains the normalized set vector/size and each converted bag's
+domain/count arrays, rereads keys after equality, and sums accumulated output
+counts. Function comparison preserves typed null/bounds failures; record
+comparison/equality traverse the captured name count. Function rendering reads
+each count after rendering its key. All 95,904 observations agree outside
+12,478 native/JVM stack-text differences with debugger initialization aligned;
+the original setup retains 32 intern-order differences, documented in the
+progress log. Focused original checks, original set-value checks and the complete
+CommunityModules all/shiviz target pass. Continue with `SqSubseteq`; broader
+equality mutation, parsed intern allocation and allocation exhaustion remain
+unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -528,7 +537,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,047,824,942 of 2,147,483,648 iterations, without a terminal result. The previous
+2,070,212,245 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

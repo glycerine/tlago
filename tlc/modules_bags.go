@@ -243,53 +243,89 @@ func BagDiff(b1 Value, b2 Value) (Value, error) {
 }
 
 func BagUnion(set Value) (Value, error) {
-	if !canConvertToSetEnum(set) {
-		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagUnion", "a finite enumerable set", ValuesPPR(set))
+	if set == nil {
+		panic(NewNullPointerException())
 	}
-	setEnum, err := toSetEnumValue(set)
+	setEnum, err := tryToSetEnumValue(set)
 	if err != nil {
 		return nil, err
 	}
+	if setEnum == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagUnion", "a finite enumerable set", ValuesPPR(set))
+	}
 	setEnum.Normalize()
-	if setEnum.Elems.Len() == 0 {
+	// Normalization can collapse equal bags. The source retains this vector
+	// and its size for the remaining conversions and aggregation.
+	elems := setEnum.Elems
+	size := elems.Len()
+	if size == 0 {
 		return emptyFcnValue(), nil
 	}
-	if setEnum.Elems.Len() == 1 {
-		return setEnum.Elems.At(0), nil
-	}
-	first := asFcnRcdValue(setEnum.Elems.At(0))
-	if first == nil {
-		return nil, newTLCErrorCode(ECTLCModuleBagUnion1, ValuesPPR(set))
+	if size == 1 {
+		return elems.At(0), nil
 	}
 	domain := NewValueVec(0)
 	values := NewValueVec(0)
-	for i, dval := range first.DomainAsValues() {
-		domain.Add(dval)
-		values.Add(first.Values[i])
+	firstValue := elems.At(0)
+	if firstValue == nil {
+		panic(NewNullPointerException())
 	}
-	for i := 1; i < setEnum.Elems.Len(); i++ {
-		fcn := asFcnRcdValue(setEnum.Elems.At(i))
+	first := asFcnRcdValue(firstValue)
+	if first == nil {
+		return nil, newTLCErrorCode(ECTLCModuleBagUnion1, ValuesPPR(set))
+	}
+	currentDomain := first.DomainAsValues()
+	currentValues := first.Values
+	if currentDomain == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(currentDomain); i++ {
+		domain.Add(currentDomain[i])
+		values.Add(fcnParameterDomain(currentValues, i))
+	}
+	for i := 1; i < size; i++ {
+		item := elems.At(i)
+		if item == nil {
+			panic(NewNullPointerException())
+		}
+		fcn := asFcnRcdValue(item)
 		if fcn == nil {
 			return nil, newTLCErrorCode(ECTLCModuleBagUnion1, ValuesPPR(set))
 		}
-		for j, dval := range fcn.DomainAsValues() {
+		currentDomain = fcn.DomainAsValues()
+		currentValues = fcn.Values
+		if currentDomain == nil {
+			panic(NewNullPointerException())
+		}
+		for j := 0; j < len(currentDomain); j++ {
 			found := false
 			for k := 0; k < domain.Len(); k++ {
-				eq, err := dval.Equal(domain.At(k))
+				key, prior := currentDomain[j], domain.At(k)
+				if key == nil {
+					panic(NewNullPointerException())
+				}
+				eq, err := key.Equal(prior)
 				if err != nil {
 					return nil, err
 				}
 				if eq {
-					left := values.At(k).(*IntValue)
-					right := fcn.Values[j].(*IntValue)
-					values.Set(k, NewIntValue(left.Val+right.Val))
+					leftValue := values.At(k)
+					if leftValue == nil {
+						panic(NewNullPointerException())
+					}
+					left, ok := leftValue.(*IntValue)
+					if !ok {
+						panic(valueStreamClassCast(leftValue, "tlc2.value.impl.IntValue"))
+					}
+					right := bagMultiplicity(currentValues, j)
+					values.Set(k, NewIntValue(left.Val+right))
 					found = true
 					break
 				}
 			}
 			if !found {
-				domain.Add(dval)
-				values.Add(fcn.Values[j])
+				domain.Add(currentDomain[j])
+				values.Add(fcnParameterDomain(currentValues, j))
 			}
 		}
 	}

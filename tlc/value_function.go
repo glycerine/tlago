@@ -499,10 +499,11 @@ func (v *RecordValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
+		selfText := ValuesPPR(v)
 		if other == nil {
 			panic(NewNullPointerException())
 		}
-		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare record:\n%s\nwith non-record\n%s", ValuesPPR(v), ValuesPPR(other)))
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare record:\n%s\nwith non-record\n%s", selfText, ValuesPPR(other)))
 	}
 	if err := v.normalizeRecord(); err != nil {
 		return 0, err
@@ -510,16 +511,28 @@ func (v *RecordValue) Compare(other Value) (resultInt int, err error) {
 	if err := rcd.normalizeRecord(); err != nil {
 		return 0, err
 	}
-	if len(v.Names) != len(rcd.Names) {
+	if v.Names == nil || rcd.Names == nil {
+		panic(NewNullPointerException())
+	}
+	length := len(v.Names)
+	if length != len(rcd.Names) {
 		return len(v.Names) - len(rcd.Names), nil
 	}
-	for i := range v.Names {
+	for i := 0; i < length; i++ {
+		if v.Names[i] == nil || rcd.Names[i] == nil {
+			panic(NewNullPointerException())
+		}
 		if cmp := v.Names[i].Compare(rcd.Names[i]); cmp != 0 {
 			return cmp, nil
 		}
 	}
-	for i := range v.Values {
-		cmp, err := v.Values[i].Compare(rcd.Values[i])
+	for i := 0; i < length; i++ {
+		left := fcnParameterDomain(v.Values, i)
+		right := fcnParameterDomain(rcd.Values, i)
+		if left == nil {
+			panic(NewNullPointerException())
+		}
+		cmp, err := left.Compare(right)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
@@ -534,10 +547,11 @@ func (v *RecordValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
+		selfText := ValuesPPR(v)
 		if other == nil {
 			panic(NewNullPointerException())
 		}
-		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of record:\n%s\nwith non-record\n%s", ValuesPPR(v), ValuesPPR(other)))
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of record:\n%s\nwith non-record\n%s", selfText, ValuesPPR(other)))
 	}
 	if err := v.normalizeRecord(); err != nil {
 		return false, err
@@ -545,16 +559,28 @@ func (v *RecordValue) Equal(other Value) (resultBool bool, err error) {
 	if err := rcd.normalizeRecord(); err != nil {
 		return false, err
 	}
-	if len(v.Names) != len(rcd.Names) {
+	if v.Names == nil || rcd.Names == nil {
+		panic(NewNullPointerException())
+	}
+	length := len(v.Names)
+	if length != len(rcd.Names) {
 		return false, nil
 	}
-	for i := range v.Names {
+	for i := 0; i < length; i++ {
+		if v.Names[i] == nil || rcd.Names[i] == nil {
+			panic(NewNullPointerException())
+		}
 		if !v.Names[i].Equal(rcd.Names[i]) {
 			return false, nil
 		}
 	}
-	for i := range v.Values {
-		eq, err := v.Values[i].Equal(rcd.Values[i])
+	for i := 0; i < length; i++ {
+		left := fcnParameterDomain(v.Values, i)
+		right := fcnParameterDomain(rcd.Values, i)
+		if left == nil {
+			panic(NewNullPointerException())
+		}
+		eq, err := left.Equal(right)
 		if err != nil || !eq {
 			return eq, err
 		}
@@ -1088,6 +1114,9 @@ func (v *FcnRcdValue) Compare(other Value) (resultInt int, err error) {
 	if err := fcn.normalizeFcn(); err != nil {
 		return 0, err
 	}
+	if v.Values == nil || fcn.Values == nil {
+		panic(NewNullPointerException())
+	}
 	if len(v.Values) != len(fcn.Values) {
 		return len(v.Values) - len(fcn.Values), nil
 	}
@@ -1098,10 +1127,17 @@ func (v *FcnRcdValue) Compare(other Value) (resultInt int, err error) {
 }
 
 func (v *FcnRcdValue) compareOtherInterval(fcn *FcnRcdValue) (int, error) {
+	if v.Domain == nil {
+		panic(NewNullPointerException())
+	}
 	if fcn.Intv != nil {
-		for i, dElem := range v.Domain {
+		for i := 0; i < len(v.Domain); i++ {
+			dElem := fcnParameterDomain(v.Domain, i)
 			iv, ok := dElem.(*IntValue)
 			if !ok {
+				if dElem == nil {
+					panic(NewNullPointerException())
+				}
 				return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare integer with non-integer\n%s.", ValuesPPR(dElem)))
 			}
 			intervalElement := int64(fcn.Intv.Low) + int64(i)
@@ -1113,22 +1149,37 @@ func (v *FcnRcdValue) compareOtherInterval(fcn *FcnRcdValue) (int, error) {
 				return 1, nil
 			}
 		}
-		for i := range v.Domain {
-			cmp, err := v.Values[i].Compare(fcn.Values[i])
+		for i := 0; i < len(v.Domain); i++ {
+			left := fcnParameterDomain(v.Values, i)
+			right := fcnParameterDomain(fcn.Values, i)
+			if left == nil {
+				panic(NewNullPointerException())
+			}
+			cmp, err := left.Compare(right)
 			if err != nil || cmp != 0 {
 				return cmp, err
 			}
 		}
 		return 0, nil
 	}
-	for i := range v.Domain {
-		cmp, err := v.Domain[i].Compare(fcn.Domain[i])
+	for i := 0; i < len(v.Domain); i++ {
+		left := fcnParameterDomain(v.Domain, i)
+		right := fcnParameterDomain(fcn.Domain, i)
+		if left == nil {
+			panic(NewNullPointerException())
+		}
+		cmp, err := left.Compare(right)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
 	}
-	for i := range v.Domain {
-		cmp, err := v.Values[i].Compare(fcn.Values[i])
+	for i := 0; i < len(v.Domain); i++ {
+		left := fcnParameterDomain(v.Values, i)
+		right := fcnParameterDomain(fcn.Values, i)
+		if left == nil {
+			panic(NewNullPointerException())
+		}
+		cmp, err := left.Compare(right)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
@@ -1147,17 +1198,29 @@ func (v *FcnRcdValue) compareToInterval(fcn *FcnRcdValue) (int, error) {
 		if v.Intv.Low > fcn.Intv.Low {
 			return 1, nil
 		}
-		for i := range v.Values {
-			cmp, err := v.Values[i].Compare(fcn.Values[i])
+		for i := 0; i < len(v.Values); i++ {
+			left := fcnParameterDomain(v.Values, i)
+			right := fcnParameterDomain(fcn.Values, i)
+			if left == nil {
+				panic(NewNullPointerException())
+			}
+			cmp, err := left.Compare(right)
 			if err != nil || cmp != 0 {
 				return cmp, err
 			}
 		}
 		return 0, nil
 	}
-	for i, dElem := range fcn.Domain {
+	if fcn.Domain == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(fcn.Domain); i++ {
+		dElem := fcnParameterDomain(fcn.Domain, i)
 		iv, ok := dElem.(*IntValue)
 		if !ok {
+			if dElem == nil {
+				panic(NewNullPointerException())
+			}
 			return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare integer with non-integer:\n%s.", ValuesPPR(dElem)))
 		}
 		intervalElement := int64(v.Intv.Low) + int64(i)
@@ -1169,8 +1232,13 @@ func (v *FcnRcdValue) compareToInterval(fcn *FcnRcdValue) (int, error) {
 			return 1, nil
 		}
 	}
-	for i := range fcn.Domain {
-		cmp, err := v.Values[i].Compare(fcn.Values[i])
+	for i := 0; i < len(fcn.Domain); i++ {
+		left := fcnParameterDomain(v.Values, i)
+		right := fcnParameterDomain(fcn.Values, i)
+		if left == nil {
+			panic(NewNullPointerException())
+		}
+		cmp, err := left.Compare(right)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
@@ -1801,16 +1869,18 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 	if v.Values == nil {
 		panic(NewNullPointerException())
 	}
-	if len(v.Values) == 0 {
+	length := len(v.Values)
+	if length == 0 {
 		sb.WriteString("<<>>")
 	} else if v.isRecordLike() {
 		sb.WriteString("[")
-		for i, value := range v.Values {
+		for i := 0; i < length; i++ {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
 			key, _ := asStringValue(fcnParameterDomain(v.Domain, i))
 			sb.WriteString(key.Val.String() + recordArrow)
+			value := fcnParameterDomain(v.Values, i)
 			if value == nil {
 				panic(NewNullPointerException())
 			}
@@ -1819,10 +1889,11 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 		sb.WriteString("]")
 	} else if v.isTupleLike() {
 		sb.WriteString("<<")
-		for i, value := range v.Values {
+		for i := 0; i < length; i++ {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
+			value := fcnParameterDomain(v.Values, i)
 			if value == nil {
 				panic(NewNullPointerException())
 			}
@@ -1832,7 +1903,7 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 	} else {
 		domain := v.DomainAsValues()
 		sb.WriteString("(")
-		for i, value := range v.Values {
+		for i := 0; i < length; i++ {
 			if i > 0 {
 				sb.WriteString(" @@ ")
 			}
@@ -1842,6 +1913,9 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 			}
 			sb = appendValueString(element, sb, offset, swallow)
 			sb.WriteString(" :> ")
+			// Formatting a key can normalize a set sharing the values array.
+			// Read the current slot only after the key has been rendered.
+			value := fcnParameterDomain(v.Values, i)
 			if value == nil {
 				panic(NewNullPointerException())
 			}
