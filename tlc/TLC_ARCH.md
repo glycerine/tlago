@@ -11219,7 +11219,23 @@ the complete false-assumption diagnostic output across absent/empty/false/true
 plain-formula properties; they agree byte for byte. Baseline differs in 39 of the
 53 rows. Java initial predicates use a mutable Vect while the native API exposes
 slices; growth observed through previously cached slice headers is not proven.
-Reward and periodic consumers still use setup fields and need their own audit.
+Reward and periodic tool getters now delegate to the current processor. Reward
+captures its expression once per evaluation, uses the source no-record cost
+model and preserves the detailed runtime-error category, expression and empty
+context for a non-integer result. Missing/typed-null rewards return the fallback.
+The checker captures the periodic expression once per periodic-work call. The
+simulator reporter captures it once at startup and signals readiness before its
+caller proceeds. A false periodic predicate enqueues the source stop result but
+keeps the reporter alive until shutdown; the final shutdown wake still reports
+and evaluates the captured expression.
+
+Ignored pinned-Java/native observations use unchanged Debug02 and TLCGetLevel
+expressions. They compare reward replacement, fallback and detailed failure;
+repeated checker calls; repeated reporter results after processor replacement;
+final-wake reporting; and replacement immediately after reporter startup. These
+are bounded ownership/lifecycle observations, not full reward or periodic-error
+parity or original-method credit. Other action-array consumers' null behavior
+remains separate work.
 
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing

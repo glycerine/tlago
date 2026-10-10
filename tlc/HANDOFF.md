@@ -93,9 +93,12 @@ getters now share current processor arrays; all 128 observed rows match Java.
 Config processing preserves non-null empty arrays, and metadata/liveness array
 failures match. Initial/next predicates and assumptions now read current processor
 values, including initial generation and axiom checking; all 53 observations match
-Java. Next source audit: reward/periodic predicates, whose consumers still read
-setup fields. Other action-array null behavior and cached initial-vector growth
-remain unproven.
+Java. Reward and periodic predicates now read the processor with source capture
+lifetimes; the simulator reporter captures before startup returns and keeps
+reporting until shutdown after a false predicate. Bounded Java/native observations
+and focused original checks pass; see the progress log for receipts. Next source
+audit: invariant/implied-action consumers in the checker and simulator, including
+null-array boundaries. Cached initial-vector growth remains unproven.
 
 ## Verification baseline and test credit
 

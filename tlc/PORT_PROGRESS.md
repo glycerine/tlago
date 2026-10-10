@@ -29331,3 +29331,47 @@ Stress session 27326 remains live (poll 0a1d0b), latest saved observation
 291,218,175 / 2,147,483,648 iterations, with no terminal result or method credit.
 Overall parity remains incomplete. Next concrete audit: reward/periodic getters
 and consumers, which still read setup fields instead of current processor values.
+
+
+2026-10-09: Resume reward and periodic predicate ownership/lifetimes
+
+Recovered four uncommitted production edits and preserved the live full-bound
+stress session. Tool reward/periodic getters now delegate to the current
+processor. Reward evaluation captures that getter once, uses DO_NOT_RECORD and
+retains the source detailed runtime exception's expression and empty context for
+non-integer values. Missing and typed-null rewards return the supplied fallback.
+Checker periodic work captures the getter once per call. The simulator reporter
+captures once at startup, signals readiness before returning to its caller and
+continues reporting after a false predicate queues the source stop result. Its
+final shutdown wake still reports/evaluates that captured predicate.
+
+An ignored observation driver uses existing Debug02 and TLCGetLevel expressions
+in pinned Java and Go. All 12 rows agree: five reward/fallback/failure rows, four
+repeated checker calls and three reporter capture/continuation/shutdown rows.
+Baseline differs in six. Comparison 62d330, status 0. The Java reward and periodic
+scenarios run in separate JVMs to avoid cross-spec static state contamination;
+the initial combined driver failed during setup and supplies no parity evidence.
+The periodic driver uses existing assumption/Next-conjunct expressions evaluated
+at the checker/reporter's actual level; it does not execute the full Next action.
+The source reporter is joined after shutdown. No RMI emulation was added.
+Logs under .codex-gotmp/: reward-periodic-java-reward.log,
+reward-periodic-java-periodic.log, reward-periodic-before.log and
+reward-periodic-after.log. Drivers/overlays remain in the ignored
+reward-periodic-observation directory. Final native observations ran with -race
+only on this short reporter lifecycle, terminal 98ad1d, status 0; no race report.
+Java periodic terminal 39e450 and baseline terminal 1185fb both status 0.
+
+Selected existing original TLCGetAll/TLCGetLevel, A/B/C coverage, Debug02-Debug05,
+SimulatorCorrectness and SimulationWorker invariant/model-constraint methods,
+plus native Tool, ModelCheckerDoNext and simulator float-property checks pass
+normally: reward-periodic-originals.log, terminal 959950, status 0;
+root 6.594 seconds, TLC 0.076 seconds. Formatting and git diff --check pass.
+No persistent tests/fixtures added, shortened original bounds, full workspace
+sweep or original-method inventory credit. Reward expression failures and general
+periodic exception behavior are not established by these bounded observations.
+
+Full original off-heap random stress session 27326 remains live, poll 14904c;
+latest saved observation 325,154,867 / 2,147,483,648 iterations. No terminal result
+or method credit. Overall TLC parity remains incomplete. Next source audit:
+invariant/implied-action consumers in the checker and simulator, including null
+array boundaries; cached initial-vector growth remains unproven.

@@ -1040,6 +1040,26 @@ func (t *Tool) GetAssumptions() []SemanticNode {
 	return append([]SemanticNode(nil), t.Assumptions...)
 }
 
+func (t *Tool) GetRLReward() SemanticNode {
+	if t == nil {
+		return nil
+	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetRLReward()
+	}
+	return t.RLReward
+}
+
+func (t *Tool) GetPeriodic() SemanticNode {
+	if t == nil {
+		return nil
+	}
+	if t.SpecProcessor != nil {
+		return t.SpecProcessor.GetPeriodic()
+	}
+	return t.Periodic
+}
+
 func (t *Tool) GetAssumptionIsAxiom() []bool {
 	if t == nil {
 		return nil

@@ -211,27 +211,32 @@ func (s *Simulator) startProgressReporter() func() {
 	interval := ProgressInterval()
 	stop := make(chan struct{})
 	done := make(chan struct{})
+	ready := make(chan struct{})
 	go func() {
 		defer close(done)
+		periodic := s.Tool.GetPeriodic()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		coverageCountdown := periodicCoverageCountdown(interval)
+		close(ready)
 		for {
 			select {
 			case <-ticker.C:
-				switch s.reportSimulationProgress(&coverageCountdown, interval) {
+				switch s.reportSimulationProgress(&coverageCountdown, interval, periodic) {
 				case simulatorProgressStop:
 					s.ResultQueue.Put(SimulationWorkerOK(-1))
-					return
 				case simulatorProgressReporterDone:
 					return
 				}
 			case <-stop:
-				s.reportSimulationProgress(&coverageCountdown, interval)
+				if s.reportSimulationProgress(&coverageCountdown, interval, periodic) == simulatorProgressStop {
+					s.ResultQueue.Put(SimulationWorkerOK(-1))
+				}
 				return
 			}
 		}
 	}()
+	<-ready
 	return func() {
 		close(stop)
 		<-done
@@ -246,7 +251,7 @@ const (
 	simulatorProgressReporterDone
 )
 
-func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval time.Duration) simulatorProgressStatus {
+func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval time.Duration, periodic SemanticNode) simulatorProgressStatus {
 	genTrace := s.NumGenTraces.Load()
 	m2AndMean := s.WelfordM2Mean.Load()
 	mean := int64(m2AndMean & 0xffffffff)
@@ -272,14 +277,14 @@ func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval ti
 		PrintTLCBug(ECTLCReporterDied)
 		return simulatorProgressReporterDone
 	}
-	if s.Tool != nil && s.Tool.Periodic != nil {
-		value, err := s.Tool.NoDebug().Eval(s.Tool.Periodic)
+	if s.Tool != nil && !semanticExploreNull(periodic) {
+		value, err := s.Tool.NoDebug().Eval(periodic)
 		if err != nil {
 			PrintTLCBug(ECTLCReporterDied)
 			return simulatorProgressReporterDone
 		}
 		if boolValue, ok := value.(*BoolValue); ok && !boolValue.Val {
-			PrintError(ECTLCAssumptionFalse, SemanticString(s.Tool.Periodic))
+			PrintError(ECTLCAssumptionFalse, SemanticString(periodic))
 			return simulatorProgressStop
 		}
 	}

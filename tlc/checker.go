@@ -1360,7 +1360,7 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 	createCheckpoint := DoCheckPoint()
 	var periodic SemanticNode
 	if mc.Tool != nil {
-		periodic = mc.Tool.Periodic
+		periodic = mc.Tool.GetPeriodic()
 	}
 	forceLiveCheck := mc.ForceLiveCheck
 	liveCheckDue := mc.CheckLiveness && mc.LiveCheck != nil && mc.RuntimeRatio <= LivenessRatio() && mc.LiveCheck.DoLiveCheck()

@@ -67,16 +67,19 @@ func (t *Tool) evalConstraint(constraint SemanticNode, s0 *TLCStateMut, successo
 }
 
 func (t *Tool) EvalRewardImpl(s1 *TLCStateMut, s2 *TLCStateMut, fallback float64) (float64, error) {
-	if t == nil || t.RLReward == nil {
+	reward := t.GetRLReward()
+	if semanticExploreNull(reward) {
 		return fallback, nil
 	}
-	value, err := t.Eval(t.RLReward, EmptyContext, s1, s2, EvalClear, CostModel{})
+	value, err := t.Eval(reward, EmptyContext, s1, s2, EvalClear, DoNotRecordCostModel)
 	if err != nil {
 		return fallback, err
 	}
 	intValue, ok := value.(*IntValue)
 	if !ok {
-		return fallback, newTLCErrorCode(ECTLCExpectedValue, "integer", SemanticString(t.RLReward))
+		failure := NewTLCRuntimeException(ECTLCExpectedValue, "integer", SemanticString(reward))
+		failure.Expr, failure.Ctxt = reward, EmptyContext
+		return fallback, failure
 	}
 	return float64(intValue.Val), nil
 }
