@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"math"
-	"unicode/utf16"
 )
 
 const maxSeqBound = math.MaxInt32
@@ -16,117 +15,163 @@ func BSeq(rangeValue Value, size int) Value {
 }
 
 func Len(s Value) (*IntValue, error) {
-	if sv, ok := s.(*StringValue); ok {
+	if sv, ok := asStringValue(s); ok {
 		return NewIntValue(int32(sv.Length())), nil
 	}
-	seq := asTupleValue(s)
+	seq := sequenceTuple(s)
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "Len", "sequence", ValuesPPR(s))
 	}
-	return NewIntValue(int32(len(seq.Elems))), nil
+	size, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	return NewIntValue(int32(size)), nil
 }
 
 func Head(s Value) (Value, error) {
-	seq := asTupleValue(s)
+	seq := sequenceTuple(s)
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "Head", "sequence", ValuesPPR(s))
 	}
-	if len(seq.Elems) == 0 {
+	size, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	if size == 0 {
 		return nil, newTLCErrorCode(ECTLCModuleApplyEmptySeq, "Head")
 	}
 	return seq.Elems[0], nil
 }
 
 func Tail(s Value) (Value, error) {
-	if sv, ok := s.(*StringValue); ok {
+	if sv, ok := asStringValue(s); ok {
+		if sv.Val == nil {
+			panic(NewNullPointerException())
+		}
 		if sv.Val.String() == "" {
 			return nil, newTLCErrorCode(ECTLCModuleApplyEmptySeq, "Tail")
 		}
 		return NewStringValue(utf16Substring(sv.Val.String(), 1, sv.Length())), nil
 	}
-	seq := asTupleValue(s)
+	seq := sequenceTuple(s)
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "Tail", "sequence", ValuesPPR(s))
 	}
-	if len(seq.Elems) == 0 {
+	size, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	if size == 0 {
 		return nil, newTLCErrorCode(ECTLCModuleApplyEmptySeq, "Tail")
 	}
-	out := make([]Value, len(seq.Elems)-1)
+	out := make([]Value, size-1)
 	copy(out, seq.Elems[1:])
 	return NewTupleValue(out), nil
 }
 
 func Cons(v Value, s Value) (Value, error) {
-	seq := asTupleValue(s)
+	seq := sequenceTuple(s)
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleEvaluating, "Cons(v, s)", "sequence", ValuesPPR(s))
 	}
-	out := make([]Value, len(seq.Elems)+1)
+	size, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Value, size+1)
 	out[0] = v
 	copy(out[1:], seq.Elems)
 	return NewTupleValue(out), nil
 }
 
 func Append(s Value, v Value) (Value, error) {
-	seq := asTupleValue(s)
+	seq := sequenceTuple(s)
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleEvaluating, "Append(s, v)", "sequence", ValuesPPR(s))
 	}
-	out := make([]Value, len(seq.Elems)+1)
+	size, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Value, size+1)
 	copy(out, seq.Elems)
-	out[len(seq.Elems)] = v
+	out[size] = v
 	return NewTupleValue(out), nil
 }
 
 func Concat(s1, s2 Value) (Value, error) {
-	if sv1, ok := s1.(*StringValue); ok {
-		sv2, ok := s2.(*StringValue)
+	if sv1, ok := asStringValue(s1); ok {
+		sv2, ok := asStringValue(s2)
 		if !ok {
+			if s2 == nil {
+				panic(NewNullPointerException())
+			}
 			return nil, newTLCErrorCode(ECTLCModuleEvaluating, "t \\o s", "string", ValuesPPR(s2))
 		}
-		return NewStringValue(sv1.Val.String() + sv2.Val.String()), nil
+		if sv1.Val == nil || sv2.Val == nil {
+			panic(NewNullPointerException())
+		}
+		return NewStringValue(javaStringConcat(sv1.Val.String(), sv2.Val.String())), nil
 	}
-	seq1 := asTupleValue(s1)
+	seq1 := sequenceTuple(s1)
 	if seq1 == nil {
 		return nil, newTLCErrorCode(ECTLCModuleEvaluating, "s \\o t", "sequence", ValuesPPR(s1))
 	}
-	seq2 := asTupleValue(s2)
+	seq2 := sequenceTuple(s2)
 	if seq2 == nil {
 		return nil, newTLCErrorCode(ECTLCModuleEvaluating, "t \\o s", "sequence", ValuesPPR(s2))
 	}
-	if len(seq1.Elems) == 0 {
+	len1, err := seq1.Size()
+	if err != nil {
+		return nil, err
+	}
+	len2, err := seq2.Size()
+	if err != nil {
+		return nil, err
+	}
+	if len1 == 0 {
 		return seq2, nil
 	}
-	if len(seq2.Elems) == 0 {
+	if len2 == 0 {
 		return seq1, nil
 	}
-	out := make([]Value, len(seq1.Elems)+len(seq2.Elems))
+	out := make([]Value, len1+len2)
 	copy(out, seq1.Elems)
-	copy(out[len(seq1.Elems):], seq2.Elems)
+	copy(out[len1:], seq2.Elems)
 	return NewTupleValue(out), nil
 }
 
 func SubSeq(s, m, n Value) (Value, error) {
 	var (
-		sv       *StringValue
+		str      string
 		seq      *TupleValue
 		isString bool
 	)
-	if value, ok := s.(*StringValue); ok {
-		sv = value
+	if value, ok := asStringValue(s); ok {
+		if value.Val == nil {
+			panic(NewNullPointerException())
+		}
+		str = value.Val.String()
 		isString = true
 	} else {
-		seq = asTupleValue(s)
+		seq = sequenceTuple(s)
 		if seq == nil {
 			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SubSeq", "sequence", ValuesPPR(s))
 		}
 	}
 	begValue, ok := m.(*IntValue)
 	if !ok {
+		if m == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SubSeq", "natural number", ValuesPPR(m))
 	}
 	endValue, ok := n.(*IntValue)
 	if !ok {
+		if n == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "SubSeq", "natural number", ValuesPPR(n))
 	}
 	beg := int(begValue.Val)
@@ -135,27 +180,40 @@ func SubSeq(s, m, n Value) (Value, error) {
 		if beg > end {
 			return NewStringValue(""), nil
 		}
-		length := sv.Length()
+		length := len(javaStringUTF16(str))
 		if beg < 1 || beg > length {
 			return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "second", "SubSeq", "first", ValuesPPR(s), ValuesPPR(m))
 		}
 		if end < 1 || end > length {
 			return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "third", "SubSeq", "first", ValuesPPR(s), ValuesPPR(n))
 		}
-		return NewStringValue(utf16Substring(sv.Val.String(), beg-1, end)), nil
+		return NewStringValue(utf16Substring(str, beg-1, end)), nil
 	}
 	if beg > end {
 		return EmptyTuple, nil
 	}
-	if beg < 1 || beg > len(seq.Elems) {
+	size, err := seq.Size()
+	if err != nil {
+		return nil, err
+	}
+	if beg < 1 || beg > size {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "second", "SubSeq", "first", ValuesPPR(s), ValuesPPR(m))
 	}
-	if end < 1 || end > len(seq.Elems) {
+	if end < 1 || end > size {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "third", "SubSeq", "first", ValuesPPR(s), ValuesPPR(n))
 	}
 	out := make([]Value, end-beg+1)
 	copy(out, seq.Elems[beg-1:end])
 	return NewTupleValue(out), nil
+}
+
+// Sequences invokes value.toTuple() directly, before checking conversion and
+// reading size. Keep that null boundary separate from the general conversion.
+func sequenceTuple(value Value) *TupleValue {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	return asTupleValue(value)
 }
 
 func SelectInSeq(s Value, test Value) (Value, error) {
@@ -315,7 +373,7 @@ func asTupleValue(value Value) *TupleValue {
 }
 
 func utf16Substring(s string, begin, end int) string {
-	encoded := utf16.Encode([]rune(s))
+	encoded := javaStringUTF16(s)
 	if begin < 0 {
 		begin = 0
 	}
@@ -325,7 +383,7 @@ func utf16Substring(s string, begin, end int) string {
 	if begin > end {
 		begin = end
 	}
-	return string(utf16.Decode(encoded[begin:end]))
+	return javaStringFromUTF16(encoded[begin:end])
 }
 
 type sequencesObj struct {

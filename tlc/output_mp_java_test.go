@@ -12,6 +12,8 @@ func TestJavaMP(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			toolIO.Lock()
 			oldMode, oldOut, oldErr := toolIO.mode, toolIO.out, toolIO.err
+			oldOutHigh, oldErrHigh := toolIO.outHigh, toolIO.errHigh
+			oldSystemOutHigh, oldSystemErrHigh := toolIOSystemOutHigh, toolIOSystemErrHigh
 			oldMessages, oldNext := toolIO.messages, toolIO.nextMessage
 			oldCaptureOut, oldCaptureErr := toolIO.captureOut, toolIO.captureErr
 			toolIO.Unlock()
@@ -22,6 +24,8 @@ func TestJavaMP(t *testing.T) {
 			t.Cleanup(func() {
 				toolIO.Lock()
 				toolIO.mode, toolIO.out, toolIO.err = oldMode, oldOut, oldErr
+				toolIO.outHigh, toolIO.errHigh = oldOutHigh, oldErrHigh
+				toolIOSystemOutHigh, toolIOSystemErrHigh = oldSystemOutHigh, oldSystemErrHigh
 				toolIO.captureOut, toolIO.captureErr = oldCaptureOut, oldCaptureErr
 				toolIO.messages, toolIO.nextMessage = oldMessages, oldNext
 				toolIO.Unlock()

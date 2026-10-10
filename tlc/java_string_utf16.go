@@ -48,6 +48,11 @@ func javaStringFromUTF16(units []uint16) string {
 	return result.String()
 }
 
+func javaStringConcat(left, right string) string {
+	units := append(javaStringUTF16(left), javaStringUTF16(right)...)
+	return javaStringFromUTF16(units)
+}
+
 func javaFormatStringHash(text string) int32 {
 	var hash int32
 	for _, unit := range javaStringUTF16(text) {

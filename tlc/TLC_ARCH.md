@@ -8135,6 +8135,44 @@ subclasses/stream callbacks and parsed singleton/token initialization remain
 separate parity requirements. Native callers bypassing the private source
 constructor with a raw Go debugger literal are outside these observations.
 
+Core Sequences operations retain their source conversion and read boundaries.
+Len/Head/Tail/Cons/Append invoke tuple Size rather than treating a null element
+array as empty. Concat converts both tuples before reading either size and reads
+both sizes before its empty-input identity shortcuts. SubSeq reads a string's
+UniqueString before validating bounds, but returns an empty tuple for reversed
+integer bounds before reading tuple size. Null receivers and null diagnostic
+operands throw at the source dereferences without new module catch frames.
+Len/Tail/Concat/SubSeq recognize the concrete StringValue debugger subclass.
+UTF-16 slicing retains unpaired surrogates, and string concatenation recombines
+surrogate pairs before interning. UniqueString.Length, FP64ExtendString and the
+legacy low-byte checkpoint writer consume the same UTF-16 units, including
+unpaired units. The existing checkpoint format remains unchanged.
+All 9,180 observations agree across seventeen receiver/argument forms, source
+flags, seven operations and nine integer/type/null bound forms. Values include
+null-backed strings/tuples/records/functions, debugger placeholders, empty and
+ordinary strings, supplementary characters and standalone high/low surrogates.
+Results compare logical units, length, fingerprints, legacy bytes, UTF-8 console
+bytes and input/result identity; failures compare typed causes, source frames
+and UTF-16 diagnostics. Stream tokens are verified against each actual value,
+then excluded from byte comparisons; parsed intern allocation remains open.
+Sixteen actual SubSeq/Concat pipelines at every cut in four strings retain exact
+string equality after rejoining, bringing the total to 9,196 compared rows.
+
+ToolIO system output uses UTF-8 PrintStream surrogate handling. A trailing high
+surrogate remains pending across print calls; a low surrogate completes it, while
+another character or println's newline forces replacement. stdout/stderr retain
+separate encoder state unless the assigned writer is shared. Reset retains this
+state; temporary stream replacement and restoration retain the owning stream's
+state. Captured messages concatenate UTF-16 units and recombine valid pairs.
+All 132 source/native traces agree across split pairs, malformed sequences,
+print/println, output/error streams, reset, stream replacement, aliasing and
+captured message equality. Original MP/failover test setup now restores encoder
+state along with its prior streams; assertions are unchanged. No persistent test,
+fixture or original-method credit is added. Prior 240 debugger scalar and 13,056
+composite fingerprint rows still agree. Other sequence callbacks, SequencesExt,
+module-specific casts, arbitrary writer callbacks/charsets and parsed class/token
+initialization remain separate requirements.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

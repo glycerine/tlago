@@ -29,6 +29,8 @@ func captureFailoverToolIO(t *testing.T, mode int) {
 	// Retain pending messages and native stream assignments from other tests.
 	toolIO.Lock()
 	oldMode, oldOut, oldErr := toolIO.mode, toolIO.out, toolIO.err
+	oldOutHigh, oldErrHigh := toolIO.outHigh, toolIO.errHigh
+	oldSystemOutHigh, oldSystemErrHigh := toolIOSystemOutHigh, toolIOSystemErrHigh
 	oldCaptureOut, oldCaptureErr := toolIO.captureOut, toolIO.captureErr
 	oldMessages, oldNext := toolIO.messages, toolIO.nextMessage
 	toolIO.Unlock()
@@ -36,6 +38,8 @@ func captureFailoverToolIO(t *testing.T, mode int) {
 		toolIO.Lock()
 		defer toolIO.Unlock()
 		toolIO.mode, toolIO.out, toolIO.err = oldMode, oldOut, oldErr
+		toolIO.outHigh, toolIO.errHigh = oldOutHigh, oldErrHigh
+		toolIOSystemOutHigh, toolIOSystemErrHigh = oldSystemOutHigh, oldSystemErrHigh
 		toolIO.captureOut, toolIO.captureErr = oldCaptureOut, oldCaptureErr
 		toolIO.messages, toolIO.nextMessage = oldMessages, oldNext
 	})

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"sync"
 )
 
@@ -12,6 +13,8 @@ const (
 	ToolIOTool   = 1
 )
 
+var toolIOSystemOutHigh, toolIOSystemErrHigh uint16
+
 // ToolIO's two streams share one message buffer. A println call stores one
 // message even when its argument contains newlines; print accumulates a prefix.
 var toolIO = struct {
@@ -19,9 +22,10 @@ var toolIO = struct {
 	mode                   int
 	captureOut, captureErr bool
 	out, err               io.Writer
+	outHigh, errHigh       *uint16
 	messages               []string
 	nextMessage            string
-}{out: os.Stdout, err: os.Stderr, messages: make([]string, 0, 1)}
+}{out: os.Stdout, err: os.Stderr, outHigh: &toolIOSystemOutHigh, errHigh: &toolIOSystemErrHigh, messages: make([]string, 0, 1)}
 
 func ToolIOGetMode() int {
 	toolIO.Lock()
@@ -39,6 +43,7 @@ func ToolIOSetMode(mode int) bool {
 	toolIO.captureOut, toolIO.captureErr = mode == ToolIOTool, mode == ToolIOTool
 	if mode == ToolIOSystem {
 		toolIO.out, toolIO.err = os.Stdout, os.Stderr
+		toolIO.outHigh, toolIO.errHigh = &toolIOSystemOutHigh, &toolIOSystemErrHigh
 	}
 	return true
 }
@@ -87,23 +92,39 @@ func toolIOWrite(text string, newline, toError bool) {
 				copy(grown, toolIO.messages)
 				toolIO.messages = grown
 			}
-			toolIO.messages = append(toolIO.messages, toolIO.nextMessage+text)
+			toolIO.messages = append(toolIO.messages, javaStringConcat(toolIO.nextMessage, text))
 			toolIO.nextMessage = ""
 		} else {
-			toolIO.nextMessage += text
+			toolIO.nextMessage = javaStringConcat(toolIO.nextMessage, text)
 		}
 		return
 	}
 	writer := toolIO.out
+	high := toolIO.outHigh
 	if toError {
 		writer = toolIO.err
+		high = toolIO.errHigh
 	}
 	// Java PrintStream swallows IOExceptions rather than changing MP's result.
-	if newline {
-		_, _ = fmt.Fprintln(writer, text)
-	} else {
-		_, _ = fmt.Fprint(writer, text)
+	_, _ = fmt.Fprint(writer, toolIOEncodeUTF8(text, newline, high))
+}
+
+// UTF-8 PrintStreams retain a trailing high surrogate across print calls. A
+// following low surrogate completes it; println's newline forces replacement.
+func toolIOEncodeUTF8(text string, newline bool, high *uint16) string {
+	units := javaStringUTF16(text)
+	if *high != 0 {
+		units = append([]uint16{*high}, units...)
+		*high = 0
 	}
+	if newline {
+		units = append(units, '\n')
+	}
+	if len(units) != 0 && units[len(units)-1] >= 0xd800 && units[len(units)-1] <= 0xdbff {
+		*high = units[len(units)-1]
+		units = units[:len(units)-1]
+	}
+	return javaStringUTF8(javaStringFromUTF16(units))
 }
 
 // Assigning native out/err streams overrides the buffered stream instances while
@@ -111,13 +132,19 @@ func toolIOWrite(text string, newline, toError bool) {
 func ToolIOSetSystemStreams(out, err io.Writer) func() {
 	toolIO.Lock()
 	oldOut, oldErr := toolIO.out, toolIO.err
+	oldOutHigh, oldErrHigh := toolIO.outHigh, toolIO.errHigh
 	oldCaptureOut, oldCaptureErr := toolIO.captureOut, toolIO.captureErr
 	toolIO.out, toolIO.err = out, err
+	toolIO.outHigh, toolIO.errHigh = new(uint16), new(uint16)
+	if out != nil && reflect.TypeOf(out).Comparable() && out == err {
+		toolIO.errHigh = toolIO.outHigh
+	}
 	toolIO.captureOut, toolIO.captureErr = false, false
 	toolIO.Unlock()
 	return func() {
 		toolIO.Lock()
 		toolIO.out, toolIO.err = oldOut, oldErr
+		toolIO.outHigh, toolIO.errHigh = oldOutHigh, oldErrHigh
 		toolIO.captureOut, toolIO.captureErr = oldCaptureOut, oldCaptureErr
 		toolIO.Unlock()
 	}

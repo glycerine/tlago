@@ -1,9 +1,6 @@
 package tlc
 
-import (
-	"io"
-	"unicode/utf16"
-)
+import "io"
 
 const (
 	fp64One  = uint64(0x8000000000000000)
@@ -216,7 +213,7 @@ func FP64NewReader(r io.Reader) (uint64, error) {
 }
 
 func FP64ExtendString(fp uint64, s string) uint64 {
-	return FP64ExtendUTF16(fp, utf16.Encode([]rune(s)))
+	return FP64ExtendUTF16(fp, javaStringUTF16(s))
 }
 
 func FP64ExtendUTF16(fp uint64, chars []uint16) uint64 {

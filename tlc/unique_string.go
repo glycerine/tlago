@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"unicode/utf16"
 )
 
 type UniqueString struct {
@@ -140,7 +139,7 @@ func (u *UniqueString) Length() int {
 	if u == nil {
 		return 0
 	}
-	return len(utf16.Encode([]rune(u.s)))
+	return len(javaStringUTF16(u.s))
 }
 
 func (u *UniqueString) Compare(other *UniqueString) int {
@@ -369,7 +368,7 @@ func readExternalJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
 }
 
 func javaLegacyStringBytes(s string) []byte {
-	units := utf16.Encode([]rune(s))
+	units := javaStringUTF16(s)
 	bytes := make([]byte, len(units))
 	for i, unit := range units {
 		bytes[i] = byte(unit)

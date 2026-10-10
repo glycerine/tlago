@@ -35421,3 +35421,63 @@ No broad suite, race, shortened workload or original assertion changes. Handoff
 and architecture updated. Latest full stress saved progress is
 1,756,827,297 / 2,147,483,648 (4db479), without terminal result or long-method
 credit; preserve original handle, artifacts and bounds.
+
+
+### 2026-10-10: Core sequence boundaries and UTF-16 result/output preservation
+
+Previous goal turn made verified progress in cb2ec3f; confirm clean worktree
+(24f1b6). Direct polls 128175, 315c5a and 6356bb confirm original full stress
+27326 remains live. Continue remaining module string-subclass recognition in
+Sequences. Source inspection also exposes null tuple-size reads hidden by Go len,
+string read-before-bounds order and loss of split UTF-16 surrogate units.
+
+Ignored sequence-access uses actual test206 source nodes, runtime constructors
+and arrays. Seventeen receiver/argument forms, four source settings, seven core
+operations and nine bound forms produce 9,180 rows. Initial complete matrices
+have 2,724 differences (15456e), including nil receivers/arrays, placeholder
+recognition, null string ordering, bound diagnostics and surrogate output/hash.
+Implement source toTuple/Size ordering for Len, Head, Tail, Cons, Append, Concat
+and SubSeq; keep Concat's both-conversions/both-sizes-before-shortcuts contract
+and SubSeq's reversed-bounds shortcut. Direct module null reads do not add source
+catch frames. Preserve UTF-16 code units when slicing and concatenating, and use
+the existing Java-unit helper for UniqueString.Length, FP64ExtendString and legacy
+checkpoint low-byte output. All initial rows agree (8a5fdf); expanded result-byte
+checks also agree (e8dd34). No checkpoint format change or parsed-token equality
+claim: each wire token is checked against its actual value before comparison of
+the remaining bytes.
+
+Add actual UTF-8 PrintStream output to result serialization. All 9,180 rows
+complete with 160 console differences (50c0f7): native ToolIO writes raw WTF-8
+where Java's encoder writes replacement for unpaired surrogates. Implement
+per-stream pending-high-surrogate state rather than replacing independently per
+print call. Println's newline completes the encoding boundary; stdout/stderr
+state is separate, shared writers alias state, and temporary stream replacement
+restores the prior encoder. ToolIO reset retains state. Captured messages use
+UTF-16 concatenation so recombined pairs retain ordinary string equality.
+The ignored toolio-utf16 observer compares intermediate output/error bytes,
+print/println variants, reset, nested restoration, stream aliasing and two captured
+message equality cases. All 132 traces agree (6ad1b5). Source uses actual ToolIO
+and UTF-8 PrintStreams; no fabricated output/evaluator callback is used.
+
+Add sixteen actual SubSeq/Concat pipelines covering every cut in four strings,
+including paired and unpaired input. Initial temporary Java edit closes main too
+early and fails compilation (ef9102); correct it before collecting the expanded
+rows (edd487). All sixteen pipelines preserve equality, units, fingerprints,
+checkpoint bytes and console bytes (19a9c2). Final 9,196 rows still agree after
+sharing the UTF-16 concatenation helper (6ad1b5). No persistent test/fixture,
+semantic graph mutation or original-method credit. Other sequence callbacks,
+SequencesExt/module casts, charset customization, arbitrary writer callbacks and
+parsed token/class initialization remain separate work.
+
+Focused original value/model/EXCEPT/stream checks plus Sequences, TLCModule,
+FP64, StringDeserialize, StringHelper and debugger checks initially pass. Adding
+existing console/failover checks encounters a sandbox-denied loopback socket in
+TestFingerprintRPCFailoverWarningUsesToolIO (5b29b8); rerun with authorized socket
+access passes (f00b52/649f91). Extend original MP/failover setup to restore new
+encoder fields without changing assertions, and include original MP checks.
+Final session 28591 exits zero (94ffe4); root 5.364s and tlc 2.484s (6ad1b5).
+Existing debugger scalar and composite fingerprint observers complete
+(9b4ac3/2d7c9a): all 240 and 13,056 rows agree (52bdb6). No broad suite, race or
+shortened workload. Handoff and architecture updated. Latest full stress saved
+progress is 1,787,273,699 / 2,147,483,648 (6ad1b5), without terminal result or
+long-method credit. Preserve its original handle, artifacts and bounds.
