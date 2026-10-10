@@ -264,6 +264,9 @@ func TestModelCheckerDoNextEnqueuesOnlyUnseenInModelSuccessorsButChecksAllImplie
 
 	mc := NewModelChecker(tool, t.TempDir(), true)
 	mc.FPSet.Put(cur.FingerPrint())
+	if err := mc.Trace.WriteInitState(cur, cur.FingerPrint()); err != nil {
+		t.Fatalf("seed initial trace state: %v", err)
+	}
 	stop, err := mc.DoNext(cur)
 	if err != nil {
 		t.Fatalf("DoNext returned error: %v", err)
@@ -286,8 +289,32 @@ func TestModelCheckerDoNextEnqueuesOnlyUnseenInModelSuccessorsButChecksAllImplie
 	if impliedChecks != 2 {
 		t.Fatalf("implied-action checks = %d, want 2 for seen and unseen successors", impliedChecks)
 	}
-	if records := mc.Trace.Records(); len(records) != 1 {
-		t.Fatalf("trace records = %d, want 1 for the unseen successor", len(records))
+	// Disk-backed TLCTrace keeps links and fingerprints without retaining states.
+	// Flush the writer before opening the independent trace enumerator.
+	if err := mc.Trace.raf.Flush(); err != nil {
+		t.Fatalf("flush trace: %v", err)
+	}
+	elements, err := mc.Trace.Elements()
+	if err != nil {
+		t.Fatalf("enumerate trace: %v", err)
+	}
+	defer elements.Close()
+	records := 0
+	for {
+		position, err := elements.NextPos()
+		if err != nil {
+			t.Fatalf("next trace position: %v", err)
+		}
+		if position == -1 {
+			break
+		}
+		if _, err := elements.NextFP(); err != nil {
+			t.Fatalf("next trace fingerprint: %v", err)
+		}
+		records++
+	}
+	if records != 2 {
+		t.Fatalf("trace records = %d, want 2 for the seeded initial state and one unseen successor", records)
 	}
 }
 

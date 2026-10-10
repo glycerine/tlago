@@ -73,21 +73,25 @@ bounded observations.
 ## Verification baseline and test credit
 
 Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
-`-tags=tlc_fp_stress -timeout=0`, is running in native exec session `77502`.
-Its log is `.codex-gotmp/offheap-random-full.log`; compiler-only receipt is
-`.codex-gotmp/offheap-random-full-compile.log`. Poll that same handle before
+`-tags=tlc_fp_stress -timeout=0`, was restarted after the power outage in native
+exec session `27326`. Its log is
+`.codex-gotmp/offheap-random-full-after-outage.log`. The interrupted run's log,
+`.codex-gotmp/offheap-random-full.log`, ends at 521,200,868 iterations without a
+terminal result and earns no completion credit. Poll the new handle before
 starting another copy. It preserves all 2,147,483,648 iterations and original
 assertions, with the default 64 MiB direct-memory budget and no race
 instrumentation. Source translation is committed, but full execution and
 original-method credit remain pending. Temporary storage is under
 `.codex-gotmp/`. Do not remove live files or infer completion from progress lines.
 
-Next concrete reconciliation: the existing native
+The existing native
 `TestModelCheckerDoNextEnqueuesOnlyUnseenInModelSuccessorsButChecksAllImpliedActions`
-expects an in-memory trace record from a disk-backed checker. It fails unchanged
-with the pre-declaration-fix action overlay too. Reconcile that assertion with
-persistent trace storage; preserve the source disk trace rather than restoring
-an in-memory mirror. Details and receipts are in `PORT_PROGRESS.md`.
+now seeds the initial trace state and counts persistent records through the disk
+enumerator after flushing the writer. Its existing enqueue and validation
+assertions are preserved; the count requires the seed plus one unseen successor.
+Disk-backed traces continue to avoid an in-memory state mirror. This native
+harness reconciliation adds no original Java method credit. Details and receipts
+are in `PORT_PROGRESS.md`.
 
 The user supplied a green full-suite baseline. Do not rerun that approximately
 45-minute suite. The earlier recorded full-workspace run verified `23f046e`:

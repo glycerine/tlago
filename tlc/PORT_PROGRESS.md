@@ -28727,3 +28727,41 @@ status 0, 179.279 seconds. Java checkout HEAD is reverified as the pinned
 The same full off-heap random workload remains live beyond 513 million iterations;
 completion credit remains pending. The separate baseline native trace assertion
 remains unresolved and is the next reconciliation task.
+
+
+Resume after power outage: reconcile native checker disk trace assertion (2026-10-09)
+
+Recovered clean HEAD 631a184 and the pending native checker reconciliation.
+The original full off-heap random process did not survive the outage. Its saved
+offheap-random-full.log ends at 521,200,868 of 2,147,483,648 iterations without a
+terminal result. It earns no execution credit. Restarted the exact original
+selection and bounds, default 64 MiB direct-memory budget, no race instrumentation,
+with -tags=tlc_fp_stress -count=1 -timeout=0. New native exec session: 27326;
+log: .codex-gotmp/offheap-random-full-after-outage.log. Startup confirms the full
+original random workload. Poll this process rather than starting another copy.
+
+Pinned Java TLCTrace.writeState stores a predecessor location and fingerprint,
+and its enumerator opens a separate RAF. Disk traces retain no state graph.
+The existing native successor test incorrectly inspected Trace.Records and
+seeded only its fingerprint set, leaving the current state's UID at INIT_UID=-1.
+An initial disk-enumerator attempt exposed that incomplete setup as EOF while
+decoding the negative predecessor with ReadLongNat. Java TLCState also requires
+uid to become nonnegative, and ModelChecker initialization writes each unseen
+initial state through its worker before enqueuing it.
+
+Reconciled the existing native test by writing the seeded initial trace state,
+flushing the writer before opening Elements, and counting the persistent records.
+The required count is two: the initial seed and exactly one unseen successor.
+Existing state counts, queue count, invariant and implied-action assertions are
+unchanged. No production code, new test cases, fixtures, or original-method credit
+changes; no in-memory disk trace mirror is restored.
+
+Focused normal verification passes: TestModelCheckerDoNext*,
+TestDiskTraceDoesNotRetainStateGraph, TestJavaReportCoverage*,
+TestToolAssignsActionIDs*, TestToolSpecActions*, and
+TestToolConstraintAndSpecGettersReturnCopies*. Receipt:
+.codex-gotmp/trace-assertion-reconciliation.log, terminal ad244c, status 0,
+0.026 seconds. Git diff --check passes. Reuse the previous production change's
+broader original-test receipt; no full-workspace/XML/ApalacheIR sweep, email work,
+or original workload reduction. Core parity and full stress completion remain
+pending under the existing handoff priorities.
