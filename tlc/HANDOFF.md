@@ -138,8 +138,11 @@ was needed for these cases. Action-composition accounting and functor delegation
 also match all 98 observations across seven existing configurations in ordinary
 and probabilistic modes; all seven original composition tests pass. This includes
 Java's unsupported probabilistic composition paths and partial register effects.
-Next source audit: general `Vect` exception and invalid-count behavior. Original
-model-test reconciliation remains open.
+`Vect` now preserves source insertion growth before index failure, negative-
+capacity and empty-removal exceptions, and enumerator backing-array access and
+advancement on failure. All 83 bounded observations and focused existing tests
+pass. Next source audit: `Vect` invalid-count behavior, removal and copy failure
+ordering. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

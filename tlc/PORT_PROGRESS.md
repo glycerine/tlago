@@ -30364,3 +30364,44 @@ change or new original-method credit. Overall parity remains incomplete. Full
 off-heap stress session 27326 remains live (poll 8f5518); latest saved progress
 651,776,834 / 2,147,483,648, no terminal result or credit. Next inspect source Vect
 exception/capacity ordering and invalid-count behavior; no email work.
+
+
+2026-10-09: Correct Vect constructor, insertion and enumeration boundaries
+
+Continued from composition audit commit 462d5d2. Source Vect.java directly
+allocates negative constructor capacities, grows a full backing array before
+validating insertion indices, throws NoSuchElementException on empty last
+removal, and enumerates elementData[index++] without checking elementCount.
+Go silently accepted negative capacities, checked insertion before growth, used
+string panics, and rejected enumeration after logical size without advancing on
+failure. Corrected these four production paths in tlc/util_tables.go. Insertion
+now uses source doubling rather than Go append growth, including on failed
+insertion; null receivers preserve the source null exception. Enumeration reads
+ElementAt after advancing its index, observing unused slots and later growth.
+
+Ignored observer sources/logs/compare.py are under
+.codex-gotmp/vect-boundary-observation/. Exactly 83 ordered Java/native rows
+cover constructor capacities -1/0/1/2, insertion capacity/count/index matrices,
+empty/nonempty removal, all enumerated slots through two beyond capacity, and
+live growth/clear/growth after failed enumeration. Exception categories, size,
+capacity, every backing slot and enumeration results agree after correction;
+47 baseline rows differed. Observer setup and baseline receipt 226eed returned
+status 0; corrected native session 62597 terminal 4cd7e1 returned status 0.
+No persistent tests or fixtures invented. Inspected source test paths: the
+VectorTest belongs to SANY utilities, not TLC Vect; no direct TLC Vect original
+class exists to port. Invalid raw counts, other Vect operations, arbitrary
+concurrent mutation and VM-generated exception detail text are not established.
+
+Focused existing checks pass normally at unchanged bounds: native Vect/table
+checks and the complete existing Java FcnLambdaValue translation, session 11244
+terminal dee720, TLC 0.013s; original TLCGetLevel and existing generated traces
+TLCGetLevelTTrace, TraceWithLargeSetOfInitialStatesTTrace and ViewMapTTrace,
+session 11972 terminal 24589e, root 2.334s. Both return status 0; logs tlc-tests.log
+and root-tests.log in the observer directory. No race, broad suite, inventory
+change or original-method credit. Formatting and git diff --check pass.
+
+Full original off-heap random stress remains active in session 27326. Latest
+saved progress is 659,140,156 / 2,147,483,648; no terminal result or credit. Do
+not restart or shorten it. Overall TLC parity remains incomplete. Next inspect
+Vect invalid-count representation, removal and copy failure ordering against
+source before changing behavior. No email-related work.

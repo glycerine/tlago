@@ -11235,8 +11235,18 @@ vector fixes both. All 53 earlier predicate/assumption/metadata observations
 still agree with Java. Existing original model checks retain their bounds and
 assertions; four generated-trace helper sites now use `Size` for the same original
 one-predicate assertions. No added persistent tests or original-method credit.
-General invalid element counts, other vector exceptions and concurrent mutation
-remain unproven.
+Additional `Vect` boundary verification covers 83 ordered observations; all match
+Java after correcting 47 baseline differences. A negative constructor capacity
+throws `NegativeArraySizeException`. Insertion doubles a full backing array
+before validating its index, so an invalid insertion can retain increased
+capacity; failures use `ArrayIndexOutOfBoundsException`. Empty last removal
+throws `NoSuchElementException`. Enumeration reads backing capacity rather than
+logical size, including unused null slots, and advances its index even when a
+read throws. Existing enumerators observe subsequent growth of the vector.
+Focused existing container, function-lambda and initial-state/trace tests pass.
+No persistent test or original-method credit was added; the source tree has no
+TLC Vect-specific original test class. General invalid element counts, other
+vector exceptions and concurrent mutation remain unproven.
 
 Assumption checking captures current assumption/axiom arrays once, as Java does.
 Axiom flags mask evaluation, including null predicates. A null assumption array

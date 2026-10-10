@@ -516,7 +516,7 @@ func NewVect[E any]() *Vect[E] {
 
 func NewVectWithCapacity[E any](capacity int) *Vect[E] {
 	if capacity < 0 {
-		capacity = 0
+		panic(NewNegativeArraySizeException(fmtInt(capacity)))
 	}
 	return &Vect[E]{data: make([]E, 0, capacity)}
 }
@@ -609,8 +609,15 @@ func (v *Vect[E]) IndexOfFrom(elem E, index int) int {
 }
 
 func (v *Vect[E]) InsertElementAt(elem E, index int) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	// Java grows a full backing array before checking the insertion index.
+	if len(v.data) == cap(v.data) {
+		v.EnsureCapacity(len(v.data) + 1)
+	}
 	if index < 0 || index > len(v.data) {
-		panic("Vect index out of bounds")
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
 	}
 	var zero E
 	v.data = append(v.data, zero)
@@ -627,8 +634,11 @@ func (v *Vect[E]) LastElement() E {
 }
 
 func (v *Vect[E]) RemoveLastElement() {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
 	if len(v.data) == 0 {
-		panic("Vect is empty")
+		panic(NewNoSuchElementException())
 	}
 	var zero E
 	v.data[len(v.data)-1] = zero
@@ -718,12 +728,14 @@ func (e *VectEnumerator[E]) HasMoreElements() bool {
 }
 
 func (e *VectEnumerator[E]) NextElement() E {
-	if e == nil || e.vect == nil || e.index >= len(e.vect.data) {
-		panic("Vect enumerator exhausted")
+	if e == nil || e.vect == nil {
+		panic(NewNullPointerException())
 	}
-	value := e.vect.data[e.index]
+	// The source uses elementData[index++], without an elementCount check.
+	// Increment even when the backing-array access fails.
+	index := e.index
 	e.index++
-	return value
+	return e.vect.ElementAt(index)
 }
 
 type SetOfLong struct {
