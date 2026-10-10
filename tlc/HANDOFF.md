@@ -457,8 +457,15 @@ intern allocation and allocation exhaustion remain unproven.
 before equality. It retains domain/count arrays, rereads keys, and preserves
 conditional null-array reads plus typed count casts and signed wraparound. All
 50,208 observations agree outside 1,152 native/JVM stack-text differences.
-Original bag/focused checks pass; complete CommunityModules verification is
-running. Continue with `BagOfAll` conversion/operator/aggregation order.
+Original bag/focused checks and complete CommunityModules all/shiviz pass.
+`BagOfAll` preserves null/operator/conversion order, captures the input arrays,
+reuses one argument buffer and reads matched counts after mapped-key equality.
+It retains null mapped keys until visited and uses typed count casts. All 7,200
+observations agree outside 240 native/JVM stack-text differences, including
+actual count/domain sharing through finite operator records. Original bag/focused
+checks and complete CommunityModules all/shiviz pass. Continue with `BagToSet`
+and `SetToBag` conversions: the saved 1,056-row baseline identifies 16 null-input
+differences outside stack text; broader lazy conversions remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -542,7 +549,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,070,212,245 of 2,147,483,648 iterations, without a terminal result. The previous
+2,085,160,285 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

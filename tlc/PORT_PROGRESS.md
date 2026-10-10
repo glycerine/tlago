@@ -36746,3 +36746,74 @@ retain actual operator domains/outputs. Source exits zero (53143 e8a90d), native
 baseline exits zero (62461 477e54); 1,688 raw / 1,448 non-stack differences
 (d0f199). Preserve these receipts for the following feature chunk. No persistent
 tests/fixtures or original credit. Overall goal remains active.
+
+SqSubseteq full verification is terminal zero: CommunityModules session 87436
+exits zero (864217), root 304.925s, all 304.22s and shiviz 0.24s (f530b4).
+Both original phases and unchanged bounds pass after e019887. No race, new
+assumption, skipped body or original-method credit. Continue into the already
+observed BagOfAll gaps rather than waiting without independent work.
+
+2026-10-10: BagOfAll operand, retained-array and aggregation boundaries
+
+The previous BagOfAll baseline identified 1,448 non-stack differences in 7,168
+actual runtime observations. Null operator formatting should throw before bag
+conversion; valid operators with null bags should dereference next. Native used
+wrong-value diagnostics instead. Native also exposed raw count casts/null and
+bounds failures and allocated a new unary argument slice on each iteration.
+
+Preserve operator-first validation, null input dereferences, conversion results
+and diagnostics. Allocate output vectors before obtaining the domain, capture
+input values afterward and reuse a single unary argument array. Retain a first
+null mapped key on append; reject it only if it is subsequently a visited equality
+receiver. Append current captured counts without positivity validation. After
+successful mapped-key equality, cast/read the accumulated output-vector count,
+then the captured input count; addition wraps as int32. Output remains a fresh
+unnormalized FcnRcdValue. Full original matrix rerun exits zero (5933 d8d43a):
+7,168 rows, 240 native/JVM stack-text differences, zero others (bdc92b).
+
+Expand with two actual coupled-array pipelines, crossing the same sixteen
+source/direct/MethodValue modes. The first maps the initial key to a set sharing
+bag counts [2,1]; equality with the second mapped set normalizes those counts to
+[1,2] before reading the second count, yielding accumulated 4. The second maps
+the initial key to a set sharing bag domain [3,2,1]; equality sorts that domain
+to [1,2,3], so the third evaluation visits key 3 rather than 1 and yields 12.
+Both use actual OpRcdValue finite tables, ordinary constructors and parsed source
+nodes, without fabricated semantic graphs or evaluator callbacks. Source/native
+expanded runs finish zero (20608 ef07a0 / 52976 36ec00): all 7,200 rows agree
+outside 240 native/JVM stack locations/elision lines, zero others (f530b4).
+Snapshots retain actual operator rows/outputs, arrays/cache/normalization state,
+nullable parameters, codes, exception/cause headers and source frames. No new
+persistent tests/fixtures or original-method credit. Arbitrary operator mutation,
+allocation exhaustion and broader map coverage remain unproven.
+
+Focused original bag/model/value/EXCEPT/Sequences/TLCModule/stream/MP/override
+checks pass on this code (89283 102198), root 2.086s and tlc 2.498s. Complete
+unchanged CommunityModules all/shiviz runs with timeout zero in session 53249,
+log .codex-gotmp/bag-of-all/community-ant.log; original phases and bounds,
+without race. Handoff/architecture record current contracts, completed SqSubseteq
+verification and pending BagOfAll full verification. Next source targets are
+BagToSet and SetToBag conversion paths. Overall Java-to-Go goal remains active.
+
+While final BagOfAll verification runs, prepare the next ignored conversion
+baseline in .codex-gotmp/bag-conversions without changing production. Use 54
+existing independent bag constructors and 12 actual set/interval constructors,
+including duplicate/null members and null ValueVec input, across both operations,
+independent input/method source flags and direct/MethodValue modes. Source run
+exits zero (eceae1); native run exits zero (69700 cd1fbc). All 1,056 rows are
+present: 88 raw / 16 non-stack differences (f99c37), all null input boundaries
+in BagToSet/SetToBag. Existing non-null cases agree outside stack text. Preserve
+this bounded baseline for the next source chunk; broader lazy set conversions
+and invalid vector topology remain unproven. No persistent test/fixture or
+original-method credit. Original stress remains live by direct poll 3297b4;
+latest saved progress then advances to 2,081,877,519 / 2,147,483,648 (f99c37),
+without terminal result or credit. No production changes were made for this
+next audit while the BagOfAll binary runs.
+
+Final BagOfAll full verification is terminal zero: CommunityModules session
+53249 exits zero (d32ff8), root 302.791s, all 301.62s and shiviz 0.69s (55a374).
+Both original phases and unchanged bounds pass. Formatting/diff checks pass;
+only explanatory comments followed the production build. Handoff/architecture
+record both completed operator runs and the next saved conversion baseline.
+Original random stress session 27326 remains live by direct poll cb0060;
+latest saved progress is 2,085,160,285 / 2,147,483,648, without terminal result
+or new long-test credit. The overall Java-to-Go goal remains active.

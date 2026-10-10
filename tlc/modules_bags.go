@@ -382,8 +382,14 @@ func SqSubseteq(b1 Value, b2 Value) (*BoolValue, error) {
 }
 
 func BagOfAll(op Value, bag Value) (Value, error) {
+	if op == nil {
+		panic(NewNullPointerException())
+	}
 	if !isOperatorValue(op) {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentErrorAn, "first", "BagOfAll", "operator", ValuesPPR(op))
+	}
+	if bag == nil {
+		panic(NewNullPointerException())
 	}
 	fcn := asFcnRcdValue(bag)
 	if fcn == nil {
@@ -391,28 +397,49 @@ func BagOfAll(op Value, bag Value) (Value, error) {
 	}
 	domain := NewValueVec(0)
 	values := NewValueVec(0)
-	for i, dval := range fcn.DomainAsValues() {
-		mapped, err := EvalOperatorValue(op, []Value{dval}, EvalClear)
+	inputDomain := fcn.DomainAsValues()
+	inputValues := fcn.Values
+	// The source retains the input arrays and reuses one argument buffer.
+	args := make([]Value, 1)
+	if inputDomain == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(inputDomain); i++ {
+		args[0] = inputDomain[i]
+		mapped, err := EvalOperatorValue(op, args, EvalClear)
 		if err != nil {
 			return nil, err
 		}
 		found := false
 		for j := 0; j < domain.Len(); j++ {
-			eq, err := mapped.Equal(domain.At(j))
+			prior := domain.At(j)
+			// A first null result may be stored; only a visited receiver fails.
+			if mapped == nil {
+				panic(NewNullPointerException())
+			}
+			eq, err := mapped.Equal(prior)
 			if err != nil {
 				return nil, err
 			}
 			if eq {
-				left := values.At(j).(*IntValue)
-				right := fcn.Values[i].(*IntValue)
-				values.Set(j, NewIntValue(left.Val+right.Val))
+				leftValue := values.At(j)
+				if leftValue == nil {
+					panic(NewNullPointerException())
+				}
+				left, ok := leftValue.(*IntValue)
+				if !ok {
+					panic(valueStreamClassCast(leftValue, "tlc2.value.impl.IntValue"))
+				}
+				leftCount := left.Val
+				rightCount := bagMultiplicity(inputValues, i)
+				values.Set(j, NewIntValue(leftCount+rightCount))
 				found = true
 				break
 			}
 		}
 		if !found {
 			domain.Add(mapped)
-			values.Add(fcn.Values[i])
+			values.Add(fcnParameterDomain(inputValues, i))
 		}
 	}
 	return NewFcnRcdValue(domain.ToArray(), values.ToArray(), false), nil

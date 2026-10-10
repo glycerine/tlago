@@ -8721,6 +8721,31 @@ keys. No persistent test/fixture or original-method credit is added. Arbitrary
 equality mutation and allocation exhaustion remain unproven. Original bag/model/
 value/EXCEPT/Sequences/TLCModule/stream/MP checks pass.
 
+BagOfAll validates the operator before converting the bag, preserving null input
+dereferences in that order. It allocates output vectors before obtaining the
+input domain, captures the count array afterward and reuses one unary argument
+array throughout evaluation. Each mapped key is retained until either it is
+appended or compared with accumulated keys; a null first mapped key may be
+appended, while a visited null comparison receiver throws. Count values are
+copied without validation on append. Matching keys cast/read the accumulated
+output count before the current captured input count and add as int32; no
+positive-count validation is introduced. The result remains unnormalized.
+
+All 7,200 direct/MethodValue observations agree outside 240 JVM/native stack
+locations/elision lines. Fifty-six independent bag forms and eight actual
+operator forms cover integer/boolean/null/identity finite unary mappings and
+invalid operators. Two additional coupled pipelines share actual bag counts or
+domain arrays with returned sets. Count normalization changes [2,1] to [1,2]
+before the second count read, yielding accumulated 4. Domain normalization
+changes the third evaluated key from 1 to 3, yielding accumulated 12; operator
+row/output snapshots retain the shared normalization. Existing parsed test206
+nodes and real OpRcdValue constructors are used, without evaluator callbacks,
+fabricated semantic graphs, persistent tests/fixtures or original-method credit.
+Arbitrary operator mutation, allocation exhaustion and broader map coverage
+remain unproven. Original bag/model/value/EXCEPT/Sequences/TLCModule/stream/MP
+checks pass. The complete unchanged CommunityModules all/shiviz target passes
+after both SqSubseteq and BagOfAll in separate full runs.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid
