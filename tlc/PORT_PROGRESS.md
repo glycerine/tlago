@@ -29481,3 +29481,57 @@ latest saved observation 369,153,053 / 2,147,483,648 iterations, without termina
 result or method credit. Overall parity remains incomplete. Next source audit:
 DFID property loops; Java captures successor lengths while re-fetching elements,
 and its initial loops re-read lengths. Cached initial-vector growth is unproven.
+
+
+2026-10-09: DFID property lengths, failure boundaries and initial arrays
+
+Previous goal turn made verified progress in commit 4d7f26d. DFID successor
+checks now capture each property-family length while re-reading current array
+elements, unlike the breadth-first checker. The property index persists across
+families and successors and resets only after a successful length read. Names
+are current and fetched only for diagnostics. A shrink can raise a bounds
+exception; growth beyond the captured length is ignored. Returned evaluator
+errors enter the same property catch as array exceptions. Exceptions from the
+catch and Java Error subclasses reach the outer next-state boundary, which
+retains/reports the current successor and returns a native error.
+
+Initial loops re-read lengths/elements and use source name boundaries. False
+initial properties do not set the source successor error state. Initial
+exceptions retain their current state. Initial state/fingerprint arrays are
+preallocated, retained on early failure and copied to their filtered length on
+success, matching Java instead of incrementally appending into empty arrays.
+Native standalone optional-name behavior is preserved.
+
+All 152 final pinned-Java/native rows agree; baseline differs in 84. Comparison
+e70b6e, status 0. Matrix: next/init, continuation off/on, invariant/implied
+families and 19 array/name cases, including shared-index carry. Rows compare
+result/escaping exception class, code/name, predicate order, error code/stack/
+state flags and initial-array lengths. Java calls actual DFID doNext/private
+doInit using an ITool proxy, a real DFIDWorker stack and an IdThread with the
+source worker ID, keeping trace assertions enabled. Native installs its actual
+worker stack and worker ID. Both load unchanged BasicMultiTrace expressions and
+an actual Next-generated successor. The observer returns one existing successor
+and isInModel=false to isolate property checking; it does not prove storage or
+whole-model equivalence. Its frame depth is not an original workload bound.
+VM-generated exception detail messages and concurrent graph writes are not
+claimed. An initial driver compile used a nonexistent Java MCDFS enum spelling;
+the final source uses Mode.MC with DFIDMax installed before tool construction.
+
+Logs under .codex-gotmp/: dfid-property-java.log, dfid-property-before.log and
+dfid-property-after.log. Drivers/baseline overlays remain ignored under
+dfid-property-observation. Final Java terminal c6e520, native 7d6ff1 and baseline
+1b8a34 all status 0. No persistent test/fixture additions or original-method
+inventory credit.
+
+Existing original DepthFirstErrorTrace/DepthFirstDieHard and both generated-trace
+variants, DoInitFunctor methods, TLCGetAll/TLCGetLevel and A/B/C coverage plus
+native ModelCheckerDoNext and Tool checks pass normally, retaining their full
+source bounds: dfid-property-originals.log, terminal 6dd7d6, status 0;
+root 5.436 seconds, TLC 0.052 seconds. Formatting and git diff --check pass.
+No broad workspace/XML/ApalacheIR sweep or long race selection.
+
+Full original off-heap random stress session 27326 remains live, poll 5ca03a;
+latest saved observation 391,241,737 / 2,147,483,648 iterations, without terminal
+result or method credit. Overall parity remains incomplete. Next source audit:
+distributed TLCApp's captured property arrays and CheckState null/name boundaries.
+Cached initial-vector growth remains unproven.

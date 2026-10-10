@@ -1042,6 +1042,14 @@ func (t *Tool) propertyNameAt(names []string, index int) string {
 	return nameAt(names, index)
 }
 
+func (t *Tool) propertyActionAt(actions []*Action, index int) *Action {
+	actions = t.requireActionArray(actions)
+	if index < 0 || index >= len(actions) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(actions)))
+	}
+	return actions[index]
+}
+
 func (t *Tool) GetAssumptions() []SemanticNode {
 	if t == nil {
 		return nil

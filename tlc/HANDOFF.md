@@ -102,9 +102,12 @@ checks re-read current arrays as they loop and fetch names only for diagnostics.
 All 49 bounded capture/replacement/null/failure observations agree with Java.
 Checker successor and initial-property loops now follow current arrays and names,
 including source null boundaries, retained initial exceptions and empty diagnostic
-names; all 147 bounded observations agree with Java. Next source audit: DFID
-property loops, whose source captures successor lengths but re-fetches elements.
-Cached initial-vector growth remains unproven.
+names; all 147 bounded observations agree with Java. DFID preserves captured
+successor property lengths, current elements/names and its shared loop index;
+initial loops and early-failure arrays now follow Java. All 152 bounded DFID
+observations agree. Next source audit: distributed TLCApp's captured property
+arrays and CheckState null/name boundaries. Cached initial-vector growth remains
+unproven.
 
 ## Verification baseline and test credit
 

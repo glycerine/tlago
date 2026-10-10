@@ -391,20 +391,28 @@ func (mc *DFIDModelChecker) replayDFIDNextErrorCallStack() int {
 	return NoError
 }
 
-func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp uint64, isLeaf bool, states *StateVec, fps *LongVec) (bool, int, error) {
+func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp uint64, isLeaf bool, states *StateVec, fps *LongVec) (allSuccNonLeaf bool, result int, failure error) {
 	if tool == nil {
 		err := newTLCError(ECGeneral, "DFID model checker has no tool")
 		return true, ECGeneral, err
 	}
 	deadlocked := true
 	allSuccDone := true
-	allSuccNonLeaf := true
+	allSuccNonLeaf = true
 	var liveNextStates *SetOfStates
 	if mc.CheckLiveness && isLeaf {
 		liveNextStates = NewSetOfStates(dfidInitialSetOfStatesCapacity)
 	}
 	restoreCurrentState := PushCurrentState(cur)
 	defer restoreCurrentState()
+	var currentSuccessor *TLCStateMut
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			failure = panicValueAsError(recovered)
+			result = mc.dfidNextFailed(cur, currentSuccessor, failure)
+		}
+	}()
+	propertyIndex := 0
 	for _, action := range tool.GetActions() {
 		nextStates, err := tool.GetNextStates(action, cur)
 		if err != nil {
@@ -418,6 +426,7 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 		deadlocked = deadlocked && size == 0
 		for i := 0; i < size; i++ {
 			succ := nextStates.At(i)
+			currentSuccessor = succ
 			if !tool.IsGoodState(succ) {
 				if mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext) {
 					mc.printTrace(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(tool, action, succ), cur, succ)
@@ -459,58 +468,24 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 				}
 			}
 			if status == FPIntStatusNew {
-				invariantViolated := false
-				invariantNames := tool.GetInvNames()
-				for k, invariant := range tool.GetInvariants() {
-					valid, err := tool.IsValidState(invariant, succ)
-					if err != nil {
-						if mc.SetErrState(cur, succ, true, ECTLCInvariantEvaluationFailed) {
-							mc.printTrace(ECTLCInvariantEvaluationFailed, []string{nameAt(invariantNames, k)}, cur, succ)
-						}
-						return allSuccNonLeaf, ECTLCInvariantEvaluationFailed, nil
-					}
-					if !valid {
-						if continuationEnabled() {
-							mc.printTrace(ECTLCInvariantViolatedBehavior, []string{nameAt(invariantNames, k)}, cur, succ)
-							invariantViolated = true
-							break
-						}
-						if mc.SetErrState(cur, succ, false, ECTLCInvariantViolatedBehavior) {
-							mc.printTrace(ECTLCInvariantViolatedBehavior, []string{nameAt(invariantNames, k)}, cur, succ)
-						}
-						return allSuccNonLeaf, ECTLCInvariantViolatedBehavior, nil
-					}
+				violated, code := mc.checkDFIDProperty(tool, cur, succ, &propertyIndex, false)
+				if code != NoError {
+					return allSuccNonLeaf, code, nil
 				}
-				if invariantViolated {
+				if violated {
 					continue
 				}
 			}
-			impliedViolated := false
-			impliedNames := tool.GetImpliedActNames()
-			for k, implied := range tool.GetImpliedActions() {
-				valid, err := tool.IsValidTransition(implied, cur, succ)
-				if err != nil {
-					if mc.SetErrState(cur, succ, true, ECTLCActionPropertyEvaluationFailed) {
-						mc.printTrace(ECTLCActionPropertyEvaluationFailed, []string{nameAt(impliedNames, k)}, cur, succ)
-					}
-					return allSuccNonLeaf, ECTLCActionPropertyEvaluationFailed, nil
-				}
-				if !valid {
-					if continuationEnabled() {
-						mc.printTrace(ECTLCActionPropertyViolatedBehavior, []string{nameAt(impliedNames, k)}, cur, succ)
-						impliedViolated = true
-						break
-					}
-					if mc.SetErrState(cur, succ, false, ECTLCActionPropertyViolatedBehavior) {
-						mc.printTrace(ECTLCActionPropertyViolatedBehavior, []string{nameAt(impliedNames, k)}, cur, succ)
-					}
-					return allSuccNonLeaf, ECTLCActionPropertyViolatedBehavior, nil
-				}
+			violated, code := mc.checkDFIDProperty(tool, cur, succ, &propertyIndex, true)
+			if code != NoError {
+				return allSuccNonLeaf, code, nil
 			}
-			if impliedViolated {
+			if violated {
 				continue
 			}
+
 		}
+		currentSuccessor = nil
 	}
 	if deadlocked && mc.CheckDeadlock {
 		if mc.SetErrState(cur, nil, false, ECTLCDeadlockReached) {
@@ -535,6 +510,85 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 		mc.FPSet.SetStatus(cfp, FPIntStatusDone)
 	}
 	return allSuccNonLeaf, NoError, nil
+}
+
+// DFID captures each property-array length, but reads current elements and
+// diagnostic names. The index is shared across both families and successors.
+func (mc *DFIDModelChecker) checkDFIDProperty(tool *Tool, cur, succ *TLCStateMut, index *int, implied bool) (violated bool, result int) {
+	violationCode, evaluationCode := ECTLCInvariantViolatedBehavior, ECTLCInvariantEvaluationFailed
+	if implied {
+		violationCode, evaluationCode = ECTLCActionPropertyViolatedBehavior, ECTLCActionPropertyEvaluationFailed
+	}
+	failEvaluation := func() int {
+		if mc.SetErrState(cur, succ, true, evaluationCode) {
+			var names []string
+			if implied {
+				names = tool.GetImpliedActNames()
+			} else {
+				names = tool.GetInvNames()
+			}
+			mc.printTrace(evaluationCode, []string{tool.propertyNameAt(names, *index)}, cur, succ)
+		}
+		return evaluationCode
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err, ok := recovered.(error)
+			if !ok || isJavaError(err) {
+				panic(recovered)
+			}
+			violated, result = false, failEvaluation()
+		}
+	}()
+	var actions []*Action
+	if implied {
+		actions = tool.GetImpliedActions()
+	} else {
+		actions = tool.GetInvariants()
+	}
+	length := len(tool.requireActionArray(actions))
+	for *index = 0; *index < length; (*index)++ {
+		if implied {
+			actions = tool.GetImpliedActions()
+		} else {
+			actions = tool.GetInvariants()
+		}
+		action := tool.propertyActionAt(actions, *index)
+		var valid bool
+		var err error
+		if implied {
+			valid, err = tool.IsValidTransition(action, cur, succ)
+		} else {
+			valid, err = tool.IsValidState(action, succ)
+		}
+		if err != nil {
+			// Returned evaluator errors enter the same source catch as array exceptions.
+			panic(err)
+		}
+		if !valid {
+			if continuationEnabled() {
+				var names []string
+				if implied {
+					names = tool.GetImpliedActNames()
+				} else {
+					names = tool.GetInvNames()
+				}
+				mc.printTrace(violationCode, []string{tool.propertyNameAt(names, *index)}, cur, succ)
+				return true, NoError
+			}
+			if mc.SetErrState(cur, succ, false, violationCode) {
+				var names []string
+				if implied {
+					names = tool.GetImpliedActNames()
+				} else {
+					names = tool.GetInvNames()
+				}
+				mc.printTrace(violationCode, []string{tool.propertyNameAt(names, *index)}, cur, succ)
+			}
+			return false, violationCode
+		}
+	}
+	return false, NoError
 }
 
 func (mc *DFIDModelChecker) dfidNextFailed(curState *TLCStateMut, succState *TLCStateMut, err error) int {
@@ -645,7 +699,20 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 	return mc.doInitWithTool(mc.Tool)
 }
 
-func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
+func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (result int, failure error) {
+	var currentState *TLCStateMut
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result, failure = ECGeneral, panicValueAsError(recovered)
+		}
+		if failure != nil {
+			if javaSystemFailureCode(failure) == ECSystemOutOfMemory {
+				result, failure = PrintError(ECSystemOutOfMemoryTooManyInit), nil
+				return
+			}
+			mc.ErrState = currentState
+		}
+	}()
 	vec := NewStateVec(0)
 	if tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "DFID model checker has no tool")
@@ -654,14 +721,15 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 		return ECGeneral, err
 	}
 	mc.StatesGenerated = int64(vec.Size())
-	mc.InitStates = make([]*TLCStateMut, 0, vec.Size())
-	mc.InitFPs = make([]uint64, 0, vec.Size())
+	// Keep the source preallocated arrays intact on early failure; trim on success.
+	mc.InitStates = make([]*TLCStateMut, vec.Size())
+	mc.InitFPs = make([]uint64, vec.Size())
+	initIndex := 0
 	for i := 0; i < vec.Size(); i++ {
 		state := vec.At(i)
+		currentState = state
 		if !tool.IsGoodState(state) {
-			if mc.SetErrState(state, nil, false, ECTLCStateNotCompletelySpecifiedInitial) {
-				PrintError(ECTLCStateNotCompletelySpecifiedInitial, state.String())
-			}
+			PrintError(ECTLCStateNotCompletelySpecifiedInitial, state.String())
 			return ECTLCStateNotCompletelySpecifiedInitial, nil
 		}
 		status := FPIntStatusNew
@@ -674,8 +742,9 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 			fp := state.FingerPrint()
 			status = mc.FPSet.SetStatus(fp, FPIntStatusNew)
 			if status == FPIntStatusNew {
-				mc.InitStates = append(mc.InitStates, state)
-				mc.InitFPs = append(mc.InitFPs, fp)
+				mc.InitStates[initIndex] = state
+				mc.InitFPs[initIndex] = fp
+				initIndex++
 				if mc.AllStateWriter != nil {
 					if err := mc.AllStateWriter.WriteInitState(state); err != nil {
 						return ECGeneral, err
@@ -692,7 +761,8 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 		if status != FPIntStatusNew {
 			continue
 		}
-		for k, invariant := range tool.GetInvariants() {
+		for k := 0; k < len(tool.requireActionArray(tool.GetInvariants())); k++ {
+			invariant := tool.propertyActionAt(tool.GetInvariants(), k)
 			valid, err := tool.IsValidState(invariant, state)
 			if err != nil {
 				mc.ErrState = state
@@ -703,15 +773,15 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 				if tool != nil {
 					alias = tool.EvalAlias(state, state)
 				}
-				PrintError(ECTLCInvariantViolatedInitial, nameAt(tool.GetInvNames(), k), alias.String())
+				PrintError(ECTLCInvariantViolatedInitial, tool.propertyNameAt(tool.GetInvNames(), k), alias.String())
 				if continuationEnabled() {
 					continue
 				}
-				mc.SetErrState(state, nil, false, ECTLCInvariantViolatedInitial)
 				return ECTLCInvariantViolatedInitial, nil
 			}
 		}
-		for k, implied := range tool.GetImpliedInits() {
+		for k := 0; k < len(tool.requireActionArray(tool.GetImpliedInits())); k++ {
+			implied := tool.propertyActionAt(tool.GetImpliedInits(), k)
 			valid, err := tool.IsValidState(implied, state)
 			if err != nil {
 				mc.ErrState = state
@@ -722,11 +792,17 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 				if tool != nil {
 					alias = tool.EvalAlias(state, state)
 				}
-				PrintError(ECTLCPropertyViolatedInitial, nameAt(tool.GetImpliedInitNames(), k), alias.String())
-				mc.SetErrState(state, nil, false, ECTLCPropertyViolatedInitial)
+				PrintError(ECTLCPropertyViolatedInitial, tool.propertyNameAt(tool.GetImpliedInitNames(), k), alias.String())
 				return ECTLCPropertyViolatedInitial, nil
 			}
 		}
+	}
+	if initIndex < vec.Size() {
+		states := make([]*TLCStateMut, initIndex)
+		copy(states, mc.InitStates)
+		fps := make([]uint64, initIndex)
+		copy(fps, mc.InitFPs)
+		mc.InitStates, mc.InitFPs = states, fps
 	}
 	return NoError, nil
 }

@@ -11287,8 +11287,40 @@ existing Next action, so Java's actual error-trace rendering can reconstruct it.
 The initial observer returns false from isInModel to exercise property checks
 without fingerprint insertion; it does not prove storage behavior. Three direct
 null-Action validity rows also agree. Exception categories are compared, not
-VM-generated detail messages. Full arbitrary mutation and DFID capture behavior
-remain separate work.
+VM-generated detail messages. Full arbitrary mutation remains separate work.
+
+DFID successor property checks capture each family's length once per successor,
+then read the current array element on each iteration. Growth beyond the captured
+length is ignored; shrinkage can raise the source bounds exception. The index is
+shared across families and successors, and is reset only after the next length
+has been read successfully. A null implied-action array can therefore report the
+index left by the invariant loop. Names are fetched only when the source prints
+a failure. Recoverable property exceptions set the source evaluation-failure
+state and print the property name; exceptions in that catch reach the outer
+next-state boundary. That outer boundary also handles Java Error subclasses and
+retains/reports the current successor before returning a native error.
+
+DFID initial property loops re-read lengths and elements. False initial
+properties return their diagnostic without setting a successor error state;
+exceptions retain the current initial state, matching the source Throwable
+catch. Initial state/fingerprint arrays are preallocated to the generated-state
+count, remain intact on early failure, and are copied to their filtered length
+only after successful checking. Source names reject null/short arrays. Native
+optional-name adapters are unchanged.
+
+All 152 ignored pinned-Java/native DFID observations agree on results or escaping
+exception category, diagnostic code/name, evaluation order, error code/stack/state
+flags and initial-array lengths. They cover next/init, continuation off/on,
+invariant/implied families, 19 array/name cases and the shared-index boundary.
+Java executes actual doNext and private doInit with an ITool proxy, a real
+DFIDWorker holding the current state, and an IdThread context for source trace
+printing; assertions remain enabled. Native uses the corresponding worker stack
+and worker ID. Both use unchanged BasicMultiTrace expressions and an actual
+Next-generated successor. The observer limits its returned successor vector to
+one existing state and excludes it from the model; these are bounded property
+observations, not storage or whole-model equivalence. Existing original DFID
+trace models separately retain their full bounds. VM-generated exception detail
+text and arbitrary concurrent graph mutation remain unproven.
 
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing
