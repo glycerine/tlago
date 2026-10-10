@@ -126,7 +126,7 @@ func TestJavaRandomization(t *testing.T) {
 	run("testRSSV2Zero", func(t *testing.T) {
 		randomSubset := javaRandomizationEnumerable(RandomSetOfSubsets(NewIntValue(23), NewIntValue(0), NewIntervalValue(1, 42)))
 		javaRandomizationSize(t, 1, randomSubset)
-		javaRandomizationMember(t, randomSubset, NewSetEnumValue(nil, true))
+		javaRandomizationMember(t, randomSubset, NewSetEnumValue([]Value{}, true))
 	})
 	run("testV2Negative", func(t *testing.T) {
 		javaRandomizationEvalMessage(t, "The second argument of RandomSetOfSubsets should be a nonnegative integer, but instead it is:\n-1", func() (Value, error) {
@@ -140,7 +140,7 @@ func TestJavaRandomization(t *testing.T) {
 	})
 	run("testV3Empty", func(t *testing.T) {
 		javaRandomizationEvalMessage(t, "The first argument of RandomSetOfSubsets should be a nonnegative integer that is smaller than the subset's size of 2^0, but instead it is:\n42", func() (Value, error) {
-			return RandomSetOfSubsets(NewIntValue(42), NewIntValue(42), NewSetEnumValue(nil, true))
+			return RandomSetOfSubsets(NewIntValue(42), NewIntValue(42), NewSetEnumValue([]Value{}, true))
 		})
 	})
 	run("testRSSV2Negative", func(t *testing.T) {
@@ -190,7 +190,7 @@ func TestJavaRandomization(t *testing.T) {
 	run("testV2Zero", func(t *testing.T) {
 		randomSubset := javaRandomizationEnumerable(RandomSetOfSubsets(NewIntValue(23), NewIntValue(0), NewIntervalValue(1, 42)))
 		javaRandomizationSize(t, 1, randomSubset)
-		javaRandomizationMember(t, randomSubset, NewSetEnumValue(nil, true))
+		javaRandomizationMember(t, randomSubset, NewSetEnumValue([]Value{}, true))
 	})
 	run("testRSSV2TwiceCardinality", func(t *testing.T) {
 		javaRandomizationEvalMessage(t, "The second argument of RandomSetOfSubsets should be a nonnegative integer in range 0..Cardinality(S), but instead it is:\n10", func() (Value, error) {

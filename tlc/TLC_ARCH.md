@@ -8253,6 +8253,34 @@ The complete unchanged CommunityModules Ant target and focused original
 model/value/stream regressions pass on these changes; no new original-test credit
 is added.
 
+SetEnumValue and ValueVec constructors preserve source null/empty distinctions.
+The array constructor fails on null through ValueVec construction; the vector
+constructor retains a null ValueVec reference and its normalization flag. A
+negative vector capacity raises NegativeArraySizeException. Native callers that
+represent Java empty arrays now supply explicit empty slices, including the
+empty subset enumerator and existing randomization/debugger fixtures; assertions
+and workload bounds remain unchanged. Array-based vectors retain the array,
+with capacity equal to its source array length, while vector-based sets retain
+the vector object. ToArray copies the active array, retaining child identities;
+growth detaches the vector from the original full array.
+Vector size/capacity/empty, normalization/search and array conversion retain the
+observed typed null-receiver failures. Unsorted membership and set defined-state,
+permutation and fingerprint traversal retain typed missing-child failures under
+existing source catches. SetEnumValue.Elements raises normalization errors at
+enumerator construction, rather than deferring returned errors until iteration.
+All 1,362 source/native construction, traversal and ownership rows agree across
+null arrays/vectors, empty and populated arrays/vectors, duplicates, null/mixed
+children, normalization/source flags, sixteen operations and four ownership
+pipelines. Observations retain typed causes, source-frame counts, buffer prefixes,
+normalization state, vector size/capacity, retained references and growth/copy
+ownership. Drivers use actual test206 source nodes and runtime constructors and
+arrays, with no fabricated evaluators or persistent fixtures/tests. No original
+ValueVec/SetEnumValue unit test class exists in the pinned ordinary test tree;
+existing original set/subset/randomization/debugger and model/value/stream checks
+pass. Existing native vector sharing and worker RPC checks also pass. Broader
+vector access/insertion, malformed counts and parsed intern allocation remain
+separate requirements. This comparison adds no original-method credit.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

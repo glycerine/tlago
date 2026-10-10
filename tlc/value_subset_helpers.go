@@ -144,7 +144,7 @@ func (e *emptySubsetEnumeration) NextElement() Value {
 		return nil
 	}
 	e.done = true
-	return NewSetEnumValue(nil, true, e.owner.GetCostModel())
+	return NewSetEnumValue([]Value{}, true, e.owner.GetCostModel())
 }
 
 // KElementEnumeration mirrors the bounded KElementEnumerator, distinct from

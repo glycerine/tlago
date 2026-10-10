@@ -392,14 +392,18 @@ source tuple reads, argument reuse and bound shortcuts. Their typed operator
 parameters reject invalid values at invocation. All 22,752 direct rows agree;
 2,912 invocation cases agree outside platform stack locations/elision counts
 (396 retain stack-text differences). The complete original CommunityModules
-`all`/`shiviz` target and focused regressions pass. Other `SequencesExt` helpers,
+`all`/`shiviz` target passed through `686d6b7`; focused regressions also pass. Other `SequencesExt` helpers,
 arbitrary callback mutation and module-specific casts remain separate work.
 `LongestCommonPrefix` and `IsPrefix` preserve UTF-16 units, subclass recognition,
 source catch/read order and bounds errors. Nonempty prefix tuples own their array.
 All 7,786 controlled-token rows and 720 tuple comparison rows agree; the parsed
 run retains sixteen known intern-order differences. Tuple comparison and set
-sorting now retain the observed typed null failures. Other set construction
-boundaries and parsed intern allocation remain open.
+sorting now retain the observed typed null failures. Set/vector constructors
+distinguish null from empty and retain vector/array ownership. Enumeration
+normalization failures are immediate. All 1,362 construction/ownership rows agree;
+existing empty-array callers use explicit empty slices. Original set/subset,
+randomization and debugger checks pass, along with vector sharing/RPC checks.
+Broader vector access/insertion and parsed intern allocation remain open.
 Prior lambda conversion and deep-normalization matrices also agree; contracts
 and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.

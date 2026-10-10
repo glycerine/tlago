@@ -22,13 +22,16 @@ type ValueVec struct {
 
 func NewValueVec(capacity int) *ValueVec {
 	if capacity < 0 {
-		panic(fmt.Errorf("%d", capacity))
+		panic(NewNegativeArraySizeException(fmt.Sprint(capacity)))
 	}
 	return &ValueVec{data: make([]Value, 0, capacity)}
 }
 
 func NewValueVecFrom(values []Value) *ValueVec {
-	return &ValueVec{data: values}
+	if values == nil {
+		panic(NewNullPointerException())
+	}
+	return &ValueVec{data: values[:len(values):len(values)]}
 }
 
 func (v *ValueVec) Add(val Value) {
@@ -81,15 +84,28 @@ func (v *ValueVec) insertAt(val Value, index int) {
 	v.data[index] = val
 }
 
-func (v *ValueVec) Len() int             { return len(v.data) }
-func (v *ValueVec) Cap() int             { return cap(v.data) }
-func (v *ValueVec) Empty() bool          { return len(v.data) == 0 }
+func (v *ValueVec) Len() int {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return len(v.data)
+}
+func (v *ValueVec) Cap() int {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return cap(v.data)
+}
+func (v *ValueVec) Empty() bool          { return v.Len() == 0 }
 func (v *ValueVec) At(i int) Value       { return v.data[i] }
 func (v *ValueVec) Set(i int, val Value) { v.data[i] = val }
 func (v *ValueVec) First() Value         { return v.data[0] }
 func (v *ValueVec) Last() Value          { return v.data[len(v.data)-1] }
 
 func (v *ValueVec) ToArray() []Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
 	out := make([]Value, len(v.data))
 	copy(out, v.data)
 	return out
@@ -110,6 +126,9 @@ func (v *ValueVec) IndexOf(val Value) int {
 }
 
 func (v *ValueVec) Search(val Value, sorted bool) (bool, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
 	if sorted {
 		low, high := 0, len(v.data)
 		for low < high {
@@ -133,6 +152,9 @@ func (v *ValueVec) Search(val Value, sorted bool) (bool, error) {
 		return false, nil
 	}
 	for i := 0; i < len(v.data); i++ {
+		if v.data[i] == nil {
+			panic(NewNullPointerException())
+		}
 		equal, err := v.data[i].Equal(val)
 		if err != nil {
 			return false, err
@@ -145,6 +167,9 @@ func (v *ValueVec) Search(val Value, sorted bool) (bool, error) {
 }
 
 func (v *ValueVec) Sort(noDup bool) error {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
 	newCount := 0
 	if len(v.data) != 0 {
 		newCount = 1
@@ -550,9 +575,6 @@ func NewSetEnumValue(values []Value, isNorm bool, cms ...CostModel) *SetEnumValu
 }
 
 func NewSetEnumValueVec(values *ValueVec, isNorm bool, cms ...CostModel) *SetEnumValue {
-	if values == nil {
-		values = NewValueVec(0)
-	}
 	return &SetEnumValue{BaseValue: newBaseValue(cms...), Elems: values, IsNorm: isNorm}
 }
 
@@ -676,6 +698,9 @@ func (v *SetEnumValue) DeepNormalize() {
 func (v *SetEnumValue) IsDefined() bool {
 	defer catchValueFailure(v, nil)
 	for i := 0; i < v.Elems.Len(); i++ {
+		if v.Elems.At(i) == nil {
+			panic(NewNullPointerException())
+		}
 		if !v.Elems.At(i).IsDefined() {
 			return false
 		}
@@ -691,6 +716,9 @@ func (v *SetEnumValue) Permute(perm *MVPerm) Value {
 	changed := false
 	for i := range out {
 		elem := v.Elems.At(i)
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
 		out[i] = elem.Permute(perm)
 		changed = changed || out[i] != elem
 	}
@@ -708,6 +736,9 @@ func (v *SetEnumValue) FingerPrint(fp uint64) uint64 {
 	fp = FP64ExtendByte(fp, byte(SetEnumValueKind))
 	fp = FP64ExtendInt(fp, int32(v.Elems.Len()))
 	for i := 0; i < v.Elems.Len(); i++ {
+		if v.Elems.At(i) == nil {
+			panic(NewNullPointerException())
+		}
 		fp = v.Elems.At(i).FingerPrint(fp)
 	}
 	return fp
@@ -745,7 +776,7 @@ func (v *SetEnumValue) ToTupleValue() *TupleValue {
 func (v *SetEnumValue) Elements() ValueEnumeration {
 	defer catchValueFailure(v, nil)
 	if _, err := v.normalizeSet(); err != nil {
-		return newErrorEnumeration(wrapValueFailure(v, err))
+		panic(err)
 	}
 	return &setEnumEnumeration{owner: v}
 }

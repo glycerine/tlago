@@ -41,10 +41,10 @@ func TestJavaDebugTLCVariable(t *testing.T) {
 		}
 	}
 	t.Run("testFiniteEmptySetValue", func(t *testing.T) {
-		assertEquals(t, 0, len(NewDebugTLCVariableName("4711").SetInstance(NewSetEnumValue(nil, false)).Nested(rnd)))
+		assertEquals(t, 0, len(NewDebugTLCVariableName("4711").SetInstance(NewSetEnumValue([]Value{}, false)).Nested(rnd)))
 	})
 	t.Run("testFiniteSetValue", func(t *testing.T) {
-		outer := NewDebugTLCVariableName("4711").SetInstance(NewSetEnumValue([]Value{NewSetEnumValue(nil, false)}, false)).Nested(rnd)
+		outer := NewDebugTLCVariableName("4711").SetInstance(NewSetEnumValue([]Value{NewSetEnumValue([]Value{}, false)}, false)).Nested(rnd)
 		assertEquals(t, 1, len(outer))
 		assertEquals(t, 0, len(outer[0].Nested(rnd)))
 	})

@@ -43,7 +43,7 @@ func TestSubsetValueElementsUseJavaCardinalityLayerOrder(t *testing.T) {
 
 func TestSetOfFcnsValueDomainAndRangeEmptyBehaviors(t *testing.T) {
 	rangeValues := NewSetEnumValue(stringValues("a", "b", "c"), true)
-	emptyDomain := NewSetEnumValue(nil, true)
+	emptyDomain := NewSetEnumValue([]Value{}, true)
 
 	domainEmpty := NewSetOfFcnsValue(emptyDomain, rangeValues)
 	if size, err := domainEmpty.Size(); err != nil || size != 1 {

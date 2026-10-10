@@ -35648,3 +35648,57 @@ saved progress is 1,832,045,926 / 2,147,483,648 (80c048), without terminal resul
 or long-method credit. Preserve original stress handle, log and bounds. Final
 diff check passes; handoff and architecture retain the sixteen parsed-token
 ordering differences rather than treating controlled interning as completion.
+
+
+### 2026-10-10: Set/vector constructor distinctions and immediate enumeration failure
+
+Previous goal turn made verified progress in 686d6b7; clean worktree confirmed
+(6b5209). Direct poll b3d2c9 confirms original full stress 27326 remains live.
+Inspect actual ValueVec/SetEnumValue constructors and downstream null reads.
+Java ValueVec(Value[]) fails on null but SetEnumValue(ValueVec,boolean) retains
+the null vector and normalization flag. Native constructors collapsed both into
+empty sets. No ordinary pinned ValueVec/SetEnumValue unit test class is found;
+retain the existing benchmark as a separate pending item and add no test credit.
+
+Ignored set-vector-construction uses actual test206 source nodes and real runtime
+constructors and arrays. Thirteen initial set forms, normalization/source flags,
+sixteen operations and ten vector constructors produce 842 rows, with 222
+initial differences (405843). Preserve typed null-array constructor failure,
+null-vector retention, negative-capacity exception and array/vector ownership.
+Array-based vector capacity is the source array length. Native callers meaning
+Java empty arrays now use explicit empty slices: the empty subset enumeration
+and existing debugger/randomization/native function-set fixtures. Assertions and
+original inputs remain equivalent; no persistent test is added.
+
+Restore typed null reads in vector Len/Cap/Empty/ToArray/Search/Sort and missing
+child receivers in set IsDefined/Permute/FingerPrint. Initial native comparison
+has four remaining unsorted-member null failures (d22a0a); add the typed null
+receiver at the actual vector equality call. Expand to mixed-type and multi-null
+arrays/vectors to exercise normalization failures. All 1,358 rows complete, with
+eight remaining enumeration-creation differences (685266): native Elements
+returns an error enumeration after a returned comparison error, while Java
+throws during construction. Raise that returned error under the existing
+Elements source catch, retaining both normalization and caller frames.
+
+Add four actual ownership pipelines: array/vector constructor identity, mutation
+through the original array, ToArray copy independence, retained child identities
+and detachment after capacity growth. The temporary Java insertion succeeds but
+the native insertion marker is not found (216850); correct the native marker
+before collecting complete rows. All 1,362 complete rows agree (c0df48). No
+fabricated evaluator/semantic graph or persistent test/fixture is introduced.
+Broader vector access/insertion and malformed-count behavior remain separate work.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass. Session 67637 exits zero (338252), root 5.856s
+and tlc 2.304s (be4d8d). Run full original SubsetValue/SubsetEnumerator/KSubsetValue,
+SetOfFcnsValue/SetOfRcrdValue/indexed tuple sampling, Randomization, DebugTLCVariable
+and initialization checks normally at their original bounds, alongside existing
+native vector checks. Session 38469 exits one (73e651): its only reported failure
+is sandbox-denied loopback listen in TestDistributedValueVectorWorkerRPC; remaining
+checks complete without reported failure in 66.298s (4b04fb). Rerun only that
+short RPC test with socket access: exits zero (9af5d2). No race, shortened workload,
+full CommunityModules rerun or broad workspace suite. Original-method counts stay
+unchanged. Handoff and architecture distinguish constructor verification from the
+previous complete CommunityModules run through 686d6b7. Latest saved full stress
+progress is 1,846,976,793 / 2,147,483,648 (18a6ad), without terminal result or long
+credit. Preserve original stress handle, log and bounds.
