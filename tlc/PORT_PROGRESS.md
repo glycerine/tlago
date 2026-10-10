@@ -34316,3 +34316,43 @@ or changed original assertions. Handoff and architecture contracts updated.
 Original full stress session 27326 remains live on direct poll (2cb0dc).
 Latest saved progress is 1,571,036,684 / 2,147,483,648 (230e6d), without a terminal
 result or long-method credit. Preserve original handle, artifacts and bounds.
+
+
+2026-10-10: Zero-argument native override entry boundary
+
+Previous turn completed 70e71ae. Inspect Java MethodValue.eval and source
+Strings.STRING, Bags.EmptyBag and TLC.JavaTime. All are non-final, zero-argument
+methods with declared Value results. Native registered EmptyBag/JavaTime carry
+arity zero; the predefined STRING MethodValue lacks that metadata and ignores
+all supplied arguments. Ignored .codex-gotmp/zero-arity-overrides compares
+original Java numeric-free method factories with the actual native predefined/
+installed wrappers, using eight null/empty/one-through-four argument shapes and
+with/without actual test209 S as their source. Successful time calls are compared
+by IntValue kind rather than independently sampled timestamps. No fabricated
+semantic nodes, evaluator callbacks or persistent test/fixture.
+
+Java 298e7d and native ac55e8 complete; all 48 rows collected, with 36 differences
+(3f3948): nonempty argument arrays are accepted by STRING or receive native count
+diagnostics instead of the source invocation failure. Add a known zero-arity
+check to MethodValue.Eval before native invocation, through the existing method
+failure adapter/source wrapper. Record predefined STRING's parameter count.
+Extract diagnostic result type from the signature declaration prefix, excluding
+the argument list and any throws suffix. Other zero-argument registrations,
+non-Value declared returns, unknown native arity and runtime throws-signature
+cases remain separate comparisons. No method-handle/JVM runtime is introduced.
+Native 96978 completes (194f2c); all 48 rows agree (0980dc), including category,
+message/code/nullable parameters and source frames. Prior positive-arity driver
+still matches all 368 rows (5a3da6; comparison de7445).
+
+Fourteen unchanged original model checks pass, including UserModuleOverride,
+UserModuleOverrideFromJar and UserModuleOverrideAnnotation alongside the prior
+eleven-model selection. Original TupleValue/FcnLambdaValue/FcnRcdValue/EvalControl
+and focused function-context, fallback rendering, lambda stream and numeric
+checks also pass (64054 terminal b4de49; root 4.984s, tlc 2.184s;
+existing-checks.log, de7445). No broad suite, race, shortened original bounds or
+changed original assertions. No original-method inventory credit. Handoff and
+architecture updated.
+
+Original full stress session 27326 remains live on direct poll (7f0a59).
+Latest saved progress is 1,578,506,046 / 2,147,483,648 (cdd726), without a terminal
+result or long-method credit. Preserve original handle, artifacts and bounds.

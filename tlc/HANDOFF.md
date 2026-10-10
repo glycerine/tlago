@@ -360,8 +360,10 @@ Positive-arity numeric override failures now retain source diagnostics and
 wrapping; all 368 arithmetic/comparison observations agree. Integer GEQ
 selection also preserves its source diagnostic label. Comparison null arguments
 now retain source-ordered formatting failures; all 3,600 direct and 2,700
-parsed-definition observations agree. Zero-arity overrides and mutation during
-evaluation remain separate targets.
+parsed-definition observations agree. Zero-argument STRING, EmptyBag and
+JavaTime calls now retain source arity failures; all 48 bounded observations
+agree. Other zero-argument registrations and mutation during evaluation remain
+separate targets.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

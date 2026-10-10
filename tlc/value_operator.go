@@ -567,23 +567,35 @@ func (v *MethodValue) Eval(args []Value, control int) (resultValue Value, err er
 	if args == nil {
 		panic(NewNullPointerException())
 	}
+	if v.ParameterCount == 0 && len(args) != 0 {
+		return nil, fmt.Errorf("cannot convert MethodHandle()%s to (Value[])Value", methodResultType(v.Name))
+	}
 	if v.ParameterCount > 0 && len(args) != v.ParameterCount {
 		if len(args) == 0 {
 			// Source MethodValue uses a distinct invocation path for an empty
 			// array. Retain its diagnostic at the native override boundary.
-			fields := strings.Fields(v.Name)
-			resultType := "Value"
-			if len(fields) >= 2 {
-				resultType = fields[len(fields)-2]
-				if dot := strings.LastIndexByte(resultType, '.'); dot >= 0 {
-					resultType = resultType[dot+1:]
-				}
-			}
-			return nil, fmt.Errorf("handle's method type (IValue[])%s but found ()Value", resultType)
+			return nil, fmt.Errorf("handle's method type (IValue[])%s but found ()Value", methodResultType(v.Name))
 		}
 		return nil, fmt.Errorf("array is not of length %d", v.ParameterCount)
 	}
 	return v.EvalFunc(args, control)
+}
+
+// Read the declared result from the registered source signature. Restrict the
+// read to the declaration prefix so a throws clause cannot become the result.
+func methodResultType(signature string) string {
+	if args := strings.IndexByte(signature, '('); args >= 0 {
+		signature = signature[:args]
+	}
+	fields := strings.Fields(signature)
+	if len(fields) < 2 {
+		return "Value"
+	}
+	result := fields[len(fields)-2]
+	if dot := strings.LastIndexByte(result, '.'); dot >= 0 {
+		result = result[dot+1:]
+	}
+	return result
 }
 
 // MethodValue preserves direct EvalExceptions; unevaluated and callable

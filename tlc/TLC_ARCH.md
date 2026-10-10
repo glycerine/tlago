@@ -7707,9 +7707,19 @@ module ownership. Values include nine integer edges, boolean, tuple, null,
 string, empty set and interval. This does not cover arbitrary value formatting
 callbacks, typed-null Go values or dynamic module replacement.
 
-
-
-
+Known zero-argument native methods reject a nonempty argument array before
+entering the implementation, preserving the source invocation diagnostic through
+the existing method failure adapter and source wrapper. The predefined STRING
+method now records its zero parameter count, so it cannot silently ignore extra
+arguments. Diagnostic result types are read from the declaration prefix of the
+registered signature, before the argument list and any throws clause.
+All 48 observations on the actual STRING, EmptyBag and JavaTime wrappers match
+across eight argument-array shapes and with/without source attachment. Valid
+STRING and EmptyBag results match; valid JavaTime results are compared by their
+integer value kind, not by independently sampled clock values. The earlier 368
+positive-arity observations still match. Other zero-argument registrations,
+non-Value declared returns, unknown native arity and signatures with throws
+clauses remain outside this bounded runtime comparison.
 
 Membership generation with an unassigned variable and a non-enumerable domain
 retains a GENERAL detailed runtime failure with the whole predicate and incoming

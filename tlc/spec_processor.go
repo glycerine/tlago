@@ -315,6 +315,7 @@ func (p *SpecProcessor) SetVariableNodes(nodes []*SymbolNode) {
 		p.Defns.Put("FALSE", BoolFalse)
 		p.Defns.Put("BOOLEAN", NewSetEnumValue([]Value{BoolFalse, BoolTrue}, true))
 		stringMethod := NewMethodValue("public static tlc2.value.impl.Value tlc2.module.Strings.STRING()", 0, func(_ []Value, _ int) (Value, error) { return STRING(), nil })
+		stringMethod.ParameterCount = 0
 		p.Defns.Put("STRING", stringMethod)
 		// Java snapshots just these predefined/native entries before processing
 		// source modules, ordinary definitions, native overrides or config.
