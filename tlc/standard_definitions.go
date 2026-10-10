@@ -654,13 +654,13 @@ func standardSequencesExtReplaceArgs(tool *Tool, args []SemanticNode, con *Conte
 	if err != nil {
 		return nil, nil, nil, false, err
 	}
-	if _, ok := replacement.(*StringValue); !ok {
+	if _, ok := asStringValue(replacement); !ok {
 		return replacement, subseq, target, false, nil
 	}
-	if _, ok := subseq.(*StringValue); !ok {
+	if _, ok := asStringValue(subseq); !ok {
 		return replacement, subseq, target, false, nil
 	}
-	if _, ok := target.(*StringValue); !ok {
+	if _, ok := asStringValue(target); !ok {
 		return replacement, subseq, target, false, nil
 	}
 	return replacement, subseq, target, true, nil

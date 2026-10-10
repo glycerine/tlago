@@ -1,7 +1,5 @@
 package tlc
 
-import "strings"
-
 func SequencesExtSetToSeq(value Value) (Value, error) {
 	if value == nil {
 		panic(NewNullPointerException())
@@ -306,86 +304,89 @@ func SequencesExtFoldRightDomain(op Value, seq Value, base Value) (Value, error)
 }
 
 func SequencesExtReplaceFirstSubSeq(replacement Value, subseq Value, target Value) (Value, error) {
-	if r, ok := replacement.(*StringValue); ok {
-		s, sok := subseq.(*StringValue)
-		t, tok := target.(*StringValue)
-		if sok && tok {
-			if s.RawString() == "" {
-				return NewStringValue(r.RawString() + t.RawString()), nil
-			}
-			return NewStringValue(stringsReplaceOnce(t.RawString(), s.RawString(), r.RawString())), nil
-		}
+	r, s, t, ok := sequencesExtReplacementStrings(replacement, subseq, target)
+	if !ok {
+		return nil, nil
 	}
-	rTuple := asTupleValue(replacement)
-	sTuple := asTupleValue(subseq)
-	tTuple := asTupleValue(target)
-	if rTuple == nil || sTuple == nil || tTuple == nil {
-		return target, nil
+	index := sequencesExtStringIndex(t, s, 0)
+	if index < 0 {
+		return NewStringValue(javaStringFromUTF16(t)), nil
 	}
-	idx, err := sequencesExtIndexFirstSubSeq(sTuple.Elems, tTuple.Elems)
-	if err != nil || idx < 0 {
-		return target, err
-	}
-	return NewTupleValue(sequencesExtReplaceAt(idx, rTuple.Elems, sTuple.Elems, tTuple.Elems)), nil
+	out := append([]uint16{}, t[:index]...)
+	out = append(out, r...)
+	out = append(out, t[index+len(s):]...)
+	return NewStringValue(javaStringFromUTF16(out)), nil
 }
 
 func SequencesExtReplaceAllSubSeqs(replacement Value, subseq Value, target Value) (Value, error) {
-	if r, ok := replacement.(*StringValue); ok {
-		s, sok := subseq.(*StringValue)
-		t, tok := target.(*StringValue)
-		if sok && tok {
-			if s.RawString() == "" {
-				var b strings.Builder
-				b.WriteString(r.RawString())
-				for i, ch := range t.RawString() {
-					if i != 0 {
-						b.WriteString(r.RawString())
-					}
-					b.WriteRune(ch)
-				}
-				return NewStringValue(b.String()), nil
+	r, s, t, ok := sequencesExtReplacementStrings(replacement, subseq, target)
+	if !ok {
+		return nil, nil
+	}
+	out := make([]uint16, 0, len(t))
+	if len(s) == 0 {
+		out = append(out, r...)
+		for i, unit := range t {
+			if i != 0 {
+				out = append(out, r...)
 			}
-			return NewStringValue(strings.ReplaceAll(t.RawString(), s.RawString(), r.RawString())), nil
+			out = append(out, unit)
+		}
+	} else {
+		start := 0
+		for {
+			index := sequencesExtStringIndex(t, s, start)
+			if index < 0 {
+				out = append(out, t[start:]...)
+				break
+			}
+			out = append(out, t[start:index]...)
+			out = append(out, r...)
+			start = index + len(s)
 		}
 	}
-	rTuple := asTupleValue(replacement)
-	sTuple := asTupleValue(subseq)
-	tTuple := asTupleValue(target)
-	if rTuple == nil || sTuple == nil || tTuple == nil {
-		return target, nil
+	return NewStringValue(javaStringFromUTF16(out)), nil
+}
+
+// The evaluating override handles strings; a nil result selects the parsed
+// TLA+ definition for other values. Java dereferences target, pattern, then
+// replacement after evaluating all three arguments.
+func sequencesExtReplacementStrings(replacement, subseq, target Value) (r, s, t []uint16, ok bool) {
+	rv, rok := asStringValue(replacement)
+	sv, sok := asStringValue(subseq)
+	tv, tok := asStringValue(target)
+	if !rok || !sok || !tok {
+		return nil, nil, nil, false
 	}
-	if sequencesExtTupleEqual(sTuple.Elems, tTuple.Elems) {
-		return replacement, nil
+	if tv.Val == nil {
+		panic(NewNullPointerException())
 	}
-	if sequencesExtTupleEqual(rTuple.Elems, sTuple.Elems) {
-		return target, nil
+	t = javaStringUTF16(tv.Val.String())
+	if sv.Val == nil {
+		panic(NewNullPointerException())
 	}
-	if len(sTuple.Elems) == 0 {
-		out := make([]Value, 0, len(rTuple.Elems)*len(tTuple.Elems)+len(tTuple.Elems))
-		for _, elem := range tTuple.Elems {
-			out = append(out, rTuple.Elems...)
-			out = append(out, elem)
-		}
-		if len(tTuple.Elems) == 0 {
-			out = append(out, rTuple.Elems...)
-		}
-		return NewTupleValue(out), nil
+	s = javaStringUTF16(sv.Val.String())
+	if rv.Val == nil {
+		panic(NewNullPointerException())
 	}
-	out := make([]Value, 0, len(tTuple.Elems))
-	for i := 0; i < len(tTuple.Elems); {
-		matches, err := sequencesExtSubSeqAt(tTuple.Elems, sTuple.Elems, i)
-		if err != nil {
-			return nil, err
+	r = javaStringUTF16(rv.Val.String())
+	return r, s, t, true
+}
+
+func sequencesExtStringIndex(target, pattern []uint16, start int) int {
+	for i := start; i <= len(target)-len(pattern); i++ {
+		matches := true
+		for j, unit := range pattern {
+			if target[i+j] != unit {
+				matches = false
+				break
+			}
 		}
 		if matches {
-			out = append(out, rTuple.Elems...)
-			i += len(sTuple.Elems)
-		} else {
-			out = append(out, tTuple.Elems[i])
-			i++
+			return i
 		}
 	}
-	return NewTupleValue(out), nil
+	return -1
 }
 
 func SequencesExtIsPrefix(left Value, right Value) (Value, error) {
@@ -689,67 +690,6 @@ func SequencesExtAllSubSeqs(seq Value) (Value, error) {
 		vals[mask] = NewTupleValue(sub)
 	}
 	return NewSetEnumValue(vals, false), nil
-}
-
-func stringsReplaceOnce(s string, old string, new string) string {
-	idx := strings.Index(s, old)
-	if idx < 0 {
-		return s
-	}
-	return s[:idx] + new + s[idx+len(old):]
-}
-
-func sequencesExtIndexFirstSubSeq(subseq []Value, target []Value) (int, error) {
-	if len(subseq) == 0 {
-		return 0, nil
-	}
-	for i := 0; i+len(subseq) <= len(target); i++ {
-		ok, err := sequencesExtSubSeqAt(target, subseq, i)
-		if err != nil {
-			return -1, err
-		}
-		if ok {
-			return i, nil
-		}
-	}
-	return -1, nil
-}
-
-func sequencesExtSubSeqAt(target []Value, subseq []Value, start int) (bool, error) {
-	if start+len(subseq) > len(target) {
-		return false, nil
-	}
-	for i, elem := range subseq {
-		eq, err := elem.Equal(target[start+i])
-		if err != nil {
-			return false, err
-		}
-		if !eq {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-func sequencesExtReplaceAt(index int, replacement []Value, subseq []Value, target []Value) []Value {
-	out := make([]Value, 0, len(target)-len(subseq)+len(replacement))
-	out = append(out, target[:index]...)
-	out = append(out, replacement...)
-	out = append(out, target[index+len(subseq):]...)
-	return out
-}
-
-func sequencesExtTupleEqual(left []Value, right []Value) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for i := range left {
-		eq, err := left[i].Equal(right[i])
-		if err != nil || !eq {
-			return false
-		}
-	}
-	return true
 }
 
 // These helpers retain direct Java dereferences without adding a module catch.

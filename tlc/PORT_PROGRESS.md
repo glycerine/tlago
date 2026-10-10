@@ -36018,3 +36018,65 @@ CommunityModules rerun. Latest saved original random stress progress is
 preserve session 27326, log, seed and original bounds. Add a code comment to
 explain receiver/argument evaluation order; handoff and architecture retain
 current contracts and bounded verification limits.
+
+
+2026-10-10: SequencesExt replacement strings and UTF-16 matching
+
+Previous goal turn made verified progress in e882233. Current worktree is clean
+(db3d85), and direct poll 5e29cf confirms original random stress session 27326
+live. Locate CommunityModules SequencesExt source after correcting guessed source
+paths. Read its actual replacement evaluating overrides and original module/tests.
+Initial inspection mistakes the direct tuple helper for the registered path;
+standardSequencesExtReplaceArgs already provides non-string fallback (9e702c).
+Correct that interpretation before changing the runner. Concrete gaps remain:
+concrete StringValue-only checks reject debugger subclasses, RawString collapses
+null payloads to empty strings, UTF-8 byte search cannot match a surrogate half,
+and rune iteration inserts replacements between code points instead of UTF-16
+units. Unused direct tuple shortcuts also contradict the evaluating override's
+nil fallback contract.
+
+Build ignored source/native runtime observers from actual parsed test206 Op3
+argument nodes and formal parameters, with real Context bindings. Sixteen forms
+in each of three argument positions, both replacement operations and source
+attachment on/off produce 16,384 observations. Source invokes the real compiled
+CommunityModules override with Commons Lang; native invokes the registered
+EvalFunc. No fabricated semantic graph, evaluator callback or persistent test is
+introduced. Correct ignored driver compile errors (source Context namespace,
+native constructor/cost-model names, missing mark interface and leftover unused
+bounds helper) before collecting comparisons. Initial complete matrices have
+3,172 differences (c17902).
+
+Recognize StringValue subclasses through asStringValue in the registered guard
+and direct helpers. Dereference target, pattern and replacement payloads in source
+order, preserving typed NPE. Match and assemble strings in UTF-16 units, including
+lone surrogates and matching one half of a pair. Empty-pattern ReplaceFirst
+prepends replacement; ReplaceAll inserts it before and between target units,
+without appending after the last unit. Preserve empty-target replacement. Direct
+non-string helpers now return nil for the parsed-definition fallback; remove
+unused tuple replacement and equality/search helpers. All 16,384 registered
+observations agree (369bea). The separate direct-helper execution also agrees
+in all 16,384 rows (c69815). Allocation exhaustion and arbitrary subclass mutation
+remain unproven; original-method credit stays unchanged.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering selections pass, root 5.439s and tlc 2.506s (54f068). Start
+complete unchanged CommunityModules all/shiviz target normally with timeout zero
+(session 87042, fd5427). Inspect harness to confirm original assertions and phases
+(09ba0c); execution advances past SequencesExtTests into later modules. No race,
+shortened workload or persistent fixture/test changes.
+Actual evaluating-value invocation adds 6,912 string-form comparisons, using
+real reflected source methods and the parsed Op3 definition, plus native
+registered EvalWithTool. All agree (75f3c9), including wrapped null payload
+failures, nullable diagnostic details and source method metadata. This invocation
+matrix excludes non-string fallback; the existing complete CommunityModules
+suite verifies that path with its original parsed definitions and assumptions.
+The complete unchanged CommunityModules target exits zero (session 87042,
+terminal 775802). Both original all and shiviz phases pass: root 310.282s,
+all 309.61s, shiviz 0.25s (7c007e). This is the current full-suite baseline and
+also covers all preceding lazy-set cache, iterator and membership changes.
+No source assumptions, workload bounds or expected phase exits were changed.
+Latest saved original random stress progress is 1,943,462,850 / 2,147,483,648
+(7c007e), without terminal result or long credit; direct poll 931ede confirms
+session 27326 remains live. Preserve original seed, bounds and log. Update
+handoff and architecture with the verified string replacement contracts and
+current complete CommunityModules baseline.

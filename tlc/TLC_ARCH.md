@@ -8366,8 +8366,8 @@ Err on a returned enumerator. Full original set/subset selections and focused
 regressions pass. Prior 5,328 sequence conversion/allocation observations retain
 only their four established identity differences. Original-method credit stays
 unchanged. These constructor protocols stop at the first failure; resumed
-iteration is covered below. Cache operations are covered below. The last
-complete original CommunityModules all/shiviz run predates this change.
+iteration and cache operations are covered below. The complete original
+CommunityModules all/shiviz rerun after replacement changes covers this revision.
 
 Lazy-set iteration preserves the source state when a caller catches a failure
 and reads or resets the same iterator again. Filter membership failures and
@@ -8394,7 +8394,7 @@ actual parsed test206 nodes, real runtime constructors and retained arrays; no
 persistent test/fixture, fabricated semantic graph or evaluator callback is
 added. These traces do not establish arbitrary mutation, user-provided iterator
 error protocols. Cache operations are covered below. Original-method credit is
-unchanged; the complete CommunityModules run has not been repeated for this change.
+unchanged. The later complete CommunityModules rerun covers this revision.
 
 Lazy-set cache operations distinguish cached enumeration from operations that
 still visit original operands. Tuple and record products raise typed null failures
@@ -8436,6 +8436,34 @@ agree. Observers use actual parsed test206 nodes and runtime constructors; no
 persistent tests/fixtures, fabricated semantic graph or evaluator callbacks are
 introduced. Broader value subclasses and arbitrary mutation remain unproven;
 original-method credit is unchanged.
+
+SequencesExt replacement evaluating overrides evaluate replacement, pattern and
+target expressions in order before checking that all three are StringValue
+instances, including debugger StringValue subclasses. Non-string calls return
+nil to select the existing parsed TLA+ definition. The unused direct tuple
+replacement shortcuts have been removed. For string calls, target, pattern and
+replacement payloads are dereferenced in that order, retaining typed null
+failures. Matching and output assembly use UTF-16 units, so patterns can match a
+single half of a surrogate pair. Empty-pattern ReplaceFirstSubSeq prepends the
+replacement. Empty-pattern ReplaceAllSubSeqs inserts it before and between target
+units without a final insertion; an empty target returns the replacement.
+
+All 16,384 actual-runtime observations agree across sixteen argument forms,
+three argument positions, both operations and source attachment on/off. Actual
+parsed test206 Op3 argument nodes and its formal parameters feed real Context
+bindings into the source evaluating override and native registered EvalFunc.
+Forms include BMP strings, supplementary pairs, lone surrogate units, null string
+payloads, debugger strings and scalar/tuple/function fallback values. Source uses
+the actual CommunityModules override and Commons Lang dependency. Observers add
+no persistent tests/fixtures, fabricated semantic graphs or evaluator callbacks.
+A further 6,912 string-form observations through actual EvaluatingValue
+invocation agree, including wrapped null-payload diagnostics and method metadata.
+The source wrapper uses the actual reflected replacement method and parsed Op3
+definition; native uses the registered evaluating value. Allocation exhaustion
+and arbitrary subclass mutation remain unproven. The complete unchanged original
+CommunityModules all/shiviz target passes after these replacement changes,
+including its original string/tuple replacement and pure-definition assumptions.
+This run also covers all preceding lazy-set changes.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
