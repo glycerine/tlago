@@ -7931,6 +7931,26 @@ before Java Value class initialization in each separate process. The previous
 or ownership/counter claim is added. Arbitrary callbacks, other domain kinds,
 concurrent flag changes and remaining composite operations are separate work.
 
+Function-record defined-state traversal sizes the domain pass by value count,
+then traverses values. Once a child is undefined, later domain/value child calls
+are skipped, including null/missing entries; the array-length read still occurs.
+Null values fail before traversal, while an empty values array does not read an
+explicit null domain. Interval-backed functions omit domain child calls.
+Deep normalization traverses values before normalization, retaining typed null
+array/child failures and already-normalized child state. Deep copy likewise
+reads/copies values before the explicit domain array; null arrays/children fail
+under its existing wrapper. Explicit-domain copies reset normalization and omit
+source metadata; interval copies retain normalization. These source contracts
+agree in all 2,340 observations across the three methods, eighteen explicit
+domain forms, three interval constructors, ten value-array forms, normalized
+flags and source attachment. Undefined values, nested tuples and unsorted sets
+exercise short-circuiting, deep-copy results and child normalization before a
+later failure. Raw structural output avoids incidental normalization during
+rendering. The previous 1,266 lambda deep-normalization observations still agree.
+This adds no original-test credit or general array/child ownership proof.
+Arbitrary child callbacks, more composite kinds and concurrent mutation remain
+outside the comparison.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

@@ -347,17 +347,14 @@ cache publication boundaries and typed binding failures. Null parameters fail
 at the source access in sizing, materialization, tuple conversion and generation.
 Deep normalization preserves EXCEPT-before-domain order and partial mutation.
 Unready lazy operations now retain source runtime-assertion metadata.
-Tuple and record sizing retain null-array failures; record-to-tuple conversion
-propagates the size failure with the source frame count. All 24 observations
-agree. Predicate-set and operator EXCEPT checks also agree in 204 observations.
-Tuple domain/function conversion and tuple-to-record dispatch retain null-array
-failures and source frame boundaries; all 64 related observations agree.
-Function-record normalization and sizing retain source array-read order, typed
-failures and normalized-state publication; all 750 observations agree, and the
-prior 1,266 lambda deep-normalization observations still agree.
-Function-record tuple/record conversion retains array failures, interval shortcuts
-and coverage-only length reads. All 2,240 conversion observations and the prior
-1,242 lambda tuple-conversion observations agree.
+Tuple and record sizing/conversion retain null-array failures and source frame
+boundaries. Predicate-set and operator EXCEPT checks agree. Function-record
+normalization and sizing retain array-read order and normalized-state publication;
+conversion retains interval shortcuts and coverage-only length reads. Defined-
+state traversal follows value count and skips child calls after an undefined
+value. Deep normalization/copy preserve typed failures and traversal order.
+All bounded comparisons agree, including the prior lambda conversion and deep-
+normalization matrices; contracts and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
 Verified EXCEPT installation and scalar, set, tuple and record updates retain
 typed path/batch failures, source wrappers and warning parameters. Record updates allocate and

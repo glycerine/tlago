@@ -1483,7 +1483,13 @@ func (v *FcnRcdValue) normalizeFcn() (err error) {
 
 func (v *FcnRcdValue) DeepNormalize() {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	for _, value := range v.Values {
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
 		value.DeepNormalize()
 	}
 	if err := v.normalizeFcn(); err != nil {
@@ -1493,30 +1499,50 @@ func (v *FcnRcdValue) DeepNormalize() {
 
 func (v *FcnRcdValue) IsDefined() bool {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
+	defined := true
 	if v.Intv == nil {
-		for _, value := range v.Domain {
-			if !value.IsDefined() {
-				return false
+		for i := range v.Values {
+			if defined {
+				value := fcnParameterDomain(v.Domain, i)
+				if isNil(value) {
+					panic(NewNullPointerException())
+				}
+				defined = value.IsDefined()
 			}
 		}
 	}
 	for _, value := range v.Values {
-		if !value.IsDefined() {
-			return false
+		if defined {
+			if isNil(value) {
+				panic(NewNullPointerException())
+			}
+			defined = value.IsDefined()
 		}
 	}
-	return true
+	return defined
 }
 
 func (v *FcnRcdValue) IsNormalized() bool { return v.IsNorm }
 
 func (v *FcnRcdValue) DeepCopy() Value {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	values := make([]Value, len(v.Values))
 	for i, value := range v.Values {
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
 		values[i] = value.DeepCopy()
 	}
 	if v.Intv == nil {
+		if v.Domain == nil {
+			panic(NewNullPointerException())
+		}
 		domain := make([]Value, len(v.Domain))
 		copy(domain, v.Domain)
 		return &FcnRcdValue{Domain: domain, Values: values}

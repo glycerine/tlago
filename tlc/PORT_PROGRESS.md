@@ -34998,3 +34998,46 @@ architecture updated. Latest saved full stress progress is 1,674,880,052 /
 2,147,483,648 (ba4677), without terminal result or long-method credit. Preserve
 original handle/artifacts/bounds. Other domain kinds, arbitrary callbacks,
 concurrent coverage changes and other composite operations remain separate work.
+
+
+### 2026-10-10: Function-record defined-state and deep traversal boundaries
+
+Previous turn made verified progress in f751117; confirm clean HEAD (725f98).
+Original full stress 27326 remains live on direct polls 255d61 and 081341.
+Compare function-record IsDefined, DeepNormalize and DeepCopy to Java. Native
+IsDefined traversed every domain entry rather than value count, missing short
+arrays and reading ignored trailing entries. Null arrays/children also escaped
+source typed failure behavior in all three operations.
+
+Ignored function-structural extends the actual test206 source-attached runtime
+array observer. Eighteen explicit domain forms include ordered/reordered and
+duplicate integers, null arrays/entries and undefined prefixes/tails. Ten value
+forms include null, lengths zero to three, undefined values, null entries,
+nested tuples and unsorted sets. Three interval constructors retain their own
+normalized shortcut. Both normalized flags/source attachment are observed.
+Raw structural output records result/copy fields, input arrays, child normalized
+state and receiver normalization without printing/normalizing malformed values.
+Java/native initially complete 2,340 rows with 1,199 differences (0b0547).
+
+Restore value-count domain traversal and short-circuited child calls in IsDefined,
+including typed null/index reads only when reached. Restore typed values-length
+and child failures before deep normalization and copying; copy the explicit
+domain only after copying values. Existing source wrappers, normalized-state
+reset/retention and omitted source metadata on copies remain intact. Native
+18280 completes (367112); all 2,340 rows agree (b78d9a). No fabricated semantic
+graph/evaluator, persistent test/fixture, changed original assertions or original
+method credit. The matrix establishes structural results and partial mutation,
+not general child/array ownership or arbitrary callback behavior.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests plus focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream checks pass. Session 60973 finishes
+with exit zero (51cc88); root 4.930s and tlc 2.076s (24c0c6). The previous lambda
+deep-normalization observer rerun with its required deep label completes
+(103443); all 1,266 rows still agree (5d9404). No race, broad suite or shortened
+workload. Logs remain under function-structural. Architecture updated; handoff's
+recent overlapping composite audit details condensed into current contracts.
+Latest full stress saved progress is 1,682,568,003 / 2,147,483,648 (24c0c6),
+without terminal result or long-method credit. Preserve original handle,
+artifacts and bounds. Other composite kinds, callbacks and concurrency remain
+outside the bounded comparison.
