@@ -1206,9 +1206,6 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 }
 
 func (t *Tool) GetVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
-	if c == nil {
-		c = EmptyContext
-	}
 	switch expr := expr.(type) {
 	case *SubstInNode:
 		c1 := c
@@ -1227,10 +1224,7 @@ func (t *Tool) GetVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
 	case *LabelNode:
 		return t.GetVar(expr.Body, c, cutoff)
 	case *OpApplNode:
-		if len(expr.Args) != 0 || expr.Operator == nil || expr.Operator.Name == nil {
-			return nil
-		}
-		if GetOpCode(expr.Operator.Name) != 0 {
+		if expr.Operator == nil || expr.Operator.Name == nil || expr.Operator.Arity != 0 {
 			return nil
 		}
 		isVarDecl := expr.Operator.IsVariableDecl()
@@ -1255,9 +1249,6 @@ func (t *Tool) GetVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
 }
 
 func (t *Tool) GetPrimedVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
-	if c == nil {
-		c = EmptyContext
-	}
 	switch expr := expr.(type) {
 	case *SubstInNode:
 		c1 := c
@@ -1282,7 +1273,7 @@ func (t *Tool) GetPrimedVar(expr SemanticNode, c *Context, cutoff bool) *SymbolN
 		if GetOpCode(expr.Operator.Name) == OpcodePrime && len(expr.Args) == 1 {
 			return t.GetVar(expr.Args[0], c, cutoff)
 		}
-		if len(expr.Args) != 0 {
+		if expr.Operator.Arity != 0 {
 			return nil
 		}
 		isVarDecl := expr.Operator.IsVariableDecl()

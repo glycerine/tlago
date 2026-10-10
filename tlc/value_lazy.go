@@ -49,6 +49,9 @@ func (v *LazyValue) GetCachedValue(tool *Tool, state *TLCStateMut, pstate *TLCSt
 	if v == nil || v.Val == nil || !v.IsCacheable() {
 		return nil
 	}
+	if tool == nil {
+		panic(NewNullPointerException())
+	}
 	if tool.GetID() != v.ToolID {
 		return nil
 	}
@@ -68,11 +71,10 @@ func (v *LazyValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLCStateMut
 	if cached := v.GetCachedValue(tool, state, pstate, control); cached != nil {
 		return cached, nil
 	}
-	ctx := v.Con
-	if ctx == nil {
-		ctx = EmptyContext
+	if tool == nil {
+		panic(NewNullPointerException())
 	}
-	res, err := tool.Eval(v.Expr, ctx, state, pstate, control, v.CM)
+	res, err := tool.Eval(v.Expr, v.Con, state, pstate, control, v.CM)
 	if err != nil {
 		return nil, err
 	}

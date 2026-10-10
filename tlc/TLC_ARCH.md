@@ -7402,7 +7402,13 @@ local binding fail on their actual dereferences. Local-definition setup retains
 the incoming context, and Context.Cons rejects a nil receiver. GetOpContext
 returns the incoming nil context for zero arguments, but binding a parameter
 requires a non-null receiver. LazyValue retains its supplied context verbatim,
-including nil, so delayed evaluation follows the same failures. The bounded
+including nil, so delayed evaluation follows the same failures. Its cache getter
+checks value presence and cacheability before dereferencing the tool; a cache
+miss evaluates under the captured context without replacing nil. Failed
+evaluation leaves the cache and cache count unchanged. GetVar and GetPrimedVar
+also preserve the incoming context. Their lookup branch follows the operator's
+declared arity, including zero-arity builtins, rather than the argument slice
+length; prime recognition still precedes that branch. The bounded
 comparison covers actual C model expressions and APIs; other consumers such as
 theorem contexts, context enumeration and state-generation setup are not proved
 by this observation.

@@ -33154,3 +33154,48 @@ progress 1,355,328,084 / 2,147,483,648 (a9c115), without terminal result or cred
 The three actual original UserModuleOverride, UserModuleOverrideFromJar and
 UserModuleOverrideAnnotation tests also pass (71174 terminal 092027,
 original-overrides.log, 0.688s). Formatting and diff checks pass.
+
+
+2026-10-10: Lazy cache and variable-recognition source boundaries
+
+Previous goal turn made verified progress in 88ac8fc. Continue from source-backed
+remaining context consumers. LazyValue.GetValue still replaced captured nil
+contexts independently of the constructor; GetVar and GetPrimedVar also replaced
+the incoming context. Source variable recognition checks declared operator
+arity, and GetVar does not skip zero-arity builtins before lookup.
+
+Ignored .codex-gotmp/lazy-cache-context uses the existing C model's actual
+expressions, initial state and pinned source APIs. It observes 12 expressions
+with nil/empty contexts: cacheable/noncacheable LazyValues over initial cache
+lookup, first evaluation, cache lookup, repeated evaluation and null-tool
+lookup/evaluation; variable recognition covers ordinary/primed lookup with both
+cutoff flags. All 384 rows complete. Initial observer compilation fails because
+of a missing closing brace (d83eb0), producing no observation credit. Corrected
+source and native runs complete (855efa; 5660 terminal 92927c). There are 118
+lazy-cache and 18 variable-recognition differences (f101cd), including incorrect
+values, cached results after source failures, cache counts and null failures.
+
+Retain captured contexts in GetValue. GetCachedValue dereferences the tool only
+after finding a cacheable cached value; GetValue dereferences it before fresh
+evaluation. Preserve typed NPE at those source boundaries. Remove context
+replacement in GetVar/GetPrimedVar and follow declared arity for their lookup
+branches, including zero-arity builtins. All 384 complete rows now match Java
+(92439 terminal 1dab08; comparison 14283a), including values, failure messages,
+codes/parameters, source/context metadata, wrapping depth and cache counts.
+No fabricated evaluator, persistent test or fixture. Existing model expressions
+supply the semantic nodes; Java enhanced NPE details disabled as before.
+
+Eight original checks pass unchanged (82850 terminal 16dc1e,
+original-models.log, 2.220s): Debug02Debugger with inherited lazy-cache
+preservation assertions, CCoverage, ConstantContextTLCCache,
+ConstantRank1TLCEval, ConstantRank2AssertError, Github362 and both
+ActionCompositionA/B. Focused existing context/function-context/lookup/lazy
+subset/level/cache checks pass (40884 terminal 16ec1b,
+existing-contexts.log, 0.019s). No race, long workload changes, broad suite,
+assertion changes or original-method inventory credit. Update current contracts
+in the handoff and architecture notes. State-generation setup, enabled setup,
+theorem contexts and context enumeration remain outside this observation.
+
+Original full stress handle 27326 remains live (fe7a3f); latest saved progress
+1,362,615,471 / 2,147,483,648 (212afd), without terminal result or long-method
+credit. Preserve its original bounds, memory budget, handle and artifacts.

@@ -299,7 +299,10 @@ evaluation, lookup, level calculation, local-definition setup and lazy values no
 preserve explicit nil contexts. Source dereferences retain typed null failures;
 literals can still evaluate without a context. All 124 bounded comparisons and
 the original 14-row TLCEval comparison match. Relevant original model and focused
-context/lazy checks pass. Other context consumers remain outside this audit.
+context/lazy checks pass. Lazy cache reads/evaluation and variable recognition
+also preserve their source context and null-tool boundaries; all 384 additional
+observations and relevant original debugger/model checks pass. Other context
+consumers remain outside this audit.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.
