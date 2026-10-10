@@ -189,6 +189,9 @@ func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
 				trace = append(trace, checker.traceInfoPrefix(current)...)
 				trace = appendTraceStateIfMissing(trace, current)
 				trace = appendTraceStateIfMissing(trace, state)
+				// Source restores only after successful prefix reconstruction;
+				// nested Tool.getState calls replace the current-state slot.
+				SetCurrentState(current)
 			}
 			if len(trace) > 0 {
 				return traceInfoTupleValue(trace), nil

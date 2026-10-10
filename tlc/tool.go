@@ -607,10 +607,7 @@ func (t *Tool) GetStateAfter(fp uint64, predecessor *TLCStateMut) (*TLCStateInfo
 	if t == nil || predecessor == nil {
 		return nil, nil
 	}
-	restoreRandomState := PushRandomEnumerableState(predecessor)
-	defer restoreRandomState()
-	restoreCurrentState := PushCurrentState(predecessor)
-	defer restoreCurrentState()
+	SetCurrentState(predecessor)
 	for _, action := range t.GetActions() {
 		nextStates, err := t.GetNextStates(action, predecessor)
 		if err != nil {
@@ -631,10 +628,7 @@ func (t *Tool) GetStateForTransition(successor *TLCStateMut, predecessor *TLCSta
 	if t == nil || successor == nil || predecessor == nil {
 		return nil, nil
 	}
-	restoreRandomState := PushRandomEnumerableState(predecessor)
-	defer restoreRandomState()
-	restoreCurrentState := PushCurrentState(predecessor)
-	defer restoreCurrentState()
+	SetCurrentState(predecessor)
 	for _, action := range t.GetActions() {
 		nextStates, err := t.GetNextStates(action, predecessor)
 		if err != nil {
@@ -1152,13 +1146,11 @@ func (t *Tool) LivenessIsTrue() bool {
 
 func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, prefix func() []*TLCStateInfo) (*TLCStateInfo, error) {
 	if t != nil && t.EvalAliasInfoFunc != nil {
-		var restore func()
 		if current != nil {
-			restore = PushCurrentState(current.State)
+			SetCurrentState(current.State)
 		} else {
-			restore = PushCurrentState(nil)
+			SetCurrentState(nil)
 		}
-		defer restore()
 		return t.EvalAliasInfoFunc(t, current, successor, prefix)
 	}
 	if t == nil || !t.HasAlias() || current == nil || current.State == nil {
@@ -1172,8 +1164,7 @@ func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, pref
 			}))
 		}
 	}
-	restore := PushCurrentState(current.State)
-	defer restore()
+	SetCurrentState(current.State)
 	alias, err := t.evalAliasState(current.State, successor, ctxt)
 	if err != nil {
 		if isJavaEvalOrRuntimeException(err) {
@@ -1211,15 +1202,13 @@ func (t *Tool) EvalAliasInfoPrefixSuffix(current *TLCStateInfo, successor *TLCSt
 
 func (t *Tool) EvalAlias(curState *TLCStateMut, sucState *TLCStateMut) *TLCStateMut {
 	if t != nil && t.EvalAliasFunc != nil {
-		restore := PushCurrentState(curState)
-		defer restore()
+		SetCurrentState(curState)
 		return t.EvalAliasFunc(t, curState, sucState)
 	}
 	if t == nil || !t.HasAlias() || curState == nil {
 		return curState
 	}
-	restore := PushCurrentState(curState)
-	defer restore()
+	SetCurrentState(curState)
 	alias, err := t.evalAliasState(curState, sucState, EmptyContext)
 	if err != nil {
 		if isJavaEvalOrRuntimeException(err) {

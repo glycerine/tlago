@@ -6300,6 +6300,18 @@ Trace reconstruction and aliasing:
   active runtime RNG.
 - Java's no-alias behavior returns the current state/info, not the successor.
   Go `EvalAlias`, `EvalAliasInfo`, and `EvalAliasInfoPair` preserve that.
+- State reconstruction and alias evaluation replace the source current-state
+  slot; they do not restore its previous value on return. Native default paths
+  and state/info alias callbacks use `SetCurrentState` for that replacement.
+  No-alias paths leave the slot unchanged. `TLCExt!Trace` owns a separate explicit
+  restoration after successful reconstruction of an unwritten successor's
+  noninitial history; a reconstruction failure occurs before that restoration.
+  All 630 complete state/metadata/current-slot observations on actual DieHard,
+  C and DieHardAlias expressions match Java with assertions enabled, including
+  180 rows with a missing alias binding and full `_ALIASEvalError` bodies. The
+  288 baseline mismatches differ only in current-slot identity. All 23 selected
+  original alias/trace/level/random methods pass. This does not establish every
+  malformed graph, callback or current-state lifetime beyond these paths.
 - The Java default `evalAlias` overloads evaluate the resolved `ALIAS` operator
   body under `EvalControl.Clear`, convert record-like values to alias states,
   and on evaluation errors attach `_ALIASEvalError` to an alias record instead

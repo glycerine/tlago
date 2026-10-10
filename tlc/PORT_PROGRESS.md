@@ -31037,3 +31037,61 @@ Remove the obsolete architecture claim that reconstruction still uses KnownState
 Full random off-heap handle remains live; latest saved progress is 878,821,248 /
 2,147,483,648 (b2aaad). No terminal result or completion credit; preserve the full
 bounds, default budget and live files. Overall TLC parity remains incomplete.
+
+
+2026-10-10 Current-state lifetime during reconstruction and aliases:
+Previous turn made verified progress in 05cb302; clean workspace revalidated
+(92397c). Full off-heap random handle 27326 remains live (b53ae3/7a02fc). Source
+Tool.getState(fp, state), getState(successor, predecessor) and alias evaluation
+replace IdThread's ThreadLocal current state without restoring it. Native calls
+pushed/restored temporary current-state scopes; reconstruction additionally pushed
+a redundant RandomEnumerableState scope over the same slot.
+
+Ignored observers under .codex-gotmp/trace-current-state-observation derive from
+the prior full metadata observer and retain escaped complete state bodies,
+equality, depth, predecessor/action ownership and current-slot pointer identity.
+They use actual initial/next expressions on DieHard, C and DieHardAliasSub2 with
+three predecessor depths in MC and simulation. Source assertions are enabled.
+Before runs 36930 terminal 004bb8 show 450 rows: 288 differ solely in current-slot
+identity. The 162 no-alias rows already match and remain unchanged.
+
+Replace the two reconstruction scopes with SetCurrentState and use replacement
+semantics in default state/info alias evaluation and their native callbacks.
+No-alias checks still return before replacing the slot. Remove the redundant
+random-state scopes: random enumeration reads the same current-state slot.
+Native rebuild 91704 terminal ca9ff0 and comparison 7f3453 match all 450 rows.
+Additional source/native runs remove the existing AliasSub2 binding from the
+shared definitions table, retaining the actual model/alias expression. All 180
+rows agree, including 108 complete _ALIASEvalError bodies and current-slot
+replacement after the handled error (66e0a4). Final compare.py e17d0d requires
+630 exact rows, expected per-model counts, 288 baseline differences solely in
+current identity and all expected alias-error records. No invented semantic
+fixture or persistent test is used.
+
+Initial unchanged original selection 16002 terminal 6825a3 fails only TLCExtTrace
+in 114.826s. Investigation finds the missing owner-specific source restoration:
+TLCExt.getTrace explicitly resets currentState after successful history recovery
+for an unwritten successor with a noninitial current state. Native code relied
+on Tool's broader incorrect restoration. Add the source SetCurrentState at this
+same helper boundary, after reconstruction/appends and before record conversion.
+Do not add finally/defer restoration: source failures before this point preserve
+the nested current-state mutation. Original TLCExtTrace assertions remain intact.
+
+Final unchanged original selection passes: session 97495 terminal e235cc,
+115.353s, originals-final.log. All 23 methods: four Alias safety/simulation/
+liveness methods, three TLCExtTrace methods, TLCGetLevel and its TTrace, four
+RandomSubsetA/B/Next/NextT4 originals and four corresponding TTrace methods,
+DieHard JSON/TLC single-worker safety round trips, AliasSub2 JSON/TLC single-
+worker round trips and both ErrorTraceConstruction methods. Original four-worker
+and random bounds remain intact; no race instrumentation. Existing focused native
+postcondition/alias failure, metadata, predecessor and concurrent reconstruction
+checks pass initially (89456 terminal a03984, 6.216s) and after the helper fix
+(19175 terminal 332d2c, 8.343s, native-focused-final.log). No broad suite, XML/
+ApalacheIR sweep, source edits, assertion changes, inventory credit or email work.
+
+Latest saved full off-heap random progress is 893,392,522 / 2,147,483,648 (b69e60),
+with its handle still confirmed live. No terminal result or completion credit.
+Keep full bounds, default budget and live files. Next concrete source audit:
+TLCExt!Trace appends states unconditionally while the native helper currently
+deduplicates equal neighboring states; compare actual stuttering successors
+before changing that separate behavior. Overall TLC parity remains incomplete.
