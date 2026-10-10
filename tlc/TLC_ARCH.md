@@ -6331,9 +6331,19 @@ Trace reconstruction and aliasing:
   checker. The native predecessor-chain fallback is removed. Twenty owner
   observations match source exception classes, current-slot identity and complete
   successful tuple text; twenty repeated-state observations also remain equal.
-  Fifteen focused original methods pass. Enhanced JVM null-pointer message text,
-  incomplete-state diagnostic construction and arbitrary sparse reconstruction
-  results are not established by these owner observations.
+  Fifteen focused original methods pass. Enhanced JVM null-pointer message text
+  and arbitrary sparse reconstruction results are not established by these owner
+  observations.
+- An incomplete state passed to `TLCExt!Trace` raises source Assert's coded
+  runtime exception (GENERAL), retaining one diagnostic parameter and its message-
+  formatting recorder event before any owner or simulator access. Singular/plural
+  text and lexically ordered variable names match Java. Evaluation through the
+  actual `TLCExtTrace.Inv` expression wraps that failure with code 2154 and the
+  full `TLCExt.getTrace` signature, including its TupleValue return and declared
+  IOException. Forty-eight complete diagnostics match source classes, codes,
+  parameters, messages, ordered events, current-slot identity and unassigned names;
+  eight rows exercise the evaluator bridge. Fifteen focused original methods pass.
+  These are bounded observations, not proof of every TLCExt override's metadata.
 - The Java default `evalAlias` overloads evaluate the resolved `ALIAS` operator
   body under `EvalControl.Clear`, convert record-like values to alias states,
   and on evaluation errors attach `_ALIASEvalError` to an alias record instead

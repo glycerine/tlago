@@ -31213,3 +31213,64 @@ handle is still live without a terminal result or method credit. Preserve its
 bounds, default budget and files. Next audit: Trace's incomplete-state diagnostic
 and exception construction, which uses source Assert.fail before owner access.
 Overall TLC parity remains incomplete.
+
+
+2026-10-10 Incomplete TLCExt!Trace diagnostics and evaluator metadata:
+Previous turn made verified progress in 8be1fa5; clean tree revalidated (9446d3).
+Full off-heap random handle 27326 remains live (d22409 and 5c6737). Source Trace
+uses Assert.fail(GENERAL, message) for incompletely assigned states, before any
+owner/simulator access. Go returned a legacy evaluation carrier without parameters
+instead. Diagnostic wording and sorted variable names already match source.
+
+Ignored .codex-gotmp/trace-incomplete-observation drivers copy actual initial C
+and DieHard states and unbind each existing variable, then all variables. They
+invoke the real source/native Trace helper in MC and simulation tool modes with
+null or existing current state, without inventing models or persistent tests.
+Source assertions are enabled. Rows retain exception delivery/category, code,
+parameters, full message, ordered formatting events, current-slot identity and
+post-call unassigned names. All 32 initial rows differ: Java throws a coded
+TLCRuntimeException with one parameter and one GENERAL formatting event; Go
+returns a legacy EvalException carrier with null params and no event. Source
+compile 5e2e0e, native build 944259, source/native session 45042 terminal db4257
+record these differences. Replace the return with NewTLCRuntimeException and
+panic, preserving source unchecked exception delivery and its existing factory.
+Rebuild 54175 terminal ec3758 and comparison 4c113d match all 32 rows.
+
+Extend observations through the actual TLCExtTrace.Inv semantic body so native
+override wrapping is verified too. Initial direct FastTool construction with a
+monolithic-config filename fails to select its config in this standalone driver;
+use the unchanged existing TLCExtTraceAlias.cfg and evaluate the actual Inv
+operator definition from shared Defns. No fixture or original assertion changes.
+Direct helper rows for that model and evaluator rows cover the same partial x
+state in both tool modes. Evaluator delivery normalizes source throwing and Go's
+idiomatic returned error to a shared error marker; exact class/code/params/message/
+events remain compared. Direct helper delivery remains strictly compared.
+
+First evaluator comparison f60c3c exposes the placeholder method label Trace in
+native code 2154, whereas Java reports its complete public static getTrace
+signature with TupleValue return and IOException declaration. Add that metadata
+to Trace's level-aware standard evaluation registration. An initial edit in the
+priority-handler factory does not affect this registration; rerun 59132 terminal
+e6e4cd correctly remains red. Move the metadata to the actual level-aware factory
+and remove the unused priority-factory edit. Final native build 21649 terminal
+39b3fc and full source/native session 52848 terminal 111559 return status 0.
+The intermediate missing-signature MC log is retained as
+before-signature-TLCExtTrace-MC.log. Final compare.py receipt d74840 requires all
+48 rows equal, exact counts, all 32 initial baseline corrections, eight evaluator
+rows with both GENERAL and override-formatting events, and full signature/codes.
+The other eight added rows exercise direct Trace on TLCExtTrace partial states.
+
+All 15 unchanged selected original methods pass after each production stage:
+35052 terminal 4119d1 (3.780s), 69161 terminal bd5f1e (3.894s), and final 60236
+terminal df93bf (3.830s, originals-final-signature.log). Selection: three TLCExtTrace
+methods, four Alias safety/simulation/liveness methods, TLCGetLevel and its TTrace,
+both ErrorTraceConstruction methods, DieHard JSON/TLC single-worker safety round
+trips and AliasSub2 JSON/TLC single-worker round trips. No persistent tests,
+fixture edits, weakened assertions, original-method credit, broad suite, race run,
+source edits or email work. Formatting and git diff --check pass.
+
+Latest saved full random off-heap progress is 931,324,481 / 2,147,483,648 (f58778);
+the same handle is live, without terminal result or original-method credit.
+Preserve full bounds, default budget and files. Next audit: evaluating-method
+metadata for other existing TLCExt overrides, consulting source registrations and
+prior receipts before repeating completed work. Overall TLC parity is incomplete.

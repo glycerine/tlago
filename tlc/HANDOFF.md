@@ -175,8 +175,12 @@ prefix mismatch remains an explicit source limitation in existing deterministic
 replay evidence; keep original assertions. `TLCExt!Trace` now requires Java's
 checker/current-state owners instead of returning fallback traces. All 40 owner
 and repeated-state observations match; 15 focused original methods pass.
-Next audit: incomplete-state diagnostic and exception construction in
-`TLCExt!Trace`. Original model-test reconciliation remains open.
+Incomplete `TLCExt!Trace` states now raise the source coded runtime exception
+with its parameters and formatting event; evaluator wrapping retains the full
+method signature. All 48 diagnostic observations and 15 original methods pass.
+Next audit: evaluating-method metadata for the other existing TLCExt overrides,
+using source registrations and prior receipts. Original model-test reconciliation
+remains open.
 
 ## Verification baseline and test credit
 

@@ -3,6 +3,7 @@ package tlc
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -165,7 +166,8 @@ func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
 		if len(names) > 1 {
 			plural = "s"
 		}
-		return nil, newTLCError(ECGeneral, "In evaluating TLCExt!Trace, the state is not completely specified yet (variable%s %s undefined).", plural, strings.Join(names, ", "))
+		message := fmt.Sprintf("In evaluating TLCExt!Trace, the state is not completely specified yet (variable%s %s undefined).", plural, strings.Join(names, ", "))
+		panic(NewTLCRuntimeException(ECGeneral, message))
 	}
 	if simulator := CurrentSimulator(); simulator != nil {
 		trace := simulator.GetTrace(state)

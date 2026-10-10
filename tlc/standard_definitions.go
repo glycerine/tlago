@@ -357,6 +357,8 @@ func (t *Tool) defineStandardEvaluatingWithMinLevel(name string, arity int, minL
 		// EvaluatingValue's catch(Throwable) reports Method.toString(), including
 		// the source override's declaring class and complete parameter types.
 		method = "public static tlc2.value.impl.Value tlc2.module.TLCGetSet.TLCGetEval(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel)"
+	} else if name == "Trace" {
+		method = "public static tlc2.value.impl.TupleValue tlc2.module.TLCExt.getTrace(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel) throws java.io.IOException"
 	}
 	value := NewEvaluatingValue(method, minLevel, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 		if len(args) != arity {
