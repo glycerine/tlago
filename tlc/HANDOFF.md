@@ -356,7 +356,11 @@ order; implicit null failures retain nullable details. All 36 expression and 350
 override observations agree. Numeric module selection now chooses the source
 arithmetic implementation as well as its signature; all 2,004 direct module and
 3,000 parsed-definition observations agree, including null/zero/negative cases.
-Override arity failures and mutation during evaluation remain separate targets.
+Positive-arity numeric override failures now retain source diagnostics and
+wrapping; all 368 arithmetic/comparison observations agree. Integer GEQ
+selection also preserves its source diagnostic label. Zero-arity overrides,
+remaining comparison null cases and mutation during evaluation remain separate
+targets.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

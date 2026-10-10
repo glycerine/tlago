@@ -7673,8 +7673,27 @@ maximum positive integer; the largest observed positive exponent is 31. Another
 3,000 observations through actual external-module definition body tool objects
 in legacy test209 and ValueSemanticsAssume match method signatures, values and
 full failures, including inherited source body ownership. No graphs are
-fabricated or mutated. Override arity failures, dynamic module replacement and
-all possible arithmetic values remain outside these bounded comparisons.
+fabricated or mutated. Dynamic module replacement and all possible arithmetic
+values remain outside these bounded comparisons.
+
+`MethodValue.Eval` checks a known positive parameter count before entering its
+native evaluator. A null argument array retains the source nullable null failure.
+An empty array uses the distinct source invocation diagnostic, including the
+simple return type from the registered method signature; a nonempty array of
+the wrong length retains `array is not of length N`. The existing method error
+adapter retains runtime code 2154 and source value wrapping. These are native
+boundary checks and diagnostics, with no method-handle runtime. Integer GEQ
+wrapper selection chooses `IntGEQ`, while natural GEQ retains the source's `>`
+argument-error label.
+All 368 observations match across both numeric modules, eight argument-array
+shapes, arithmetic and LT/LE/GT/GEQ overrides, with/without a source on the method
+value. They include null arrays, zero through four arguments, valid calls and
+invalid concrete values at the expected arity. The source frame count, category,
+message, code and nullable parameters agree. The earlier 2,004 arithmetic module
+observations still agree. Zero-arity override entry points, unknown native arity,
+remaining comparison null arguments and dynamic module replacement remain
+outside these observations.
+
 
 
 

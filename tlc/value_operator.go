@@ -567,6 +567,22 @@ func (v *MethodValue) Eval(args []Value, control int) (resultValue Value, err er
 	if args == nil {
 		panic(NewNullPointerException())
 	}
+	if v.ParameterCount > 0 && len(args) != v.ParameterCount {
+		if len(args) == 0 {
+			// Source MethodValue uses a distinct invocation path for an empty
+			// array. Retain its diagnostic at the native override boundary.
+			fields := strings.Fields(v.Name)
+			resultType := "Value"
+			if len(fields) >= 2 {
+				resultType = fields[len(fields)-2]
+				if dot := strings.LastIndexByte(resultType, '.'); dot >= 0 {
+					resultType = resultType[dot+1:]
+				}
+			}
+			return nil, fmt.Errorf("handle's method type (IValue[])%s but found ()Value", resultType)
+		}
+		return nil, fmt.Errorf("array is not of length %d", v.ParameterCount)
+	}
 	return v.EvalFunc(args, control)
 }
 

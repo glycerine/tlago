@@ -34230,3 +34230,49 @@ bounds or changed assertions. Handoff and implementation contracts updated.
 Original full stress session 27326 remains live on direct poll (e35498).
 Latest saved progress is 1,563,013,549 / 2,147,483,648 (5492d5), without a terminal
 result or long-method credit. Preserve original handle, artifacts and bounds.
+
+
+2026-10-10: Positive-arity numeric override failure boundary
+
+Previous turn completed d457901. Compare Java MethodValue.eval's null-array,
+empty-array and spread-array paths with native MethodValue/standard argument
+checks. Ignored .codex-gotmp/numeric-arity uses original numeric MethodValue
+factories and native installed module-selected wrappers, with actual test209 S
+as an optional value source. Eight argument-array shapes include null, empty,
+one integer/boolean, two integers/boolean first, three and four integers.
+Both numeric modules cover seven binary arithmetic methods plus integer negation,
+with/without source attachment. All 240 rows collected (Java 0a3cee, native
+61077 terminal beb1fe); 150 diagnostics differ (260f38). Native validation
+rejected the same calls but emitted its own count message.
+
+Add known positive parameter-count checks to MethodValue.Eval before native
+invocation. Preserve the empty-array source invocation message with the simple
+return type from the registered signature; nonempty wrong counts retain the
+source array-length message. Null arrays retain the existing null failure.
+The existing method error adapter and value source wrapper preserve runtime
+category/code/parameters and frame counts. No method-handle runtime or JVM
+emulation. All 240 corrected rows agree (40448 terminal 29f645; abcd00).
+
+Expand the same argument matrix to LT/LE/GT/GEQ, exercising interface and concrete
+boolean return-type diagnostics. All 368 rows collected (Java d550ae, native
+22ca8a); two Integer GEQ expected-arity diagnostics differ (7a3864): module
+selection still retains the natural override's greater-than label. Select the
+matching GEQ implementation when cloning module wrappers. Native 81514 completes
+(b9633c); all 368 rows agree (8123c5), including source frames and complete nullable
+errors. The earlier 2,004 arithmetic module rows still agree (b24813; 8123c5).
+No persistent tests/fixtures, fabricated semantic graph or evaluator callbacks;
+no original-method inventory credit. Zero-arity entry points, unknown native
+arity, remaining comparison null arguments and dynamic module replacement remain
+separate comparisons.
+
+Eleven unchanged original model checks and original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl plus focused function-context, rendering, lambda stream
+and numeric checks pass (54703 terminal 18271d; root 4.470s, tlc 2.338s).
+After GEQ selection, the final same selection passes again (74479 terminal
+2a4080; root 4.571s, tlc 2.339s, final-checks.log, output b2e9fe).
+No broad suite, race, shortened original bounds or changed original assertions.
+Handoff/contracts updated.
+
+Original full stress session 27326 remains live on direct poll (8e532d).
+Latest saved progress is 1,570,364,638 / 2,147,483,648 (b2e9fe), without a terminal
+result or long-method credit. Preserve original handle, artifacts and bounds.

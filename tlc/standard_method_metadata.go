@@ -39,6 +39,13 @@ func WithStandardMethodMetadata(value any, module, name string) any {
 		} else {
 			operation = NatExpt
 		}
+	case "\\geq":
+		out.EvalFunc = standardMethodEvaluator(name, 2, func(args []Value) (Value, error) {
+			if module == "Integers" {
+				return IntGEQ(args[0], args[1])
+			}
+			return NatGEQ(args[0], args[1])
+		})
 	}
 	if operation != nil {
 		out.EvalFunc = standardMethodEvaluator(name, 2, standardBinaryInt(name, operation))
