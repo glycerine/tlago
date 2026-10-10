@@ -34846,3 +34846,42 @@ assertions. Logs remain under special-lazy-except and lazy-readiness. Handoff an
 architecture updated. Latest full stress saved progress is 1,652,637,300 /
 2,147,483,648 (eb1bae), without terminal result or long-method credit. Preserve
 original handle, artifacts and bounds.
+
+
+### 2026-10-10: Resume after outage; composite size null boundaries
+
+Resume from clean f36522e (9c0417), read plan/handoff/inventory and relevant
+architecture. Original full stress session 27326 remains live on direct polls
+ac3759 and the final poll this turn; latest saved log is 1,660,164,928 /
+2,147,483,648 (095e75). No terminal result or added long-method credit.
+
+Finish ignored predicate-operator-except. Initial eager predicate evaluation
+returned explicit sets in both implementations; construct runtime predicate
+wrappers using actual test206 predicate/formal nodes and genuinely evaluated
+bounds instead. Correct the native observer's bound field (native compiler
+failure had zero rows). A shallow copied native method retained its old owner,
+producing 17 artificial frame differences; use the normal method constructor
+with the installed STRING signature/evaluator instead. No production operator
+change is warranted. Java/native now agree in all 204 rows (998ce4), covering
+three predicate states, two operator-record states and the standard method,
+sourced/unsourced across ten single-update and seven batch forms. No fabricated
+semantic graph, custom evaluator or original-method credit.
+
+Source inspection identifies null-array length differences in tuple/record
+size and record-to-tuple conversion. Ignored composite-size uses actual Def2
+source attachment and runtime arrays: null, allocated-empty, null-element and
+two-element forms, sourced/unsourced. Java/native initially complete 24 rows
+with six differences (e89ec2). Restore typed tuple null-array failure without a
+catch wrapper; record size retains its existing source wrapper. Route record
+conversion through size and propagate its error without a second wrapper.
+All 24 rows agree after the change (fd2edd). Persistent tests/fixtures and
+original assertions are unchanged.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests and focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream checks pass. Session 23751 finishes
+with exit zero; existing-checks.log records root 5.184s and tlc 2.269s (095e75).
+No race, broad suite, shortened original workloads or new original-test credit.
+Observer logs remain under predicate-operator-except and composite-size.
+Handoff and architecture updated. Preserve the original stress handle,
+artifacts and bounds; broader composite and ownership parity remain open.

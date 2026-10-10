@@ -650,7 +650,11 @@ func (v *RecordValue) ToFcnRcd() *FcnRcdValue {
 }
 
 func (v *RecordValue) ToTuple() *TupleValue {
-	if len(v.Names) == 0 {
+	size, err := v.Size()
+	if err != nil {
+		panic(err)
+	}
+	if size == 0 {
 		return EmptyTuple
 	}
 	return nil
@@ -727,6 +731,9 @@ func (v *RecordValue) StateString() string {
 
 func (v *RecordValue) Size() (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
+	if v.Names == nil {
+		return 0, NewNullPointerException()
+	}
 	return len(v.Names), nil
 }
 

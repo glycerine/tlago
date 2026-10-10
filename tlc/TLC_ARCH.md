@@ -7829,8 +7829,9 @@ set union/intersection/difference and UNION. They cover ten single-update and
 seven batch forms with source attachment on/off, checking full errors, returned
 values and identity. Actual test209 S supplies source metadata; runtime values
 use the native/source constructors. No semantic graph mutation, fabricated
-evaluator or original-method credit is involved. Predicate-set delegation,
-arbitrary formatting callbacks and concurrent mutation remain unproven.
+evaluator or original-method credit is involved. Predicate-set delegation is
+covered by the additional comparison below; arbitrary formatting callbacks and
+concurrent mutation remain unproven.
 
 Undefined and overridden values retain typed null path/batch failures before
 completion/rejection checks, under their existing source wrappers. Unready lazy
@@ -7856,6 +7857,26 @@ after genuine evaluation, sourced and unsourced. `DeepCopy`, `DeepNormalize` and
 `IsDefined` retain their source behavior without requiring a ready value.
 Arbitrary lazy evaluation callbacks, custom user objects and concurrent cache
 mutation remain unproven.
+
+Predicate-set EXCEPT delegation and operator-record/method rejection agree in
+204 additional observations. Actual test206 predicate/formal nodes and evaluated
+bounds construct unconverted, converted and captured-parameter predicate sets;
+empty/populated operator records and a standard STRING method complete the six
+receiver kinds. Ten single-update and seven batch forms run sourced/unsourced.
+Operators reject even null updates or completed paths before dereferencing them.
+The native method uses its constructor to preserve the internal owner identity;
+a shallow struct copy is not a valid equivalent receiver. This adds no original
+test credit or general ownership claim.
+
+Tuple size now rejects a null element array without adding a fingerprint frame,
+matching its source method without a catch boundary. Record size rejects a null
+name array under its existing source wrapper. Record-to-tuple conversion calls
+size and propagates that failure without adding another frame. Allocated-empty
+arrays remain valid; null elements and null record values do not affect these
+length reads. All 24 observations agree across null, empty, null-element and
+two-element arrays with optional source attachment, including record conversion.
+No persistent test or fixture is added; other composite operations remain
+separate parity targets.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

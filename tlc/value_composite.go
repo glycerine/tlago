@@ -268,9 +268,14 @@ func (v *TupleValue) Member(elem Value) (resultBool bool, err error) {
 }
 
 func (v *TupleValue) IsFinite() (bool, error) { return true, nil }
-func (v *TupleValue) Size() (int, error)      { return len(v.Elems), nil }
-func (v *TupleValue) Normalize() Value        { return v }
-func (v *TupleValue) IsNormalized() bool      { return true }
+func (v *TupleValue) Size() (int, error) {
+	if v.Elems == nil {
+		return 0, NewNullPointerException()
+	}
+	return len(v.Elems), nil
+}
+func (v *TupleValue) Normalize() Value   { return v }
+func (v *TupleValue) IsNormalized() bool { return true }
 
 func (v *TupleValue) DeepNormalize() {
 	defer catchValueFailure(v, nil)
