@@ -31942,3 +31942,56 @@ standalone HashMap tests matching the broader name filter; do not claim them.
 No original-method inventory credit added, no broad sweep or race workload.
 Update HANDOFF and TLC_ARCH with the bounded contract and remaining limits.
 Core TLC completion and original-model reconciliation remain open.
+
+
+2026-10-10: Preserve set-conversion failures in Permutations and RandomElement.
+
+Previous goal turn made verified progress in bd50218; worktree starts clean.
+Original random stress handle 27326 remains live on direct polls 86d35c and
+cd6e27. Latest saved progress is 1,135,334,487 / 2,147,483,648 (883afd), with no
+terminal result or credit. Preserve the existing process, bounds and budget.
+
+Concrete new source gap: TLC.Permutations and both RandomElement conversion
+paths only substitute an argument error when toSetEnum returns null. Native used
+the strict conversion helper and replaced all returned conversion failures.
+Switch these three callers to tryToSetEnumValue, propagate actual failures and
+keep the original coded finite-set diagnostic for a nil conversion result.
+Permutation generation and RNG algorithms remain unchanged.
+
+Ignored .codex-gotmp/set-conversion observation constructs actual source/native
+integer, malformed union/intersection/difference, function set with a malformed
+union domain, and singleton finite-set values. Both operators run all six values.
+Source Java methods are unchanged. Initial Java observer compilation used the
+private IntValue constructor; preserve java.log/setup receipt 5cf15e rather than
+claiming source execution. Corrected observer uses IntValue.gen. Baseline logs
+show eight conversion failures incorrectly replaced by generic module errors.
+The scalar and singleton controls already match, including full value text.
+Initial comparison script had a syntax error, so that invocation supplied no
+comparison evidence; corrected comparison fa8dcc verifies all twelve rows and
+eight baseline differences after the production correction. No persistent test
+or fixture was invented and these observations earn no original-method credit.
+
+Preserving failures also exposed a category mismatch at their origins. Correct
+only inspected source Assert.fail boundaries: IntValue.Member and invalid
+SetCupValue/SetDiffValue enumeration. Use pretty-printed arguments and runtime
+failures, retaining source expression and EmptyContext through a narrow BaseValue
+runtimeFailure helper. Existing value/enumeration catch boundaries continue to
+wrap sourced failures. Do not globally reclassify unsupported errors. Source
+Assert.fail(reason, expr) produces a detailed runtime exception when expr exists;
+three additional observations attach a StringNode to the actual failing integer
+or set and inspect the FingerprintException root. All three match full root
+category/message, expression identity and empty context (80646 terminal 1c72d5).
+The final unsourced twelve-row comparison still matches exactly (883afd).
+Initial after.log retains the intermediate category mismatch as diagnostic evidence.
+
+Existing original TLCTest translations (all five methods), three original set
+initialization checks and two existing permutation checks pass after the final
+metadata correction: 22321 terminal 0e1b68, original-module-final.log, 0.014s.
+Unchanged Java TLCTest independently passes JUnitCore OK (5 tests), 7c3fcd,
+java-original-module.log, 0.014s. Four original Go RandomElement model methods
+pass with unchanged assertions: RandomElement, XandY, T4 and Simulation, 65779
+terminal e29a41, original-models-final.log, 1.048s. The earlier checks also pass
+and remain in original-module.log and original-models.log; final repetition is
+justified by the subsequent source-metadata correction. No broad sweep, race
+workload or original inventory credit. HANDOFF and TLC_ARCH record the precise
+conversion/failure boundaries. Overall core TLC parity remains incomplete.

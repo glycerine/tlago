@@ -129,9 +129,9 @@ func CombineFcn(f1, f2 Value) (Value, error) {
 }
 
 func Permutations(value Value) (*SetEnumValue, error) {
-	set, err := toSetEnumValue(value)
+	set, err := tryToSetEnumValue(value)
 	if err != nil {
-		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "Permutations", "a finite set", ValuesPPR(value))
+		return nil, err
 	}
 	if set == nil {
 		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "Permutations", "a finite set", ValuesPPR(value))

@@ -158,7 +158,7 @@ func (v *SetCupValue) Elements() (enumeration ValueEnumeration) {
 	enum1, ok1 := asEnumerable(v.Set1)
 	enum2, ok2 := asEnumerable(v.Set2)
 	if !ok1 || !ok2 {
-		return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\cup T when S:\n%s\nand T:\n%s\nare not both enumerable", v.Set1, v.Set2))
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\cup T when S:\n" + ValuesPPR(v.Set1) + "\nand T:\n" + ValuesPPR(v.Set2) + "\nare not both enumerable"))
 	}
 	return &setCupEnumeration{enum1: enum1.Elements(), enum2: enum2.Elements(), cm: v.CM}
 }
@@ -572,7 +572,7 @@ func (v *SetDiffValue) Elements() (enumeration ValueEnumeration) {
 	}
 	enum1, ok := asEnumerable(v.Set1)
 	if !ok {
-		return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\ T when S:\n%s\nis not enumerable.", v.Set1))
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\ T when S:\n" + ValuesPPR(v.Set1) + "\nis not enumerable."))
 	}
 	return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.Set2, includeWhenMember: false, cm: v.CM}
 }

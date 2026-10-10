@@ -196,6 +196,15 @@ func (BaseValue) unsupported(format string, args ...any) error {
 	return newTLCError(ECGeneral, format, args...)
 }
 
+// runtimeFailure retains Assert.fail(reason, getSource()) metadata before
+// the enclosing value operation wraps the failure in a FingerprintException.
+func (v *BaseValue) runtimeFailure(message string) error {
+	if source := v.GetSource(); source != nil {
+		return NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+	}
+	return NewTLCRuntimeExceptionMessage(message)
+}
+
 func (v *BaseValue) SetSource(source SemanticNode) {
 	if v != nil {
 		valueSourceMutex.Lock()
@@ -417,7 +426,7 @@ func (v *IntValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *IntValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the integer %s", elem, v)
+	return false, v.runtimeFailure("Attempted to check if the value:\n" + ValuesPPR(elem) + "\nis an element of the integer " + ValuesPPR(v))
 }
 
 func (v *IntValue) IsFinite() (resultBool bool, err error) {

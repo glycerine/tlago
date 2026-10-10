@@ -86,8 +86,11 @@ func RandomElement(value Value) (Value, error) {
 	switch v := value.(type) {
 	case *SetOfFcnsValue:
 		v.Normalize()
-		domain, err := toSetEnumValue(v.Domain)
+		domain, err := tryToSetEnumValue(v.Domain)
 		if err != nil {
+			return nil, err
+		}
+		if domain == nil {
 			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "RandomElement", "a finite set", ValuesPPR(value))
 		}
 		domain.Normalize()
@@ -134,8 +137,11 @@ func RandomElement(value Value) (Value, error) {
 		index := int(RandomEnumerableGenerator().NextDouble() * float64(size))
 		return NewIntValue(v.Low + int32(index)), nil
 	default:
-		set, err := toSetEnumValue(value)
+		set, err := tryToSetEnumValue(value)
 		if err != nil {
+			return nil, err
+		}
+		if set == nil {
 			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "RandomElement", "a finite set", ValuesPPR(value))
 		}
 		if set.Elems.Len() == 0 {

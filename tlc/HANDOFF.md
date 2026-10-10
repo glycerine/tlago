@@ -227,6 +227,11 @@ record, preserves malformed-count failures and wraps integer sums. Its raw outpu
 uses Java HashMap merge iteration order. Twelve bounded source comparisons,
 nine relevant original Go model methods and unchanged Java PossibleCountsTest
 pass; these observations do not prove every value-key collision or simulator path.
+`Permutations` and `RandomElement` now propagate set-conversion failures instead
+of replacing them with finite-set argument errors. Integer membership and invalid
+union/difference enumeration retain runtime failure categories and source metadata.
+Twelve full-result comparisons and three sourced-failure comparisons match Java;
+relevant original module and four random-element model methods pass.
 Continue concrete core TLC gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -236,7 +241,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,123,893,181 of 2,147,483,648 iterations, without a terminal result. The previous
+1,135,334,487 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

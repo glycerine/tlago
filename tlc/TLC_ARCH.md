@@ -6903,7 +6903,15 @@ the unchanged five-method `TLCTest` passes in Java and Go. `SortSeq` checks that
 to a tuple, then checks that the comparator is an operator before returning for
 an empty sequence; Java's first-argument message says "natural number" and the
 Go port intentionally preserves that wording. `Permutations` and the finite-set
-paths of `RandomElement` report `TLC_MODULE_APPLYING_TO_WRONG_VALUE`.
+paths of `RandomElement` report `TLC_MODULE_APPLYING_TO_WRONG_VALUE` only when
+conversion returns no enumerated set. A thrown conversion failure propagates
+unchanged, including from a function-set domain. These callers use the nullable
+conversion helper rather than the helper that synthesizes an error for no result.
+Integer membership and invalid union/difference enumeration use the source
+`Assert.fail(reason, getSource())` boundary: runtime category, pretty-printed
+message, and source expression with `EmptyContext` when present. Existing value
+catch boundaries then wrap those failures in `FingerprintException`. This does
+not reclassify all generic unsupported-value errors.
 
 `Randomization` validates public arguments in Java order and reports
 `TLC_MODULE_ARGUMENT_ERROR`. `RandomSetOfSubsets` checks first-argument count,
