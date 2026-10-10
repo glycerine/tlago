@@ -11390,6 +11390,26 @@ focused original simulation checks and 20 variable-counter observations pass.
 No worker threads, new persistent tests/fixtures or original-method credit.
 General concurrent reporting and polymorphic predecessor reporting remain unproven.
 
+Source-backed post-trace collection uses the owning worker's raw maximum depth
+and applies Java's minimum with the final state's level, including negative
+limits supplied directly to the worker constructor. It throws a typed null-pointer
+exception for a missing final state before updating packed statistics. The
+Simulator's normal conversion of the unbounded CLI depth remains separate from
+this worker-library contract. Base source statistics do not collect next retries;
+extended statistics increment their existing counter. Standalone native adapter
+behavior is retained.
+
+All 560 ignored pinned-Java/native observations agree: standard and extended
+statistics, seven raw constructor depth limits (-2, -1, 0, 1, 2, 10 and signed
+32-bit maximum), four trace-counter values (0, 1, 3 and -1), two packed seeds,
+three actual BasicMultiTrace state levels and null. Each configuration also
+collects two retries and reads the source report. Each packed update starts from
+the same seed; no simulation bounds or original assertions are shortened.
+Two seeds include unsigned-high-bit extraction; this is bounded regression
+coverage, not a fresh proof of all packed arithmetic or concurrent CAS retries.
+The previous 28 trace-reporting observations and focused original simulation
+checks pass. No persistent tests/fixtures or method credit.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

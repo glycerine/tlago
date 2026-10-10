@@ -29954,3 +29954,56 @@ progress is 544,083,024 / 2,147,483,648 iterations, without terminal result or m
 credit. Overall TLC parity remains incomplete. Next source audit: simulation retry
 and post-trace failure boundaries; consult previous packed-Welford receipts rather
 than repeating completed arithmetic checks.
+
+
+2026-10-09: Preserve simulation post-trace and retry boundaries
+
+Previous goal turn made verified progress in ee7bcc7. Consulted prior unsigned
+packed-Welford extraction receipts before auditing collection boundaries.
+Source-backed Go CollectPostTrace previously ignored a null final state and
+skipped negative depth limits. Java throws NullPointerException for null and
+always applies Math.min to the worker's raw constructor depth and state level.
+Go now preserves those behaviors and reads the owning worker's maximum depth.
+Simulator conversion of the unbounded CLI depth remains separate and unchanged.
+Source base CollectNextRetries is now a no-op; only extended statistics collect
+retries. Native standalone adapters retain their existing behavior.
+
+All 560 final Java/native observations agree, 280 each in standard and extended
+mode. Existing unchanged BasicMultiTrace supplies actual states at levels 1, 2
+and 3. Seven raw worker constructor limits (-2, -1, 0, 1, 2, 10 and 2,147,483,647),
+four atomic trace counts (0, 1, 3 and -1) and two packed seeds (0 and signed
+0x80000000FFFFFFFF) form 56 configurations per mode. Each checks three state
+updates plus a null-state failure, resetting the packed seed before each call,
+and two retry collections followed by the report. Null updates retain the seed.
+The previous implementation differed on 102 rows per mode, 204 total. The
+comparison verifies full packed results and exception categories; it does not
+prove arbitrary concurrent CAS retry behavior or all arithmetic. No threads,
+listeners, whole-model search, reduced original bounds or new persistent tests.
+
+Ignored observers, baseline production file and overlays are under
+.codex-gotmp/simulation-posttrace-observation/. Java compile 5e2ee7 returned status
+0. Java extended/standard runs c33bb5/0c705d and native baseline dca54d/58a705
+returned status 0. Final extended session 7242 terminal cf6d32 and standard
+session 68057 terminal 2c7153 returned status 0. Logs:
+.codex-gotmp/simulation-posttrace-{java-,before-}{true,false}.log and
+simulation-posttrace-{true,false}.log. Comparison 0f397f returned status 0 and
+also verified all 28 earlier trace-report rows against source. Their replay
+sessions 19739/49249 returned status 0, terminals 1a4052/229bc5; logs
+simulation-posttrace-reporting-{true,false}.log.
+
+Focused original SimulationWorker, SimulatorCorrectness, SimulatorPrintBehavior,
+CoverageStatistics, TLCGetAll and TLCGetLevel selections plus existing native
+Simulator/SimulationWorker checks pass normally, session 93334 terminal c4e188,
+status 0: root 1.503 seconds, TLC 0.014 seconds. Log:
+.codex-gotmp/simulation-posttrace-originals.log. Original inputs, assertions and
+workload bounds remain unchanged. Formatting and git diff --check pass. No
+persistent tests/fixtures, inventory changes or new method credit. No broad suite,
+XML/ApalacheIR sweep, race workload or email-related work.
+
+Original full off-heap stress session 27326 remains live, poll 891fb5. Latest saved
+progress is 551,463,520 / 2,147,483,648 iterations; no terminal result or method
+credit. Overall TLC parity remains incomplete. Next source audit: Simulator
+worker-statistics selection and statistics-record capture order. Source repeatedly
+selects statistics and reads packed moments after worker reports; native currently
+captures both before assembling those reports. Verify concrete effects before
+claiming a mismatch or changing behavior.

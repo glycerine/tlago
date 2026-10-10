@@ -338,17 +338,26 @@ func (s *SimulationWorkerStatistics) CollectPreTrace() int64 {
 }
 
 func (s *SimulationWorkerStatistics) CollectNextRetries() {
-	if s != nil {
+	if s != nil && (!s.sourceTool || s.Extended) {
 		s.NextRetries++
 	}
 }
 
 func (s *SimulationWorkerStatistics) CollectPostTrace(state *TLCStateMut, maxTraceDepth int) {
-	if s == nil || state == nil {
+	if s == nil {
 		return
 	}
+	if state == nil {
+		if s.sourceTool {
+			panic(NewNullPointerException())
+		}
+		return
+	}
+	if s.sourceTool && s.worker != nil {
+		maxTraceDepth = s.worker.MaxTraceDepth
+	}
 	traceLen := int64(state.Level())
-	if maxTraceDepth >= 0 && traceLen > int64(maxTraceDepth) {
+	if (s.sourceTool || maxTraceDepth >= 0) && traceLen > int64(maxTraceDepth) {
 		traceLen = int64(maxTraceDepth)
 	}
 	for {

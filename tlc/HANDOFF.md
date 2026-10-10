@@ -132,10 +132,14 @@ before bounds failures. All 20 naive/HyperLogLog observations agree; the previou
 Trace-statistics reporting now reads the owning worker's trace ID and rejects
 missing actions with Java's null-pointer failure. All 28 standard/extended
 observations agree, including two workers sharing a trace counter; focused
-original simulation checks pass. Next source audit: simulation retry and
-post-trace failure boundaries, consulting earlier packed-statistics receipts.
-General `Vect` invalid-count and exception behavior remains unproven; original
-model-test reconciliation remains open.
+original simulation checks pass. Source-backed post-trace collection now throws
+for a missing final state and clamps to the owning worker's raw depth limit,
+including negative limits. Base retry collection is a no-op. All 560 bounded
+post-trace/retry observations agree; the 28 trace reports and focused original
+simulation checks remain green. Next source audit: Simulator worker-statistics
+selection and statistics-record capture order. General `Vect` invalid-count and
+exception behavior remains unproven; original model-test reconciliation remains
+open.
 
 ## Verification baseline and test credit
 
