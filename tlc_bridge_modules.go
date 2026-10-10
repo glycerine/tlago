@@ -74,6 +74,7 @@ func (b *tlcBridge) installModuleNativeOverrides() {
 				continue
 			}
 			value = tlc.WithEvaluatingOpDef(value, def)
+			value = tlc.WithStandardMethodMetadata(value, moduleName, name)
 			tlc.SetSemanticToolObjectForTool(b.tool, def.Body, value)
 			b.defns.Put(def.Name, value)
 			b.tool.Define(def.Symbol, value)

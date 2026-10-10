@@ -9,6 +9,8 @@ var standardTLCEvalMu reentrantReadWriteLock
 func (t *Tool) InstallIntegerDefinitions() {
 	if t != nil {
 		t.defineStandardMethod("GEQ", 2, func(args []Value) (Value, error) { return IntGEQ(args[0], args[1]) }, "\\geq")
+		method := WithStandardMethodMetadata(t.DefnsByName[UniqueStringOf("GEQ")], "Integers", "GEQ")
+		t.defineStandardValue("GEQ", method, "\\geq")
 	}
 }
 
@@ -325,6 +327,13 @@ func (t *Tool) defineStandardMethod(name string, arity int, eval func([]Value) (
 
 func (t *Tool) defineStandardMethodWithMinLevel(name string, arity int, minLevel int, eval func([]Value) (Value, error), aliases ...string) {
 	method := name
+	module := "Naturals"
+	if name == "Neg" {
+		module = "Integers"
+	}
+	if signature := numericMethodSignature(module, name); signature != "" {
+		method = signature
+	}
 	// MethodValue reports Method.toString() when a native value operation fails.
 	// Preserve the source reflection metadata, including its declared return type.
 	switch name {

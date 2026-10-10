@@ -179,7 +179,7 @@ func (m NativeMethod) methodValue(minLevel int) Value {
 	value := NewMethodValue(m.Signature, minLevel, m.Eval)
 	value.ParameterCount = m.ParameterCount
 	if m.ParameterCount == 0 && m.Final {
-		result, err := value.Eval(nil, EvalClear)
+		result, err := value.Eval([]Value{}, EvalClear)
 		if err != nil {
 			panic(err)
 		}

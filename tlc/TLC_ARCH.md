@@ -7197,6 +7197,30 @@ hook. Java enhanced NPE messages are disabled for nullable-detail comparison.
 Arbitrary method-handle arity/type diagnostics and other native signatures remain
 outside these bounded observations.
 
+Numeric MethodValues retain the source Method.toString signature for Naturals
+and Integers operators. Metadata includes each declaring class, return type and
+parameter types; Integers.GT returns BoolValue while Naturals.GT returns
+IBoolValue. Standard standalone registration uses Naturals signatures, with Neg
+and the explicit integer GEQ override using Integers. Module installation selects
+metadata for the actual module, cloning the wrapper and retaining its evaluator,
+arity, minimum level and value metadata. Shared inherited bodies still follow the
+existing module installation order. Other module wrappers are unchanged by this
+numeric metadata helper.
+
+All 102 complete image/finite-query/nil-invocation observations agree with Java
+across 34 existing C/DieHard module bindings. DieHard includes both Naturals and
+Integers module views and verifies the final overriding class on shared inherited
+bodies. This establishes bounded diagnostics and module ownership, not general
+signature coverage or malformed method-handle argument behavior.
+
+NativeMethod's eager zero-argument final branch passes an allocated empty value
+array, matching MethodValue.get's Tool.EmptyArgs call. The previous nil-array
+call became invalid when direct method null checks were made faithful. This
+correction follows the inspected source factory contract; the bounded numeric
+observer does not exercise a zero-argument final factory producer. No new
+persistent test or original-method inventory credit is added.
+
+
 
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime

@@ -32872,3 +32872,51 @@ Latest saved full stress progress 1,295,479,613 / 2,147,483,648 (607ceb), still
 without terminal result. Preserve original handle/default budget/workload files.
 HANDOFF/TLC_ARCH updated; continue concrete override metadata/invocation gaps.
 Overall core TLC completion and original-model reconciliation remain open.
+
+
+2026-10-10: Numeric method reflection metadata and eager empty-argument call.
+Previous goal turn made verified progress in 24ef94d. Revalidate clean worktree;
+poll original stress handle 27326 (b6aeaa live). Inspect standard registration,
+module installation, Naturals/Integers declarations and actual MethodValue
+factory. Most registered numeric wrappers carry only a short name, and inherited
+module installation reuses it for both declaring classes. Also find an affected
+internal caller from the prior nil-array correction: NativeMethod.methodValue's
+eager zero-argument final branch still supplies nil instead of Java Tool.EmptyArgs.
+Correct that caller to allocated empty values, preserving the source final/arity
+gate. This is an inspected source-contract correction; no existing zero-argument
+final original producer is claimed as directly observed.
+
+Ignored .codex-gotmp/numeric-method-metadata uses unchanged existing C and DieHard
+FastTools/native checked-model tools, actual module OpDefs and runtime lookups.
+Observe 34 numeric bindings (C Naturals; DieHard Naturals and Integers), each with
+operator image, finite-query failure and nil direct-method invocation. Source
+module lookups establish actual final overriding classes on shared inherited
+bodies; declared Java reflection metadata includes Integers.GT BoolValue versus
+Naturals.GT IBoolValue. Baseline all 102 rows differ (f14077), solely short/wrong
+method signature fields in images, messages and parameters.
+
+Add numericMethodSignature metadata from inspected declarations and expose
+WithStandardMethodMetadata for actual module installation. Retain native callback,
+parameter count, level, source/cost metadata and owner identity on cloned wrappers.
+Standalone definitions retain Naturals signatures, except Neg and explicit integer
+GEQ. Install the actual module's metadata after existing evaluating-OpDef binding,
+preserving original module traversal/order and implementation callbacks. Other
+modules return unchanged through this helper. Eager native final constants now
+receive allocated-empty arguments. All 102 complete source/native rows match
+(53390 terminal ecbfd2); nullable detail, code/parameters and frame counts agree.
+No JVM method-handle emulation or new persistent test/fixture. Other native method
+signatures and arbitrary malformed reflection arguments remain outside this
+bounded observation; no new original-method inventory credit.
+
+Nine existing focused numeric/callable/special/payload checks pass: 62934 terminal
+2c9257, existing-values.log, 0.013s. Root selection passes nine checks: 98927
+terminal d804ef, original-models.log, 3.671s. It includes eight original model
+methods (TLCExtModel, three UserModuleOverride models, ConstantRank2AssertError,
+ValueSemanticsAssume, DepthFirstDieHard and DepthFirstErrorTrace) plus existing
+Combinatorics native eligibility. Separate original EvaluatingValueTest model
+also passes (483000, evaluating-model.log). All original bounds/assertions and
+trace flags remain intact; no broad sweep or race. Formatting/diff checks pass.
+Latest saved stress progress 1,306,574,380 / 2,147,483,648 (8f7764), without
+terminal result; preserve original handle, budget and workload files.
+HANDOFF/TLC_ARCH updated; continue concrete native override metadata/invocation
+gaps. Full TLC parity and original-model reconciliation remain open.

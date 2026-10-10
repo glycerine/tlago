@@ -295,8 +295,12 @@ existing checks pass. MethodValue now preserves typed null-array failure inside
 its override catch, while inherited OpValue semantic-array failures remain outside
 that catch. FiniteSets null values retain their original leaf failures. All 60
 direct/inherited invocation observations match; relevant existing and original
-checks pass. Continue concrete native override metadata/invocation gaps against
-source and the original-test inventory.
+checks pass. Numeric method images and diagnostics now retain actual Naturals or
+Integers signatures, including the distinct GT return types. All 102 observations
+across 34 real-model bindings agree. Eager native constants use an allocated empty
+argument array. Focused numeric/override and original model checks pass. Continue
+other concrete native override metadata/invocation gaps against source and the
+original-test inventory.
 Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
@@ -305,7 +309,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,295,479,613 of 2,147,483,648 iterations, without a terminal result. The previous
+1,306,574,380 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,
