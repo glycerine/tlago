@@ -177,7 +177,7 @@ func TestJavaFcnRcdValue(t *testing.T) {
 	})
 	t.Run("testMalformedIntervalFcnExceptDoesNotWrap", func(t *testing.T) {
 		fcn := NewFcnRcdIntervalValue(NewIntervalValue(math.MinInt32, math.MaxInt32), []Value{IntZero})
-		ex := ValueExcept{Path: []Value{NewIntValue(math.MaxInt32)}, Value: IntOne}
+		ex := &ValueExcept{Path: []Value{NewIntValue(math.MaxInt32)}, Value: IntOne}
 		if val, err := fcn.TakeExcept(ex); err != nil || val != fcn {
 			t.Fatalf("takeExcept=%p/%v, want original %p", val, err, fcn)
 		}

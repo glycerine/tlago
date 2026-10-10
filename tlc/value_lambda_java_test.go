@@ -56,7 +56,7 @@ func javaFcnLambdaApply(t *testing.T, f *FcnLambdaValue, arg Value, control int)
 	}
 	return v
 }
-func javaFcnLambdaExcept(t *testing.T, f *FcnLambdaValue, ex ValueExcept) Value {
+func javaFcnLambdaExcept(t *testing.T, f *FcnLambdaValue, ex *ValueExcept) Value {
 	t.Helper()
 	v, err := f.TakeExcept(ex)
 	if err != nil {
@@ -131,7 +131,7 @@ func TestJavaFcnLambdaValue(t *testing.T) {
 	})
 	t.Run("testTakeExceptOverridesValue", func(t *testing.T) {
 		base := javaCreateFcnLambda(NewIntervalValue(1, 3), NewIntValue(7))
-		ex := ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(99)}
+		ex := &ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(99)}
 		updated := javaFcnLambdaExcept(t, base, ex).(*FcnLambdaValue)
 		javaFcnLambdaEquals(t, NewIntValue(7), javaFcnLambdaSelect(t, updated, NewIntValue(1)))
 		javaFcnLambdaEquals(t, NewIntValue(99), javaFcnLambdaSelect(t, updated, NewIntValue(2)))
@@ -190,14 +190,14 @@ func TestJavaFcnLambdaValue(t *testing.T) {
 	})
 	t.Run("testTakeExceptThenConvertToFcnRcd", func(t *testing.T) {
 		base := javaCreateFcnLambda(NewIntervalValue(1, 2), NewIntValue(1))
-		updated := javaFcnLambdaExcept(t, base, ValueExcept{Path: []Value{NewIntValue(1)}, Value: NewIntValue(8)}).(*FcnLambdaValue)
+		updated := javaFcnLambdaExcept(t, base, &ValueExcept{Path: []Value{NewIntValue(1)}, Value: NewIntValue(8)}).(*FcnLambdaValue)
 		javaFcnLambdaEquals(t, "<<8, 1>>", updated.ToFcnRcd().String())
 	})
 	t.Run("testToFcnRcdAssertFail", func(t *testing.T) {
 		base := javaCreateFcnLambda(NewIntervalValue(1, 2), NewIntValue(42))
-		ex1 := ValueExcept{Path: []Value{NewIntValue(1)}, Value: NewIntValue(99)}
+		ex1 := &ValueExcept{Path: []Value{NewIntValue(1)}, Value: NewIntValue(99)}
 		flv1 := javaFcnLambdaExcept(t, base, ex1).(*FcnLambdaValue)
-		ex2 := ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(100)}
+		ex2 := &ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(100)}
 		flv2 := javaFcnLambdaExcept(t, flv1, ex2).(*FcnLambdaValue)
 		flv1.ToFcnRcd()
 		flv2.ToFcnRcd()
@@ -208,9 +208,9 @@ func TestJavaFcnLambdaValue(t *testing.T) {
 	})
 	t.Run("testToFcnRcdClassCastException", func(t *testing.T) {
 		base := javaCreateFcnLambda(NewIntervalValue(1, 2), NewIntValue(42))
-		ex1 := ValueExcept{Path: []Value{NewIntValue(1)}, Value: NewIntValue(99)}
+		ex1 := &ValueExcept{Path: []Value{NewIntValue(1)}, Value: NewIntValue(99)}
 		flv1 := javaFcnLambdaExcept(t, base, ex1).(*FcnLambdaValue)
-		ex2 := ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(100)}
+		ex2 := &ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(100)}
 		flv2 := javaFcnLambdaExcept(t, flv1, ex2).(*FcnLambdaValue)
 		flv2.ToFcnRcd()
 		flv1.ToFcnRcd()
@@ -223,10 +223,10 @@ func TestJavaFcnLambdaValue(t *testing.T) {
 		defaultFcn := NewFcnRcdIntervalValue(NewIntervalValue(1, 2), []Value{NewIntValue(0), NewIntValue(0)}, CostModel{})
 		base := javaCreateFcnLambda(NewIntervalValue(1, 2), defaultFcn)
 		val1 := NewFcnRcdIntervalValue(NewIntervalValue(1, 2), []Value{NewIntValue(11), NewIntValue(12)}, CostModel{})
-		ex1 := ValueExcept{Path: []Value{NewIntValue(1)}, Value: val1}
+		ex1 := &ValueExcept{Path: []Value{NewIntValue(1)}, Value: val1}
 		flv1 := javaFcnLambdaExcept(t, base, ex1).(*FcnLambdaValue)
 		val2 := NewFcnRcdIntervalValue(NewIntervalValue(1, 2), []Value{NewIntValue(21), NewIntValue(22)}, CostModel{})
-		ex2 := ValueExcept{Path: []Value{NewIntValue(2)}, Value: val2}
+		ex2 := &ValueExcept{Path: []Value{NewIntValue(2)}, Value: val2}
 		flv2 := javaFcnLambdaExcept(t, flv1, ex2).(*FcnLambdaValue)
 		javaFcnLambdaEquals(t, "<<<<11, 12>>, <<0, 0>>>>", flv1.ToFcnRcd().String())
 		javaFcnLambdaEquals(t, "<<<<11, 12>>, <<21, 22>>>>", flv2.ToFcnRcd().String())
@@ -235,10 +235,10 @@ func TestJavaFcnLambdaValue(t *testing.T) {
 		defaultFcn := NewFcnRcdIntervalValue(NewIntervalValue(1, 2), []Value{NewIntValue(0), NewIntValue(0)}, CostModel{})
 		base := javaCreateFcnLambda(NewIntervalValue(1, 2), defaultFcn)
 		val1 := NewFcnRcdIntervalValue(NewIntervalValue(1, 2), []Value{NewIntValue(11), NewIntValue(12)}, CostModel{})
-		ex1 := ValueExcept{Path: []Value{NewIntValue(1)}, Value: val1}
+		ex1 := &ValueExcept{Path: []Value{NewIntValue(1)}, Value: val1}
 		flv1 := javaFcnLambdaExcept(t, base, ex1).(*FcnLambdaValue)
 		val2 := NewFcnRcdIntervalValue(NewIntervalValue(1, 2), []Value{NewIntValue(21), NewIntValue(22)}, CostModel{})
-		ex2 := ValueExcept{Path: []Value{NewIntValue(2)}, Value: val2}
+		ex2 := &ValueExcept{Path: []Value{NewIntValue(2)}, Value: val2}
 		flv2 := javaFcnLambdaExcept(t, flv1, ex2).(*FcnLambdaValue)
 		flv1.ToFcnRcd()
 		fcnRcd := flv2.ToFcnRcd()
@@ -248,20 +248,20 @@ func TestJavaFcnLambdaValue(t *testing.T) {
 	})
 	t.Run("testToTupleWithExceptIntervalDomain", func(t *testing.T) {
 		base := javaCreateFcnLambda(NewIntervalValue(1, 3), NewIntValue(42))
-		ex := ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(99)}
+		ex := &ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(99)}
 		updated := javaFcnLambdaExcept(t, base, ex).(*FcnLambdaValue)
 		javaFcnLambdaEquals(t, "<<42, 99, 42>>", updated.ToTuple().String())
 	})
 	t.Run("testToTupleWithExceptSetEnumDomain", func(t *testing.T) {
 		domain := NewSetEnumValue([]Value{NewIntValue(1), NewIntValue(2), NewIntValue(3)}, true)
 		base := javaCreateFcnLambda(domain, NewIntValue(42))
-		ex := ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(99)}
+		ex := &ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(99)}
 		updated := javaFcnLambdaExcept(t, base, ex).(*FcnLambdaValue)
 		javaFcnLambdaEquals(t, "<<42, 99, 42>>", updated.ToTuple().String())
 	})
 	t.Run("testToTupleWithExceptFP", func(t *testing.T) {
 		base := javaCreateFcnLambda(NewIntervalValue(1, 3), NewIntValue(42))
-		ex := ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(99)}
+		ex := &ValueExcept{Path: []Value{NewIntValue(2)}, Value: NewIntValue(99)}
 		updated := javaFcnLambdaExcept(t, base, ex).(*FcnLambdaValue)
 		tuple := updated.ToTuple()
 		correct := NewTupleValue([]Value{NewIntValue(42), NewIntValue(99), NewIntValue(42)})

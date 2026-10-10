@@ -351,9 +351,10 @@ Installation and delegated scalar/tuple/record updates retain typed path/batch
 failures, source wrappers and warning parameters. Record updates allocate and
 traverse by name count. All observed matrices agree; detailed contracts and
 limits are in `TLC_ARCH.md`, with run receipts in `PORT_PROGRESS.md`. These
-comparisons add no original-test credit. Caller-visible EXCEPT cursor mutation,
-deeper duplicate-name cursor propagation, arbitrary callbacks and concurrent
-mutation remain separate work; do not infer general ownership parity.
+comparisons add no original-test credit. EXCEPT updates now share pointer cursors
+through nested calls and retained lazy updates; matching and materialization clone
+cursors where Java does. All 108 ownership observations agree. Arbitrary callbacks,
+concurrent mutation and broader ownership contracts remain separate work.
 Numeric override casts preserve source failure messages and last-argument-first
 order; implicit null failures retain nullable details. All 36 expression and 350
 override observations agree. Numeric module selection now chooses the source

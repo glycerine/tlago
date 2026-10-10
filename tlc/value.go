@@ -85,8 +85,8 @@ type Value interface {
 	DeepCopy() Value
 	FingerPrint(uint64) uint64
 	Permute(*MVPerm) Value
-	TakeExcept(ValueExcept) (Value, error)
-	TakeExcepts([]ValueExcept) (Value, error)
+	TakeExcept(*ValueExcept) (Value, error)
+	TakeExcepts([]*ValueExcept) (Value, error)
 	GetCostModel() CostModel
 }
 
@@ -159,6 +159,8 @@ func wrapValueFailure(value Value, err error) error {
 	return err
 }
 
+// ValueExcept is shared by pointer: nested EXCEPT application advances its cursor.
+// Lazy matching and materialization explicitly clone cursors at source boundaries.
 type ValueExcept struct {
 	Path  []Value
 	Index int
@@ -318,8 +320,11 @@ func (v *BoolValue) FingerPrint(fp uint64) uint64 {
 	return FP64ExtendUTF16(fp, []uint16{'f'})
 }
 
-func (v *BoolValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *BoolValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Path == nil {
 		panic(NewNullPointerException())
 	}
@@ -329,7 +334,7 @@ func (v *BoolValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	return ex.Value, nil
 }
 
-func (v *BoolValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *BoolValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if exs == nil {
 		panic(NewNullPointerException())
@@ -475,8 +480,11 @@ func (v *IntValue) FingerPrint(fp uint64) uint64 {
 	return FP64ExtendInt(FP64ExtendByte(fp, byte(IntValueKind)), v.Val)
 }
 
-func (v *IntValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *IntValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Path == nil {
 		panic(NewNullPointerException())
 	}
@@ -486,7 +494,7 @@ func (v *IntValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	return ex.Value, nil
 }
 
-func (v *IntValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *IntValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if exs == nil {
 		panic(NewNullPointerException())
@@ -602,8 +610,11 @@ func (v *StringValue) FingerPrint(fp uint64) uint64 {
 	return FP64ExtendString(fp, v.Val.String())
 }
 
-func (v *StringValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *StringValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Path == nil {
 		panic(NewNullPointerException())
 	}
@@ -613,7 +624,7 @@ func (v *StringValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 	return ex.Value, nil
 }
 
-func (v *StringValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *StringValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if exs == nil {
 		panic(NewNullPointerException())

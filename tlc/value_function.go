@@ -373,15 +373,18 @@ func (v *ModelValue) FingerPrint(fp uint64) uint64 {
 	return v.Val.FingerPrint(FP64ExtendByte(fp, byte(ModelValueKind)))
 }
 
-func (v *ModelValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *ModelValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the model value %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
 
-func (v *ModelValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *ModelValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the model value %s.", ValuesPPR(v)))
@@ -562,8 +565,11 @@ func (v *RecordValue) Member(elem Value) (resultBool bool, err error) {
 
 func (v *RecordValue) IsFinite() (bool, error) { return true, nil }
 
-func (v *RecordValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *RecordValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Path == nil {
 		panic(NewNullPointerException())
 	}
@@ -609,7 +615,7 @@ func (v *RecordValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 	return ex.Value, nil
 }
 
-func (v *RecordValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *RecordValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if exs == nil {
 		panic(NewNullPointerException())
@@ -1228,8 +1234,11 @@ func fcnRcdLinearSearchThreshold() int {
 	return defaultFcnRcdLinearSearchThreshold
 }
 
-func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *FcnRcdValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Path == nil {
 		panic(NewNullPointerException())
 	}
@@ -1287,7 +1296,7 @@ func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 	return v, nil
 }
 
-func (v *FcnRcdValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *FcnRcdValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if exs == nil {
 		panic(NewNullPointerException())

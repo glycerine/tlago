@@ -287,12 +287,12 @@ func (v *KSubsetValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *KSubsetValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *KSubsetValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *KSubsetValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *KSubsetValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }

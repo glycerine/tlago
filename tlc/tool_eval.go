@@ -1226,7 +1226,7 @@ func (t *Tool) evalExcept(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLC
 		if err != nil {
 			return nil, err
 		}
-		result, err = result.TakeExcept(ValueExcept{Path: lhs, Value: rhs})
+		result, err = result.TakeExcept(&ValueExcept{Path: lhs, Value: rhs})
 		if err != nil {
 			return nil, err
 		}

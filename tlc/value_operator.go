@@ -306,12 +306,12 @@ func (b *operatorValueBase) Permute(*MVPerm) Value {
 	return unsupportedValuePermutation(b.receiver())
 }
 
-func (b *operatorValueBase) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (b *operatorValueBase) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(b.receiver(), &err)
 	return nil, b.runtimeFailure(fmt.Sprintf("Attempted to appy EXCEPT construct to the operator %s.", b.diagnosticString()))
 }
 
-func (b *operatorValueBase) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (b *operatorValueBase) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(b.receiver(), &err)
 	return nil, b.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the operator %s.", b.diagnosticString()))
 }

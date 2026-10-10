@@ -385,8 +385,11 @@ func (v *TupleValue) ToFcnRcd() *FcnRcdValue {
 	return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(len(v.Elems))), v.Elems, v.CM)
 }
 
-func (v *TupleValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *TupleValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Path == nil {
 		panic(NewNullPointerException())
 	}
@@ -425,7 +428,7 @@ func (v *TupleValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	return &TupleValue{Elems: out}, nil
 }
 
-func (v *TupleValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *TupleValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if exs == nil {
 		panic(NewNullPointerException())
@@ -640,15 +643,18 @@ func (v *SetEnumValue) FingerPrint(fp uint64) uint64 {
 	return fp
 }
 
-func (v *SetEnumValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SetEnumValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT to the set %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
 
-func (v *SetEnumValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SetEnumValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT to the set %s.", ValuesPPR(v)))
@@ -832,15 +838,18 @@ func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
 	return fp
 }
 
-func (v *IntervalValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *IntervalValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the interval value %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
 
-func (v *IntervalValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *IntervalValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the interval value %s.", ValuesPPR(v)))

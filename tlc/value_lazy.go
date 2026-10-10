@@ -190,7 +190,7 @@ func (v *LazyValue) Permute(perm *MVPerm) Value {
 	return val.Permute(perm)
 }
 
-func (v *LazyValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *LazyValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to apply EXCEPT construct to lazy value.")
 	if err != nil {
@@ -199,7 +199,7 @@ func (v *LazyValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	return val.TakeExcept(ex)
 }
 
-func (v *LazyValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *LazyValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to apply EXCEPT construct to lazy value.")
 	if err != nil {
@@ -490,12 +490,12 @@ func (v *SetPredValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *SetPredValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SetPredValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SetPredValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SetPredValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }

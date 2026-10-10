@@ -34712,3 +34712,55 @@ handoff history into current contracts and explicit ownership limits, retaining
 detailed matrices and receipts in architecture/progress documents. Latest full
 stress saved progress is 1,630,205,666 / 2,147,483,648 (95d498), with no terminal
 result or long-method credit. Preserve original handle and bounds.
+
+
+### 2026-10-10: Shared EXCEPT cursor objects and explicit clone boundaries
+
+Previous goal turn made verified progress in 0705448. Confirm current clean HEAD
+(50ce47) and compare ValueExcept constructors and nested update ownership.
+Original full stress 27326 remains live on direct poll 50ca59. Native value
+arguments copied the EXCEPT cursor across nested calls and caller boundaries.
+This changes repeated-call results and deep duplicate-name record updates, not
+just inspection of an otherwise equivalent cursor.
+
+Ignored except-cursor-ownership uses actual test209 source nodes, runtime nested
+tuples/records/explicit functions/interval functions and original S evaluation.
+Initial 48 observations cover four composite kinds, depths one through three,
+source attachment and two calls on the same update. Java 8ff123/native 53e307
+complete; all 48 differ (81db80), including caller-visible cursor advancement and
+subsequent-call results. Switch the Value API to *ValueExcept and batch arrays
+to []*ValueExcept. Nested delegation mutates the same cursor; lazy installation
+retains update objects while copying arrays. Explicit Advanced copies the cursor
+while sharing path/replacement; materialization clones every retained cursor
+before record updates, as the source specifically requires. Add typed nil-object
+failures at dereference boundaries. Adapt existing original test constructors,
+helper signatures and the custom Value test implementation; no assertions change.
+The existing original FcnLambdaValue test passes (65188 terminal 65b2b7,
+984b2c), including the retained-update conversion cases.
+
+Native 33246 completes (cc2222), matching all initial 48 (3e8ad2). Expand with
+shared duplicate batch entries, null update entries and six lambda/copy cases:
+retained object mutation, copied array with shared objects, materialization
+isolation, DeepCopy object sharing, nested lazy matching plus conversion and
+Advanced path-sharing with independent cursor/replacement fields. Expanded Java
+4df00a/native 166cec complete all 108 rows; no differences (8d0534). No semantic
+graph mutation, fabricated evaluator, persistent new tests/fixtures or original
+method credit. Arbitrary callback mutation, other exotic receiver kinds and
+concurrent mutable-cursor use remain unproven.
+
+Adapt ignored prior native observers to pointer construction/signatures and
+rerun unchanged Java oracles: 1,088 application, 352 installation and 756 tuple/
+record rows all agree (3ff1b9/fbfbde/ef766b, baaa1d). Further 1,266 normalization
+and 180 scalar rows agree (33262/21120 terminal b0218b/5644ce; b5e15a). Total
+3,642 prior observations retain agreement; no normalization of cursor differences
+or changed expected values. The final relevant original model/value/EvalControl
+and focused numeric/context/EXCEPT/rendering/stream tests pass (51562 terminal
+0c47a1; root 5.191s and tlc 2.117s, 76bf0b). No race, broad suite, shortened
+workload or changed original assertion. Sources and logs remain ignored under
+except-cursor-ownership and the adapted prior observer directories.
+
+Handoff and architecture now describe the verified pointer ownership and clone
+boundaries, replacing superseded cursor-limit notes. This is a Go Value API
+change: callers use &ValueExcept{...} and []*ValueExcept. Latest full stress saved
+progress is 1,637,713,249 / 2,147,483,648 (76bf0b), without terminal result or
+long-method credit. Preserve original handle and bounds.

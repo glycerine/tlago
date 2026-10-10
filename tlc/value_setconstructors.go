@@ -196,15 +196,18 @@ func (v *SetOfTuplesValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *SetOfTuplesValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SetOfTuplesValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the set of tuples:\n" + ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
 
-func (v *SetOfTuplesValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SetOfTuplesValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the set of tuples:\n" + ValuesPPR(v))
@@ -484,15 +487,18 @@ func (v *SetOfRcdsValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *SetOfRcdsValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SetOfRcdsValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of records:\n" + ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
 
-func (v *SetOfRcdsValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SetOfRcdsValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of records:\n" + ValuesPPR(v))
@@ -849,15 +855,18 @@ func (v *SetOfFcnsValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *SetOfFcnsValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SetOfFcnsValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of functions:\n" + ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
 
-func (v *SetOfFcnsValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SetOfFcnsValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of functions:\n" + ValuesPPR(v))
@@ -1145,12 +1154,12 @@ func (v *SubsetValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *SubsetValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SubsetValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SubsetValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SubsetValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }

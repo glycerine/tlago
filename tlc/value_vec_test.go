@@ -96,10 +96,10 @@ func (v compareEqualButNotEqualValue) IsDefined() bool              { return tru
 func (v compareEqualButNotEqualValue) DeepCopy() Value              { return v }
 func (v compareEqualButNotEqualValue) FingerPrint(fp uint64) uint64 { return fp }
 func (v compareEqualButNotEqualValue) Permute(*MVPerm) Value        { return v }
-func (v compareEqualButNotEqualValue) TakeExcept(ValueExcept) (Value, error) {
+func (v compareEqualButNotEqualValue) TakeExcept(*ValueExcept) (Value, error) {
 	return v, nil
 }
-func (v compareEqualButNotEqualValue) TakeExcepts([]ValueExcept) (Value, error) {
+func (v compareEqualButNotEqualValue) TakeExcepts([]*ValueExcept) (Value, error) {
 	return v, nil
 }
 func (v compareEqualButNotEqualValue) String() string { return string(v) }

@@ -7756,9 +7756,8 @@ negative/completed indices, null current components, missing keys, update order,
 null intermediate results, prior retained updates and source attachment. Result
 kind, returned identity, source attachment, lookup result/failure and original
 cache presence are observed. No semantic graph mutation, fabricated evaluator
-or original-test credit is involved. Caller-visible ValueExcept index mutation,
-null EXCEPT object entries, malformed cached value arrays and concurrency remain
-unproven; these observations do not establish general update-object ownership.
+or original-test credit is involved. Cursor ownership is covered separately below. Null EXCEPT object entries,
+malformed cached value arrays and concurrency remain unproven; these observations do not establish general update-object ownership.
 
 Integer, boolean and string EXCEPT operations read path/batch length with typed
 null failures under their existing source wrappers. A single update rejects a
@@ -7789,9 +7788,33 @@ They use actual test209 S source metadata, runtime tuple/record arrays, fourteen
 single-update and seven batch forms, with source attachment on/off. Receiver
 shapes cover empty/null/short arrays, null names/values, nested values and a
 duplicate-name record with tuple values. The comparison avoids rendering
-malformed composites and adds no original-test credit. Caller-visible update
-cursor mutation, deeper duplicate-name cursor propagation, null EXCEPT objects,
-concurrent mutation and general formatting of malformed results remain unproven.
+malformed composites and adds no original-test credit. Cursor ownership is covered separately below. Null EXCEPT objects in additional
+value kinds, concurrent mutation and general formatting of malformed results
+remain unproven.
+
+EXCEPT updates are pointer objects (`*ValueExcept`); batch arrays contain update
+pointers. Tuple, record and explicit/interval function application advance the
+same cursor through nested delegation, preserving caller-visible indices,
+repeated-call behavior and duplicate-name traversal. Lazy installation retains
+the update objects while copying batch arrays; lambda copies share those objects.
+Lazy matching clones each matching nonterminal cursor before advancing it.
+Materialization clones retained cursors before applying them to the record,
+leaving the lazy updates unchanged. Cursor clones share path storage and the
+replacement value, matching Java's ValueExcept copy constructor. Nil update
+objects fail where the source dereferences them, under existing source wrappers.
+All 108 ownership observations agree using actual test209 source nodes and S
+lambda evaluation. They include four composite receiver kinds, nested depths
+one through three, repeated calls, duplicate-name records, shared batch entries,
+null batch entries, lazy object/array retention, deep-copy sharing, conversion
+isolation and explicit advanced-copy path sharing. Previous 1,088 application,
+352 installation and 756 tuple/record observations also still agree after adapting
+only native observer construction/signatures to pointers. The 1,266 deep
+normalization and 180 scalar observations also still agree. Existing original
+lambda tests likewise retain their assertions with pointer constructors. This
+changes the Go Value API from value updates to pointer updates; callers must use
+`&ValueExcept{...}` and `[]*ValueExcept`. No JVM emulation or original-test credit
+is involved. Arbitrary callback mutation, other exotic receiver kinds and
+concurrent use of mutable cursors remain unproven.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

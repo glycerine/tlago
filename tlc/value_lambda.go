@@ -365,7 +365,7 @@ type FcnLambdaValue struct {
 	BaseValue
 	Params  *FcnParams
 	Body    SemanticNode
-	Excepts []ValueExcept
+	Excepts []*ValueExcept
 	Tool    *Tool
 	Con     *Context
 	State   *TLCStateMut
@@ -794,10 +794,10 @@ func fcnTupleElement(elems []Value, i int) Value {
 	return elems[i]
 }
 
-func (v *FcnLambdaValue) matchExcepts(arg Value) (Value, []ValueExcept, bool, error) {
+func (v *FcnLambdaValue) matchExcepts(arg Value) (Value, []*ValueExcept, bool, error) {
 	var res Value
 	matchedTerminal := false
-	var matches []ValueExcept
+	var matches []*ValueExcept
 	for i := len(v.Excepts) - 1; i >= 0; i-- {
 		ex := v.Excepts[i]
 		cur := ex.Current()
@@ -824,7 +824,7 @@ func (v *FcnLambdaValue) matchExcepts(arg Value) (Value, []ValueExcept, bool, er
 	return res, matches, matchedTerminal, nil
 }
 
-func takeMatchedExcepts(value Value, matches []ValueExcept) (Value, error) {
+func takeMatchedExcepts(value Value, matches []*ValueExcept) (Value, error) {
 	if len(matches) == 0 {
 		return value, nil
 	}
@@ -834,9 +834,9 @@ func takeMatchedExcepts(value Value, matches []ValueExcept) (Value, error) {
 	return value.TakeExcepts(matches)
 }
 
-func (v *FcnLambdaValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *FcnLambdaValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	if ex.Path == nil {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index >= len(ex.Path) {
@@ -846,11 +846,11 @@ func (v *FcnLambdaValue) TakeExcept(ex ValueExcept) (resultValue Value, err erro
 		return v.FcnRcd.TakeExcept(ex)
 	}
 	fcn := NewFcnLambdaValueFrom(v, v.Tool)
-	fcn.Excepts = append(copyValueExcepts(v.Excepts), copyValueExcept(ex))
+	fcn.Excepts = append(copyValueExcepts(v.Excepts), ex)
 	return fcn, nil
 }
 
-func (v *FcnLambdaValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *FcnLambdaValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if v.FcnRcd != nil {
 		return v.FcnRcd.TakeExcepts(exs)
@@ -864,7 +864,7 @@ func (v *FcnLambdaValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err 
 	}
 	lastComplete := -1
 	for i := len(exs) - 1; i >= 0; i-- {
-		if exs[i].Path == nil {
+		if exs[i] == nil || exs[i].Path == nil {
 			panic(NewNullPointerException())
 		}
 		if exs[i].Index >= len(exs[i].Path) {
@@ -961,7 +961,7 @@ func (v *FcnLambdaValue) DeepNormalize() {
 		return
 	}
 	for i := range v.Excepts {
-		if v.Excepts[i].Value == nil {
+		if v.Excepts[i] == nil || v.Excepts[i].Value == nil {
 			panic(NewNullPointerException())
 		}
 		v.Excepts[i].Value.DeepNormalize()
@@ -1124,7 +1124,7 @@ func (v *FcnLambdaValue) materializeFcnRcd() (resultFcn *FcnRcdValue, err error)
 	}
 	v.CM.incValueSecondary(int64(size))
 	if len(v.Excepts) != 0 {
-		taken, err := v.FcnRcd.TakeExcepts(copyValueExcepts(v.Excepts))
+		taken, err := v.FcnRcd.TakeExcepts(cloneValueExcepts(v.Excepts))
 		if err != nil {
 			return nil, err
 		}
@@ -1182,8 +1182,8 @@ func (v *FcnLambdaValue) ToString(sb *strings.Builder, offset int, swallow bool)
 	return sb
 }
 
-func (ex ValueExcept) Current() Value {
-	if ex.Path == nil {
+func (ex *ValueExcept) Current() Value {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index < 0 || ex.Index >= len(ex.Path) {
@@ -1192,27 +1192,44 @@ func (ex ValueExcept) Current() Value {
 	return ex.Path[ex.Index]
 }
 
-func (ex ValueExcept) IsLast() bool {
+func (ex *ValueExcept) IsLast() bool {
+	if ex == nil || ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	return ex.Index == len(ex.Path)-1
 }
 
-func (ex ValueExcept) Advanced() ValueExcept {
-	next := copyValueExcept(ex)
+func (ex *ValueExcept) Advanced() *ValueExcept {
+	next := cloneValueExcept(ex)
 	next.Index++
 	return next
 }
 
-func copyValueExcept(ex ValueExcept) ValueExcept {
-	return ex
+// cloneValueExcept copies the cursor, sharing the retained path and replacement.
+func cloneValueExcept(ex *ValueExcept) *ValueExcept {
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
+	next := *ex
+	return &next
 }
 
-func copyValueExcepts(exs []ValueExcept) []ValueExcept {
-	if len(exs) == 0 {
+// copyValueExcepts copies the array while retaining its update objects.
+func copyValueExcepts(exs []*ValueExcept) []*ValueExcept {
+	if exs == nil {
 		return nil
 	}
-	out := make([]ValueExcept, len(exs))
+	out := make([]*ValueExcept, len(exs))
 	for i, ex := range exs {
-		out[i] = copyValueExcept(ex)
+		out[i] = ex
+	}
+	return out
+}
+
+func cloneValueExcepts(exs []*ValueExcept) []*ValueExcept {
+	out := make([]*ValueExcept, len(exs))
+	for i, ex := range exs {
+		out[i] = cloneValueExcept(ex)
 	}
 	return out
 }

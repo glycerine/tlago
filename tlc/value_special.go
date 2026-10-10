@@ -43,15 +43,18 @@ func (v *UndefValue) Size() (resultInt int, err error) {
 	return 0, v.runtimeFailure("Attempted to compute the number of elements in the value " + ValuesPPR(v) + ".")
 }
 
-func (v *UndefValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *UndefValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the value " + ValuesPPR(v) + ".")
 	}
 	return ex.Value, nil
 }
 
-func (v *UndefValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *UndefValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the value " + ValuesPPR(v) + ".")
@@ -160,15 +163,18 @@ func (v *UserValue) Size() (resultInt int, err error) {
 	return 0, v.runtimeFailure("Attempted to compute the number of elements in the overridden value " + ValuesPPR(v) + ".")
 }
 
-func (v *UserValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *UserValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the overridden value " + ValuesPPR(v) + ".")
 	}
 	return ex.Value, nil
 }
 
-func (v *UserValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *UserValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the overridden value " + ValuesPPR(v) + ".")

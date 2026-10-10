@@ -114,12 +114,12 @@ func (v *SetCupValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *SetCupValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SetCupValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SetCupValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SetCupValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
@@ -331,12 +331,12 @@ func (v *SetCapValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *SetCapValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SetCapValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SetCapValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SetCapValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
@@ -529,12 +529,12 @@ func (v *SetDiffValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *SetDiffValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *SetDiffValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SetDiffValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *SetDiffValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
@@ -757,15 +757,18 @@ func (v *UnionValue) Permute(perm *MVPerm) Value {
 	return set.Permute(perm)
 }
 
-func (v *UnionValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+func (v *UnionValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set:\n" + ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
 
-func (v *UnionValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+func (v *UnionValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set:\n " + ValuesPPR(v) + ".")
@@ -1013,14 +1016,14 @@ func setExceptFailure(v Value) error {
 	return NewTLCRuntimeExceptionMessage(message)
 }
 
-func takeExceptOnSet(v Value, ex ValueExcept) (Value, error) {
+func takeExceptOnSet(v Value, ex *ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
 		return nil, setExceptFailure(v)
 	}
 	return ex.Value, nil
 }
 
-func takeExceptsOnSet(v Value, exs []ValueExcept) (Value, error) {
+func takeExceptsOnSet(v Value, exs []*ValueExcept) (Value, error) {
 	if len(exs) != 0 {
 		return nil, setExceptFailure(v)
 	}
