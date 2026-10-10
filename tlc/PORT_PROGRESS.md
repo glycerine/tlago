@@ -29802,3 +29802,53 @@ Full original off-heap stress session 27326 remains live, poll f33958; latest
 saved observation 487,828,447 / 2,147,483,648 iterations, no terminal result or
 method credit. Overall parity remains incomplete. Next source audit: action-flow
 output with multiple action contexts.
+
+
+2026-10-09: Verify action-flow grouping with multiple contexts
+
+Previous goal turn made concrete progress in 3f52671. Continued source parity
+verification without modifying production behavior merely to obtain a change.
+All 30 complete action-flow graphs agree across three unchanged existing models:
+I, EWD840/MC02 and ChooseTableauSymmetryMCa. Each exercises actual BASIC/FULL
+writers for initial, collected, weighted, empty-overwrite and empty-new cases.
+Source and native use the first actual generated initial state and the first
+enabled actual next action; complete original initial-predicate counts are
+preserved before each observation. This is bounded rendering verification, not
+a complete model search or original-method pass. The weighted cell is a rendering
+input of 1,000,000,000, not a billion-step workload.
+
+The source BASIC/FULL node counts are respectively 2/4, 7/9 and 4/7, with four,
+three and three non-legend FULL clusters. I covers three integer-valued action
+contexts and context reduction. EWD840 covers repeated integer bindings such as
+[i->1, i->1]; the symmetry model covers repeated model-value bindings such as
+[v->a, v->a]. Twenty-seven artifacts are byte-identical. I's three nonempty FULL
+files differ only in entire-cluster order, because Java uses HashMap and HashSet
+where native uses deterministic insertion order. No production mismatch was
+found. Preserved native ordering instead of emulating a VM's unordered-table
+iteration. The final comparison canonicalizes only cluster order and node order
+within each cluster; it retains cluster headers/keys, labels and membership,
+legends, edge order, attributes and all other text. No general graph reordering,
+loss of grouping, or weakening of original assertions is used as equivalence.
+
+Final comparison 05bae2 returned status 0: ten graphs per model; canonicalization
+preserves line endings and cluster closing braces as well as all other text. Ignored standalone
+observers, complete output files and compare.py are under
+.codex-gotmp/action-context-output-observation/. Final logs in .codex-gotmp/:
+action-context-{i,ewd,choose}-{java,native}.log. Java compile 8cd2eb returned status
+0. Final I source 77b6b2/native 1e5377, EWD840 source a759a5/native 90b5fc and
+ChooseTableau source a04d63/native 98a72f returned status 0. Initial I-only logs
+remain separate; the final generalized observer explicitly preserves all initial
+predicates and chooses the first initial state and an enabled action in both
+implementations. No listeners, worker threads or full model search are involved.
+
+No production code changed, so the focused original simulation and native writer
+checks already passing at 3f52671 remain the applicable receipts; no redundant
+suite run or new test credit. No persistent tests or fixture additions. Formatting
+and git diff --check pass. No broad suite, XML/ApalacheIR sweep or race workload.
+
+Full off-heap original stress session 27326 remains live, poll f9728b; latest saved
+observation 502,839,916 / 2,147,483,648 iterations, no terminal result or method
+credit. Overall parity remains incomplete. Next source audit: extended simulation
+counter ownership. Source uses constructor-sized per-variable counters indexed
+by variable location; native currently uses name-keyed counters. This source
+review identifies the next comparison, not yet a verified production mismatch.

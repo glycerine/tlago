@@ -11333,6 +11333,22 @@ one shared action context and do not prove arbitrary cluster iteration order,
 general double formatting, concurrent writing or output-error parity. No new
 persistent tests/fixtures or original-method credit.
 
+Multi-context action-flow output was then checked on three unchanged original
+models: I, EWD840/MC02 and ChooseTableauSymmetryMCa. All 30 complete graphs agree
+on cluster keys/labels, node membership and labels, reduced nodes, edge order and
+attributes, weights, legends and empty-file behavior. Their BASIC/FULL node
+counts are 2/4, 7/9 and 4/7 respectively. Contexts include integer bindings,
+repeated formal/quantifier bindings and model-value bindings.
+
+Twenty-seven artifacts are byte-identical. I's three nonempty FULL artifacts
+differ only in the order of entire clusters. Java uses HashMap for clusters and
+HashSet for membership, so the comparison canonicalizes just those two unordered
+orders. It retains cluster identity and membership and compares all other bytes
+and line order. Native insertion order is retained; no VM hash-table emulation
+was introduced to reproduce an unspecified order. These observations start no
+worker threads or whole-model search and add no original-method credit. General
+concurrent output and output-error behavior remain unproven.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

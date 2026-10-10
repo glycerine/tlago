@@ -121,9 +121,12 @@ IDs. Action-flow aggregation preserves source bounds failures; all 68 bounded
 worker/graph observations agree, and focused original simulation checks pass.
 Action-flow writers now create and overwrite empty graphs, retain source action
 labels and format integral weights with the source decimal suffix. All 12 bounded
-complete DOT artifacts match Java byte for byte. Next source audit: action-flow
-output with multiple action contexts. General `Vect` invalid-count and exception
-behavior remains unproven; original model-test reconciliation remains open.
+complete DOT artifacts match Java byte for byte. Multi-context checks on three
+existing models also agree on all 30 complete graphs; 27 are byte-identical and
+three differ only in Java's unordered cluster order. No production correction
+was needed for these cases. Next source audit: extended simulation counter
+ownership. General `Vect` invalid-count and exception behavior remains unproven;
+original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
