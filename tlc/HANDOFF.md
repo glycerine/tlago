@@ -226,8 +226,13 @@ action list, preserving the strict coverage null-array check; unchanged Java
 Github652 and 11 relevant original Go model methods pass.
 Function combination (`@@`) converts both operands before checking either
 conversion result, preserving lazy right-side effects and failure precedence.
-Ten bounded comparisons, all five original TLCTest methods in Java and Go, and
-four relevant original model methods pass.
+It captures values arrays, prefers an explicit domain over an interval field,
+and traverses intervals without materializing a domain slice. Null/bounds and
+equality failures retain source order; overlapping right keys skip value reads.
+All 9,800 storage/conversion/cache observations agree outside 128 stack-location
+differences. Focused original tests pass, including all five `TLCTest` methods.
+The earlier ten conversion-event observations remain valid. Concurrent field
+replacement and allocation-resource behavior remain unproven.
 `_Possible!_Counts` now accepts only function records, normalizes each source
 record, preserves malformed-count failures and wraps integer sums. Its raw output
 uses Java HashMap merge iteration order. Twelve bounded source comparisons,

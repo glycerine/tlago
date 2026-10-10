@@ -7009,7 +7009,30 @@ the first-argument shape error. Null operand receivers fail at their conversion
 step. Nonfunction conversion results report first/second function-shape errors
 with `TLC_MODULE_ARGUMENT_ERROR`. Ten bounded source/native observations retain
 full diagnostics, left/right evaluation events and lambda materialization state;
-the unchanged five-method `TLCTest` passes in Java and Go. `SortSeq` checks that its first argument converts
+the unchanged five-method `TLCTest` passes in Java and Go.
+
+CombineFcn captures both values arrays before domain traversal. An explicit
+domain array takes precedence over a concurrently present interval field. A null
+domain requires the interval receiver and calls its size() once; iteration
+generates each integer directly instead of allocating an intermediate domain
+slice. Temporary vectors use Java's default capacity of ten. Left keys are
+appended before typed value-slot reads. Right keys compare only against the
+original left prefix in right-receiver equality order, and overlapping keys
+skip value-slot reads entirely. New right keys are appended before reading
+their value, retaining null/bounds failure precedence. No additional operator
+owner catch is added; registered MethodValue owns override adaptation.
+
+All 9,800 actual-runtime direct/registered observations agree outside 128
+stack-location differences. Cases include separate source flags, null/partial
+arrays, duplicate and nested domains, interval overflow/max-int boundaries,
+both domain representations, actual checked test206 lazy functions and cached
+records, plus post-call input/cache state. No semantic graphs or evaluator
+callbacks are fabricated. Focused original/native tests pass, including all
+five TLCTest methods; no persistent tests/fixtures or original-method credit
+are added. Concurrent field replacement, equality implementations beyond these
+inputs and allocation-resource behavior remain unproven.
+
+`SortSeq` checks that its first argument converts
 to a tuple, then checks that the comparator is an operator before returning for
 an empty sequence; Java's first-argument message says "natural number" and the
 Go port intentionally preserves that wording. `Permutations` and the finite-set

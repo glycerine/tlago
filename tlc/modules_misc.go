@@ -93,11 +93,11 @@ func MakeFcn(domain Value, elem Value) Value {
 }
 
 func CombineFcn(f1, f2 Value) (Value, error) {
-	if f1 == nil {
+	if isNil(f1) {
 		panic(NewNullPointerException())
 	}
 	fcn1 := asFcnRcdValue(f1)
-	if f2 == nil {
+	if isNil(f2) {
 		panic(NewNullPointerException())
 	}
 	// Java converts both operands before checking either conversion result.
@@ -109,26 +109,34 @@ func CombineFcn(f1, f2 Value) (Value, error) {
 	if fcn2 == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "@@", "function", ValuesPPR(f2))
 	}
-	dom := NewValueVec(0)
-	vals := NewValueVec(0)
-	appendFunctionPairs(dom, vals, fcn1)
+	dom := NewValueVec(10)
+	vals := NewValueVec(10)
+	vals1, vals2 := fcn1.Values, fcn2.Values
+	if err := appendFunctionPairs(dom, vals, fcn1.Domain, fcn1.Intv, vals1); err != nil {
+		return nil, err
+	}
 	len1 := dom.Len()
-	dom2 := fcn2.DomainAsValues()
-	for i, val := range dom2 {
-		found := false
-		for j := 0; j < len1; j++ {
-			eq, err := val.Equal(dom.At(j))
-			if err != nil {
+	dom2 := fcn2.Domain
+	if dom2 == nil {
+		intv := fcn2.Intv
+		if intv == nil {
+			panic(NewNullPointerException())
+		}
+		size, err := intv.Size()
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < size; i++ {
+			val := NewIntValue(intv.Low + int32(i))
+			if err := appendCombinedFunctionPair(dom, vals, len1, val, vals2, i); err != nil {
 				return nil, err
 			}
-			if eq {
-				found = true
-				break
-			}
 		}
-		if !found {
-			dom.Add(val)
-			vals.Add(fcn2.Values[i])
+	} else {
+		for i, val := range dom2 {
+			if err := appendCombinedFunctionPair(dom, vals, len1, val, vals2, i); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return NewFcnRcdValue(dom.ToArray(), vals.ToArray(), false), nil
@@ -296,12 +304,44 @@ func PermutationSubgroup(value Value) ([]*MVPerm, error) {
 	return perms, nil
 }
 
-func appendFunctionPairs(dom *ValueVec, vals *ValueVec, fcn *FcnRcdValue) {
-	domain := fcn.DomainAsValues()
+func appendFunctionPairs(dom *ValueVec, vals *ValueVec, domain []Value, intv *IntervalValue, values []Value) error {
+	if domain == nil {
+		if intv == nil {
+			panic(NewNullPointerException())
+		}
+		size, err := intv.Size()
+		if err != nil {
+			return err
+		}
+		for i := 0; i < size; i++ {
+			dom.Add(NewIntValue(intv.Low + int32(i)))
+			vals.Add(fcnTupleElement(values, i))
+		}
+		return nil
+	}
 	for i, value := range domain {
 		dom.Add(value)
-		vals.Add(fcn.Values[i])
+		vals.Add(fcnTupleElement(values, i))
 	}
+	return nil
+}
+
+func appendCombinedFunctionPair(dom *ValueVec, vals *ValueVec, leftSize int, value Value, values []Value, index int) error {
+	for j := 0; j < leftSize; j++ {
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
+		equal, err := value.Equal(dom.At(j))
+		if err != nil {
+			return err
+		}
+		if equal {
+			return nil
+		}
+	}
+	dom.Add(value)
+	vals.Add(fcnTupleElement(values, index))
+	return nil
 }
 
 type stringsObj struct{}

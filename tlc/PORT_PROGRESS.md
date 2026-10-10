@@ -37660,3 +37660,53 @@ retained; these fixes have focused verification. Handoff/architecture updated;
 goal active. SortSeq arbitrary comparator mutation and concurrent array
 replacement, single-worker concurrent writer ordering and allocation-resource
 behavior remain unproven.
+
+
+TLC.CombineFcn stored-domain continuation after verified 8794edc. Previous
+goal turn made progress; checkout clean. Earlier ten conversion-event cases
+cover operand order but do not cover stored-array traversal. Inspect pinned
+TLC.java: capture values arrays, explicit domain before interval fallback,
+size-once interval traversal, typed values reads after key append, and right
+membership only against the original left prefix. Native DomainAsValues
+materializes intervals, prefers interval fields over explicit arrays and
+silently treats a missing domain/interval as empty. Native indexing also leaks
+Go runtime panics instead of source typed null/bounds failures.
+
+Prepare ignored .codex-gotmp/tlc-combine-storage using actual function, tuple,
+record, scalar, interval and set constructors, actual public fields and reflected
+source intv field, plus checked test206 source metadata. Java MethodValue.get
+wraps the actual reflected CombineFcn method; Go uses the installed standard
+MethodValue. No semantic graphs or evaluator callbacks are fabricated. Source
+85339 terminal 241a8e and native 10540 terminal 0b99e6 exit zero, 5,832 rows.
+All rows execute; 2,664 raw differences are also actual semantic/diagnostic
+differences outside stack locations.
+
+Native now rejects null and typed-null operand receivers, preserves existing
+left-to-right conversion/validation, uses capacity-ten temporary vectors and
+captures both values arrays before traversal. Explicit domains take precedence
+over an interval field. Null domains require an interval receiver and its size;
+interval iteration generates source signed-int keys directly. Left append and
+right nonoverlap append precede typed value-slot reads. Right comparisons use
+the right key as receiver, retain typed null receiver failures only when a
+comparison occurs, and search only the original left prefix. Overlap skips
+value reads. Existing equality errors propagate without an operator owner catch.
+Native 51848 terminal dc0a5d exits zero: all 5,832 rows match exactly.
+
+Preserve initial logs as *-base.log. Expand to 35 operand shapes and capture
+post-call input/cache state. Add actual checked Def5 lazy functions, nil-parameter
+lambdas, cached short/missing-domain records, nonnormalized records, extra
+max-int interval failures and typed-null tuple/boolean operands. Source 37955
+terminal b7f3f1 and native 23988 terminal 56d93d exit zero: all 9,800 rows agree
+outside 128 stack-location differences. Canonicalization removes only stack
+locations and repeated-frame elision. Original earlier conversion-event evidence
+is retained, without claiming arbitrary lazy evaluation or field mutation.
+
+Focused original/native 76703 terminal 6b0b28 exits zero: root 9.386s and tlc
+2.567s. Selection includes unchanged five-method TLCTest (including both max-int
+interval orientations), test43, random-element models/replay, existing function
+combination assertions and worker/trace boundaries. No race run is needed for
+this sequential operator correction. No persistent tests/fixtures or original
+method credit. Prior broad baseline retained; this correction has focused
+verification. Handoff/architecture updated; goal active. Concurrent field
+replacement, equality variants beyond these inputs and larger allocation
+resource behavior remain unproven.
