@@ -33535,3 +33535,51 @@ Update current handoff and architecture contracts.
 Original full stress handle 27326 remains live (1324a8), latest saved progress
 1,436,756,385 / 2,147,483,648 (e0ee4c). No terminal result or long-method credit;
 preserve its original handle, memory budget, bounds and artifacts.
+
+
+2026-10-10: Implication, equivalence and CASE runtime metadata
+
+Previous goal turn made verified progress in ccfb63a. Pinned Tool.evalApplImpl
+uses detailed runtime failures for both implication operands, equivalence type
+checking, CASE guards and CASE with no true arm. Native still used generic
+EvalException without failing-expression/context references at these sites.
+
+Ignored .codex-gotmp/boolean-implication-case uses actual ExamplesEWD840
+TerminationDetection, Echo IsSymmetric's inner equivalence and legacy test14's
+first outer CASE. Bind existing symbols/formals to FALSE, TRUE, 1 and a string.
+The relation formal gets a two-entry FcnRcdValue over pairs <<1,2>> and <<2,1>>;
+quantifier formals x/y select these entries. No semantic graph mutation,
+fabricated evaluator, persistent test or fixture. Sixteen value pairs under two
+base contexts across three expressions yield 96 rows. Source completes in fresh
+processes (686118/5f8747/8193fa); native 58136 terminal 88b544 completes too.
+Initial strict count df9db3 detects native test14 startup print lines; filter
+observer keys on both sides instead of treating console output as parity rows.
+Preliminary comparison f935a3 exposes 66 differences, including a module-input
+mismatch subsequently found during verification.
+
+Use the source-aware boolean validator for implication operands and CASE guards;
+equivalence and no-arm CASE now return detailed runtime failures with the actual
+expression/context. Source CASE guard ownership differs from whole-CASE no-arm
+ownership. Implication short-circuit and equivalence's existing eager evaluation
+remain intact. First verification leaves 24 equivalence differences (44bc71):
+Java loaded Echo's local Relation.tla (line 22), while the native observer's
+convenience defaults selected packaged Relation (line 72). Align helper loading
+with LibraryPaths plus PreferLibraryModules; production CLI already uses the
+filename resolver. No production loader change is made. All 96 final rows match
+(4341 terminal 4b447d; comparison fe8d1c), including complete messages, runtime
+category/code/parameters, exact expression/context, frame depth and values.
+Java enhanced NPE messages disabled. Malformed CASE arrays, arbitrary second-
+operand exceptions and all coverage-model effects remain outside this observation.
+
+Focused evaluator/lookup/generated-liveness/function-context checks pass
+(4436 terminal c585d4; existing-checks.log, 0.018s). Six original model checks
+pass unchanged (46601 terminal c16788; original-models.log, 4.009s):
+LegacySuiteTest14, ExamplesEWD840, EchoDebugger, ConstantRank2AssertError,
+ValueSemanticsAssume and Debug02Debugger. The original EWD840 liveness workload
+retains its full bounds and settings. No race, broad suite, changed assertions,
+reduced bounds or original-method inventory credit. Update current handoff and
+architecture contracts.
+
+Original full stress handle 27326 remains live (20876e), latest saved progress
+1,444,855,134 / 2,147,483,648 (8b3432). No terminal result or long-method credit;
+preserve its original handle, memory budget, bounds and artifacts.

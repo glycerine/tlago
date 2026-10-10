@@ -7463,8 +7463,20 @@ branches share the same carrier construction. All 92 observations on actual B,
 MinimalSetOfNextStates and Github817 definitions agree for booleans, integer and
 string context bindings, short-circuit results and the reached box formula.
 This directly observes six boolean paths and the box path, not every temporal
-opcode. Implication, equivalence, CASE, quantified predicates, action-subscript
-checks and generation-specific boolean diagnostics remain separate comparisons.
+opcode. Implication and equivalence also retain detailed runtime failures on
+the whole application. Implication returns before evaluating Q when P is FALSE;
+equivalence evaluates both operands before checking their boolean types.
+CASE retains the offending guard for non-boolean errors and the whole application
+when no condition is true and no OTHER arm is available. All failures retain the
+exact incoming context, GENERAL code and null parameters. All 96 observations on
+ExamplesEWD840 TerminationDetection, Echo IsSymmetric and legacy test14's actual
+CASE agree across boolean/integer/string bindings and two base contexts, including
+short-circuit and nested-arm results. The observer uses the same local Relation
+module on both sides; the convenience loader's default packaged module would be
+a different input. This does not establish arbitrary second-operand exceptions,
+malformed CASE arrays or all coverage-model side effects. Quantified predicates,
+action-subscript checks and generation-specific boolean diagnostics remain
+separate comparisons.
 
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays

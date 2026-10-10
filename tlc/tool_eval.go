@@ -518,7 +518,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		arg1, err := requireBoolValue(value1, "Attempted to evaluate an expression of form P => Q when P was\n%s.\n%s", valueKindString(value1), SemanticString(expr))
+		arg1, err := requireBoolValueAt(value1, expr, c, "Attempted to evaluate an expression of form P => Q when P was\n%s.\n%s", valueKindString(value1), SemanticString(expr))
 		if err != nil {
 			return nil, err
 		}
@@ -529,7 +529,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return requireBoolValue(value2, "Attempted to evaluate an expression of form P => Q when Q was\n%s.\n%s", valueKindString(value2), SemanticString(expr))
+		return requireBoolValueAt(value2, expr, c, "Attempted to evaluate an expression of form P => Q when Q was\n%s.\n%s", valueKindString(value2), SemanticString(expr))
 	case OpcodeEquiv:
 		value1, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {
@@ -542,7 +542,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		arg1, ok1 := value1.(*BoolValue)
 		arg2, ok2 := value2.(*BoolValue)
 		if !ok1 || !ok2 {
-			return nil, newTLCError(ECGeneral, "Attempted to evaluate an expression of form P <=> Q when P or Q was not a boolean.\n%s", SemanticString(expr))
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to evaluate an expression of form P <=> Q when P or Q was not a boolean.\n%s", SemanticString(expr)), expr, c)
 		}
 		return NewBoolValue(arg1.Val == arg2.Val), nil
 	case OpcodeNoteq:
@@ -1173,7 +1173,7 @@ func (t *Tool) evalCase(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		if err != nil {
 			return nil, err
 		}
-		guard, err := requireBoolValue(value, "A non-boolean expression (%s) was used as a condition of a CASE. %s", valueKindString(value), SemanticString(pair.Args[0]))
+		guard, err := requireBoolValueAt(value, pair.Args[0], c, "A non-boolean expression (%s) was used as a condition of a CASE. %s", valueKindString(value), SemanticString(pair.Args[0]))
 		if err != nil {
 			return nil, err
 		}
@@ -1182,7 +1182,7 @@ func (t *Tool) evalCase(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		}
 	}
 	if other == nil {
-		return nil, newTLCError(ECGeneral, "Attempted to evaluate a CASE with no conditions true.\n%s", SemanticString(expr))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to evaluate a CASE with no conditions true.\n%s", SemanticString(expr)), expr, c)
 	}
 	return t.Eval(other, c, s0, s1, control, cm)
 }
