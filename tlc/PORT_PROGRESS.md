@@ -33965,3 +33965,61 @@ Original full stress session 27326 remains live on direct poll (f8edfd).
 Latest saved progress is 1,504,584,155 / 2,147,483,648 (3a6e0e), without a terminal
 result or long-method credit. Preserve its original handle, artifacts, budget
 and bounds.
+
+
+2026-10-10: Function-parameter construction, size and overflow boundaries
+
+Previous turn made verified progress in 4740378. Source FcnParams construction
+stores all supplied arrays and captures argLen, reading formals.length then each
+isTuples flag before an ordinary group's length. Native accepted null/short
+arrays and interpreted missing flags/groups as ordinary/empty parameters.
+Ignored .codex-gotmp/function-parameter-arrays uses legacy test209 S's actual
+formal nodes and evaluated domains, with copied runtime outer arrays. Compare
+eight formal shapes, six flag shapes and null/original domain arrays. Temporary
+runtime array replacement confirms retained references and stable captured
+argument counts. No persistent test/fixture, fabricated semantic node, evaluator
+callback or semantic graph mutation. Initial Java observer had ambiguous Context
+imports (07c801; native 72419 terminal 5784e5). Qualify the source Context and
+ensure copied outer arrays; setup failure earns no parity credit. Complete
+96-row baseline exposes 54 differences (26587 terminal 364c90; comparison b3eef6).
+Restore source typed null/index failures at each constructor read, preserving
+empty arrays, tuple-group skips and unchecked domain storage. Capture signed
+32-bit argLen as source. All 96 final constructor rows agree (7645 terminal
+f8f20c; comparison 97398c).
+
+Extend each surviving constructor case to Size. Source reads domain size before
+flags/formals and multiplies every domain at least once, even for an empty
+ordinary group. Native skipped such a domain and allowed null domain arrays.
+The same 96 combined rows expose 33 additional differences (15413 terminal
+880f73; comparison ed8bbc). Restore typed array read boundaries and source
+multiplication count. Overflow now retains runtime code 2178 and the single
+source diagnostic parameter. All 96 combined rows agree (51308 terminal 8acb0b;
+comparison c4214f).
+
+Add large interval 0..65535 as the third domain case, without enumerating or
+materializing a function. The 144 combined rows expose three formatting failure
+differences (39356 terminal a3b602; comparison 8ba299): source String's missing
+or empty formal reads throw typed indexed exceptions while native exposes Go
+runtime bounds panics. Restore source null/index boundaries in diagnostic String.
+All 144 final rows agree (78452 terminal c99c12; comparison 74f31c), including
+constructor failures, retained arrays, captured counts, sizes, runtime overflow
+category/message/code/parameters and failures that occur while formatting the
+overflow diagnostic. Java enhanced NPE messages disabled. Other String null
+sites follow source inspection; malformed arrays in runtime function binding,
+tuple-formal mismatches, arbitrary callbacks and concurrent mutation remain
+separate comparisons.
+
+Nine original model checks pass unchanged (23320 terminal 8ac1d4;
+original-models.log, 4.172s): EchoDebugger, LegacySuiteTest14/206/209,
+ValueSemanticsAssume, ConstantRank2AssertError, Debug02Debugger and
+ActionCompositionA/B. Original FcnLambdaValue/EvalControl and focused function-
+context, fallback rendering and lambda stream checks pass (2720 terminal 9dfd2c;
+existing-checks.log, 0.017s). After String corrections, the final selection passes
+again (2855 terminal c957ce; final-checks.log, root 4.137s and tlc 0.017s; outputs
+01feea). No broad suite, race, reduced bounds, changed assertions or original-
+method inventory credit. Update current handoff and implementation contracts.
+
+Original full stress session 27326 remains live on direct poll (5fb9ad).
+Latest saved progress is 1,518,779,649 / 2,147,483,648 (01feea), without a terminal
+result or long-method credit. Preserve original handle, artifacts, budget and
+bounds.

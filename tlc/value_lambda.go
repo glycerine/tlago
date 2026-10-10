@@ -18,11 +18,23 @@ func NewFcnParams(formals [][]*SymbolNode, isTuples []bool, domains []Value) *Fc
 		IsTuples: isTuples,
 		Domains:  domains,
 	}
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
 	for i := range params.Formals {
-		if i < len(params.IsTuples) && params.IsTuples[i] {
-			params.ArgLen++
+		if params.IsTuples == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(params.IsTuples) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(params.IsTuples)))
+		}
+		if params.IsTuples[i] {
+			params.ArgLen = int(int32(params.ArgLen) + 1)
 		} else {
-			params.ArgLen += len(params.Formals[i])
+			if params.Formals[i] == nil {
+				panic(NewNullPointerException())
+			}
+			params.ArgLen = int(int32(params.ArgLen) + int32(len(params.Formals[i])))
 		}
 	}
 	return params
@@ -45,22 +57,47 @@ func (p *FcnParams) Length() int {
 
 func (p *FcnParams) Size() (int, error) {
 	if p == nil {
-		return 0, nil
+		panic(NewNullPointerException())
 	}
 	size := int64(1)
-	for i, domain := range p.Domains {
+	for i := 0; ; i++ {
+		if p.Domains == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(p.Domains) {
+			break
+		}
+		domain := p.Domains[i]
+		if domain == nil {
+			panic(NewNullPointerException())
+		}
 		domainSize, err := domain.Size()
 		if err != nil {
 			return 0, err
 		}
+		if p.IsTuples == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(p.IsTuples) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(p.IsTuples)))
+		}
 		repeat := 1
-		if i >= len(p.IsTuples) || !p.IsTuples[i] {
-			repeat = len(p.Formals[i])
+		if !p.IsTuples[i] {
+			if p.Formals == nil {
+				panic(NewNullPointerException())
+			}
+			if i >= len(p.Formals) {
+				panic(NewArrayIndexOutOfBoundsException(i, len(p.Formals)))
+			}
+			if p.Formals[i] == nil {
+				panic(NewNullPointerException())
+			}
+			repeat = max(1, len(p.Formals[i]))
 		}
 		for j := 0; j < repeat; j++ {
 			size *= int64(domainSize)
 			if size < -2147483648 || size > 2147483647 {
-				return 0, newTLCErrorCode(ECTLCModuleOverflow, "the number of elements in:\n"+p.String())
+				return 0, NewTLCRuntimeException(ECTLCModuleOverflow, "the number of elements in:\n"+p.String())
 			}
 		}
 	}
@@ -82,21 +119,51 @@ func (p *FcnParams) Elements() ValueEnumeration {
 }
 
 func (p *FcnParams) String() string {
+	if p == nil || p.Domains == nil {
+		panic(NewNullPointerException())
+	}
 	if len(p.Domains) == 0 {
 		return ""
 	}
 	parts := make([]string, len(p.Domains))
 	for i, domain := range p.Domains {
+		if p.Formals == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(p.Formals) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(p.Formals)))
+		}
 		ids := p.Formals[i]
+		if p.IsTuples == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(p.IsTuples) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(p.IsTuples)))
+		}
+		if ids == nil {
+			panic(NewNullPointerException())
+		}
 		var lhs string
 		if p.IsTuples[i] {
 			names := make([]string, len(ids))
 			for j, id := range ids {
+				if id == nil {
+					panic(NewNullPointerException())
+				}
 				names[j] = id.String()
 			}
 			lhs = "<<" + strings.Join(names, ", ") + ">>"
 		} else {
+			if len(ids) == 0 {
+				panic(NewArrayIndexOutOfBoundsException(0, len(ids)))
+			}
+			if ids[0] == nil {
+				panic(NewNullPointerException())
+			}
 			lhs = ids[0].String()
+		}
+		if domain == nil {
+			panic(NewNullPointerException())
 		}
 		parts[i] = lhs + " \\in " + domain.String()
 	}

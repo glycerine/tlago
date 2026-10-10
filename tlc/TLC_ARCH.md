@@ -7569,6 +7569,25 @@ exception and exact message rather than a Go runtime bounds panic. Original
 Java assertions remain unchanged. Tuple-formal mismatch comparisons, malformed
 parameter arrays and arbitrary controls remain separate work.
 
+FcnParams construction retains the supplied formal/flag/domain arrays and captures
+its argument count with signed 32-bit addition. Null/short formal or flag arrays
+fail at the source read; a tuple flag skips the ordinary group's length read,
+and an empty formal array does not read flags. Domains are stored without being
+read. Size calculation loops over domains, reads each domain size before flags
+and ordinary formal lengths, and includes each domain at least once even when
+an ordinary group is empty. Overflow retains runtime code 2178 and the source
+single diagnostic parameter. Diagnostic String accesses retain typed null/index
+failures; these may replace the overflow error before it is constructed.
+All 144 combined constructor/size observations using legacy test209 S's actual
+formal nodes and evaluated domains agree across eight formal-array shapes,
+six flag-array shapes and null/original/large-interval domains. Temporary
+runtime array replacement confirms retained arrays and captured argument counts;
+the observer uses copied outer arrays and preserves semantic graphs. The large
+interval exercises overflow and formatting failures without enumeration or
+materialization. Other String failures follow source inspection; direct binding
+of malformed parameter arrays, tuple-formal mismatches, concurrent mutation and
+arbitrary size callbacks remain outside these observations.
+
 Membership generation with an unassigned variable and a non-enumerable domain
 retains a GENERAL detailed runtime failure with the whole predicate and incoming
 context. Initial generation already retained that contract; successor generation
