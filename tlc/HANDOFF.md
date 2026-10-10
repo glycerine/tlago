@@ -364,7 +364,11 @@ Tuple/record access and domains retain source null/index failures and diagnostic
 rendering order, including partial buffers and literal null record names.
 Function lookup retains interval/linear/binary read order and typed failures.
 Function rendering uses source array boundaries and UTF-16 name classification.
-Configured search-threshold startup reporting remains a separate check.
+Function search thresholds are captured once per runtime using Java integer
+decoding; nondefault startup messages use ToolIO. Isolated test loaders reset
+the captured property and empty function singleton. All 208 configuration/output
+observations and four reset observations agree; a focused race check confirms
+one startup message from concurrent construction.
 All bounded comparisons agree, including the prior lambda conversion and deep-
 normalization matrices; contracts and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.

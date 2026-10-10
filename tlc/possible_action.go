@@ -56,7 +56,7 @@ func (t *Tool) evalPossibleCheckNode(node *PossibleCheckNode) (Value, error) {
 func possibleCountsWith(name string, witnessed bool, current Value) (*FcnRcdValue, error) {
 	fcn := asFcnRcdValue(current)
 	if fcn == nil {
-		fcn = EmptyFcn
+		fcn = emptyFcnValue()
 	}
 	domain := append([]Value(nil), fcn.DomainAsValues()...)
 	values := append([]Value(nil), fcn.Values...)

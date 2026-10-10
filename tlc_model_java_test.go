@@ -146,6 +146,7 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	// Fresh tokens preserve source record normalization independent of test order.
 	tlc.UniqueStringInitialize()
 	tlc.InitializeIntValueStatics()
+	tlc.InitializeFcnRcdValueStatics()
 	tlc.InitializeActionItemListStatics()
 	tlc.InitializeFPIntSetStatics()
 	// Ant forks each concrete model test class into a fresh JVM. The source

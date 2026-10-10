@@ -8065,10 +8065,28 @@ otherwise JVM optimization introduces message-less cached exceptions. Input/raw
 result state and partial buffers are compared without incidental rendering.
 The previous 11,220 permutation and 15,686 tuple/record access observations still
 agree. No original-test credit, broad Unicode Character-table claim, arbitrary
-callback or general subclass/overload claim is added. Configured-threshold startup
-reporting, dynamic configuration semantics, other Unicode classifications and
-concurrent mutation remain separate parity work; tagged observation rows do not
-establish startup console-output equivalence.
+callback or general subclass/overload claim is added. Other Unicode
+classifications and concurrent value mutation remain separate parity work.
+
+Function-record class initialization captures the search threshold once using
+`Integer.getInteger` decoding, including signed int bounds, hex/octal prefixes,
+BMP digits and invalid-value fallback. Nondefault values produce the exact
+`FcnRcdValue#threshold is: N` line on ToolIO's current output stream. Construction,
+public method use and production empty-singleton retrieval trigger lazy native
+initialization, so package loading does not consume configuration before TLC
+sets it. Later property changes and ToolIO resets neither change the threshold
+nor repeat its message. A fresh isolated loader explicitly resets the captured
+property and empty singleton; ordinary checker runs do not reset them.
+All 208 source/native observations agree across 26 property forms, system/tool
+output modes and explicit/interval/empty/production-empty-bag first use. Four native resets match four
+fresh source runtimes. A short race-enabled observer with 64 simultaneous
+constructors records exactly one startup message. The 80,784 lookup/rendering
+rows still agree. No persistent test or original-test credit is added. Go cannot
+intercept a caller's bare read of its exported `EmptyFcn` variable or direct
+struct allocation; production singleton reads use the initializing helper, and
+public value methods initialize compatibility literals on use. General JVM
+classloading, arbitrary stream callbacks and concurrent loader resets are not
+established by these observations.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

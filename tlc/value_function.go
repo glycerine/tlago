@@ -1028,18 +1028,48 @@ type FcnRcdValue struct {
 
 var EmptyFcn = &FcnRcdValue{Domain: []Value{}, Values: []Value{}, IsNorm: true}
 
+var fcnRcdStatics struct {
+	once      sync.Once
+	threshold int
+}
+
+// Go loads packages before TLC configures its runtime. Defer source class
+// initialization until construction or use, including the empty singleton.
+func emptyFcnValue() *FcnRcdValue {
+	fcnRcdLinearSearchThreshold()
+	return EmptyFcn
+}
+
+// InitializeFcnRcdValueStatics represents a fresh Java classloader. Ordinary
+// checker runs retain the captured property and the empty function singleton.
+// Like the other classloader resets, this requires an idle runtime.
+func InitializeFcnRcdValueStatics() {
+	fcnRcdStatics.once = sync.Once{}
+	fcnRcdStatics.threshold = 0
+	EmptyFcn = &FcnRcdValue{Domain: []Value{}, Values: []Value{}, IsNorm: true}
+}
+
 func NewFcnRcdValue(domain []Value, values []Value, isNorm bool, cms ...CostModel) *FcnRcdValue {
+	fcnRcdLinearSearchThreshold()
 	return &FcnRcdValue{BaseValue: newBaseValue(cms...), Domain: domain, Values: values, IsNorm: isNorm}
 }
 
 func NewFcnRcdIntervalValue(intv *IntervalValue, values []Value, cms ...CostModel) *FcnRcdValue {
+	fcnRcdLinearSearchThreshold()
 	return &FcnRcdValue{BaseValue: newBaseValue(cms...), Intv: intv, Values: values, IsNorm: true}
 }
 
-func (v *FcnRcdValue) Kind() ValueKind    { return FcnRcdValueKind }
-func (v *FcnRcdValue) KindString() string { return v.KindStringFor(v.Kind()) }
+func (v *FcnRcdValue) Kind() ValueKind {
+	fcnRcdLinearSearchThreshold()
+	return FcnRcdValueKind
+}
+func (v *FcnRcdValue) KindString() string {
+	fcnRcdLinearSearchThreshold()
+	return v.KindStringFor(v.Kind())
+}
 
 func (v *FcnRcdValue) Compare(other Value) (resultInt int, err error) {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
 	fcn := asFcnRcdValue(other)
 	if fcn == nil {
@@ -1149,6 +1179,7 @@ func (v *FcnRcdValue) compareToInterval(fcn *FcnRcdValue) (int, error) {
 }
 
 func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
 	fcn := asFcnRcdValue(other)
 	if fcn == nil {
@@ -1238,6 +1269,7 @@ func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
 }
 
 func (v *FcnRcdValue) Member(elem Value) (resultBool bool, err error) {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
 	if elem == nil {
 		panic(NewNullPointerException())
@@ -1245,9 +1277,13 @@ func (v *FcnRcdValue) Member(elem Value) (resultBool bool, err error) {
 	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the function %s", ValuesPPR(elem), ValuesPPR(v)))
 }
 
-func (v *FcnRcdValue) IsFinite() (bool, error) { return true, nil }
+func (v *FcnRcdValue) IsFinite() (bool, error) {
+	fcnRcdLinearSearchThreshold()
+	return true, nil
+}
 
 func (v *FcnRcdValue) Apply(arg Value) (resultValue Value, err error) {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
 	result, err := v.Select(arg)
 	if err != nil {
@@ -1264,6 +1300,7 @@ func (v *FcnRcdValue) Apply(arg Value) (resultValue Value, err error) {
 }
 
 func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
 	if v.Intv != nil {
 		iv, ok := arg.(*IntValue)
@@ -1331,15 +1368,22 @@ func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
 }
 
 func fcnRcdLinearSearchThreshold() int {
-	if value, ok := tlcLookupSystemProperty(fcnRcdLinearSearchThresholdProperty); ok {
-		if parsed, ok := javaIntProperty(value); ok {
-			return parsed
+	fcnRcdStatics.once.Do(func() {
+		fcnRcdStatics.threshold = defaultFcnRcdLinearSearchThreshold
+		if value, ok := tlcLookupSystemProperty(fcnRcdLinearSearchThresholdProperty); ok {
+			if parsed, ok := javaDecodeIntProperty(value); ok {
+				fcnRcdStatics.threshold = parsed
+			}
 		}
-	}
-	return defaultFcnRcdLinearSearchThreshold
+		if fcnRcdStatics.threshold != defaultFcnRcdLinearSearchThreshold {
+			ToolIOPrintln(fmt.Sprintf("FcnRcdValue#threshold is: %d", fcnRcdStatics.threshold))
+		}
+	})
+	return fcnRcdStatics.threshold
 }
 
 func (v *FcnRcdValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
 	if ex == nil {
 		panic(NewNullPointerException())
@@ -1402,6 +1446,7 @@ func (v *FcnRcdValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error)
 }
 
 func (v *FcnRcdValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
 	if exs == nil {
 		panic(NewNullPointerException())
@@ -1421,6 +1466,7 @@ func (v *FcnRcdValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err er
 }
 
 func (v *FcnRcdValue) DomainValue() Value {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, nil)
 	if v.Intv != nil {
 		return v.Intv
@@ -1435,6 +1481,7 @@ func (v *FcnRcdValue) DomainValue() Value {
 }
 
 func (v *FcnRcdValue) DomainAsValues() []Value {
+	fcnRcdLinearSearchThreshold()
 	if v.Intv != nil {
 		return v.Intv.AsValues()
 	}
@@ -1442,6 +1489,7 @@ func (v *FcnRcdValue) DomainAsValues() []Value {
 }
 
 func (v *FcnRcdValue) Size() (resultInt int, err error) {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, &err)
 	if err := v.normalizeFcn(); err != nil {
 		return 0, err
@@ -1453,6 +1501,7 @@ func (v *FcnRcdValue) Size() (resultInt int, err error) {
 }
 
 func (v *FcnRcdValue) NonNormalizedSize() int {
+	fcnRcdLinearSearchThreshold()
 	if v.Values == nil {
 		panic(NewNullPointerException())
 	}
@@ -1460,6 +1509,7 @@ func (v *FcnRcdValue) NonNormalizedSize() int {
 }
 
 func (v *FcnRcdValue) ToTuple() *TupleValue {
+	fcnRcdLinearSearchThreshold()
 	if v.Intv != nil {
 		if v.Intv.Low != 1 {
 			size, err := v.Intv.Size()
@@ -1492,6 +1542,7 @@ func (v *FcnRcdValue) ToTuple() *TupleValue {
 }
 
 func (v *FcnRcdValue) ToRecord() *RecordValue {
+	fcnRcdLinearSearchThreshold()
 	if v.Domain == nil {
 		return nil
 	}
@@ -1516,6 +1567,7 @@ func (v *FcnRcdValue) ToRecord() *RecordValue {
 }
 
 func (v *FcnRcdValue) Normalize() Value {
+	fcnRcdLinearSearchThreshold()
 	if err := v.normalizeFcn(); err != nil {
 		panic(err)
 	}
@@ -1580,6 +1632,7 @@ func (v *FcnRcdValue) normalizeFcn() (err error) {
 }
 
 func (v *FcnRcdValue) DeepNormalize() {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, nil)
 	if v.Values == nil {
 		panic(NewNullPointerException())
@@ -1596,6 +1649,7 @@ func (v *FcnRcdValue) DeepNormalize() {
 }
 
 func (v *FcnRcdValue) IsDefined() bool {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, nil)
 	if v.Values == nil {
 		panic(NewNullPointerException())
@@ -1623,9 +1677,13 @@ func (v *FcnRcdValue) IsDefined() bool {
 	return defined
 }
 
-func (v *FcnRcdValue) IsNormalized() bool { return v.IsNorm }
+func (v *FcnRcdValue) IsNormalized() bool {
+	fcnRcdLinearSearchThreshold()
+	return v.IsNorm
+}
 
 func (v *FcnRcdValue) DeepCopy() Value {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, nil)
 	if v.Values == nil {
 		panic(NewNullPointerException())
@@ -1649,6 +1707,7 @@ func (v *FcnRcdValue) DeepCopy() Value {
 }
 
 func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, nil)
 	if err := v.normalizeFcn(); err != nil {
 		panic(err)
@@ -1688,6 +1747,7 @@ func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
 }
 
 func (v *FcnRcdValue) Permute(perm *MVPerm) Value {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, nil)
 	if err := v.normalizeFcn(); err != nil {
 		panic(err)
@@ -1731,10 +1791,12 @@ func (v *FcnRcdValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *FcnRcdValue) String() string {
+	fcnRcdLinearSearchThreshold()
 	return ValueToString(v, "", true)
 }
 
 func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	fcnRcdLinearSearchThreshold()
 	defer catchValueFailure(v, nil)
 	if v.Values == nil {
 		panic(NewNullPointerException())

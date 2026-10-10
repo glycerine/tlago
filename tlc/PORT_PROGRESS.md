@@ -35285,3 +35285,46 @@ No race, broad suite, shortened workload or changed original assertions. Logs
 remain under function-access. Handoff and architecture updated. Latest full
 stress saved progress is 1,720,406,490 / 2,147,483,648 (02292e), without terminal
 result or long-method credit. Preserve original handle/artifacts/bounds.
+
+
+### 2026-10-10: Resume after outage; function search threshold initialization
+
+Confirmed clean HEAD c36e872 and recovered the pending threshold task from the
+handoff. Directly polled full original stress session 27326; it remains live.
+Latest saved progress is 1,734,603,913 / 2,147,483,648 (4620bb), without a terminal
+result or original long-method credit. Preserve its handle, bounds and artifacts.
+
+Source FcnRcdValue captures Integer.getInteger once at class initialization and
+prints a nondefault threshold through ToolIO. Native selection previously reread
+the property on every lookup, used decimal/whitespace-permitting parsing and
+omitted reporting. Added lazy, synchronized initialization using the existing
+Java Integer.decode implementation and exact ToolIO output. Constructors and
+public methods initialize the runtime; production empty-function retrieval also
+initializes before returning the singleton. This preserves package startup before
+runtime configuration. Isolated original-model/simulation test loaders reset the
+captured property and empty singleton; ordinary checker runs retain them. Loader
+reset requires an idle runtime, matching existing static-reset conventions.
+
+Ignored function-threshold observer uses actual Java/native constructors, runtime
+value arrays and ToolIO streams. It mutates the property after interval, explicit
+or empty-singleton first use and distinguishes binary/linear traversal via a
+null leading domain entry. All 156 comparisons match across 26 property forms
+and two output modes (1f4a8f). Forms include absent/default, signs, hex/octal,
+signed-int boundaries, BMP digits, whitespace and malformed/overflow fallback.
+After ToolIO reset, construction and lookup do not repeat startup reporting.
+Four isolated native resets match four fresh Java runtimes (915899). Another 52
+comparisons cover production Bags.EmptyBag first use; all match (73a783), bringing
+configuration/output observations to 208. A short race-enabled observer runs
+64 simultaneous constructors and records one startup message without a race
+(7c96da, dbc056). No persistent test/fixture or original-test credit is added.
+Bare external Go variable reads/direct struct allocations cannot intercept Java
+classloading; production reads use the helper and compatibility literals initialize
+on public method use. General JVM loading/stream callbacks remain outside scope.
+
+Existing original value/model/context/EXCEPT/stream/rendering checks pass before
+and after routing production empty-singleton reads. Final selection also covers
+original Sequences and SimulationWorker cases plus existing permutation checks;
+session 53494 exits zero (bb0f27), root 5.498s and tlc 2.511s (4620bb). The prior
+40,392 function-access rows per default/threshold-2 mode still match Java, 80,784
+total (dbc056). No long workload is shortened or run with race. Handoff and
+architecture now record threshold capture/reporting and the remaining boundaries.

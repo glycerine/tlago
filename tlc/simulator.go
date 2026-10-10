@@ -383,7 +383,7 @@ func (s *Simulator) GetAllValues() Value {
 		}
 	}
 	if s == nil || len(s.Workers) == 0 || s.Workers[0] == nil {
-		return EmptyFcn
+		return emptyFcnValue()
 	}
 	localValues := s.Workers[0].LocalValues
 	domain := make([]Value, 0, len(localValues))
@@ -453,7 +453,7 @@ func (s *Simulator) GetAllNamedRegisterValues() Value {
 		}
 	}
 	if s == nil || len(s.Workers) == 0 || s.Workers[0] == nil || s.Workers[0].NamedRegisters == nil {
-		return EmptyFcn
+		return emptyFcnValue()
 	}
 	domain := make([]Value, 0, s.Workers[0].NamedRegisters.Len())
 	values := make([]Value, 0, s.Workers[0].NamedRegisters.Len())

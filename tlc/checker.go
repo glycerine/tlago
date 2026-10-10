@@ -209,7 +209,7 @@ func (c *AbstractChecker) GetAllValue(idx int) []Value {
 
 func (c *AbstractChecker) GetAllValues() Value {
 	if c == nil || len(c.Workers) == 0 || c.Workers[0] == nil {
-		return EmptyFcn
+		return emptyFcnValue()
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -285,7 +285,7 @@ func (c *AbstractChecker) SetAllNamedWorkerValues(key *UniqueString, values []Va
 
 func (c *AbstractChecker) GetAllNamedRegisterValues() Value {
 	if c == nil || len(c.Workers) == 0 || c.Workers[0] == nil || c.Workers[0].NamedRegisters == nil {
-		return EmptyFcn
+		return emptyFcnValue()
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()

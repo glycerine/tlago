@@ -148,7 +148,7 @@ func Permutations(value Value) (*SetEnumValue, error) {
 
 	length := set.Elems.Len()
 	if length == 0 {
-		return NewSetEnumValue([]Value{EmptyFcn}, true), nil
+		return NewSetEnumValue([]Value{emptyFcnValue()}, true), nil
 	}
 
 	factorial := 1

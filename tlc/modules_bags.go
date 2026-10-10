@@ -7,7 +7,7 @@ const (
 )
 
 func EmptyBag() Value {
-	return EmptyFcn
+	return emptyFcnValue()
 }
 
 func IsABag(value Value) (*BoolValue, error) {
@@ -165,7 +165,7 @@ func BagUnion(set Value) (Value, error) {
 	}
 	setEnum.Normalize()
 	if setEnum.Elems.Len() == 0 {
-		return EmptyFcn, nil
+		return emptyFcnValue(), nil
 	}
 	if setEnum.Elems.Len() == 1 {
 		return setEnum.Elems.At(0), nil

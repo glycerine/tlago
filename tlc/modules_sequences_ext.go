@@ -23,7 +23,7 @@ func SequencesExtSetToSeqs(value Value) (Value, error) {
 	elems := set.Elems
 	length := elems.Len()
 	if length == 0 {
-		return NewSetEnumValue([]Value{EmptyFcn}, true), nil
+		return NewSetEnumValue([]Value{emptyFcnValue()}, true), nil
 	}
 
 	factorial := 1

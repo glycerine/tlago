@@ -25,6 +25,7 @@ func javaSimulationTool(t *testing.T, fixture, root, config string, continuation
 	oldView, oldPoly := tlc.UseView(), tlc.FP64IrredPoly()
 	tlc.UniqueStringInitialize()
 	tlc.InitializeIntValueStatics()
+	tlc.InitializeFcnRcdValueStatics()
 	tlc.InitializeActionItemListStatics()
 	tlc.InitializeFPIntSetStatics()
 	tlc.SetMainChecker(nil)
