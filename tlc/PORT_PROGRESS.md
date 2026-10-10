@@ -37585,3 +37585,78 @@ stream, override and tool assertions remain unchanged. No original-method
 credit. Prior broad baseline retained; this correction has focused verification.
 Handoff/architecture updated; goal active. Null RNG restoration, concurrent
 mutation and larger allocation-resource behavior remain unproven.
+
+
+TLC.SortSeq continuation after verified ce91f93. Previous goal turn made
+progress; checkout clean. Inspect actual source conversion, comparator and
+comparison-result dereferences. Native tolerates null input/comparator/results
+and nil tuple arrays, rereads the tuple field and allocates fresh comparator
+arguments for each comparison. Preserve the source insertion algorithm and its
+captured array/argument lifetimes rather than relying on normal-sort agreement.
+
+Prepare ignored .codex-gotmp/tlc-sort-seq with actual tuple/function/record/scalar
+constructors, checked test206 source nodes and actual OpRcdValue tables. Java
+registered calls use MethodValue.get for the reflected SortSeq method; native
+calls use the installed standard MethodValue. No semantic graphs or evaluator
+callbacks are fabricated. Java 839837 and native 7224 terminal 1178f4 exit zero,
+1,120 direct/registered rows with separate input/comparator source flags.
+344 raw differences occur; 296 remain outside stack locations.
+
+Native requires the input receiver before conversion, rejects null comparators
+at their diagnostic dereference, and requires the captured tuple elements after
+comparator validation. Null comparison results fail before constructing a
+boolean-function argument error. Reuse one two-slot argument array throughout
+the insertion loop; update the right slot only when another comparison remains
+and read the left slot for final insertion. Empty input returns its converted
+tuple; nonempty results remain new tuples. Existing owner catches and registered
+method adaptation are retained, without a synthetic SortSeq catch.
+
+Native 8830 terminal bd9316 exits zero: all 1,120 rows agree outside 48
+stack-location differences. Preserve logs as *-base.log. Expand to 16 input
+shapes and 15 comparator tables, adding separately constructed equal strings,
+converted interval functions and exact output/input reference associations.
+Java 23182 terminal ec2f86 and native 54574 terminal e15b78 exit zero: all
+1,920 rows agree outside 140 stack-location differences. Direct/registered
+errors, result values, empty identity and duplicate reference order agree.
+Canonicalization removes only stack locations and repeated-frame elision.
+Arbitrary comparator mutation, concurrent array replacement and allocation
+resource failures remain unproven. No persistent tests/fixtures or original
+method credit are added. Focused original tests include unchanged test43,
+which exercises SortSeq with less-than/less-or-equal and empty/singleton inputs;
+terminal verification receipt follows below. Goal active.
+
+
+Focused SortSeq verification 80020 terminal d63459 exits one. Preserve full
+output as .codex-gotmp/tlc-sort-seq/focused-before-trace-fix.log. Root times out
+at 180.041s in original TestJavaRandomElementT4; package tlc passes 2.457s.
+The timeout dump proves a native lock inversion: worker goroutine 284 holds
+worker 0's file mutex while waiting in TLCTrace.MirrorNextStateForWorker;
+reconstruction goroutine 287 holds the embedded shared trace mutex while
+waiting in Worker.ReadStateRecord for worker 0. Do not classify this as a green
+run or a SortSeq assertion failure. The original model does not call SortSeq.
+
+Inspect pinned Worker.java synchronized writeState/readStateRecord and actual
+ConcurrentTLCTrace reconstruction. Java writes only its worker-owned file;
+Go's extra shared mirror callback introduces the reverse lock nesting. Split
+worker record writing into private locked helpers and publish the native mirror
+only after those helpers return successfully. Preserve file/metadata/count
+mutation order, partial-write errors, writer owners and mirror suppression.
+Do not release the source reconstruction monitor or invent a fallback trace.
+The native worker is its file's single writer; arbitrary concurrent writers on
+one worker remain unproven.
+
+Rerun original selection with worker/trace ownership, partial-write, lifecycle,
+reconstruction, cursor and source-boundary checks added. Session 30224 terminal
+562280 exits zero: root 9.714s, tlc 2.491s. Original test43, random-element
+models and trace replay pass with all assertions unchanged. Targeted original
+RandomElementT4 repeats all original setup/bounds/assertions ten times; 81870
+terminal de2059 exits zero in 2.898s. Focused race selects only this short
+four-worker original once, without long workloads; 35939 terminal e44ca1 exits
+zero in 3.482s. Logs are focused.log, four-worker-repeat.log and
+four-worker-race.log in the ignored observer directory.
+
+No persistent tests/fixtures or original-method credit. Prior broad baseline
+retained; these fixes have focused verification. Handoff/architecture updated;
+goal active. SortSeq arbitrary comparator mutation and concurrent array
+replacement, single-worker concurrent writer ordering and allocation-resource
+behavior remain unproven.

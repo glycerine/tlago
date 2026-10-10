@@ -1,23 +1,35 @@
 package tlc
 
 func SortSeq(seq Value, cmp Value) (Value, error) {
+	if isNil(seq) {
+		panic(NewNullPointerException())
+	}
 	tuple := asTupleValue(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SortSeq", "natural number", ValuesPPR(seq))
 	}
+	if isNil(cmp) {
+		panic(NewNullPointerException())
+	}
 	if !isOperatorValue(cmp) {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SortSeq", "operator", ValuesPPR(cmp))
 	}
-	if len(tuple.Elems) == 0 {
+	elems := tuple.Elems
+	if elems == nil {
+		panic(NewNullPointerException())
+	}
+	if len(elems) == 0 {
 		return tuple, nil
 	}
-	newElems := make([]Value, len(tuple.Elems))
-	newElems[0] = tuple.Elems[0]
-	for i := 1; i < len(tuple.Elems); i++ {
+	args := make([]Value, 2)
+	newElems := make([]Value, len(elems))
+	newElems[0] = elems[0]
+	for i := 1; i < len(elems); i++ {
 		j := i
-		arg0 := tuple.Elems[i]
+		args[0] = elems[i]
+		args[1] = newElems[j-1]
 		for j > 0 {
-			less, err := compareWithOperator(cmp, arg0, newElems[j-1])
+			less, err := compareWithOperator(cmp, args)
 			if err != nil {
 				return nil, err
 			}
@@ -26,16 +38,22 @@ func SortSeq(seq Value, cmp Value) (Value, error) {
 			}
 			newElems[j] = newElems[j-1]
 			j--
+			if j > 0 {
+				args[1] = newElems[j-1]
+			}
 		}
-		newElems[j] = arg0
+		newElems[j] = args[0]
 	}
 	return NewTupleValue(newElems), nil
 }
 
-func compareWithOperator(cmp Value, left Value, right Value) (bool, error) {
-	res, err := EvalOperatorValue(cmp, []Value{left, right}, EvalClear)
+func compareWithOperator(cmp Value, args []Value) (bool, error) {
+	res, err := EvalOperatorValue(cmp, args, EvalClear)
 	if err != nil {
 		return false, err
+	}
+	if isNil(res) {
+		panic(NewNullPointerException())
 	}
 	boolValue, ok := res.(*BoolValue)
 	if !ok {

@@ -530,6 +530,19 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 	if w == nil {
 		panic(NewNullPointerException())
 	}
+	if err := w.writeInitStateRecord(initialState, fp); err != nil {
+		return err
+	}
+	// The native mirror takes the shared trace monitor. Release the worker's
+	// file monitor first: reconstruction holds the trace monitor while reading
+	// worker records, so nesting these locks in reverse order can deadlock.
+	if !w.DisableTraceMirror && w.Checker != nil && w.Checker.Trace != nil {
+		w.Checker.Trace.MirrorInitStateForWorker(w.ID, initialState, fp, initialState.UID)
+	}
+	return nil
+}
+
+func (w *Worker) writeInitStateRecord(initialState *TLCStateMut, fp uint64) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.traceRAF == nil {
@@ -554,9 +567,6 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 	}
 	initialState.WorkerID = int16(w.ID)
 	initialState.UID = ptr
-	if !w.DisableTraceMirror && w.Checker != nil && w.Checker.Trace != nil {
-		w.Checker.Trace.MirrorInitStateForWorker(w.ID, initialState, fp, ptr)
-	}
 	return nil
 }
 
@@ -564,6 +574,16 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 	if w == nil {
 		panic(NewNullPointerException())
 	}
+	if err := w.writeNextStateRecord(curState, succFP, succState); err != nil {
+		return err
+	}
+	if !w.DisableTraceMirror && w.Checker != nil && w.Checker.Trace != nil {
+		w.Checker.Trace.MirrorNextStateForWorker(w.ID, curState, succFP, succState, action, succState.UID)
+	}
+	return nil
+}
+
+func (w *Worker) writeNextStateRecord(curState *TLCStateMut, succFP uint64, succState *TLCStateMut) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if curState == nil {
@@ -598,9 +618,6 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 	succState.UID = ptr
 	succState.SetPredecessor(curState)
 	w.UnseenSuccessorStates++
-	if !w.DisableTraceMirror && w.Checker != nil && w.Checker.Trace != nil {
-		w.Checker.Trace.MirrorNextStateForWorker(w.ID, curState, succFP, succState, action, ptr)
-	}
 	return nil
 }
 

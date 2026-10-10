@@ -175,6 +175,12 @@ prefix mismatch remains an explicit source limitation in existing deterministic
 replay evidence; keep original assertions. `TLCExt!Trace` now requires Java's
 checker/current-state owners instead of returning fallback traces. All 40 owner
 and repeated-state observations match; 15 focused original methods pass.
+Worker trace writes release their file lock before updating the native shared
+trace mirror. This removes the observed four-worker deadlock against concurrent
+reconstruction while preserving file-write and state-publication order. The
+focused original tests, ten repetitions of `RandomElementT4` and its short
+race check pass; detailed
+receipts and concurrency-check limits are in the progress log.
 Incomplete `TLCExt!Trace` states now raise the source coded runtime exception
 with its parameters and formatting event; evaluator wrapping retains the full
 method signature. All 48 diagnostic observations and 15 original methods pass.
@@ -569,6 +575,11 @@ All 1,220 observations agree outside 55 stack-location differences; focused
 original tests pass, including random-element models and trace replay. No new
 original-method credit. Null RNG restoration, concurrent mutation and larger
 allocation-resource behavior remain unproven.
+`TLC.SortSeq` retains null receiver/comparator/result failures, requires the
+tuple's element array after comparator validation, captures that array and
+reuses the comparison arguments. All 1,920 observations agree outside 140
+stack-location differences, including duplicate string identity/order. See
+the progress log for focused original-test receipts and remaining limits.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

@@ -7017,6 +7017,21 @@ paths of `RandomElement` report `TLC_MODULE_APPLYING_TO_WRONG_VALUE` only when
 conversion returns no enumerated set. A thrown conversion failure propagates
 unchanged, including from a function-set domain. These callers use the nullable
 conversion helper rather than the helper that synthesizes an error for no result.
+SortSeq requires its input receiver before tuple conversion. It validates the
+comparator before requiring/capturing the tuple elements array, so a null array
+does not mask a nonoperator comparator error. Null comparators and null results
+fail at their source dereference; direct calls do not add method wrapping.
+The insertion loop reuses one argument array, updates its right slot only while
+another comparison remains, and reads its left slot for the final insertion.
+Nonempty results use a fresh tuple; an empty input returns the converted tuple.
+The actual-runtime observer covers 1,920 direct/registered cases with separate
+input/comparator source flags, empty/singleton/duplicate/null tuples, converted
+functions/records and actual OpRcdValue comparators. All agree outside 140
+stack-location differences, including reference order of separately constructed
+equal strings. No evaluator callbacks or semantic graphs are fabricated, and no
+persistent tests/fixtures or original-method credit are added. Arbitrary
+comparator mutation, concurrent array replacement and resource failures remain
+unproven.
 Permutations rejects null input receivers, including a typed-null native
 enumerated-set pointer. After normalization it captures the ValueVec object,
 reads its logical size, and checks the domain array allocation before initializing
@@ -15649,7 +15664,16 @@ short paths do not access workers. Source record collection rereads the end reco
 under the trace monitor, stops at the initial or requested-fingerprint boundary
 and retains the monitor through state reconstruction. Predecessor access reads
 the selected record even when its pointer is the initial-state sentinel; the
-caller controls traversal termination. Checkpoint begin, commit and recovery
+caller controls traversal termination. Worker initial/successor record writes
+retain the worker file monitor through file access, metadata publication and
+successor accounting, then release it before updating the native shared trace
+mirror. Source Java writes have no mirror callback. Holding the worker monitor
+across that callback inverted the reconstruction monitor order and deadlocked
+an actual four-worker RandomElement run. Failed writes still preserve source
+partial mutations and never publish a mirror record. Focused original tests,
+worker/trace failure checks and ten original four-worker repetitions pass. This
+does not establish ordering for arbitrary concurrent writers on one worker.
+Checkpoint begin, commit and recovery
 require every worker in source order; failure preserves earlier mutations and
 stops before later workers or marker publication. Begin holds the trace monitor,
 as does level reporting. Concurrent levels use worker maxima with a minimum of
