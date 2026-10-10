@@ -33412,3 +33412,39 @@ Update current handoff and architecture contracts.
 Original full stress handle 27326 remains live (7af100), latest saved progress
 1,415,018,452 / 2,147,483,648 (b5947f). No terminal result or long-method credit;
 preserve its original handle, memory budget, bounds and artifacts.
+
+
+2026-10-10: Quantifier context factory array traversal
+
+Previous goal turn made verified progress in 849f093. Java Tool.contexts sizes
+and fills bindings by formal-group count; native instead traversed domain count,
+skipped missing tuple metadata and imposed empty-group errors absent from source.
+Ignored .codex-gotmp/quantifier-array-boundaries observes C's actual expensive
+inner quantifier. Its original outer domain evaluated with N=1 supplies the
+finite bound value. Seventeen original/null/empty/short/excess/tuple shapes,
+three incoming contexts and normal/randomized order yield 102 factory rows.
+Actual-node fields are restored after each observation. No invented semantic
+graph, callback, persistent test or fixture. Initial Go observer had one extra
+closing brace (29edab); correct the helper without production changes. Source
+9f1c60 and complete native baseline 62cbae expose 52 differences (1ab72e).
+
+Capture formal groups, tuple flags and domains, then follow source sizing and
+construction passes. Use fixed arrays with source fill order. Preserve typed
+null/index failures, empty formal/group behavior, tuple groups and ignored excess
+domains. Non-enumerable domains retain the existing source/context runtime error.
+All 102 final rows match (67675 terminal c88f3f; comparison 825af9), including
+creation/done state, full error metadata, expression identity and frame depth.
+Java enhanced NPE messages disabled. Mid-evaluation graph mutation, allocation
+overflow and subsequent malformed tuple-enumerator calls remain unproven.
+
+Existing context/function-context/bounded-CHOOSE/generated-liveness checks pass
+(39394 terminal 906b7f; existing-checks.log, 0.018s). Ten original model checks
+pass unchanged (66995 terminal ade0b6; original-models.log, 5.078s): CCoverage,
+ICoverage, EmptyExistentialQuantifier, LegacySuiteTest215/216/219,
+ConstantContextTLCCache, ConstantRank1TLCEval, ConstantRank2AssertError and
+ValueSemanticsAssume. No changed assertions, broad suite, race, reduced bounds
+or original-method inventory credit. Update handoff and architecture contracts.
+
+Original full stress handle 27326 remains live (0e031b), latest saved progress
+1,421,849,659 / 2,147,483,648 (9ca979). No terminal result or long-method credit;
+preserve its original handle, memory budget, bounds and artifacts.

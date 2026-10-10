@@ -7454,6 +7454,19 @@ nil/empty contexts and original/null/empty/replaced child arrays. This does not
 establish all recursive-function arrays, LET/substitution arrays or typed-null
 representations of other semantic node classes.
 
+Contexts captures formal groups, tuple flags and domains before sizing bindings.
+Both passes traverse the formal groups, preserving tuple-flag and null-row failures
+before domain evaluation. The construction pass evaluates one domain per group;
+excess domains are ignored, while a missing domain fails at its source access.
+An empty non-tuple group still evaluates its domain but creates no enumeration;
+empty or null tuple groups are retained for the enumerator. Empty formal arrays
+create a zero-binding enumerator without reading tuple flags or domains, retaining
+the incoming context. Fixed binding/enumeration arrays follow Java's allocation
+and fill order. All 102 bounded factory observations on C's existing inner
+quantifier agree across normal/randomized ordering, nil/empty/bound contexts and
+17 array/application shapes. Arbitrary mid-evaluation graph mutation and
+integer-overflow allocation remain outside this observation.
+
 Initial-state, next-state and ENABLED predicate entry points preserve explicit
 nil contexts. A failure at the
 first source lookup or local binding occurs before state assignment. Subsequent

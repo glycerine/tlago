@@ -314,7 +314,10 @@ arrays retain their source failure. Relevant original model and generated-node
 checks pass. Level calculation now retains null-expression, operator and child-array
 failures at Java's dereferences, while action shortcuts still return before
 reading children and null argument elements remain ignored. All 216 bounded
-level observations and relevant original model checks pass.
+level observations and relevant original model checks pass. Quantifier context
+construction now sizes and traverses formal groups in source order, preserving
+empty groups, ignored excess domains and null/index failure precedence. All 102
+factory observations and relevant original model checks pass.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

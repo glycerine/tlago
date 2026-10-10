@@ -842,19 +842,43 @@ func (t *Tool) ContextsRandomized(expr *OpApplNode, c *Context, s0 *TLCStateMut,
 }
 
 func (t *Tool) contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, randomized bool) (*ContextEnumerator, error) {
+	if expr == nil {
+		panic(NewNullPointerException())
+	}
+	formals := expr.BdedQuantSymbolLists
+	isTuples := expr.BdedQuantATuple
+	domains := expr.BdedQuantBounds
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
 	alen := 0
-	for i := range expr.BdedQuantBounds {
-		if i < len(expr.BdedQuantATuple) && expr.BdedQuantATuple[i] {
-			alen++
-			continue
+	for i, formal := range formals {
+		if isTuples == nil {
+			panic(NewNullPointerException())
 		}
-		if i < len(expr.BdedQuantSymbolLists) {
-			alen += len(expr.BdedQuantSymbolLists[i])
+		if i >= len(isTuples) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(isTuples)))
+		}
+		if isTuples[i] {
+			alen++
+		} else {
+			if formal == nil {
+				panic(NewNullPointerException())
+			}
+			alen += len(formal)
 		}
 	}
-	vars := make([]any, 0, alen)
-	enums := make([]ValueEnumeration, 0, alen)
-	for i, bound := range expr.BdedQuantBounds {
+	vars := make([]any, alen)
+	enums := make([]ValueEnumeration, alen)
+	idx := 0
+	for i := range formals {
+		if domains == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(domains) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(domains)))
+		}
+		bound := domains[i]
 		val, err := t.Eval(bound, c, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
@@ -863,27 +887,28 @@ func (t *Tool) contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		if !ok {
 			return nil, NewTLCDetailedRuntimeException(ECGeneral, nonEnumerableErrorMsg(val, bound), bound, c)
 		}
-		if i < len(expr.BdedQuantATuple) && expr.BdedQuantATuple[i] {
-			if i >= len(expr.BdedQuantSymbolLists) || len(expr.BdedQuantSymbolLists[i]) == 0 {
-				return nil, newTLCError(ECGeneral, "bounded tuple quantifier has no bound variables")
-			}
+		formal := formals[i]
+		if isTuples[i] {
+			vars[idx] = formal
 			enum, err := t.boundValueEnumeration(enumerable, randomized)
 			if err != nil {
 				return nil, err
 			}
-			vars = append(vars, expr.BdedQuantSymbolLists[i])
-			enums = append(enums, enum)
-		} else if i < len(expr.BdedQuantSymbolLists) && len(expr.BdedQuantSymbolLists[i]) > 0 {
-			for _, symbol := range expr.BdedQuantSymbolLists[i] {
+			enums[idx] = enum
+			idx++
+		} else {
+			if formal == nil {
+				panic(NewNullPointerException())
+			}
+			for _, symbol := range formal {
+				vars[idx] = symbol
 				enum, err := t.boundValueEnumeration(enumerable, randomized)
 				if err != nil {
 					return nil, err
 				}
-				vars = append(vars, symbol)
-				enums = append(enums, enum)
+				enums[idx] = enum
+				idx++
 			}
-		} else {
-			return nil, newTLCError(ECGeneral, "bounded quantifier has no bound variables")
 		}
 	}
 	return NewContextEnumerator(vars, enums, c), nil
