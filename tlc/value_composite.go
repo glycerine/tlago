@@ -645,7 +645,7 @@ func (v *SetEnumValue) FingerPrint(fp uint64) uint64 {
 
 func (v *SetEnumValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	if ex == nil {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index < len(ex.Path) {
@@ -656,6 +656,9 @@ func (v *SetEnumValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error
 
 func (v *SetEnumValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT to the set %s.", ValuesPPR(v)))
 	}
@@ -840,7 +843,7 @@ func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
 
 func (v *IntervalValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	if ex == nil {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index < len(ex.Path) {
@@ -851,6 +854,9 @@ func (v *IntervalValue) TakeExcept(ex *ValueExcept) (resultValue Value, err erro
 
 func (v *IntervalValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the interval value %s.", ValuesPPR(v)))
 	}

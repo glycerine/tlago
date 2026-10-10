@@ -347,8 +347,8 @@ cache publication boundaries and typed binding failures. Null parameters fail
 at the source access in sizing, materialization, tuple conversion and generation.
 Deep normalization preserves EXCEPT-before-domain order and partial mutation.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
-Installation and delegated scalar/tuple/record updates retain typed path/batch
-failures, source wrappers and warning parameters. Record updates allocate and
+Verified EXCEPT installation and scalar, set, tuple and record updates retain
+typed path/batch failures, source wrappers and warning parameters. Record updates allocate and
 traverse by name count. All observed matrices agree; detailed contracts and
 limits are in `TLC_ARCH.md`, with run receipts in `PORT_PROGRESS.md`. These
 comparisons add no original-test credit. EXCEPT updates now share pointer cursors

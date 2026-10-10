@@ -375,7 +375,7 @@ func (v *ModelValue) FingerPrint(fp uint64) uint64 {
 
 func (v *ModelValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	if ex == nil {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index < len(ex.Path) {
@@ -386,6 +386,9 @@ func (v *ModelValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) 
 
 func (v *ModelValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the model value %s.", ValuesPPR(v)))
 	}

@@ -759,7 +759,7 @@ func (v *UnionValue) Permute(perm *MVPerm) Value {
 
 func (v *UnionValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	if ex == nil {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index < len(ex.Path) {
@@ -770,6 +770,9 @@ func (v *UnionValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) 
 
 func (v *UnionValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set:\n " + ValuesPPR(v) + ".")
 	}
@@ -1017,6 +1020,9 @@ func setExceptFailure(v Value) error {
 }
 
 func takeExceptOnSet(v Value, ex *ValueExcept) (Value, error) {
+	if ex == nil || ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, setExceptFailure(v)
 	}
@@ -1024,6 +1030,9 @@ func takeExceptOnSet(v Value, ex *ValueExcept) (Value, error) {
 }
 
 func takeExceptsOnSet(v Value, exs []*ValueExcept) (Value, error) {
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, setExceptFailure(v)
 	}

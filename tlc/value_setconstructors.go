@@ -198,7 +198,7 @@ func (v *SetOfTuplesValue) Permute(perm *MVPerm) Value {
 
 func (v *SetOfTuplesValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	if ex == nil {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index < len(ex.Path) {
@@ -209,6 +209,9 @@ func (v *SetOfTuplesValue) TakeExcept(ex *ValueExcept) (resultValue Value, err e
 
 func (v *SetOfTuplesValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the set of tuples:\n" + ValuesPPR(v))
 	}
@@ -489,7 +492,7 @@ func (v *SetOfRcdsValue) Permute(perm *MVPerm) Value {
 
 func (v *SetOfRcdsValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	if ex == nil {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index < len(ex.Path) {
@@ -500,6 +503,9 @@ func (v *SetOfRcdsValue) TakeExcept(ex *ValueExcept) (resultValue Value, err err
 
 func (v *SetOfRcdsValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of records:\n" + ValuesPPR(v))
 	}
@@ -857,7 +863,7 @@ func (v *SetOfFcnsValue) Permute(perm *MVPerm) Value {
 
 func (v *SetOfFcnsValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	if ex == nil {
+	if ex == nil || ex.Path == nil {
 		panic(NewNullPointerException())
 	}
 	if ex.Index < len(ex.Path) {
@@ -868,6 +874,9 @@ func (v *SetOfFcnsValue) TakeExcept(ex *ValueExcept) (resultValue Value, err err
 
 func (v *SetOfFcnsValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of functions:\n" + ValuesPPR(v))
 	}

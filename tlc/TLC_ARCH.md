@@ -7816,6 +7816,22 @@ changes the Go Value API from value updates to pointer updates; callers must use
 is involved. Arbitrary callback mutation, other exotic receiver kinds and
 concurrent use of mutable cursors remain unproven.
 
+Set and model-value EXCEPT operations retain typed null update/path/batch
+failures at source length reads, before formatting rejection diagnostics. A
+single remaining path rejects through the existing type-specific diagnostic;
+a completed path returns its replacement, including null. A nonempty batch
+rejects without inspecting its entries, including nil update objects; an empty
+non-null batch returns the original value. Existing source wrappers retain the
+failure frames, while the shared set helper performs only the source reads.
+All 408 observations agree across twelve receiver kinds: explicit sets,
+intervals, model values, tuple/record/function sets, subsets, fixed-size subsets,
+set union/intersection/difference and UNION. They cover ten single-update and
+seven batch forms with source attachment on/off, checking full errors, returned
+values and identity. Actual test209 S supplies source metadata; runtime values
+use the native/source constructors. No semantic graph mutation, fabricated
+evaluator or original-method credit is involved. Predicate-set delegation,
+arbitrary formatting callbacks and concurrent mutation remain unproven.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

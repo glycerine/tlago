@@ -34764,3 +34764,43 @@ boundaries, replacing superseded cursor-limit notes. This is a Go Value API
 change: callers use &ValueExcept{...} and []*ValueExcept. Latest full stress saved
 progress is 1,637,713,249 / 2,147,483,648 (76bf0b), without terminal result or
 long-method credit. Preserve original handle and bounds.
+
+
+### 2026-10-10: Set and model-value EXCEPT null boundaries
+
+Previous goal turn made verified progress in 21746aa. Confirm current clean HEAD
+(0fa16f) and compare remaining set/model-value EXCEPT reads with the pinned Java
+source. Original full stress 27326 remains live on direct poll 002dca. Remaining
+methods skipped null path/batch reads, while the shared set helper exposed raw
+Go nil-object failures after the pointer migration.
+
+Ignored set-except-boundaries extends the scalar observer to twelve kinds:
+SetEnumValue, IntervalValue, ModelValue, SetOfTuplesValue, SetOfRcdsValue,
+SetOfFcnsValue, SubsetValue, KSubsetValue, SetCupValue, SetCapValue, SetDiffValue
+and UnionValue. Use source/native runtime constructors, two small integer sets
+and actual test209 S source metadata. Reset model-value statics per row to avoid
+source attachment contaminating reused objects. Ten single-update and seven
+batch forms cover nil update objects, null/empty paths/batches, remaining and
+completed indices, null components/replacements and malformed contained entries.
+Observe returned values/identity and full errors/source frames, sourced/unsourced.
+No semantic graph mutation, fabricated evaluator, persistent test/fixture or
+original-method credit is introduced. Java 05c9c7 and native 33867c complete
+408 rows with 58 differences (da6ec5).
+
+Restore typed null path/batch reads in seven direct receiver methods and typed
+null update/path/batch checks in the shared set helper. Retain existing rejection
+messages, completed-path replacement (including null), unconditional rejection
+of nonempty batches before reading entries and empty-batch identity. Source
+wrappers remain at the existing methods, not the helper. Native 28870 completes
+(c6fed1); all 408 rows agree (cb0d61). Predicate-set delegation, arbitrary
+formatting callbacks and concurrent mutation remain outside this comparison.
+
+The existing fourteen original model checks and original TupleValue,
+FcnLambdaValue, FcnRcdValue, EvalControl, SubsetValue, KSubsetValue, SetOfFcnsValue,
+SetOfRcrdValue and EnumerableValue tests pass alongside focused numeric/context/
+EXCEPT/rendering/stream checks. Session 33474 completes with exit zero (3adadc);
+root 5.107s and tlc 68.396s (eaf22b). Relevant original subset/enumeration matrices
+retain their cases, seeds and bounds; no race, broad suite, shortened workload
+or changed original assertions. Logs remain under set-except-boundaries.
+Handoff and architecture updated. Full stress has no terminal result or added
+long-method credit; preserve its original handle, artifacts and bounds.
