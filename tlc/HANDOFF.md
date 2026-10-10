@@ -496,9 +496,17 @@ Focused original/native checks, including recursive models, and the complete
 CommunityModules all/shiviz target pass. Existing
 standalone lambda tests create empty-state inputs explicitly, preserving their
 assertions. Additional malformed arrays and lambda variants remain unproven.
-Next fix lambda fallback rendering of a null body: the saved 80-row comparison
-has 28 Java `null` versus native `<nil>` differences. Other observed buffers,
-failures, expansion/cache state and swallow/source modes agree.
+Lambda fallback rendering now prints null bodies as Java's `null`; all 80
+rendering observations match. EXCEPT materialization preserves null cache
+assignment and typed class-cast failures, retains the cache on failed casts and
+clones update cursors. All 512 materialization/repeated-call observations match
+exactly. Focused original/native checks and the unchanged original `NQSpec`
+simulation pass. The earlier full CommunityModules pass remains the baseline;
+this latest change has focused verification. Further lambda conversion and
+EXCEPT variants remain unproven.
+Next inspect lambda `ToTuple`: Java captures explicit-domain size once, while
+Go currently rereads vector length, and its allocation uses an unguarded native
+slice length. These are source-inspection candidates without a saved comparison.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

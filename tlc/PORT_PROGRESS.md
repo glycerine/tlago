@@ -37196,3 +37196,37 @@ Original full off-heap random workload is terminal zero and credited at 19/22
 long contexts, with exercised-path snapshot qualifications above. Main test
 inventory is unchanged. Overall Java-to-Go goal remains active; next target
 is lambda fallback null-body rendering, without re-running the completed stress.
+
+Lambda rendering/EXCEPT continuation after verified d4b77ee. Previous turn
+was progress, including the completed original off-heap workload; do not restart
+it. Source fallback concatenates null body after parameter rendering. Native
+now prints null rather than generic semantic <nil>, leaving other formatting
+paths unchanged. Saved 80-row observer native session 60018 exits zero
+(102f58); all 80 rows exactly match (81c929), correcting 28 text differences.
+Focused original/native session 28211 exits zero (290928), root 2.702s and
+tlc 2.927s.
+
+Source EXCEPT materialization casts the updated result before assignment.
+Actual installed ValueExcept updates are used in ignored
+.codex-gotmp/lambda-excepts, with public cursor/path changes and a private
+actual-array null slot, eight replacement values, source flags, direct/render
+operations and repeated calls. No semantic graph or evaluator callback is
+fabricated. Source c4b8c4/native 04f7c3 complete 448 rows, 60 actual
+differences (a1b0b4): null updates incorrectly retain cache, wrong types use
+unsupported EvalException rather than typed ClassCastException. Native now
+assigns null cache on null result, uses source typed cast failures and visits
+non-null empty update arrays. Initial native 9346 exits zero (8bddf4), all
+448 exact (2dd693). Focused original/native 60080 passes (12593c), root
+2.770s and tlc 2.798s.
+
+Expand observer with non-null empty update arrays created by actual public
+TakeExcepts calls; preserve initial source/native baseline logs. Final source
+0dd534/native e4a95f complete all 512 rows, exactly equal (8ae7c8), including
+cache/cursor/buffer state and two calls per object. Combined rendering observer
+19888 exits zero (d7ea46); all 80 final rows still exact (7f8c9b). Original
+simulation.NQSpecTest (upstream identifies materialization EXCEPT coverage)
+passes at unchanged num=100 settings, session 9469 terminal 54498f, root
+33.095s. Focused checks adequately cover this change; reuse the previous full
+CommunityModules baseline rather than expanding testing without a new concern.
+No new original-method credit or persistent test/fixture. Formatting/diff checks
+pass; handoff/architecture state verification scope. Overall goal remains active.

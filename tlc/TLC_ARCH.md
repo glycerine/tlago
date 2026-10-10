@@ -8860,6 +8860,22 @@ checks and the complete CommunityModules all/shiviz target pass. Other malformed
 arrays, mutation lifetimes and lambda rendering/EXCEPT variants remain unproven
 beyond earlier recorded contracts.
 
+Lambda fallback rendering concatenates a null body as Java's literal null,
+after parameter rendering. All 80 observed prefixed-buffer, expansion, swallow,
+source, null-body/context/tool/parameter and cached-result cases match exactly.
+EXCEPT materialization assigns a null updated function to its cache and returns
+null. A wrong-type result throws the typed FcnRcdValue class-cast failure before
+cache assignment, retaining the initially materialized function. Non-null empty
+update arrays follow the source update call; stored cursors are cloned before
+applying updates. All 512 direct/rendering and repeated-call observations match
+Java exactly, including cache, cursor, exception and buffer snapshots. Actual
+checked test206 lambdas and actual installed updates are reused; public cursor/
+path fields and an actual private-array slot supply the observed runtime states.
+No semantic graph, callback, persistent test or original-method credit is added.
+Focused originals/native checks and the unchanged original simulation.NQSpecTest
+pass. This change has focused verification; the earlier full CommunityModules
+pass remains the baseline. Further conversion and EXCEPT variants remain unproven.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

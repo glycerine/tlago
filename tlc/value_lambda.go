@@ -1113,14 +1113,18 @@ func (v *FcnLambdaValue) materializeFcnRcd() (resultFcn *FcnRcdValue, err error)
 		v.FcnRcd = NewFcnRcdValue(domain, values, false, v.CM)
 	}
 	v.CM.incValueSecondary(int64(size))
-	if len(v.Excepts) != 0 {
+	if v.Excepts != nil {
 		taken, err := v.FcnRcd.TakeExcepts(cloneValueExcepts(v.Excepts))
 		if err != nil {
 			return nil, err
 		}
+		if taken == nil {
+			v.FcnRcd = nil
+			return nil, nil
+		}
 		fcn, ok := taken.(*FcnRcdValue)
 		if !ok {
-			return nil, v.unsupported("EXCEPT conversion of function lambda produced %T", taken)
+			panic(valueStreamClassCast(taken, "tlc2.value.impl.FcnRcdValue"))
 		}
 		v.FcnRcd = fcn
 	}
@@ -1168,7 +1172,11 @@ func (v *FcnLambdaValue) ToString(sb *strings.Builder, offset int, swallow bool)
 		}
 	}
 	sb.WriteString("[" + v.Params.String())
-	sb.WriteString(" |-> <expression " + toContextString(v.Body) + ">]")
+	bodyText := "null"
+	if v.Body != nil {
+		bodyText = toContextString(v.Body)
+	}
+	sb.WriteString(" |-> <expression " + bodyText + ">]")
 	return sb
 }
 
