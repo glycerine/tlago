@@ -424,7 +424,7 @@ func (v *FcnLambdaValue) KindString() string { return v.KindStringFor(v.Kind()) 
 func (v *FcnLambdaValue) MakeRecursive(fname *SymbolNode) {
 	defer catchValueFailure(v, nil)
 	if v.Con == nil {
-		v.Con = EmptyContext
+		panic(NewNullPointerException())
 	}
 	v.Con = v.Con.Cons(fname, v)
 	v.Control = EvalSetKeepLazy(v.Control)
@@ -497,14 +497,19 @@ func (v *FcnLambdaValue) ApplyArgs(args []Value, control int) (Value, error) {
 	return v.ApplyWithControl(NewTupleValue(args), control)
 }
 
+// Arguments are evaluated before a null Context receiver fails, as in cons().
+func fcnContextCons(ctx *Context, id *SymbolNode, value Value) *Context {
+	if ctx == nil {
+		panic(NewNullPointerException())
+	}
+	return ctx.Cons(id, value)
+}
+
 func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error) {
 	if v.Params == nil {
 		panic(NewNullPointerException())
 	}
 	ctx := v.Con
-	if ctx == nil {
-		ctx = EmptyContext
-	}
 	formals := v.Params.Formals
 	domains := v.Params.Domains
 	isTuples := v.Params.IsTuples
@@ -529,7 +534,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 				return nil, true, nil
 			}
 			for i, id := range ids {
-				ctx = ctx.Cons(id, argTuple.Elems[i])
+				ctx = fcnContextCons(ctx, id, argTuple.Elems[i])
 			}
 			return ctx, false, nil
 		}
@@ -537,7 +542,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 		if fcnFormalCount(ids) == 0 {
 			panic(NewArrayIndexOutOfBoundsException(0, 0))
 		}
-		ctx = ctx.Cons(ids[0], arg)
+		ctx = fcnContextCons(ctx, ids[0], arg)
 		return ctx, false, nil
 	}
 	if arg == nil {
@@ -571,7 +576,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 				return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(elems[argn-1])))
 			}
 			for j, id := range ids {
-				ctx = ctx.Cons(id, tv.Elems[j])
+				ctx = fcnContextCons(ctx, id, tv.Elems[j])
 			}
 			continue
 		}
@@ -591,7 +596,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 				}
 				return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in the function's domain %s.\n", ValuesPPR(v), argn+1, ValuesPPR(elems[argn]), domainValue))
 			}
-			ctx = ctx.Cons(id, elems[argn])
+			ctx = fcnContextCons(ctx, id, elems[argn])
 			argn++
 		}
 	}
@@ -621,11 +626,8 @@ func (v *FcnLambdaValue) Select(arg Value) (resultValue Value, err error) {
 }
 
 func (v *FcnLambdaValue) evalBody(ctx *Context, control int) (Value, error) {
-	if ctx == nil {
-		ctx = EmptyContext
-	}
 	if v.Tool == nil {
-		return ValUndef, nil
+		panic(NewNullPointerException())
 	}
 	return v.Tool.Eval(v.Body, ctx, v.State, v.PState, control, v.CM)
 }
@@ -635,9 +637,6 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 		panic(NewNullPointerException())
 	}
 	ctx := v.Con
-	if ctx == nil {
-		ctx = EmptyContext
-	}
 	formals := v.Params.Formals
 	domains := v.Params.Domains
 	isTuples := v.Params.IsTuples
@@ -659,7 +658,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 				return ctx, false, nil
 			}
 			for i, id := range ids {
-				ctx = ctx.Cons(id, argTuple.Elems[i])
+				ctx = fcnContextCons(ctx, id, argTuple.Elems[i])
 			}
 			return ctx, true, nil
 		}
@@ -667,7 +666,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 		if fcnFormalCount(ids) == 0 {
 			panic(NewArrayIndexOutOfBoundsException(0, 0))
 		}
-		return ctx.Cons(ids[0], arg), true, nil
+		return fcnContextCons(ctx, ids[0], arg), true, nil
 	}
 	if arg == nil {
 		panic(NewNullPointerException())
@@ -700,7 +699,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 				return ctx, false, nil
 			}
 			for j, id := range ids {
-				ctx = ctx.Cons(id, tv.Elems[j])
+				ctx = fcnContextCons(ctx, id, tv.Elems[j])
 			}
 			continue
 		}
@@ -713,7 +712,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 			if err != nil || !in {
 				return ctx, false, err
 			}
-			ctx = ctx.Cons(id, elems[argn])
+			ctx = fcnContextCons(ctx, id, elems[argn])
 			argn++
 		}
 	}
@@ -724,16 +723,13 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 // the tuple conversion or membership checks used by Apply and Select.
 func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value, formals [][]*SymbolNode, isTuples []bool, single bool) (*Context, error) {
 	ctx := v.Con
-	if ctx == nil {
-		ctx = EmptyContext
-	}
 	if single {
 		if fcnParameterIsTuple(isTuples, 0) {
 			ids := fcnParameterFormals(formals, 0)
 			tuple := fcnEnumeratedTuple(arg)
 			count := fcnFormalCount(ids)
 			for i := 0; i < count; i++ {
-				ctx = ctx.Cons(ids[i], fcnTupleElement(tuple.Elems, i))
+				ctx = fcnContextCons(ctx, ids[i], fcnTupleElement(tuple.Elems, i))
 			}
 			return ctx, nil
 		}
@@ -741,7 +737,7 @@ func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value, formals [][]*SymbolNo
 		if fcnFormalCount(ids) == 0 {
 			panic(NewArrayIndexOutOfBoundsException(0, 0))
 		}
-		return ctx.Cons(ids[0], arg), nil
+		return fcnContextCons(ctx, ids[0], arg), nil
 	}
 	argTuple := fcnEnumeratedTuple(arg)
 	argn := 0
@@ -754,13 +750,13 @@ func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value, formals [][]*SymbolNo
 			argn++
 			count := fcnFormalCount(ids)
 			for j := 0; j < count; j++ {
-				ctx = ctx.Cons(ids[j], fcnTupleElement(tv.Elems, j))
+				ctx = fcnContextCons(ctx, ids[j], fcnTupleElement(tv.Elems, j))
 			}
 			continue
 		}
 		count := fcnFormalCount(ids)
 		for j := 0; j < count; j++ {
-			ctx = ctx.Cons(ids[j], fcnTupleElement(argTuple.Elems, argn))
+			ctx = fcnContextCons(ctx, ids[j], fcnTupleElement(argTuple.Elems, argn))
 			argn++
 		}
 	}

@@ -37084,3 +37084,55 @@ live by direct poll 92773a; last saved progress is 2,145,082,455 /
 2,147,483,648, with no terminal result and no additional execution/method
 credit. Goal remains active; next target is source MakeRecursive null-context
 failure and unchanged control under the existing owner catch.
+
+Lambda recursion/binding continuation, October 10, 2026. HEAD 6f5718c
+is clean. Previous turn is verified progress, not completion. Source
+MakeRecursive cons fails on null retained context before changing KeepLazy.
+Native now raises typed NullPointerException under its existing owner catch.
+Ignored native session 53124 exits zero (a13940); saved source/native 16-row
+comparison 44d625 is exact, correcting eight differences. Focused original
+and native session 74303 exits zero (ae4379), root 2.315s and tlc 2.502s.
+Original recursive models 202/203, UndeclaredRecursion and existing Bitwise
+locality check pass in session 60880 (3caaf1), root 0.515s.
+
+Continue adjacent actual lambda application rather than claiming whole-class
+parity. Ignored .codex-gotmp/lambda-binding uses checked test206 Def5/Def1
+bodies and actual Def5/Def2 formal nodes with real parameter constructors,
+scalar/tuple/multiple/empty parameter forms, seven actual arguments, normal/
+null context/tool, source flags and Apply/Select/ToFcnRcd. No semantic graph or
+evaluator callback is fabricated. Source/native 5436b6/4b374d exit zero with
+720 rows; baseline 7fa5bc finds 212 actual differences. Native binding replaces
+null context and evaluation returns UNDEF for a null tool; this also changes
+fallback diagnostics and populates caches incorrectly. Retain null contexts
+in all three binding paths, check cons receiver after argument reads through
+fcnContextCons, and require the tool while preserving context in evalBody.
+Final native 28845 exits zero (68655f); all 720 rows exactly equal Java
+(0aa0bc). Earlier recursion observer on combined final code exits zero
+(4c481b), with final log retained. Expanded original/native selection 17705
+exits zero (a0c190), root 2.727s and tlc 2.612s, including recursive models.
+Full unchanged CommunityModules session 59974 starts on final production code
+(70cf2e), log .codex-gotmp/lambda-binding/community-ant.log, original
+bounds, timeout zero and no race. No persistent test/fixture or method credit.
+Random stress 27326 still live by direct poll 952139, latest 2,145,797,753 /
+2,147,483,648. Overall goal remains active.
+
+While immutable full CommunityModules runs, prepare ignored
+.codex-gotmp/lambda-binding-arrays baseline. Fresh runtime parameter-array
+containers retain actual checked symbols/bounds; mutations never alter the
+parsed semantic graph. Extend previous actual cases with null Params/formals/
+domains/tuple flags, empty outer/formal arrays, null domain/inner formal arrays
+and a tuple with null backing. Source/native complete zero (5fd189/6f709d).
+Comparison eeda21 has 2,040 rows present, 32 actual differences: multiple-
+parameter Apply/Select treats null tuple storage as zero-length native storage
+and reports bounds rather than source NullPointerException. All other observed
+rows agree. Preserve baseline for next chunk; do not edit production during
+current full verification. No persistent tests/fixtures or method credit.
+
+Full unchanged CommunityModules session 59974 exits zero (45ee99), root
+305.971s, all 305.23s and shiviz 0.24s (a01f0a), on final production code.
+Final recursion comparison also retains all sixteen exact rows (a01f0a).
+Formatting and diff checks pass; handoff/architecture record completed checks
+and saved 2,040-row tuple-storage baseline for next chunk. Original random
+stress handle 27326 remains live by direct poll 5efbb5; last saved progress
+2,145,797,753 / 2,147,483,648, with no terminal result or execution/method
+credit. Overall Java-to-Go goal remains active.

@@ -490,9 +490,17 @@ cost metadata as Java does. All 42 constructor observations match exactly.
 Focused original and native checks and the complete CommunityModules
 all/shiviz target pass. Existing standalone lambda tests now create their
 empty-state inputs explicitly, preserving their assertions.
-Next fix `FcnLambdaValue.MakeRecursive` retaining Java's null-context failure
-before control changes. The saved 16-row actual-lambda comparison identifies
-eight differences; no recursive-method production correction is included yet.
+`FcnLambdaValue.MakeRecursive` now fails on null context before changing control;
+all 16 actual-lambda observations match Java. Application, selection and
+materialization retain null contexts until binding needs them, and body
+evaluation requires the supplied tool. All 720 observations match exactly,
+including diagnostics and cached results. Focused original and native checks,
+including the original recursive models, and the complete CommunityModules
+all/shiviz target pass. Malformed parameter arrays and further lambda
+operation variants remain unproven.
+Next inspect tuple argument storage in lambda Apply/Select: the saved 2,040-row
+runtime-array comparison has 32 null-versus-bounds failure differences for
+multiple parameters and a tuple with null storage. Other observed rows agree.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -576,7 +584,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,145,082,455 of 2,147,483,648 iterations, without a terminal result. The previous
+2,145,797,753 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

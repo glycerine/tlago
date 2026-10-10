@@ -8832,6 +8832,22 @@ Focused original and native checks and the complete unchanged CommunityModules
 all/shiviz target pass. Further lambda operation and producer variants remain
 unproven.
 
+FcnLambdaValue MakeRecursive checks its retained context before binding or
+changing control, preserving source-owned null failures. Application, selection
+and materialization retain that context through binding; each cons checks its
+receiver after argument reads. Empty formal arrays can reach evaluation with a
+null context. Body evaluation retains that context and requires the supplied
+tool instead of returning an undefined value. The ignored actual-lambda
+comparison covers 16 recursion rows and 720 application/selection/materialization
+rows using checked test206 bodies and formals, actual runtime parameter arrays,
+scalar/tuple/multiple/empty parameter forms and normal/null contexts/tools.
+All rows match Java exactly, including source frames, diagnostics, retained
+context/control and cached results. Focused original/native checks and original
+recursive models and the complete CommunityModules all/shiviz target pass. No
+persistent tests, fixtures or original-method credit are added. Malformed
+parameter arrays, EXCEPT matching and additional lambda variants remain unproven
+beyond earlier recorded contracts.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid
