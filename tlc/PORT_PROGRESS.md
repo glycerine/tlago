@@ -29755,3 +29755,50 @@ Full original off-heap stress session 27326 remains live, poll c1a9f7; latest
 saved observation 472,965,686 / 2,147,483,648 iterations, no terminal result or
 method credit. Overall parity remains incomplete. Next source audit: simulator
 action-flow graph output, which the bounded snapshot comparison does not prove.
+
+
+2026-10-09: Preserve complete action-flow DOT output
+
+Previous goal turn made concrete progress in 34f2cfc. Source review and direct
+output comparisons identified three DOT writer differences: empty snapshots
+returned without creating/truncating a file, positive integral weights omitted
+Java's .0 suffix, and labels were additionally escaped instead of written
+verbatim. Removed the empty-snapshot early returns in BASIC/FULL, reused the
+existing source double formatter for edge weights, and retained the action's
+actual default name. Verbatim plain-formula output intentionally retains the
+source artifact's quotes rather than changing Java's output.
+
+All 12 final complete pinned-Java/native DOT artifacts agree byte for byte;
+baseline at 34f2cfc differs in eight. Comparison 8f0ae2 returned status 0. Each
+actual BASIC/FULL method writes initial, collected, weighted, empty-overwrite and
+empty-new cases. The collected case uses actual BasicMultiTrace Init/Next states
+in simulation mode. The weighted case renders the existing matrix with cell
+[0][1] set to 1,000,000,000; this is a renderer input observation, not a billion-
+step simulation or workload credit. Empty-overwrite verifies removal of old
+nodes/edges, and empty-new verifies file creation. Two direct DotActionWriter
+cases use an actual named Init action and an unnamed action from the existing
+InvBadEvalInitState body, seen/unseen edges, and absent/present showPlainFormulae.
+The plain case verifies raw formula quotes, and weighted cases verify 1.0 rather
+than 1. The full graph has one shared empty context; general multi-context cluster
+ordering, general floating formatting and output-error parity remain unproven.
+
+Observers and baseline/current overlays are ignored under
+.codex-gotmp/action-flow-output-observation/. Java and native output files remain
+in its java/ and native/ subdirectories. Final logs in .codex-gotmp/ are
+'action-flow-output-final-{java,before,after}.log'. Java compile 7aa7ec and run
+ebf4fc, baseline native 47c40b and corrected native 71aa98 returned status 0.
+Earlier 11-case logs remain separate; the final 12-case observation additionally
+checks the plain-formula property. No persistent tests or fixture additions.
+
+Focused original SimulationWorker, SimulatorCorrectness and simulator behavior
+printing plus existing native Simulator/SimulationWorker and DotActionWriter
+shape checks pass normally: action-flow-output-originals.log, session 73539
+terminal 417af5, status 0; root 0.944 seconds, TLC 0.014 seconds. All original
+inputs/assertions remain unchanged; no new method credit or inventory change.
+Formatting and git diff --check pass. No broad suite, XML/ApalacheIR sweep or
+race workload. No email reporting or image dependency work.
+
+Full original off-heap stress session 27326 remains live, poll f33958; latest
+saved observation 487,828,447 / 2,147,483,648 iterations, no terminal result or
+method credit. Overall parity remains incomplete. Next source audit: action-flow
+output with multiple action contexts.

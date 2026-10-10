@@ -1073,9 +1073,6 @@ func (s *Simulator) getActionFlowGraphSnapshot(contexts actionFlowGraphContexts)
 
 func (s *Simulator) writeActionFlowGraphFull() error {
 	snapshot := s.getActionFlowGraphSnapshot(actionFlowGraphKeep)
-	if len(snapshot.actions) == 0 {
-		return nil
-	}
 	clusters := NewInsMap[string, []int]()
 	for id, action := range snapshot.actions {
 		context := "[]"
@@ -1108,9 +1105,6 @@ func (s *Simulator) writeActionFlowGraphFull() error {
 
 func (s *Simulator) writeActionFlowGraphBasic() error {
 	snapshot := s.getActionFlowGraphSnapshot(actionFlowGraphReduce)
-	if len(snapshot.actions) == 0 {
-		return nil
-	}
 	writer, err := NewDotActionWriter(s.Tool.GetRootName()+"_actions.dot", "")
 	if err != nil {
 		return err

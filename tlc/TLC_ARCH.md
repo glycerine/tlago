@@ -11315,6 +11315,24 @@ started in this bounded comparison; it does not prove concurrent reporting or
 complete DOT output parity. Existing focused original simulation checks pass.
 No persistent tests/fixtures or original-method credit are added.
 
+Action-flow BASIC/FULL writers now create a complete file for an empty snapshot,
+including overwriting a prior nonempty graph. Positive integral edge weights use
+the source double decimal suffix, and action labels are written verbatim as in
+DotActionWriter. This includes quoted expressions under showPlainFormulae;
+additional escaping would change the source artifact.
+
+All 12 ignored pinned-Java/native complete DOT artifacts agree byte for byte.
+Actual BASIC/FULL methods write initial, collected, weighted, empty-overwrite
+and empty-new snapshots. They use unchanged BasicMultiTrace and an actual
+Init/Next transition; the weighted rendering input sets its existing matrix cell
+to 1,000,000,000 without running a billion simulation steps. Two direct writer
+artifacts use actual named and unnamed model actions, integral/unseen edges and
+the absent/present plain-formula property. Existing focused original simulation
+checks and the native DotActionWriter shape check pass. These observations have
+one shared action context and do not prove arbitrary cluster iteration order,
+general double formatting, concurrent writing or output-error parity. No new
+persistent tests/fixtures or original-method credit.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses

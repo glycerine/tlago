@@ -47,7 +47,7 @@ func (w *DotActionWriter) WriteAction(action *Action, id int) error {
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if _, err := fmt.Fprintf(w.writer, "%d [shape=box,label=\"%s", id, dotEscape(action.GetNameOfDefault())); err != nil {
+	if _, err := fmt.Fprintf(w.writer, "%d [shape=box,label=\"%s", id, action.GetNameOfDefault()); err != nil {
 		return err
 	}
 	if action.IsInitPredicate() {
@@ -74,7 +74,7 @@ func (w *DotActionWriter) WriteEdge(fromID int, toID int, weight ...float64) err
 	if edgeWeight == 0 {
 		_, _ = w.writer.WriteString("[color=\"green\",style=dotted]")
 	} else {
-		_, _ = fmt.Fprintf(w.writer, "[penwidth=%s]", fmt.Sprint(edgeWeight))
+		_, _ = fmt.Fprintf(w.writer, "[penwidth=%s]", javaDoubleString(edgeWeight))
 	}
 	_, err := w.writer.WriteString(";\n")
 	return err

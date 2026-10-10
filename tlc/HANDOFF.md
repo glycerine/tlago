@@ -119,9 +119,11 @@ checks pass, including all five generated-trace tests. Simulation statistics now
 report current tool actions, retain the source matrix shape and use direct action
 IDs. Action-flow aggregation preserves source bounds failures; all 68 bounded
 worker/graph observations agree, and focused original simulation checks pass.
-Next source audit: action-flow graph output. General `Vect` invalid-count and
-exception behavior remains unproven; original model-test reconciliation remains
-open.
+Action-flow writers now create and overwrite empty graphs, retain source action
+labels and format integral weights with the source decimal suffix. All 12 bounded
+complete DOT artifacts match Java byte for byte. Next source audit: action-flow
+output with multiple action contexts. General `Vect` invalid-count and exception
+behavior remains unproven; original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
