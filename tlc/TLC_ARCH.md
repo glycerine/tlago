@@ -8539,6 +8539,32 @@ credit is unchanged. Full original set/subset and focused regressions pass, alon
 with the complete unchanged CommunityModules all/shiviz target. That current
 full-suite baseline also covers the preceding function-fold registration guards.
 
+Functions IsInjective rejects a null input before tuple conversion. Both array
+paths distinguish null backing arrays from empty arrays. Non-destructive pair
+comparison dereferences its left value only when a pair is visited; a singleton
+null element remains injective. The destructive comparator preserves a typed
+null receiver failure. The current native sort.Slice still differs from Java
+Arrays.sort comparison order: input [2, 1, TRUE] reports TRUE against 2 instead
+of 1. Sixteen of 4,256 observed injectivity calls retain this discrepancy across
+direct/MethodValue and source attachments. This is a concrete remaining target,
+not stack text, and prevents claiming full injectivity parity.
+
+AntiFunction normalizes its input, converts to FcnRcd and obtains the domain.
+An explicit domain is copied before dereferencing/copying the values array;
+null explicit domains fail even when the values array is empty. Interval domains
+are already fresh and are passed through. Null values arrays fail after domain
+processing. All 4,256 inverse observations agree outside 368 native/JVM stack
+text differences, retaining raw input/cache state, nullable diagnostic parameters,
+exception/cause messages and source-frame counts. The complete 8,512-row observer
+uses 32 original forms plus all 125 three-element combinations of 1, 2, TRUE,
+null and a string in tuples, explicit integer/noninteger functions and record
+products. It uses actual parsed test206 nodes/lambdas and runtime constructors;
+no persistent tests or fixtures, fabricated nodes or evaluator callbacks are
+introduced. Original-method credit is unchanged. Longer destructive arrays and
+arbitrary comparison side effects remain separate verification work.
+Focused original regressions and the complete unchanged CommunityModules
+all/shiviz target pass after these null-boundary and inverse-copy changes.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

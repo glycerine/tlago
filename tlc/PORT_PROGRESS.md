@@ -36288,3 +36288,69 @@ it does not change the checked rows. No original assumptions, expected phase
 exits or workload bounds changed. Latest saved original stress progress is
 1,988,495,831 / 2,147,483,648 (b6918a), still without terminal result or long
 credit. Handoff and architecture retain the current bag contracts and limits.
+
+2026-10-10: Functions inverse and injectivity null-array boundaries
+
+Previous turn made verified progress in 24bdd3e. Continue with actual source
+Functions.IsInjective and antiFunction. The ignored observer directory is
+.codex-gotmp/functions-injective-anti, reusing real parsed test206 nodes, actual
+Def5 lazy function bodies and runtime constructors. Initial 32 forms, two methods,
+four independent input/method source flags and two direct/MethodValue invocation
+modes complete 512 rows. Baseline has 88 raw differences, 76 outside native/JVM
+stack text (1e4835). Null input and backing arrays were silently accepted or
+exposed Go runtime text instead of Java null failures.
+
+Fix typed null input/array guards in IsInjective, including left-receiver checks
+only when an actual equality/comparison is performed. Empty arrays still return
+TRUE and a singleton null still has no pair to compare. Fix AntiFunction null
+input and source order: obtain the domain, copy it only for explicit domains,
+then read/copy values. Null domain fails before the values read; a null values
+array remains distinct from empty. Interval domain arrays are already fresh.
+Initial complete rerun agrees in all 512 rows outside 12 stack-text differences
+(84e363/97d916).
+
+Expand runtime inputs with all 125 three-element combinations of integer 1,
+integer 2, TRUE, null and string x, each as tuple, explicit integer-domain
+function, noninteger-domain function and record product. Initial expanded source
+and native runs stop while formatting a null record-product field after the
+observation (924a78/ee422a); these incomplete runs earn no complete-matrix claim.
+Correct only the observer snapshot to read record-product names/values without
+invoking its formatting operation. Complete reruns exit zero (source 097382,
+native 3a0812) and expose actual sorting comparison-order differences plus
+untyped null comparator receivers. Guard the latter; complete final rerun exits
+zero (ba28cd). All 8,512 rows present (58f1c7). There are 726 raw differences,
+16 outside stack-location/elision text. AntiFunction: 4,256 rows, 368 raw stack
+differences, zero other differences. IsInjective: 4,256 rows, 358 raw differences,
+16 real comparison-order differences (258033). The original 512 rows still agree
+outside 12 stack differences. No persistent test or fixture, fabricated semantic
+graph or evaluator callback is introduced; original-method credit is unchanged.
+
+Concrete remaining gap: Java Arrays.sort reads TRUE against 1 in [2, 1, TRUE],
+while native sort.Slice reads TRUE against 2. The two differing input shapes,
+Boolean and string, each span four source flags and two invocation modes. Do
+not canonicalize these message differences away or claim complete injectivity
+parity. Replace the destructive sorting path with the complete source behavior;
+longer arrays and comparison side effects need corresponding runtime observation.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass, root 5.353s and tlc 2.447s (session 51805,
+terminal 0afd29). Complete original CommunityModules all/shiviz target runs with
+timeout zero (session 65557, c636a5), retaining original phases and bounds.
+Original random stress session 27326 remains live by direct poll 73ffcd.
+
+The installed comparison JVM is OpenJDK 21.0.12.1 (8aee8d). Save authoritative
+javap bytecode from java.util.Arrays and java.util.ComparableTimSort into the
+ignored observer directory (c9cf24). Arrays.sort(Object[]) dispatches to
+ComparableTimSort unless its legacy merge-sort property is explicitly enabled.
+Next port must preserve run detection, binary insertion, merge-collapse/force,
+gallop bounds, mergeLo/mergeHi and immediate comparator failures; do not replace
+only the two failing examples or claim larger-array parity from short inputs.
+
+Complete unchanged CommunityModules all/shiviz target exits zero (session 65557,
+terminal 36a736). Both original phases pass: root 306.079s, all 305.40s and
+shiviz 0.26s (5f2433). This is the current full-suite baseline. Formatting and
+diff checks pass; no original assumptions, expected phase exits or workload
+bounds changed. Original stress session 27326 remains live by direct poll
+1a7445; latest saved progress is 1,996,472,678 / 2,147,483,648 (c95a52), with no
+terminal result or long-test credit. Handoff and architecture retain the exact
+sorting discrepancy as the next task, without claiming full injectivity parity.

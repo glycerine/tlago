@@ -3,6 +3,9 @@ package tlc
 import "sort"
 
 func FunctionsIsInjective(value Value) (*BoolValue, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	switch v := value.(type) {
 	case *TupleValue:
 		return functionsIsInjectiveNonDestructive(v.Elems)
@@ -25,10 +28,16 @@ func FunctionsIsInjective(value Value) (*BoolValue, error) {
 }
 
 func functionsIsInjectiveDestructive(values []Value) (*BoolValue, error) {
+	if values == nil {
+		panic(NewNullPointerException())
+	}
 	var sortErr error
 	sort.Slice(values, func(i int, j int) bool {
 		if sortErr != nil {
 			return false
+		}
+		if values[i] == nil {
+			panic(NewNullPointerException())
 		}
 		cmp, err := values[i].Compare(values[j])
 		if err != nil {
@@ -53,8 +62,14 @@ func functionsIsInjectiveDestructive(values []Value) (*BoolValue, error) {
 }
 
 func functionsIsInjectiveNonDestructive(values []Value) (*BoolValue, error) {
+	if values == nil {
+		panic(NewNullPointerException())
+	}
 	for i := 0; i < len(values); i++ {
 		for j := i + 1; j < len(values); j++ {
+			if values[i] == nil {
+				panic(NewNullPointerException())
+			}
 			eq, err := values[i].Equal(values[j])
 			if err != nil {
 				return nil, err
@@ -68,16 +83,28 @@ func functionsIsInjectiveNonDestructive(values []Value) (*BoolValue, error) {
 }
 
 func FunctionsAntiFunction(value Value) (Value, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	fcn := asFcnRcdValue(value.Normalize())
 	if fcn == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "AntiFunction", "functions", ValuesPPR(value))
 	}
 	rangeValues := fcn.DomainAsValues()
+	if fcn.Intv == nil {
+		if rangeValues == nil {
+			panic(NewNullPointerException())
+		}
+		rangeCopy := make([]Value, len(rangeValues))
+		copy(rangeCopy, rangeValues)
+		rangeValues = rangeCopy
+	}
+	if fcn.Values == nil {
+		panic(NewNullPointerException())
+	}
 	domain := make([]Value, len(fcn.Values))
 	copy(domain, fcn.Values)
-	rangeCopy := make([]Value, len(rangeValues))
-	copy(rangeCopy, rangeValues)
-	return NewFcnRcdValue(domain, rangeCopy, false).Normalize(), nil
+	return NewFcnRcdValue(domain, rangeValues, false).Normalize(), nil
 }
 
 func FunctionsFoldFunction(op Value, base Value, fun Value) (Value, error) {
