@@ -29597,3 +29597,42 @@ latest saved observation 417,437,478 / 2,147,483,648 iterations, without termina
 result or method credit. Overall parity remains incomplete. Next source audit:
 distributed worker property-failure cause/state ownership. Cached initial-vector
 growth remains unproven.
+
+
+2026-10-09: Resume after interruption; distributed worker failure ownership
+
+Recovered the clean worktree at 0c3f54a. Existing full off-heap stress session
+27326 survived and was polled successfully; no duplicate workload was started.
+Latest observation is 436,426,640 / 2,147,483,648 iterations, with no terminal
+result or original-method credit. Original bounds, assertions and default direct
+memory remain unchanged, without race instrumentation.
+
+Audited TLCWorker.getNextStates against DistributedWorker.GetNextStates and
+WorkerException construction. Six direct pinned-Java/native observations agree
+on accepted/seen successors, invariant violation/evaluation failure and implied-
+action violation/evaluation failure. Both execute actual worker methods and
+unchanged BasicMultiTrace/MCInvInitState expressions, including all ten generated
+successors. Java membership answers come from an IFPSetManager proxy; native uses
+an actual local MemFPSet. Evaluation delegates capture the real thrown/returned
+cause; observations check its identity, predecessor identity, membership of the
+attached successor in the actual generated vector, full multiline messages,
+keepCallStack, accepted UIDs, generation counters and computing cleanup. All six
+rows agree. No production mismatch or correction was needed. General concurrent
+mutation, transport equivalence and cached initial-vector growth remain unproved.
+
+Ignored observers are under .codex-gotmp/distributed-worker-property-observation/;
+logs are distributed-worker-property-{java,native}.log in .codex-gotmp/. Java
+compile 059852 and execution c71523 returned status 0; native session 89718
+completed with status 0 (6d4afb). Comparison b74c30 returned status 0. The Java
+worker constructor required its local RMI listener and used sandbox escalation;
+no RMI code was introduced into Go. No persistent tests or fixtures were added.
+
+Focused existing worker constraint ordering, computation resource failures,
+RPC cause/state preservation, null operator rows and null fingerprint answers
+pass: distributed-worker-resume-listeners.log, terminal 5c7757, status 0,
+TLC 0.050 seconds. The initial sandbox attempt failed only on prohibited loopback
+listeners; the same focused selection passed with listener escalation. All runs
+used normal instrumentation and retained existing assertions. No full-suite,
+XML/ApalacheIR or broad race sweep. Inventory totals and method credit unchanged.
+Next audit is initial-predicate vector ownership and growth. Overall Java/Go
+parity remains incomplete.

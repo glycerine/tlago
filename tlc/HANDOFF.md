@@ -108,8 +108,11 @@ initial loops and early-failure arrays now follow Java. All 152 bounded DFID
 observations agree. Distributed `TLCApp` now preserves source null-array/name
 boundaries across tool replacement; all 109 observations agree. Checker and DFID
 comparisons also pass with action inputs that fail in the predecessor state.
-Next source audit: distributed worker property failures and their cause/state
-ownership. Growth of a cached initial vector remains unproven.
+Distributed worker property failures now agree in six direct Java/native
+observations using existing model predicates: messages, original causes, state
+references, replay flags, generation counters and computation cleanup. Focused
+local/TCP worker checks pass; no production correction was needed. Next source
+audit: initial-predicate vector ownership and growth, which remains unproven.
 
 ## Verification baseline and test credit
 

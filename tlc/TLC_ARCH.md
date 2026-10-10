@@ -11352,6 +11352,18 @@ name failures that some earlier labels did not. No production change was needed
 for those corrected inputs. VM-generated null-detail messages and arbitrary
 concurrent mutation remain unproven.
 
+Distributed worker failure ownership was compared through actual Java and Go
+workers with unchanged BasicMultiTrace predicates. All six bounded observations
+agree: accepted and already-seen successors, false and failing invariants, and
+false and failing implied actions. Violations retain the original WorkerException
+without a cause or replay request. Evaluation failures retain the original cause,
+current predecessor and successor, and keepCallStack=true. Full multiline detail
+messages, generated-state counters and computing=false cleanup agree. Accepted
+states inherit the predecessor UID; seen states are omitted. Java uses a local
+fingerprint-manager proxy for membership answers; Go uses an actual local MemFPSet.
+These observations do not establish transport equivalence or add original-test
+credit. Existing focused native local/TCP worker checks separately pass.
+
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing
 location/syntax views, primarily OpDef symbols. A pinned-Java/native standalone
