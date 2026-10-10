@@ -836,6 +836,9 @@ func takeMatchedExcepts(value Value, matches []ValueExcept) (Value, error) {
 
 func (v *FcnLambdaValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index >= len(ex.Path) {
 		return ex.Value, nil
 	}
@@ -853,11 +856,17 @@ func (v *FcnLambdaValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err 
 		return v.FcnRcd.TakeExcepts(exs)
 	}
 	fcn := NewFcnLambdaValueFrom(v, v.Tool)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) == 0 {
 		return fcn, nil
 	}
 	lastComplete := -1
 	for i := len(exs) - 1; i >= 0; i-- {
+		if exs[i].Path == nil {
+			panic(NewNullPointerException())
+		}
 		if exs[i].Index >= len(exs[i].Path) {
 			lastComplete = i
 			break

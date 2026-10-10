@@ -7739,6 +7739,27 @@ normalization. No semantic graph mutation, fabricated evaluator or original-test
 credit is involved; arbitrary argument callbacks and concurrent mutation remain
 unproven.
 
+Lambda EXCEPT installation reads path length before completed-path return and
+before cached-record delegation, retaining a typed null-array failure. Batch
+installation delegates to a cached record first; otherwise it copies the lambda
+and rejects a null batch array. Its reverse scan reads each encountered path
+length, stopping at the newest completed update and retaining only later updates.
+An invalid earlier path can therefore be bypassed by a later completed update.
+Cached records apply updates in forward order, retaining typed null path/array,
+negative current-index and null current-argument failures. A null intermediate
+result fails before the next update; an integer intermediate result also reads
+path length before testing completion. Existing source wrappers own each failure.
+All 352 installation/follow-up lookup observations agree using actual test209 S
+formals/body, null/valid parameters and genuine materialized cached records.
+Eight single-update and fourteen batch forms cover empty/null paths and batches,
+negative/completed indices, null current components, missing keys, update order,
+null intermediate results, prior retained updates and source attachment. Result
+kind, returned identity, source attachment, lookup result/failure and original
+cache presence are observed. No semantic graph mutation, fabricated evaluator
+or original-test credit is involved. Caller-visible ValueExcept index mutation,
+null EXCEPT object entries, malformed cached value arrays and concurrency remain
+unproven; these observations do not establish general update-object ownership.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

@@ -1208,12 +1208,15 @@ func fcnRcdLinearSearchThreshold() int {
 
 func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index >= len(ex.Path) {
 		return ex.Value, nil
 	}
 	newValues := make([]Value, len(v.Values))
 	copy(newValues, v.Values)
-	arg := ex.Path[ex.Index]
+	arg := ex.Current()
 	if v.Intv != nil {
 		if iv, ok := arg.(*IntValue); ok {
 			if iv.Val >= v.Intv.Low && iv.Val <= v.Intv.High {
@@ -1235,7 +1238,11 @@ func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 		return v, nil
 	}
 	for i := range v.Values {
-		eq, err := arg.Equal(v.Domain[i])
+		domain := fcnParameterDomain(v.Domain, i)
+		if arg == nil {
+			panic(NewNullPointerException())
+		}
+		eq, err := arg.Equal(domain)
 		if err != nil {
 			return nil, err
 		}
@@ -1260,8 +1267,14 @@ func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 
 func (v *FcnRcdValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	var cur Value = v
 	for _, ex := range exs {
+		if cur == nil {
+			panic(NewNullPointerException())
+		}
 		next, err := cur.TakeExcept(ex)
 		if err != nil {
 			return nil, err

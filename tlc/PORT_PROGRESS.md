@@ -34588,3 +34588,47 @@ suite, shortened workload or changed original assertions. Observer/test logs
 remain under lambda-null-context. Handoff and architecture updated. Latest full
 stress saved progress is 1,608,297,180 / 2,147,483,648 (0963e6), without a terminal
 result or long-method credit. Preserve original handle and bounds.
+
+
+### 2026-10-10: Lambda EXCEPT installation and cached delegation boundaries
+
+Previous goal turn made verified progress in bee6966. Confirm current clean HEAD
+(4166c5) and compare Java lambda/record takeExcept methods. Original full stress
+27326 remains live on direct poll 26171b. Native lambda installation treated a
+null path as a completed empty path and accepted null batch arrays. Cached record
+updates additionally exposed raw Go failures for negative/current-null paths and
+null intermediate batch results. An integer produced by a completed update had
+the same null-path shortcut in its delegated TakeExcept method.
+
+Ignored lambda-except-installation uses actual parsed test209 S formals/body,
+runtime parameters and a genuine materialized S record. Compare eight single
+update forms and fourteen batch forms, with/without an existing retained update,
+null/valid parameters, cached/uncached lambdas and source attachment: 352 rows.
+Observe installation failures separately from subsequent lookup failures, plus
+result kind, returned identity/source and original cache presence. Cases include
+null/empty paths and batches, negative/completed indices, null current entries,
+missing keys, last-complete reverse scan ordering, null intermediate results and
+multiple update ordering. Java 9776ed and native 811ee5 complete; 112 differences
+(9e386c). No fabricated semantic graph/evaluator or persistent test/fixture.
+
+Restore path length failures before completion/delegation, null batch checks,
+reverse-scan path failures in source order, typed cached current-index/argument
+failures and null intermediate-result failures. The first correction completes
+native 97766 (terminal 2d14ba), leaving eight differences (0b4ea8): a completed
+integer replacement followed by a null-path update. Add the integer's typed
+path-length failure; native 74761 completes with terminal 609e9a. All 352 rows
+agree (0cfdc5). A completed later lambda update still bypasses invalid earlier
+paths during its reverse scan; cached records retain forward application order.
+Caller-visible ValueExcept index mutation, null EXCEPT object entries, malformed
+cached value arrays and concurrency remain unproven; no general update-object
+ownership or original-method inventory credit is claimed.
+
+Existing fourteen original model checks and original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl plus focused numeric/context/EXCEPT/rendering/stream checks
+pass on the final correction: 34585 terminal c3d1e1; root 5.032s and tlc 2.179s
+(cfc74f). The earlier intermediate run 34493 also passed (ebfe94, 9a3c6c), but
+final-source evidence is authoritative. No race, broad suite, shortened bounds
+or changed original assertions. Observer/test logs remain under
+lambda-except-installation; handoff and architecture updated. Latest full stress
+saved progress is 1,615,081,977 / 2,147,483,648 (cfc74f), without terminal result
+or long-method credit. Preserve original handle and bounds.

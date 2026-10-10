@@ -471,6 +471,9 @@ func (v *IntValue) FingerPrint(fp uint64) uint64 {
 
 func (v *IntValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the integer %s.", ValuesPPR(v)))
 	}
