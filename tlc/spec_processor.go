@@ -411,15 +411,15 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	p.ToolID = tool.ID
 	tool.SpecProcessor = p
 	tool.ModelConfig = p.Config
-	names := make([]string, len(p.Variables))
-	locations := make(map[string]SourceLocation, len(p.VariablesNodes))
-	for i, variable := range p.Variables {
-		names[i] = variable.String()
+	if p.VariablesNodes != nil {
+		SetStateVariableDeclarations(p.VariablesNodes)
+	} else {
+		names := make([]string, len(p.Variables))
+		for i, variable := range p.Variables {
+			names[i] = variable.String()
+		}
+		SetStateVariables(names)
 	}
-	for _, node := range p.VariablesNodes {
-		locations[node.Name.String()] = node.GetSourceLocation()
-	}
-	SetStateVariablesWithLocations(names, locations)
 	p.applyDefinitionsToTool(tool)
 	p.ProcessConfigConstantsAndOverrides(tool)
 	if len(p.ConfigErrors) != 0 {

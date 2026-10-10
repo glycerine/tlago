@@ -11101,9 +11101,21 @@ their actual shared SemanticNodeBase. SetTreeNode updates that owner, so writing
 through a runtime symbol and through the parser object observes the same syntax.
 The source location resolver marks this parser-owned path; standalone native
 aliases/formals retain their separate adapter fields. Formal path lookup and
-variable-location capture during tool setup call the getter instead of reading
-the copied symbol Location field. Later changes to captured state-variable maps
-are outside this observation.
+variable source metadata call the getter instead of reading the copied symbol
+`Location` field. State setup retains the declaration slice; `StateVariables` copies
+native records while attaching the current declaration in each slot. Its
+`GetSourceLocation` reads current syntax only when needed, so name-only state
+operations do not gain source-location failure paths. Explicit native location
+setters clear the retained declarations and keep their map snapshot behavior.
+Spec records and coverage reporting use this getter. Null source-location
+records render Java `Location.nullLoc`'s `--unknown--` module.
+
+An ignored pinned-Java/native driver loads unchanged Debug02 and observes eight
+phases: initial declaration, owner/view syntax changes, missing/typed-null syntax,
+restoration, declaration-array replacement and a native setter reset. All 16
+location/spec-record rows agree; baseline differs in 12 rows. This establishes
+location ownership after setup, not cross-tool metadata selection or
+declaration-owned coverage counter identity.
 
 Across 4,637 canonical symbol rows on existing originals/Bitwise, all locations
 and syntax identities now agree with the source owner. Baseline had 3,072 missing

@@ -29064,3 +29064,39 @@ No full-workspace/XML/ApalacheIR sweep, long race workload or excluded email wor
 General formatter/graph mutation sharing and state-variable maps after setup
 remain unproven. Next concrete source audit: compare those variable-location maps
 with Java's retained declaration nodes.
+
+
+2026-10-09: Retain variable declarations for current source metadata
+
+Java TLCStateMut.setVariables retains the declaration array. TLCGetSet constructs
+variable records from current OpDeclNode locations, and CostModelCreator reads
+those locations during reporting. Go instead captured location maps at setup.
+The bridge and SpecProcessor now install retained declaration slices. Native
+StateVariables records attach the current slot declaration; GetSourceLocation
+reads its current syntax lazily. Spec records and coverage use that getter.
+Name-only state operations do not evaluate source locations. Native explicit
+location setters clear declaration ownership and retain map snapshot behavior.
+The metadata comparison also exposed null-location records with an empty module;
+record conversion now renders Java Location.nullLoc's --unknown-- source name.
+
+Ignored standalone drivers load the unchanged original Debug02 model in pinned
+Java and Go. Eight phases observe location plus variable-record contents: initial,
+owner/view syntax replacement, missing/typed-null syntax, restoration, retained
+array replacement and native setter reset. All 16 rows agree; the baseline has
+12 mismatches. Final comparison terminal fc6653 confirms all 16 rows; metadata
+observations exposed and confirmed correction of the null-source mismatch.
+Logs: .codex-gotmp/state-variable-java.log,
+state-variable-before.log and state-variable-after.log. Observation drivers and
+baseline overlays remain ignored under state-variable-observation. No original
+source, fixtures or persistent tests changed; no new original-method credit.
+
+Selected existing original TLCGetAll/TLCGetLevel, A/B/C coverage, Debug02-Debug05,
+ReportCoverage01-04, debugger-variable and counterexample checks pass normally:
+.codex-gotmp/state-variable-originals.log, root 6.271 seconds, TLC 0.013 seconds.
+No full workspace/XML/ApalacheIR sweep or long race workload. Formatting and
+git diff --check pass. Cross-tool variable metadata selection and declaration-
+owned coverage counter identity remain separate, unproven ownership contracts.
+
+Original off-heap random stress session 27326 remains active; latest saved log
+observation is 173,265,617 of 2,147,483,648 iterations with no terminal result.
+No restart, shortened bounds or method credit. Overall TLC parity is incomplete.

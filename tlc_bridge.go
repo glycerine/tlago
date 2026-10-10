@@ -397,13 +397,7 @@ func internTLCSourceSyntaxNames(spec *Spec) {
 
 func (b *tlcBridge) installVariables() {
 	nodes := b.variableDeclarations()
-	vars := make([]string, len(nodes))
-	locations := make(map[string]tlc.SourceLocation, len(nodes))
-	for i, node := range nodes {
-		vars[i] = node.Name.String()
-		locations[vars[i]] = node.Location
-	}
-	tlc.SetStateVariablesWithLocations(vars, locations)
+	tlc.SetStateVariableDeclarations(nodes)
 	if b.processor != nil {
 		b.processor.SetVariableNodes(nodes)
 	}

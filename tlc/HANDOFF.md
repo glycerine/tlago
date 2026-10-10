@@ -66,21 +66,25 @@ source locality and ownership, including public RECURSIVE declarations completed
 by LOCAL bodies. Parser-backed action declarations read the current syntax child;
 absent declarations stay unknown. Shared semantic bases and symbol views read
 current syntax locations, and symbol syntax setters update the same owner.
-Formal path lookup and variable-location capture during setup use those getters.
+Formal path lookup uses those getters. State setup retains declaration arrays;
+spec metadata and coverage read their current source locations when requested.
 
 Parser-owned diagnostic strings use the source semantic formatter, including
 presence-based `showPlainFormulae` selection and numeric overrides. Generated
 literals join that source-owned path. Native lookup aliases retain name strings.
 All 20,390 observed diagnostic strings agree, and 20 independent Java formatting
 rows match; detailed bounded observations and run receipts are in `PORT_PROGRESS.md`.
-General source generation, graph mutation sharing, state-variable maps after
-setup and source-less fallback lowering remain unproven.
+General source generation, graph mutation sharing and source-less fallback
+lowering remain unproven.
 
 Operator comments and human-readable images retain source failure boundaries,
 the nil-versus-empty child-array branch and property-aware fallback formatting.
 All 44 observed Java/native cases agree. Builtin and null syntax expose Java's
-empty comment/child arrays. Next source audit: compare variable-location maps
-after tool setup with Java's retained declaration nodes.
+empty comment/child arrays. Variable locations and spec records match all 16
+observed rows after setup, including replacement in the retained array. Null
+location records use Java's `--unknown--` module. Next source audit: variable
+metadata ownership across tools and declaration-owned coverage counters; these
+remain unproven.
 
 ## Verification baseline and test credit
 

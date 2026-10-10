@@ -219,6 +219,12 @@ func actionRecordValue(a *Action, extraName *UniqueString, extraValue Value) *Re
 
 func sourceLocationRecordValue(location SourceLocation) *RecordValue {
 	ensureCounterExampleUniqueStrings()
+	source := location.Source
+	if location == NullSourceLocation {
+		// Java's Location.nullLoc carries this source name even though its
+		// human-readable form is "Unknown location".
+		source = "--unknown--"
+	}
 	return NewRecordValue(
 		[]*UniqueString{locationBeginLine, locationBeginColumn, locationEndLine, locationEndColumn, locationModule},
 		[]Value{
@@ -226,7 +232,7 @@ func sourceLocationRecordValue(location SourceLocation) *RecordValue {
 			NewIntValue(int32(location.BeginColumn)),
 			NewIntValue(int32(location.EndLine)),
 			NewIntValue(int32(location.EndColumn)),
-			NewStringValue(location.Source),
+			NewStringValue(source),
 		},
 		false,
 	)

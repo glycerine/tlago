@@ -556,7 +556,7 @@ func stateVariablesSetValue() Value {
 	values := make([]Value, 0, len(vars))
 	for _, variable := range vars {
 		names := []*UniqueString{actionRecordName, actionRecordLocation}
-		fields := []Value{NewStringValueFromUnique(variable.Name), sourceLocationRecordValue(variable.Location)}
+		fields := []Value{NewStringValueFromUnique(variable.Name), sourceLocationRecordValue(variable.GetSourceLocation())}
 		if variable.CountDistinct != nil {
 			coverage := NewRecordValue(
 				[]*UniqueString{tlcGetDistinct},

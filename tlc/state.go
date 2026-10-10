@@ -17,10 +17,19 @@ type StateVariable struct {
 	Name          *UniqueString
 	Location      SourceLocation
 	CountDistinct *CountDistinct
+	declaration   *SymbolNode
+}
+
+func (v StateVariable) GetSourceLocation() SourceLocation {
+	if v.declaration != nil {
+		return v.declaration.GetSourceLocation()
+	}
+	return v.Location
 }
 
 var (
 	stateVariables            []StateVariable
+	stateVariableDeclarations []*SymbolNode
 	stateSymmetryPermutations []*MVPerm
 	stateTool                 *Tool
 	statePreserveMetadata     bool
@@ -32,6 +41,7 @@ func SetStateVariables(names []string) {
 }
 
 func SetStateVariablesWithLocations(names []string, locations map[string]SourceLocation) {
+	stateVariableDeclarations = nil
 	stateVariables = make([]StateVariable, len(names))
 	SetUniqueStringVariableCount(len(names))
 	for i, name := range names {
@@ -42,9 +52,24 @@ func SetStateVariablesWithLocations(names []string, locations map[string]SourceL
 	EmptyState = NewEmptyState()
 }
 
+// SetStateVariableDeclarations retains the declaration array, as TLCState does.
+// Locations are read from the current syntax when metadata is requested.
+func SetStateVariableDeclarations(nodes []*SymbolNode) {
+	names := make([]string, len(nodes))
+	for i, node := range nodes {
+		names[i] = node.Name.String()
+	}
+	SetStateVariables(names)
+	stateVariableDeclarations = nodes
+}
+
 func StateVariables() []StateVariable {
 	out := make([]StateVariable, len(stateVariables))
 	copy(out, stateVariables)
+	for i, node := range stateVariableDeclarations {
+		out[i].Name = node.Name
+		out[i].declaration = node
+	}
 	return out
 }
 
