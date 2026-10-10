@@ -7760,6 +7760,19 @@ or original-test credit is involved. Caller-visible ValueExcept index mutation,
 null EXCEPT object entries, malformed cached value arrays and concurrency remain
 unproven; these observations do not establish general update-object ownership.
 
+Integer, boolean and string EXCEPT operations read path/batch length with typed
+null failures under their existing source wrappers. A single update rejects a
+remaining path through the existing scalar-specific runtime diagnostic; a
+completed path returns its replacement, including null. Batch operations reject
+any nonempty array before reading its entries, even completed or malformed ones;
+an empty non-null batch returns the original scalar. All 180 observations agree
+on value/error/source frames and returned identity across two noncached integer
+values, both booleans and two strings (including escaped content), sourced and
+unsourced receivers, nine single-update and six batch forms. Source attachment
+uses the actual test209 S expression; no semantic graph mutation, fabricated
+evaluator or original-test credit is involved. Null EXCEPT object entries and
+concurrent mutation remain outside this comparison.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

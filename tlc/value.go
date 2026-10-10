@@ -320,6 +320,9 @@ func (v *BoolValue) FingerPrint(fp uint64) uint64 {
 
 func (v *BoolValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the boolean %s.", ValuesPPR(v)))
 	}
@@ -328,6 +331,9 @@ func (v *BoolValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 
 func (v *BoolValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the boolean %s.", ValuesPPR(v)))
 	}
@@ -482,6 +488,9 @@ func (v *IntValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 
 func (v *IntValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the integer %s.", ValuesPPR(v)))
 	}
@@ -595,6 +604,9 @@ func (v *StringValue) FingerPrint(fp uint64) uint64 {
 
 func (v *StringValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the string %s.", ValuesPPR(v)))
 	}
@@ -603,6 +615,9 @@ func (v *StringValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 
 func (v *StringValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	if len(exs) != 0 {
 		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the string %s.", ValuesPPR(v)))
 	}

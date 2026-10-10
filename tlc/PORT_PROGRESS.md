@@ -34632,3 +34632,39 @@ or changed original assertions. Observer/test logs remain under
 lambda-except-installation; handoff and architecture updated. Latest full stress
 saved progress is 1,615,081,977 / 2,147,483,648 (cfc74f), without terminal result
 or long-method credit. Preserve original handle and bounds.
+
+
+### 2026-10-10: Scalar EXCEPT path and batch null boundaries
+
+Previous goal turn made verified progress in 151987a. Confirm current clean HEAD
+(6f3f72); compare Java integer/boolean/string takeExcept methods with native code.
+Original full stress 27326 remains live on direct poll a9ae3e. The last delegated
+integer correction exposed the same path-length shortcut in booleans and strings,
+plus null batch acceptance in all three scalar types.
+
+Ignored scalar-except-boundaries uses actual parsed test209 S as source metadata,
+six scalar receivers (two noncached signed integers, true/false, two strings
+including escaped content), sourced/unsourced variants, nine single-update and
+six batch forms. Compare null/empty paths and arrays, negative/remaining/completed
+indices, null path entries, null replacement, invalid contained paths in nonempty
+batches, result identity and full errors/source frames. Integer values are outside
+the shared small-value cache; booleans are fresh instances to avoid contaminating
+class globals with source metadata. No semantic graph mutation, fabricated
+evaluator, persistent test/fixture or original-method credit is introduced.
+Java b33950 and native 5c002b complete all 180 rows, with 20 differences (f75f6c).
+
+Restore typed null path failures in boolean/string single-update methods and null
+batch failures in all three types, retaining their existing source wrappers.
+Nonempty batches still reject before inspecting entries, including completed or
+malformed entries; empty non-null batches return the original value. Completed
+single updates still return the replacement, including null. Native 19736
+completes with terminal f09f40; all 180 rows agree (52852f). Null EXCEPT object
+entries and concurrent mutation are outside the comparison.
+
+The existing fourteen original model checks, original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl and focused numeric/context/EXCEPT/rendering/stream checks
+pass: 17728 terminal 389e6f; root 5.073s and tlc 2.052s (c7227b). No race, broad
+suite, shortened workload or changed original assertions. Logs remain under
+scalar-except-boundaries; handoff and architecture updated. Latest full stress
+saved progress is 1,619,396,330 / 2,147,483,648 (c7227b), without a terminal result
+or long-method credit. Preserve original handle and bounds.

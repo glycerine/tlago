@@ -365,6 +365,8 @@ State-generation lambda binding now rejects null parameters at the count read;
 all 3,120 binding observations agree after tool-identity normalization.
 EXCEPT installation now retains null path/array failures across lambda, record
 and delegated integer values; all 352 installation/lookup observations agree.
+Scalar EXCEPT methods now reject null paths/batches under their existing source
+wrappers; all 180 integer/boolean/string observations agree.
 Numeric override casts preserve source failure messages and last-argument-first
 order; implicit null failures retain nullable details. All 36 expression and 350
 override observations agree. Numeric module selection now chooses the source
