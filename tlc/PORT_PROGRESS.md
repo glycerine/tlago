@@ -36817,3 +36817,107 @@ record both completed operator runs and the next saved conversion baseline.
 Original random stress session 27326 remains live by direct poll cb0060;
 latest saved progress is 2,085,160,285 / 2,147,483,648, without terminal result
 or new long-test credit. The overall Java-to-Go goal remains active.
+
+2026-10-10: BagToSet/SetToBag conversion and predicate materialization boundaries
+
+Previous goal turn made verified progress in e019887 and 98e6fa2. Inspect the
+clean worktree (dc1045) and poll original stress session 27326 directly (5ca045);
+it remains live, without restart or long-test credit. The saved 1,056-row actual
+conversion baseline identifies 16 non-stack null-input differences. Source
+SetToBag also allocates by logical vector size and reads elements individually;
+native used ToArray, which performs a bulk-copy validation even at size zero.
+
+Extend the ignored .codex-gotmp/bag-conversions observers with eight bounded
+actual ValueVec states. Existing constructors/direct stores produce count beyond
+capacity and inactive backing slots. Reflection on actual vector storage/count
+slots retains negative counts and null storage, without fabricated semantic
+graphs or evaluator callbacks. Raw vector snapshots read backing storage safely,
+including negative/oversized logical counts. Source expanded run exits zero
+(db9c70), native baseline exits zero (45409 85b563). All 1,184 rows are present,
+122 raw / 40 non-stack differences (2cab92). E.g. count 2 over capacity 1 throws
+source element bounds versus native arraycopy bounds; zero count with null
+storage returns an empty bag in Java versus native NullPointerException.
+
+Preserve typed null input dereferences, actual set conversion and null-result
+diagnostics, retaining Java's odd BagToSet label in SetToBag. Normalize only
+when needed, capture the resulting vector, allocate each domain/count array
+from its current logical size with typed negative-size failures, and traverse
+current logical elements, then read final normalization status. Zero counts
+bypass storage reads; oversized counts fail at the first missing element.
+Inline BagToSet's conversion boundary and remove the now-unused helper.
+Native expanded rerun exits zero (76531 c6e3ab): all 1,184 rows agree outside
+82 native/JVM stack-text differences, zero others (2d1663). Focused original
+checks pass (44830 a25b92), root 2.037s and tlc 2.765s.
+
+Extend to eight actual SetPredValue forms using the existing parsed test206
+predicate and real evaluation. Invoke size to obtain normal converted state;
+then replace the actual public inner value with null, boolean, debugger,
+function or null-vector sets. Reflection reads only the actual converted flag
+for snapshots. Source completes zero (a4326c); native pre-fix completes zero
+(16863 f1fcec): all 1,312 rows, 126 raw / 40 non-stack differences (d7ec10).
+Native converted ToSetEnum replaced a Java cast with a custom unsupported error;
+null inner-value fallback printing exposed a raw Go nil panic instead of source
+string concatenation with null text.
+
+Fix converted ToSetEnum to preserve a null cast result and typed non-set casts
+without adding an owner catch. Predicate fallback rendering retains "null" text
+after the original expansion/swallow boundary. Full native rerun completes zero
+(29259 52ee29): all 1,312 rows agree outside 86 native/JVM stack-text differences,
+zero others (88db61). Focused originals pass (3092 ff976f/87de9f), root 2.040s
+and tlc 2.415s. Original SetPredValue model and existing lazy-subset checks pass
+(2601 1a5aaf/0719fb), root 0.272s and tlc 0.014s. Full unchanged CommunityModules
+starts on this intermediate code (58441 159d28); retain its original live handle.
+
+Follow the converted-null result through actual materialization callers before
+stopping at module-level parity. Build ignored .codex-gotmp/predicate-materialization
+observers from the same actual predicates. Eight states cross independent source
+ownership and ToSetEnum/Compare/Equal/Size/FingerPrint/Permute. Source baseline
+finishes zero (e20203), native finishes zero (2886 c6e908): 96 rows, ten actual
+non-stack differences (13ff7b). All five materializing operations dereference a
+null conversion in source; Go stores a typed-nil interface and exposes a raw
+nil-pointer panic instead. Preserve the null assignment and converted flag before
+a typed NullPointerException under the caller's existing source boundary.
+
+A second source observer also records explicit null backing identity (fc12f9).
+Native final run exits zero (3264 4bbbb9): all 96 rows agree exactly (5348eb),
+including post-call source ownership, converted flag and actual null backing.
+The full conversion matrix is rerun on final code (72066 4f80a5): all 1,312 rows
+agree outside 86 native/JVM stack locations/elision lines, zero others (9469c8).
+No diagnostic/cause headers, nullable parameters, codes, owner frames or runtime
+state are filtered. No persistent tests/fixtures or original-method credit is
+added. Broader lazy production, predicate membership and inner-value traversal
+remain separate targets.
+
+Combined focused original bag/predicate/model/value/EXCEPT/Sequences/TLCModule/
+stream/MP/override and lazy-subset checks pass on the final code (17681 a88a2e/
+b25e30), root 2.292s and tlc 2.557s. Full unchanged CommunityModules all/shiviz
+starts on final production code in session 96308 (fc6034), log
+.codex-gotmp/bag-conversions/community-ant-final.log. Both original phases and
+bounds, timeout zero, no race. Keep the earlier intermediate full run alive;
+it does not verify the later null-materialization correction. Handoff/architecture
+record the actual observed contracts and next source targets. The overall
+Java-to-Go goal remains active.
+
+Intermediate CommunityModules session 58441 exits zero (1e145d), root 314.325s,
+all 313.63s and shiviz 0.24s (d64d15). It covers conversion/cast/rendering fixes
+before the materialize null-state guard; final session 96308 remains separate.
+While final verification runs, prepare the next ignored predicate membership/
+inner-value traversal baseline using the same actual parsed predicates. Add
+ordinary unconverted null/scalar/tuple/null-vector backing forms by assigning
+only the actual public inner-value slot. Twelve forms cross source ownership,
+five membership arguments, finiteness, normalization/deep normalization,
+normalization status and real enumeration/reset. Both source/native finish zero
+(c0f5cb/c7b4ea). All 240 rows are present, 48 raw / 48 non-stack differences
+(d64d15), including null receiver and converted enumeration cast boundaries.
+Preserve this baseline for the following source chunk; no production edits for
+that next audit, persistent tests/fixtures or original-method credit. Actual
+post-call backing/converted state and null identity remain checked.
+
+Final CommunityModules verification exits zero (96308 c56f16), root 316.051s,
+all 315.37s and shiviz 0.24s (861976), covering the completed conversion,
+rendering and null-materialization changes. Formatting/diff checks pass.
+Handoff/architecture record completed verification and the saved 240-row
+predicate traversal baseline as the next source target. Original random stress
+session 27326 remains live by direct poll c2a88d; latest saved progress is
+2,099,810,229 / 2,147,483,648, without terminal result or new long-test credit.
+Overall Java-to-Go goal remains active.

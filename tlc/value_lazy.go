@@ -351,6 +351,12 @@ func (v *SetPredValue) materialize() (*SetEnumValue, error) {
 	if err != nil {
 		return nil, err
 	}
+	if set == nil {
+		// Each caller stores the null conversion before invoking its next method.
+		v.InVal = nil
+		v.Converted = true
+		panic(NewNullPointerException())
+	}
 	v.InVal = set
 	v.Converted = true
 	return set, nil
@@ -502,9 +508,12 @@ func (v *SetPredValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err e
 
 func (v *SetPredValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.Converted {
+		if v.InVal == nil {
+			return nil, nil
+		}
 		set, ok := v.InVal.(*SetEnumValue)
 		if !ok {
-			return nil, v.unsupported("converted set predicate contains non-enumerated set %s", v.InVal)
+			panic(valueStreamClassCast(v.InVal, "tlc2.value.impl.SetEnumValue"))
 		}
 		return set, nil
 	}
@@ -596,7 +605,11 @@ func (v *SetPredValue) ToString(sb *strings.Builder, offset int, swallow bool) *
 		_ = v.Vars.([]*SymbolNode)
 	}
 	// Java concatenates inVal here, entering its public checked string path.
-	sb.WriteString(" \\in " + v.InVal.String() + " : <expression ")
+	inText := "null"
+	if v.InVal != nil {
+		inText = v.InVal.String()
+	}
+	sb.WriteString(" \\in " + inText + " : <expression ")
 	sb.WriteString(toContextString(v.Pred) + "> }")
 	return sb
 }

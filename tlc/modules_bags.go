@@ -446,36 +446,46 @@ func BagOfAll(op Value, bag Value) (Value, error) {
 }
 
 func BagToSet(bag Value) (Value, error) {
-	fcn, err := requireBagFunction("BagToSet", bag)
-	if err != nil {
-		return nil, err
+	if bag == nil {
+		panic(NewNullPointerException())
+	}
+	fcn := asFcnRcdValue(bag)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagToSet", "a function with a finite domain", ValuesPPR(bag))
 	}
 	return fcn.DomainValue(), nil
 }
 
 func SetToBag(set Value) (Value, error) {
-	if !canConvertToSetEnum(set) {
-		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagToSet", "a function with a finite domain", ValuesPPR(set))
+	if set == nil {
+		panic(NewNullPointerException())
 	}
-	setEnum, err := toSetEnumValue(set)
+	setEnum, err := tryToSetEnumValue(set)
 	if err != nil {
 		return nil, err
+	}
+	if setEnum == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagToSet", "a function with a finite domain", ValuesPPR(set))
 	}
 	if !setEnum.IsNormalized() {
 		setEnum.Normalize()
 	}
-	domain := setEnum.Elems.ToArray()
-	values := make([]Value, len(domain))
-	for i := range values {
+	elems := setEnum.Elems
+	size := elems.Len()
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
+	}
+	domain := make([]Value, size)
+	size = elems.Len()
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
+	}
+	values := make([]Value, size)
+	// Element reads preserve source bounds and bypass null backing arrays
+	// when the logical count is zero.
+	for i := 0; i < elems.Len(); i++ {
+		domain[i] = elems.At(i)
 		values[i] = IntOne
 	}
 	return NewFcnRcdValue(domain, values, setEnum.IsNormalized()), nil
-}
-
-func requireBagFunction(name string, value Value) (*FcnRcdValue, error) {
-	fcn := asFcnRcdValue(value)
-	if fcn == nil {
-		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, name, "a function with a finite domain", ValuesPPR(value))
-	}
-	return fcn, nil
 }

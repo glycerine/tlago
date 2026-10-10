@@ -8746,6 +8746,39 @@ remain unproven. Original bag/model/value/EXCEPT/Sequences/TLCModule/stream/MP
 checks pass. The complete unchanged CommunityModules all/shiviz target passes
 after both SqSubseteq and BagOfAll in separate full runs.
 
+BagToSet preserves a null input dereference before function conversion and uses
+the converted function's actual domain getter. SetToBag calls the actual set
+conversion before validating a null conversion result, retaining Java's existing
+BagToSet diagnostic label. It normalizes only if needed, retains the resulting
+ValueVec, allocates domain/count arrays from its logical sizes, and reads each
+visited element before assigning count 1. Negative sizes retain typed allocation
+failures. A zero-count vector bypasses null backing storage; an oversized count
+fails at its first unavailable element rather than a bulk array-copy check.
+Normalization status is read after traversal.
+
+Converted SetPredValue.ToSetEnum returns null or performs the actual SetEnumValue
+cast, without adding a source-owner catch. Materialization callers store a null
+conversion and mark converted before their following null dereference. The Go
+helper preserves an actual null interface rather than a typed-nil pointer and
+raises the typed failure under each caller's existing source boundary. Predicate
+fallback rendering concatenates a null inner value as "null", after attempted
+expansion has been suppressed by its original swallow boundary.
+
+All 1,312 direct/MethodValue conversion observations agree outside 86 JVM/native
+stack locations/elision lines. The matrix spans actual bag, set and interval
+constructors, logical vector counts/backing storage, and parser-backed predicate
+sets before and after normal conversion. Actual public predicate inner values
+are replaced with null, scalar/debugger/function or null-vector sets; no source
+semantic graph or evaluator callback is fabricated. An additional 96 direct
+ToSetEnum/comparison/equality/size/fingerprint/permutation observations agree
+exactly, including nullable backing identity and post-call converted state.
+No persistent tests/fixtures or original-method credit are added. Original bag
+and predicate models plus focused value/EXCEPT/Sequences/TLCModule/stream/MP and
+lazy-subset checks pass. Broader lazy set production, predicate membership and
+inner-value traversal remain separate targets. The complete unchanged
+CommunityModules all/shiviz target passes on the final conversion/materialization
+implementation.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

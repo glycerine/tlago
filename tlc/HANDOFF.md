@@ -463,9 +463,18 @@ reuses one argument buffer and reads matched counts after mapped-key equality.
 It retains null mapped keys until visited and uses typed count casts. All 7,200
 observations agree outside 240 native/JVM stack-text differences, including
 actual count/domain sharing through finite operator records. Original bag/focused
-checks and complete CommunityModules all/shiviz pass. Continue with `BagToSet`
-and `SetToBag` conversions: the saved 1,056-row baseline identifies 16 null-input
-differences outside stack text; broader lazy conversions remain unproven.
+checks and complete CommunityModules all/shiviz pass.
+`BagToSet` and `SetToBag` preserve null-input and conversion failures. `SetToBag`
+retains the normalized vector and reads each element, preserving bounds failures
+and empty vectors with null backing storage. Converted predicate sets retain
+typed casts and null returns; materialization stores null before its next
+dereference, and fallback printing uses Java's null text. All 1,312 conversion
+observations agree outside 86 native/JVM stack-text differences, and all 96
+materialization observations match exactly. Original bag/predicate/focused checks
+and the complete CommunityModules all/shiviz target pass. Continue with
+`SetPredValue` membership and inner-value traversal: the saved 240-row baseline
+identifies 48 differences outside stack text. Broader lazy conversions remain
+unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -549,7 +558,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,085,160,285 of 2,147,483,648 iterations, without a terminal result. The previous
+2,099,810,229 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,
