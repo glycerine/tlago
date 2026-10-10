@@ -1348,10 +1348,18 @@ func (v *FcnRcdValue) Size() (resultInt int, err error) {
 	if err := v.normalizeFcn(); err != nil {
 		return 0, err
 	}
+	if v.Values == nil {
+		return 0, NewNullPointerException()
+	}
 	return len(v.Values), nil
 }
 
-func (v *FcnRcdValue) NonNormalizedSize() int { return len(v.Values) }
+func (v *FcnRcdValue) NonNormalizedSize() int {
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
+	return len(v.Values)
+}
 
 func (v *FcnRcdValue) ToTuple() *TupleValue {
 	if v.Intv != nil {
@@ -1413,7 +1421,13 @@ func (v *FcnRcdValue) normalizeFcn() (err error) {
 	if v.IsNorm {
 		return nil
 	}
+	if v.Domain == nil {
+		panic(NewNullPointerException())
+	}
 	for i := 1; i < len(v.Domain); i++ {
+		if isNil(v.Domain[0]) {
+			panic(NewNullPointerException())
+		}
 		cmp, err := v.Domain[0].Compare(v.Domain[i])
 		if err != nil {
 			return err
@@ -1423,15 +1437,20 @@ func (v *FcnRcdValue) normalizeFcn() (err error) {
 		}
 		if cmp > 0 {
 			v.Domain[0], v.Domain[i] = v.Domain[i], v.Domain[0]
-			v.Values[0], v.Values[i] = v.Values[i], v.Values[0]
+			first := fcnParameterDomain(v.Values, 0)
+			other := fcnParameterDomain(v.Values, i)
+			v.Values[0], v.Values[i] = other, first
 		}
 	}
 	for i := 2; i < len(v.Domain); i++ {
 		d := v.Domain[i]
-		val := v.Values[i]
+		val := fcnParameterDomain(v.Values, i)
 		j := i
 		cmp := -1
 		for j > 0 {
+			if isNil(d) {
+				panic(NewNullPointerException())
+			}
 			nextCmp, err := d.Compare(v.Domain[j-1])
 			if err != nil {
 				return err
@@ -1441,7 +1460,7 @@ func (v *FcnRcdValue) normalizeFcn() (err error) {
 				break
 			}
 			v.Domain[j] = v.Domain[j-1]
-			v.Values[j] = v.Values[j-1]
+			v.Values[j] = fcnParameterDomain(v.Values, j-1)
 			j--
 		}
 		if cmp == 0 {

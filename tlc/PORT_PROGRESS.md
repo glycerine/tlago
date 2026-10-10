@@ -34918,3 +34918,42 @@ architecture updated. Latest full stress saved progress is 1,667,596,435 /
 2,147,483,648 (7f9743), without terminal result or long-method credit. Preserve
 original handle/artifacts/bounds. Function-record normalization and broader
 composite parity remain open targets.
+
+
+### 2026-10-10: Function-record normalization and size array boundaries
+
+After committing tuple conversion in 04dbf46, continue the next concrete source
+gap: function-record normalization accepts a null domain, and normalizing/non-
+normalizing size accept null values. Sorting short/null values or null comparison
+receivers also exposes native runtime failures instead of Java typed failures.
+
+Ignored function-normalization uses actual test206 Def2 source attachment and
+runtime function arrays. Eleven explicit domain forms cover null/empty, one
+integer, ordered/reordered two/three integers, duplicates and null elements.
+Five value widths cover null and lengths zero to three, across normalized flags,
+source attachment and Normalize/Size/NonNormalizedSize. Initial Java/native
+complete 660 rows with 172 differences (38741f), comparing full failures, array
+contents and normalized state even after failure.
+
+Restore null-domain reads after the normalized shortcut, typed null comparison
+receivers and typed value-array reads at source accesses. Keep domain swaps
+before value reads and insertion's current-value read before comparison. Size
+normalizes first and retains its separate source wrapper; non-normalizing size
+has no wrapper. Native 19656 finishes (d9fffc); all 660 rows agree (e6faac).
+Expand to actual interval constructors with null, normal and empty intervals;
+all 750 rows agree (efdd72). No fabricated semantic graph/evaluator, persistent
+test/fixture, changed original assertions or original-method credit.
+
+Earlier ignored lambda deep-normalization rerun initially aborts because its
+required label argument was omitted (05cbab); rerun with the original deep
+label completes (1814f2). All 1,266 Java-expanded rows still agree (ae075c).
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests and focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream checks pass. Session 97027 finishes
+with exit zero (6e6cc7); root 5.024s and tlc 2.415s (05cbab). No race, broad suite
+or shortened workload. Observer logs remain under function-normalization.
+Handoff and architecture updated. Original full stress 27326 remains live on
+direct poll 875ae9, latest saved progress 1,671,552,789 / 2,147,483,648 (ae075c).
+No terminal result or added long-method credit; preserve original handle,
+artifacts and bounds. Other domain kinds, larger sorts, arbitrary comparison
+callbacks and concurrent mutation remain outside the bounded comparison.

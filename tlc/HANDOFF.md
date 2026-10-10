@@ -352,6 +352,9 @@ propagates the size failure with the source frame count. All 24 observations
 agree. Predicate-set and operator EXCEPT checks also agree in 204 observations.
 Tuple domain/function conversion and tuple-to-record dispatch retain null-array
 failures and source frame boundaries; all 64 related observations agree.
+Function-record normalization and sizing retain source array-read order, typed
+failures and normalized-state publication; all 750 observations agree, and the
+prior 1,266 lambda deep-normalization observations still agree.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
 Verified EXCEPT installation and scalar, set, tuple and record updates retain
 typed path/batch failures, source wrappers and warning parameters. Record updates allocate and

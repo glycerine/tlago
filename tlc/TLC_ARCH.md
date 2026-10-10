@@ -7888,8 +7888,27 @@ function conversion, record equality and record comparison, four array forms
 (null, allocated-empty, null-element and two-element) and independent tuple/
 record source attachment. The function result comparison checks interval and
 value-array length; it does not establish array ownership. No original-test
-credit is added. Function-record normalization and other composite operations
-remain separate parity targets.
+credit is added. The bounded function-record normalization comparison below
+covers array boundaries; other composite operations remain separate targets.
+
+Function-record normalization preserves its normalized shortcut before reading
+arrays. Unnormalized null domains fail at the domain-length read without
+publishing normalization. Sorting reads the value array only when source does:
+minimum swaps mutate the domain before reading values, and insertion starts by
+reading the current value. Null arrays and short reads retain typed null/index
+failures under the normalization wrapper. Null comparison receivers likewise
+retain typed failure. Size normalizes before reading value length under its own
+wrapper; non-normalizing size reads value length without a source wrapper.
+All 750 observations agree for normalization, size and non-normalizing size,
+including resulting domain/value arrays and normalized state after failure.
+Eleven explicit domain forms cover null/empty, ordered and reordered integers,
+duplicates and null entries; five value widths cover null and lengths zero to
+three. Both normalized flags and source attachment are observed. Additional
+interval constructors cover null, ordinary and empty intervals at the same value
+widths, retaining their normalized shortcut. The earlier 1,266 lambda deep
+normalization observations still agree. Arbitrary comparison callbacks, other
+domain kinds, larger sort inputs and concurrent mutation remain outside these
+matrices; they add no original-test credit.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
