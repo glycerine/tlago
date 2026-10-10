@@ -1,5 +1,7 @@
 package tlc
 
+import "fmt"
+
 var standardTLCEvalMu reentrantReadWriteLock
 
 // SpecProcessor.processModuleOverrides visits inherited Naturals definitions
@@ -732,15 +734,36 @@ func standardTLCSet(tool *Tool, args []SemanticNode, con *Context, state *TLCSta
 }
 
 func standardAssertError(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	expectedNode, ok := args[0].(*StringNode)
-	if !ok {
-		return nil, newTLCError(ECGeneral, "In computing AssertError, a non-string expression (%s) was used as the err of an AssertError(err, exp).", SemanticString(args[0]))
+	if _, ok := args[0].(*StringNode); !ok {
+		panic(NewTLCRuntimeExceptionMessage(fmt.Sprintf("In computing AssertError, a non-string expression (%s) was used as the err of an AssertError(err, exp).", SemanticString(args[0]))))
 	}
-	_, err := tool.Eval(args[1], con, state, pstate, control, cm)
-	if err == nil {
+	_, failure := tool.Eval(args[1], con, state, pstate, control, cm)
+	if failure == nil {
 		return BoolFalse, nil
 	}
-	return TLCExtAssertError(expectedNode.Value, func() (Value, error) { return nil, err })
+	if !isJavaEvalOrRuntimeException(failure) {
+		return nil, failure
+	}
+	// Java evaluates the expected message only in its catch block, using the
+	// state-expression overload: empty successor, clear control, no coverage.
+	value, err := tool.Eval(args[0], con, state)
+	if err != nil {
+		return nil, err
+	}
+	var expected *StringValue
+	switch value := value.(type) {
+	case nil:
+	case *StringValue:
+		expected = value
+	case *DebuggerValue:
+		expected = value.StringValue
+	default:
+		panic(valueStreamClassCast(value, "tlc2.value.impl.StringValue"))
+	}
+	if expected == nil || expected.Val == nil {
+		panic(NewNullPointerException())
+	}
+	return TLCExtAssertError(expected, func() (Value, error) { return nil, failure })
 }
 
 func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

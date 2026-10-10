@@ -31369,3 +31369,57 @@ before any restart. Full bounds/default budget/assertions retained, no terminal
 result or original-method credit. Handoff corrects the prior mistaken statement.
 Next audit: AssertError exception delivery and catch boundaries against the
 actual source and existing model semantics. Overall TLC port remains incomplete.
+
+
+2026-10-10 AssertError source catch and expected-message evaluation:
+Previous turn made verified progress in ed775c7; working tree clean on entry.
+Original stress handle 27326 is confirmed live by 724005; no replacement starts.
+Source TLCExt.assertError enforces StringNode with Assert.check(String), catches
+only EvalException/TLCRuntimeException from expression evaluation, then evaluates
+the expected message using Tool's state-expression overload. Go instead compares
+the literal directly, silently consumes every returned error, and reports the
+literal precondition with a legacy evaluation carrier.
+
+Ignored .codex-gotmp/assert-error-observation copies the pinned FastTool adapter
+into an observer-only renamed AssertProbeTool. All original methods delegate to
+source Tool implementations; only the eval boundary intercepts the observed
+expression and expected node. The observer copies a real FastTool for existing
+TLCExtTrace with unchanged Alias config and uses the actual Inv body. It records
+ordered expression/expected evaluations, current/successor identity and control,
+returned booleans and exception category/message. Native observer uses the real
+loaded AssertError registration's EvalFunc and Tool.Eval callback. This is an API
+observation, not an invented persistent model/test or original-method credit.
+Initial Java compilation has an ambiguous Context import, fixed by qualifying
+tlc2.util.Context. Baseline native 46430 terminal e11810 and source 089974 show
+nine differences among eleven rows. Matching controls are success returning
+FALSE without expected evaluation, and unrelated NullPointerException propagation.
+
+Replace the registered callback's precondition failure with the existing uncoded
+TLCRuntimeException factory and panic. After evaluating the expression, propagate
+unrelated failures; evaluate expected only for source catchable carriers with
+same context/state and source default successor/control/coverage. Preserve StringValue
+and DebuggerValue subclass casts; null or null underlying StringValue raises typed
+NullPointerException. Expected evaluation failures escape. The existing exported
+TLCExtAssertError convenience helper now propagates unrelated errors and compares
+nullable throwable detail messages instead of rendered Error text. Its existing
+nil-argument convenience behavior is unchanged; that is not the registered source
+entry point. No synchronization parity claim is made by this boundary fix.
+Initial native builds 7b28bf and 976655 expose the missing fmt import; add the
+required import, format, and rebuild 88326 terminal 86ffc9. Comparison 20dc85
+matches all eleven rows and confirms exactly nine corrected baseline differences.
+Cases: success, matching/mismatching EvalException and TLCRuntimeException,
+unrelated IllegalArgumentException and NullPointerException, expected evaluation
+failure, wrong expected value type, null expected result and non-string node.
+Null-pointer and class-cast rows compare class only, because enhanced JVM messages
+are not a Go contract; other messages are compared in full with escaped newlines.
+
+Nineteen unchanged original methods pass: 41513 terminal d08c5f, 4.634s,
+originals.log and count receipt 0b0cca. Selection includes ConstantRank2AssertError,
+TLCExtModel, Github696/b and the previous fifteen trace/alias/level/construction/
+single-worker round-trip methods. No new persistent tests/fixtures, source edits,
+weakened assertions, workload changes, method-count credit, broad suite, race
+run or email work. Formatting and git diff --check pass. Original full random
+stress saved progress is 975,529,316 / 2,147,483,648 (0b0cca), without terminal
+result or original-method credit. Next audit: TLCExt's shared class synchronization
+for its synchronized methods, consulting prior locking receipts. Overall TLC
+parity and original-model reconciliation remain incomplete.

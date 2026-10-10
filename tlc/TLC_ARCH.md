@@ -9182,6 +9182,20 @@ catch. Normal and race compiler escape analysis confirm the markers stay on the
 stack; finite expansion and the two original overflow tests all pass.
 
 
+AssertError first enforces a StringNode expected-message argument with the
+source uncoded TLCRuntimeException. It evaluates the expression with the supplied
+context, states, control and cost model. Success returns FALSE. Only source
+EvalException/TLCRuntimeException carriers enter the catch branch; unrelated
+failures propagate. That branch evaluates the expected argument using the
+state-expression overload (same context/current state, empty successor, clear
+control and no coverage recording), then applies Java's StringValue cast and
+null dereference boundaries. A failure evaluating the expected message escapes
+the original expression's catch. Message equality uses the throwable detail
+message, not its rendered class text. Native DebuggerValue retains its source
+StringValue inheritance at this cast. Eleven bounded Java/native observations
+verify order, state/control and return/failure categories; enhanced JVM null/cast
+messages and shared class-monitor behavior are outside this observation claim.
+
 Standard evaluating signatures also retain TLCEval and SequencesExt's two
 replacement-method names. The module-qualified _TLCTrace and _JsonTrace state
 helpers use distinct EvaluatingValue registrations with the same implementation,

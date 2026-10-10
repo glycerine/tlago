@@ -37,7 +37,11 @@ func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*Bool
 	if err == nil {
 		return BoolFalse, nil
 	}
-	if err.Error() == expected.RawString() {
+	if !isJavaEvalOrRuntimeException(err) {
+		return nil, err
+	}
+	message := javaThrowableDetailMessage(err)
+	if message != nil && *message == expected.RawString() {
 		return BoolTrue, nil
 	}
 	return BoolFalse, nil
