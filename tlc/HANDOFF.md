@@ -222,6 +222,11 @@ Function combination (`@@`) converts both operands before checking either
 conversion result, preserving lazy right-side effects and failure precedence.
 Ten bounded comparisons, all five original TLCTest methods in Java and Go, and
 four relevant original model methods pass.
+`_Possible!_Counts` now accepts only function records, normalizes each source
+record, preserves malformed-count failures and wraps integer sums. Its raw output
+uses Java HashMap merge iteration order. Twelve bounded source comparisons,
+nine relevant original Go model methods and unchanged Java PossibleCountsTest
+pass; these observations do not prove every value-key collision or simulator path.
 Continue concrete core TLC gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -231,7 +236,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,108,881,454 of 2,147,483,648 iterations, without a terminal result. The previous
+1,123,893,181 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

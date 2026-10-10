@@ -167,6 +167,49 @@ func (m *javaHashMap[K, V]) getOrCreate(key K, create func() V) V {
 	return value
 }
 
+// mergeNonNull implements HashMap.merge for non-null values and a combiner
+// that neither removes entries nor modifies this map. _Possible sums integers.
+// Like computeIfAbsent, merge prepends new list nodes and resizes before lookup.
+func (m *javaHashMap[K, V]) mergeNonNull(key K, value V, combine func(V, V) V) V {
+	h := m.hash(key)
+	if m.size > m.threshold || len(m.table) == 0 {
+		m.resize()
+	}
+	i := int(h) & (len(m.table) - 1)
+	first := m.table[i]
+	var old *javaHashNode[K, V]
+	count := 0
+	if first != nil && first.tree {
+		root := first
+		for root.parent != nil {
+			root = root.parent
+		}
+		old = m.findTree(root, h, key)
+	} else {
+		for p := first; p != nil; p = p.next {
+			if p.hash == h && m.keysEqual(key, p.key) {
+				old = p
+				break
+			}
+			count++
+		}
+	}
+	if old != nil {
+		old.value = combine(old.value, value)
+		return old.value
+	}
+	if first != nil && first.tree {
+		m.putTree(first, h, key, value)
+	} else {
+		m.table[i] = &javaHashNode[K, V]{hash: h, key: key, value: value, next: first}
+		if count >= 7 {
+			m.treeifyBin(i)
+		}
+	}
+	m.size++
+	return value
+}
+
 func (m *javaHashMap[K, V]) All() func(func(K, V) bool) {
 	return func(yield func(K, V) bool) {
 		if m == nil {

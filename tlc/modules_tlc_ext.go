@@ -369,7 +369,11 @@ type TLCExtCache struct {
 }
 
 func NewTLCExtCache() *TLCExtCache {
-	values := newJavaHashMap[Value, Value](ValueJavaHashCode, nil)
+	return &TLCExtCache{values: newTLCValueHashMap[Value]()}
+}
+
+func newTLCValueHashMap[V any]() *javaHashMap[Value, V] {
+	values := newJavaHashMap[Value, V](ValueJavaHashCode, nil)
 	values.equal = func(key, stored Value) bool {
 		if key == nil {
 			return false
@@ -398,7 +402,7 @@ func NewTLCExtCache() *TLCExtCache {
 		}
 		return 1
 	}
-	return &TLCExtCache{values: values}
+	return values
 }
 
 func semanticTLCExtCache(tool *Tool, expr SemanticNode) *TLCExtCache {
@@ -484,34 +488,42 @@ func PossibleCounts() Value {
 	} else if simulator := CurrentSimulator(); simulator != nil {
 		values = append(values, simulator.GetAllNamedValues(possibleCountsKey)...)
 	}
-	domain := NewValueVec(0)
-	counts := NewValueVec(0)
+	totals := newTLCValueHashMap[int32]()
 	for _, value := range values {
-		fcn := asFcnRcdValue(value)
-		if fcn == nil {
+		fcn, ok := value.(*FcnRcdValue)
+		if !ok {
 			continue
 		}
+		if fcn == nil {
+			panic(NewNullPointerException())
+		}
 		fcn.Normalize()
-		fcnDomain := fcn.DomainAsValues()
-		for i, dval := range fcnDomain {
+		if fcn.Intv != nil {
+			// The source iterates rec.domain directly, which is null for an
+			// interval-backed function even after normalization.
+			panic(NewNullPointerException())
+		}
+		for i, dval := range fcn.Domain {
 			count, ok := fcn.Values[i].(*IntValue)
 			if !ok {
-				continue
+				if fcn.Values[i] == nil {
+					panic(NewNullPointerException())
+				}
+				panic(NewClassCastException("count is not an IntValue"))
 			}
-			idx, err := findEqualValue(domain, dval)
-			if err != nil {
-				panic(err)
+			if count == nil {
+				panic(NewNullPointerException())
 			}
-			if idx < 0 {
-				domain.Add(dval)
-				counts.Add(count)
-			} else {
-				prev := counts.At(idx).(*IntValue)
-				counts.Set(idx, NewIntValue(prev.Val+count.Val))
-			}
+			totals.mergeNonNull(dval, count.Val, func(a, b int32) int32 { return a + b })
 		}
 	}
-	return NewFcnRcdValue(domain.ToArray(), counts.ToArray(), false)
+	domain := make([]Value, 0, totals.Len())
+	counts := make([]Value, 0, totals.Len())
+	for key, total := range totals.All() {
+		domain = append(domain, key)
+		counts = append(counts, NewIntValue(total))
+	}
+	return NewFcnRcdValue(domain, counts, false)
 }
 
 func findEqualValue(values *ValueVec, target Value) (int, error) {

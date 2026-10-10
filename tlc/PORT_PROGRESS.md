@@ -31897,3 +31897,48 @@ Original full random handle 27326 remains live on direct poll 8ce78a. Latest
 saved progress is 1,108,881,454 / 2,147,483,648 (a332a5), without terminal result
 or original-method credit. Preserve its handle, bounds, default budget and
 artifacts. Core TLC parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10: Resume after power outage; _Possible!_Counts aggregation parity.
+
+Recovered uncommitted changes on 5406411 and preserved the original full random
+stress session 27326. Direct poll 7c4479 still reports it running; latest saved
+progress is 1,123,893,181 / 2,147,483,648. No terminal result or method credit.
+Session 63358 no longer exists, but originals.log retains terminal PASS and the
+nine individually passing original methods (2.016s). Do not restart the long run.
+
+Pinned _Possible.java accepts only FcnRcdValue, normalizes it, directly traverses
+its explicit domain, casts counts to IntValue and merges into HashMap. Native
+previously converted tuples/records/lambdas, skipped malformed counts, accepted
+interval-backed functions and returned first-seen key order. Correct these
+boundaries and preserve wrapping int32 sums. Extract the unchanged TLCCache
+Value-key map policy for reuse. Add only the non-null/no-removal/no-structural-
+mutation subset of HashMap.merge needed for integer totals. It hashes once,
+resizes before lookup, prepends list nodes and retains treeification behavior.
+Local JDK bytecode corroborates the insertion/resize order (be882e).
+
+Ignored .codex-gotmp/possible-counts observations use real C model tools and
+three checker workers; no persistent tests or fixtures were invented. Initial
+Java setup incorrectly inserted a null ConcurrentHashMap registration; preserve
+java.log as setup failure, not counts evidence. Corrected setup removes keys.
+The first ten source/native rows match (fc4f9d), with eight baseline differences:
+records, tuple, record, lazy, wrong-count, null-count, interval and collisions.
+The final twelve complete rows also match (3bd23e): add updates through fresh
+equal keys in tree buckets and an empty function-record control. Raw result
+arrays and lazy materialization flags are compared. Null/class-cast comparisons
+retain exception category, excluding JVM-specific messages. Collision cases
+share bucket indexes but use differing full hashes; no universal identity-hash
+ordering claim. The checker path is observed; simulator selection is unchanged.
+Explicit final rebuild succeeds (11fe0b); java-final.log/after-final.log preserve
+all twelve rows, including 32 tree-bucket totals of three.
+
+Nine original Go model methods pass: PostConditions, PostConditionsFail,
+PossibleCounts, ConstantContextTLCCache, Possible and all four PossibleFail
+variants (originals.log, 2.016s). Unchanged Java PossibleCountsTest independently
+passes JUnitCore OK (1 test), 707e6f terminal, 0.524s; upstream stays read-only
+and generated metadata stays in the ignored workspace. Existing focused cache
+scope check passes, 25687 terminal 41d7c8, map-checks.log, 0.012s. There are no
+standalone HashMap tests matching the broader name filter; do not claim them.
+No original-method inventory credit added, no broad sweep or race workload.
+Update HANDOFF and TLC_ARCH with the bounded contract and remaining limits.
+Core TLC completion and original-model reconciliation remain open.
