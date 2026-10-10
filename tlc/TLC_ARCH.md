@@ -7116,7 +7116,15 @@ Go mapping:
   `TLCStateMutExt`. Java only evaluates the closure in those two cacheable
   cases; action- and temporal-level expressions bypass the cache and evaluate
   the expression directly. The state-level closure key is evaluated against the
-  current state only, mirroring `tool.eval(closure, c, s0)`.
+  current state only, mirroring `tool.eval(closure, c, s0)`: it receives
+  `EmptyState`, `EvalClear` and `DO_NOT_RECORD` independently of the incoming
+  successor, control and cost model. This evaluation occurs on cache hits too.
+  Misses evaluate the expression with the original arguments. A null key fails
+  during hashing; a null current-state receiver fails after key evaluation and
+  hashing rather than bypassing the state-level branch. Ordinary states retain
+  their base no-op cache/fallback, while extended states store results. Sixteen
+  bounded source/native observations cover misses, hits, changed keys, closure
+  and expression failures, retained entries after failure and both null paths.
 - `_TLCTrace!_TLCState` and `_JsonTrace!_TLCState` are evaluation overrides in
   Java. They ignore the syntactic level argument and return a record
   representation of the current state directly, avoiding reconstruction through

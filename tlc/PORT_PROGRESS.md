@@ -31665,3 +31665,59 @@ Original full random workload 27326 remains live on direct polling (cba2c4,
 terminal result or original-method credit. Preserve its handle, bounds, default
 budget and artifacts. Core TLC parity and original-model reconciliation remain
 incomplete; continue source-backed production gaps and faithful original tests.
+
+
+2026-10-10: state-level TLCCache closure evaluation overload.
+
+Previous goal turn was progress: verified commit d70567e. Revalidated clean
+worktree and original full random handle 27326 (d6f1cd live). Initial deferred
+callback inspection confirms the recently corrected ordinary/extended state-kind
+storage and copy policy; do not repeat those audits. Adjacent standardTLCCache
+contained a concrete uncaught mismatch: its variable-level closure evaluated
+with a null successor and the incoming cost model. Java calls tool.eval(closure,
+c, s0), selecting EmptyState, EvalControl.Clear and CostModel.DO_NOT_RECORD.
+Native now supplies those exact arguments. Expression evaluation on a miss
+retains the override's original context, current/successor states, control and
+cost model; closure evaluation still occurs on a cache hit.
+
+Preserve two related failure boundaries in that same branch: do not skip it when
+the current state is null, and do not treat a null closure value as hash zero.
+Source fails on key.hashCode before accessing the state cache. After key hashing,
+a null current receiver raises typed NullPointerException. This changes only
+the cache override's dereference boundary; generic ValueJavaHashCode's null
+handling and folded state cache accessor policies remain unchanged.
+
+Ignored API observations under .codex-gotmp/state-cache-scope use actual C model
+c/d semantic bodies (verified state level), initial/current and actual successor
+states, a nonempty context, enabled control and a distinct incoming cost model.
+CacheScopeTool is a renamed pinned FastTool adapter that records eval arguments
+and supplies key/expression values or failures; the Java TLCExt override itself
+is unchanged. Separate processes select ordinary or extended state mode before
+tool construction. Baseline source/native observations (2cbbf4) expose wrong
+successor/cost arguments in all 12 original rows: miss, repeated key, changed
+key, closure failure, expression failure and repeated key after failure in both
+modes. Extended hits skip expression evaluation, retained entries survive the
+failures, and ordinary states return null from their base no-op setter.
+
+Final matrix adds null-key and null-current controls in both modes. All 16 rows
+match Java with full value/error messages and context/state/control/cost events
+(9281 terminal 42b0b2; java-current-{ordinary,extended}.log and after-*.log).
+NPE comparisons use the exception category, not enhanced JVM messages. These
+bounded observations do not claim all coverage accounting, debugger behavior,
+constant-cache fidelity or all key hash failures. No persistent test or fixture
+was invented; existing original ConstantContextTLCCache is a constant-cache
+model and is regression coverage, not a full state-cache test.
+
+Five unchanged original methods pass: ConstantContextTLCCache, TLCExtModel,
+ACoverage and both SimulationWorkerModel state/action constraint methods.
+Initial originals.log passes 2.251s (81598 terminal 458d6e); after the null-boundary
+changes originals-final.log passes 2.249s (9281 terminal 42b0b2). Existing focused
+state-kind cache/callable and extended-copy checks pass (47363 terminal a9bbd4,
+state-related.log). No broad suite or race selection; no original-method credit.
+Formatting/diff checks pass. Correct the architecture's state-closure contract
+and keep HANDOFF concise; detailed receipts remain here.
+
+Full random handle 27326 remains live on direct poll c983dd. Latest saved progress
+is 1,071,815,569 / 2,147,483,648 (a78cc4), without terminal result or completion
+credit. Preserve the handle, original bounds, default budget and artifacts.
+Core TLC parity and original-model reconciliation remain incomplete.

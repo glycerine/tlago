@@ -205,6 +205,11 @@ prove I/O-failure behavior, extended charset providers or all interactive timing
 TLCEvalDefinition resolves through the current root module rather than replaced
 runtime bindings, preserving body selection, arity checks and null-name failures.
 Eleven bounded source comparisons and 14 related original model methods pass.
+State-level TLCCache keys use Java's state-expression evaluation arguments,
+including EmptyState and disabled coverage, even on cache hits. Null-key/current
+state failures preserve source ordering. Sixteen bounded comparisons and five
+related original model methods pass. Constant-cache/hash/lock audits remain
+separate and need no repetition without a new concrete gap.
 Continue concrete core TLC gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -214,7 +219,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,064,294,508 of 2,147,483,648 iterations, without a terminal result. The previous
+1,071,815,569 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

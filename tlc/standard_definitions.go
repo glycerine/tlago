@@ -846,12 +846,17 @@ func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCS
 			return tool.Eval(expr, con, state, pstate, control, cm)
 		})
 	}
-	if level == TLCLevelState && state != nil {
-		key, err := tool.Eval(closure, con, state, nil, EvalClear, cm)
+	if level == TLCLevelState {
+		// Java uses the state-expression overload here, independently of the
+		// successor, control and coverage model supplied to the cache override.
+		key, err := tool.Eval(closure, con, state, EmptyState, EvalClear, DoNotRecordCostModel)
 		if err != nil {
 			return nil, err
 		}
 		cacheKey := standardTLCCacheKey(expr, closure, key)
+		if state == nil {
+			panic(NewNullPointerException())
+		}
 		if value := state.GetCached(cacheKey); value != nil {
 			return value, nil
 		}
@@ -865,6 +870,9 @@ func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCS
 }
 
 func standardTLCCacheKey(expr SemanticNode, closure SemanticNode, key Value) int {
+	if key == nil {
+		panic(NewNullPointerException())
+	}
 	return int(SemanticJavaHashCode(expr) ^ SemanticJavaHashCode(closure) ^ ValueJavaHashCode(key))
 }
 
