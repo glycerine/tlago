@@ -34804,3 +34804,45 @@ retain their cases, seeds and bounds; no race, broad suite, shortened workload
 or changed original assertions. Logs remain under set-except-boundaries.
 Handoff and architecture updated. Full stress has no terminal result or added
 long-method credit; preserve its original handle, artifacts and bounds.
+
+
+### 2026-10-10: Special-value EXCEPT and lazy runtime assertion metadata
+
+Previous goal turn made verified progress in 45c1337. Confirm current clean HEAD
+(b5412b), compare Java undefined/user/lazy EXCEPT methods and native readiness.
+Original full stress 27326 remains live on direct poll df905b. Undefined/user
+methods still skipped null path/batch reads. Native lazy readiness produced an
+evaluator TLCError where source raises Assert.fail runtime metadata; this
+changes exception class and source expression/context metadata.
+
+Ignored special-lazy-except uses actual test209 xx/NN expression evaluation via
+LazyValue.getValue and S source attachment. Nine receiver states cover fresh
+UndefValue, fresh standard Nat/Int/STRING user objects, unready cacheable and
+noncacheable lazies, noncacheable after genuine evaluation, and genuine cached
+tuple/integer values. Ten single-update/seven batch forms give 306 observations
+of values, returned identity and full failure/source metadata. No custom user
+object/evaluator callback, semantic graph mutation, persistent test/fixture or
+original-method credit. Java 9655f6/native 5fda03 complete: 118 differences
+(586e91), including 16 special-value null cases and 102 lazy assertion cases.
+
+Restore typed null path/batch reads in undefined/user values. Change the shared
+lazy readiness helper to source runtimeFailure metadata; existing outer operation
+wrappers add their fingerprint frame. Cached delegation and readiness-before-
+update order remain intact. Native 23170 completes (4742a3); all 306 rows agree
+(a86f5b). Additional ignored lazy-readiness observes all shared helper routes and
+related source no-ops across three unready states and source attachment: compare,
+equality, membership, finiteness, size, Normalize, IsNormalized, FingerPrint,
+Permute, DeepCopy, DeepNormalize and IsDefined. Java 52d9e3/native 78bb1b complete
+all 72 rows with no differences (0db17e). These observations check the source
+assertion metadata and unchanged operations that do not require readiness.
+Arbitrary callbacks, custom user objects and concurrent cache mutation remain
+outside the comparison.
+
+Existing fourteen original model checks and original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl plus focused numeric/context/EXCEPT/rendering/stream and
+lazy-subset/spec-level checks pass: 24847 terminal b93efb; root 5.068s and tlc
+2.389s (eb1bae). No race, broad suite, shortened bounds or changed original
+assertions. Logs remain under special-lazy-except and lazy-readiness. Handoff and
+architecture updated. Latest full stress saved progress is 1,652,637,300 /
+2,147,483,648 (eb1bae), without terminal result or long-method credit. Preserve
+original handle, artifacts and bounds.

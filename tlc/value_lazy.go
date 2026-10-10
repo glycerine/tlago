@@ -91,7 +91,7 @@ func (v *LazyValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLCStateMut
 
 func (v *LazyValue) ready(message string) (Value, error) {
 	if v.Val == nil || v.Val == ValUndef {
-		return nil, v.unsupported("%s", message)
+		return nil, v.runtimeFailure(message)
 	}
 	return v.Val, nil
 }

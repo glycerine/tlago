@@ -346,6 +346,7 @@ width and component identities. Materialization preserves direct tuple casts,
 cache publication boundaries and typed binding failures. Null parameters fail
 at the source access in sizing, materialization, tuple conversion and generation.
 Deep normalization preserves EXCEPT-before-domain order and partial mutation.
+Unready lazy operations now retain source runtime-assertion metadata.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
 Verified EXCEPT installation and scalar, set, tuple and record updates retain
 typed path/batch failures, source wrappers and warning parameters. Record updates allocate and

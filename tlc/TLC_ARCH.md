@@ -7832,6 +7832,31 @@ use the native/source constructors. No semantic graph mutation, fabricated
 evaluator or original-method credit is involved. Predicate-set delegation,
 arbitrary formatting callbacks and concurrent mutation remain unproven.
 
+Undefined and overridden values retain typed null path/batch failures before
+completion/rejection checks, under their existing source wrappers. Unready lazy
+EXCEPT operations reject before reading the update, using source runtime
+assertion metadata rather than evaluator errors. Cached lazy values delegate to
+the retained result, preserving the original cache and its update behavior.
+All 306 EXCEPT observations agree across fresh undefined values, native standard
+Nat/Int/STRING user objects and five lazy states: unready cacheable/noncacheable,
+noncacheable after genuine evaluation, and genuine cached tuple/integer results.
+Actual test209 xx/NN bodies are evaluated through getValue; S supplies optional
+source attachment. The matrix checks null update/path/batch boundaries, remaining
+and completed paths, null replacements, result identity and source/error metadata.
+No custom UserObj/evaluator callback, semantic graph mutation or original-test
+credit is involved.
+
+The shared lazy readiness helper returns Assert.fail-style runtime errors with
+source expression/empty-context metadata before the enclosing operation adds
+its fingerprint frame. All 72 additional observations agree across compare,
+equality, membership, finiteness, size, normalization, normalized-state query,
+fingerprinting, permutation, deep copy, deep normalization and defined-state
+query. They cover unready cacheable/noncacheable values and noncacheable values
+after genuine evaluation, sourced and unsourced. `DeepCopy`, `DeepNormalize` and
+`IsDefined` retain their source behavior without requiring a ready value.
+Arbitrary lazy evaluation callbacks, custom user objects and concurrent cache
+mutation remain unproven.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes
