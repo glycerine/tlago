@@ -161,7 +161,16 @@ func (v *SetCupValue) Elements() (enumeration ValueEnumeration) {
 	enum1, ok1 := asEnumerable(v.Set1)
 	enum2, ok2 := asEnumerable(v.Set2)
 	if !ok1 || !ok2 {
-		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\cup T when S:\n" + ValuesPPR(v.Set1) + "\nand T:\n" + ValuesPPR(v.Set2) + "\nare not both enumerable"))
+		// The source formats operands in order while constructing its error.
+		if v.Set1 == nil {
+			panic(NewNullPointerException())
+		}
+		left := ValuesPPR(v.Set1)
+		if v.Set2 == nil {
+			panic(NewNullPointerException())
+		}
+		right := ValuesPPR(v.Set2)
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\cup T when S:\n" + left + "\nand T:\n" + right + "\nare not both enumerable"))
 	}
 	return &setCupEnumeration{enum1: enum1.Elements(), enum2: enum2.Elements(), cm: v.CM}
 }

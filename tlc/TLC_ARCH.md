@@ -8277,8 +8277,8 @@ ownership. Drivers use actual test206 source nodes and runtime constructors and
 arrays, with no fabricated evaluators or persistent fixtures/tests. No original
 ValueVec/SetEnumValue unit test class exists in the pinned ordinary test tree;
 existing original set/subset/randomization/debugger and model/value/stream checks
-pass. Existing native vector sharing and worker RPC checks also pass. Broader
-parsed intern allocation remains a separate requirement. This constructor
+pass. Existing native vector sharing and worker RPC checks also pass.
+Parsed intern allocation remains a separate requirement. This constructor
 comparison adds no original-method credit.
 
 ValueVec keeps its full backing array and signed Java int count independently.
@@ -8303,6 +8303,41 @@ outside Java int range remain errors. Existing native rejection cases that
 contradicted these source transfers were removed; original KSubset fixtures now
 call ToArray as their Java source does. No persistent test or fixture was added,
 no semantic graph or evaluator was fabricated and no original credit was added.
+
+SequencesExt Contains, RemoveFirst, Suffixes and AllSubSeqs invoke source tuple
+conversion before validation and directly read the backing array. Null receivers,
+null tuple arrays and compared null children raise typed NPE without adding a
+module source frame. RemoveFirst stops equality comparisons after its first
+match while retaining later children, including null. Returned tuple arrays own
+their storage; suffix/subsequence tuples preserve child references. SetToSeq
+raises NPE on failed conversion, while SetToSeqs distinguishes a null conversion
+from a failure raised during conversion. Both normalize and retain source set
+failures; SetToSeq copies active array storage. Permutation capacity uses Java
+int32 factorial multiplication. AllSubSeqs retains the observed allocation
+failure when Math.pow(2, n) saturates to MAX_INT on its source int cast, for
+n >= 31, rather than shifting by the native word size or allocating huge storage.
+SetCup error construction formats operands in order and raises typed NPE for a
+missing operand at its diagnostic dereference under the existing source catch.
+
+Actual parsed test206 nodes and runtime constructors cover 5,312 conversion,
+traversal, normalization and ownership observations: 25 argument forms, source
+flags, function/record conversion, nested tuples, duplicates, null children and
+28 finite/lazy set shapes. All match outside four UnionValue Enumerator object
+identity strings, which intentionally retain Go type/pointer text; root types,
+error codes, source frames and detailed expression/context fields match there.
+Sixteen additional real constructor cases agree: five oversized AllSubSeqs
+inputs (31, 32, 33, 63, 64 elements) and eleven negative int32 factorial
+capacities. The source allocation observer uses a 128 MiB heap and fails before
+allocating the oversized array. The native unsafe pre-change allocation is not
+run. This does not establish heap exhaustion behavior, large positive factorial
+allocations, arbitrary subclass mutation or immediate failure timing for every
+lazy-set enumerator. No persistent fixture/test or original-method credit is
+added. Existing original set/subset and focused regressions pass. Complete
+original CommunityModules all/shiviz phases pass after the sequence conversion
+changes, including the preceding independent ValueVec representation. Its binary
+predates the later SetCup diagnostic and oversized AllSubSeqs checks; those
+specific error paths have separate runtime comparisons, and the SetCup change
+is also covered by the subsequent original set and focused selections.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

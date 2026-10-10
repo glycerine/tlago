@@ -3,17 +3,29 @@ package tlc
 import "strings"
 
 func SequencesExtSetToSeq(value Value) (Value, error) {
-	set, err := toSetEnumValue(value)
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	set, err := tryToSetEnumValue(value)
 	if err != nil {
 		return nil, err
+	}
+	if set == nil {
+		panic(NewNullPointerException())
 	}
 	set.Normalize()
 	return NewTupleValue(set.Elems.ToArray()), nil
 }
 
 func SequencesExtSetToSeqs(value Value) (Value, error) {
-	set, err := toSetEnumValue(value)
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	set, err := tryToSetEnumValue(value)
 	if err != nil {
+		return nil, err
+	}
+	if set == nil {
 		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "SetToSeqs", "a finite set", ValuesPPR(value))
 	}
 	set.Normalize()
@@ -23,7 +35,7 @@ func SequencesExtSetToSeqs(value Value) (Value, error) {
 		return NewSetEnumValue([]Value{emptyFcnValue()}, true), nil
 	}
 
-	factorial := 1
+	factorial := int32(1)
 	domain := make([]Value, length)
 	idxArray := make([]int, length)
 	inUse := make([]bool, length)
@@ -31,10 +43,10 @@ func SequencesExtSetToSeqs(value Value) (Value, error) {
 		domain[i] = elems.At(i)
 		idxArray[i] = i
 		inUse[i] = true
-		factorial *= i + 1
+		factorial *= int32(i + 1)
 	}
 
-	fcns := NewValueVec(factorial)
+	fcns := NewValueVec(int(factorial))
 	for {
 		vals := make([]Value, length)
 		for i := 0; i < length; i++ {
@@ -75,11 +87,17 @@ func SequencesExtSetToSeqs(value Value) (Value, error) {
 }
 
 func SequencesExtContains(seq Value, elem Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "Contains", "sequence", ValuesPPR(seq))
 	}
+	if tuple.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	for _, value := range tuple.Elems {
+		if value == nil {
+			panic(NewNullPointerException())
+		}
 		eq, err := value.Equal(elem)
 		if err != nil {
 			return nil, err
@@ -566,14 +584,20 @@ func SequencesExtSelectLastInSubSeq(seq Value, from Value, to Value, test Value)
 }
 
 func SequencesExtRemoveFirst(seq Value, elem Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "RemoveFirst", "sequence", ValuesPPR(seq))
+	}
+	if tuple.Elems == nil {
+		panic(NewNullPointerException())
 	}
 	out := make([]Value, 0, len(tuple.Elems))
 	found := false
 	for _, value := range tuple.Elems {
 		if !found {
+			if value == nil {
+				panic(NewNullPointerException())
+			}
 			eq, err := value.Equal(elem)
 			if err != nil {
 				return nil, err
@@ -622,9 +646,12 @@ func SequencesExtRemoveFirstMatch(seq Value, test Value) (Value, error) {
 }
 
 func SequencesExtSuffixes(seq Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "Suffixes", "sequence", ValuesPPR(seq))
+	}
+	if tuple.Elems == nil {
+		panic(NewNullPointerException())
 	}
 	vals := make([]Value, len(tuple.Elems)+1)
 	vals[0] = EmptyTuple
@@ -637,11 +664,19 @@ func SequencesExtSuffixes(seq Value) (Value, error) {
 }
 
 func SequencesExtAllSubSeqs(seq Value) (Value, error) {
-	tuple := asTupleValue(seq)
+	tuple := sequenceTuple(seq)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "AllSubSeqs", "sequence", ValuesPPR(seq))
 	}
+	if tuple.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	n := len(tuple.Elems)
+	// The source casts Math.pow(2, n) to int before allocating its array.
+	// At n >= 31 this saturates to MAX_INT, which exceeds the source array limit.
+	if n >= 31 {
+		panic(NewOutOfMemoryError("Requested array size exceeds VM limit"))
+	}
 	total := 1 << n
 	vals := make([]Value, total)
 	for mask := 0; mask < total; mask++ {

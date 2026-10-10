@@ -35750,3 +35750,64 @@ live (2431c8). Latest saved log progress is 1,869,338,437 / 2,147,483,648
 (312edd); no terminal result or long-test credit. Preserve the same handle, log,
 original seed and bounds. Update concise handoff and implementation contracts.
 Parsed intern allocation and broader value subclass behavior remain separate.
+
+
+2026-10-10: SequencesExt conversion, traversal and allocation boundaries
+
+Previous goal turn is verified progress in 46392f0. Recheck clean status, source
+and original stress handle (16dd70/7245d9). Locate CommunityModules SequencesExt
+source in the mirrored original tree (9920f2/ebf1cd); it is not a core TLC module
+at the initially attempted Java path. Contains, RemoveFirst, Suffixes and
+AllSubSeqs directly call toTuple and read elems.length, while native null arrays
+were treated as empty. SetToSeq/SetToSeqs differ on null conversion versus thrown
+conversion failures; native generic conversion helper blurred these cases.
+
+Create ignored source/native observers from actual parsed test206 nodes and
+runtime constructors. No fabricated semantic graph or evaluator callback is
+used. Initial 2,808 rows have 458 differences (ec1aa0). Invoke source tuple
+conversion, enforce direct array/child null boundaries and preserve removal
+short-circuits. SetToSeq uses NPE for null receiver/failed conversion; SetToSeqs
+propagates conversion errors and diagnoses only an actual null conversion.
+Permutation factorial uses Java int32 multiplication. All 2,808 rows agree
+(d54098). Expand actual lazy-set constructors; 2,848 rows have eight differences
+(422939). Four are SetCup diagnostic null operand dereferences, four retain
+source/native Enumerator object-identity text. Format SetCup operands in source
+order and preserve typed NPE at a null diagnostic read under its existing catch.
+All match outside four identity strings (f56c4e), whose types/codes/frames/detail
+fields otherwise agree. Preserve the established native type/pointer identity
+contract; do not fabricate JVM identity text.
+
+Expand to 25 argument forms with general function and record conversion, nested
+tuples, duplicates, post-match null children and mixed equality. All 5,312 rows
+complete, retaining just the same four identity differences (821506). Check actual
+constructor arithmetic boundaries safely: source Java uses a 128 MiB heap and
+AllSubSeqs tuples of lengths 31, 32, 33, 63 and 64. Its Math.pow-to-int cast
+saturates to MAX_INT and array allocation raises OutOfMemoryError with Requested
+array size exceeds VM limit before allocating. Do not run the unsafe native
+pre-change allocation. Preserve this observed boundary instead of native-word
+shifting. Eleven finite sets with lengths 17, 18, 20, 21, 22, 24, 26, 28, 29, 32
+and 33 produce negative int32 factorial capacities and typed NegativeArraySize.
+Source observations complete (c18b23); native all 5,328 rows complete with only
+the four established identity differences and all sixteen bounds rows agree
+(ec9b61). No persistent tests/fixtures or original credit are added. Heap
+exhaustion, large positive allocations, arbitrary subclass mutation and immediate
+failure timing for every lazy-set enumerator remain separate work.
+
+Run complete original CommunityModules all/shiviz target normally, original bounds
+and no race: session 95149 exits zero (aed164), root 317.640s, phases 316.30s and
+0.89s (1b27b7). This binary includes the sequence conversion changes and preceding
+46392f0 vector representation; it predates the later SetCup diagnostic and
+AllSubSeqs oversized-allocation edits. Those later specific errors have the
+separate runtime comparisons above. Original full set/subset/randomization/
+debugger/initialization selection plus native vector sharing/reference checks
+runs after the SetCup edit and passes: session 20638 exits zero (72ebbf), tlc
+86.161s (5f604d). Focused original model/value/EXCEPT/stream/Sequences/TLCModule/
+FP64/string/MP/debugger/rendering checks also run after SetCup and pass: session
+74148 exits zero (d5e94a), root 5.676s and tlc 2.485s (821506). No broad race or
+shortened long workload; do not rerun these passing selections without a new
+relevant change or failure.
+
+Original full off-heap random stress session 27326 remains directly confirmed
+live (501fdc). Latest saved progress is 1,883,403,206 / 2,147,483,648 (1b27b7),
+with no terminal result or long credit. Keep the same handle, log and bounds.
+Update handoff and architecture with verification scope and remaining limits.

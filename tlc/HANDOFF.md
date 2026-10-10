@@ -392,8 +392,17 @@ source tuple reads, argument reuse and bound shortcuts. Their typed operator
 parameters reject invalid values at invocation. All 22,752 direct rows agree;
 2,912 invocation cases agree outside platform stack locations/elision counts
 (396 retain stack-text differences). The complete original CommunityModules
-`all`/`shiviz` target passed through `686d6b7`; focused regressions also pass. Other `SequencesExt` helpers,
-arbitrary callback mutation and module-specific casts remain separate work.
+`all`/`shiviz` target passes after the sequence conversion changes, also covering
+`46392f0` vector behavior. Later allocation/error changes have separate runtime
+observations and focused checks. Other `SequencesExt` helpers, arbitrary callback
+mutation and module-specific casts remain separate work.
+`Contains`, `RemoveFirst`, `Suffixes`, `AllSubSeqs`, `SetToSeq` and `SetToSeqs`
+retain source conversion and null failures, copy ownership and removal shortcuts.
+All 5,312 observations agree outside four intentional native object-identity
+strings in UnionValue diagnostics; sixteen allocation/factorial boundary cases
+agree. SetCup diagnostic operand reads now preserve typed null failures. Original
+set/subset and focused regressions pass; broader lazy-set failure timing and
+heap exhaustion remain unproven.
 `LongestCommonPrefix` and `IsPrefix` preserve UTF-16 units, subclass recognition,
 source catch/read order and bounds errors. Nonempty prefix tuples own their array.
 All 7,786 controlled-token rows and 720 tuple comparison rows agree; the parsed
@@ -442,7 +451,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,869,338,437 of 2,147,483,648 iterations, without a terminal result. The previous
+1,883,403,206 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,
