@@ -7012,6 +7012,32 @@ after a caught iteration/reset failure and arbitrary nested enumerators remain
 unverified. These observations earn no original-test inventory credit.
 
 
+Tuple-product non-tuple membership, EXCEPT, cardinality overflow and constructor
+enumeration failures retain Assert runtime categories, detailed source/context
+and existing catch boundaries. Null membership fails at elem.toTuple before
+formatting. Ordinary isEmpty misuse uses the receiver's source-aware Assert
+failure; overridden UserValue size failures do the same. This fixes scalar
+component and Nat-size failures propagated through tuple products and subsets.
+Subset membership's nonenumerable branch preserves argument-then-receiver
+formatting and typed null dereference, also when invoked by a k-subset. KSubset
+still checks emptiness and argument cardinality before its inherited member
+catch; its null size dereference is therefore unwrapped even with receiver source.
+Negative or too-large k still returns false before inspecting a null member.
+
+The 288 complete product/subset observations match Java with expand=false. Six
+product shapes include finite, Nat, empty, scalar and overflowing interval
+components; four subset shapes include finite, Nat, scalar and empty sets.
+Membership checks cover scalar/null/Boolean, tuples and integer/string-domain
+functions, alongside finite/size queries, EXCEPT and first enumeration. Overflow
+is checked without enumerating its 2.5-billion-element product. Additional rows
+cover valid/negative/too-large k-subsets and direct sourced/unsourced scalar
+isEmpty and UserValue size/emptiness controls, using a fresh Nat wrapper to avoid
+changing the shared singleton's source. These observations do not establish
+all lazy-function conversions, nested membership failures or product reset paths;
+record-set and function-set Assert boundaries remain separate work. No new
+original-method inventory credit is claimed.
+
+
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime
 boundary. Null comparison/equality/member arguments fail before formatting; Apply

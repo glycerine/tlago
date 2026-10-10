@@ -150,7 +150,7 @@ func (v *UserValue) IsFinite() (resultBool bool, err error) {
 
 func (v *UserValue) Size() (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
-	return 0, v.unsupported("Attempted to compute the number of elements in the overridden value %s.", v)
+	return 0, v.runtimeFailure("Attempted to compute the number of elements in the overridden value " + ValuesPPR(v) + ".")
 }
 
 func (v *UserValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {

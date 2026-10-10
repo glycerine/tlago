@@ -1,6 +1,9 @@
 package tlc
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type SetOfTuplesValue struct {
 	BaseValue
@@ -59,6 +62,9 @@ func (v *SetOfTuplesValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *SetOfTuplesValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
 	tv := asTupleValue(elem)
 	if tv == nil {
 		if fcn := asFcnRcdValue(elem); fcn != nil {
@@ -67,7 +73,7 @@ func (v *SetOfTuplesValue) Member(elem Value) (resultBool bool, err error) {
 			}
 			for _, d := range fcn.Domain {
 				if _, ok := d.(*IntValue); !ok {
-					return false, v.unsupported("Attempted to check if non-tuple\n%s\nis in the set of tuples:\n%s", ValuesPPR(elem), ValuesPPR(v))
+					return false, v.runtimeFailure("Attempted to check if non-tuple\n" + ValuesPPR(elem) + "\nis in the set of tuples:\n" + ValuesPPR(v))
 				}
 			}
 			return false, nil
@@ -75,7 +81,7 @@ func (v *SetOfTuplesValue) Member(elem Value) (resultBool bool, err error) {
 		if mv, ok := elem.(*ModelValue); ok {
 			return mv.modelValueMember(v)
 		}
-		return false, v.unsupported("Attempted to check if non-tuple\n%s\nis in the set of tuples:\n%s", ValuesPPR(elem), ValuesPPR(v))
+		return false, v.runtimeFailure("Attempted to check if non-tuple\n" + ValuesPPR(elem) + "\nis in the set of tuples:\n" + ValuesPPR(v))
 	}
 	if len(tv.Elems) != len(v.Sets) {
 		return false, nil
@@ -119,7 +125,7 @@ func (v *SetOfTuplesValue) Size() (resultInt int, err error) {
 		return 0, err
 	}
 	return checkedProductSize(v.Sets, func() error {
-		return newTLCError(ECGeneral, "Overflow when computing the number of elements in %s", ValuesPPR(v))
+		return v.runtimeFailure("Overflow when computing the number of elements in " + ValuesPPR(v))
 	})
 }
 
@@ -193,7 +199,7 @@ func (v *SetOfTuplesValue) Permute(perm *MVPerm) Value {
 func (v *SetOfTuplesValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT construct to the set of tuples:\n%s", ValuesPPR(v))
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the set of tuples:\n" + ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
@@ -201,7 +207,7 @@ func (v *SetOfTuplesValue) TakeExcept(ex ValueExcept) (resultValue Value, err er
 func (v *SetOfTuplesValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT construct to the set of tuples:\n%s", ValuesPPR(v))
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT construct to the set of tuples:\n" + ValuesPPR(v))
 	}
 	return v, nil
 }
@@ -249,7 +255,7 @@ func (v *SetOfTuplesValue) Elements() (enumeration ValueEnumeration) {
 	return newProductEnumeration(v.Sets, func(elems []Value) Value {
 		return NewTupleValue(elems, v.CM)
 	}, func(i int, set Value) error {
-		return v.unsupported("Attempted to enumerate a set of the form s1 \\X s2 ... \\X sn,\nbut can't enumerate s%d:\n%s", i, ValuesPPR(set))
+		return v.runtimeFailure(fmt.Sprintf("Attempted to enumerate a set of the form s1 \\X s2 ... \\X sn,\nbut can't enumerate s%d:\n%s", i, ValuesPPR(set)))
 	}, v.CM)
 }
 
@@ -1036,7 +1042,14 @@ func subsetValueMember(owner Value, set Value, elem Value) (resultBool bool, err
 	defer catchValueFailure(owner, &err)
 	enum, ok := asEnumerable(elem)
 	if !ok {
-		return false, newTLCError(ECGeneral, "Attempted to check if the non-enumerable value\n%s\nis element of\n%s", ValuesPPR(elem), ValuesPPR(owner))
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
+		message := "Attempted to check if the non-enumerable value\n" + ValuesPPR(elem) + "\nis element of\n" + ValuesPPR(owner)
+		if source := valueSource(owner); source != nil {
+			return false, NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+		}
+		return false, NewTLCRuntimeExceptionMessage(message)
 	}
 	e := enum.Elements()
 	for {

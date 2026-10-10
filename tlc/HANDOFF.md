@@ -262,7 +262,12 @@ set iterators read the current owner vector after mutation or replacement.
 Of 69 iteration observations, 53 match exactly and 16 differ only in iterator
 identity text. Relevant original value/model checks pass. Recovery after a caught
 iterator failure remains unverified; no broader iteration parity is claimed.
-Continue concrete core TLC gaps against source and the original-test inventory.
+Tuple-product failures, subset membership, ordinary isEmpty misuse and overridden
+value Size now retain runtime categories and source metadata. Null tuple/subset
+members retain typed failures; k-subset null checks follow the original empty-set
+short-circuit outside the source catch. All 288 observations match exactly, and
+relevant original value/model checks pass. Continue with the remaining record-set
+and function-set Assert boundaries against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
@@ -271,7 +276,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,213,656,035 of 2,147,483,648 iterations, without a terminal result. The previous
+1,227,916,366 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

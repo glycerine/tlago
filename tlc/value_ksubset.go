@@ -201,6 +201,9 @@ func (v *KSubsetValue) Member(elem Value) (bool, error) {
 	if err != nil || empty {
 		return false, err
 	}
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
 	elemSize, err := elem.Size()
 	if err != nil {
 		return false, err

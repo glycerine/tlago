@@ -107,7 +107,11 @@ func IsEmptyValue(value Value) (resultBool bool, err error) {
 		}
 		return false, v.unsupported("Shouldn't call isEmpty() on value %s", v.UserObj.String())
 	default:
-		return false, newTLCError(ECGeneral, "Shouldn't call isEmpty() on value %s", ValuesPPR(value))
+		message := "Shouldn't call isEmpty() on value " + ValuesPPR(value)
+		if source := valueSource(value); source != nil {
+			return false, NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+		}
+		return false, NewTLCRuntimeExceptionMessage(message)
 	}
 }
 

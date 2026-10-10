@@ -32478,3 +32478,54 @@ expands to all InitializeValue methods because explicit-set ownership changed.
 Formatting/diff checks pass. HANDOFF/TLC_ARCH state exact scope; recovery after
 caught iterator failures and arbitrary nested enumerators remains unverified.
 Overall TLC parity and original-model reconciliation remain incomplete.
+
+
+2026-10-10: Tuple-product and subset runtime failure boundaries.
+
+Previous goal turn makes progress in b58f137; worktree starts clean. Direct stress
+session 27326 remains live (b78d2c). Latest saved progress is 1,227,916,366 /
+2,147,483,648. No terminal result, credit, duplicate or changed full bounds.
+
+Inspect remaining SetOfTuplesValue Assert.fail calls and SubsetValue.member.
+Native generic errors lose source runtime type and metadata. Scalar product
+components also expose Value.isEmpty's generic error, while Nat components expose
+UserValue.size's generic error. Correct these source-backed branches only; other
+UserValue and record/function-set boundaries remain separate work.
+
+Ignored .codex-gotmp/product-subset-boundaries starts with 238 complete rows:
+six tuple-product and four subset shapes, two source states and twelve operations.
+Use expand=false, real existing value/API types, and no persistent invented tests.
+Products cover finite, Nat, empty, scalar and 1..50000 squared overflow; do not
+enumerate the huge overflow product. Operations cover seven member arguments,
+finite/size, EXCEPT single/array and first enumeration. Initial source/native
+comparison exposes 142 full-row differences (caedc3). Preserve complete logs.
+
+Tuple-product failures now use runtimeFailure for non-tuple membership, overflow,
+EXCEPT and enumeration constructor diagnostics. Null member raises typed NPE at
+the actual elem.toTuple dereference. Subset's nonenumerable membership retains
+source-aware runtime metadata and its typed null dereference. Ordinary isEmpty
+misuse and UserValue.size now retain their source Assert category and metadata.
+All initial 238 full rows then match (b19bff), correcting all 142 baseline differences.
+
+Extend to 288 rows with valid/negative/too-large k-subset membership controls and
+direct sourced/unsourced Int/Nat size and isEmpty controls. Fresh UserValue wrappers
+preserve the shared Nat singleton's source. The shared membership correction is
+verified for k-subsets too. Two remaining rows expose an untyped null dereference
+in KSubset.Member (6782bf; before-ksubset-null.log). Add typed NPE after hasNoElements
+and before elem.Size, outside the inherited source catch. Empty invalid k values
+still return false without inspecting null. Final strict full-row comparison
+matches all 288 (f95401; after-final.log), with exact category, message, source,
+context and frame count. Enhanced JVM NPE text alone is excluded. The 50 extended
+rows have no initial-238 baseline claim. No new persistent tests or inventory credit.
+
+Existing Go value checks pass (68582 terminal 09e8d2; original-values.log, 3.127s):
+all 37 SubsetValueTest, 11 KSubsetValueTest and three indexed-sampling originals;
+two existing SetOfTuplesValue original rendering/empty checks; two InitializeValue
+original methods (Subset, SetOfTuple); and both existing IsEmpty checks. All source
+classes independently pass JUnit OK (53 tests): 5822 terminal ffc51d,
+java-original-values.log, 0.956s. Two unchanged original Go models,
+ConstantRank2AssertError and ValueSemanticsAssume, pass (30834 terminal aca915;
+original-models.log, 2.202s). Full original bounds remain intact, no race or broad
+sweep. Formatting/diff checks pass. HANDOFF/TLC_ARCH state exact verified scope
+and next record-set/function-set runtime work. Overall TLC parity and original
+model reconciliation remain incomplete.
