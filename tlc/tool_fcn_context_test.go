@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -118,8 +117,8 @@ func TestToolFunctionContextShortArgumentsKeepDirectIndexFailure(t *testing.T) {
 	fcn := NewFcnLambdaValue(NewFcnParams([][]*SymbolNode{{a, b}}, []bool{false}, []Value{NewIntervalValue(1, 2)}), BoolTrue, tool, EmptyContext, EmptyState, EmptyState, EvalClear)
 	expr := NewBuiltinOpApplNode(OpFA, fcn, NewTupleValue([]Value{NewIntValue(1)}))
 	defer func() {
-		if err, ok := recover().(runtime.Error); !ok || !strings.Contains(err.Error(), "index out of range") {
-			t.Fatalf("short function argument failure = %v, want direct-index failure", err)
+		if err, ok := recover().(*ArrayIndexOutOfBoundsException); !ok || err.Error() != "Index 1 out of bounds for length 1" {
+			t.Fatalf("short function argument failure = %v, want source indexed failure", err)
 		}
 	}()
 	_, _ = tool.getFcnContext(fcn, expr, EmptyContext, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel)

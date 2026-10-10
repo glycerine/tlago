@@ -33914,3 +33914,54 @@ Original full stress session 27326 remains live on direct poll (1e3116).
 Latest saved progress is 1,497,066,251 / 2,147,483,648 (578e38), without a terminal
 result or long-method credit. Preserve its original handle, artifacts, budget
 and bounds.
+
+
+2026-10-10: Short lambda argument source indexed failures
+
+Previous turn made verified progress in cd4917d. Source getFcnContext and
+FcnLambdaValue.apply/select read argument elements as they bind each formal.
+Native generation exposed a Go runtime bounds panic; Apply and Select instead
+returned null when the argument list ended. Neither retained the source typed
+ArrayIndexOutOfBoundsException. Do not add an aggregate arity check: earlier
+invalid arguments must still fail their domain check before a later missing
+argument is read, and extra lazy arguments remain ignored.
+
+Ignored .codex-gotmp/short-lambda-arguments extends the existing legacy test209
+S/F constructor/application observer with empty/one/two/full/extra tuples and
+short tuples with earlier invalid domain values. Use two captured contexts,
+fresh lazy/materialized functions and initial/next generation, ENABLED and
+direct Eval. No semantic graph mutation, fabricated nodes, callbacks, persistent
+tests or fixtures. Source/native initial 128 rows expose 24 failures (22170
+terminal 309372; comparison 360e86). Add source typed indexed failures immediately
+before each argument-element read in getFcnContext and bindArgumentForApply.
+Correct the existing native-focused short-argument check to expect the typed
+exception and exact source message instead of a Go runtime.Error. Remove its
+unused runtime import. No original Java assertion changes. All 128 final rows
+agree (5150 terminal 3897dc; comparison 101ef6).
+
+Inspect source Select, which has the same element-read boundary and returns null
+for out-of-domain arguments. Extend the original-node matrix to direct Select:
+160 rows expose six further null-versus-indexed-failure differences (5617
+terminal 0dd1f6; comparison 20356f). Correct Select's binding helper at each
+missing element without changing earlier domain/null returns. All 160 final
+rows agree (56743 terminal 2dcb13; comparison e568bf), including exact exception
+type/message, frames, successful/null values, detailed runtime ownership,
+emitted-state counts and cache flags. Java enhanced NPE messages disabled.
+Tuple-group element-read guards follow source inspection; this observer covers
+ordinary formals. Tuple-formal mismatch cases, malformed parameter arrays and
+arbitrary controls remain separate comparisons.
+
+Nine original model checks pass unchanged (14428 terminal b70e8b;
+original-models.log, 4.156s): EchoDebugger, LegacySuiteTest14/206/209,
+ValueSemanticsAssume, ConstantRank2AssertError, Debug02Debugger and
+ActionCompositionA/B. Original FcnLambdaValue/EvalControl and focused
+function-context, fallback rendering and lambda stream checks pass (2711 terminal
+8f79dd; existing-checks.log, 0.018s). After the Select correction the final
+selection passes again (26577 terminal 011e36; final-checks.log, root 4.255s and
+tlc 0.018s; outputs 61347d). No broad suite, race, reduced bounds, changed original
+assertions or original-method inventory credit. Update current handoff/contracts.
+
+Original full stress session 27326 remains live on direct poll (f8edfd).
+Latest saved progress is 1,504,584,155 / 2,147,483,648 (3a6e0e), without a terminal
+result or long-method credit. Preserve its original handle, artifacts, budget
+and bounds.

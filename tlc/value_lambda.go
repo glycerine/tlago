@@ -408,7 +408,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 		domain := domains[i]
 		if isTuples[i] {
 			if argn >= len(elems) {
-				return nil, true, nil
+				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
 			in, err := domain.Member(elems[argn])
 			if err != nil {
@@ -429,7 +429,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 		}
 		for _, id := range ids {
 			if argn >= len(elems) {
-				return nil, true, nil
+				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
 			in, err := domain.Member(elems[argn])
 			if err != nil {
@@ -532,7 +532,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 		domain := domains[i]
 		if isTuples[i] {
 			if argn >= len(elems) {
-				return ctx, false, nil
+				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
 			in, err := domain.Member(elems[argn])
 			if err != nil || !in {
@@ -553,7 +553,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 		}
 		for _, id := range ids {
 			if argn >= len(elems) {
-				return ctx, false, nil
+				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
 			}
 			in, err := domain.Member(elems[argn])
 			if err != nil || !in {

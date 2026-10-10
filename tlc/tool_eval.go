@@ -1355,6 +1355,9 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 	for i, ids := range formals {
 		domain := domains[i]
 		if isTuples[i] {
+			if argn >= len(elems) {
+				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
+			}
 			member, err := domain.Member(elems[argn])
 			if err != nil {
 				return nil, err
@@ -1372,6 +1375,9 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 			}
 		} else {
 			for _, id := range ids {
+				if argn >= len(elems) {
+					panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
+				}
 				member, err := domain.Member(elems[argn])
 				if err != nil {
 					return nil, err

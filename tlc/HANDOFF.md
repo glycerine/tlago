@@ -340,7 +340,9 @@ Membership generation now retains detailed non-enumerable-domain failures; all
 144 compared cases agree, including bound variables and state ownership.
 Lazy/cached lambda domain failures now retain the function expression and caller
 context; all 272 compared rows agree, including body bindings and cache changes.
-Short function arguments remain a concrete indexed-failure comparison target.
+Short lambda arguments now retain Java indexed failures in generation, Apply
+and Select; all 160 compared cases agree. Tuple-formal and parameter-array
+failure boundaries remain separate comparison targets.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.
@@ -351,7 +353,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,497,066,251 of 2,147,483,648 iterations, without a terminal result. The previous
+1,504,584,155 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

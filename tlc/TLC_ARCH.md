@@ -7555,8 +7555,19 @@ retain the argument and caller context. The exact parent depth and bound formal
 values agree. Domain-error rendering may materialize the lambda; cache state
 and function rendering order agree too. No semantic graphs were fabricated or
 mutated. Tuple-formal mismatch carriers follow inspected source and existing
-focused checks, without direct comparison here. Short function arguments,
-malformed parameter arrays and arbitrary controls remain separate comparisons.
+focused checks, without direct comparison here. Short argument lists now throw the typed source ArrayIndexOutOfBoundsException
+at each missing element in getFcnContext, Apply and Select. Domain validation
+still runs in order: an earlier invalid argument can produce its domain failure
+or Select's null before any later missing argument is read. Extra arguments
+remain ignored in lazy binding, as in Java. All 160 comparisons on legacy test209
+S/F agree for empty/one/two/full/extra argument tuples and earlier domain failures,
+across two captured contexts, lazy/materialized functions, initial/next generation,
+ENABLED, direct Eval and Select. Exception type/message, frame counts, result
+values, detailed ownership, emitted states and final cache flags agree. The
+existing native-focused short-argument check now requires the source typed
+exception and exact message rather than a Go runtime bounds panic. Original
+Java assertions remain unchanged. Tuple-formal mismatch comparisons, malformed
+parameter arrays and arbitrary controls remain separate work.
 
 Membership generation with an unassigned variable and a non-enumerable domain
 retains a GENERAL detailed runtime failure with the whole predicate and incoming
