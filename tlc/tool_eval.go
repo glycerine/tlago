@@ -1317,7 +1317,7 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 			return nil, err
 		}
 		if !member {
-			return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe first argument is:\n%swhich is not in its domain.\n%s", ValuesPPR(fcn), ValuesPPR(argVal), SemanticString(expr.Args[0]))
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%swhich is not in its domain.\n%s", ValuesPPR(fcn), ValuesPPR(argVal), SemanticString(expr.Args[0])), expr.Args[0], c)
 		}
 		if isTuples[0] {
 			ids := formals[0]
@@ -1336,7 +1336,7 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 				if t.CallStack != nil {
 					identity = t.CallStack.String()
 				}
-				return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument is:\n%swhich does not match its formal parameter.\n%s", ValuesPPRString(identity), ValuesPPR(argVal), SemanticString(expr.Args[0]))
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument is:\n%swhich does not match its formal parameter.\n%s", ValuesPPRString(identity), ValuesPPR(argVal), SemanticString(expr.Args[0])), expr.Args[0], c)
 			}
 			for i, id := range ids {
 				fcon = fcon.Cons(id, tuple.Elems[i])
@@ -1348,7 +1348,7 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 	}
 	tuple := asTupleValue(argVal)
 	if tuple == nil {
-		return nil, newTLCError(ECGeneral, "Attempted to apply a function to an argument not in its domain.\n%s", SemanticString(expr.Args[0]))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to apply a function to an argument not in its domain.\n%s", SemanticString(expr.Args[0])), expr.Args[0], c)
 	}
 	argn := 0
 	elems := tuple.Elems
@@ -1360,12 +1360,12 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 				return nil, err
 			}
 			if !member {
-				return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain.\n%s", ValuesPPR(fcn), argn+1, ValuesPPR(elems[argn]), SemanticString(expr.Args[0]))
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain.\n%s", ValuesPPR(fcn), argn+1, ValuesPPR(elems[argn]), SemanticString(expr.Args[0])), expr.Args[0], c)
 			}
 			inner := asTupleValue(elems[argn])
 			argn++
 			if inner == nil || len(inner.Elems) != len(ids) {
-				return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument number %d is:\n%swhich does not match its formal parameter.\n%s", ValuesPPR(fcn), argn, ValuesPPR(elems[argn-1]), SemanticString(expr.Args[0]))
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%swhich does not match its formal parameter.\n%s", ValuesPPR(fcn), argn, ValuesPPR(elems[argn-1]), SemanticString(expr.Args[0])), expr.Args[0], c)
 			}
 			for j, id := range ids {
 				fcon = fcon.Cons(id, inner.Elems[j])
@@ -1377,7 +1377,7 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 					return nil, err
 				}
 				if !member {
-					return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain.\n%s", ValuesPPR(fcn), argn+1, ValuesPPR(elems[argn]), SemanticString(expr.Args[0]))
+					return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%swhich is not in its domain.\n%s", ValuesPPR(fcn), argn+1, ValuesPPR(elems[argn]), SemanticString(expr.Args[0])), expr.Args[0], c)
 				}
 				fcon = fcon.Cons(id, elems[argn])
 				argn++

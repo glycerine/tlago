@@ -36,7 +36,7 @@ func TestToolFunctionContextUsesBranchSpecificDiagnostics(t *testing.T) {
 			params: NewFcnParams([][]*SymbolNode{{a, b}}, []bool{false}, []Value{NewIntervalValue(1, 2)}),
 			arg:    NewTupleValue([]Value{NewIntValue(1), NewIntValue(3)}),
 			want: func(fcn *FcnLambdaValue) string {
-				return "In applying the function\n" + ValuesPPR(fcn) + ",\nthe argument number 2 is:\n3\nwhich is not in its domain.\nF"
+				return "In applying the function\n" + ValuesPPR(fcn) + ",\nthe argument number 2 is:\n3which is not in its domain.\nF"
 			},
 		},
 	} {

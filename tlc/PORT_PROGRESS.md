@@ -33856,3 +33856,61 @@ Original full stress session 27326 remains live on direct poll (00da46).
 Latest saved progress is 1,489,636,874 / 2,147,483,648 (c375f6), without a terminal
 result or long-method credit. Preserve original handle, artifacts, bounds and
 budget.
+
+
+2026-10-10: Lazy function-context failure ownership and ordinary-formal diagnostics
+
+Previous turn made verified progress in 2e00856. Source Tool.getFcnContext retains
+GENERAL runtime errors with args[0] and the caller context for domain/formal
+failures. Native retained only the text. Lazy generation binds the captured
+context and generates the function body; materialized lambdas take the explicit
+function path already corrected in the preceding function-predicate chunk.
+
+Ignored .codex-gotmp/lambda-predicate-metadata uses Echo's actual R1 constructor
+and IsSymmetric R[x,y] application. Bind the original TRUE/FALSE branch symbols
+to boolean/integer/string results and supply actual equal/different/ineligible
+string-pair arguments. Compare two captured contexts, fresh lazy/materialized
+lambdas and direct Eval/initial/next generation/ENABLED. Retain exact error
+expression, caller identity, captured-parent identity, bound edge value, states
+and final cache flag. First native observer mistook Context.Next for a field
+(25439 terminal af8d8a); correct the observer only, with no parity credit for that
+setup failure. Complete source/native baseline has 192 rows and 24 runtime
+metadata differences (5fb5b7; comparison 03840c). Restore source detailed runtime
+carriers at the six inspected function-context error sites. All 192 final rows
+agree (29190 terminal e66711; comparison b29294), including body-binding ownership
+and domain-rendering materialization side effects.
+
+Ignored .codex-gotmp/multi-lambda-predicate-metadata adds legacy test209's actual
+S constructor (three ordinary formals across two groups) and F's existing xx[a]
+application. Bind the original xx symbol to a freshly evaluated S lambda and a
+to valid tuple, each ordinary formal's invalid domain, or non-tuple input. The
+80 rows agree in category/context after the carrier correction but expose
+18 text differences (44031 terminal 42f9be; comparison b29294): native incorrectly
+adds a newline before "which" for ordinary multi-formal domain failures. Source
+Tool.java's ordinary branch omits it; its tuple-group branch retains it. Correct
+only the ordinary branch and the existing native-focused diagnostic expectation
+that encoded the same incorrect newline. No original Java assertion is changed.
+All 80 final rows agree (1041 terminal 2a19a1; combined comparison 578e38),
+including captured-parent depth, final formal binding, all diagnostic metadata,
+function rendering and cache flags. Java enhanced NPE messages disabled.
+
+No fabricated/mutated semantic graphs, evaluator callbacks, persistent tests or
+fixtures. Original parsed nodes and runtime bindings are used throughout.
+Tuple-formal mismatch carriers follow inspected source and focused checks;
+those paths are not directly observed here. Short function arguments still use
+a native direct-index panic and need separate Java typed-failure comparison.
+Malformed parameter arrays and arbitrary controls remain unproven.
+
+Nine original model checks pass unchanged (85454 terminal dbb3c8;
+lambda-predicate-metadata/original-models.log, 4.115s): EchoDebugger,
+LegacySuiteTest14/206/209, ValueSemanticsAssume, ConstantRank2AssertError,
+Debug02Debugger and ActionCompositionA/B. Focused function-context, bounded
+CHOOSE, lazy-subset, StateFunctor and original EvalControl checks pass (35403
+terminal 825801; existing-checks.log, 0.018s; outputs 6154df). No broad suite,
+race, reduced bounds, changed original assertions or original-method inventory
+credit. Update handoff and implementation contracts.
+
+Original full stress session 27326 remains live on direct poll (1e3116).
+Latest saved progress is 1,497,066,251 / 2,147,483,648 (578e38), without a terminal
+result or long-method credit. Preserve its original handle, artifacts, budget
+and bounds.

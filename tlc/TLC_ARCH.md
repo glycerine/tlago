@@ -7540,6 +7540,24 @@ Lazy/cached function-lambda paths, CounterExample record conversion, malformed
 function application graphs, arbitrary controls and null values remain outside
 this observation.
 
+Lazy function-context domain and formal mismatch failures retain GENERAL runtime
+carriers with the function expression (`args[0]`) and exact caller context.
+Ordinary multiple-formal domain errors omit the newline between the printed
+argument and "which", as Java does; the tuple-group domain branch keeps it.
+All 192 comparisons on actual Echo R1/IsSymmetric nodes and 80 on legacy test209
+S/F nodes agree across direct Eval, initial/next generation and ENABLED, two
+captured contexts and fresh lazy/materialized lambdas. R1 binds its original
+TRUE/FALSE branch symbols to boolean/integer/string results; S retains its
+original three formals across two domain groups. Compare valid arguments,
+each ordinary formal's invalid domain and non-tuple multi-argument input.
+Body failures retain extended captured contexts, while cached predicate failures
+retain the argument and caller context. The exact parent depth and bound formal
+values agree. Domain-error rendering may materialize the lambda; cache state
+and function rendering order agree too. No semantic graphs were fabricated or
+mutated. Tuple-formal mismatch carriers follow inspected source and existing
+focused checks, without direct comparison here. Short function arguments,
+malformed parameter arrays and arbitrary controls remain separate comparisons.
+
 Membership generation with an unassigned variable and a non-enumerable domain
 retains a GENERAL detailed runtime failure with the whole predicate and incoming
 context. Initial generation already retained that contract; successor generation
