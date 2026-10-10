@@ -37267,3 +37267,32 @@ assertion failures and acceptance of a parsed non-formal declaration differ
 from source FormalParamNode[] class casts. No production predicate edit in
 this chunk; preserve baseline for next target. Formatting/diff checks pass.
 Handoff/architecture state verification scope, counts and remaining work.
+
+Predicate-variable cast continuation after power outage and verified dbece1c.
+Checkout clean; saved Java/native 210-row baseline intact. SetPredValue now
+requires actual scalar formals and casts every other represented variable object
+to FormalParamNode[] before tuple conversion/binding. Wrong types use typed
+ClassCastException with actual semantic/value class names; parsed non-formal
+constant declarations no longer bind as formals. Rendering retains owner catches,
+expansion swallowing and the opening-brace prefix. Null array entries fail before
+separator output. No evaluator or semantic graph is fabricated.
+
+Initial native session 21440 exits zero (8576dc); all 210 rows exactly match,
+correcting 144 baseline differences. Initial focused selection 33258
+fails at two existing lazy-predicate test setups using generic lookup symbols.
+Correct these setups, plus the direct reducible/payload predicate setups, to
+explicit NewFormalParamSymbolNode inputs; preserve every existing assertion.
+No new persistent tests/fixtures or original-method credit.
+
+Expand ignored .codex-gotmp/predicate-variable-casts using actual formal arrays:
+null/empty arrays, null entries, two-entry arrays and typed-null scalar, with
+interval and actual one/two-element tuple domains. Preserve original logs as
+*-base.log; comparison pairs each baseline with its matching source keys.
+Source exits zero (801ec9); native 59104 exits zero (74937b). All 882 rows
+match exactly, including membership bypass outside the domain, enumeration,
+conversion, prefixed rendering, converted state, source flags and expand/swallow
+modes. Focused original/native 53186 exits zero (d3bc3e), root 2.694s and
+tlc 2.918s. Reuse prior full CommunityModules baseline; no new concern warrants
+another broad workload. Non-formal elements in unified native symbol slices
+have no claimed source array-class identity. Further runtime objects/mutation
+lifetimes remain unproven. Handoff and architecture updated; overall goal active.

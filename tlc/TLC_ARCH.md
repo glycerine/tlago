@@ -8891,6 +8891,23 @@ recording native counters. Focused original/native checks pass. No persistent
 test/fixture or original-method credit is added. Dynamic size mutation during
 selection and additional malformed domains remain unproven.
 
+SetPredValue treats only SymbolFormalParam scalar symbols as source
+FormalParamNode objects. Other variable objects must cast to the formal array
+before tuple conversion or context binding; represented value and semantic node
+classes retain source ClassCastException names and failure ownership. A null
+formal array preserves the later null boundary. Rendering appends its opening
+brace before casting, and null array entries fail before appending their separator.
+The ignored observer uses actual checked test206 formals, declarations,
+definitions and application nodes, real runtime constructors and formal arrays.
+All 882 rows match Java exactly, including interval and one/two-element tuple
+domains, outside-domain membership, enumeration, conversion, prefixed rendering,
+source flags and expansion/swallow modes. The original 210-row baseline had 144
+differences. Existing native test setups now construct explicit formal symbols;
+their assertions are unchanged. Focused original/native checks pass. No persistent
+tests/fixtures or original-method credit are added. Arbitrary native objects and
+non-formal elements in the unified Go symbol slice have no claimed Java array
+class identity; further mutation lifetimes remain unproven.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

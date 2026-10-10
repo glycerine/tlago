@@ -508,9 +508,14 @@ Lambda `ToTuple` now captures explicit-domain size for allocation and iteration,
 preserving typed negative-array failures and source-owned size failures. All
 2,176 domain/cache/source/cost observations match Java exactly, and focused
 original/native checks pass. Dynamic mutation during selection remains unproven.
-Next fix predicate-variable casts: the saved 210-row comparison identifies
-144 differences for invalid variable objects, including actual parsed declarations
-and definitions. Preserve valid formals, null handling and source failure ownership.
+Predicate binding and rendering now require actual formal parameters for scalar
+variables and preserve Java's typed array-cast failures for other objects,
+including parsed declarations and definitions. All 882 observations match exactly,
+covering null/empty formal arrays, null entries, scalar and tuple domains, source
+ownership and expansion modes. Focused original/native checks pass. Generic native
+lookup symbols do not stand in for source formals; existing test setups now create
+explicit formals with their assertions preserved. Further malformed runtime
+objects and mutation lifetimes remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

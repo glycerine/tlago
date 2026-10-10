@@ -924,6 +924,22 @@ func valueStreamClassCast(value any, target string) *ClassCastException {
 func javaValueClassName(value any) string {
 	var class string
 	switch value.(type) {
+	case *OpDefNode:
+		class = "tla2sany.semantic.OpDefNode"
+	case *OpApplNode:
+		class = "tla2sany.semantic.OpApplNode"
+	case *SymbolNode:
+		symbol := value.(*SymbolNode)
+		switch symbol.Kind {
+		case SymbolFormalParam:
+			class = "tla2sany.semantic.FormalParamNode"
+		case SymbolVariableDecl, SymbolConstantDecl:
+			class = "tla2sany.semantic.OpDeclNode"
+		case SymbolUserDefinedOp:
+			class = "tla2sany.semantic.OpDefNode"
+		default:
+			class = fmt.Sprintf("%T", value)
+		}
 	case *UniqueString:
 		class = "util.UniqueString"
 	case *DebuggerValue:

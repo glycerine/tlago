@@ -66,7 +66,7 @@ func TestToolReducibleSetOperationsPreserveRawElements(t *testing.T) {
 }
 
 func TestToolIntersectionReducesEitherOperandWithoutEnumeratingTheOther(t *testing.T) {
-	bound := NewSymbolNode("element")
+	bound := NewFormalParamSymbolNode("element", 0)
 	predicate := NewBuiltinOpApplNode(OpEq, NewOpApplNode(bound), NewValueNode(NewIntValue(1)))
 	for _, reducibleFirst := range []bool{true, false} {
 		tool := NewTool()

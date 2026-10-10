@@ -119,7 +119,7 @@ func TestDistributedStatePayloadRepresentations(t *testing.T) {
 }
 
 func TestDistributedStatePayloadMaterialization(t *testing.T) {
-	bound := NewSymbolNode("payloadParameter")
+	bound := NewFormalParamSymbolNode("payloadParameter", 0)
 	tool := NewTool()
 	lambda := NewFcnLambdaValue(NewSingleFcnParam(bound, NewIntervalValue(1, 2)), NewValueNode(NewIntValue(42)), tool, EmptyContext, NewEmptyState(), nil, EvalClear)
 	predicate := NewSetPredValue(bound, NewIntervalValue(1, 2), NewValueNode(BoolTrue), tool, EmptyContext, NewEmptyState(), nil, EvalClear)

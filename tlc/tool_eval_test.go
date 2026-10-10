@@ -213,7 +213,7 @@ func TestToolSubsetOfLazySetsDefersPredicateEvaluation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tool := NewTool()
-			bound := NewSymbolNode("element")
+			bound := NewFormalParamSymbolNode("element", 0)
 			pred := NewBuiltinOpApplNode(OpEq, NewOpApplNode(bound), NewValueNode(tc.candidate))
 			expr := NewBuiltinOpApplNode(OpSSO, pred)
 			expr.BdedQuantSymbolLists = [][]*SymbolNode{{bound}}
@@ -247,7 +247,7 @@ func TestToolSubsetOfLazySetsDefersPredicateEvaluation(t *testing.T) {
 func TestToolLazySubsetOfKeepsCapturedStateForMembership(t *testing.T) {
 	initTLCCheckerTest(t)
 	tool := NewTool()
-	bound := NewSymbolNode("subset")
+	bound := NewFormalParamSymbolNode("subset", 0)
 	pred := NewBuiltinOpApplNode(OpIn, NewOpApplNode(NewVariableSymbolNode("x")), NewOpApplNode(bound))
 	expr := NewBuiltinOpApplNode(OpSSO, pred)
 	expr.BdedQuantSymbolLists = [][]*SymbolNode{{bound}}

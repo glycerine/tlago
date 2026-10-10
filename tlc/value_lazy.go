@@ -596,22 +596,26 @@ func (v *SetPredValue) Elements() ValueEnumeration {
 
 func (v *SetPredValue) bind(elem Value) (*Context, error) {
 	ctx := v.Con
-	switch vars := v.Vars.(type) {
-	case *SymbolNode:
-		if vars == nil {
-			return v.bindTuple(elem, nil, ctx)
-		}
+	if vars, ok := v.Vars.(*SymbolNode); ok && vars != nil && vars.Kind == SymbolFormalParam {
 		if ctx == nil {
 			panic(NewNullPointerException())
 		}
 		return ctx.Cons(vars, elem), nil
-	case []*SymbolNode:
-		return v.bindTuple(elem, vars, ctx)
-	case nil:
-		return v.bindTuple(elem, nil, ctx)
-	default:
-		return nil, v.unsupported("unsupported set predicate variables %T", v.Vars)
 	}
+	return v.bindTuple(elem, v.tupleVars(), ctx)
+}
+
+func (v *SetPredValue) tupleVars() []*SymbolNode {
+	if v.Vars == nil {
+		return nil
+	}
+	if vars, ok := v.Vars.(*SymbolNode); ok && vars == nil {
+		return nil
+	}
+	if vars, ok := v.Vars.([]*SymbolNode); ok {
+		return vars
+	}
+	panic(valueStreamClassCast(v.Vars, "[Ltla2sany.semantic.FormalParamNode;"))
 }
 
 func (v *SetPredValue) bindTuple(elem Value, vars []*SymbolNode, ctx *Context) (*Context, error) {
@@ -650,22 +654,22 @@ func (v *SetPredValue) ToString(sb *strings.Builder, offset int, swallow bool) *
 		}
 	}
 	sb.WriteString("{")
-	switch vars := v.Vars.(type) {
-	case *SymbolNode:
+	if vars, ok := v.Vars.(*SymbolNode); ok && vars != nil && vars.Kind == SymbolFormalParam {
 		sb.WriteString(vars.String())
-	case []*SymbolNode:
+	} else {
+		vars := v.tupleVars()
+		if vars == nil {
+			panic(NewNullPointerException())
+		}
 		for i, variable := range vars {
+			if variable == nil {
+				panic(NewNullPointerException())
+			}
 			if i > 0 {
 				sb.WriteString(", ")
 			}
 			sb.WriteString(variable.String())
 		}
-	default:
-		if v.Vars == nil {
-			panic(NewNullPointerException())
-		}
-		// Java casts every non-scalar vars object to FormalParamNode[].
-		_ = v.Vars.([]*SymbolNode)
 	}
 	// Java concatenates inVal here, entering its public checked string path.
 	inText := "null"
