@@ -1057,7 +1057,7 @@ func (t *Tool) nextMembership(action *Action, pred SemanticNode, left SemanticNo
 	if err != nil {
 		return s1, err
 	}
-	return t.enumerateNextAssignment(action, varNode.Name, rval, pred, acts, s0, s1, nss, cm)
+	return t.enumerateNextAssignment(action, varNode.Name, rval, pred, c, acts, s0, s1, nss, cm)
 }
 
 func (t *Tool) nextSubsetEq(action *Action, pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
@@ -1073,10 +1073,10 @@ func (t *Tool) nextSubsetEq(action *Action, pred SemanticNode, left SemanticNode
 	if err != nil {
 		return s1, err
 	}
-	return t.enumerateNextAssignment(action, varNode.Name, t.setValueSource(right, NewSubsetValue(rset, cm)), pred, acts, s0, s1, nss, cm)
+	return t.enumerateNextAssignment(action, varNode.Name, t.setValueSource(right, NewSubsetValue(rset, cm)), pred, c, acts, s0, s1, nss, cm)
 }
 
-func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, domain Value, pred SemanticNode, c *Context, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
 	lval := s1.Lookup(varName)
 	if lval != nil {
 		member, err := domain.Member(lval)
@@ -1087,7 +1087,7 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 	}
 	enumerable, ok := asEnumerable(domain)
 	if !ok {
-		return s1, newTLCError(ECGeneral, "In computing next states, the right side of \\IN is not enumerable.\n%s", SemanticString(pred))
+		return s1, NewTLCDetailedRuntimeException(ECGeneral, "In computing next states, the right side of \\IN is not enumerable.\n"+SemanticString(pred), pred, c)
 	}
 	res := s1
 	if toolProbabilisticEnabled() {

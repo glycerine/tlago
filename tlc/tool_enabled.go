@@ -388,7 +388,7 @@ func (t *Tool) enabledMembership(pred SemanticNode, left SemanticNode, right Sem
 	if err != nil {
 		return nil, err
 	}
-	return t.enabledEnumerateAssignment(varNode, rval, pred, acts, s0, s1, cm)
+	return t.enabledEnumerateAssignment(varNode, rval, pred, c, acts, s0, s1, cm)
 }
 
 func (t *Tool) enabledSubsetEq(pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
@@ -404,10 +404,10 @@ func (t *Tool) enabledSubsetEq(pred SemanticNode, left SemanticNode, right Seman
 	if err != nil {
 		return nil, err
 	}
-	return t.enabledEnumerateAssignment(varNode, t.setValueSource(right, NewSubsetValue(rset, cm)), pred, acts, s0, s1, cm)
+	return t.enabledEnumerateAssignment(varNode, t.setValueSource(right, NewSubsetValue(rset, cm)), pred, c, acts, s0, s1, cm)
 }
 
-func (t *Tool) enabledEnumerateAssignment(variable *SymbolNode, domain Value, pred SemanticNode, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) enabledEnumerateAssignment(variable *SymbolNode, domain Value, pred SemanticNode, c *Context, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
 	varName := variable.Name
 	lval := s1.Lookup(varName)
 	if lval != nil {
@@ -419,7 +419,7 @@ func (t *Tool) enabledEnumerateAssignment(variable *SymbolNode, domain Value, pr
 	}
 	enumerable, ok := asEnumerable(domain)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "The right side of \\IN is not enumerable.\n%s", SemanticString(pred))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, "The right side of \\IN is not enumerable.\n"+SemanticString(pred), pred, c)
 	}
 	enum := enumerable.Elements()
 	for val := enum.NextElement(); val != nil; val = enum.NextElement() {

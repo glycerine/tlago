@@ -7540,6 +7540,22 @@ Lazy/cached function-lambda paths, CounterExample record conversion, malformed
 function application graphs, arbitrary controls and null values remain outside
 this observation.
 
+Membership generation with an unassigned variable and a non-enumerable domain
+retains a GENERAL detailed runtime failure with the whole predicate and incoming
+context. Initial generation already retained that contract; successor generation
+and ENABLED now pass the context through their assignment helpers. Subset
+assignment callers pass the same context. All 144 comparisons on Implied's
+original InitProperty and ActionProperty nodes agree across initial/next
+generation and functional-state ENABLED, two base contexts, three assignment
+states (unbound, 0, 3), and eight domains (empty/singleton/two-element sets,
+interval, actual Nat, boolean, integer and string). The comparisons retain
+complete diagnostics, exact expression/context identity, frames, result state
+identity, enumeration order, emitted values and partial input-state bindings.
+Assigned variables check membership before requiring enumeration, so Nat remains
+usable there. No graphs or action lists were fabricated. Randomized enumeration,
+callback failures, arbitrary controls and subset-domain exceptions remain outside
+this bounded comparison.
+
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays
 before arguments, and preserves null-array failures at those dereferences.

@@ -33813,3 +33813,46 @@ Original full stress session 27326 remains live on direct poll (abf45d).
 Latest saved progress is 1,488,777,742 / 2,147,483,648 (ad963a), with no terminal
 result or long-method credit. Preserve its original handle, bounds, budget and
 artifacts.
+
+
+2026-10-10: Membership generation non-enumerable-domain failure contexts
+
+Previous turn made verified progress in 6bd512d. Source Tool's next-state and
+ENABLED membership assignment branches retain GENERAL runtime failures with the
+whole predicate and current context for non-enumerable domains. Native helpers
+accepted no context and emitted generic EvalException. Initial membership already
+retained the source carrier from the earlier generation-context correction.
+
+Ignored .codex-gotmp/membership-generation-metadata uses Implied's actual
+InitProperty and ActionProperty, binding their existing Nat operator symbol to
+empty/singleton/two-element sets, interval 0..2, actual evaluated Nat, TRUE, 1
+and a string. Compare two base contexts and unassigned/0/3 variable bindings
+across initial/next generation and functional-state ENABLED. Use the original
+model's generated predecessor. No fabricated semantic graphs, action lists,
+evaluator callbacks, persistent tests or fixtures. Initial 144 rows expose
+16 metadata differences (88567 terminal 4a0eb4; comparison 809042). Pass the
+current context into the next/ENABLED assignment helpers and restore detailed
+runtime errors at the two inspected failure sites. Shared subset callers pass
+that context too; their original tests remain unchanged.
+
+All 144 final rows agree (90902 terminal 4ca769; comparison b86e69), including
+complete messages/category/code/parameters, exact expression/context identity,
+frames, emitted-state values/order, returned state identity and partial input
+bindings. Assigned-variable membership succeeds on Nat without requiring its
+enumeration, matching the source branch order. Original mutable next states and
+persistent functional ENABLED states retain their distinct ownership. Java
+enhanced NPE messages disabled. Randomized enumeration, callback failures,
+arbitrary controls and subset-domain exceptions remain outside this comparison.
+
+Eight original model checks pass unchanged (1012 terminal da9a55;
+original-models.log, 3.668s): ImpliedCoverage, HCoverage, SubseteqNextState,
+EmptySubsetEq, SubsetEq, ValueSemanticsAssume, Debug02Debugger and EchoDebugger.
+Focused StateFunctor, function-context, bounded CHOOSE and original EvalControl
+checks pass (55284 terminal 390827; existing-checks.log, 0.018s; outputs c375f6).
+No broad suite, race, changed assertions, reduced bounds or original-method
+inventory credit. Update current handoff and implementation contracts.
+
+Original full stress session 27326 remains live on direct poll (00da46).
+Latest saved progress is 1,489,636,874 / 2,147,483,648 (c375f6), without a terminal
+result or long-method credit. Preserve original handle, artifacts, bounds and
+budget.
