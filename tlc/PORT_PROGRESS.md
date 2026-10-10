@@ -28800,3 +28800,48 @@ terminal 2666f6, status 0, 3.862 seconds. Git diff --check passes. No original
 assertion, test inventory credit or workload bound changes. No full workspace,
 XML/ApalacheIR sweep, long race run or excluded email work. Broader semantic
 formatting, source generation and graph mutation sharing remain unproven.
+
+
+Parser-backed action declarations read current syntax (2026-10-09)
+
+Previous goal turn made authoritative progress with commit 3e43fa2. Revalidated
+the clean workspace and polled full off-heap random session 27326, still live.
+Latest observed progress exceeds 40 million of 2,147,483,648 iterations; no
+terminal result or original-method completion credit.
+
+Source Action.getDeclaration reads the current OpDef tree's one[0] on every call.
+Native OpDefNode.GetDeclarationLocation returned a coordinate copied during
+bridge construction. An ignored standalone Java/native comparison replaces the
+declaration child, changes its end column to zero, removes/restores the child,
+and removes/replaces the whole syntax. Java reads the new locations or nullLoc;
+baseline Go keeps the initial location in six of seven rows. Drivers live under
+.codex-gotmp/declaration-syntax-observation. The initial Java observer used a
+nonexistent constructor overload; corrected that scratch driver without source
+changes. Pinned Java runs with -ea. Receipts: declaration-syntax-before.log,
+terminal 5a3fd9, status 0; declaration-syntax-java.log, terminal e5becb, status 0.
+
+The parser-backed OpDef constructor now records source-syntax ownership. Its
+declaration getter delegates to the current syntax adapter; removing the syntax
+therefore cannot expose an old cached declaration. Standalone native definitions
+retain their explicit declaration field. Extracted the existing SANY syntax
+location calculation for reuse: actual current filename and all four coordinates,
+including zero ends. Missing syntax/children returns nullLoc; a nil first child
+retains the null failure. No evaluator or native adapter fallback is introduced.
+All seven observed rows now agree byte for byte with Java:
+declaration-syntax-after.log, terminal 1d0862, status 0; diff comparison terminal
+5912ad, status 0. This bounds declaration-location sharing only, not general
+graph mutation or assertion-enabled invalid-kind behavior.
+
+Existing selected original Github817/Test219/A-B-C coverage/cyclic methods pass:
+declaration-syntax-originals.log, terminal 5418e9, status 0, 4.238 seconds.
+Existing focused TLC checker/trace-retention/original coverage/tool getter checks
+pass: declaration-syntax-tlc-checks.log, terminal 4213bf, status 0, 0.026 seconds.
+Original Github1244 variants, Debug02 and LET methods pass:
+declaration-syntax-debugger-originals.log, terminal 408d82, status 0, 0.265 seconds.
+The existing declaration observation overlay differs from current bridge code
+only by its observer; reused it on originals and the existing Bitwise bridge
+check. All 3,775 canonical rows agree: declaration-syntax-canonical-observation.log,
+terminal 3c70c1, status 0, 1.530 seconds; count receipt b3c958, zero mismatches.
+No new permanent tests/fixtures, original assertions or inventory credit changes.
+Formatting and git diff --check pass. No full-workspace/XML/ApalacheIR sweep,
+long race workload, original-bound reduction or excluded email work.

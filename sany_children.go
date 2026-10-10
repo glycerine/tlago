@@ -117,19 +117,33 @@ func sanyGraphLocation(node sanySemanticGraphNode) tlc.SourceLocation {
 		return tlc.NullSourceLocation
 	}
 	if syntax, ok := tree.(*SanySyntaxNode); ok {
-		// SyntaxTreeNode.getLocation reads its filename and all four current
-		// coordinates directly. Do not substitute cached node locations or
-		// fill zero end coordinates from the beginning.
-		source := syntax.FileName
-		if source != "" {
-			source = strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
-		}
-		return tlc.NewSourceLocation(source, syntax.Range.Begin.Line, syntax.Range.Begin.Column, syntax.Range.End.Line, syntax.Range.End.Column)
+		return sanySyntaxLocation(syntax)
 	}
 	if tree == tlc.NullSemanticNodeInstance.GetTreeNode() {
 		return tlc.NullSemanticNodeInstance.Location
 	}
 	panic(tlc.NewClassCastException())
+}
+
+func sanySyntaxLocation(syntax *SanySyntaxNode) tlc.SourceLocation {
+	if syntax == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	// SyntaxTreeNode.getLocation reads all four current coordinates directly.
+	// Preserve zero end coordinates instead of filling them from the beginning.
+	source := syntax.FileName
+	if source != "" {
+		source = strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
+	}
+	return tlc.NewSourceLocation(source, syntax.Range.Begin.Line, syntax.Range.Begin.Column, syntax.Range.End.Line, syntax.Range.End.Column)
+}
+
+// Action.getDeclaration reads the first current child of syntax.one().
+func (syntax *SanySyntaxNode) GetDeclarationLocation() tlc.SourceLocation {
+	if syntax == nil || len(syntax.One) == 0 {
+		return tlc.NullSourceLocation
+	}
+	return sanySyntaxLocation(syntax.One[0])
 }
 
 // Port of SemanticNode.pathTo. Its visitor searches syntax children and formal

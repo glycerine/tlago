@@ -66,7 +66,10 @@ registrations match their source identities. Module setup now retains checked
 source locality and ownership, including public RECURSIVE declarations completed
 by LOCAL bodies. Action declaration lookup no longer substitutes definition
 locations for absent declarations; all 6,014 observed locations match syntax
-children. Action strings now delegate to the semantic formatter, retaining the
+children. Parser-backed declaration lookup now reads the current syntax child,
+including after replacement or removal. Seven mutation observations match Java;
+3,775 canonical definition observations agree after the change.
+Action strings now delegate to the semantic formatter, retaining the
 `showPlainFormulae` property's presence-based selection of syntax text.
 General source generation, graph mutation sharing and source-less
 fallback lowering remain unproven. Keep those gaps distinct from the completed

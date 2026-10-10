@@ -13,6 +13,7 @@ type OpDefNode struct {
 	Body                      SemanticNode
 	StepNode                  SemanticNode
 	DeclarationLocation       SourceLocation
+	sourceSyntax              bool
 	InRecursive               bool
 	Local                     bool
 	OriginallyDefinedInModule *ModuleNode
@@ -67,6 +68,7 @@ func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body Semant
 // A parser adapter borrows the already constructed SANY identity. Standalone
 // runtime definitions allocate their own semantic base through the same path.
 func NewOpDefNodeForSymbolWithBase(symbol *SymbolNode, params []*SymbolNode, body SemanticNode, base *SemanticNodeBase) *OpDefNode {
+	sourceSyntax := base != nil
 	outParams := make([]*SymbolNode, len(params))
 	copy(outParams, params)
 	if symbol == nil {
@@ -89,6 +91,7 @@ func NewOpDefNodeForSymbolWithBase(symbol *SymbolNode, params []*SymbolNode, bod
 		Name:             name,
 		Params:           outParams,
 		Body:             body,
+		sourceSyntax:     sourceSyntax,
 	}
 	symbol.Definition = definition
 	symbol.SemanticBase = definition.SemanticNodeBase
@@ -123,6 +126,15 @@ func (n *OpDefNode) SetDeclarationLocation(location SourceLocation) {
 
 func (n *OpDefNode) GetDeclarationLocation() SourceLocation {
 	if n == nil {
+		return NullSourceLocation
+	}
+	if n.sourceSyntax {
+		// Parser-backed definitions share their current syntax with SANY.
+		// Action.getDeclaration reads one[0] on every call, including after
+		// the syntax or its children have been replaced or removed.
+		if syntax, ok := n.GetTreeNode().(interface{ GetDeclarationLocation() SourceLocation }); ok {
+			return syntax.GetDeclarationLocation()
+		}
 		return NullSourceLocation
 	}
 	return n.DeclarationLocation

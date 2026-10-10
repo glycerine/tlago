@@ -11055,8 +11055,17 @@ On 6,014 observed canonical definitions in existing original/bridge checks, all
 returned locations now agree with that source rule. Baseline had 2,520 builtin
 and two LAMBDA false declarations. Pinned Java on unchanged Test219 confirms that
 FALSE and all 141 walked LAMBDA nodes are undeclared with unknown locations.
-Actual syntax mutation and source-less declaration adapters remain outside this
-bounded observation.
+Parser-backed OpDefs now retain their source-syntax ownership at construction.
+Their declaration getter reads the current syntax.one[0] through the parser's
+syntax adapter instead of returning the bridge's cached declaration coordinate.
+Absent syntax or an empty one array returns nullLoc. A nil first child fails;
+current filename and all four coordinates are read without filling zero ends.
+Standalone runtime definitions retain their explicit native declaration field.
+Seven pinned-Java/native observations agree across child replacement, coordinate
+mutation, removal/restoration and whole-syntax replacement/removal. Another
+3,775 unchanged canonical definition observations agree on existing original
+models and the Bitwise bridge check. General graph mutation sharing, invalid-kind
+assertion behavior and source-less declaration adapters remain unproven.
 
 Action.toString delegates to the predicate's source semantic formatter. This
 preserves numeric overrides and selects syntax text when the
