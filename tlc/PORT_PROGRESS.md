@@ -35041,3 +35041,49 @@ Latest full stress saved progress is 1,682,568,003 / 2,147,483,648 (24c0c6),
 without terminal result or long-method credit. Preserve original handle,
 artifacts and bounds. Other composite kinds, callbacks and concurrency remain
 outside the bounded comparison.
+
+
+### 2026-10-10: Tuple/record deep traversal and record normalization
+
+Previous turn made verified progress in 4ecfff7; confirm clean HEAD (8a11c9).
+Original full stress 27326 remains live on direct polls f95d11 and 7ed0d9.
+Continue tuple/record structural operations against source. Native null arrays
+were treated as empty by defined-state/deep traversal and copying. Null children
+escaped as Go runtime failures. Record normalization also accepted null names
+and lost typed failures on short/null value-array reads.
+
+Ignored tuple-record-structural reuses actual test206 Def2 source attachment.
+Thirteen runtime array/child forms include null, empty/ordinary integer arrays,
+undefined prefixes, null entries, unsorted sets and nested tuples/records with
+null arrays/entries. Eleven record-name arrays cover null/empty, sorted/reordered
+and duplicate names, and null name entries. Use fresh runtime children per row
+and independent source attachment to parents/children; scalar/undefined global
+values are not modified. Normalize, IsDefined, DeepNormalize and DeepCopy run
+across record normalization flags. Raw structural output avoids incidental
+normalization/rendering of malformed values. Java/native initially complete
+4,784 rows with 2,400 differences (7bfd9d).
+
+Restore typed null array/child failures at the source accesses in both value
+kinds. Preserve defined-state short-circuiting, child normalization before later
+failures, and record values-copy before names-copy. Record normalization retains
+its normalized shortcut, null-name comparison failures and typed value reads.
+Keep name swaps before value reads and insertion's current-value read before
+comparison, preserving partially changed arrays and normalization publication.
+Tuple Normalize remains an unconditional identity operation. Native 70823
+finishes (df2e9e); all 4,784 rows agree (7ea4d8), including nested source frames.
+No fabricated semantic graph/evaluator, persistent test/fixture, changed original
+assertions or original-method credit. This comparison does not establish broad
+ownership or arbitrary callback behavior.
+
+Relevant existing fourteen original model checks, original TupleValue,
+FcnLambdaValue, FcnRcdValue and EvalControl tests plus focused record/numeric/
+context/EXCEPT/lazy-subset/spec-level/stream checks pass. The existing original
+RecordValue deep-copy normalization-independence test passes unchanged. Session
+29150 finishes with exit zero (682d25); root 5.063s and tlc 2.166s (398243).
+Earlier function structural and lambda deep-normalization observers complete
+(e3b149/65851c); all 2,340 and 1,266 rows still agree (b5ed5b). No race, broad
+suite or shortened workloads. Logs remain under tuple-record-structural.
+Handoff and architecture updated. Latest full stress saved progress is
+1,690,034,339 / 2,147,483,648 (398243), without terminal result or long-method
+credit. Preserve original handle/artifacts/bounds. Other composite operations,
+arbitrary callbacks and concurrency remain separate parity targets.

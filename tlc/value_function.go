@@ -817,28 +817,39 @@ func (v *RecordValue) normalizeRecord() (err error) {
 	if v.IsNorm {
 		return nil
 	}
+	if v.Names == nil {
+		panic(NewNullPointerException())
+	}
 	for i := 1; i < len(v.Names); i++ {
+		if v.Names[0] == nil || v.Names[i] == nil {
+			panic(NewNullPointerException())
+		}
 		cmp := v.Names[0].Compare(v.Names[i])
 		if cmp == 0 {
 			return v.runtimeFailure(fmt.Sprintf("Field name %s occurs multiple times in record.", v.Names[i]))
 		}
 		if cmp > 0 {
 			v.Names[0], v.Names[i] = v.Names[i], v.Names[0]
-			v.Values[0], v.Values[i] = v.Values[i], v.Values[0]
+			first := fcnParameterDomain(v.Values, 0)
+			other := fcnParameterDomain(v.Values, i)
+			v.Values[0], v.Values[i] = other, first
 		}
 	}
 	for i := 2; i < len(v.Names); i++ {
 		j := i
 		st := v.Names[i]
-		val := v.Values[i]
+		val := fcnParameterDomain(v.Values, i)
 		cmp := -1
 		for j > 0 {
+			if st == nil || v.Names[j-1] == nil {
+				panic(NewNullPointerException())
+			}
 			cmp = st.Compare(v.Names[j-1])
 			if cmp >= 0 {
 				break
 			}
 			v.Names[j] = v.Names[j-1]
-			v.Values[j] = v.Values[j-1]
+			v.Values[j] = fcnParameterDomain(v.Values, j-1)
 			j--
 		}
 		if cmp == 0 {
@@ -853,7 +864,13 @@ func (v *RecordValue) normalizeRecord() (err error) {
 
 func (v *RecordValue) DeepNormalize() {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	for _, value := range v.Values {
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
 		value.DeepNormalize()
 	}
 	if err := v.normalizeRecord(); err != nil {
@@ -863,7 +880,13 @@ func (v *RecordValue) DeepNormalize() {
 
 func (v *RecordValue) IsDefined() bool {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	for _, value := range v.Values {
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
 		if !value.IsDefined() {
 			return false
 		}
@@ -875,9 +898,18 @@ func (v *RecordValue) IsNormalized() bool { return v.IsNorm }
 
 func (v *RecordValue) DeepCopy() Value {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	values := make([]Value, len(v.Values))
 	for i, value := range v.Values {
+		if isNil(value) {
+			panic(NewNullPointerException())
+		}
 		values[i] = value.DeepCopy()
+	}
+	if v.Names == nil {
+		panic(NewNullPointerException())
 	}
 	names := make([]*UniqueString, len(v.Names))
 	copy(names, v.Names)

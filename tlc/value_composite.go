@@ -279,14 +279,26 @@ func (v *TupleValue) IsNormalized() bool { return true }
 
 func (v *TupleValue) DeepNormalize() {
 	defer catchValueFailure(v, nil)
+	if v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	for _, elem := range v.Elems {
+		if isNil(elem) {
+			panic(NewNullPointerException())
+		}
 		elem.DeepNormalize()
 	}
 }
 
 func (v *TupleValue) IsDefined() bool {
 	defer catchValueFailure(v, nil)
+	if v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	for _, elem := range v.Elems {
+		if isNil(elem) {
+			panic(NewNullPointerException())
+		}
 		if !elem.IsDefined() {
 			return false
 		}
@@ -296,8 +308,14 @@ func (v *TupleValue) IsDefined() bool {
 
 func (v *TupleValue) DeepCopy() Value {
 	defer catchValueFailure(v, nil)
+	if v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	out := make([]Value, len(v.Elems))
 	for i, elem := range v.Elems {
+		if isNil(elem) {
+			panic(NewNullPointerException())
+		}
 		out[i] = elem.DeepCopy()
 	}
 	return &TupleValue{Elems: out}

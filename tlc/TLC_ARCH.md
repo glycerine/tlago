@@ -7951,6 +7951,28 @@ This adds no original-test credit or general array/child ownership proof.
 Arbitrary child callbacks, more composite kinds and concurrent mutation remain
 outside the comparison.
 
+Tuple/record defined-state, deep normalization and deep copying retain typed
+null array/child failures under their existing wrappers. Defined-state calls
+still stop after an undefined child. Deep normalization preserves changes to
+earlier children before a later failure; records normalize field order only
+after traversing all values. Record copying reads/copies values before the name
+array and retains its normalization flag while omitting source metadata.
+Record normalization preserves the normalized shortcut before array reads and
+checks null names at comparisons. Name swaps precede corresponding value reads;
+insertion reads the current value even if no move is needed. Typed null/index
+failures retain partially modified name/value arrays and leave normalization
+unpublished. Tuple normalization remains an unconditional identity operation.
+All 4,784 observations agree across these four operations for tuples/records,
+thirteen array/child forms, eleven record-name forms, record normalized flags
+and independent parent/child source attachment. Runtime child forms include
+undefined values, unsorted sets and nested tuples/records with null arrays or
+entries. Raw structural output records child normalization and failure frames
+without rendering malformed composites. The earlier 2,340 function-record
+structural and 1,266 lambda deep-normalization observations still agree, and the
+existing original record-copy normalization test passes unchanged. No new
+original-test credit, broad ownership proof or arbitrary callback behavior is
+claimed. Other composite operations and concurrent mutation remain separate.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

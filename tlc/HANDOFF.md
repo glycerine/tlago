@@ -352,7 +352,9 @@ boundaries. Predicate-set and operator EXCEPT checks agree. Function-record
 normalization and sizing retain array-read order and normalized-state publication;
 conversion retains interval shortcuts and coverage-only length reads. Defined-
 state traversal follows value count and skips child calls after an undefined
-value. Deep normalization/copy preserve typed failures and traversal order.
+value. Tuple/record/function deep normalization and copying preserve typed
+failures and traversal order; record sorting retains partial changes and source
+failure frames. Independent parent/child source attachment also agrees.
 All bounded comparisons agree, including the prior lambda conversion and deep-
 normalization matrices; contracts and limits are in `TLC_ARCH.md`.
 Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
