@@ -554,6 +554,12 @@ and fingerprint observations match with controlled intern-table setup, and
 focused original/native tests pass, including all 44 `ModelValueTest` methods.
 The observer initializes Java's debugger constant before resetting both intern
 tables; whole-model interning histories and further mutations remain unproven.
+`TLC.Permutations` now requires its input receiver, captures the normalized
+vector, and retains signed 32-bit factorial and typed negative-array failures.
+All 74 observations match, including result/domain sharing, partial input
+normalization and safe negative-overflow cases. Focused original/native tests
+pass with the original five-element permutation method unchanged. Larger
+allocation-resource behavior and concurrent vector replacement remain unproven.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to

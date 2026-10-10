@@ -37494,3 +37494,41 @@ No persistent tests/fixtures or original-method credit. Existing assertions
 remain unchanged. Prior broad baseline retained; this correction has focused
 verification. Handoff/architecture updated; goal active. Whole-model interning
 histories, other typed-null classes and arbitrary mutation remain unproven.
+
+TLC.Permutations continuation after verified 25afad8. Previous goal turn made
+progress; checkout clean. Inspect pinned TLC module operator: required input
+receiver, normalized vector capture, Java int factorial and domain-before-index
+allocation. Native tolerates null input, rereads vector fields and multiplies
+factorial as a 64-bit Go int. Negative vector sizes also yield native slice
+panics instead of source typed negative-array failures.
+
+Prepare ignored .codex-gotmp/tlc-permutations using actual set/vector/interval/
+scalar/function constructors, checked test206 predicates, actual vector backing
+storage/count fields and source metadata. No semantic graph or evaluator
+callback is fabricated. Source 4a94d3/native 20833 terminal a1460b complete
+54 rows. Eight actual null/negative-length differences occur in 52 executed
+native calls. Two native length-17 calls are explicitly deferred to avoid an
+unsafe enormous native factorial allocation; source completes both with typed
+NegativeArraySizeException -288522240. These deferred calls are not original
+test skips and earn no observed-failure credit.
+
+Native now rejects null and typed-null enumerated-set receivers, captures
+normalized elements, uses a signed 32-bit factorial and a typed negative domain
+array boundary. Existing ValueVec allocation then owns negative factorial
+failures. Enable all native observer calls after this arithmetic correction.
+Native 69611 exits zero (e10824): all 54 rows match exactly, zero deferred calls.
+Focused original/native 4104 exits zero (a2aaee), root 6.633s and tlc 2.788s,
+including all original ModelValueTest methods, symmetry models and the unchanged
+five-element TLCTest.testPermutations with all original assertions.
+
+Preserve matching initial logs as *-base.log. Expand actual interval inputs with
+safe negative-factorial lengths 18, 20, 21, 22, 24, 26, 28, 29, 32 and 33;
+these fail before permutation generation or a large allocation. Also capture
+actual input backing storage after each operation. Source 376b17/native 49895
+terminal e4cef8 exit zero. All 74 rows match exactly, including normalized flags,
+partial vectors, result order, shared domain arrays and the empty-function
+singleton. No persistent tests/fixtures or original-method credit. Existing
+original test bounds/assertions unchanged. Prior broad baseline retained; this
+correction has focused verification. Handoff/architecture updated; goal active.
+Concurrent vector replacement and larger allocation-resource behavior remain
+unproven.

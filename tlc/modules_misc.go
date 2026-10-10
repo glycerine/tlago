@@ -135,6 +135,12 @@ func CombineFcn(f1, f2 Value) (Value, error) {
 }
 
 func Permutations(value Value) (*SetEnumValue, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	if set, ok := value.(*SetEnumValue); ok && set == nil {
+		panic(NewNullPointerException())
+	}
 	set, err := tryToSetEnumValue(value)
 	if err != nil {
 		return nil, err
@@ -146,23 +152,24 @@ func Permutations(value Value) (*SetEnumValue, error) {
 		return nil, err
 	}
 
-	length := set.Elems.Len()
+	elems := set.Elems
+	length := elems.Len()
 	if length == 0 {
 		return NewSetEnumValue([]Value{emptyFcnValue()}, true), nil
 	}
 
-	factorial := 1
-	domain := make([]Value, length)
+	factorial := int32(1)
+	domain := make([]Value, valueStreamArrayLength(int32(length)))
 	idxArray := make([]int, length)
 	inUse := make([]bool, length)
 	for i := 0; i < length; i++ {
-		domain[i] = set.Elems.At(i)
+		domain[i] = elems.At(i)
 		idxArray[i] = i
 		inUse[i] = true
-		factorial *= i + 1
+		factorial *= int32(i + 1)
 	}
 
-	fcns := NewValueVec(factorial)
+	fcns := NewValueVec(int(factorial))
 	for {
 		vals := make([]Value, length)
 		for i := 0; i < length; i++ {

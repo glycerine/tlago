@@ -7017,6 +7017,22 @@ paths of `RandomElement` report `TLC_MODULE_APPLYING_TO_WRONG_VALUE` only when
 conversion returns no enumerated set. A thrown conversion failure propagates
 unchanged, including from a function-set domain. These callers use the nullable
 conversion helper rather than the helper that synthesizes an error for no result.
+Permutations rejects null input receivers, including a typed-null native
+enumerated-set pointer. After normalization it captures the ValueVec object,
+reads its logical size, and checks the domain array allocation before initializing
+indices. The factorial accumulator uses signed 32-bit arithmetic; negative
+overflow reaches ValueVec's typed negative-array allocation failure before any
+permutation is generated. Generated records share the captured domain array,
+and the zero-length result retains the empty-function singleton. The ignored
+actual-runtime observer covers 74 conversion/normalization/vector/null/source
+cases, result structure and domain sharing, partial backing storage, and safe
+negative-factorial lengths from 17 through 33. All match exactly. The initial
+54-row observer has eight actual null/negative-length differences and two native
+17-element calls deferred until overflow was repaired; neither deferred call is
+counted as an observed failure. All final calls execute. Focused original/native
+checks pass, including the unchanged five-element TLCTest.testPermutations.
+No persistent tests/fixtures or original-method credit are added. Concurrent
+vector replacement and larger allocation-resource behavior remain unproven.
 Integer membership and invalid union/difference enumeration use the source
 `Assert.fail(reason, getSource())` boundary: runtime category, pretty-printed
 message, and source expression with `EmptyContext` when present. Existing value
