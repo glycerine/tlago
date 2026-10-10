@@ -8414,8 +8414,28 @@ separate loop boundaries. Caches are populated by actual `FingerPrint` or
 `DeepNormalize` calls; reflection only reads source cache identity. Drivers use real
 parsed test206 nodes and runtime constructors without evaluator callbacks or
 fabricated semantic graphs. No persistent fixture/test or original credit is
-added. Arbitrary mutations, injected cache states and general malformed record
-membership-array ordering remain unproven.
+added. Arbitrary mutations and injected cache states remain unproven; bounded
+record membership-array ordering is covered below.
+
+Record-product membership normalizes the candidate record before reading either
+name-array length. Null name arrays raise typed NPE after any normalization side
+effects. Name comparison preserves null failures for both receiver and argument,
+matching `UniqueString.equals(UniqueString)`. Once names agree, it reads the left
+field slot, then the candidate value slot, then invokes membership. A candidate
+array read failure therefore precedes a null left-field receiver failure. Each
+existing owner catch retains its source frame; candidate normalization retains
+its own catch and any partial mutation.
+
+All 10,368 actual-runtime observations agree across six name-array shapes and six
+value-array shapes on each side, normalized/unnormalized candidates and four
+owner/candidate source combinations. Shapes include null/empty arrays, null names,
+different names, reverse name order, short arrays, null children and non-set field
+values. Returned results, root failures, source frames and retained candidate
+name/value/normalization state agree. The prior 13,488 cache-operation rows still
+agree. Observers use actual parsed test206 nodes and runtime constructors; no
+persistent tests/fixtures, fabricated semantic graph or evaluator callbacks are
+introduced. Broader value subclasses and arbitrary mutation remain unproven;
+original-method credit is unchanged.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering

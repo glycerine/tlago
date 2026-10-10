@@ -432,8 +432,11 @@ checks pass. Cache operations now match 13,488 observations using real caches
 filled by fingerprinting and dummy caches installed by deep normalization. Tuple
 and record products retain typed null failures when visiting original operands.
 Record normalization follows the name count; deep normalization follows the value
-count, preserving partial mutation on failure. Arbitrary mutation and malformed
-record membership arrays remain unproven. The earlier complete CommunityModules
+count, preserving partial mutation on failure. Record-product membership also
+matches 10,368 name/value-array observations. It normalizes the candidate before
+reading name lengths and evaluates its value slot before dereferencing a null
+field set. Null name comparisons retain typed failures. Arbitrary mutation and
+broader malformed inputs remain unproven. The earlier complete CommunityModules
 run predates these enumeration changes.
 Prior lambda conversion and deep-normalization matrices also agree; contracts
 and limits are in `TLC_ARCH.md`.
@@ -469,7 +472,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,928,536,908 of 2,147,483,648 iterations, without a terminal result. The previous
+1,929,162,961 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

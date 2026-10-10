@@ -413,18 +413,26 @@ func (v *SetOfRcdsValue) Member(elem Value) (resultBool bool, err error) {
 	if err := rcd.normalizeRecord(); err != nil {
 		return false, err
 	}
+	if v.Names == nil || rcd.Names == nil {
+		panic(NewNullPointerException())
+	}
 	if len(v.Names) != len(rcd.Names) {
 		return false, nil
 	}
 	for i := range v.Names {
+		if v.Names[i] == nil || rcd.Names[i] == nil {
+			panic(NewNullPointerException())
+		}
 		if !v.Names[i].Equal(rcd.Names[i]) {
 			return false, nil
 		}
 		field := v.fieldValue(i)
+		// Java evaluates the argument array read before checking the receiver.
+		arg := fcnParameterDomain(rcd.Values, i)
 		if field == nil {
 			panic(NewNullPointerException())
 		}
-		ok, err := field.Member(rcd.Values[i])
+		ok, err := field.Member(arg)
 		if err != nil || !ok {
 			return ok, err
 		}

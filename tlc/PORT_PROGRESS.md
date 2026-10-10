@@ -35974,3 +35974,47 @@ vector sharing/reference checks passes at original bounds, tlc 87.766s
 or complete CommunityModules rerun. Latest saved random stress progress is
 1,928,536,908 / 2,147,483,648 (19b484), without terminal result or long credit.
 Handoff and architecture record the verified cache behavior and remaining limits.
+
+
+2026-10-10: Record-product membership evaluation order
+
+Previous goal turn made verified progress in 5050553. Recheck current worktree
+and remaining handoff/source contracts (58b1dd); original stress session 27326
+is directly confirmed live (7a2d7f). Inspect SetOfRcdsValue.member and native
+RecordValue normalization. Source reads candidate value arguments before null
+membership receivers, while the native check added in the preceding change
+ran before that argument read. Null name arrays also collapsed to empty native
+lengths, and native UniqueString.Equal accepts null where the source overload
+reads the argument token.
+
+Create ignored source/native actual-runtime observers using parsed test206 nodes
+and real SetOfRcdsValue/RecordValue constructors. Six name shapes and six value
+shapes on each side, two candidate normalization states and four source flag
+combinations produce 10,368 observations. Shapes include null/empty arrays, null
+names, different/reverse names, short value arrays, null children and non-set
+field values. Compare returned membership, root type/message, source frames and
+retained candidate names, values and normalization state. No fabricated semantic
+graph, evaluator callback or persistent test/fixture is introduced.
+
+Initial complete source/native matrices have 3,648 differences (5d3097).
+Preserve typed null name-array/name-receiver failures, read candidate value slots
+through the existing typed array-read helper, and delay the null field-receiver
+check until after that read. This leaves 576 differences (adde90), all null
+name arguments: source UniqueString.equals reads the argument token. Preserve
+that dereference locally in membership without changing generic UniqueString
+behavior. All 10,368 rows then agree (6bbfbd). Candidate normalization remains
+before name-length reads and its failure/partial mutation behavior agrees.
+
+The preceding 13,488 cache-operation comparisons still agree (580a4b), with the
+new native execution completing at 2424a1. Existing focused original tuple/
+function/record, EXCEPT, lazy-subset and native product/subset checks pass, tlc
+2.506s (4412c8). Broader subclasses and arbitrary mutations remain unproven;
+original-method credit is unchanged.
+Full original set/subset/randomization/debugger/initialization and vector
+sharing/reference selection passes at original bounds, tlc 87.726s (session
+39641, terminal 873eed). No race instrumentation, reduced workload or complete
+CommunityModules rerun. Latest saved original random stress progress is
+1,929,162,961 / 2,147,483,648 (5d58a7), without terminal result or long credit;
+preserve session 27326, log, seed and original bounds. Add a code comment to
+explain receiver/argument evaluation order; handoff and architecture retain
+current contracts and bounded verification limits.
