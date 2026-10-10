@@ -32202,3 +32202,61 @@ original assertion edits or changed workload bounds. Formatting/diff checks pass
 HANDOFF consolidates collection/record status; TLC_ARCH records exact failure
 mutation and API limits. Overall TLC parity and original reconciliation remain
 incomplete.
+
+
+2026-10-10: Function array application uses tuple/record overrides.
+
+Previous goal turn made verified progress in 3a8b4a5. Worktree starts clean.
+Original full random stress session 27326 remains live on direct polls 4330d7
+and b91b81. Latest saved progress is 1,168,814,283 / 2,147,483,648 (15b57d), with
+no terminal result or original-method credit. Preserve its workload and budget.
+
+Follow the previous record-array note into real Java callers. FunctionValue's
+default array apply packs zero/multiple arguments into TupleValue, but TupleValue
+and RecordValue override that method and require exactly one argument. Native
+applyFunctionValue bypassed those overrides by always packing first. This
+supersedes the older no-code audit at line 12789 claiming every Java function path
+packs multi-argument application; that generalization omitted dynamic overrides.
+
+Add RecordValue.ApplyArgs with source null-array check, exact arity diagnostic
+(including source wording for zero arguments), and the extra catchValueFailure
+boundary around Apply(args[0]). Route tuple, record and counterexample helper
+branches through their actual array overloads. Keep function-record default
+packing and function-lambda dispatch. TupleValue.ApplyArgs already existed, but
+now rejects nil args as Java null array; a non-nil empty slice still reports zero
+arguments. TupleValue.Apply(nil) now raises typed NPE before diagnostic formatting.
+The frozen standard module export table and tool's direct application path remain
+unchanged; helper-only Insert/SelectInSeq are not globally registered.
+
+Ignored .codex-gotmp/array-application compares actual pinned Java production
+methods and Go APIs. Twenty-eight entry-point rows run SelectInSeq and Insert
+with record, tuple and a tuple-domain function-record predicate, with/without
+source, empty and nonempty sequences, plus null-element selection for tuple and
+record. All match (45907 terminal bb963f), correcting seven baseline differences.
+The function-record controls still return successful insertion/selection under
+default tuple packing. Sourced array-plus-single application failures retain
+two receiver frames, rather than the old one; arity failures retain one.
+
+Twenty-eight additional direct array rows cover record and tuple with/without
+source: nil array, non-nil empty array, valid one argument, wrong-type one argument,
+null element, two arguments and three arguments. Compare full values or root
+category/message, exact FingerprintException chain length and detailed source/
+EmptyContext identity. All match (333f13), including nil-array NPE and the
+source's zero-argument record message. Only enhanced JVM NPE messages are
+excluded. The new direct RecordValue.ApplyArgs API had no native baseline; do
+not attribute its entire new matrix to pre-existing-test differences. No persistent
+tests or fixtures were invented, and observations earn no inventory credit.
+Counterexample delegation is updated by its record inheritance contract, but
+not independently exercised by this matrix. Default-interface null-array behavior
+for function records/lambdas is outside these observations.
+
+Existing original SequencesTest (13 methods), TupleValueTest (1 method) and both
+RecordValueTest translations pass: 85048 terminal 73f2fa, original-values.log,
+0.013s. Unchanged Java originals independently pass JUnitCore OK (16 tests),
+b0adfa, java-original-values.log, 0.059s. Relevant original ConstantRank2AssertError
+and ValueSemanticsAssume methods pass: 16253 terminal bd9b15,
+original-models.log, 2.476s. No broad sweep, race workload, altered assertions,
+new override registration or shortened workload. Formatting/diff checks pass;
+HANDOFF and TLC_ARCH replace the earlier array-overload verification gap with the
+precise dispatch contract and bounded evidence. Overall core TLC parity and
+original-model reconciliation remain incomplete.

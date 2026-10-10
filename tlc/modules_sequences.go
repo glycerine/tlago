@@ -262,23 +262,22 @@ func isFunctionValue(value Value) bool {
 }
 
 func applyFunctionValue(value Value, args []Value, control int) (Value, error, bool) {
-	arg := functionApplyArg(args)
 	switch v := value.(type) {
 	case *TupleValue:
-		out, err := v.Apply(arg)
+		out, err := v.ApplyArgs(args, control)
 		return out, err, true
 	case *RecordValue:
-		out, err := v.Apply(arg)
+		out, err := v.ApplyArgs(args, control)
 		return out, err, true
 	case *CounterExample:
 		if v == nil || v.RecordValue == nil {
-			out, err := EmptyRecord.Apply(arg)
+			out, err := EmptyRecord.ApplyArgs(args, control)
 			return out, err, true
 		}
-		out, err := v.RecordValue.Apply(arg)
+		out, err := v.RecordValue.ApplyArgs(args, control)
 		return out, err, true
 	case *FcnRcdValue:
-		out, err := v.Apply(arg)
+		out, err := v.Apply(functionApplyArg(args))
 		return out, err, true
 	case *FcnLambdaValue:
 		out, err := v.ApplyArgs(args, control)

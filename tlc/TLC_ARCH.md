@@ -6956,8 +6956,21 @@ Java's in-place insertion sort and partial array mutations. A duplicate detected
 after shifting can report the field currently at the insertion index and leave
 copied values in the array; neither diagnostics nor failure cleanup repair that
 source behavior. The 160 observations compare raw names/values and normalized
-flags as well as complete outcomes. The source Apply(Value[]) overload is outside
-that observation matrix; Select behavior remains unchanged.
+flags as well as complete outcomes. Select behavior remains unchanged.
+
+Array application dispatches by the actual function type. Tuple and record
+overloads require exactly one argument, including for record-derived counterexample
+views. A nil argument slice represents Java's null array and fails before arity
+checking; a non-nil empty slice reaches the source arity diagnostic. The record
+message says "more than one arguments" even for zero arguments. Each overload
+retains its additional catch boundary around single-argument application, so a
+sourced receiver can appear twice in the FingerprintException chain. Tuple Apply
+also rejects a null single argument before formatting. Function records and
+lambdas keep the default single-argument-or-tuple packing policy. SelectInSeq and
+Insert route through these overloads; their frozen standard export status is
+unchanged. The 56 bounded comparisons include exact wrapper counts and successful
+function-record tuple-domain dispatch; they do not exercise every derived record
+view, function-lambda control mode or null-array default-interface path.
 
 
 

@@ -718,6 +718,19 @@ func (v *RecordValue) Apply(arg Value) (resultValue Value, err error) {
 	return nil, v.runtimeFailure(fmt.Sprintf("Attempted to access record by a non-string argument: %s", ValuesPPR(arg)))
 }
 
+// ApplyArgs retains RecordValue's array overload and its additional source
+// catch boundary around single-argument application.
+func (v *RecordValue) ApplyArgs(args []Value, control int) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
+	if args == nil {
+		panic(NewNullPointerException())
+	}
+	if len(args) != 1 {
+		return nil, v.runtimeFailure("Attempted to apply record to more than one arguments.")
+	}
+	return v.Apply(args[0])
+}
+
 func (v *RecordValue) Select(arg Value) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if arg == nil {

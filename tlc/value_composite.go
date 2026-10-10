@@ -323,6 +323,9 @@ func (v *TupleValue) FingerPrint(fp uint64) uint64 {
 
 func (v *TupleValue) Apply(arg Value) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if arg == nil {
+		panic(NewNullPointerException())
+	}
 	i, ok := arg.(*IntValue)
 	if !ok {
 		return nil, v.tupleAssertFailure("Attempted to access tuple at a non integral index: " + ValuesPPR(arg))
@@ -338,6 +341,9 @@ func (v *TupleValue) Apply(arg Value) (resultValue Value, err error) {
 // delegating to the single-argument overload, whose result is control-independent.
 func (v *TupleValue) ApplyArgs(args []Value, control int) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if args == nil {
+		panic(NewNullPointerException())
+	}
 	if len(args) != 1 {
 		return nil, v.tupleAssertFailure(fmt.Sprintf("Attempted to access tuple with %d arguments when it expects 1.", len(args)))
 	}
