@@ -266,8 +266,12 @@ Tuple-product failures, subset membership, ordinary isEmpty misuse and overridde
 value Size now retain runtime categories and source metadata. Null tuple/subset
 members retain typed failures; k-subset null checks follow the original empty-set
 short-circuit outside the source catch. All 288 observations match exactly, and
-relevant original value/model checks pass. Continue with the remaining record-set
-and function-set Assert boundaries against source and the original-test inventory.
+relevant original value/model checks pass. Record-set membership, EXCEPT,
+enumeration, overflow and duplicate-field construction now preserve their source
+runtime boundaries. All 267 observations match, including error codes/parameters
+and partially mutated constructor arrays. The full original record-set suites pass.
+Continue with function-set Assert boundaries against source and the original-test
+inventory.
 Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
@@ -276,7 +280,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,227,916,366 of 2,147,483,648 iterations, without a terminal result. The previous
+1,236,133,170 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

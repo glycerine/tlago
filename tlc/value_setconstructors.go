@@ -355,12 +355,15 @@ func (v *SetOfRcdsValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *SetOfRcdsValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
 	rcd := asRecordValue(elem)
 	if rcd == nil {
 		if mv, ok := elem.(*ModelValue); ok {
 			return mv.modelValueMember(v)
 		}
-		return false, v.unsupported("Attempted to check if non-record\n%s\nis in the set of records:\n%s", elem, ValuesPPR(v))
+		return false, v.runtimeFailure("Attempted to check if non-record\n" + elem.String() + "\nis in the set of records:\n" + ValuesPPR(v))
 	}
 	if err := rcd.normalizeRecord(); err != nil {
 		return false, err
@@ -410,7 +413,7 @@ func (v *SetOfRcdsValue) Size() (resultInt int, err error) {
 		return 0, err
 	}
 	return checkedProductSize(v.Values, func() error {
-		return newTLCErrorCode(ECTLCModuleOverflow, "the number of elements in:\n"+ValuesPPR(v))
+		return NewTLCRuntimeException(ECTLCModuleOverflow, "the number of elements in:\n"+ValuesPPR(v))
 	})
 }
 
@@ -484,7 +487,7 @@ func (v *SetOfRcdsValue) Permute(perm *MVPerm) Value {
 func (v *SetOfRcdsValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of records:\n%s", ValuesPPR(v))
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of records:\n" + ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
@@ -492,7 +495,7 @@ func (v *SetOfRcdsValue) TakeExcept(ex ValueExcept) (resultValue Value, err erro
 func (v *SetOfRcdsValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of records:\n%s", ValuesPPR(v))
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set of records:\n" + ValuesPPR(v))
 	}
 	return v, nil
 }
@@ -540,7 +543,7 @@ func (v *SetOfRcdsValue) Elements() (enumeration ValueEnumeration) {
 	return newProductEnumeration(v.Values, func(fields []Value) Value {
 		return NewRecordValue(v.Names, fields, true, v.CM)
 	}, func(i int, value Value) error {
-		return v.unsupported("Attempted to enumerate a set of the form [l1 : v1, ..., ln : vn],\nbut can't enumerate the value of the `%s' field:\n%s", v.Names[i], ValuesPPR(value))
+		return v.runtimeFailure("Attempted to enumerate a set of the form [l1 : v1, ..., ln : vn],\nbut can't enumerate the value of the `" + v.Names[i].String() + "' field:\n" + ValuesPPR(value))
 	}, v.CM)
 }
 
@@ -574,7 +577,7 @@ func (v *SetOfRcdsValue) sortByNames() error {
 	for i := 1; i < len(v.Names); i++ {
 		cmp := v.Names[0].Compare(v.Names[i])
 		if cmp == 0 {
-			return v.unsupported("Field name %s occurs multiple times in set of records.", v.Names[0])
+			return v.runtimeFailure("Field name " + v.Names[0].String() + " occurs multiple times in set of records.")
 		}
 		if cmp > 0 {
 			v.Names[0], v.Names[i] = v.Names[i], v.Names[0]
@@ -596,7 +599,7 @@ func (v *SetOfRcdsValue) sortByNames() error {
 			j--
 		}
 		if cmp == 0 {
-			return v.unsupported("Field name %s occurs multiple times in set of records.", v.Names[i])
+			return v.runtimeFailure("Field name " + v.Names[i].String() + " occurs multiple times in set of records.")
 		}
 		v.Names[j] = st
 		v.Values[j] = val

@@ -32529,3 +32529,55 @@ original-models.log, 2.202s). Full original bounds remain intact, no race or bro
 sweep. Formatting/diff checks pass. HANDOFF/TLC_ARCH state exact verified scope
 and next record-set/function-set runtime work. Overall TLC parity and original
 model reconciliation remain incomplete.
+
+
+2026-10-10: Record-set runtime failures and constructor mutation boundaries.
+
+Previous goal turn makes progress in 2969a86; worktree starts clean. Original full
+stress session 27326 remains live on direct poll b977d2. Latest saved progress is
+1,236,133,170 / 2,147,483,648, without terminal result or original-method credit.
+Preserve the original bounds and no race; do not start a duplicate.
+
+Inspect SetOfRcdsValue Assert calls and constructor sort. Member uses elem.toRcd
+before any null formatting, then raw elem String followed by pretty-printed
+receiver. Overflow uses Assert.fail(code, parameter) without source; other
+failures use reason/getSource. Native generic errors lose those distinctions.
+Replace membership, EXCEPT, enumeration and duplicate-field generic failures with
+runtimeFailure, preserving direct argument String order. Null Member raises typed
+NPE at the original dereference. Overflow uses NewTLCRuntimeException with the
+source code/parameter and no detailed metadata, retaining outer source wrapping.
+The normalization/enumeration algorithms and constructor arrays remain unchanged.
+
+Ignored .codex-gotmp/record-set-boundaries compares 258 operation rows across ten
+record-set shapes, two source states and thirteen operations. Shapes include
+finite, Nat, empty, scalar, 1..50000 squared overflow, one-field and unsorted
+constructors. Member inputs include scalar/null/Boolean, records, integer/string
+functions and a newline string. Other operations are finite/size, EXCEPT overloads
+and first enumeration. expand=false; the overflowing set is not enumerated.
+Initial strict comparison has 146 differences (920fd5). Nine independent
+constructor rows compare complete results and raw caller-owned name/value arrays;
+five baseline failures have the wrong exception category (364abe). Initial eight
+rows are preserved, then add b,a,c,b to exercise a shift before duplicate failure.
+Java reports c and leaves a:{2},b:{1},c:{3},c:{3}; native preserves that exact result.
+No repaired arrays or changed source insertion order.
+
+All 258 operation and nine constructor rows match after correction (e13798).
+Strengthen both observers to include runtime errorCode and the full parameters
+array, preserving null versus allocated parameter arrays. All 267 enhanced rows
+still match exactly (629aee; java-details.log/driver-details.log and
+java-construct-details.log/constructor-details.log). Correct all 151 measured
+baseline category/null differences. Existing receiver source/context and exact
+wrapper counts also match; enhanced JVM NPE text alone is excluded. No persistent
+invented test/fixture or new original-method inventory credit.
+
+Go full unchanged SetOfRcrdValueTest (seven methods), InitializeValueSetOfRcds,
+two existing record-constructor checks and two IsEmpty checks pass at original
+bounds: 28990 terminal 2f4b0f, original-values.log, 53.627s. Source full unchanged
+SetOfRcrdValueTest independently passes JUnit OK (7 tests): 38670 terminal b38c3b,
+java-original-values.log, 17.016s. The varying-parameters loops retain every
+n=1..6, m=1..4 and kOutOfN<size combination; astronomical sampling retains 10,000
+samples. Two original Go models, ConstantRank2AssertError and ValueSemanticsAssume,
+pass: 43259 terminal af19ff, original-models.log, 2.287s. No race, broad sweep or
+shortened bounds. Formatting/diff checks pass. HANDOFF and TLC_ARCH record the
+scope; remaining function-set Assert boundaries are next. Overall core TLC parity
+and original-model reconciliation remain incomplete.

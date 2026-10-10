@@ -7034,7 +7034,31 @@ cover valid/negative/too-large k-subsets and direct sourced/unsourced scalar
 isEmpty and UserValue size/emptiness controls, using a fresh Nat wrapper to avoid
 changing the shared singleton's source. These observations do not establish
 all lazy-function conversions, nested membership failures or product reset paths;
-record-set and function-set Assert boundaries remain separate work. No new
+function-set Assert boundaries remain separate work. No new original-method
+inventory credit is claimed.
+
+
+Record-set non-record membership, both EXCEPT overloads, enumeration constructor
+failures and duplicate-field construction retain source-aware Assert runtime
+failures. Null membership fails at elem.toRcd before formatting; non-record
+membership retains the raw argument String before pretty-printing the receiver.
+Overflow uses the coded runtime Assert overload, retaining its error code and
+parameter array without detailed source metadata, then the receiver catch frame.
+Duplicate sorting preserves input-array mutation on failure. For b,a,c,b with
+values {1},{2},{3},{4}, Java can report c and leave a:{2},b:{1},c:{3},c:{3}; neither
+the constructor's returned error nor diagnostic formatting repairs those arrays.
+
+The record-set comparison covers 258 operation rows and nine constructor rows
+with expand=false. Ten field-set shapes cover finite, Nat, empty, scalar,
+overflow, one-field and unsorted inputs. Operations compare membership with scalar,
+null, Boolean, records, integer/string-domain functions and a newline string;
+finite/size queries; EXCEPT single/array; and first enumeration. The overflowing
+2.5-billion-element record set is not enumerated. Constructor rows retain raw
+name/value arrays for valid, duplicate and trusted-normalized inputs. All 267
+complete rows match, including category/message, error code, parameter arrays,
+source/context and wrapper counts. The full seven-method original record-set
+suites pass without reduced bounds or race instrumentation. This does not establish
+all lazy-record conversions, arbitrary null fields or product-reset paths. No new
 original-method inventory credit is claimed.
 
 
