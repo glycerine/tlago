@@ -31095,3 +31095,67 @@ Keep full bounds, default budget and live files. Next concrete source audit:
 TLCExt!Trace appends states unconditionally while the native helper currently
 deduplicates equal neighboring states; compare actual stuttering successors
 before changing that separate behavior. Overall TLC parity remains incomplete.
+
+
+2026-10-10 Repeated-state preservation in TLCExt!Trace:
+Previous goal turn made verified progress in ce0e370; clean tree revalidated
+(144e60). Full off-heap random session 27326 remains live (10fe23 and b9b124).
+Source TLCExt.getTrace appends current/successor infos unconditionally for an
+unwritten successor with noninitial current state, and getTrace0 always appends
+the written final state. Native appendTraceStateIfMissing instead compared each
+state with the last recovered state, dropped equal values and eagerly computed
+the appended state's fingerprint. This changes trace positions and can invoke
+fingerprinting on a source path that does not request it.
+
+Ignored observers in .codex-gotmp/trace-repeated-states-observation use the actual
+C model's initial states and A/B transitions: B preserves all values, A changes
+x. They construct real ModelChecker/Worker instances with MemFPSet, establish
+fingerprint membership, write actual worker trace files and call source/native
+TLCExt trace APIs with ordinary and explicitly enabled extended states. Three
+levels cover equal unwritten, different unwritten and equal written states;
+initial state is the control. Rows retain complete escaped tuple text, size and
+current-state identity. Source assertions are enabled for every final run.
+This is direct API sequencing and record recovery, not ordinary checker admission
+of an already-seen fingerprint or a new persistent model fixture.
+
+Initial source observation read failed its fingerprint-membership assertion.
+Corrected observer setup by inserting the initial fingerprint before writing;
+subsequent stuttering records share that actual fingerprint. Adapted source
+cleanup through its private cleanup method and native cleanup through the public
+checker method. Compilation corrections concern only ignored observer APIs.
+Reran both sides in fresh metadata directories; all final source/native runs
+return status 0. Source compile 76643d, native baseline build 9a5f30, comparison
+and actual runs d6960f show seven differing rows per mode (14 of 20 total).
+For example, Java retains two equal records for the first written successor,
+while native collapses the trace to one record. Deeper unwritten histories also
+lose current and successor positions. The initial and first unwritten controls
+already agree.
+
+Replace the unwritten current/successor appends with source NewTLCStateInfo
+appends. The written branch appends the state record directly, matching source
+getTrace0 without an extra action-bearing info wrapper. Remove the deduplicating
+helper entirely because it has no other consumers. Do not fingerprint, compare
+equality or discard an appended trace position.
+Native rebuild 42854 terminal 7a9f32 and comparison c4053f match all 20 rows.
+Final saved compare.py receipt 7c47b3 checks exact counts, complete row equality,
+expected depth+1 tuple lengths for each noninitial case and the 14 baseline
+mismatches. Source current-state restoration remains in its prior success-only
+location. No alias, assertion, worker-bound or model fixture changes.
+
+All 15 unchanged selected original methods pass: session 22594 terminal 55d86d,
+3.938s, originals.log. After reviewing getTrace0's direct record conversion,
+final rebuild 84440 terminal 5d2b5f and complete comparison 69b667 still match all
+20 rows; the unchanged original selection passes again in 4.068s (47590 terminal
+65c941, originals-final.log). Selection: three TLCExtTrace methods, four Alias safety/
+simulation/liveness methods, TLCGetLevel and its TTrace, both ErrorTraceConstruction
+methods, DieHard JSON/TLC single-worker safety round trips and AliasSub2 JSON/TLC
+single-worker round trips. No new persistent tests, weakened assertions, inventory
+credit, broad suite, race run, source edits or email work. Formatting and git diff
+--check pass. Handoff consolidates recent trace contracts; detailed chronology
+stays here.
+
+Latest full off-heap random progress is 905,175,417 / 2,147,483,648 (bd9cd6), with
+the same handle live. No terminal result or original-method credit. Keep full
+bounds, default budget and live files. Next concrete audit: source required
+checker/current-state ownership in TLCExt!Trace versus native fallback branches.
+Overall TLC parity remains incomplete.

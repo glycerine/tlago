@@ -187,8 +187,7 @@ func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
 				trace = append(trace, NewTLCStateInfo(current), NewTLCStateInfo(state))
 			} else if checker := MainChecker(); checker != nil {
 				trace = append(trace, checker.traceInfoPrefix(current)...)
-				trace = appendTraceStateIfMissing(trace, current)
-				trace = appendTraceStateIfMissing(trace, state)
+				trace = append(trace, NewTLCStateInfo(current), NewTLCStateInfo(state))
 				// Source restores only after successful prefix reconstruction;
 				// nested Tool.getState calls replace the current-state slot.
 				SetCurrentState(current)
@@ -199,8 +198,7 @@ func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
 		}
 	}
 	if checker := MainChecker(); checker != nil {
-		trace := appendTraceStateIfMissing(checker.traceInfoPrefix(state), state)
-		return traceInfoTupleValue(trace), nil
+		return traceInfoTupleValue(checker.traceInfoPrefix(state), state), nil
 	}
 	return predecessorTraceTupleValue(state), nil
 }
@@ -230,12 +228,15 @@ func stateActionRecordValue(state *TLCStateMut, action *Action) *RecordValue {
 	return NewRecordValue(names, values, false)
 }
 
-func traceInfoTupleValue(trace []*TLCStateInfo) Value {
-	values := make([]Value, 0, len(trace))
+func traceInfoTupleValue(trace []*TLCStateInfo, suffix ...*TLCStateMut) Value {
+	values := make([]Value, 0, len(trace)+len(suffix))
 	for _, info := range trace {
 		if info != nil && info.State != nil {
 			values = append(values, NewRecordValueFromInsMap(info.State.Values()))
 		}
+	}
+	for _, state := range suffix {
+		values = append(values, NewRecordValueFromInsMap(state.Values()))
 	}
 	return NewTupleValue(values)
 }

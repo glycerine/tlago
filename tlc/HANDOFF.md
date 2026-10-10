@@ -166,17 +166,15 @@ cleanup now accepts configuration failures that occur before a checker exists.
 Warning suppression and escalation now match Java across 272 ordered
 observations; eight focused original tests pass. Elevated subscript and symmetry
 warnings retain non-null empty parameter arrays, preserving exception recording.
-Trace reconstruction now uses the source mode-aware predecessor setter instead
-of forcing metadata onto ordinary MC states. All 270 state/metadata observations
-match Java with assertions enabled; 14 focused original trace/alias methods pass.
-Reconstruction and alias calls now retain Java's current-state replacement;
-`TLCExt!Trace` restores its saved state after successful unwritten-successor
-history reconstruction. All 630 direct observations and 23 focused original
-methods pass. The JSON auto-worker prefix mismatch remains an explicit source
-limitation in existing deterministic replay evidence; keep original assertions.
-Next audit: repeated-state handling in `TLCExt!Trace`, comparing the source's
-unconditional appended states with the native deduplicating helper. Original
-model-test reconciliation remains open.
+Trace reconstruction now respects state-mode metadata and source current-state
+replacement. `TLCExt!Trace` owns successful-history restoration and preserves
+equal-valued states as separate trace positions. All 20 worker-backed repeated-
+state observations and 15 focused original methods pass; earlier metadata and
+lifetime comparisons remain recorded in `PORT_PROGRESS.md`. The JSON auto-worker
+prefix mismatch remains an explicit source limitation in existing deterministic
+replay evidence; keep original assertions. Next audit: required checker and
+current-state ownership in `TLCExt!Trace`, before accepting its native fallback
+paths as source behavior. Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

@@ -6312,6 +6312,17 @@ Trace reconstruction and aliasing:
   288 baseline mismatches differ only in current-slot identity. All 23 selected
   original alias/trace/level/random methods pass. This does not establish every
   malformed graph, callback or current-state lifetime beyond these paths.
+- `TLCExt!Trace` preserves equal-valued neighboring states as separate positions.
+  For an unwritten successor with noninitial current state, it appends both
+  current and successor infos after recovering the current state's history.
+  For a written state, it appends that state's record after its recovered history,
+  without creating an extra action-bearing info wrapper. Neither path compares
+  values or eagerly fingerprints the appended state. The former
+  native deduplicating helper is removed. Twenty worker-backed observations on
+  C's actual stuttering transitions match Java with assertions enabled in ordinary
+  and extended-state modes; fifteen focused original methods pass. These are
+  direct API/record reconstruction observations, not full-model execution or new
+  original-method credit. Required-owner fallback paths remain a separate audit.
 - The Java default `evalAlias` overloads evaluate the resolved `ALIAS` operator
   body under `EvalControl.Clear`, convert record-like values to alias states,
   and on evaluation errors attach `_ALIASEvalError` to an alias record instead

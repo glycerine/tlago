@@ -2063,22 +2063,6 @@ func (mc *ModelChecker) stateInfoForTransition(tool *Tool, state *TLCStateMut, p
 	return info
 }
 
-func appendTraceStateIfMissing(trace []*TLCStateInfo, state *TLCStateMut) []*TLCStateInfo {
-	if state == nil {
-		return trace
-	}
-	if len(trace) > 0 {
-		last := trace[len(trace)-1]
-		if last != nil && last.State != nil && (last.State == state || last.State.Equal(state)) {
-			return trace
-		}
-	}
-	info := NewTLCStateInfo(state)
-	fp := state.FingerPrint()
-	info.FP = &fp
-	return append(trace, info)
-}
-
 func (mc *ModelChecker) traceInfoPrefix(state *TLCStateMut) []*TLCStateInfo {
 	if mc == nil {
 		panic(NewNullPointerException())
