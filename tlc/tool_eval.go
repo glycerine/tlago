@@ -958,13 +958,6 @@ func (t *Tool) evalBool(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 	return bval, nil
 }
 
-func requireBoolValue(value Value, format string, args ...any) (*BoolValue, error) {
-	if bval, ok := value.(*BoolValue); ok {
-		return bval, nil
-	}
-	return nil, newTLCError(ECGeneral, format, args...)
-}
-
 func requireBoolValueAt(value Value, expr SemanticNode, c *Context, format string, args ...any) (*BoolValue, error) {
 	if bval, ok := value.(*BoolValue); ok {
 		return bval, nil
@@ -1031,7 +1024,7 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 	}
 	enumerable, ok := asEnumerable(inVal)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "Attempted to compute the value of an expression of\nform CHOOSE x \\in S: P, but S was not enumerable.\n%s", SemanticString(expr))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to compute the value of an expression of\nform CHOOSE x \\in S: P, but S was not enumerable.\n%s", SemanticString(expr)), expr, c)
 	}
 	inVal = inVal.Normalize()
 	pred := expr.Args[0]
@@ -1046,7 +1039,7 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		if isTuple {
 			tuple := asTupleValue(val)
 			if tuple == nil || len(tuple.Elems) != len(bvars) {
-				return nil, newTLCError(ECGeneral, "Attempted to compute the value of an expression of form\nCHOOSE <<x1, ... , xN>> \\in S: P, but S was not a set\nof N-tuples.\n%s", SemanticString(expr))
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to compute the value of an expression of form\nCHOOSE <<x1, ... , xN>> \\in S: P, but S was not a set\nof N-tuples.\n%s", SemanticString(expr)), expr, c)
 			}
 			for i, variable := range bvars {
 				c1 = c1.Cons(variable, tuple.Elems[i])
@@ -1060,7 +1053,9 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		}
 		bval, ok := value.(*BoolValue)
 		if !ok {
-			return nil, newTLCErrorCode(ECTLCExpectedValue, "boolean", SemanticString(expr))
+			failure := NewTLCRuntimeException(ECTLCExpectedValue, "boolean", SemanticString(expr))
+			failure.Expr, failure.Ctxt = pred, c1
+			return nil, failure
 		}
 		if bval.Val {
 			return val, nil
@@ -1069,7 +1064,7 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 	if err := enum.Err(); err != nil {
 		return nil, err
 	}
-	return nil, newTLCError(ECGeneral, "Attempted to compute the value of an expression of form\nCHOOSE x \\in S: P, but no element of S satisfied P.\n%s", SemanticString(expr))
+	return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to compute the value of an expression of form\nCHOOSE x \\in S: P, but no element of S satisfied P.\n%s", SemanticString(expr)), expr, c)
 }
 
 func normalizedChooseEnumeration(value Value, enumerable Enumerable) (ValueEnumeration, error) {
@@ -1115,7 +1110,9 @@ func (t *Tool) evalBoundedExists(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		}
 		bval, ok := value.(*BoolValue)
 		if !ok {
-			return nil, newTLCErrorCode(ECTLCExpectedValue, "boolean", SemanticString(expr))
+			failure := NewTLCRuntimeException(ECTLCExpectedValue, "boolean", SemanticString(expr))
+			failure.Expr, failure.Ctxt = expr.Args[0], c1
+			return nil, failure
 		}
 		if bval.Val {
 			return BoolTrue, nil
@@ -1139,7 +1136,9 @@ func (t *Tool) evalBoundedForall(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		}
 		bval, ok := value.(*BoolValue)
 		if !ok {
-			return nil, newTLCErrorCode(ECTLCExpectedValue, "boolean", SemanticString(expr))
+			failure := NewTLCRuntimeException(ECTLCExpectedValue, "boolean", SemanticString(expr))
+			failure.Expr, failure.Ctxt = expr.Args[0], c1
+			return nil, failure
 		}
 		if !bval.Val {
 			return BoolFalse, nil
@@ -1556,7 +1555,7 @@ func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 			if err != nil {
 				return nil, err
 			}
-			bval, err := requireBoolValue(value, "Attempted to evaluate an expression of form {x \\in S : P(x)} when P was %s.\n%s", valueKindString(value), SemanticString(expr.Args[0]))
+			bval, err := requireBoolValueAt(value, expr.Args[0], c1, "Attempted to evaluate an expression of form {x \\in S : P(x)} when P was %s.\n%s", valueKindString(value), SemanticString(expr.Args[0]))
 			if err != nil {
 				return nil, err
 			}
@@ -1654,7 +1653,7 @@ func (t *Tool) evalActionSubscript(expr SemanticNode, opcode int, args []Semanti
 	if opcode == OpcodeSA {
 		form = "[A]_e"
 	}
-	res, err := requireBoolValue(value, "Attempted to evaluate an expression of form %s, but A was not a boolean.\n%s", form, SemanticString(expr))
+	res, err := requireBoolValueAt(value, expr, c, "Attempted to evaluate an expression of form %s, but A was not a boolean.\n%s", form, SemanticString(expr))
 	if err != nil {
 		return nil, err
 	}

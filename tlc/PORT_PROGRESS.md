@@ -33583,3 +33583,53 @@ architecture contracts.
 Original full stress handle 27326 remains live (20876e), latest saved progress
 1,444,855,134 / 2,147,483,648 (8b3432). No terminal result or long-method credit;
 preserve its original handle, memory budget, bounds and artifacts.
+
+
+2026-10-10: Quantified and action-subscript boolean failure contexts
+
+Previous goal turn made verified progress in 6852148. Pinned Tool's bounded
+existential/universal/CHOOSE body failures retain runtime code 2215, the body and
+its current binding context. Eager subset predicate failures use GENERAL with
+the body/context; failed CHOOSE and action-subscript errors retain the whole
+application and original context. Native used generic EvalException at these
+sites, dropping both runtime category and context ownership.
+
+Ignored .codex-gotmp/quantified-boolean-metadata uses actual K Foo, Echo Next's
+existential child, ValueSemanticsAssume ChooseBool/BoolPredTrue and cdot
+ActionComposition Prop2's square subscript/ActionConstraint's angle subscript.
+Bound existing symbols/formals to boolean/integer/string results and actual
+native value objects representing empty, singleton and boolean sets. Compare
+two base contexts, empty/nonempty/non-enumerable domains and action short
+circuits. Inspect the failure context's exact parent and bound value as well as
+incoming-context identity. No graph mutation, evaluator callback, persistent
+test or fixture. Initial observers assume Echo Next is directly the quantifier
+and use the intentionally rejected ActionLevelProp property config
+(922579/13ae46/e8b9be; native 87594 terminal 8c8b61). Select the actual existential
+child and valid existing ActionCompositionA configuration; those setup failures
+provide no parity credit. Complete source receipts 638849/14beed/621bea and
+b9ed34/c22553/2d3f52, plus native 28892 terminal 1ed2ae, yield 106 rows with
+38 differences (3d028f).
+
+Restore runtime category and source expression/context ownership at all inspected
+sites. CHOOSE non-enumerable/exhaustion and source tuple mismatch errors use the
+whole expression/original context. Quantifier/body failures use the bound
+context, preserving diagnostic parameters from the whole quantifier. All 106
+final rows agree (10179 terminal 2945a3; comparison 5cd2e3), including complete
+messages/category/code/parameters, exact expression, context parent/bound value,
+frame depth and successful/short-circuit values. Java enhanced NPE messages
+disabled. Tuple mismatch follows source inspection and existing focused checks;
+it is not directly observed here. Lazy subset and arbitrary mid-evaluation graph
+mutation remain unproven. Remove the now-unused generic boolean validator.
+
+Focused CHOOSE/lazy-subset/function-context/liveness/lookup checks pass
+(90306 terminal fb6426; existing-checks.log, 0.017s). Nine original model checks
+pass unchanged (62453 terminal 09c51b; original-models.log, 4.066s): KCoverage,
+LCoverage, EchoDebugger, ActionCompositionA/B, LegacySuiteTest7,
+ValueSemanticsAssume, EmptyExistentialQuantifier and ConstantRank2AssertError.
+A final focused tuple-mismatch check compiles the helper removal (89097 terminal
+921bb6; final-build.log, 0.013s). No changed assertions, broad suite, race, reduced bound or
+original-method inventory credit. Update current handoff and contracts.
+
+Original full stress handle 27326 remains live (b82857), latest saved progress
+1,459,177,864 / 2,147,483,648 (ee75cf). No terminal result or long-method credit;
+preserve its original handle, memory budget, bounds and artifacts.

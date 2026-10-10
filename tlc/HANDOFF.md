@@ -322,10 +322,11 @@ now rejects null before lazy construction or formal indexing, and null-symbol
 lookup retains Java's typed failure. All 132 related observations and relevant
 original model checks pass. Boolean errors for conjunction/disjunction, negation,
 IF, implication, equivalence and CASE retain the source runtime category and
-failing expression/context. Temporal-formula failures use the same detailed
-runtime carrier. All 188 observed evaluation rows and relevant original checks
-pass. Quantified, action-subscript and generation-specific boolean errors still
-need comparison.
+failing expression/context. Quantified bodies and subset predicates retain their
+extended binding contexts; failed CHOOSE and action subscripts retain their
+incoming contexts. Temporal-formula failures use the same detailed runtime
+carrier. All 294 observed evaluation rows and relevant original checks pass.
+Generation-specific boolean errors still need comparison.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

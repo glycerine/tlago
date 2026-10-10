@@ -7474,9 +7474,22 @@ CASE agree across boolean/integer/string bindings and two base contexts, includi
 short-circuit and nested-arm results. The observer uses the same local Relation
 module on both sides; the convenience loader's default packaged module would be
 a different input. This does not establish arbitrary second-operand exceptions,
-malformed CASE arrays or all coverage-model side effects. Quantified predicates,
-action-subscript checks and generation-specific boolean diagnostics remain
-separate comparisons.
+malformed CASE arrays or all coverage-model side effects.
+
+Bounded existential/universal and CHOOSE non-boolean bodies retain runtime code
+2215 with the whole quantifier's diagnostic parameters, the body expression and
+its current extended binding context. Eager subset predicates retain their body
+and binding context under GENERAL. CHOOSE non-enumerable domains, tuple mismatches
+and exhausted searches retain GENERAL with the whole expression and incoming
+context. Both action-subscript forms retain their whole application and incoming
+context when A is not boolean. All 106 observations on actual K, Echo,
+ValueSemanticsAssume and ActionComposition expressions agree, including empty
+and non-enumerable domains, boolean/integer/string bodies, failure context parent/
+bound-value identity and action short circuits. The tuple-mismatch carrier follows
+the inspected source branch and existing focused diagnostics; it is not directly
+covered by this comparison. Lazy subset predicates, arbitrary mid-evaluation graph
+mutation and malformed quantifier arrays remain outside these observations.
+Generation-specific boolean diagnostics remain a separate comparison.
 
 GetLevelBound rejects a null expression. GetLevelBoundAppl rejects a null
 application/operator before opcode classification, reads bounded-domain arrays
