@@ -115,8 +115,8 @@ local/TCP worker checks pass; no production correction was needed. Initial
 predicates now retain the processor's `Vect` object instead of a slice snapshot.
 Cached growth, shrinkage, replacement and restoration match Java in 13 bounded
 observations; all 53 earlier predicate observations still agree. Focused original
-checks pass, including all five generated-trace tests. Simulation statistics preserve current actions, captured matrices and variable
-counter slots, source collection order and worker-owned trace IDs. Action-flow
+checks pass, including all five generated-trace tests. Simulation statistics
+preserve current actions, captured matrices and variable counter slots, source collection order and worker-owned trace IDs. Action-flow
 writers preserve empty files, labels, weights and context grouping. Source-backed
 Simulator statistics select the actual scoped simulation worker and retain Java's
 report capture order. Direct Simulator register getters read the first registered
@@ -126,9 +126,12 @@ and null boundaries. Bounded Java/native comparisons and focused original tests
 pass; detailed coverage and limits are in the progress log and architecture notes.
 The latest dispatch comparison covers 80 rows, and the original 4,224-depth
 simulation checks pass at unchanged bounds. The existing short scope-isolation
-race check passes. Next source audit: aggregate register snapshots and setter
-failure boundaries. General `Vect` invalid-count and exception behavior remains
-unproven; original model-test reconciliation remains open.
+race check passes. Aggregate snapshots retain first-worker domains and source
+failures; register growth preserves old arrays and setter partial updates. The
+indexed all-worker getter is ported, and all 43 new register observations agree.
+Next source audit: Simulator random-generator dispatch in probabilistic state
+generation. General `Vect` invalid-count and exception behavior remains unproven;
+original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 

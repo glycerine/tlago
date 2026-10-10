@@ -30141,3 +30141,69 @@ progress is 584,728,605 / 2,147,483,648 iterations, with no terminal result or m
 credit. Overall TLC parity remains incomplete. Next source audit: Simulator
 aggregate register snapshots and setter failure boundaries. Getter dispatch is
 verified here; do not infer general register-array/map parity from those rows.
+
+
+2026-10-09: Preserve aggregate register snapshots and setter ownership
+
+Previous goal turn made verified progress in d02d3af. Source-backed aggregate
+Simulator snapshots now retain first-worker domains and source empty/null-worker
+failures instead of fabricating empty functions or skipping null workers. Tuple
+values retain null entries when a real worker has no value. Named-value lists
+preserve worker order and source failures. Added GetAllValuesAt(index), the missing
+native counterpart of Java's indexed getAllValues overload.
+
+Source-backed broadcast setters now visit each worker in order and retain earlier
+updates before a later worker fails. Negative numeric indices and null named
+keys/values preserve source exceptions. Numeric null values remain permitted.
+Source-backed register growth allocates a fresh array of exactly index + 1 slots
+instead of append capacity growth; retained old arrays no longer observe writes
+to the replacement. Java's signed index + 1 overflow is checked before allocation
+at 2,147,483,647, preserving NegativeArraySizeException rather than attempting a
+huge allocation. Existing native standalone adapters retain their behavior.
+
+All 43 final pinned-Java/native observations agree with assertions enabled. The
+initial 28 rows cover empty/null-first/second-only/first-data/null-later snapshots,
+ordered named-value lists, first-worker-only numeric/named domains, tuple nulls,
+partial broadcasts, negative/null failures, permitted numeric clearing and exact
+retained-array images after growth. They had 19 baseline differences. Fourteen
+additional rows check indexed numeric lists at 0 and -1 in all seven phases;
+one final row checks the maximum-index overflow without allocation. The old
+maximum-index path is not executed. Canonical function comparison sorts entry
+keys only, retaining every domain entry, tuple order and null value. These are
+bounded sequential observations, not general concurrent mutation or allocation-
+exhaustion proof. Wider native integer arguments remain outside this evidence.
+The unchanged BasicMultiTrace model supplies the actual source/native tool.
+No worker threads, listeners or model-search bounds were invented for this audit.
+
+Ignored observers, overlays and baseline files are under
+.codex-gotmp/simulator-register-observation/. Final Java compile 350c82 returned
+status 0. Final source b45fd2 and native session 9384 terminal 5d9466 returned
+status 0; comparison 5d5795 confirms all 43 exact rows. Logs:
+.codex-gotmp/simulator-register-overflow-{java,current}.log. Earlier 28/42-row
+logs are preserved separately; baseline session 64578 terminal cdef15 returned
+status 0. Source 28-row log simulator-register-java.log and baseline
+simulator-register-before.log retain the original mismatch evidence. The final
+observer now calls the new indexed API and must not be run with the old baseline
+file or its unguarded maximum-index allocation.
+
+All 80 prior dispatch/default observations still agree with Java, comparison
+4ac7ed; regression session 54862 terminal d685a1 returned status 0, log
+simulator-register-dispatch-regression.log. Focused original simulation, behavior
+printing, coverage, TLCGet/TLCSet selections and existing native module/simulation
+checks pass normally after the final production additions: session 86884 terminal
+0086d7, status 0; root 29.240 seconds, TLC 0.014 seconds. Log:
+simulator-register-final-originals.log. This preserves the original 4,224-depth
+simulation checks, all inputs and assertions. An earlier focused pass before the
+indexed overload also returned status 0, session 82266 terminal ec5580,
+root 29.288/TLC 0.013 seconds; log simulator-register-originals.log.
+Formatting and git diff --check pass. No persistent tests/fixtures, inventory
+changes or new original-method credit. No broad suite, XML/ApalacheIR sweep,
+race workload or email-related work.
+
+Original full off-heap stress session 27326 remains live, poll a9ed3d. Latest saved
+progress is 602,775,394 / 2,147,483,648 iterations; no terminal result or method
+credit. Overall TLC parity remains incomplete. Next source audit: Simulator
+random-generator dispatch in probabilistic state generation. Source Tool selects
+Simulator.getRNG, which dispatches to the actual simulation worker; native
+probabilisticRandomGenerator currently reads the simulator's coordinator generator.
+Verify actual generation and stream ownership before changing that path.

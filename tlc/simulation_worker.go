@@ -974,6 +974,22 @@ func (w *SimulationWorker) GetLocalValue(index int) Value {
 }
 
 func (w *SimulationWorker) SetLocalValue(index int, value Value) {
+	if w != nil && w.Statistics != nil && w.Statistics.sourceTool {
+		if index < 0 {
+			panic(NewArrayIndexOutOfBoundsException(index, len(w.LocalValues)))
+		}
+		if index >= len(w.LocalValues) {
+			length := int32(index) + 1
+			if length < 0 {
+				panic(NewNegativeArraySizeException(fmt.Sprint(length)))
+			}
+			values := make([]Value, int(length))
+			copy(values, w.LocalValues)
+			w.LocalValues = values
+		}
+		w.LocalValues[index] = value
+		return
+	}
 	if w == nil || index < 0 {
 		return
 	}
@@ -994,6 +1010,9 @@ func (w *SimulationWorker) GetNamedRegister(name *UniqueString) Value {
 }
 
 func (w *SimulationWorker) SetNamedRegister(name *UniqueString, value Value) {
+	if w != nil && w.Statistics != nil && w.Statistics.sourceTool && (name == nil || value == nil) {
+		panic(NewNullPointerException())
+	}
 	if w == nil || name == nil {
 		return
 	}

@@ -340,15 +340,48 @@ func (s *Simulator) GetLocalValue(idx int) Value {
 }
 
 func (s *Simulator) SetAllValues(idx int, value Value) {
-	if s == nil || idx < 0 {
+	source := s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil
+	if s == nil || (!source && idx < 0) {
 		return
 	}
 	for _, worker := range s.Workers {
+		if source && worker == nil {
+			panic(NewNullPointerException())
+		}
 		worker.SetLocalValue(idx, value)
 	}
 }
 
+// GetAllValuesAt is Java's indexed getAllValues overload.
+func (s *Simulator) GetAllValuesAt(index int) []Value {
+	if s == nil {
+		return nil
+	}
+	source := s.Tool != nil && s.Tool.SpecProcessor != nil
+	values := make([]Value, 0, len(s.Workers))
+	for _, worker := range s.Workers {
+		if worker == nil {
+			if source {
+				panic(NewNullPointerException())
+			}
+			values = append(values, nil)
+			continue
+		}
+		values = append(values, worker.GetLocalValue(index))
+	}
+	return values
+}
+
 func (s *Simulator) GetAllValues() Value {
+	source := s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil
+	if source {
+		if len(s.Workers) == 0 {
+			panic(NewIndexOutOfBoundsException(0, 0))
+		}
+		if s.Workers[0] == nil {
+			panic(NewNullPointerException())
+		}
+	}
 	if s == nil || len(s.Workers) == 0 || s.Workers[0] == nil {
 		return EmptyFcn
 	}
@@ -361,6 +394,9 @@ func (s *Simulator) GetAllValues() Value {
 		}
 		workerValues := make([]Value, len(s.Workers))
 		for i, worker := range s.Workers {
+			if source && worker == nil {
+				panic(NewNullPointerException())
+			}
 			if worker != nil {
 				workerValues[i] = worker.GetLocalValue(idx)
 			}
@@ -394,15 +430,28 @@ func (s *Simulator) GetLocalNamedValue(key *UniqueString) Value {
 }
 
 func (s *Simulator) SetAllNamedValues(key *UniqueString, value Value) {
-	if s == nil || key == nil {
+	source := s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil
+	if s == nil || (!source && key == nil) {
 		return
 	}
 	for _, worker := range s.Workers {
+		if source && worker == nil {
+			panic(NewNullPointerException())
+		}
 		worker.SetNamedRegister(key, value)
 	}
 }
 
 func (s *Simulator) GetAllNamedRegisterValues() Value {
+	source := s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil
+	if source {
+		if len(s.Workers) == 0 {
+			panic(NewIndexOutOfBoundsException(0, 0))
+		}
+		if s.Workers[0] == nil || s.Workers[0].NamedRegisters == nil {
+			panic(NewNullPointerException())
+		}
+	}
 	if s == nil || len(s.Workers) == 0 || s.Workers[0] == nil || s.Workers[0].NamedRegisters == nil {
 		return EmptyFcn
 	}
@@ -411,6 +460,9 @@ func (s *Simulator) GetAllNamedRegisterValues() Value {
 	for key := range s.Workers[0].NamedRegisters.All() {
 		workerValues := make([]Value, len(s.Workers))
 		for i, worker := range s.Workers {
+			if source && worker == nil {
+				panic(NewNullPointerException())
+			}
 			if worker != nil {
 				workerValues[i] = worker.GetNamedRegister(key)
 			}
@@ -422,12 +474,16 @@ func (s *Simulator) GetAllNamedRegisterValues() Value {
 }
 
 func (s *Simulator) GetAllNamedValues(key *UniqueString) []Value {
-	if s == nil || key == nil {
+	source := s != nil && s.Tool != nil && s.Tool.SpecProcessor != nil
+	if s == nil || (!source && key == nil) {
 		return nil
 	}
 	values := make([]Value, 0, len(s.Workers))
 	for _, worker := range s.Workers {
 		if worker == nil {
+			if source {
+				panic(NewNullPointerException())
+			}
 			values = append(values, nil)
 			continue
 		}

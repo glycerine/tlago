@@ -11471,6 +11471,35 @@ including unchanged 4,224-depth register simulations, pass. No persistent tests,
 fixtures or original-method credit. Aggregate snapshot and setter failure parity
 remain separate from these getter/dispatch contracts.
 
+Source-backed aggregate Simulator register snapshots use only the first worker's
+occupied numeric slots or named keys as their domain. They preserve null values
+from other workers in the tuple and throw on null workers when those workers are
+actually visited. Empty worker lists throw at first-worker lookup. Named-value
+lists preserve per-worker ordering and nulls, with source null-worker/key failures.
+`GetAllValuesAt(index)` ports Java's indexed all-worker getter, including empty
+lists and negative-index failures.
+
+Broadcast setters visit workers in order and retain successful earlier updates
+if a later null worker fails. Negative numeric indices and null named keys/values
+preserve source exceptions. Source-backed numeric register growth allocates
+exactly index + 1 slots in a fresh array, preserving retained old arrays. Java's
+signed 32-bit addition overflow raises NegativeArraySizeException before allocation
+at the maximum index. Numeric null values remain permitted. Native standalone
+adapters keep their existing behavior.
+
+All 43 ignored pinned-Java/native observations agree, including retained array
+images, snapshot domains and tuple nulls, indexed getter results, empty/null
+registration, partial broadcasts and negative/null/maximum-index failures.
+Unchanged BasicMultiTrace supplies the actual tool; no source model is altered.
+Canonical comparison sorts only function entries and retains all domain keys,
+tuple ordering and nulls. The 28 original register-observation rows had 19 baseline
+differences; the new indexed surface and overflow guard are checked against source
+without executing the unsafe old maximum-index allocation. All 80 preceding
+dispatch rows still agree. Focused originals pass normally, including unchanged
+4,224-depth simulation checks. No persistent tests/fixtures or method credit.
+Concurrent register mutation, allocation exhaustion and wider native integer
+arguments are not proven by these bounded observations.
+
 ModelChecker successor and initial-property loops also follow Java's repeated
 array getters and current diagnostic names. Successor null-array exceptions go
 through the invariant/action evaluation-failure path; Java Error subclasses
