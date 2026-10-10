@@ -36080,3 +36080,53 @@ Latest saved original random stress progress is 1,943,462,850 / 2,147,483,648
 session 27326 remains live. Preserve original seed, bounds and log. Update
 handoff and architecture with the verified string replacement contracts and
 current complete CommunityModules baseline.
+
+
+2026-10-10: Function-fold explicit subdomain evaluation order
+
+Previous goal turn made verified progress in fb119f9. Clean worktree receipt
+cb060b and original stress session 27326 directly live at 005eff. Read original
+CommunityModules Functions.java and native modules_functions_ext.go. The native
+shared access helper obtains a whole function domain before validating the
+explicit subdomain. Java FoldFunctionOnSet only checks FunctionValue membership.
+Thus an empty caller subdomain can normalize an otherwise valid unsorted function,
+or malformed function domains can fail before source subdomain diagnostics.
+Only FoldFunction is supposed to obtain the domain before delegating.
+
+Create ignored source/native actual-runtime observers using parsed test206 nodes,
+real function/set constructors and actual finite OpRcdValue/null operators. Initial
+12 function forms, eight subdomains, four operators, eight source combinations
+and three direct entry points produce 9,216 observations. Compile the actual
+Functions.java because the earlier SequencesExt observer classpath does not
+contain its class (905e4c, corrected at 113f38). Initial raw matrices have 2,760
+differences (974f97), including an observer-only null-record-name display issue.
+Correcting just that serializer display leaves 2,200 behavior differences
+(c7dd2a). Do not treat display artifacts as production behavior.
+
+Make the access helper return a deferred domain getter plus its apply method.
+FoldFunction calls the getter; FoldFunctionOnSet does not. Preserve source null
+function/subdomain diagnostic dereferences, null operator invocation and immediate
+subdomain iterator failures. The first complete corrected 9,216 comparisons
+all agree (dc29bb). Add real parsed Def5 function lambdas and runtime constructors
+with null FcnParams using the same actual parsed body. An ignored serializer
+initially dereferences a typed-nil cached FcnRcd pointer (c7dd2a/1061db); fix that
+observer guard before completing the matrix. All 10,752 comparisons agree
+(a27271), including original function state and source failure frames. No
+fabricated semantic graph, evaluator callback or persistent test/fixture is
+introduced, and no original-method credit is added.
+
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering checks pass: root 5.450s, tlc 2.371s (f05700). Start complete
+unchanged original CommunityModules all/shiviz target normally with timeout zero
+(session 48851, 89a805). Registered Functions FoldFunction/FoldFunctionOnSet lack
+the explicit OpValue guard already used by FoldSeq; invocation casts are a
+separate concrete next task, not covered by the direct matrix. Arbitrary callback
+mutation remains unproven. No race instrumentation or reduced workload bounds.
+The complete unchanged original CommunityModules target exits zero (session
+48851, terminal 8cdbf9): root 309.491s, all 308.83s, shiviz 0.22s (306af4).
+Its original FunctionsTests, sequence folds and expected phase exits are retained.
+This is the current full-suite baseline after the fold-domain change. Latest
+saved original random stress progress is 1,955,123,113 / 2,147,483,648 (306af4),
+without terminal result or long credit. Direct poll 154b40 confirms session
+27326 live; preserve its original seed, bounds and log. Handoff and architecture
+record verified domain/access ordering and the remaining registration-cast gap.

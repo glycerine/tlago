@@ -81,37 +81,41 @@ func FunctionsAntiFunction(value Value) (Value, error) {
 }
 
 func FunctionsFoldFunction(op Value, base Value, fun Value) (Value, error) {
-	domain, _, ok, err := functionsFunctionAccess(fun)
+	getDomain, _, ok := functionsFunctionAccess(fun)
+	if !ok {
+		if fun == nil {
+			panic(NewNullPointerException())
+		}
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "FoldFunction", "function", ValuesPPR(fun))
+	}
+	domain, err := getDomain()
 	if err != nil {
 		return nil, err
-	}
-	if !ok {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "FoldFunction", "function", ValuesPPR(fun))
 	}
 	return FunctionsFoldFunctionOnSet(op, base, fun, domain)
 }
 
 func FunctionsFoldFunctionOnSet(op Value, base Value, fun Value, subdomain Value) (Value, error) {
-	_, apply, ok, err := functionsFunctionAccess(fun)
-	if err != nil {
-		return nil, err
-	}
+	_, apply, ok := functionsFunctionAccess(fun)
 	if !ok {
+		if fun == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "FoldFunctionOnSet", "function", ValuesPPR(fun))
 	}
 	enumerable, ok := asEnumerable(subdomain)
 	if !ok {
+		if subdomain == nil {
+			panic(NewNullPointerException())
+		}
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "fourth", "FoldFunctionOnSet", "set", ValuesPPR(subdomain))
 	}
 
 	args := []Value{nil, base}
 	enum := enumerable.Elements()
 	for {
-		elem := enum.NextElement()
+		elem := nextEnumerationElement(enum)
 		if elem == nil {
-			if err := enum.Err(); err != nil {
-				return nil, err
-			}
 			return args[1], nil
 		}
 		value, err := apply(elem)
@@ -119,28 +123,29 @@ func FunctionsFoldFunctionOnSet(op Value, base Value, fun Value, subdomain Value
 			return nil, err
 		}
 		args[0] = value
-		args[1], err = EvalOperatorValue(op, args, EvalClear)
+		args[1], err = sequenceOperatorEval(op, args)
 		if err != nil {
 			return nil, err
 		}
 	}
 }
 
-func functionsFunctionAccess(value Value) (Value, func(Value) (Value, error), bool, error) {
+// Selecting a function must not read or normalize its domain. Only FoldFunction
+// invokes the domain getter; FoldFunctionOnSet uses the caller's subdomain.
+func functionsFunctionAccess(value Value) (func() (Value, error), func(Value) (Value, error), bool) {
 	switch v := value.(type) {
 	case *FcnLambdaValue:
-		domain, err := v.GetDomain()
-		return domain, v.Apply, true, err
+		return v.GetDomain, v.Apply, true
 	case *FcnRcdValue:
-		return v.DomainValue(), v.Apply, true, nil
+		return func() (Value, error) { return v.DomainValue(), nil }, v.Apply, true
 	case *TupleValue:
-		return v.Domain(), v.Apply, true, nil
+		return func() (Value, error) { return v.Domain(), nil }, v.Apply, true
 	case *RecordValue:
-		return v.DomainValue(), v.Apply, true, nil
+		return func() (Value, error) { return v.DomainValue(), nil }, v.Apply, true
 	case *CounterExample:
 		record := asRecordValue(v)
-		return record.DomainValue(), record.Apply, true, nil
+		return func() (Value, error) { return record.DomainValue(), nil }, record.Apply, true
 	default:
-		return nil, nil, false, nil
+		return nil, nil, false
 	}
 }

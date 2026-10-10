@@ -392,13 +392,19 @@ source tuple reads, argument reuse and bound shortcuts. Their typed operator
 parameters reject invalid values at invocation. All 22,752 direct rows agree;
 2,912 invocation cases agree outside platform stack locations/elision counts
 (396 retain stack-text differences). The complete original CommunityModules
-`all`/`shiviz` target passes after the replacement changes, covering the current
+`all`/`shiviz` target passes after the function-fold changes, covering the current
 sequence, vector and lazy-set implementations. Replacement overrides now recognize debugger
 strings, preserve typed null payload failures and operate on UTF-16 units for
 matching and insertion. All 16,384 runtime rows and 6,912 invocation rows agree; non-string calls retain
 the existing parsed-definition fallback. Unused direct tuple shortcuts were
 removed. Arbitrary callback mutation and module-specific casts remain separate
 work.
+`Functions.FoldFunctionOnSet` now validates the function without obtaining its
+whole domain. Empty explicit subdomains preserve unsorted function storage and
+bypass domain failures; `FoldFunction` alone obtains its domain. Null diagnostic
+and operator dereferences retain source failures. All 10,752 direct fold rows
+agree, including real parsed lambdas and null-parameter constructors. Registered
+function-fold operator casts and arbitrary callback mutation remain separate work.
 `Contains`, `RemoveFirst`, `Suffixes`, `AllSubSeqs`, `SetToSeq` and `SetToSeqs`
 retain source conversion and null failures, copy ownership and removal shortcuts.
 All 5,312 observations agree outside four intentional native object-identity
@@ -475,7 +481,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,943,462,850 of 2,147,483,648 iterations, without a terminal result. The previous
+1,955,123,113 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

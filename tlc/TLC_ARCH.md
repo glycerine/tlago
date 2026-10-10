@@ -8465,6 +8465,30 @@ CommunityModules all/shiviz target passes after these replacement changes,
 including its original string/tuple replacement and pure-definition assumptions.
 This run also covers all preceding lazy-set changes.
 
+Functions fold access separates selecting a FunctionValue from obtaining its
+domain. FoldFunction obtains the domain once and delegates to FoldFunctionOnSet.
+The explicit-subdomain entry point validates the function and enumerable set
+without calling the function's domain getter. Empty subdomains therefore return
+the base without normalizing an unsorted function or inspecting malformed tuple,
+record or lambda domains. Later applications retain their own source failures
+and mutation order. Null function/subdomain diagnostics and null operator
+invocation preserve typed NPE; empty subdomains do not dereference the operator.
+Subdomain enumeration uses the shared immediate-error read helper.
+
+All 10,752 actual-runtime direct observations agree across fourteen function
+forms, eight subdomains, four actual finite-map/null operators, eight source
+combinations and FoldFunction, FoldFunctionOnSet and SequencesExt.FoldSeq.
+Forms include unsorted function/record storage, null arrays, interval functions,
+real parsed Def5 function lambdas and runtime null-parameter lambda constructors
+using that actual body. Results, root failures, source frames and retained
+function/subdomain state agree. Observers use actual parsed test206 nodes and
+runtime constructors without fabricated semantic graphs, evaluator callbacks or
+persistent fixtures/tests. Original-method credit is unchanged. This does not
+prove arbitrary callback mutation or registered function-fold OpValue casts;
+those registrations still lack the explicit parameter guard used by FoldSeq.
+The complete unchanged original CommunityModules all/shiviz target passes after
+these fold changes, retaining its FunctionsTests and sequence-fold assumptions.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes
