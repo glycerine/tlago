@@ -7622,9 +7622,39 @@ arguments and five evaluator/generation/Select paths. All agree after replacing
 only process-specific FastTool/native Tool identity strings in 48 diagnostics.
 Actual test209 semantic nodes and bodies are retained; runtime parameter arrays
 are copied or replaced without mutating the semantic graph. The earlier 160
-short-argument observations still agree. Null parameter objects, malformed-array
-materialization, arbitrary conversion/membership callbacks, mutation during
-evaluation and concurrent mutation remain outside these comparisons.
+short-argument observations still agree. Null parameter objects, arbitrary
+conversion/membership callbacks, mutation during evaluation and concurrent
+mutation remain outside these binding comparisons.
+
+Lambda materialization captures formal and flag arrays after sizing, before
+creating its enumerator, and selects the single-argument branch after enumerator
+construction. Binding uses those captured arrays. Enumerated arguments are cast
+directly to tuples, retaining source class-cast failures rather than converting
+them as Apply/Select do. Formal group, flag and tuple-element reads retain typed
+null/index failures at the source access. Ordinary product enumeration captures
+each group's length once. Writing beyond the preallocated domain retains the
+source indexed failure; this also terminates a zero-argument product after its
+first body evaluation. Cache publication remains after enumeration/body success.
+A cached function with an unfilled domain/value slot retains typed null failures
+while formatting, under its existing value failure wrapper.
+All 590 materialization observations agree on results, full errors, source frame
+counts and cache presence. They use actual test209 S formals/body, twelve runtime
+array shapes, eight small domains, mixed/single tuple and single ordinary binding,
+source-less/source-attached values, plus fourteen zero-argument cases. No tuple
+conversion callback, arbitrary enumerator callback, mutation during body evaluation
+or concurrent materialization is covered.
+
+Integer-parameter standard overrides reject a different concrete value with the
+source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
+the operation. Binary casts run from the last argument to the first; null passes
+the cast. MethodValue's implicit native null failures retain a null detail rather
+than Go runtime text, while explicit exceptions preserve their nullable message.
+All 36 observations on the original S arithmetic body and 350 direct override
+observations agree. The latter cover Plus, Minus, Times, Divide, Mod, Expt,
+DotDot and Neg across integer, boolean, tuple, set, string, interval and null
+values. Module-specific arithmetic and combined null/zero/negative boundaries
+remain separate comparisons; this matrix uses the valid integer 1.
+
 
 Membership generation with an unassigned variable and a non-enumerable domain
 retains a GENERAL detailed runtime failure with the whole predicate and incoming

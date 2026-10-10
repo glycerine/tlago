@@ -252,12 +252,18 @@ func newFcnParamsEnumeration(params *FcnParams) *fcnParamsEnumeration {
 			out.done = true
 			return out
 		}
-		if params.IsTuples[i] {
+		if fcnParameterIsTuple(params.IsTuples, i) {
+			if idx >= len(out.enums) {
+				panic(NewArrayIndexOutOfBoundsException(idx, len(out.enums)))
+			}
 			out.enums[idx] = enumDomain.Elements()
 			// Java FcnParams.Enumerator initializes tuple groups from enums[i],
 			// not enums[idx].  When earlier groups expanded to multiple formals,
 			// this consumes the earlier domain's enumerator for the initial tuple
 			// slot.  Preserve the quirk for byte-for-byte TLC behavior.
+			if i >= len(out.enums) {
+				panic(NewArrayIndexOutOfBoundsException(i, len(out.enums)))
+			}
 			if out.enums[i] == nil {
 				panic(NewNullPointerException())
 			}
@@ -274,7 +280,11 @@ func newFcnParamsEnumeration(params *FcnParams) *fcnParamsEnumeration {
 			idx++
 			continue
 		}
-		for j := 0; j < len(params.Formals[i]); j++ {
+		count := fcnFormalCount(fcnParameterFormals(params.Formals, i))
+		for j := 0; j < count; j++ {
+			if idx >= len(out.enums) {
+				panic(NewArrayIndexOutOfBoundsException(idx, len(out.enums)))
+			}
 			out.enums[idx] = enumDomain.Elements()
 			out.currentElems[idx] = out.enums[idx].NextElement()
 			if err := out.enums[idx].Err(); err != nil {
@@ -713,39 +723,75 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 	return ctx, true, nil
 }
 
-func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value) (*Context, error) {
+// Materialization casts enumerated arguments directly; it does not perform
+// the tuple conversion or membership checks used by Apply and Select.
+func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value, formals [][]*SymbolNode, isTuples []bool, single bool) (*Context, error) {
 	ctx := v.Con
 	if ctx == nil {
 		ctx = EmptyContext
 	}
-	if v.Params.Length() == 1 {
-		if v.Params.IsTuples[0] {
-			tuple := arg.(*TupleValue)
-			for i, id := range v.Params.Formals[0] {
-				ctx = ctx.Cons(id, tuple.Elems[i])
+	if single {
+		if fcnParameterIsTuple(isTuples, 0) {
+			ids := fcnParameterFormals(formals, 0)
+			tuple := fcnEnumeratedTuple(arg)
+			count := fcnFormalCount(ids)
+			for i := 0; i < count; i++ {
+				ctx = ctx.Cons(ids[i], fcnTupleElement(tuple.Elems, i))
 			}
 			return ctx, nil
 		}
-		ctx = ctx.Cons(v.Params.Formals[0][0], arg)
-		return ctx, nil
+		ids := fcnParameterFormals(formals, 0)
+		if fcnFormalCount(ids) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, 0))
+		}
+		return ctx.Cons(ids[0], arg), nil
 	}
-	argTuple := arg.(*TupleValue)
+	argTuple := fcnEnumeratedTuple(arg)
 	argn := 0
-	for i, ids := range v.Params.Formals {
-		if v.Params.IsTuples[i] {
-			tv := argTuple.Elems[argn].(*TupleValue)
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	for i, ids := range formals {
+		if fcnParameterIsTuple(isTuples, i) {
+			tv := fcnEnumeratedTuple(fcnTupleElement(argTuple.Elems, argn))
 			argn++
-			for j, id := range ids {
-				ctx = ctx.Cons(id, tv.Elems[j])
+			count := fcnFormalCount(ids)
+			for j := 0; j < count; j++ {
+				ctx = ctx.Cons(ids[j], fcnTupleElement(tv.Elems, j))
 			}
 			continue
 		}
-		for _, id := range ids {
-			ctx = ctx.Cons(id, argTuple.Elems[argn])
+		count := fcnFormalCount(ids)
+		for j := 0; j < count; j++ {
+			ctx = ctx.Cons(ids[j], fcnTupleElement(argTuple.Elems, argn))
 			argn++
 		}
 	}
 	return ctx, nil
+}
+
+func fcnEnumeratedTuple(arg Value) *TupleValue {
+	if arg == nil {
+		panic(NewNullPointerException())
+	}
+	tuple, ok := arg.(*TupleValue)
+	if !ok {
+		panic(valueStreamClassCast(arg, "tlc2.value.impl.TupleValue"))
+	}
+	if tuple == nil {
+		panic(NewNullPointerException())
+	}
+	return tuple
+}
+
+func fcnTupleElement(elems []Value, i int) Value {
+	if elems == nil {
+		panic(NewNullPointerException())
+	}
+	if i < 0 || i >= len(elems) {
+		panic(NewArrayIndexOutOfBoundsException(i, len(elems)))
+	}
+	return elems[i]
 }
 
 func (v *FcnLambdaValue) matchExcepts(arg Value) (Value, []ValueExcept, bool, error) {
@@ -998,13 +1044,19 @@ func (v *FcnLambdaValue) materializeFcnRcd() (resultFcn *FcnRcdValue, err error)
 	if err != nil {
 		return nil, err
 	}
+	formals := v.Params.Formals
+	isTuples := v.Params.IsTuples
 	domain := make([]Value, size)
 	values := make([]Value, size)
 	idx := 0
 	enum := v.Params.Elements()
+	single := v.Params.Length() == 1
 	for arg := enum.NextElement(); arg != nil; arg = enum.NextElement() {
+		if idx >= len(domain) {
+			panic(NewArrayIndexOutOfBoundsException(idx, len(domain)))
+		}
 		domain[idx] = arg
-		ctx, err := v.bindEnumeratedArgument(arg)
+		ctx, err := v.bindEnumeratedArgument(arg, formals, isTuples, single)
 		if err != nil {
 			return nil, err
 		}
@@ -1017,8 +1069,8 @@ func (v *FcnLambdaValue) materializeFcnRcd() (resultFcn *FcnRcdValue, err error)
 	if err := enum.Err(); err != nil {
 		return nil, err
 	}
-	if v.Params.Length() == 1 {
-		if intv, ok := v.Params.Domains[0].(*IntervalValue); ok {
+	if single {
+		if intv, ok := fcnParameterDomain(v.Params.Domains, 0).(*IntervalValue); ok {
 			v.FcnRcd = NewFcnRcdIntervalValue(intv, values, v.CM)
 		} else {
 			v.FcnRcd = NewFcnRcdValue(domain, values, false, v.CM)

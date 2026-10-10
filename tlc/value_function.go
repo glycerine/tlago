@@ -1512,6 +1512,9 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 				sb.WriteString(", ")
 			}
 			sb.WriteString(v.Domain[i].(*StringValue).Val.String() + recordArrow)
+			if value == nil {
+				panic(NewNullPointerException())
+			}
 			sb = appendValueString(value, sb, offset, swallow)
 		}
 		sb.WriteString("]")
@@ -1520,6 +1523,9 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 		for i, value := range v.Values {
 			if i > 0 {
 				sb.WriteString(", ")
+			}
+			if value == nil {
+				panic(NewNullPointerException())
 			}
 			sb = appendValueString(value, sb, offset, swallow)
 		}
@@ -1531,8 +1537,14 @@ func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *s
 			if i > 0 {
 				sb.WriteString(" @@ ")
 			}
+			if domain[i] == nil {
+				panic(NewNullPointerException())
+			}
 			sb = appendValueString(domain[i], sb, offset, swallow)
 			sb.WriteString(" :> ")
+			if value == nil {
+				panic(NewNullPointerException())
+			}
 			sb = appendValueString(value, sb, offset, swallow)
 		}
 		sb.WriteString(")")

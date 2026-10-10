@@ -348,8 +348,13 @@ products, exhausted-product reset behavior and source runtime/null failures; all
 30 bounded observations agree. Mixed tuple-formal binding matches all 80 observed
 cases. Binding through retained parameter arrays now preserves source null/index
 failures and read order; all 2,880 mixed/single tuple and ordinary observations
-agree after normalizing process-specific tool identities. Malformed-array
-materialization and mutation during evaluation remain separate targets.
+agree after normalizing process-specific tool identities. Materialization now
+preserves direct tuple casts, captured arrays and typed binding/formatting
+failures; all 590 observations agree, including cache state and zero arguments.
+Numeric override casts preserve source failure messages and last-argument-first
+order; implicit null failures retain nullable details. All 36 expression and 350
+override observations agree. Numeric module-specific null/zero boundaries and
+mutation during evaluation remain separate targets.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

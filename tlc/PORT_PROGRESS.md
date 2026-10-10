@@ -34113,3 +34113,70 @@ bounds or changed original assertions. Handoff/contracts updated.
 Original full stress session 27326 remains live on direct poll (c4cc12).
 Latest saved progress is 1,537,636,072 / 2,147,483,648 (6bfe46), without a terminal
 result or long-method credit. Preserve original handle, artifacts and bounds.
+
+
+2026-10-10: Lambda materialization arrays, direct casts and numeric failures
+
+Previous turn completed 74ef15e. Inspect Java FcnLambdaValue.toFcnRcd and native
+materialization/bindEnumeratedArgument. Ignored
+.codex-gotmp/lambda-materialization-arrays uses actual legacy test209 S formals
+and body, copied/replaced runtime parameter arrays, twelve array shapes and eight
+small domains, mixed/single tuple and single ordinary binding, with/without a
+source on the lambda. Initial Java observer succeeds (616568); native observer
+has an unused local (0f8ef1, inspected 8b43d5). Remove that observer-only local;
+native completes (64dd92). All 576 rows are collected; 156 differ (b3071e).
+
+Capture materialization's formal/flag arrays after size and before enumeration;
+use them for binding instead of rereading current parameter fields. Cast each
+enumerated tuple directly, preserving source ClassCastException text, rather
+than Go type assertions. Restore typed null/index boundaries for formal groups,
+flags and tuple elements. Product enumeration retains typed formal/flag/index
+reads and captures each ordinary group's length once. Materialization's domain
+store now retains the typed source indexed failure. Function-record formatting
+retains null failures on unfilled domain/value entries, under its existing
+failure wrapper. Initial correction leaves 24 numeric body-diagnostic differences
+(31411 terminal 57b882; comparison aa29df), exposing the standard override's
+integer-parameter cast boundary. Restore source cast diagnostics before the
+numeric operation. All 576 rows agree (9459 terminal f06a01; 44eb4b).
+
+Add fourteen zero-argument materialization cases with the actual S body's three
+formals captured. The source product emits an empty tuple repeatedly, but its
+preallocated domain permits only one body evaluation before indexed failure.
+Native now stops at the same boundary, without a shortened workload or loop
+limit. All 590 expanded rows agree (Java f9ce17, native 88ef56; comparison 8a0f8f).
+Results include complete error/category/parameters, source frames and cache state.
+No persistent fixture, fabricated semantic graph or original-method credit.
+Arbitrary conversion/enumeration callbacks and mutation during evaluation remain
+outside this comparison.
+
+Ignored .codex-gotmp/numeric-parameter-casts evaluates the actual S arithmetic
+body with six concrete value kinds bound to x/y. The 36-row comparison exposes
+20 source cast-order differences (Java 978a80, native 61cba8; ae323d). Java
+standard override casts run from the last parameter to the first. Restore that
+order for binary integer overrides and DotDot. All 36 final rows agree (67318
+terminal 1bde18; comparison d1a5e1). The earlier 2,880 retained-array binding rows
+and 30 enumeration rows still agree (21708 terminal 9b99f4, 93291 terminal
+0817c1; d1a5e1), retaining the documented tool identity normalization.
+
+Direct native standard wrappers and original Java MethodValue numeric factories
+are then compared across Plus/Minus/Times/Divide/Mod/Expt/DotDot/Neg and seven
+value kinds, including null. All 350 rows collected (Java 03ce80, native b5363a);
+22 implicit-null detail fields differ (fada52). Preserve null casts, then map
+native implicit nil failures to the source nullable detail in MethodValue's
+existing error adapter. Explicit exceptions retain their messages. Final native
+60646 completes (c95b5c); all 350 rows agree (f014ca). A premature log read while
+that driver was still compiling (837fd9) is not a comparison result. These
+observations use integer 1; module-specific arithmetic and combined null/zero/
+negative boundaries remain separate work. No JVM emulation is introduced.
+
+Eleven unchanged original model checks and original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl plus focused function-context, fallback rendering, stream
+and numeric checks pass (24355 terminal 203eaf, 48586 terminal f2e2e3; root 4.533s,
+tlc 2.348s). After source cast-order and null-detail changes, the same final
+selection passes again (14086 terminal 2460c3; root 4.737s, tlc 2.389s, output
+9369e0). No broad suite, race, reduced workload bounds or changed assertions.
+Handoff and architecture updated; original-method inventory credit unchanged.
+
+Original full stress session 27326 remains live on direct poll (6b67e4).
+Latest saved progress is 1,549,074,471 / 2,147,483,648 (1ca1c7), without a terminal
+result or long-method credit. Preserve original handle, artifacts and bounds.

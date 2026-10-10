@@ -595,7 +595,14 @@ func adaptJavaMethodFailure(signature string, cause error, preserveEval bool) er
 			return cause
 		}
 		if isJavaNullPointerException(cause) {
-			return NewEvalExceptionNullable(ECTLCModuleValueJavaMethodOverride, javaString(signature), javaThrowableDetailMessage(cause))
+			// A native nil dereference has Go's runtime text, while the source
+			// implicit null failure has no detail message. Explicit null
+			// exceptions retain their supplied nullable message.
+			var message *string
+			if throwable, ok := cause.(interface{ GetMessage() *string }); ok {
+				message = throwable.GetMessage()
+			}
+			return NewEvalExceptionNullable(ECTLCModuleValueJavaMethodOverride, javaString(signature), message)
 		}
 	}
 	message := javaThrowableDetailMessage(cause)

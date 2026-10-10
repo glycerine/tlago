@@ -36,11 +36,11 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("GT", 2, func(args []Value) (Value, error) { return NatGT(args[0], args[1]) }, ">")
 	t.defineStandardMethod("GEQ", 2, func(args []Value) (Value, error) { return NatGEQ(args[0], args[1]) }, "\\geq")
 	t.defineStandardMethod("DotDot", 2, func(args []Value) (Value, error) {
-		x, err := standardIntArg("DotDot", args, 0)
+		y, err := standardIntArg("DotDot", args, 1)
 		if err != nil {
 			return nil, err
 		}
-		y, err := standardIntArg("DotDot", args, 1)
+		x, err := standardIntArg("DotDot", args, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -476,11 +476,12 @@ func standardSyntheticOpDef(name string, arity int, body SemanticNode) *OpDefNod
 
 func standardBinaryInt(name string, eval func(*IntValue, *IntValue) (*IntValue, error)) func([]Value) (Value, error) {
 	return func(args []Value) (Value, error) {
-		x, err := standardIntArg(name, args, 0)
+		// Source override argument casts run from the last parameter to the first.
+		y, err := standardIntArg(name, args, 1)
 		if err != nil {
 			return nil, err
 		}
-		y, err := standardIntArg(name, args, 1)
+		x, err := standardIntArg(name, args, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -489,9 +490,15 @@ func standardBinaryInt(name string, eval func(*IntValue, *IntValue) (*IntValue, 
 }
 
 func standardIntArg(name string, args []Value, index int) (*IntValue, error) {
+	// Source numeric overrides accept IntValue parameters. The method boundary
+	// rejects a different concrete value before entering the numeric operation;
+	// null passes the cast and fails only if the operation dereferences it.
+	if args[index] == nil {
+		return nil, nil
+	}
 	value, ok := args[index].(*IntValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "%s argument %d must be an integer, got %s", name, index+1, args[index])
+		return nil, NewClassCastException("Cannot cast " + javaValueClassName(args[index]) + " to tlc2.value.impl.IntValue")
 	}
 	return value, nil
 }
