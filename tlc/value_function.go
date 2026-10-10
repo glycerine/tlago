@@ -564,21 +564,34 @@ func (v *RecordValue) IsFinite() (bool, error) { return true, nil }
 
 func (v *RecordValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index < len(ex.Path) {
-		newValues := make([]Value, len(v.Values))
-		arcVal := ex.Path[ex.Index]
+		if v.Names == nil {
+			panic(NewNullPointerException())
+		}
+		rlen := len(v.Names)
+		newValues := make([]Value, rlen)
+		arcVal := ex.Current()
 		if arc, ok := arcVal.(*StringValue); ok {
-			for i := range v.Names {
+			for i := 0; i < rlen; i++ {
+				if v.Names[i] == nil {
+					panic(NewNullPointerException())
+				}
 				if v.Names[i].Equal(arc.Val) {
-					next := ex
-					next.Index++
-					taken, err := v.Values[i].TakeExcept(next)
+					ex.Index++
+					value := fcnParameterDomain(v.Values, i)
+					if value == nil {
+						panic(NewNullPointerException())
+					}
+					taken, err := value.TakeExcept(ex)
 					if err != nil {
 						return nil, err
 					}
 					newValues[i] = taken
 				} else {
-					newValues[i] = v.Values[i]
+					newValues[i] = fcnParameterDomain(v.Values, i)
 				}
 			}
 			newNames := v.Names
@@ -588,6 +601,9 @@ func (v *RecordValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 			}
 			return &RecordValue{Names: newNames, Values: newValues, IsNorm: v.IsNorm}, nil
 		}
+		if arcVal == nil {
+			panic(NewNullPointerException())
+		}
 		PrintWarning(ECTLCWrongRecordFieldName, ValuesPPR(arcVal))
 	}
 	return ex.Value, nil
@@ -595,8 +611,14 @@ func (v *RecordValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 
 func (v *RecordValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	var cur Value = v
 	for _, ex := range exs {
+		if cur == nil {
+			panic(NewNullPointerException())
+		}
 		next, err := cur.TakeExcept(ex)
 		if err != nil {
 			return nil, err

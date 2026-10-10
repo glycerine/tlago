@@ -387,22 +387,35 @@ func (v *TupleValue) ToFcnRcd() *FcnRcdValue {
 
 func (v *TupleValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if ex.Path == nil {
+		panic(NewNullPointerException())
+	}
 	if ex.Index >= len(ex.Path) {
 		return ex.Value, nil
 	}
+	if v.Elems == nil {
+		panic(NewNullPointerException())
+	}
 	out := make([]Value, len(v.Elems))
-	arc, ok := ex.Path[ex.Index].(*IntValue)
+	arcVal := ex.Current()
+	arc, ok := arcVal.(*IntValue)
 	if !ok {
-		PrintWarning(ECTLCWrongTupleFieldName, valueString(ex.Path[ex.Index]))
+		if arcVal == nil {
+			panic(NewNullPointerException())
+		}
+		PrintWarning(ECTLCWrongTupleFieldName, ValuesPPR(arcVal))
 		return ex.Value, nil
 	}
-	idx := int(arc.Val) - 1
+	idx := int(arc.Val - 1)
 	// Java allocates the replacement tuple before checking bounds and returns it
 	// even when the integer field is out of range, leaving the slots unfilled.
 	if 0 <= idx && idx < len(v.Elems) {
 		copy(out, v.Elems)
 		next := ex
 		next.Index++
+		if v.Elems[idx] == nil {
+			panic(NewNullPointerException())
+		}
 		val, err := v.Elems[idx].TakeExcept(next)
 		if err != nil {
 			return nil, err
@@ -414,8 +427,14 @@ func (v *TupleValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 
 func (v *TupleValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
 	var cur Value = v
 	for _, ex := range exs {
+		if cur == nil {
+			panic(NewNullPointerException())
+		}
 		next, err := cur.TakeExcept(ex)
 		if err != nil {
 			return nil, err

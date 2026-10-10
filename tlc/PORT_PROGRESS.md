@@ -34668,3 +34668,47 @@ suite, shortened workload or changed original assertions. Logs remain under
 scalar-except-boundaries; handoff and architecture updated. Latest full stress
 saved progress is 1,619,396,330 / 2,147,483,648 (c7227b), without a terminal result
 or long-method credit. Preserve original handle and bounds.
+
+
+### 2026-10-10: Tuple and record EXCEPT array traversal and delegation
+
+Previous goal turn made verified progress in b69ebd8. Confirm current clean HEAD
+(3c8755), compare source TupleValue/RecordValue.takeExcept and native code.
+Original full stress 27326 remains live on direct poll b398b8. Native skipped
+null path/batch reads, exposed raw Go index/null failures and allocated record
+update results from value count rather than source name count.
+
+Ignored tuple-record-except uses actual test209 S source metadata and runtime
+tuple/record arrays, without semantic graph mutation or fabricated evaluation.
+Initial eight receiver shapes cover normal/empty/null/short arrays, null names
+and values, nested tuple/record values and extra slots. Compare fourteen single
+update forms and seven batch forms, sourced/unsourced: 672 rows. Structural
+serialization retains null slots and raw record name/value arrays without
+rendering malformed composites. Capture raw wrong-field warning code/parameters
+with output recorders; Java console warning rendering is disabled to avoid its
+additional formatting events, and no console-output parity is inferred.
+Java 55a25a and native 84edec complete; 342 differences (062843).
+
+Restore typed path/receiver-array/current-component/name/delegated-value failures
+in source order. Record updates allocate and traverse by captured name count,
+copying corresponding values and advancing their local cursor on a name match.
+Wrong non-null field types preserve source warning parameters; null components
+fail before warning construction. Batch null arrays/intermediate receivers fail
+under existing wrappers. Out-of-range integer tuple fields still produce a fresh
+unfilled tuple as in Java. Native 8645 completes with terminal 05f57f; all 672
+rows agree (1700c2). Expand with duplicate record names holding tuple values (and
+an unchanged normal tuple shape): Java 89607c and native 9b5a55 complete all 756
+rows with no differences (8706ec). Caller-visible cursor mutation, deeper
+interprocedural duplicate-name cursor propagation, null EXCEPT object entries,
+concurrent mutation and general malformed-result formatting remain unproven.
+No persistent test/fixture or original-method inventory credit is introduced.
+
+Existing fourteen original model checks, original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl plus focused numeric/context/EXCEPT/rendering/stream checks
+pass: 52877 terminal fb1602, root 5.111s and tlc 2.135s (95d498). No race, broad
+suite, shortened bounds or changed original assertions. Logs remain under
+tuple-record-except. Architecture updated; condense overlapping lambda/EXCEPT
+handoff history into current contracts and explicit ownership limits, retaining
+detailed matrices and receipts in architecture/progress documents. Latest full
+stress saved progress is 1,630,205,666 / 2,147,483,648 (95d498), with no terminal
+result or long-method credit. Preserve original handle and bounds.

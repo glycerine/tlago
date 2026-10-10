@@ -7773,6 +7773,26 @@ uses the actual test209 S expression; no semantic graph mutation, fabricated
 evaluator or original-test credit is involved. Null EXCEPT object entries and
 concurrent mutation remain outside this comparison.
 
+Tuple and record EXCEPT operations read path length before testing completion.
+Incomplete tuple updates read element-array length before their current path
+component; record updates read name-array length and allocate that many result
+values. Current component, name and delegated value reads retain typed null/index
+failures in source order. A wrong non-null field type retains the source warning
+parameters; a null component fails before warning construction. Record traversal
+copies values by name count and advances its local cursor on each matching name.
+Missing integer tuple fields still return a fresh tuple with unfilled slots.
+Batch updates reject null arrays and null intermediate receivers under existing
+source wrappers, preserving forward delegation and empty-batch identity.
+All 756 observations agree on structural results (including null slots), full
+failures/source frames, result identity and raw warning recorder parameters.
+They use actual test209 S source metadata, runtime tuple/record arrays, fourteen
+single-update and seven batch forms, with source attachment on/off. Receiver
+shapes cover empty/null/short arrays, null names/values, nested values and a
+duplicate-name record with tuple values. The comparison avoids rendering
+malformed composites and adds no original-test credit. Caller-visible update
+cursor mutation, deeper duplicate-name cursor propagation, null EXCEPT objects,
+concurrent mutation and general formatting of malformed results remain unproven.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

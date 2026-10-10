@@ -340,33 +340,20 @@ Membership generation now retains detailed non-enumerable-domain failures; all
 144 compared cases agree, including bound variables and state ownership.
 Lazy/cached lambda domain failures now retain the function expression and caller
 context; all 272 compared rows agree, including body bindings and cache changes.
-Short lambda arguments now retain Java indexed failures in generation, Apply
-and Select; all 160 compared cases agree. Function-parameter construction and
-size calculation now preserve source array failures and overflow diagnostics;
-all 144 combined rows agree. Parameter enumeration now preserves zero-argument
-products, exhausted-product reset behavior and source runtime/null failures; all
-30 bounded observations agree. Mixed tuple-formal binding matches all 80 observed
-cases. Binding through retained parameter arrays now preserves source null/index
-failures and read order; all 2,880 mixed/single tuple and ordinary observations
-agree after normalizing process-specific tool identities. Materialization now
-preserves direct tuple casts, captured arrays and typed binding/formatting
-failures; all 590 observations agree, including cache state and zero arguments.
-Lambda domains now retain the captured product width, component identities and
-source array failures; all 608 structural/error/cache observations agree.
-Uncached lambda sizing and materialization now reject null parameters before
-cache publication; all 1,188 size/materialization observations agree.
-Tuple conversion now retains typed parameter/domain failures without adding a
-source wrapper at entry; all 1,242 conversion observations agree.
-Deep normalization now retains typed null failures and partial EXCEPT/domain
-normalization order; all 1,266 result/error/mutation observations agree.
-Lambda EXCEPT lookup now preserves typed path failures and null-replacement body
-fallback; all 1,088 application/selection observations agree.
-State-generation lambda binding now rejects null parameters at the count read;
-all 3,120 binding observations agree after tool-identity normalization.
-EXCEPT installation now retains null path/array failures across lambda, record
-and delegated integer values; all 352 installation/lookup observations agree.
-Scalar EXCEPT methods now reject null paths/batches under their existing source
-wrappers; all 180 integer/boolean/string observations agree.
+Function parameters now preserve source construction, sizing, enumeration and
+retained-array binding failures. Lambda domain products retain their captured
+width and component identities. Materialization preserves direct tuple casts,
+cache publication boundaries and typed binding failures. Null parameters fail
+at the source access in sizing, materialization, tuple conversion and generation.
+Deep normalization preserves EXCEPT-before-domain order and partial mutation.
+Lambda EXCEPT lookup preserves null-replacement body fallback and update order.
+Installation and delegated scalar/tuple/record updates retain typed path/batch
+failures, source wrappers and warning parameters. Record updates allocate and
+traverse by name count. All observed matrices agree; detailed contracts and
+limits are in `TLC_ARCH.md`, with run receipts in `PORT_PROGRESS.md`. These
+comparisons add no original-test credit. Caller-visible EXCEPT cursor mutation,
+deeper duplicate-name cursor propagation, arbitrary callbacks and concurrent
+mutation remain separate work; do not infer general ownership parity.
 Numeric override casts preserve source failure messages and last-argument-first
 order; implicit null failures retain nullable details. All 36 expression and 350
 override observations agree. Numeric module selection now chooses the source
