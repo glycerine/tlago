@@ -254,7 +254,10 @@ func (v *BoolValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("Attempted to compare boolean %s with non-boolean:\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare boolean %s with non-boolean:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	x, y := 0, 0
 	if v.Val {
@@ -273,24 +276,30 @@ func (v *BoolValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("Attempted to compare equality of boolean %s with non-boolean:\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to compare equality of boolean %s with non-boolean:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	return v.Val == o.Val, nil
 }
 
 func (v *BoolValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the boolean %s", elem, v)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the boolean %s", ValuesPPR(elem), ValuesPPR(v)))
 }
 
 func (v *BoolValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the boolean %s is a finite set.", v)
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the boolean %s is a finite set.", ValuesPPR(v)))
 }
 
 func (v *BoolValue) Size() (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
-	return 0, v.unsupported("Attempted to compute the number of elements in the boolean %s.", v)
+	return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compute the number of elements in the boolean %s.", ValuesPPR(v)))
 }
 
 func (v *BoolValue) Normalize() Value      { return v }
@@ -312,7 +321,7 @@ func (v *BoolValue) FingerPrint(fp uint64) uint64 {
 func (v *BoolValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the boolean %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the boolean %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
@@ -320,7 +329,7 @@ func (v *BoolValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 func (v *BoolValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the boolean %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the boolean %s.", ValuesPPR(v)))
 	}
 	return v, nil
 }
@@ -401,7 +410,10 @@ func (v *IntValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("Attempted to compare integer %s with non-integer:\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare integer %s with non-integer:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	if v.Val < o.Val {
 		return -1, nil
@@ -419,24 +431,30 @@ func (v *IntValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("Attempted to check equality of integer %s with non-integer:\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of integer %s with non-integer:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	return v.Val == o.Val, nil
 }
 
 func (v *IntValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
 	return false, v.runtimeFailure("Attempted to check if the value:\n" + ValuesPPR(elem) + "\nis an element of the integer " + ValuesPPR(v))
 }
 
 func (v *IntValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the integer %s is a finite set.", v)
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the integer %s is a finite set.", ValuesPPR(v)))
 }
 
 func (v *IntValue) Size() (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
-	return 0, v.unsupported("Attempted to compute the number of elements in the integer %s.", v)
+	return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compute the number of elements in the integer %s.", ValuesPPR(v)))
 }
 
 func (v *IntValue) Normalize() Value      { return v }
@@ -454,7 +472,7 @@ func (v *IntValue) FingerPrint(fp uint64) uint64 {
 func (v *IntValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the integer %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the integer %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
@@ -462,7 +480,7 @@ func (v *IntValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 func (v *IntValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the integer %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the integer %s.", ValuesPPR(v)))
 	}
 	return v, nil
 }
@@ -514,7 +532,10 @@ func (v *StringValue) Compare(other Value) (resultInt int, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("Attempted to compare string %s with non-string:\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compare string %s with non-string:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	return v.Val.Compare(o.Val), nil
 }
@@ -529,24 +550,30 @@ func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("Attempted to check equality of string %s with non-string:\n%s", v, other)
+		if other == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure(fmt.Sprintf("Attempted to check equality of string %s with non-string:\n%s", ValuesPPR(v), ValuesPPR(other)))
 	}
 	return v.Val.Equal(o.Val), nil
 }
 
 func (v *StringValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the string %s", elem, v)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the string %s", ValuesPPR(elem), ValuesPPR(v)))
 }
 
 func (v *StringValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	return false, v.unsupported("Attempted to check if the string %s is a finite set.", v)
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the string %s is a finite set.", ValuesPPR(v)))
 }
 
 func (v *StringValue) Size() (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
-	return 0, v.unsupported("Attempted to compute the number of elements in the string %s.", v)
+	return 0, v.runtimeFailure(fmt.Sprintf("Attempted to compute the number of elements in the string %s.", ValuesPPR(v)))
 }
 
 func (v *StringValue) Normalize() Value      { return v }
@@ -566,7 +593,7 @@ func (v *StringValue) FingerPrint(fp uint64) uint64 {
 func (v *StringValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the string %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the string %s.", ValuesPPR(v)))
 	}
 	return ex.Value, nil
 }
@@ -574,7 +601,7 @@ func (v *StringValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) 
 func (v *StringValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
-		return nil, v.unsupported("Attempted to apply EXCEPT construct to the string %s.", v)
+		return nil, v.runtimeFailure(fmt.Sprintf("Attempted to apply EXCEPT construct to the string %s.", ValuesPPR(v)))
 	}
 	return v, nil
 }

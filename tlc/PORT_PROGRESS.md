@@ -31995,3 +31995,53 @@ and remain in original-module.log and original-models.log; final repetition is
 justified by the subsequent source-metadata correction. No broad sweep, race
 workload or original inventory credit. HANDOFF and TLC_ARCH record the precise
 conversion/failure boundaries. Overall core TLC parity remains incomplete.
+
+
+2026-10-10: Scalar value runtime failures and source metadata.
+
+Previous goal turn was verified progress in a18b782. Worktree starts clean.
+Direct polls 5bf211 and the preserved session handle confirm the original random
+stress run 27326 is still live. Latest saved progress is 1,142,711,604 /
+2,147,483,648 (2377ac). No terminal result or original-method credit; preserve
+its full bounds, default budget and existing artifacts.
+
+Inspect BoolValue, IntValue and StringValue source methods after the previous
+integer-membership correction. All three scalar classes call Assert.fail(reason,
+getSource()) for invalid compare/equality/membership/finiteness/size/EXCEPT, but
+native still routed twenty of these boundaries through generic unsupported.
+Use the existing source-aware runtimeFailure helper at those exact boundaries.
+Pretty-print each message argument individually rather than using raw String().
+Null comparison, equality and membership arguments now raise typed NPE before
+message construction; existing catchValueFailure retains sourced wrapping.
+Preserve success paths and typed-model-value delegation. No universal change to
+BaseValue.unsupported and no new persistent tests or fixtures.
+
+Ignored .codex-gotmp/scalar-failures observation calls real pinned Java scalar
+methods and native APIs. All three scalars run fourteen operations with and
+without a receiver StringNode source. Seven invalid operations include compare,
+equality, membership, finite-set query, size, nested EXCEPT and EXCEPT-array.
+Three null-argument operations preserve source NPE categories; enhanced JVM NPE
+messages remain excluded. Four success controls cover same-scalar comparison
+and equality, root EXCEPT replacement and empty EXCEPT-array identity. A 30-string
+tuple argument exposes source pretty-print line wrapping. Compare full value or
+root exception category/message, whether FingerprintException wrapped it, and
+source expression/EmptyContext identity for detailed runtime failures.
+Java and native before/after logs retain all 84 rows. Final strict comparison
+70706 terminal c502da matches every row and identifies 58 baseline differences.
+Twenty-four success controls and the two already-correct integer membership
+rows also remain matched. No original-method inventory credit from observations.
+Nil Go slices representing empty arrays are not a claim about Java null arrays.
+
+The unchanged original ModelValue, TupleValue, FcnRcdValue and IntervalValue
+translations pass all 72 methods: 49160 terminal f94562, original-values.log,
+1.921s. Two relevant original model methods pass: ConstantRank2AssertError and
+ValueSemanticsAssume, 2221 terminal 7ad88d, original-models.log, 2.418s.
+Independent Java combined JUnit run 8145f1 fails one of 72 methods:
+FcnRcdValueTest.testSelectBinarySearchTypedMV expects A_Z but observes A_X after
+other classes run. Preserve java-original-values.log; do not claim combined
+reference success or alter the original assertion. FcnRcdValueTest alone passes
+all 13 original methods (492b65, java-fcn-only.log, 0.301s). The other three
+classes pass together, 59 methods (a962cd, java-other-values.log, 0.034s).
+Class isolation changes the source result; it does not establish a combined pass.
+No native assertion changes, broad sweep or race workload. HANDOFF and TLC_ARCH
+record the bounded scalar contracts. Overall core TLC parity remains incomplete.

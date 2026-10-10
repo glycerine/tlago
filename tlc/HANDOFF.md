@@ -232,6 +232,11 @@ of replacing them with finite-set argument errors. Integer membership and invali
 union/difference enumeration retain runtime failure categories and source metadata.
 Twelve full-result comparisons and three sourced-failure comparisons match Java;
 relevant original module and four random-element model methods pass.
+Scalar boolean, integer and string failure boundaries now retain Java runtime
+categories, pretty-printed arguments, source expression/context and wrapped null
+failures. All 84 bounded operation comparisons match; 72 original value methods
+and two relevant original model methods pass. Java reference classes pass with
+function-record tests isolated; the combined class-order failure is preserved.
 Continue concrete core TLC gaps against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -241,7 +246,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,135,334,487 of 2,147,483,648 iterations, without a terminal result. The previous
+1,142,711,604 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

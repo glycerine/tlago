@@ -6911,7 +6911,16 @@ Integer membership and invalid union/difference enumeration use the source
 `Assert.fail(reason, getSource())` boundary: runtime category, pretty-printed
 message, and source expression with `EmptyContext` when present. Existing value
 catch boundaries then wrap those failures in `FingerprintException`. This does
-not reclassify all generic unsupported-value errors.
+not reclassify all generic unsupported-value errors. The boolean, integer and
+string scalar operations now also use that source-aware runtime boundary for
+invalid comparison, equality, membership, finiteness, size and EXCEPT operations.
+Diagnostics pretty-print each scalar/argument separately, as the source does.
+Null comparison/equality/membership arguments fail before message construction
+and the existing value catch boundary wraps them only for sourced receivers.
+Successful operations and model-value delegation retain their existing behavior.
+The 84 bounded comparisons cover seven invalid operations, three null arguments
+and four successful controls per scalar, with and without receiver source; they
+do not establish parity for every value subtype or nil Go slice representation.
 
 `Randomization` validates public arguments in Java order and reports
 `TLC_MODULE_ARGUMENT_ERROR`. `RandomSetOfSubsets` checks first-argument count,
