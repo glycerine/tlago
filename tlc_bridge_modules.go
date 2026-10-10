@@ -174,8 +174,7 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 		nodes[mod] = node
 	}
 	for definition, node := range b.sourceDefinitions {
-		node.OriginallyDefinedInModule = nodes[b.spec.Modules[b.definitionModules[definition]]]
-		node.Local = definition.Local
+		b.bindSourceDefinitionModule(definition, node)
 	}
 	for _, mod := range modules {
 		if !added[mod] {
@@ -269,8 +268,7 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 	}
 	// Some hidden source definitions are converted while contexts are built.
 	for definition, node := range b.sourceDefinitions {
-		node.OriginallyDefinedInModule = nodes[b.spec.Modules[b.definitionModules[definition]]]
-		node.Local = definition.Local
+		b.bindSourceDefinitionModule(definition, node)
 	}
 	for _, binding := range b.instanceDefinitions {
 		for definition, clone := range binding.defs {
@@ -300,6 +298,18 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 		node.GetThmOrAssDefs()
 		node.GetInnerModules()
 	}
+}
+
+// Completing a RECURSIVE declaration can retain locality different from its
+// AST body. Keep the checked definition's module and locality during setup.
+func (b *tlcBridge) bindSourceDefinitionModule(definition *Definition, node *tlc.OpDefNode) {
+	if source := definition.semanticNode; source != nil {
+		node.OriginallyDefinedInModule = b.canonicalModuleOwner(source.module)
+		node.Local = source.semLocal()
+		return
+	}
+	node.OriginallyDefinedInModule = b.moduleNodes[b.spec.Modules[b.definitionModules[definition]]]
+	node.Local = definition.Local
 }
 
 func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextEntry) *tlc.OpDefNode {

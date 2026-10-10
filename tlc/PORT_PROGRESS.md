@@ -28610,3 +28610,59 @@ Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and trace
 selection passes: instance-symbol-broad-originals.log, terminal 658589, status 0,
 179.797 seconds. The same full off-heap random run remains live beyond 483 million
 iterations, without completion credit. Git diff --check passes.
+
+
+Checked definition locality during module setup (2026-10-09)
+
+Previous goal turn committed b67ae37, a concrete early INSTANCE symbol correction.
+Revalidated the clean workspace and same live full off-heap session 77502.
+Audited both extendModuleTable source-definition metadata loops: each overwrote
+Local from the AST body and assigned ownership from its AST index. Java
+Generator.processRecursive creates a nonlocal declaration; later LOCAL completion
+retains that original locality.
+
+An ignored overlay on existing original Github817/Github1244, Test219, LET, cyclic,
+Debug02 and trace methods plus the existing Bitwise bridge check compares locality,
+ownership and recursive flags with actual checked nodes. Baseline observes 2,465
+rows: 26 locality mismatches, zero ownership or recursive mismatches. Seven unique
+definitions differ: Bitwise And/Or/Xor/NotR and Json ToJsonString,
+ToJsonObjectString, ToJsonArrayString. Receipt:
+definition-metadata-before-observation.log, terminal e69460, status 0, 5.504 seconds.
+Initial overlay preparation stopped on a guard expecting only two Local assignment
+sites; it ran no test and earns no verification credit. The corrected guard
+targets the two source-definition loops specifically.
+
+Both module setup loops now use bindSourceDefinitionModule: actual source nodes
+provide locality and module ownership; source-less views retain their AST fallback.
+A repeated metadata observation has all 2,465 rows agreeing for locality, owner
+and recursive flags. Receipt: definition-metadata-after-observation.log,
+terminal 55a504, status 0, 5.367 seconds. These are manual observations on existing
+methods, not invented persistent tests/fixtures or additional original-method credit.
+
+A standalone pinned-Java SANY observation loads the existing Bitwise and Json
+module files without creating a new fixture. All seven affected definitions have
+isLocal=false and their original module owner. Receipt:
+definition-metadata-java-observation.log, terminal 45824c, status 0. javac reports
+only its frontend overload's deprecation note. Java sources are unchanged, and
+checkout HEAD is reverified as 8f4bc8b73ad1202774a6bf70143436f8ba50aab0.
+
+Existing focused originals, Bitwise locality and qualified-local runtime
+postcondition bridge checks pass without instrumentation:
+definition-metadata-focused-originals.log, terminal f13e1d, status 0, 5.424 seconds.
+Broader original verification is recorded below when terminal. Handoff core bridge
+status is consolidated to keep the restart guide readable; detailed prior contracts
+and receipts remain in TLC_ARCH.md and this chronology.
+
+Next concrete source audit: definition declaration locations versus actual syntax
+children before changing any remaining AST-derived metadata. General source
+generation, graph mutation sharing and source-less INSTANCE reconstruction remain
+unproven. The same full off-heap random workload remains live beyond 495 million
+of 2,147,483,648 iterations, with no completion credit. No workload restart, race
+instrumentation, full-workspace/XML/ApalacheIR sweep, email work, Java edit or
+translated assertion/workload-bound change.
+
+Broader original legacy/debugger/EWD998/coverage/LET/cyclic/ASSUME and trace
+selection passes: definition-metadata-broad-originals.log, terminal 859535,
+status 0, 178.973 seconds. Git diff --check passes. The same original full
+off-heap random run remains live beyond 498 million iterations; completion
+credit remains pending.

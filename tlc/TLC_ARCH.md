@@ -11035,6 +11035,18 @@ remains available when no canonical export exists. On the same focused originals
 all 1,378 observed registration symbols now share canonical identity, name and
 arity. Baseline names/arities agreed but all 1,378 identities differed. This closes
 that observed registration gap, not general graph mutation or source-less behavior.
+
+Module setup binds a source definition's locality and owning module from its
+checked semantic node. It does this both before Context population and after
+hidden definitions are adapted. Completing a public RECURSIVE declaration with a
+LOCAL body retains the declaration's public locality; the AST body's Local flag
+must not overwrite it. Existing Bitwise And/Or/Xor/NotR and Json ToJsonString,
+ToJsonObjectString and ToJsonArrayString demonstrate this distinction. Pinned
+Java SANY reports all seven as public, owned by their original modules. Across
+2,465 observed metadata rows on existing original/bridge checks, locality mismatches
+fall from 26 to zero; ownership and recursive flags agree throughout. Source-less
+views retain their existing AST fallback. This observation does not prove every
+source metadata field or general graph mutation sharing.
 The bridge passes native RuntimeParameters to SpecProcessor instead of converting
 qualified AST aliases into synthetic operators. Dead AST-only runtime target
 conversion helpers have been removed.

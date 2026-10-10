@@ -44,51 +44,30 @@ parity beyond those contracts. Do not restart XML or ApalacheIR corpus sweeps.
 Other TLC test reconciliation remains visible in [TODO_TEST_PORT.md](TODO_TEST_PORT.md);
 JVM-only GC/JPF assertions are not native Go implementation requirements.
 
-Core bridge continuation: runtime LET traversal imports SANY Context state,
-including Pair history and Hashtable topology. Canonical adapters now retain
-ASSUME/PROVE, theorem and proof graphs, source module ownership, label formals
-and OpDef step links. Module views share the original SANY base and syntax range.
-Separate assumption/theorem vectors preserve constant processing. Qualified
-INSTANCE lookup now accumulates unresolved prefixes as Java does; original
-model 219's formerly missing assumption graphs on lines 42 and 57 now generate.
-AST fallback retention remains until complete generation is established across
-source forms. Builtin adapters now share their actual SANY bases and formal
-parameters, preserving source identity across frontend reinitialization.
-The runtime now exposes UID-based entry/exit traversal, including Context and
-substitution records. Retained expressions use actual resolved operators;
-INSTANCE exports share SANY's chosen definitions, substitutions and formals.
-Debugger compilation preserves the running source module table. Available
-generated expressions now adapt their actual child graphs, closing the observed
-synthetic `$Pair` identity gap. Module Context views now import the source Pair
-history and Hashtable topology, sharing the canonical source Context identity.
-Canonical module and proof-local declarations retain source syntax and location.
-Runtime helper dependencies stay outside user source imports. All 12 observed
-Test219 whole-module traces and 60 getter arrays match. General source-generation
-completeness, mutation sharing and remaining native INSTANCE fallback lowering
-remain pending; see `TLC_ARCH.md`.
-Runtime module extendees now preserve the actual source module identities and
-order, excluding implicit trace helpers from inheritance membership.
-Generated theorem and assumption lookup aliases now bind canonical theorem
-definitions, preserving INSTANCE substitutions and formals. Source theorem
-symbol caches and early conversion now retain the canonical source symbols.
-Runtime constraint/view/postcondition targets now use external module OpDefs and
-processor configuration/getter paths. Runtime invariant templates now compile and
-merge in the processor before constraint processing. Configuration phases now stop
-at their first error, retaining constant/override failures and preventing later
-runtime compilation or tool setup. The original invalid-invariant fixture matches
-Java's first error and zero compiler calls. Postcondition getters now preserve
-Java's runtime, `_POSSIBLE`, then config order, creating fresh config Actions
-without OpDef metadata. Config postconditions are resolved by the tool getter.
-View and alias getters now resolve current definitions and throw source runtime
-failures. View capture follows configuration and precedes symmetry setup; alias
-lookup stays inside trace rendering's error boundary. Unnamed INSTANCE convenience
-aliases now resolve the actual unqualified source exports; all 544 observed export
-conversions match canonical nodes and bodies, with no fallback calls. Source-less
-fallback lowering remains unaudited. Early INSTANCE registration now uses the
-canonical operator/theorem symbols; all 1,378 observed registrations retain source
-identity, names and arities. Next: audit source-definition locality and ownership
-when module setup assigns metadata from AST views. General source generation and
-mutation-sharing parity remain pending.
+Core bridge continuation: runtime views adapt the checked SANY graphs, retaining
+Context Pair history and Hashtable topology, source syntax, declarations, formals,
+proofs, substitutions and module ownership. UID traversal includes Context and
+substitution records. Generated expressions retain their actual child graphs;
+debugger compilation preserves the running module table. Runtime helpers stay
+outside user source imports and inheritance. All 12 observed Test219 whole-module
+traces and 60 getter arrays match; see `TLC_ARCH.md` for the contracts and limits.
+
+Runtime targets resolve actual external-module OpDefs. Invariant templates merge
+in the processor before constraints, and configuration phases stop at their first
+error. Postcondition getters retain runtime, `_POSSIBLE`, then config order and
+fresh config Actions without OpDef metadata. View and alias getters resolve
+current definitions and throw source runtime failures. View capture follows
+configuration and precedes symmetry setup; alias lookup stays inside trace
+rendering's error boundary.
+
+Unnamed INSTANCE convenience aliases and early registration reuse canonical
+source exports and symbols. All 544 observed export conversions and 1,378 early
+registrations match their source identities. Module setup now retains checked
+source locality and ownership, including public RECURSIVE declarations completed
+by LOCAL bodies. Next: compare source-definition declaration locations with actual
+syntax children before changing remaining AST-derived metadata. General source
+generation, graph mutation sharing and source-less fallback lowering remain
+unproven. Keep those gaps distinct from the completed bounded observations.
 
 ## Verification baseline and test credit
 
