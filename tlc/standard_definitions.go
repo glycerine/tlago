@@ -4,13 +4,17 @@ import "fmt"
 
 var standardTLCEvalMu reentrantReadWriteLock
 
-// SpecProcessor.processModuleOverrides visits inherited Naturals definitions
-// when Integers is loaded too. Its GEQ method differs in its argument-error label.
+// Install the integer implementations for inherited arithmetic definitions and
+// GEQ, whose argument-error label also differs from the natural override.
 func (t *Tool) InstallIntegerDefinitions() {
 	if t != nil {
 		t.defineStandardMethod("GEQ", 2, func(args []Value) (Value, error) { return IntGEQ(args[0], args[1]) }, "\\geq")
 		method := WithStandardMethodMetadata(t.DefnsByName[UniqueStringOf("GEQ")], "Integers", "GEQ")
 		t.defineStandardValue("GEQ", method, "\\geq")
+		for _, op := range []struct{ name, alias string }{{"Divide", "\\div"}, {"Mod", "%"}, {"Expt", "^"}} {
+			value := WithStandardMethodMetadata(t.DefnsByName[UniqueStringOf(op.name)], "Integers", op.name)
+			t.defineStandardValue(op.name, value, op.alias)
+		}
 	}
 }
 
@@ -53,7 +57,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		}
 		return IntNeg(x)
 	}, "-.")
-	t.defineStandardMethod("Divide", 2, standardBinaryInt("Divide", IntDivide), "\\div")
+	t.defineStandardMethod("Divide", 2, standardBinaryInt("Divide", NatDivide), "\\div")
 	t.defineStandardMethod("Mod", 2, standardBinaryInt("Mod", NatMod), "%")
 	t.defineStandardMethod("Expt", 2, standardBinaryInt("Expt", NatExpt), "^")
 
@@ -342,15 +346,18 @@ func (t *Tool) defineStandardMethodWithMinLevel(name string, arity int, minLevel
 		method = metadata.signature
 		minLevel = metadata.minLevel
 	}
-	value := NewMethodValue(method, minLevel, func(args []Value, control int) (Value, error) {
-		_ = control
+	value := NewMethodValue(method, minLevel, standardMethodEvaluator(name, arity, eval))
+	value.ParameterCount = arity
+	t.defineStandardValue(name, value, aliases...)
+}
+
+func standardMethodEvaluator(name string, arity int, eval func([]Value) (Value, error)) OperatorEvalFunc {
+	return func(args []Value, control int) (Value, error) {
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
 		}
 		return eval(args)
-	})
-	value.ParameterCount = arity
-	t.defineStandardValue(name, value, aliases...)
+	}
 }
 
 func (t *Tool) defineStandardEvaluating(name string, arity int, eval EvaluatingEvalFunc, aliases ...string) {

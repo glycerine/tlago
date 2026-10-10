@@ -2,7 +2,8 @@ package tlc
 
 import "fmt"
 
-// WithStandardMethodMetadata retains the declaring module of numeric overrides.
+// WithStandardMethodMetadata retains the declaring module and implementation
+// of numeric overrides.
 // Naturals and Integers can install different Java methods on the same inherited
 // definition body. Clone the wrapper so updating one module does not rewrite the
 // previously captured wrapper or its aliases.
@@ -18,6 +19,30 @@ func WithStandardMethodMetadata(value any, module, name string) any {
 	out := *method
 	out.Name = signature
 	out.Label = "<Java Method: " + signature + ">"
+	var operation func(*IntValue, *IntValue) (*IntValue, error)
+	switch TLARegistryMapName(name) {
+	case "\\div":
+		if module == "Integers" {
+			operation = IntDivide
+		} else {
+			operation = NatDivide
+		}
+	case "%":
+		if module == "Integers" {
+			operation = IntMod
+		} else {
+			operation = NatMod
+		}
+	case "^":
+		if module == "Integers" {
+			operation = IntExpt
+		} else {
+			operation = NatExpt
+		}
+	}
+	if operation != nil {
+		out.EvalFunc = standardMethodEvaluator(name, 2, standardBinaryInt(name, operation))
+	}
 	out.owner = &out
 	return &out
 }

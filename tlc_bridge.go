@@ -632,6 +632,7 @@ func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, de
 	}
 	// Java stores native overrides on the source OpDef body. INSTANCE clones
 	// share that body, possibly underneath SubstIn wrappers.
+	value = tlc.WithStandardMethodMetadata(value, module, member)
 	opDef := b.convertSourceDefinitionAs(module+"!"+member, def)
 	if opDef != nil {
 		value = tlc.WithEvaluatingOpDef(value, opDef)

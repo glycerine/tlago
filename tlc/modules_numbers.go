@@ -66,11 +66,12 @@ func IntNeg(x *IntValue) (*IntValue, error) {
 }
 
 func NatDivide(x, y *IntValue) (*IntValue, error) {
-	if y.Val == 0 {
+	n1, n2 := numericIntValue(x), numericIntValue(y)
+	if n2 == 0 {
 		return nil, newTLCErrorCode(ECTLCModuleDivisionByZero)
 	}
-	q := x.Val / y.Val
-	if q < 0 && q*y.Val != x.Val {
+	q := n1 / n2
+	if q < 0 && q*n2 != n1 {
 		q--
 	}
 	return NewIntValue(q), nil
@@ -90,7 +91,21 @@ func IntDivide(x, y *IntValue) (*IntValue, error) {
 	return NewIntValue(q), nil
 }
 
+// Naturals reads both operands before validating the modulus. Integers checks
+// the modulus first; retain distinct functions for these source boundaries.
 func NatMod(x, y *IntValue) (*IntValue, error) {
+	n1, n2 := numericIntValue(x), numericIntValue(y)
+	if n2 <= 0 {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "%", "positive number", fmt.Sprint(n2))
+	}
+	r := n1 % n2
+	if r < 0 {
+		r += n2
+	}
+	return NewIntValue(r), nil
+}
+
+func IntMod(x, y *IntValue) (*IntValue, error) {
 	if y.Val <= 0 {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "%", "positive number", y.String())
 	}
@@ -102,23 +117,44 @@ func NatMod(x, y *IntValue) (*IntValue, error) {
 }
 
 func NatExpt(x, y *IntValue) (*IntValue, error) {
-	if y.Val < 0 {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "^", "natural number", y.String())
+	n1, n2 := numericIntValue(x), numericIntValue(y)
+	return intExponentiation(n1, n2)
+}
+
+// The integer override checks the exponent before reading the base.
+func IntExpt(x, y *IntValue) (*IntValue, error) {
+	exponent := numericIntValue(y)
+	if exponent < 0 {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "^", "natural number", fmt.Sprint(exponent))
 	}
-	if y.Val == 0 {
-		if x.Val == 0 {
+	return intExponentiation(numericIntValue(x), exponent)
+}
+
+func intExponentiation(base, exponent int32) (*IntValue, error) {
+	if exponent < 0 {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "^", "natural number", fmt.Sprint(exponent))
+	}
+	if exponent == 0 {
+		if base == 0 {
 			return nil, newTLCErrorCode(ECTLCModuleNullPowerNull)
 		}
 		return IntOne, nil
 	}
-	res := int64(x.Val)
-	for i := int32(1); i < y.Val; i++ {
-		res *= int64(x.Val)
+	res := int64(base)
+	for i := int32(1); i < exponent; i++ {
+		res *= int64(base)
 		if res < math.MinInt32 || res > math.MaxInt32 {
-			return nil, newTLCErrorCode(ECTLCModuleOverflow, fmt.Sprintf("%d^%d", x.Val, y.Val))
+			return nil, newTLCErrorCode(ECTLCModuleOverflow, fmt.Sprintf("%d^%d", base, exponent))
 		}
 	}
 	return NewIntValue(int32(res)), nil
+}
+
+func numericIntValue(value *IntValue) int32 {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	return value.Val
 }
 
 func intComparison(op string, x, y Value, cmp func(int32, int32) bool) (*BoolValue, error) {

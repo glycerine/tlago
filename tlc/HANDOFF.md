@@ -353,8 +353,10 @@ preserves direct tuple casts, captured arrays and typed binding/formatting
 failures; all 590 observations agree, including cache state and zero arguments.
 Numeric override casts preserve source failure messages and last-argument-first
 order; implicit null failures retain nullable details. All 36 expression and 350
-override observations agree. Numeric module-specific null/zero boundaries and
-mutation during evaluation remain separate targets.
+override observations agree. Numeric module selection now chooses the source
+arithmetic implementation as well as its signature; all 2,004 direct module and
+3,000 parsed-definition observations agree, including null/zero/negative cases.
+Override arity failures and mutation during evaluation remain separate targets.
 Continue concrete native override gaps against source and the original-test
 inventory.
 Original model-test reconciliation remains open.

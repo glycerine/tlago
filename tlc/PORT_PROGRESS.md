@@ -34180,3 +34180,53 @@ Handoff and architecture updated; original-method inventory credit unchanged.
 Original full stress session 27326 remains live on direct poll (6b67e4).
 Latest saved progress is 1,549,074,471 / 2,147,483,648 (1ca1c7), without a terminal
 result or long-method credit. Preserve original handle, artifacts and bounds.
+
+
+2026-10-10: Numeric module dispatch and arithmetic null boundaries
+
+Previous turn completed verified materialization/cast fix 5496bde. Inspect Java
+Naturals and Integers arithmetic plus native WithStandardMethodMetadata and
+module override installation. Native default Divide selects IntDivide, and
+module metadata cloning changes only the signature, preserving that evaluator.
+Native natural Mod/Expt also use the integer source's second-operand validation
+order. Ignored .codex-gotmp/numeric-module-boundaries compares direct original
+Java numeric MethodValue factories with native module-selected wrappers. Twelve
+values include minimum/maximum integers, -3/-1/0/1/2/3/31, boolean, tuple and
+null. Seven binary methods plus integer negation yield 2,004 rows. The exponent
+matrix omits the maximum positive integer, with largest positive exponent 31;
+these are bounded observers, not substituted original workloads. Initial Java
+95af1b and native 8045 terminal cc9de5 complete; 22 differences all occur in
+Naturals Divide/Mod/Expt (d2705d), including quotient zero, minimum divided by -1
+and null base with invalid second operand.
+
+Select NatDivide by default. Restore eager source reads in natural division,
+modulo and exponentiation; retain separate IntMod/IntExpt entry points. Share
+the exponentiation loop after source-specific reads/validation without allocating
+replacement input values. Module-selected wrapper clones now choose the matching
+numeric evaluator and preserve their original owner/aliases. Integer installation
+selects its three arithmetic overrides; source alias attachment also selects the
+module implementation before storing the wrapper on the actual OpDef body.
+All 2,004 rows match after the correction (52532 terminal 9f79c6; b1f937), and
+still match after sharing the exponentiation loop (38811 terminal fb6c82;
+afffe8). No JVM emulation, persistent tests/fixtures or changed source semantics.
+
+Ignored .codex-gotmp/numeric-module-slots reads the numeric method objects on
+actual parsed external-module definition bodies, rather than building wrappers
+manually. Existing LegacySuiteTest209 loads Naturals; ValueSemanticsAssume loads
+Integers and inherited Naturals definitions. Source and native observe the same
+loaded ownership and final selected signatures through all bounded argument
+pairs. Java 57945 terminal 616bf1 and native 35831 terminal b616a9 complete;
+all 3,000 rows agree (6afff7): 996 natural-only and 2,004 through the integer
+model's actual module definitions. No synthetic or mutated semantic graph.
+Override arity failures, dynamic replacement and unobserved arithmetic values
+remain separate work. No original-method inventory credit from these observers.
+
+Eleven unchanged original model checks and original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl plus focused function-context, rendering, lambda stream
+and numeric checks pass (74771 terminal 6f1403; root 4.506s, tlc 2.093s;
+existing-checks.log, output aab3fe). No broad suite, race, shortened original
+bounds or changed assertions. Handoff and implementation contracts updated.
+
+Original full stress session 27326 remains live on direct poll (e35498).
+Latest saved progress is 1,563,013,549 / 2,147,483,648 (5492d5), without a terminal
+result or long-method credit. Preserve original handle, artifacts and bounds.

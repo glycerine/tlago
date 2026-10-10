@@ -7652,8 +7652,30 @@ than Go runtime text, while explicit exceptions preserve their nullable message.
 All 36 observations on the original S arithmetic body and 350 direct override
 observations agree. The latter cover Plus, Minus, Times, Divide, Mod, Expt,
 DotDot and Neg across integer, boolean, tuple, set, string, interval and null
-values. Module-specific arithmetic and combined null/zero/negative boundaries
-remain separate comparisons; this matrix uses the valid integer 1.
+values. This initial matrix uses the valid integer 1; the expanded module
+comparison below covers additional arithmetic and null boundaries.
+
+Numeric module selection now chooses the source implementation as well as its
+method signature. `Naturals` division uses its negative-quotient adjustment and
+retains signed division overflow behavior, while `Integers` uses its sign-aware
+floor rule and explicit minimum-integer overflow rejection. Natural division,
+modulo and exponentiation read the base/first operand before validating the
+second operand; integer overrides retain their earlier second-operand checks.
+Modulo and exponentiation have distinct natural/integer entry points, with a
+shared exponentiation loop after source-ordered reads and validation. The
+wrapper clone retains prior aliases and instances. Integer installation selects
+its arithmetic wrappers, and native source aliases select module behavior
+before attaching the override to the actual definition body.
+All 2,004 direct module observations match for both modules across seven binary
+operations and integer negation, using twelve values: minimum/maximum integers,
+-3, -1, 0, 1, 2, 3, 31, boolean, tuple and null. The exponent matrix omits the
+maximum positive integer; the largest observed positive exponent is 31. Another
+3,000 observations through actual external-module definition body tool objects
+in legacy test209 and ValueSemanticsAssume match method signatures, values and
+full failures, including inherited source body ownership. No graphs are
+fabricated or mutated. Override arity failures, dynamic module replacement and
+all possible arithmetic values remain outside these bounded comparisons.
+
 
 
 Membership generation with an unassigned variable and a non-enumerable domain
