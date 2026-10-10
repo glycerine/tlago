@@ -37136,3 +37136,63 @@ and saved 2,040-row tuple-storage baseline for next chunk. Original random
 stress handle 27326 remains live by direct poll 5efbb5; last saved progress
 2,145,797,753 / 2,147,483,648, with no terminal result or execution/method
 credit. Overall Java-to-Go goal remains active.
+
+Original off-heap random stress completes: session 27326 terminal exit 0
+(bb0700). Log .codex-gotmp/offheap-random-full-after-outage.log shows
+PASS TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd, 73649.77s, package
+73649.801s. The full unchanged shared body runs all 2,147,483,648 iterations
+with predecessor, insertion and size assertions, BeginChkpt/CommitChkpt, final
+CheckInvariant and final size. Default 64 MiB, ratio-1.0 source factory and
+seed 15041980 retained, no race or reduced bound. Fingerprint production has
+not changed since this binary was built. Award this one original-method context:
+long inventory 19/22, three sequential contexts pending; main inventory totals
+unchanged. The earlier interrupted/duplicate runs remain uncredited. Handoff
+replaces live-process instructions with the authoritative terminal result.
+
+Tuple-storage continuation after verified 6b078f4. Original 2,040-row
+array baseline showed 32 typed failure differences. Expand ignored observer
+with actual AnySet.ANY domain, one/multiple/empty/null tuple formals and
+null outer/inner tuple elements, keeping fresh runtime parameter containers
+and actual checked semantic nodes. Source efbaa8 and native e8ad8e exit zero;
+all 3,528 rows present, 156 actual differences (44cec4). Native Apply/Select
+now use typed fcnTupleElement reads before membership/diagnostics/binding,
+require non-null tuple conversion receivers, check tuple Size before formal
+length and retain converted value arrays. This preserves both null-versus-bounds
+failures and inner-null conversion failures under existing owner catches.
+Initial final native 71703 exits zero (4bc30d), all 3,528 exact (223191);
+focused originals 27205 pass (d83d9f), root 2.756s/tlc 2.790s. Retained-array
+cleanup final native 51936 exits zero (02a93e), 3,528 still exactly equal
+(b95f64). Final focused original/native selection 1053 exits zero (d001d2),
+root 2.687s/tlc 2.588s. Full unchanged CommunityModules starts on final
+production code in session 64752 (d0192f), log
+.codex-gotmp/lambda-binding-arrays/community-ant.log, original bounds and
+timeout zero without race. Only method-credit change this chunk is the
+independent completed off-heap random workload recorded above.
+
+While final tuple-array CommunityModules runs, inspect adjacent lambda
+fallback printing. Source concatenates null body as literal null, native
+toContextString(nil) yields <nil>. Prepare ignored .codex-gotmp/lambda-rendering
+with actual Def5 lambdas, actual constructor null body/params/context/tool,
+actual materialized caches, source/expand/swallow flags and prefixed buffers.
+Source/native both exit zero (3a4783/ac1cf2), all 80 rows present; comparison
+d4a5ba finds 28 actual null versus <nil> body text differences. Remaining
+buffers, failures and cache snapshots agree. No rendering production edit while
+full tuple-array verification runs; saved baseline is next target.
+
+Qualify stress snapshot evidence after authoritative Git inspection: no
+fingerprint-set insertion/search/checkpoint/invariant production or shared
+random-helper changes since the run start (c7f7e3). d11f107 did change
+FP64ExtendString to preserve Java UTF-16 (6f7b38), outside this random-long
+uint64 workload; no affected call is present in these set/helper files. Earlier
+wording fingerprint production unchanged was too broad. Handoff/inventory now
+state the exercised-path qualification explicitly; original full-run credit
+stands without claiming current-snapshot string fingerprint verification.
+
+Full unchanged CommunityModules session 64752 exits zero (522dd0), root
+303.743s, all 303.08s and shiviz 0.24s (e6a67b), on final tuple-array code.
+Formatting and diff checks pass. Handoff consolidates current lambda contracts
+and records completed verification and the saved 80-row rendering baseline.
+Original full off-heap random workload is terminal zero and credited at 19/22
+long contexts, with exercised-path snapshot qualifications above. Main test
+inventory is unchanged. Overall Java-to-Go goal remains active; next target
+is lambda fallback null-body rendering, without re-running the completed stress.

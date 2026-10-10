@@ -8848,6 +8848,18 @@ persistent tests, fixtures or original-method credit are added. Malformed
 parameter arrays, EXCEPT matching and additional lambda variants remain unproven
 beyond earlier recorded contracts.
 
+Lambda Apply/Select use typed tuple-array reads for membership, conversion,
+diagnostics and binding. Null arrays fail before bounds checks; conversion of a
+null element fails before tuple compatibility diagnostics. Tuple size is checked
+before formal-array length, and binding retains the converted values array.
+The expanded actual runtime-array comparison covers 3,528 rows, including the
+real ANY domain, null tuple storage/elements and null/empty parameter arrays.
+All match Java exactly, correcting 156 baseline differences without persistent
+tests/fixtures or additional original-method credit. Focused original/native
+checks and the complete CommunityModules all/shiviz target pass. Other malformed
+arrays, mutation lifetimes and lambda rendering/EXCEPT variants remain unproven
+beyond earlier recorded contracts.
+
 BagsExt FoldBag converts its bag before reading the domain and captures the
 converted function's values array. It assigns the current key before checking
 its multiplicity, preserves null and bounds failures while formatting invalid

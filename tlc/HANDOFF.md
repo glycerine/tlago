@@ -483,24 +483,22 @@ the supplied tool, including null. All 36 constructor observations match Java
 exactly, and focused original checks and the complete CommunityModules
 all/shiviz target pass. Broader lazy conversions and constructor
 variants remain unproven.
-`FcnLambdaValue` constructors now retain null context, require a predecessor
-state, reject null copy sources and preserve the supplied copy tool. Copies
-share captured states, EXCEPT entries and cached results, resetting source and
-cost metadata as Java does. All 42 constructor observations match exactly.
-Focused original and native checks and the complete CommunityModules
-all/shiviz target pass. Existing standalone lambda tests now create their
-empty-state inputs explicitly, preserving their assertions.
-`FcnLambdaValue.MakeRecursive` now fails on null context before changing control;
-all 16 actual-lambda observations match Java. Application, selection and
-materialization retain null contexts until binding needs them, and body
-evaluation requires the supplied tool. All 720 observations match exactly,
-including diagnostics and cached results. Focused original and native checks,
-including the original recursive models, and the complete CommunityModules
-all/shiviz target pass. Malformed parameter arrays and further lambda
-operation variants remain unproven.
-Next inspect tuple argument storage in lambda Apply/Select: the saved 2,040-row
-runtime-array comparison has 32 null-versus-bounds failure differences for
-multiple parameters and a tuple with null storage. Other observed rows agree.
+`FcnLambdaValue` constructors retain null context, require a predecessor state,
+reject null copy sources and preserve the supplied copy tool. Copies share
+captured states, EXCEPT entries and cached results, resetting source and cost
+metadata. All 42 constructor observations match Java. `MakeRecursive` fails on
+null context before changing control; all 16 observations match. Application,
+selection and materialization retain null contexts until binding needs them,
+and body evaluation requires the supplied tool. Tuple storage, conversion and
+size checks now preserve Java's failure order, including null elements accepted
+by the real `ANY` domain. All 3,528 runtime-array observations match exactly.
+Focused original/native checks, including recursive models, and the complete
+CommunityModules all/shiviz target pass. Existing
+standalone lambda tests create empty-state inputs explicitly, preserving their
+assertions. Additional malformed arrays and lambda variants remain unproven.
+Next fix lambda fallback rendering of a null body: the saved 80-row comparison
+has 28 Java `null` versus native `<nil>` differences. Other observed buffers,
+failures, expansion/cache state and swallow/source modes agree.
 `BagsExt.FoldBag` preserves conversion, null/bounds failures and multiplicity
 validation order. It captures the values array and rereads the slot at each loop
 bound; registered calls cast the operator before entering the body. Record to
@@ -580,20 +578,19 @@ Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
 
-Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
-`-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
-confirmed by polling the handle directly. Its log is
-`.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-2,145,797,753 of 2,147,483,648 iterations, without a terminal result. The previous
-handoff incorrectly inferred interruption from process-list visibility. Always
-poll the original session before restarting; namespace process lists alone do
-not establish that a tool-owned process has stopped. An accidental duplicate,
-session `7371`, was stopped with exit 130; its preserved log is
-`.codex-gotmp/offheap-random-full-second-recovery.log` and earns no credit.
-The earlier interrupted `.codex-gotmp/offheap-random-full.log` ends at 521,200,868
-iterations without a terminal result. Preserve original bounds, assertions,
-default 64 MiB direct-memory budget and files; do not add race instrumentation.
-Full execution and original-method credit remain pending.
+The original `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd` workload passes
+in session `27326`, terminal exit 0, after 73,649.77 seconds. The full
+2,147,483,648 iterations, checkpoint operations, invariant and final-size
+assertions pass with the original default 64 MiB configuration, ratio-1.0 factory
+and seed, normally without race instrumentation. The fingerprint-set paths
+exercised here are unchanged since its build; later string-fingerprint changes
+are outside this random-long workload. The preserved log is
+`.codex-gotmp/offheap-random-full-after-outage.log`. Long-test inventory credit
+is now 19 of 22 contexts; the three original sequential workloads remain pending.
+Do not restart this completed workload. Older interrupted runs and the duplicate
+session `7371` stopped with exit 130 earn no credit. Namespace process lists
+alone cannot establish that a tool-owned process has stopped; poll its original
+handle before deciding whether to restart.
 
 The existing native
 `TestModelCheckerDoNextEnqueuesOnlyUnseenInModelSuccessorsButChecksAllImpliedActions`
