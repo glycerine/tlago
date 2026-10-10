@@ -949,15 +949,32 @@ func (v *FcnLambdaValue) DeepNormalize() {
 		return
 	}
 	for i := range v.Excepts {
+		if v.Excepts[i].Value == nil {
+			panic(NewNullPointerException())
+		}
 		v.Excepts[i].Value.DeepNormalize()
-		for _, path := range v.Excepts[i].Path {
-			path.DeepNormalize()
+		for j := 0; ; j++ {
+			if v.Excepts[i].Path == nil {
+				panic(NewNullPointerException())
+			}
+			if j >= len(v.Excepts[i].Path) {
+				break
+			}
+			if v.Excepts[i].Path[j] == nil {
+				panic(NewNullPointerException())
+			}
+			v.Excepts[i].Path[j].DeepNormalize()
 		}
 	}
-	if v.Params != nil {
-		for _, domain := range v.Params.Domains {
-			domain.DeepNormalize()
+	if v.Params == nil || v.Params.Domains == nil {
+		panic(NewNullPointerException())
+	}
+	domains := v.Params.Domains
+	for _, domain := range domains {
+		if domain == nil {
+			panic(NewNullPointerException())
 		}
+		domain.DeepNormalize()
 	}
 }
 

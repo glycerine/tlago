@@ -571,6 +571,9 @@ func (v *SetEnumValue) normalizeSet() (resultValue Value, err error) {
 func (v *SetEnumValue) DeepNormalize() {
 	defer catchValueFailure(v, nil)
 	for i := 0; i < v.Elems.Len(); i++ {
+		if v.Elems.At(i) == nil {
+			panic(NewNullPointerException())
+		}
 		v.Elems.At(i).DeepNormalize()
 	}
 	if _, err := v.normalizeSet(); err != nil {

@@ -7687,6 +7687,23 @@ includes zero/mixed/single arguments and cached/uncached null parameter objects.
 It adds no original-test credit; arbitrary conversion callbacks, mutation during
 evaluation and concurrent mutation remain unproven.
 
+Lambda deep normalization delegates to an existing record before reading EXCEPTs
+or parameters. Otherwise it normalizes each EXCEPT replacement before its path
+components, retaining typed null failures for the replacement, path array and
+path elements. It then captures the parameter domain array and normalizes each
+domain; null parameters, arrays and domain entries fail under the existing lambda
+source wrapper. Explicit-set deep normalization similarly retains typed null
+element failures under its own wrapper. Work completed before a failure remains
+visible. The EXCEPT index does not limit deep normalization of its path.
+All 1,266 observations agree on result/error/source frames, cache presence and
+set normalization flags/cardinalities, using actual test209 S nodes/body and
+runtime arrays. The previous seventeen-domain matrix is extended with six
+EXCEPT cases installed through TakeExcept: valid sets, null replacement/path/
+path element, an advanced index and a later null replacement. Both cached and
+uncached, sourced and unsourced lambdas are observed. No semantic graph mutation,
+arbitrary callback or original-test credit is involved. Null EXCEPT object
+entries, mutation during callbacks and concurrent mutation remain unproven.
+
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
 the operation. Binary casts run from the last argument to the first; null passes

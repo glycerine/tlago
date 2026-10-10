@@ -357,6 +357,8 @@ Uncached lambda sizing and materialization now reject null parameters before
 cache publication; all 1,188 size/materialization observations agree.
 Tuple conversion now retains typed parameter/domain failures without adding a
 source wrapper at entry; all 1,242 conversion observations agree.
+Deep normalization now retains typed null failures and partial EXCEPT/domain
+normalization order; all 1,266 result/error/mutation observations agree.
 Numeric override casts preserve source failure messages and last-argument-first
 order; implicit null failures retain nullable details. All 36 expression and 350
 override observations agree. Numeric module selection now chooses the source

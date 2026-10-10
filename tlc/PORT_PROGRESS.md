@@ -34470,3 +34470,43 @@ original assertion. Handoff and architecture contracts updated.
 
 Latest full stress saved progress is 1,600,292,186 / 2,147,483,648 (d1b3c8),
 without a terminal result or long-method credit. Preserve original process.
+
+
+### 2026-10-10: Lambda deep normalization null boundaries and partial mutation
+
+After committing tuple conversion as 7f94554, compare Java deepNormalize with
+the native method and SetEnumValue.deepNormalize. Native silently skipped null
+parameter/domain arrays and null EXCEPT path arrays; null replacement, path
+component, domain and set elements exposed raw Go panics.
+
+Ignored lambda-deep-normalize reuses actual parsed test209 S nodes/body, copied
+runtime arrays and the seventeen-domain tuple-conversion matrix. Record domain
+set normalization flags and element counts alongside failures/cache state.
+Initial Java a0b29b and native c51caa complete: 1,242 rows with 262 differences
+(e32591). Extend with six runtime EXCEPT shapes installed via TakeExcept, then
+replace retained runtime fields where applicable: valid unsorted duplicate sets,
+null replacement, null path array, null path component, advanced index 99 and a
+second EXCEPT with null replacement. Observe replacement/path/domain flags and
+cardinalities after both success and failure. Add cached/uncached and source-less/
+source-attached variants. Cache uses the genuine materialized original S record.
+No semantic graph mutation, fabricated evaluator, persistent test/fixture or
+original-method inventory credit. Java 6d00bd and native 3ed74d complete all
+1,266 rows, with 270 differences (66e0c1).
+
+Restore typed failures in source order, including EXCEPT replacement before path
+array length, path elements before parameters, and captured parameter domains.
+Cached delegation remains first. Add the typed null-element failure in explicit
+set deep normalization under its existing source wrapper. Native 59168 completes
+with terminal c4f7c5; all 1,266 rows agree (31acf7). Partial normalization remains
+visible and cached lambdas bypass malformed retained EXCEPTs/parameters. The
+EXCEPT index does not truncate deep normalization. Null EXCEPT object entries,
+arbitrary callbacks and concurrent mutation are not covered.
+
+Existing fourteen original model checks, original TupleValue/FcnLambdaValue/
+FcnRcdValue/EvalControl and focused numeric/context/rendering/stream checks pass:
+98952 terminal 7e67cc, root 5.004s and tlc 2.425s (012d81). Existing SetEnum,
+ValueVec and reducible-set stream checks separately pass in 0.013s (341fc4,
+012d81). Observer and test logs remain under lambda-deep-normalize. No race,
+broad suite, shortened workload or changed original assertions. Handoff and
+architecture updated. Latest full stress saved progress is 1,600,887,422 /
+2,147,483,648 (423b61), with no terminal result or long-method credit.
