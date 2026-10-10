@@ -17,6 +17,9 @@ func STRING() Value {
 }
 
 func IsFiniteSet(value Value) (*BoolValue, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	finite, err := value.IsFinite()
 	if err != nil {
 		return nil, err
@@ -25,6 +28,9 @@ func IsFiniteSet(value Value) (*BoolValue, error) {
 }
 
 func Cardinality(value Value) (*IntValue, error) {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
 	if _, ok := asEnumerable(value); !ok {
 		return nil, newTLCErrorCode(ECTLCModuleComputingCardinality, ValuesPPR(value))
 	}

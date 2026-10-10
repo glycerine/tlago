@@ -7175,6 +7175,28 @@ Java enhanced NPE messages are disabled for nullable-detail comparison; no JVM
 enhanced-message fidelity is claimed. Arbitrary callable producer failures,
 method-handle casts and invocation arity remain outside this observation.
 
+MethodValue's direct value-array entry rejects nil arrays inside its override
+catch; the typed NPE becomes the coded EvalException with a nullable detail and
+then enters the existing source-value catch. FiniteSets IsFiniteSet and
+Cardinality also retain typed null failures at their respective dereferences.
+Non-null invalid Cardinality values still produce its original coded leaf
+EvalException, while finite queries and overridden-value runtime failures retain
+their distinct method wrapping. The inherited OpValue semantic-array entry
+rejects nil arrays before argument evaluation, without adding a value-source or
+override frame. Allocated-empty arrays still reach the actual operator's eval,
+and argument evaluation failures escape directly.
+
+Thirty-two direct FiniteSets method rows and twenty-eight inherited OpValue rows
+match Java, including sourced/unsourced wrappers, nullable detail, codes/parameters
+and frame counts. Direct controls cover integer, boolean, explicit set, Nat,
+UNDEF and operator-record values. Inherited controls use existing model C bodies
+with real tool/state evaluation for a configured operator record, real lambda and
+Cardinality MethodValue. Nil arrays are distinct from nil elements. Native Go
+registration supplies the actual method implementation, with no invented eval
+hook. Java enhanced NPE messages are disabled for nullable-detail comparison.
+Arbitrary method-handle arity/type diagnostics and other native signatures remain
+outside these bounded observations.
+
 
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime

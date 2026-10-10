@@ -564,6 +564,9 @@ func NewMethodValue(name string, minLevel int, eval OperatorEvalFunc) *MethodVal
 func (v *MethodValue) Eval(args []Value, control int) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	defer catchJavaMethodFailure(v.Name, &resultValue, &err, true)
+	if args == nil {
+		panic(NewNullPointerException())
+	}
 	return v.EvalFunc(args, control)
 }
 
@@ -820,6 +823,9 @@ func EvalOperatorValueWithTool(op Value, tool *Tool, args []SemanticNode, con *C
 	case *CallableValue:
 		return v.EvalWithTool(tool, args, con, state, pstate, control, cm)
 	default:
+		if args == nil {
+			panic(NewNullPointerException())
+		}
 		argVals := make([]Value, len(args))
 		for i, arg := range args {
 			value, err := tool.Eval(arg, con, state, pstate, control, cm)

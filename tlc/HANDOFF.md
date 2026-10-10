@@ -291,9 +291,12 @@ Java. Empty runtime messages stay empty. Callable evaluation now rejects nil arg
 arrays before override handling, preserves unwrapped argument failures, and keeps
 the null successor error's nullable detail parameter. Ten invocation observations
 and 40 inherited callable operations agree with Java; relevant original model and
-existing checks pass. Continue with MethodValue invocation boundaries and concrete
-core parity gaps
-against source and the original-test inventory.
+existing checks pass. MethodValue now preserves typed null-array failure inside
+its override catch, while inherited OpValue semantic-array failures remain outside
+that catch. FiniteSets null values retain their original leaf failures. All 60
+direct/inherited invocation observations match; relevant existing and original
+checks pass. Continue concrete native override metadata/invocation gaps against
+source and the original-test inventory.
 Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
@@ -302,7 +305,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,288,106,922 of 2,147,483,648 iterations, without a terminal result. The previous
+1,295,479,613 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

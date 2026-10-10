@@ -32824,3 +32824,51 @@ workload or original-method credit. Latest saved long stress progress is
 1,288,106,922 / 2,147,483,648 (846102), still without terminal result. Preserve
 its original handle/bounds/default budget. Handoff/architecture updated;
 MethodValue invocation boundaries are next. Overall parity remains incomplete.
+
+
+2026-10-10: Direct MethodValue and inherited OpValue invocation null boundaries.
+Previous goal turn made verified progress in 306eff7. Revalidate clean tree and
+poll original stress handle 27326 (8dd734 live). Inspect MethodValue.eval,
+OpValue.eval and original FiniteSets methods. Ignored
+.codex-gotmp/method-invocation-boundaries uses actual Java MethodValue.get and
+native registered IsFiniteSet/Cardinality implementations, real model C semantic
+sources, no invented evaluator hooks or persistent tests. Thirty-two direct
+cases cover sourced/unsourced receivers and nil array, nil element, integer,
+boolean, explicit set, Nat, UNDEF and operator-record arguments. Baseline
+b67482 differs in eight rows: nil arrays hit native arity checks, IsFiniteSet
+nil element raises an untyped native nil failure, Cardinality nil element creates
+its coded cardinality error instead of dereferencing the argument.
+
+MethodValue now rejects nil value arrays inside its existing override catch.
+FiniteSets leaves raise typed NPE at nil dereferences. Preserve normal arity
+guards, non-null coded EvalExceptions and all source/value catch structure.
+Complete observer's distinct native EvalException metadata and canonical nullable
+parameter rendering; mark source EvalException null detail explicitly too.
+Java uses -XX:-ShowCodeDetailsInExceptionMessages; no enhanced JVM diagnostic
+fidelity is claimed. All final thirty-two rows agree (76865 terminal 4630b1).
+
+Inspect inherited OpValue semantic entry: nil arrays must fail before argument
+evaluation and before concrete operator wrapping. Extend observer with actual
+configured operator record, C expensive lambda and Cardinality MethodValue.
+Twenty-eight rows cover nil/allocated-empty arrays, real c expression, real
+undefined-formal expression and nil semantic element, with/without sources.
+Skip Cardinality allocated-empty input because method-handle wrong-arity behavior
+is outside this observation (not counted as passing). Baseline c52dab differs
+in six nil-array rows. Add typed guard to native generic semantic dispatch before
+allocating values. All twenty-eight final rows agree (90330 terminal bcd587).
+Together sixty complete outcomes match; error type, message, code/parameters,
+nullable detail, source/context and wrapping depth are compared. Arbitrary
+method-handle arity/type diagnostics and other native signature metadata remain
+unverified; no JVM runtime emulation is introduced.
+
+Seven focused existing checks pass before and after generic dispatch correction:
+26142 terminal 00a26d, existing-values.log, 0.268s; 72987 terminal 30cdea,
+final-values.log. Six original models pass before/after: 52535 terminal 87edf5,
+original-models.log, 3.114s; 39098 terminal 32e1a2, final-models.log.
+They retain TLCExtModel, all three UserModuleOverride model methods,
+ConstantRank2AssertError and ValueSemanticsAssume. No invented persistent test,
+changed assertion, broad sweep, race or reduced bound; no original-method credit.
+Latest saved full stress progress 1,295,479,613 / 2,147,483,648 (607ceb), still
+without terminal result. Preserve original handle/default budget/workload files.
+HANDOFF/TLC_ARCH updated; continue concrete override metadata/invocation gaps.
+Overall core TLC completion and original-model reconciliation remain open.
