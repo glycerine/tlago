@@ -207,7 +207,7 @@ func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 	}
 	switch expr := expr.(type) {
 	case nil:
-		return ValUndef, newTLCError(ECGeneral, "attempted to evaluate a nil expression")
+		panic(NewNullPointerException())
 	case Value:
 		return expr, nil
 	case *ValueNode:

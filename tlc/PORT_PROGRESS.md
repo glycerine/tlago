@@ -32779,3 +32779,48 @@ Overall TLC parity and original-model reconciliation remain incomplete.
 
 Latest saved stress progress: 1,287,482,480 / 2,147,483,648 (167779),
 without terminal result; focused tests took 0.698s and original models 2.609s.
+
+
+2026-10-10: Callable invocation null and argument-evaluation boundaries.
+Previous goal turn made verified progress in e211c42. Revalidate clean worktree
+and original stress handle 27326 (2fa31b live). Inspect CallableValue.eval and
+Tool's expr.getKind dereference. Native treated nil argument arrays as empty,
+converted nil successor to literal-string error, and made nil semantic input a
+generic EvalException. Ignored .codex-gotmp/callable-operator-boundaries compares
+real CallableValue with actual reflected Thread.getDefaultUncaughtExceptionHandler
+(zero-argument method, checked null result); native adapts the actual null result
+to a nil callable. No invented Java method/evaluator or persistent fixture/test.
+Use existing model C Tool/OpDefs/body/states. Ten cases cover nil argument array,
+empty array with nil/real successor, actual undefined-formal argument and nil
+semantic argument, each sourced/unsourced. Initial compilation/run e95bb1;
+six baseline mismatches (825f13), remaining four controls already agree.
+
+Add typed nil-array rejection before Callable's override catch. Nil successor
+raises typed NPE inside the catch, preserving nullable error detail and coded
+Assert runtime category. Tool nil-expression branch now raises typed NPE.
+Correct the existing successor-state test's two zero-argument calls from nil
+array to allocated empty array. This preserves its actual intended callback and
+successor assertions; source nil arrays cannot reach that behavior. No new test
+body or assertion is invented.
+
+Initial corrected comparison shows two apparent parameter differences (7553
+terminal 861910): native observer rendered legacy Params, which projects null to
+empty string. Extend final observers with explicit nullDetail and canonical
+NullableParams rendering. Java uses -XX:-ShowCodeDetailsInExceptionMessages;
+enhanced JVM NPE descriptions are outside this parity claim. Java/native final
+ten complete rows match, including null detail identity (f189ef). Preserve earlier
+logs as projection-only observations, not complete final-parameter evidence.
+All 188 inherited comparison rows also match with CallableValue replacing the
+evaluating-wrapper family, adding forty callable-specific operations (74473
+terminal 133e45). Invocation/source catches agree; arbitrary producer failures,
+reflection casts and invocation arity remain unverified.
+
+Five relevant existing callable/state/checker/error checks pass (59083 terminal
+40194f, existing-values.log, 0.263s). Six original models pass (57246 terminal
+9cc8c2, original-models.log, 3.317s): TLCExtModel, UserModuleOverride,
+UserModuleOverrideFromJar, UserModuleOverrideAnnotation, ConstantRank2AssertError
+and ValueSemanticsAssume. No broad sweep, race, changed assertions, shortened
+workload or original-method credit. Latest saved long stress progress is
+1,288,106,922 / 2,147,483,648 (846102), still without terminal result. Preserve
+its original handle/bounds/default budget. Handoff/architecture updated;
+MethodValue invocation boundaries are next. Overall parity remains incomplete.

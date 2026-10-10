@@ -13,7 +13,7 @@ func TestCallableValueRequiresSuccessorStateLikeJava(t *testing.T) {
 		return func() (any, error) { return "ran", nil }, nil
 	})
 
-	value, err := callable.EvalWithTool(nil, nil, EmptyContext, nil, nil, EvalClear, DoNotRecordCostModel)
+	value, err := callable.EvalWithTool(nil, []SemanticNode{}, EmptyContext, nil, nil, EvalClear, DoNotRecordCostModel)
 	if err == nil {
 		t.Fatalf("EvalWithTool without successor state = (%v, nil), want Java method override error", value)
 	}
@@ -23,7 +23,7 @@ func TestCallableValueRequiresSuccessorStateLikeJava(t *testing.T) {
 	}
 
 	successor := NewEmptyState()
-	value, err = callable.EvalWithTool(nil, nil, EmptyContext, nil, successor, EvalClear, DoNotRecordCostModel)
+	value, err = callable.EvalWithTool(nil, []SemanticNode{}, EmptyContext, nil, successor, EvalClear, DoNotRecordCostModel)
 	if err != nil {
 		t.Fatalf("EvalWithTool with successor state returned error: %v", err)
 	}

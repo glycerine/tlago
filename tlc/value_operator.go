@@ -724,6 +724,9 @@ func NewCallableValue(name string, minLevel int, opDef *OpDefNode, callable Call
 }
 
 func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (resultValue Value, err error) {
+	if args == nil {
+		panic(NewNullPointerException())
+	}
 	argVals := make([]Value, len(args))
 	for i, arg := range args {
 		value, err := tool.Eval(arg, con, state, pstate, control, cm)
@@ -738,7 +741,7 @@ func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Conte
 		return nil, err
 	}
 	if pstate == nil {
-		return nil, fmt.Errorf("null")
+		panic(NewNullPointerException())
 	}
 	pstate.SetCallable(callable)
 	return BoolTrue, nil

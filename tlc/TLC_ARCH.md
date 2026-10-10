@@ -7156,6 +7156,25 @@ inherited-operation outcomes match Java; the earlier 188 operator rows still
 match. Priority handler invocation/order and arbitrary factory-only construction
 are not established by these observations.
 
+CallableValue rejects a nil argument array before its override catch and does not
+add a value-source frame around argument evaluation failures. Tool evaluation of
+a nil expression raises typed NPE at the source dereference boundary. A nil
+successor fails inside the override catch, retaining coded Assert runtime category
+and a genuinely null detail parameter, rather than the literal string "null".
+Allocated-empty argument arrays still invoke the zero-argument callable producer.
+The existing successor-state test uses that allocated-empty setup; its assertions
+and actual deferred callback execution remain intact.
+
+Ten invocation rows and forty inherited-operation rows match Java, with/without
+sources. The invocation observer uses an actual reflected zero-argument nullable
+method (Thread.getDefaultUncaughtExceptionHandler), verifies its null result,
+and adapts that result to a nil native callable. This isolates wrapper boundaries
+without inventing a Java method or evaluator. Real model C argument evaluation
+covers undefined formals and nil semantic input outside the override catch.
+Java enhanced NPE messages are disabled for nullable-detail comparison; no JVM
+enhanced-message fidelity is claimed. Arbitrary callable producer failures,
+method-handle casts and invocation arity remain outside this observation.
+
 
 Record comparison/equality shape failures, membership, single-argument Apply and
 both duplicate-field normalization branches use the same source-aware runtime

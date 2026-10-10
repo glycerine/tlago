@@ -287,8 +287,12 @@ retain the source expression/context and coded runtime failure. Relevant existin
 distributed checks and original models pass. Priority-wrapper registration now
 rejects null handlers and preserves runtime failures for incompatible definitions
 or levels; 14 registration and 40 inherited-operation observations agree with
-Java. Empty runtime messages stay empty. Continue with callable invocation
-boundaries and concrete core parity gaps
+Java. Empty runtime messages stay empty. Callable evaluation now rejects nil argument
+arrays before override handling, preserves unwrapped argument failures, and keeps
+the null successor error's nullable detail parameter. Ten invocation observations
+and 40 inherited callable operations agree with Java; relevant original model and
+existing checks pass. Continue with MethodValue invocation boundaries and concrete
+core parity gaps
 against source and the original-test inventory.
 Original model-test reconciliation remains open.
 
@@ -298,7 +302,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,287,482,480 of 2,147,483,648 iterations, without a terminal result. The previous
+1,288,106,922 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,
