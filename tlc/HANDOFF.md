@@ -301,8 +301,12 @@ across 34 real-model bindings agree. Eager native constants use an allocated emp
 argument array. Sequences, Bags, TLC, FiniteSets and Randomization value-array
 methods now also retain complete source signatures. All 105 direct-method and
 102 loaded-binding observations agree; the original module suites and relevant
-model checks pass. Continue other concrete native override metadata/invocation
-gaps against source and the original-test inventory.
+model checks pass. Represented annotated value methods now retain full source
+signatures, including renamed methods, qualifiers, throws clauses and annotation
+levels. The four IO command overrides retain level 1. All 296 observed rows and
+the unchanged IOUtils Unix assumptions agree with Java; focused existing/original
+checks pass. Continue concrete native override gaps against source and the
+original-test inventory.
 Original model-test reconciliation remains open.
 
 ## Verification baseline and test credit
@@ -311,7 +315,7 @@ Active full workload: `TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd`, with
 `-tags=tlc_fp_stress -timeout=0`, remains live in native exec session `27326`,
 confirmed by polling the handle directly. Its log is
 `.codex-gotmp/offheap-random-full-after-outage.log`; the latest saved progress is
-1,317,175,710 of 2,147,483,648 iterations, without a terminal result. The previous
+1,324,780,410 of 2,147,483,648 iterations, without a terminal result. The previous
 handoff incorrectly inferred interruption from process-list visibility. Always
 poll the original session before restarting; namespace process lists alone do
 not establish that a tool-owned process has stopped. An accidental duplicate,

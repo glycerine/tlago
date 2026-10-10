@@ -337,6 +337,10 @@ func (t *Tool) defineStandardMethodWithMinLevel(name string, arity int, minLevel
 	if signature := standardValueMethodSignatures[name]; signature != "" {
 		method = signature
 	}
+	if metadata, ok := standardAnnotatedValueMethods[name]; ok {
+		method = metadata.signature
+		minLevel = metadata.minLevel
+	}
 	value := NewMethodValue(method, minLevel, func(args []Value, control int) (Value, error) {
 		_ = control
 		if len(args) != arity {

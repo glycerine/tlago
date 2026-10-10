@@ -32964,3 +32964,55 @@ Formatting/diff checks pass. Latest saved original stress progress is
 credit; preserve its handle, default budget, workload bounds and artifacts.
 HANDOFF/TLC_ARCH updated. Continue concrete native metadata/invocation gaps;
 overall TLC parity and model reconciliation remain incomplete.
+
+
+2026-10-10: Annotated value-method metadata and IO command minimum levels.
+Previous goal turn made verified progress in e96c9e1. Revalidate clean worktree
+and poll original full stress handle 27326 (545895 live). Inspect represented
+TLAPlusOperator sources in frozen CommunityModules plus pinned TLCExt,
+_TLCTrace and TransitiveClosure. Ignored
+.codex-gotmp/annotated-method-metadata loads actual previously compiled original
+classes and original dependencies. It filters against currently registered
+native value-method keys, preserves qualified graph names, and refuses an
+unexpected zero-argument final producer. No command callback is invoked in these
+metadata observations. Disambiguate java.util.Set in the initial observer; the
+initial failed compilation and zero-row output are not evidence. Corrected
+baseline d2e938 has 74 methods and 296 complete rows, with 226 differences:
+all 74 source signatures and four IO minimum levels differ. Baseline requires a
+positive method count. Source arrays/parameters, nullable details and frame counts
+are rendered completely.
+
+Retain 73 actual annotated method signatures and minimum levels in
+standardAnnotatedValueMethods. Preserve actual renamed Java methods, modifiers,
+interface/concrete types, declared throws clauses and module-qualified graph
+keys. Move the conventional Warshall signature to the existing core signature
+table. Standard registration now retains annotation minimum levels; IOExec,
+IOEnvExec, IOExecTemplate and IOEnvExecTemplate become level 1, while IOEnv remains
+0. Callbacks, parameter counts and eligibility remain unchanged. After correction
+all 296 rows match (47562 terminal e1165e). No invented Java method, evaluator,
+persistent test or fixture, and no reflection/JVM runtime emulation.
+
+Because the four minimum levels affect real tool behavior, run the unchanged
+existing IOUtilsUnixTests assumption module independently through real Java and
+native Tools. The preserved prior Ant fixture IOUtilsUnixTests bytes match the
+canonical source (69363c). Use its original required three startup variables,
+nested classpaths and tests/tlc/build files. An ignored empty config allows this
+focused API assumption check; it is not the complete original AllTests Ant target.
+Java 63248 terminal 7a11a9, java-io-assumptions.log, reports assumption-result=0.
+Go 60053 terminal d78c16, native-io-assumptions.log, also reports 0. All original
+assumption bodies remain unchanged, including command arguments, environment,
+nested Java TLC checks and TXT serialization/deserialization. Source and native
+runs are sequential to preserve their shared literal file behavior. No full
+CommunityModules green sweep is repeated or original-method credit added.
+
+Six focused existing module/callable/special/cache checks pass: 61547 terminal
+5363db, existing-values.log, 0.013s. Root selection passes seven checks:
+86411 terminal 955721, original-models.log, 3.354s; six original models
+(Json, TLCExtModel, ValueSemanticsAssume and three UserModuleOverride methods),
+plus existing Combinatorics native eligibility. Source factorial eligibility
+remains unchanged. No race, reduced original bounds or changed assertion.
+Formatting/diff checks pass. Latest saved full stress progress is
+1,324,780,410 / 2,147,483,648 (767c3e), without terminal result or long-method
+credit. Preserve original session/budget/bounds/artifacts.
+HANDOFF/TLC_ARCH updated. Continue concrete native override gaps; full TLC parity
+and original-model reconciliation remain incomplete.

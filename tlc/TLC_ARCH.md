@@ -7239,6 +7239,34 @@ metadata and the exercised failure paths, not arbitrary method invocation
 semantics or complete community-module signature coverage. No persistent test
 or fixture is added.
 
+Represented TLAPlusOperator value methods retain their actual reflection
+signatures and annotation minimum levels. Metadata covers renamed Java methods,
+interface/concrete parameter and return types, final/synchronized modifiers and
+declared throws clauses. Qualified Graphs and UndirectedGraphs keys retain their
+distinct methods. IOExec, IOEnvExec, IOExecTemplate and IOEnvExecTemplate have
+minimum level 1, matching their source annotations; IOEnv remains level 0.
+The conventional TransitiveClosure.Warshall helper retains its full signature
+through the core metadata table. Registration eligibility and callback/arity
+behavior are unchanged.
+
+All 296 complete observations agree for 73 represented annotated methods and
+Warshall: operator images, finite-query failures, nil-array invocation and minimum
+levels. Reflection uses actual frozen compiled CommunityModules and pinned core
+classes; native lookup uses actual standard registrations. No command callback
+runs during metadata observations, and no additional source module export is
+introduced. The existing Combinatorics eligibility check still rejects factorial's
+native method for its zero-argument source definition.
+
+The unchanged IOUtilsUnixTests assumptions also pass independently on Java and Go,
+using the original fixture tree, required startup variables and nested Java
+classpath. Both API drivers report assumption result 0. This is a focused check of
+the existing source module with an empty probe config, not a claim that the whole
+CommunityModules Ant target or an additional original test method was completed.
+Java enhanced NPE descriptions are disabled for nullable-detail comparisons.
+General class reflection, arbitrary method-handle casts and unrepresented native
+methods remain outside this verification. No persistent test or fixture is added.
+
+
 
 
 
