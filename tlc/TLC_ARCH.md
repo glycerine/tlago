@@ -7626,6 +7626,25 @@ short-argument observations still agree. Null parameter objects, arbitrary
 conversion/membership callbacks, mutation during evaluation and concurrent
 mutation remain outside these binding comparisons.
 
+Lambda domain calculation delegates to a cached record before reading parameters.
+An uncached null parameter object fails at the source read. One argument returns
+the first domain directly, including a null element, with typed null/index
+failures for the domain array itself. Other counts allocate a product array of
+the captured argument width, rejecting a negative count before domain traversal.
+Traversal captures domain length and tuple flags, then reads the current formal
+group before its domain and tuple flag. Tuple groups copy one component;
+ordinary groups copy one per formal. Missing components retain null slots rather
+than shortening the product. Excess components fail at the indexed store.
+All 608 structural/result/error observations agree using actual test209 S
+formals/body and copied runtime arrays. The comparison records product width and
+exact retained domain identities without formatting or enumerating malformed
+products. It includes twelve array shapes, eight small domains, mixed/single
+and zero-argument forms, source-less/source-attached lambdas, null parameter
+objects, seven replaced argument counts and a genuine materialized source S
+record installed as the cache on a null-parameter lambda. Cache bypass retains
+that record's actual domain. Formatting/enumeration of malformed products,
+arbitrary callbacks and concurrent mutation remain separate comparisons.
+
 Lambda materialization captures formal and flag arrays after sizing, before
 creating its enumerator, and selects the single-argument branch after enumerator
 construction. Binding uses those captured arrays. Enumerated arguments are cast

@@ -874,19 +874,35 @@ func (v *FcnLambdaValue) GetDomain() (resultValue Value, err error) {
 		return v.FcnRcd.DomainValue(), nil
 	}
 	if v.Params == nil {
-		return EmptySet, nil
+		panic(NewNullPointerException())
 	}
-	if v.Params.Length() == 1 {
-		return v.Params.Domains[0], nil
+	length := v.Params.Length()
+	if length == 1 {
+		return fcnParameterDomain(v.Params.Domains, 0), nil
 	}
-	sets := make([]Value, 0, v.Params.Length())
-	for i, domain := range v.Params.Domains {
-		if v.Params.IsTuples[i] {
-			sets = append(sets, domain)
-			continue
+	if length < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(length)))
+	}
+	sets := make([]Value, length)
+	if v.Params.Domains == nil {
+		panic(NewNullPointerException())
+	}
+	dlen := len(v.Params.Domains)
+	isTuples := v.Params.IsTuples
+	idx := 0
+	for i := 0; i < dlen; i++ {
+		formal := fcnParameterFormals(v.Params.Formals, i)
+		domain := fcnParameterDomain(v.Params.Domains, i)
+		count := 1
+		if !fcnParameterIsTuple(isTuples, i) {
+			count = fcnFormalCount(formal)
 		}
-		for range v.Params.Formals[i] {
-			sets = append(sets, domain)
+		for j := 0; j < count; j++ {
+			if idx >= len(sets) {
+				panic(NewArrayIndexOutOfBoundsException(idx, len(sets)))
+			}
+			sets[idx] = domain
+			idx++
 		}
 	}
 	return NewSetOfTuplesValue(sets), nil

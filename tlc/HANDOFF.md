@@ -351,6 +351,8 @@ failures and read order; all 2,880 mixed/single tuple and ordinary observations
 agree after normalizing process-specific tool identities. Materialization now
 preserves direct tuple casts, captured arrays and typed binding/formatting
 failures; all 590 observations agree, including cache state and zero arguments.
+Lambda domains now retain the captured product width, component identities and
+source array failures; all 608 structural/error/cache observations agree.
 Numeric override casts preserve source failure messages and last-argument-first
 order; implicit null failures retain nullable details. All 36 expression and 350
 override observations agree. Numeric module selection now chooses the source

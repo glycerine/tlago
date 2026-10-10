@@ -34356,3 +34356,47 @@ architecture updated.
 Original full stress session 27326 remains live on direct poll (7f0a59).
 Latest saved progress is 1,578,506,046 / 2,147,483,648 (cdd726), without a terminal
 result or long-method credit. Preserve original handle, artifacts and bounds.
+
+
+2026-10-10: Lambda domain product width and parameter-array boundaries
+
+Previous turn completed a504884. Inspect Java FcnLambdaValue.getDomain and native
+GetDomain. Source returns a captured-width product, reading each formal group
+before its domain and tuple flag. Native appends only available dimensions,
+returns an empty set for null parameters and skips null array reads. Ignored
+.codex-gotmp/lambda-domains retains actual test209 S nodes/body and uses copied
+runtime outer arrays across the earlier twelve array shapes, eight small domains,
+mixed/single and zero-argument forms, with/without source attachment. Describe
+returned product widths and exact retained domain component identities instead
+of formatting or enumerating malformed products. Add null parameter constructors.
+Java d334a3 and native 32968 terminal 4835fe collect all 592 rows; 196 differences
+(dece1f), including shorter products, skipped nulls and raw Go bounds panics.
+
+Restore the null parameter read, typed first-domain array failures, fixed-width
+product allocation and source formal/domain/flag traversal order. Retain null
+component slots, ordinary-group length failures and indexed store boundaries.
+A negative captured count retains the source negative-array-size exception.
+The existing cached-record branch continues before any parameter read. Native
+55709 completes (8a36a5); all 592 rows agree (13a47b).
+
+Expand with seven runtime argument-count replacements (-2/-1/0/1/2/3/4) on
+copied ordinary S parameters, with/without source attachment. Add two cached
+null-parameter lambdas using a record genuinely materialized from the original
+parsed S constructor, not a fabricated evaluator or semantic graph. Java 6efc78
+and native a79e32 complete; all 608 expanded rows agree (4695ae), including
+negative allocation/indexed failures, retained trailing slots, source frames and
+cache bypass with the actual record domain. No persistent test/fixture, semantic
+graph mutation, arbitrary callback or original-method inventory credit.
+Malformed-product formatting/enumeration and concurrent mutation remain outside
+this structural getter comparison.
+
+Fourteen unchanged original model checks pass, including the three existing
+UserModuleOverride cases. Original TupleValue/FcnLambdaValue/FcnRcdValue/
+EvalControl plus focused function-context, rendering, lambda stream and numeric
+checks pass (52245 terminal 20e979; root 5.042s, tlc 2.277s;
+existing-checks.log, 942ff0). No broad suite, race, shortened original bounds or
+changed original assertions. Handoff and implementation contracts updated.
+
+Original full stress session 27326 remains live on direct poll (87c9e9).
+Latest saved progress is 1,585,963,100 / 2,147,483,648 (5eb8f3), without a terminal
+result or long-method credit. Preserve original handle, artifacts and bounds.
