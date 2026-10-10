@@ -35933,3 +35933,44 @@ Latest saved original random stress progress is 1,906,230,912 / 2,147,483,648
 (0a0e5c), without terminal result or long credit. Preserve original session 27326,
 log, seed and bounds. Handoff and architecture record recovered iteration evidence
 and the remaining cached-delegate gap.
+
+
+2026-10-10: Lazy-set cache traversal and product null boundaries
+
+Resume from d2e5aae with a clean worktree (e8a659). Original random stress
+session 27326 remains directly live (653632, ff87b3); preserve its original
+bounds, log and seed. Build ignored source/native observers using actual parsed
+test206 nodes and runtime constructors. Populate real caches through FingerPrint
+and dummy caches through DeepNormalize; reflection only reads source cache
+identity. No evaluator callbacks, fabricated semantic graphs or persistent tests
+are introduced. Fix an ignored native driver shadowing compile error (09814e)
+and typed-nil cache serializer panic (187362) before collecting comparisons.
+
+Initial 12,960 cache-operation observations have 160 differences (dd1c48), all
+in product typed-null behavior when operations continue visiting original
+operands. Adding actual null tuple/record product arrays gives 13,440 rows and
+440 differences (6d0e5b). Preserve the source null dereferences in product
+normalization, definedness, finiteness, membership and tuple rendering. Record
+IsNormalized and Normalize traverse names and read corresponding value slots;
+DeepNormalize traverses values. Keep cached normalization shortcuts and partial
+mutation on later failure. All 13,440 rows then agree (341ec7).
+
+Add 48 actual record name/value arity normalization cases, including null names,
+empty names with retained fields, and a missing second field after sorting the
+first. Source/native complete logs each contain 13,488 observation rows; all
+agree (2cf9f6). Fifteen operations cover absent/dummy/real/real-after-dummy cache
+states, retained operand mutations, source flags, eight lazy-set families and
+interval function domains. Cache identity and operand state are compared as
+well as returned results and source failure details. General malformed record
+membership-array evaluation order, arbitrary mutations and injected cache states
+remain unproven. No original-method credit is added.
+
+Existing short native product/set/subset tests pass, tlc 0.013s (3a0595).
+Focused original model/value/EXCEPT/stream/Sequences/TLCModule/FP64/string/MP/
+debugger/rendering selections pass: root 5.467s, tlc 2.507s (422621).
+Full original set/subset/randomization/debugger/initialization selection plus
+vector sharing/reference checks passes at original bounds, tlc 87.766s
+(session 61157, terminal 9e2d65). No race instrumentation, shortened workload
+or complete CommunityModules rerun. Latest saved random stress progress is
+1,928,536,908 / 2,147,483,648 (19b484), without terminal result or long credit.
+Handoff and architecture record the verified cache behavior and remaining limits.

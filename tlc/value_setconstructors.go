@@ -83,10 +83,16 @@ func (v *SetOfTuplesValue) Member(elem Value) (resultBool bool, err error) {
 		}
 		return false, v.runtimeFailure("Attempted to check if non-tuple\n" + ValuesPPR(elem) + "\nis in the set of tuples:\n" + ValuesPPR(v))
 	}
+	if tv.Elems == nil || v.Sets == nil {
+		panic(NewNullPointerException())
+	}
 	if len(tv.Elems) != len(v.Sets) {
 		return false, nil
 	}
 	for i := range v.Sets {
+		if v.Sets[i] == nil {
+			panic(NewNullPointerException())
+		}
 		ok, err := v.Sets[i].Member(tv.Elems[i])
 		if err != nil || !ok {
 			return ok, err
@@ -98,7 +104,13 @@ func (v *SetOfTuplesValue) Member(elem Value) (resultBool bool, err error) {
 func (v *SetOfTuplesValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	allFinite := true
+	if v.Sets == nil {
+		panic(NewNullPointerException())
+	}
 	for _, set := range v.Sets {
+		if set == nil {
+			panic(NewNullPointerException())
+		}
 		finite, err := set.IsFinite()
 		if err != nil {
 			return false, err
@@ -134,7 +146,13 @@ func (v *SetOfTuplesValue) IsNormalized() bool {
 	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet.IsNormalized()
 	}
+	if v.Sets == nil {
+		panic(NewNullPointerException())
+	}
 	for _, set := range v.Sets {
+		if set == nil {
+			panic(NewNullPointerException())
+		}
 		if !set.IsNormalized() {
 			return false
 		}
@@ -147,7 +165,13 @@ func (v *SetOfTuplesValue) Normalize() Value {
 	if v.TupleSet != nil && !v.TupleSetDummy {
 		v.TupleSet.Normalize()
 	} else {
+		if v.Sets == nil {
+			panic(NewNullPointerException())
+		}
 		for _, set := range v.Sets {
+			if set == nil {
+				panic(NewNullPointerException())
+			}
 			set.Normalize()
 		}
 	}
@@ -156,7 +180,13 @@ func (v *SetOfTuplesValue) Normalize() Value {
 
 func (v *SetOfTuplesValue) DeepNormalize() {
 	defer catchValueFailure(v, nil)
+	if v.Sets == nil {
+		panic(NewNullPointerException())
+	}
 	for _, set := range v.Sets {
+		if set == nil {
+			panic(NewNullPointerException())
+		}
 		set.DeepNormalize()
 	}
 	if v.TupleSet == nil {
@@ -168,7 +198,13 @@ func (v *SetOfTuplesValue) DeepNormalize() {
 
 func (v *SetOfTuplesValue) IsDefined() bool {
 	defer catchValueFailure(v, nil)
+	if v.Sets == nil {
+		panic(NewNullPointerException())
+	}
 	for _, set := range v.Sets {
+		if set == nil {
+			panic(NewNullPointerException())
+		}
 		if !set.IsDefined() {
 			return false
 		}
@@ -279,6 +315,9 @@ func (v *SetOfTuplesValue) ToString(sb *strings.Builder, offset int, swallow boo
 	}); set != nil {
 		return appendValueString(set, sb, offset, swallow)
 	}
+	if v.Sets == nil {
+		panic(NewNullPointerException())
+	}
 	if len(v.Sets) > 0 {
 		sb.WriteString("(")
 	}
@@ -381,7 +420,11 @@ func (v *SetOfRcdsValue) Member(elem Value) (resultBool bool, err error) {
 		if !v.Names[i].Equal(rcd.Names[i]) {
 			return false, nil
 		}
-		ok, err := v.Values[i].Member(rcd.Values[i])
+		field := v.fieldValue(i)
+		if field == nil {
+			panic(NewNullPointerException())
+		}
+		ok, err := field.Member(rcd.Values[i])
 		if err != nil || !ok {
 			return ok, err
 		}
@@ -392,7 +435,13 @@ func (v *SetOfRcdsValue) Member(elem Value) (resultBool bool, err error) {
 func (v *SetOfRcdsValue) IsFinite() (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
 	allFinite := true
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	for _, value := range v.Values {
+		if value == nil {
+			panic(NewNullPointerException())
+		}
 		finite, err := value.IsFinite()
 		if err != nil {
 			return false, err
@@ -428,7 +477,14 @@ func (v *SetOfRcdsValue) IsNormalized() bool {
 	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet.IsNormalized()
 	}
-	for _, value := range v.Values {
+	if v.Names == nil {
+		panic(NewNullPointerException())
+	}
+	for i := range v.Names {
+		value := v.fieldValue(i)
+		if value == nil {
+			panic(NewNullPointerException())
+		}
 		if !value.IsNormalized() {
 			return false
 		}
@@ -441,7 +497,14 @@ func (v *SetOfRcdsValue) Normalize() Value {
 	if v.RcdSet != nil && !v.RcdSetDummy {
 		v.RcdSet.Normalize()
 	} else {
-		for _, value := range v.Values {
+		if v.Names == nil {
+			panic(NewNullPointerException())
+		}
+		for i := range v.Names {
+			value := v.fieldValue(i)
+			if value == nil {
+				panic(NewNullPointerException())
+			}
 			value.Normalize()
 		}
 	}
@@ -450,7 +513,13 @@ func (v *SetOfRcdsValue) Normalize() Value {
 
 func (v *SetOfRcdsValue) DeepNormalize() {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	for _, value := range v.Values {
+		if value == nil {
+			panic(NewNullPointerException())
+		}
 		value.DeepNormalize()
 	}
 	if v.RcdSet == nil {
@@ -462,7 +531,13 @@ func (v *SetOfRcdsValue) DeepNormalize() {
 
 func (v *SetOfRcdsValue) IsDefined() bool {
 	defer catchValueFailure(v, nil)
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
 	for _, value := range v.Values {
+		if value == nil {
+			panic(NewNullPointerException())
+		}
 		if !value.IsDefined() {
 			return false
 		}
@@ -1340,3 +1415,14 @@ func (e *subsetEnumeration) NextElement() Value {
 }
 
 func (e *subsetEnumeration) Err() error { return e.err }
+
+// Record-set normalization walks names and reads the corresponding value slot.
+func (v *SetOfRcdsValue) fieldValue(index int) Value {
+	if v.Values == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(v.Values) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(v.Values)))
+	}
+	return v.Values[index]
+}

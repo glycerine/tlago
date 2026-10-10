@@ -8366,7 +8366,7 @@ Err on a returned enumerator. Full original set/subset selections and focused
 regressions pass. Prior 5,328 sequence conversion/allocation observations retain
 only their four established identity differences. Original-method credit stays
 unchanged. These constructor protocols stop at the first failure; resumed
-iteration is covered below. Cached delegate states remain unproven. The last
+iteration is covered below. Cache operations are covered below. The last
 complete original CommunityModules all/shiviz run predates this change.
 
 Lazy-set iteration preserves the source state when a caller catches a failure
@@ -8393,8 +8393,29 @@ differences. Full original set/subset and focused regressions pass. Drivers use
 actual parsed test206 nodes, real runtime constructors and retained arrays; no
 persistent test/fixture, fabricated semantic graph or evaluator callback is
 added. These traces do not establish arbitrary mutation, user-provided iterator
-error protocols or cached delegate parity. Original-method credit is unchanged;
-the complete CommunityModules run has not been repeated for this change.
+error protocols. Cache operations are covered below. Original-method credit is
+unchanged; the complete CommunityModules run has not been repeated for this change.
+
+Lazy-set cache operations distinguish cached enumeration from operations that
+still visit original operands. Tuple and record products raise typed null failures
+at those dereferences even when a real cache exists. Their normalization methods
+use a real cached set when present, but deep normalization, definedness and
+finiteness retain the original operand traversal. Record `IsNormalized` and `Normalize`
+walk the name count and read corresponding value slots; `DeepNormalize` walks the
+value count. Thus empty names can bypass a null values array in normalization,
+while deep normalization fails. Earlier field normalization remains visible when
+a later missing value slot raises the source bounds exception.
+
+All 13,488 actual-runtime observations agree. Eight lazy-set families plus interval
+function domains cover absent, dummy, real and real-after-dummy caches, retained
+operand-array changes, owner/operand source flags and fifteen operations. Null
+product arrays and 48 record name/value arity normalization cases cover the
+separate loop boundaries. Caches are populated by actual `FingerPrint` or
+`DeepNormalize` calls; reflection only reads source cache identity. Drivers use real
+parsed test206 nodes and runtime constructors without evaluator callbacks or
+fabricated semantic graphs. No persistent fixture/test or original credit is
+added. Arbitrary mutations, injected cache states and general malformed record
+membership-array ordering remain unproven.
 
 Integer-parameter standard overrides reject a different concrete value with the
 source `Cannot cast ... to tlc2.value.impl.IntValue` diagnostic before entering
