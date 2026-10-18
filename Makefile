@@ -1,25 +1,18 @@
-GO ?= go
-PYTHON ?= python3
-RUN ?= $(shell command -v taskset >/dev/null 2>&1 && printf 'taskset -c 0-7')
-export GOMAXPROCS := 8
-export GO
-EXE := $(shell $(RUN) $(GO) env GOEXE)
-
 .PHONY: all build test vet dist help long
+
 all: build
 
 build:
-	mkdir -p bin
-	$(RUN) $(GO) build -p 8 -trimpath -o bin/tlago$(EXE) ./cmd/tlago
+	go install ./cmd/tlago
 
 test:
-	$(RUN) $(PYTHON) scripts/test-fast.py
+	python3 scripts/test-fast.py
 
 vet:
-	$(RUN) $(GO) vet -stdmethods=false ./...
+	go vet -stdmethods=false ./...
 
 dist:
-	$(RUN) $(PYTHON) scripts/package.py
+	python3 scripts/package.py
 
 help:
 	@echo 'make build  Build bin/tlago'

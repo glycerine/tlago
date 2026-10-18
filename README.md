@@ -2,7 +2,7 @@
 
 TLA+ parsing, semantic checking, and the TLC model checker, ported to Go.
 
-This is an **alpha** for testing and feedback. Core model checking, simulation,
+Core model checking, simulation,
 liveness checking, traces, checkpoint/recovery, and distributed roles are
 implemented. Full Java TLC parity is still being reconciled. See [ALPHA.md](ALPHA.md)
 for the current scope, known limitations, and feedback checklist.
