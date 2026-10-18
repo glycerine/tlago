@@ -1,5 +1,3 @@
-// Java source: util/FileUtilTest.java.
-// Copyright (c) 2023, Oracle and/or its affiliates.
 package tlc
 
 import (

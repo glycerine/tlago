@@ -1,4 +1,3 @@
-// Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
 // Generate a theorem's statement and complete its named definition before the

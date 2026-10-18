@@ -1,6 +1,3 @@
-// These helpers retain unpaired Java UTF-16 surrogates as WTF-8 in Go strings.
-// Formatting and escaping preserve code-unit identity; UTF-8 encoding applies
-// replacement at an output boundary.
 package tlc
 
 import (

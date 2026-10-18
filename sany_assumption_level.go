@@ -1,4 +1,3 @@
-// Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
 import (

@@ -1,5 +1,3 @@
-// TXT argument and exception boundaries from CommunityModules IOUtils.
-// The upstream MIT license is retained in test_vectors/CommunityModules/LICENSE.
 package tlc
 
 // The TXT overrides use Java casts, not the value conversion operations.

@@ -1,6 +1,3 @@
-// Core Json.textSerialize's Files.newBufferedWriter path, following OpenJDK
-// BufferedWriter/StreamEncoder. GPLv2 with Classpath Exception notices are in
-// tlc/licenses/; the TLC module's MIT notice is retained in test_vectors/.
 package tlc
 
 import (

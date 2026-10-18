@@ -1,8 +1,3 @@
-// OpenJDK-derived locale data; see licenses/openjdk-LICENSE and
-// licenses/openjdk-ADDITIONAL_LICENSE_INFO for the retained notices.
-// DecimalFormatSymbols and explicit ###,###.### affixes from OpenJDK 21.0.12.1.
-// Generated from MPDecimalSymbols.java / MPNumberingSymbols.java source audits;
-// all available locales and CLDR numbering-system keywords are retained.
 package tlc
 
 var javaMPDecimalSymbolSets = []map[string]mpDecimalSymbols{

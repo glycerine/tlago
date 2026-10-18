@@ -1,10 +1,3 @@
-// Copyright (c) 2003 Compaq Corporation.  All rights reserved.
-// Portions Copyright (c) 2003 Microsoft Corporation.  All rights reserved.
-/*  Notes: If imporved efficiency is needed, one place to look is at
-    int to byte arrays and BigInts to byte arrays and back,
-    because I use the built in Java routines, and it may be possible
-    to optimize them.
-*/
 package tlc
 
 import (

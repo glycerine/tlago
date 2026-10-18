@@ -1,5 +1,3 @@
-// Copyright (c) 2003 Compaq Corporation. All rights reserved.
-// Derived from the util.Set implementation in the pinned TLC source.
 package tlc
 
 // permutationSet ports the util.Set used by MVPerms.permutationSubgroup.

@@ -1,5 +1,3 @@
-// Copyright (c) 2016 Microsoft Research. All rights reserved.
-// Copyright (c) 2024, Oracle and/or its affiliates.
 package tlc
 
 import (

@@ -1,6 +1,3 @@
-// Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
-// Derived from OpenJDK 21 java.util.HashMap; GPL v2 with Classpath exception.
-// See licenses/openjdk-LICENSE and licenses/openjdk-ADDITIONAL_LICENSE_INFO.
 package tlc
 
 import "strconv"

@@ -1,6 +1,3 @@
-// Derived from OpenJDK 21 java.util.zip.GZIPInputStream framing behavior.
-// Copyright Oracle and/or its affiliates. GPL v2 with Classpath exception.
-// See licenses/openjdk-LICENSE and licenses/openjdk-ADDITIONAL_LICENSE_INFO.
 package tlc
 
 import (

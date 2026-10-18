@@ -1,4 +1,3 @@
-// Copyright (c) 2025, Oracle and/or its affiliates.
 package tlc
 
 //go:generate go run generate_mp.go ../../tlaplus/tlatools/org.lamport.tlatools/src/tlc2/output/MP.java ../../tlaplus/tlatools/org.lamport.tlatools/src/tlc2/output/EC.java output_mp_generated.go

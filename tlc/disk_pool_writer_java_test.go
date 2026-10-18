@@ -1,7 +1,3 @@
-// Complete translation of tlc2.tool.queue.DiskPoolWriterTest. Java observes
-// Thread.State and joins its writer thread. Go observes the actual writer
-// goroutine's runtime state and waits for its termination with the same timeout;
-// notification flags or finished flags cannot substitute for those assertions.
 package tlc
 
 import (

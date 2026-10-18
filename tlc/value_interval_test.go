@@ -1,4 +1,3 @@
-// Complete mechanical translation of tlc2.value.impl.IntervalValueTest.
 package tlc
 
 import (

@@ -1,6 +1,3 @@
-// Core text I/O charset behavior, following OpenJDK String's no-replacement
-// file helpers and sun.nio.cs UTF-8/Unicode codecs. OpenJDK's GPLv2 with
-// Classpath Exception notices are retained in tlc/licenses/.
 package tlc
 
 import (

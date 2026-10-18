@@ -1,9 +1,3 @@
-/*******************************************************************************
- * Copyright (c) 2016 Microsoft Research. All rights reserved.
- * Copyright (c) 2026 NVIDIA Corp. All rights reserved.
- *
- * The MIT License (MIT)
- *******************************************************************************/
 package tlago
 
 import (

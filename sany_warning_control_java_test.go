@@ -1,5 +1,3 @@
-// Copyright (c) 2026 NVIDIA Corp. All rights reserved.
-// SPDX-License-Identifier: MIT
 package tlago
 
 import (

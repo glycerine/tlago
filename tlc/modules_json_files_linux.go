@@ -1,7 +1,5 @@
 //go:build linux
 
-// java.io.File/UnixFileSystem and FileOutputStream's Linux boundaries.
-// OpenJDK's GPLv2 with Classpath Exception notices are in tlc/licenses/.
 package tlc
 
 import (

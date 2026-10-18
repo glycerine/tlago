@@ -1,5 +1,3 @@
-// Java source: util/SimpleFilenameToStreamTest.java.
-// Copyright (c) 2023, 2025, Oracle and/or its affiliates.
 package tlago
 
 import (

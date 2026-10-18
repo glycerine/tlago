@@ -1,6 +1,3 @@
-// String-argument formatting used by RecordValue.PrintTLCState, CSV.write and IOUtils templates.
-// Ports the applicable OpenJDK java.util.Formatter control flow; OpenJDK's
-// GPLv2 with Classpath Exception notices are retained in tlc/licenses/.
 package tlc
 
 import (

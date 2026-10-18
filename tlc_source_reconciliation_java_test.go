@@ -1,6 +1,5 @@
 //go:build tlc_reconcile
 
-// Copyright (c) 2017 Microsoft Research. All rights reserved.
 package tlago
 
 import (

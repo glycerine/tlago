@@ -1,4 +1,3 @@
-// Copyright (c) 2024, Oracle and/or its affiliates.
 package tlago
 
 import (

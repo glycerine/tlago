@@ -1,6 +1,5 @@
 //go:build tlc_fp_stress
 
-// Copyright (c) 2012 Markus Alexander Kuppe. All rights reserved.
 package tlc
 
 import (

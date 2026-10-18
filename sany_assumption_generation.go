@@ -1,4 +1,3 @@
-// Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
 // processAssumption generates the expression before constructing a named

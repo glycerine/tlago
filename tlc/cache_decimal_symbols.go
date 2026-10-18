@@ -1,6 +1,3 @@
-// OpenJDK-derived locale data; see licenses/openjdk-LICENSE and
-// licenses/openjdk-ADDITIONAL_LICENSE_INFO for retained notices.
-// DecimalFormatSymbols decimal and special values from OpenJDK 21.0.12.1.
 package tlc
 
 var cacheDecimalSymbolSets = []map[string]cacheDecimalSymbols{

@@ -1,9 +1,3 @@
-// Java sources:
-//
-//	test-benchmark/tlc2/tool/ModuleOverwritesBenchmark.java
-//	test-benchmark/ModuleOverwrites.java
-//
-// (Microsoft Research, MIT license).
 package tlago
 
 import (

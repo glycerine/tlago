@@ -1,5 +1,3 @@
-// java.nio.file exceptions used by core TLC file I/O. OpenJDK's GPLv2 with
-// Classpath Exception notices are retained in tlc/licenses/.
 package tlc
 
 type FileSystemException struct {

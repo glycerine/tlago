@@ -1,5 +1,3 @@
-// Java source: test-benchmark/tlc2/tool/fp/OffHeapIndexerBenchmark.java
-// (Microsoft Corporation, MIT license).
 package tlc
 
 import (

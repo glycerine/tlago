@@ -1,4 +1,3 @@
-// Java source: test-benchmark/tlc2/tool/simulation/SimulatorBenchmark.java
 package tlago
 
 import (

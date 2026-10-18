@@ -1,6 +1,3 @@
-// Copyright 2009 The Go Authors.
-// RFC 1951 decoding and length/distance formulas also consult compress/flate.
-// See licenses/go-LICENSE. Input/output suspension follows TLC's zlib boundary.
 package tlc
 
 import "io"

@@ -1,7 +1,3 @@
-// Copyright (c) 2003 Compaq Corporation. All rights reserved.
-// Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
-// Copyright (c) 2026 NVIDIA Corporation. All rights reserved.
-
 package tlago
 
 import (

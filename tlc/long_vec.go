@@ -1,8 +1,3 @@
-// Copyright (c) 2003 Compaq Corporation.  All rights reserved.
-// Portions Copyright (c) 2003 Microsoft Corporation.  All rights reserved.
-// Last modified on Mon 30 Apr 2007 at 13:26:33 PST by lamport
-//
-//	modified on Mon Dec  4 16:20:19 PST 2000 by yuanyu
 package tlc
 
 import (

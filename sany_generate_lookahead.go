@@ -1,6 +1,5 @@
 //go:build ignore
 
-// Regenerate with: go run sany_generate_lookahead.go
 package main
 
 import (

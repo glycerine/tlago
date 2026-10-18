@@ -1,5 +1,3 @@
-// Copyright (c) 2024 Linux Foundation. All rights reserved.
-// SPDX-License-Identifier: MIT
 package tlago
 
 import (

@@ -1,5 +1,3 @@
-// OpenJDK-derived numeric formatting rule; see licenses/openjdk-LICENSE and
-// licenses/openjdk-ADDITIONAL_LICENSE_INFO for retained notices.
 package tlc
 
 import (

@@ -1,4 +1,3 @@
-// Copyright (c) 2016 Markus Alexander Kuppe. All rights reserved.
 package tlc
 
 import "testing"

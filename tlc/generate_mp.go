@@ -1,6 +1,5 @@
 //go:build ignore
 
-// Copyright (c) 2025, Oracle and/or its affiliates.
 package main
 
 import (

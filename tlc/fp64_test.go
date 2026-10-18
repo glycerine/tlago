@@ -1,4 +1,3 @@
-// Java source: tlc2/util/FP64Test.java (Microsoft Research, MIT license).
 package tlc
 
 import "testing"

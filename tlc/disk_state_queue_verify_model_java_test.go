@@ -1,7 +1,5 @@
 //go:build tlc_verify
 
-// Copyright (c) 2026 NVIDIA Corp. All rights reserved.
-// Copyright (c) 2003 Compaq Corporation. All rights reserved.
 package tlc
 
 import (

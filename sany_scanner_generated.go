@@ -1,6 +1,3 @@
-// Copyright (c) 2003 Compaq Corporation. All rights reserved.
-// Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
-// Mechanical port of the generated TLAplusParserTokenManager DFA/NFA methods.
 package tlago
 
 func sanyScannerPostIncrement(v *int32) int32            { old := *v; *v++; return old }

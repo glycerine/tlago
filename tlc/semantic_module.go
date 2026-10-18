@@ -1,7 +1,3 @@
-// Copyright (c) 2003 Compaq Corporation. All rights reserved.
-// Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
-// Port of SANY ExternalModuleTable and the module/context access used by TLC.
-
 package tlc
 
 import (

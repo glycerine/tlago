@@ -1,5 +1,3 @@
-// OpenJDK formatter exception families reached by TLC's string arguments.
-// GPLv2 with Classpath Exception; see tlc/licenses/openjdk-*.
 package tlc
 
 import "strconv"

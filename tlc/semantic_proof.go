@@ -1,4 +1,3 @@
-// Copyright (c) 2007 Microsoft Corporation. All rights reserved.
 package tlc
 
 // These views retain SANY's statement and proof graph. SANY owns their level

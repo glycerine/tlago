@@ -1,5 +1,3 @@
-// Java test sources: tlc2/tool/distributed/fp/DynamicFPSetManagerTest.java,
-// FPSetManagerTest.java, and FaultyFPSet.java (Microsoft, MIT license).
 package tlc
 
 import (

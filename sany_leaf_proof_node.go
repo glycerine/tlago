@@ -1,4 +1,3 @@
-// Copyright (c) 2007 Microsoft Corporation. All rights reserved.
 package tlago
 
 type sanySemLeafProofNode struct {

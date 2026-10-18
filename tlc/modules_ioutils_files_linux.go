@@ -1,7 +1,5 @@
 //go:build linux
 
-// Linux default provider UnixPath and UnixChannelFactory boundaries.
-// OpenJDK's GPLv2 with Classpath Exception notices are in tlc/licenses/.
 package tlc
 
 import (

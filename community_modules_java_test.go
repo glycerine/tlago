@@ -1,7 +1,3 @@
-// Copyright (c) 2019 TLA+. Licensed under the MIT license in
-// test_vectors/CommunityModules/LICENSE.
-// Port of the complete CommunityModules build.xml "test" target: the original
-// AllTests/AllTestsUnix assumptions and the separate GH037 ShiViz invocation.
 package tlago
 
 import (

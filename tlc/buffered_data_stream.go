@@ -1,4 +1,3 @@
-// Copyright (c) 2003 Compaq Corporation. All rights reserved.
 package tlc
 
 import (

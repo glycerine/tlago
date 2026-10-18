@@ -1,4 +1,3 @@
-// Copyright (c) Jan 9, 2012 Microsoft Corporation. All rights reserved.
 package tlc
 
 import (

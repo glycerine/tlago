@@ -1,5 +1,3 @@
-// Java source: test-benchmark/tlc2/tool/queue/DiskQueueBenachmark.java
-// (Microsoft Research, MIT license).
 package tlc
 
 import (
