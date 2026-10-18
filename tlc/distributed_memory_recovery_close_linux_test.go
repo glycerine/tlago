@@ -51,6 +51,12 @@ func TestDistributedMemoryRecoveryCloseFailure(t *testing.T) {
 					if err := os.WriteFile(target, contents, 0600); err != nil {
 						t.Fatal(err)
 					}
+					// strace -yy reports the resolved descriptor path, including
+					// symlinks in the temporary directory's ancestors.
+					canonicalTarget, err := filepath.EvalSymlinks(target)
+					if err != nil {
+						t.Fatal(err)
+					}
 					logfile := filepath.Join(directory, "syscalls.log")
 					args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", target, "-e", "trace=close", "-e", "signal=none"}
 					if fault {
@@ -76,7 +82,7 @@ func TestDistributedMemoryRecoveryCloseFailure(t *testing.T) {
 							closes = append(closes, line)
 						}
 					}
-					if len(closes) != 1 || !strings.Contains(closes[0], "<"+target+">") || strings.Contains(closes[0], "(INJECTED)") != fault {
+					if len(closes) != 1 || !strings.Contains(closes[0], "<"+canonicalTarget+">") || strings.Contains(closes[0], "(INJECTED)") != fault {
 						t.Fatalf("fault missed exact recovery-file close\n%s", log)
 					}
 					if fault && !strings.Contains(closes[0], "= -1 EIO") || !fault && !strings.HasSuffix(closes[0], "= 0") {
