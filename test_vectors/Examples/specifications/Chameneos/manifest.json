@@ -1,0 +1,31 @@
+{
+  "sources": [
+    "https://github.com/mryndzionek/tlaplus_specs#chameneostla"
+  ],
+  "authors": [
+    "Mariusz Ryndzionek"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/Chameneos/APChameneos.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/Chameneos/Chameneos.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Chameneos/Chameneos.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 34534,
+          "totalStates": 104697,
+          "stateDepth": 13
+        }
+      ]
+    }
+  ]
+}

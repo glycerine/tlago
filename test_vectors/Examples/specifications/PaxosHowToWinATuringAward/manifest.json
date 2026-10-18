@@ -1,0 +1,91 @@
+{
+  "sources": [
+    "https://www.youtube.com/watch?v=tw3gsBms-f8"
+  ],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/PaxosHowToWinATuringAward/Consensus.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/PaxosHowToWinATuringAward/MCConsensus.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/PaxosHowToWinATuringAward/MCConsensus.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4,
+          "totalStates": 4,
+          "stateDepth": 2
+        }
+      ]
+    },
+    {
+      "path": "specifications/PaxosHowToWinATuringAward/MCPaxos.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/PaxosHowToWinATuringAward/MCPaxosSmall.cfg",
+          "runtime": "00:01:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/PaxosHowToWinATuringAward/MCPaxosTiny.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 3921,
+          "totalStates": 23563,
+          "stateDepth": 17
+        }
+      ]
+    },
+    {
+      "path": "specifications/PaxosHowToWinATuringAward/MCVoting.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/PaxosHowToWinATuringAward/MCVoting.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 6752,
+          "totalStates": 41017,
+          "stateDepth": 16
+        }
+      ]
+    },
+    {
+      "path": "specifications/PaxosHowToWinATuringAward/Paxos.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/PaxosHowToWinATuringAward/Voting.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/PaxosHowToWinATuringAward/Voting_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

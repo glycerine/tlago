@@ -1,0 +1,21 @@
+{
+  "sources": [],
+  "authors": [
+    "Markus Kuppe"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/Huang/Huang.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Huang/Huang.cfg",
+          "runtime": "00:00:40",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    }
+  ]
+}

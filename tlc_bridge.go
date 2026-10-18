@@ -1,0 +1,2365 @@
+package tlago
+
+import (
+	"fmt"
+	"path/filepath"
+	"slices"
+	"sort"
+	"strings"
+
+	"github.com/glycerine/tlago/tlc"
+)
+
+type tlcBridge struct {
+	tool                   *tlc.Tool
+	processor              *tlc.SpecProcessor
+	spec                   *Spec
+	cfg                    *tlc.ModelConfig
+	runtime                tlc.RuntimeParameters
+	defs                   map[string]*Definition
+	defns                  *tlc.Defns
+	diags                  Diagnostics
+	symbols                map[string]*tlc.SymbolNode
+	rootModuleName         string
+	moduleDefinitionNames  map[string]map[string]bool
+	conversionContexts     map[*Module]map[string]tlcBridgeContextEntry
+	convertingModule       string
+	convertBoundNames      map[string]int
+	definitionModules      map[*Definition]string
+	sourceSymbols          map[*Definition]*tlc.SymbolNode
+	sourceDefinitions      map[*Definition]*tlc.OpDefNode
+	canonicalDefinitions   map[*sanySemOpDefNode]*tlc.OpDefNode
+	canonicalLets          map[*sanySemLetInNode]*tlc.LetInNode
+	canonicalFormals       map[*sanyFormalParamNode]*tlc.SymbolNode
+	canonicalTheorems      map[*sanySemTheoremNode]*tlc.TheoremNode
+	canonicalGraphs        map[sanySemanticGraphNode]tlc.SemanticNode
+	canonicalContexts      map[*sanyContext]*tlc.SemanticContext
+	canonicalSubsts        map[*sanySemSubst]tlc.Subst
+	canonicalSubstArrays   map[tlcCanonicalSubstArray][]tlc.Subst
+	canonicalLabelTables   map[*sanyLabelTable]*tlc.SemanticLabelTable
+	canonicalSymbolTables  map[*sanySymbolTable]*SanySymbolTable
+	instanceDefinitions    map[string]*tlcBridgeInstance
+	instanceBindings       map[tlcBridgeInstanceKey]*tlcBridgeInstance
+	nativeDefinitions      map[*tlc.UniqueString]any
+	builtinDefinitions     map[string]*tlc.OpDefNode
+	moduleNodes            map[*Module]*tlc.ModuleNode
+	localModuleDefinitions map[string]*tlc.OpDefNode
+	theoremDefinitions     map[string]*tlc.ThmOrAssumpDefNode
+	indexedModules         map[*Module]bool
+	assumptionModules      map[*Module]bool
+	theoremModules         map[*Module]bool
+	lazyModuleAccessors    bool
+}
+
+type tlcBridgeInstance struct {
+	owner   *Module
+	inst    Instance
+	substs  []tlc.Subst
+	params  []*tlc.SymbolNode
+	defs    map[*Definition]*tlc.OpDefNode
+	symbols map[*Definition]*tlc.SymbolNode
+}
+
+type tlcBridgeInstanceTarget struct {
+	name  string
+	arity int
+	sym   *tlc.SymbolNode
+}
+
+var bridgeStandardModuleMembers = map[string][]string{
+	"Naturals": {
+		"Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..",
+	},
+	"Integers": {
+		"Int", "Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..", "-.",
+	},
+	"Sequences": {
+		"Seq", "Len", "Head", "Tail", "Append", "Concat", "\\o",
+		"SubSeq", "SelectSeq",
+	},
+	"FiniteSets": {
+		"IsFiniteSet", "Cardinality",
+	},
+	"Strings": {
+		"STRING",
+	},
+	"AnySet": {
+		"ANY", "Any",
+	},
+	"Bags": {
+		"EmptyBag", "IsABag", "BagCardinality", "BagIn", "CopiesIn", "BagCup", "\\oplus",
+		"BagDiff", "\\ominus", "BagUnion", "SqSubseteq", "\\sqsubseteq", "BagOfAll",
+		"BagToSet", "SetToBag",
+	},
+	"TLC": {
+		"Print", "PrintT", "Assert", "JavaTime",
+		"TLCGet", "TLCSet", "MakeFcn", "CombineFcn", "Permutations",
+		"SortSeq", "RandomElement", "Any", "ToString", "TLCEval",
+	},
+	"Randomization": {
+		"RandomSubset", "RandomSetOfSubsets",
+	},
+	"Json": {
+		"ToJson", "ToJsonArray", "ToJsonObject", "JsonSerialize", "JsonDeserialize",
+		"ndJsonSerialize", "ndJsonDeserialize",
+	},
+	"_JsonTrace": {
+		"_JsonTrace",
+	},
+	"_TLCTrace": {
+		"_TLCTrace",
+	},
+	"IOUtils": {
+		"IOSerialize", "IODeserialize", "Serialize", "Deserialize", "IOExec",
+		"IOEnvExec", "IOExecTemplate", "IOEnvExecTemplate", "IOEnv", "atoi",
+	},
+	"Combinatorics": {
+		"factorial", "choose",
+	},
+	"Bitwise": {
+		"&", "|", "^^", "Not", "shiftR",
+	},
+	"Functions": {
+		"IsInjective", "AntiFunction", "FoldFunction", "FoldFunctionOnSet",
+	},
+	"FiniteSetsExt": {
+		"Quantify", "kSubset", "FoldSet",
+	},
+	"BagsExt": {
+		"FoldBag",
+	},
+	"CSV": {
+		"CSVWriteRecord", "CSVWrite", "CSVRead", "CSVRecords",
+	},
+	"GraphViz": {
+		"DotDiGraph",
+	},
+	"Graphs": {
+		"SimplePath", "AreConnectedIn", "IsStronglyConnected",
+	},
+	"UndirectedGraphs": {
+		"SimplePath", "AreConnectedIn", "ConnectedComponents",
+	},
+	"VectorClocks": {
+		"CausalOrder",
+	},
+	"SVG": {
+		"SVGElemToString", "NodeOfRingNetwork", "NodesOfDirectedMultiGraph", "PointOnLine",
+	},
+	"SequencesExt": {
+		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix", "Cons",
+		"FoldSeq", "FoldLeft", "FoldRight", "FoldLeftDomain",
+		"FoldRightDomain", "ReplaceFirstSubSeq", "ReplaceAllSubSeqs",
+		"IsPrefix", "SelectInSeq", "SelectInSubSeq", "SelectLastInSeq",
+		"SelectLastInSubSeq", "RemoveFirst", "RemoveFirstMatch",
+		"Suffixes", "AllSubSeqs",
+	},
+	"Statistics": {
+		"ChiSquare",
+	},
+	"TLCExt": {
+		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
+		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
+		"TLCEvalDefinition", "TLCGetOrDefault", "TLCGetAndSet",
+	},
+	"_Possible": {
+		"_Track", "_Counts", "_CheckName", "_PrintCounts",
+	},
+	"TransitiveClosure": {
+		"Warshall",
+	},
+}
+
+var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
+	"Naturals": setOf(
+		"Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..",
+	),
+	"Integers": setOf(
+		"Int", "-.",
+	),
+	"Sequences": setOf(
+		"Seq", "Len", "Head", "Tail", "Append", "Concat", "\\o", "SubSeq", "SelectSeq",
+	),
+	"FiniteSets": setOf(
+		"IsFiniteSet", "Cardinality",
+	),
+	"Bags": setOf(
+		"EmptyBag", "IsABag", "BagCardinality", "BagIn", "CopiesIn", "BagCup", "\\oplus",
+		"BagDiff", "\\ominus", "BagUnion", "SqSubseteq", "\\sqsubseteq", "BagOfAll",
+		"BagToSet", "SetToBag",
+	),
+	"TLC": setOf(
+		"Print", "PrintT", "Assert", "JavaTime",
+		"TLCGet", "TLCSet", "MakeFcn", "CombineFcn", ":>", "@@", "Permutations",
+		"SortSeq", "RandomElement", "Any", "ToString", "TLCEval",
+	),
+	"Randomization": setOf(
+		"RandomSubset", "RandomSetOfSubsets",
+	),
+	"Json": setOf(
+		"ToJson", "ToJsonArray", "ToJsonObject", "JsonSerialize", "JsonDeserialize",
+		"ndJsonSerialize", "ndJsonDeserialize",
+	),
+	"_JsonTrace": setOf(
+		"_TLCState",
+	),
+	"_TLCTrace": setOf(
+		"_TLCTraceDeserialize", "_TLCTraceSerialize", "_TLCState",
+	),
+	"IOUtils": setOf(
+		"IOSerialize", "IODeserialize", "Serialize", "Deserialize", "IOExec",
+		"IOEnvExec", "IOExecTemplate", "IOEnvExecTemplate", "IOEnv", "atoi",
+	),
+	"Combinatorics": setOf(
+		"factorial", "choose",
+	),
+	"Bitwise": setOf(
+		"And", "Or", "Xor", "Not", "shiftR",
+	),
+	"DyadicRationals": setOf(
+		"Reduce",
+	),
+	"Functions": setOf(
+		"IsInjective", "AntiFunction", "FoldFunction", "FoldFunctionOnSet",
+	),
+	"FiniteSetsExt": setOf(
+		"Quantify", "kSubset", "FoldSet",
+	),
+	"BagsExt": setOf(
+		"FoldBag",
+	),
+	"CSV": setOf(
+		"CSVWriteRecord", "CSVWrite", "CSVRead", "CSVRecords",
+	),
+	"GraphViz": setOf(
+		"DotDiGraph",
+	),
+	"Graphs": setOf(
+		"SimplePath", "AreConnectedIn", "IsStronglyConnected",
+	),
+	"UndirectedGraphs": setOf(
+		"SimplePath", "AreConnectedIn", "ConnectedComponents",
+	),
+	"VectorClocks": setOf(
+		"CausalOrder",
+	),
+	"SVG": setOf(
+		"SVGElemToString", "NodeOfRingNetwork", "NodesOfDirectedMultiGraph", "PointOnLine",
+	),
+	"SequencesExt": setOf(
+		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix",
+		"FoldSeq", "FoldLeft", "FoldRight", "FoldLeftDomain",
+		"FoldRightDomain", "ReplaceFirstSubSeq", "ReplaceAllSubSeqs",
+		"IsPrefix", "SelectInSeq", "SelectInSubSeq", "SelectLastInSeq",
+		"SelectLastInSubSeq", "RemoveFirst", "RemoveFirstMatch",
+		"Suffixes", "AllSubSeqs",
+	),
+	"Statistics": setOf(
+		"ChiSquare",
+	),
+	"TLCExt": setOf(
+		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
+		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
+		"TLCEvalDefinition", "TLCGetOrDefault",
+	),
+	"_Possible": setOf(
+		"_Counts",
+	),
+}
+
+func setOf(values ...string) map[string]bool {
+	out := make(map[string]bool, len(values))
+	for _, value := range values {
+		out[value] = true
+	}
+	return out
+}
+
+func moduleDefinitionNameIndex(spec *Spec) map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	if spec == nil {
+		return out
+	}
+	moduleNames := make([]string, 0, len(spec.Modules))
+	for name := range spec.Modules {
+		moduleNames = append(moduleNames, name)
+	}
+	sort.Strings(moduleNames)
+	for _, moduleName := range moduleNames {
+		mod := spec.Modules[moduleName]
+		if mod == nil {
+			continue
+		}
+		names := map[string]bool{}
+		for i := range mod.Definitions {
+			if mod.Definitions[i].Name != "" {
+				names[mod.Definitions[i].Name] = true
+			}
+		}
+		out[moduleName] = names
+	}
+	return out
+}
+
+// BuildTLCTool converts the production Go SANY semantic tree into the TLC
+// runtime tree used by the mechanical TLC port.
+func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics) {
+	if spec == nil || spec.Root == nil {
+		return nil, Diagnostics{errorAt(Position{}, "E7000", "missing root module for TLC tool")}
+	}
+	if cfg == nil {
+		cfg = tlc.NewModelConfig(spec.Root.Name)
+	}
+	internTLCSourceSyntaxNames(spec)
+	tlc.ResetUniqueStringLocations()
+	defns := tlc.NewDefns()
+	bridge := &tlcBridge{
+		tool:                  tlc.NewToolWithModelConfig(cfg),
+		processor:             tlc.NewSpecProcessorWithSpecObj(spec.Root.Name, defns, cfg, spec),
+		spec:                  spec,
+		cfg:                   cfg,
+		runtime:               runtime,
+		defs:                  tlcBridgeDefinitionsByName(spec),
+		defns:                 defns,
+		symbols:               map[string]*tlc.SymbolNode{},
+		rootModuleName:        spec.Root.Name,
+		moduleDefinitionNames: moduleDefinitionNameIndex(spec),
+		convertBoundNames:     map[string]int{},
+	}
+	bridge.tool.SetSpecIdentity(spec.Root.Name, spec.Root.SourcePath, spec.Root.Name, "")
+	bridge.tool.DistributedFiles = tlc.NewDistributedServerFiles(filepath.Dir(spec.Root.SourcePath), spec.LibraryPaths, embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
+	bridge.tool.ModuleFiles = append([]string(nil), spec.ModuleFiles...)
+	bridge.tool.ParseDebuggerExpressionFunc = bridge.parseDebuggerExpression
+	bridge.installVariables()
+	bridge.installConstantDeclarations()
+	bridge.installDefinitions()
+	bridge.installModuleTable()
+	bridge.bindCanonicalGraphModules()
+	bridge.installAssumptions()
+	for _, module := range bridge.processor.ModuleTbl.GetModuleNodes() {
+		bridge.processor.ProcessConstantsDynamicExtendee(module)
+	}
+	bridge.installRootDefinitions()
+	bridge.installModuleNativeOverrides()
+	bridge.installRuntimeConstants()
+	bridge.installConfigConstants()
+	bridge.installInstanceAliases()
+	bridge.installModelTargets()
+	bridge.tool.AssignActionIDs()
+	return bridge.tool, bridge.diags
+}
+
+// Java parses the root syntax before its dependencies and semantic conversion.
+// Intern token images in that source order before converting definitions: record
+// normalization compares UniqueString tokens, not alphabetical field names.
+func internTLCSourceSyntaxNames(spec *Spec) {
+	modules := []*Module{spec.Root}
+	seen := map[*Module]bool{}
+	for _, filename := range spec.ModuleFiles {
+		name := strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
+		if mod := spec.Modules[name]; mod != nil {
+			modules = append(modules, mod)
+		}
+	}
+	for _, mod := range modules {
+		if mod == nil || seen[mod] {
+			continue
+		}
+		seen[mod] = true
+		tokens, _ := NewSanyTokenManager(mod.SourcePath, mod.Source).LexAll()
+		for _, token := range tokens {
+			if token.Kind != SanyTokenEOF {
+				tlc.UniqueStringOf(token.Image)
+			}
+		}
+	}
+	// SANY StringNode strips the quotes and interns its value while generating
+	// each module's semantic tree. Runtime conversion below may visit definitions
+	// in another order; create these names in the front end's semantic order first.
+	semanticModules := append([]string(nil), spec.SemanticOrder...)
+	if len(semanticModules) == 0 && spec.Root != nil {
+		semanticModules = append(semanticModules, spec.Root.Name)
+	}
+	for _, name := range semanticModules {
+		mod := spec.Modules[name]
+		if mod == nil {
+			continue
+		}
+		tokens, _ := NewSanyTokenManager(mod.SourcePath, mod.Source).LexAll()
+		for _, token := range tokens {
+			if token.Kind == SanyTokenStringLiteral && len(token.Image) >= 2 {
+				tlc.UniqueStringOf(reduceTLAString(token.Image))
+			}
+		}
+	}
+
+}
+
+func (b *tlcBridge) installVariables() {
+	nodes := b.variableDeclarations()
+	tlc.SetStateVariableDeclarations(nodes)
+	if b.processor != nil {
+		b.processor.SetVariableNodes(nodes)
+	}
+}
+
+func (b *tlcBridge) installConstantDeclarations() {
+	seen := map[*tlc.SymbolNode]bool{}
+	visited := map[*Module]bool{}
+	var visit func(*Module)
+	visit = func(mod *Module) {
+		if mod == nil || visited[mod] {
+			return
+		}
+		visited[mod] = true
+		for _, ext := range mod.Extends {
+			visit(b.spec.Modules[ext])
+		}
+		for _, declaration := range mod.Declarations {
+			if declaration.Kind != ConstantDecl {
+				continue
+			}
+			for _, name := range declaration.Names {
+				source, generated := tlcBridgeOwnedDeclaration(mod, name)
+				if generated && source == nil {
+					continue
+				}
+				symbol := b.declarationSymbol(mod, name)
+				symbol.Arity = declaration.Arities[name]
+				if source != nil {
+					symbol.Arity = source.semArity()
+				}
+				if !seen[symbol] {
+					seen[symbol] = true
+					b.processor.ConstantDeclarations = append(b.processor.ConstantDeclarations, symbol)
+				}
+			}
+		}
+		for _, inner := range mod.Nested {
+			visit(inner)
+		}
+	}
+	visit(b.spec.Root)
+}
+
+func (b *tlcBridge) installDefinitions() {
+	if mod := b.spec.Modules["Integers"]; mod != nil && moduleNameForSourcePosition(mod.Pos) == mod.Name {
+		b.tool.InstallIntegerDefinitions()
+	}
+	// Alias/source registration must not change which native implementation
+	// processModuleOverrides associates with a module's original definition.
+	b.nativeDefinitions = make(map[*tlc.UniqueString]any, len(b.tool.DefnsByName))
+	for name, value := range b.tool.DefnsByName {
+		b.nativeDefinitions[name] = value
+	}
+	b.retainIntegerNativeOverride()
+	b.prepareInstanceDefinitions()
+	names := make([]string, 0, len(b.defs))
+	for name := range b.defs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		def := b.defs[name]
+		if def == nil {
+			continue
+		}
+		if theorem := b.canonicalTheoremAlias(name, def); theorem != nil {
+			b.symbols[name] = theorem.Symbol
+			b.defineAlias(name, theorem)
+			continue
+		}
+		if isNativeStandardDefinitionOverrideName(name, def) && b.installNativeStandardDefinitionOverrideAlias(name, def) {
+			continue
+		}
+		opDef := b.convertDefinitionAs(name, def)
+		if opDef == nil {
+			continue
+		}
+		b.defineAlias(name, opDef)
+	}
+}
+
+// Keep the instance's substitutions in the runtime graph. The older central
+// evaluator needs substituted AST copies; TLC instead binds the source symbols
+// through SubstInNode, as SANY does, and shares the substitutions among clones.
+func (b *tlcBridge) prepareInstanceDefinitions() {
+	if b.spec == nil {
+		return
+	}
+	if b.definitionModules == nil {
+		b.definitionModules = map[*Definition]string{}
+		b.sourceSymbols = map[*Definition]*tlc.SymbolNode{}
+		b.sourceDefinitions = map[*Definition]*tlc.OpDefNode{}
+		b.instanceDefinitions = map[string]*tlcBridgeInstance{}
+	}
+	if b.indexedModules == nil {
+		b.indexedModules = map[*Module]bool{}
+	}
+	names := make([]string, 0, len(b.spec.Modules))
+	for name := range b.spec.Modules {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var added []*Module
+	for _, name := range names {
+		mod := b.spec.Modules[name]
+		if mod == nil || b.indexedModules[mod] {
+			continue
+		}
+		b.indexedModules[mod] = true
+		added = append(added, mod)
+		for i := range mod.Definitions {
+			b.definitionModules[&mod.Definitions[i]] = name
+		}
+	}
+	if len(added) == 0 {
+		return
+	}
+	// Canonical theorem bodies can refer to another module's definitions.
+	// Index all source owners before adapting any INSTANCE source symbols.
+	for _, mod := range added {
+		for _, inst := range mod.Instances {
+			instancee := b.spec.Modules[inst.Module]
+			if instancee == nil {
+				continue
+			}
+			binding := b.instanceBinding(mod, inst)
+			for i := range instancee.Definitions {
+				def := &instancee.Definitions[i]
+				if def.Local {
+					continue
+				}
+				key := inst.qualifier() + "!" + def.Name
+				keys := []string{mod.Name + "!" + key}
+				if mod == b.spec.Root || slices.Contains(b.spec.Root.Extends, mod.Name) && !inst.Local {
+					keys = append(keys, key)
+					if inst.exportsUnqualified() {
+						if existing := b.defs[def.Name]; existing == nil || existing.SourcePosition() == def.SourcePosition() {
+							keys = append(keys, def.Name)
+						}
+					}
+				}
+				exportName := key
+				if inst.exportsUnqualified() {
+					exportName = def.Name
+				}
+				// Generator already chose this export's identity and full
+				// signature. All lookup aliases retain that actual source symbol.
+				var exportSymbol *tlc.SymbolNode
+				if mod.semanticNode != nil {
+					source := mod.semanticNode.context.getSymbol(exportName)
+					switch source.(type) {
+					case *sanySemOpDefNode, *sanySemThmOrAssumpDefNode:
+						exportSymbol = b.canonicalSymbol(source)
+					}
+				}
+				if exportSymbol == nil {
+					exportSymbol = tlc.NewSymbolNode(exportName)
+					if b.reusesInstanceSource(inst, def) {
+						exportSymbol = b.sourceDefinitionSymbol(inst.Module+"!"+def.Name, def)
+					} else {
+						exportSymbol.Arity = len(inst.Params) + len(def.Params)
+					}
+				}
+				if binding.symbols == nil {
+					binding.symbols = map[*Definition]*tlc.SymbolNode{}
+				}
+				binding.symbols[def] = exportSymbol
+				for _, key := range keys {
+					b.defs[key] = def
+					b.instanceDefinitions[key] = binding
+					b.symbols[key] = exportSymbol
+				}
+			}
+		}
+	}
+	// EXTENDS references the original definition, including native overrides.
+	// Keep a single symbol for those aliases so a module-scoped replacement
+	// reaches every expression bound to that definition.
+	aliases := make([]string, 0, len(b.defs))
+	for alias := range b.defs {
+		aliases = append(aliases, alias)
+	}
+	sort.Strings(aliases)
+	for _, alias := range aliases {
+		def := b.defs[alias]
+		module := b.definitionModules[def]
+		if module == "" || b.instanceDefinitions[alias] != nil {
+			continue
+		}
+		canonical := module + "!" + def.Name
+		if module == b.rootModuleName {
+			canonical = def.Name
+		}
+		b.symbols[alias] = b.sourceDefinitionSymbol(canonical, def)
+	}
+}
+
+func isNativeStandardDefinitionOverrideName(name string, def *Definition) bool {
+	if def == nil {
+		return false
+	}
+	member := name
+	if i := strings.LastIndex(member, "!"); i >= 0 {
+		member = member[i+1:]
+	}
+	module := moduleNameForSourcePosition(def.SourcePosition())
+	if module == "" {
+		return false
+	}
+	return bridgeNativeOverrideModuleMembers[module][member]
+}
+
+func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, def *Definition) bool {
+	if b == nil || b.tool == nil || def == nil || name == "" {
+		return false
+	}
+	module := moduleNameForSourcePosition(def.SourcePosition())
+	if module == "" {
+		return false
+	}
+	member := name
+	if i := strings.LastIndex(member, "!"); i >= 0 {
+		member = member[i+1:]
+	}
+	value := b.nativeDefinitions[tlc.UniqueStringOf(module+"!"+member)]
+	if value == nil {
+		value = b.nativeDefinitions[tlc.UniqueStringOf(member)]
+	}
+	if value == nil || !bridgeNativeMethodArityMatches(module, value, len(def.Params)) {
+		return false
+	}
+	// Java stores native overrides on the source OpDef body. INSTANCE clones
+	// share that body, possibly underneath SubstIn wrappers.
+	value = tlc.WithStandardMethodMetadata(value, module, member)
+	opDef := b.convertSourceDefinitionAs(module+"!"+member, def)
+	if opDef != nil {
+		value = tlc.WithEvaluatingOpDef(value, opDef)
+		tlc.SetSemanticToolObjectForTool(b.tool, opDef.GetBody(), value)
+	}
+	b.rememberNativeStandardDefinition(module, member, name, opDef)
+	b.defineAlias(name, value)
+	return true
+}
+
+func (b *tlcBridge) rememberNativeStandardDefinition(module string, member string, name string, opDef *tlc.OpDefNode) {
+	if b == nil || b.tool == nil || opDef == nil {
+		return
+	}
+	if module != "TLCExt" {
+		return
+	}
+	switch member {
+	case "CounterExample":
+		if name == "CounterExample" || b.tool.CounterExampleDef == nil {
+			b.tool.CounterExampleDef = opDef
+		}
+	case "Trace":
+		if name == "TLCExt!Trace" || b.tool.TraceDef == nil {
+			b.tool.TraceDef = opDef
+		}
+	}
+}
+
+func moduleNameForSourcePosition(pos Position) string {
+	if pos.File == "" {
+		return ""
+	}
+	name := filepath.Base(pos.File)
+	return strings.TrimSuffix(name, filepath.Ext(name))
+}
+
+func (b *tlcBridge) installConfigConstants() {
+	if b.cfg == nil {
+		return
+	}
+	b.installConfigConstantsUnder("", b.cfg.GetConstants())
+	for moduleName, constants := range b.cfg.GetModConstants().All() {
+		b.installConfigConstantsUnder(moduleName+"!", constants)
+	}
+}
+
+func (b *tlcBridge) installConfigConstantsUnder(prefix string, constants *tlc.ConfigConstants) {
+	if constants == nil {
+		return
+	}
+	opConstants := map[string]*tlc.OpRcdValue{}
+	for _, constant := range constants.All() {
+		if constant.Value == nil {
+			continue
+		}
+		name := prefix + constant.Name
+		if len(constant.Args) != 0 {
+			opVal := opConstants[name]
+			if opVal == nil {
+				opVal = tlc.NewOpRcdValue()
+				opConstants[name] = opVal
+				b.defineName(name, opVal)
+			} else if len(opVal.Domain) != 0 && len(opVal.Domain[0]) != len(constant.Args) {
+				b.diags = append(b.diags, errorAt(Position{}, "E7001", "operator-valued CONSTANT assignment %s has inconsistent arity", name))
+				continue
+			}
+			values := make([]tlc.Value, 0, len(constant.Args)+2)
+			values = append(values, nil)
+			values = append(values, constant.Args...)
+			values = append(values, constant.Value)
+			opVal.AddLine(values)
+			continue
+		}
+		b.defineName(name, constant.Value)
+	}
+}
+
+func (b *tlcBridge) installInstanceAliases() {
+	if b == nil || b.spec == nil || b.spec.Root == nil {
+		return
+	}
+	for _, inst := range b.spec.Root.Instances {
+		for _, binding := range b.standardInstanceBindings(inst) {
+			if binding.Symbol != nil {
+				if binding.Symbol.Definition != nil {
+					// The semantic Defns entry remains the INSTANCE OpDef;
+					// native lookup follows its shared source body override.
+					b.tool.Define(binding.Symbol, binding.Value)
+				} else {
+					b.define(binding.Symbol, binding.Value)
+				}
+			}
+		}
+	}
+}
+
+func (b *tlcBridge) define(sym *tlc.SymbolNode, value any) {
+	if b == nil || sym == nil {
+		return
+	}
+	if b.tool != nil {
+		b.tool.Define(sym, value)
+	}
+	if b.defns != nil {
+		b.defns.Put(sym, value)
+	}
+}
+
+func (b *tlcBridge) defineName(name string, value any) *tlc.SymbolNode {
+	if b == nil || name == "" {
+		return nil
+	}
+	sym := b.symbol(name)
+	b.defineAlias(name, value)
+	return sym
+}
+
+func (b *tlcBridge) defineAlias(name string, value any) {
+	symbol := b.symbol(name)
+	if b.tool != nil {
+		// Register the symbol's identity without exporting its declared name.
+		// Only this alias is visible here; LOCAL and instancee definitions may
+		// share a declared name with unrelated operators in the root context.
+		b.tool.Definitions[symbol] = value
+		b.tool.DefnsByName[tlc.UniqueStringOf(name)] = value
+	}
+	if b.defns != nil {
+		b.defns.Put(name, value)
+	}
+}
+
+func (b *tlcBridge) instanceOpDefinitions(inst Instance) []*tlc.OpDefNode {
+	if b == nil || b.spec == nil || inst.Module == "" || inst.qualifier() == "" {
+		return nil
+	}
+	mod := b.spec.Modules[inst.Module]
+	if mod == nil {
+		return nil
+	}
+	out := make([]*tlc.OpDefNode, 0, len(mod.Definitions))
+	owner := b.spec.Modules[b.convertingModule]
+	if owner == nil {
+		owner = b.spec.Root
+	}
+	binding := b.instanceBinding(owner, inst)
+	for i := range mod.Definitions {
+		def := &mod.Definitions[i]
+		if def.Local {
+			continue
+		}
+		opDef := b.convertInstanceDefinition(inst.qualifier()+"!"+def.Name, def, binding)
+		if opDef != nil {
+			out = append(out, opDef)
+		}
+	}
+	return out
+}
+
+func (b *tlcBridge) standardInstanceBindings(inst Instance) []tlc.LetBinding {
+	if b == nil || b.tool == nil || inst.Module == "" || inst.qualifier() == "" {
+		return nil
+	}
+	members := bridgeStandardModuleMembers[inst.Module]
+	if len(members) == 0 {
+		return nil
+	}
+	out := make([]tlc.LetBinding, 0, len(members))
+	for _, member := range members {
+		value := b.tool.DefnsByName[tlc.UniqueStringOf(inst.Module+"!"+member)]
+		if value == nil {
+			value = b.tool.DefnsByName[tlc.UniqueStringOf(member)]
+		}
+		if value == nil {
+			continue
+		}
+		if _, defined := value.(*tlc.OpDefNode); defined {
+			// Keep the instance's cloned body and SubstIn bindings. Binding
+			// the original TLA+ definition here would bypass WITH substitutions.
+			continue
+		}
+		out = append(out, tlc.LetBinding{
+			Symbol: b.symbol(inst.qualifier() + "!" + member),
+			Value:  value,
+		})
+	}
+	return out
+}
+
+func (b *tlcBridge) installAssumptions() {
+	b.installModuleAssumptions(true)
+}
+
+func (b *tlcBridge) installModuleAssumptions(checkingRoot bool) {
+	if b.spec == nil || b.spec.Root == nil {
+		return
+	}
+	// ModuleNode.copyAssumes copies each direct extendee's complete vector
+	// before this module's own assumptions. INSTANCE does not copy assumptions;
+	// repeated EXTENDS paths retain the same source expression identity.
+	converted := map[*NamedExpr]*tlc.AssumeNode{}
+	if b.assumptionModules == nil {
+		b.assumptionModules = map[*Module]bool{}
+	}
+	topLevels := b.assumptionModules
+	var visit func(*Module, bool)
+	visit = func(module *Module, checking bool) {
+		if module == nil || !checking && topLevels[module] {
+			return
+		}
+		for _, name := range module.Extends {
+			visit(b.spec.Modules[name], checking)
+			if !topLevels[module] {
+				for _, assume := range b.moduleNodes[b.spec.Modules[name]].GetAssumptions() {
+					b.moduleNodes[module].AddAssumptionStatement(assume)
+				}
+			}
+		}
+		for i := range module.Assumptions {
+			assumption := &module.Assumptions[i]
+			if assumption.Expr == nil {
+				continue
+			}
+			node := converted[assumption]
+			if node == nil {
+				if source, ok := assumption.semanticNode.(*sanySemAssumeNode); ok {
+					node = b.canonicalGraph(source).(*tlc.AssumeNode)
+					converted[assumption] = node
+				}
+			}
+			if node == nil {
+				var definition *tlc.ThmOrAssumpDefNode
+				if assumption.Name != "" {
+					definition, _ = b.moduleNodes[module].Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(assumption.Name)}).(*tlc.ThmOrAssumpDefNode)
+				}
+				previous := b.convertingModule
+				b.convertingModule = module.Name
+				var expr tlc.SemanticNode
+				if definition != nil {
+					expr = definition.GetBody()
+				} else {
+					expr = b.convertExpr(assumption.Expr)
+				}
+				b.convertingModule = previous
+				if expr == nil {
+					continue
+				}
+				node = tlc.NewAssumeNode(expr, b.moduleNodes[module], definition)
+				b.withSyntaxNode(assumption.Syntax, node)
+				b.withPositionLocation(assumption.SourcePosition(), node)
+				if assumption.Syntax != nil {
+					heirs := assumption.Syntax.GetHeirs()
+					node.IsAxiom = len(heirs) > 0 && heirs[0].Image == "AXIOM"
+				}
+				converted[assumption] = node
+			}
+			if !topLevels[module] {
+				b.moduleNodes[module].AddAssumptionStatement(node)
+			}
+			if checking {
+				b.processor.Assumptions = append(b.processor.Assumptions, node.Assume)
+				b.processor.AssumptionIsAxiom = append(b.processor.AssumptionIsAxiom, node.IsAxiom)
+			}
+		}
+		topLevels[module] = true
+	}
+	visit(b.spec.Root, checkingRoot)
+	// INSTANCE modules keep their own source assumptions for location lookup;
+	// TLC checks only the root module's EXTENDS closure above.
+	names := make([]string, 0, len(b.spec.Modules))
+	for name := range b.spec.Modules {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		module := b.spec.Modules[name]
+		if !topLevels[module] {
+			visit(module, false)
+		}
+	}
+	b.installModuleTheorems()
+}
+
+// EXTENDS retains the original theorem statements, including repeated paths.
+// INSTANCE contributes definitions to Context, but does not copy statements.
+func (b *tlcBridge) installModuleTheorems() {
+	if b.canonicalTheorems == nil {
+		b.canonicalTheorems = map[*sanySemTheoremNode]*tlc.TheoremNode{}
+	}
+	if b.theoremModules == nil {
+		b.theoremModules = map[*Module]bool{}
+	}
+	for module, target := range b.moduleNodes {
+		if b.theoremModules[module] || module.semanticNode == nil {
+			continue
+		}
+		for _, source := range module.semanticNode.getTheorems() {
+			node := b.canonicalGraph(source).(*tlc.TheoremNode)
+			target.AddTheoremStatement(node)
+		}
+		target.Definitions = b.canonicalGraphArray(module.semanticNode.definitions)
+		target.InstanceVec = make([]*tlc.InstanceNode, len(module.semanticNode.instanceVec))
+		for i, source := range module.semanticNode.instanceVec {
+			target.InstanceVec[i] = b.canonicalGraph(source).(*tlc.InstanceNode)
+		}
+		target.Records = make([]*tlc.OpApplNode, len(module.semanticNode.records))
+		for i, source := range module.semanticNode.records {
+			target.Records[i] = b.canonicalGraph(source).(*tlc.OpApplNode)
+		}
+		// The source vector interleaves theorem and assumption statements.
+		// Their separate enumeration vectors are not the walkGraph order.
+		target.TopLevel = b.canonicalGraphArray(module.semanticNode.topLevelVec)
+		if module.semanticNode.topLevel != nil {
+			target.GetTopLevel()
+		}
+		b.theoremModules[module] = true
+	}
+}
+
+func (b *tlcBridge) installModelTargets() {
+	if b == nil || b.cfg == nil {
+		return
+	}
+	if b.processor != nil {
+		b.processor.SetRuntimeParameters(b.runtime)
+		b.processor.RuntimeInvariantCompiler = func(expression string) (*tlc.OpDefNode, error) {
+			return b.parseDebuggerExpression(b.tool, b.processor.RootModule, tlc.NullSourceLocation, expression)
+		}
+		b.processor.ApplyToTool(b.tool)
+	}
+}
+
+func (b *tlcBridge) installRuntimeConstants() {
+	for _, constant := range b.runtime.StringConstants() {
+		b.defineRuntimeStringConstant(constant.Name, constant.Value)
+	}
+}
+
+func (b *tlcBridge) defineRuntimeStringConstant(name string, value string) {
+	if name == "" {
+		return
+	}
+	constant := tlc.NewStringValue(value)
+	b.defineName(name, constant)
+	// processSpec installs runtime strings on their actual module declarations
+	// before processConstantDefns reads declaration tool objects.
+	for _, module := range b.processor.ModuleTbl.GetModuleNodes() {
+		for _, declaration := range module.GetConstantDecls() {
+			if declaration.GetName() == tlc.UniqueStringOf(name) {
+				if declaration.SemanticBase != nil {
+					declaration.SetToolObjectAt(b.tool.ID, constant)
+				} else {
+					declaration.Data = constant
+				}
+				b.define(declaration, constant)
+			}
+		}
+	}
+}
+
+func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, root *tlc.ModuleNode, location tlc.SourceLocation, expression string) (*tlc.OpDefNode, error) {
+	if tlc.JavaStringIsBlank(expression) {
+		return nil, nil
+	}
+	if root == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	if op := root.GetOpDefByName(expression); op != nil {
+		return op, nil
+	}
+	moduleName := root.GenerateUnusedName("__DebuggerModule__%s")
+	opName := root.GenerateUnusedName("__DebuggerExpr__%s")
+	path := root.PathTo(location, false)
+	lets := map[string]*tlc.OpDefNode{}
+	for _, node := range path {
+		if node, ok := node.(*tlc.LetInNode); ok {
+			for _, def := range node.Lets {
+				lets[def.Name.String()] = def
+			}
+		}
+	}
+	parameters := tlc.GetScopedSymbols(root, path)
+	signatureSet := tlc.NewInsMap[string, struct{}]()
+	for symbol := range parameters.All() {
+		name := symbol.GetName().String()
+		if symbol.Definition != nil {
+			name = symbol.Definition.Name.String()
+		}
+		if lets[name] == nil {
+			signatureSet.Set(debuggerOperatorSignature(name, symbol.GetArity()), struct{}{})
+		}
+	}
+	var signatures []string
+	for signature := range signatureSet.All() {
+		signatures = append(signatures, signature)
+	}
+	sort.Strings(signatures)
+	letNames := make([]string, 0, len(lets))
+	for name := range lets {
+		letNames = append(letNames, name)
+	}
+	sort.Strings(letNames)
+	var source strings.Builder
+	fmt.Fprintf(&source, "---- MODULE %s ----\nEXTENDS %s\n", moduleName, root.Name)
+	for _, name := range letNames {
+		def := lets[name]
+		formals := def.GetParams()
+		params := make([]string, len(formals))
+		for i, param := range formals {
+			params[i] = debuggerOperatorSignature(param.GetName().String(), param.GetArity())
+		}
+		signature := name
+		if len(params) > 0 {
+			signature += "(" + strings.Join(params, ", ") + ")"
+		}
+		fmt.Fprintf(&source, "LOCAL %s == TRUE\n", signature)
+	}
+	source.WriteString("\n" + opName)
+	if len(signatures) > 0 {
+		source.WriteString("(" + strings.Join(signatures, ", ") + ")")
+	}
+	fmt.Fprintf(&source, " == %s\n====\n", expression)
+	file := moduleName + ".tla"
+	if b.spec.Root.SourcePath != "" {
+		file = filepath.Join(filepath.Dir(b.spec.Root.SourcePath), file)
+	}
+	mod, dependencies, diagnostics := parseSanyModuleSourceWithDependencies(file, source.String())
+	if diagnostics.HasErrors() || mod == nil {
+		return nil, fmt.Errorf("Syntax error while parsing breakpoint expression \"%s\"", expression)
+	}
+	failed, err := b.resolveDebuggerDependencies(dependencies)
+	if err != nil {
+		return nil, err
+	}
+	if failed {
+		return nil, debuggerSemanticError(location, "Semantic error while parsing breakpoint expression \"%s\"", expression)
+	}
+	wrapped := b.debuggerSpec(mod)
+	// Java generates only the debugger wrapper against the running external
+	// table. Regenerating its dependencies replaces live semantic identities
+	// and loses their config bindings and cached values.
+	if diagnostics := checkModule(mod, wrapped); diagnostics.HasErrors() {
+		semanticFailure, _ := debuggerDiagnosticFailures(diagnostics)
+		phase := "Level-checking"
+		if semanticFailure {
+			phase = "Semantic"
+		}
+		return nil, debuggerSemanticError(location, "%s error while parsing breakpoint expression \"%s\"", phase, expression)
+	}
+	convert := b.debuggerBridge(wrapped)
+	convert.prepareInstanceDefinitions()
+	convert.extendModuleTable(false)
+	convert.installModuleAssumptions(false)
+	module := convert.moduleNodes[mod]
+	op := module.GetOpDefByName(opName)
+	if op == nil {
+		return nil, debuggerSemanticError(location, "Unable to find debugger expression op %s", opName)
+	}
+	if convert.diags.HasErrors() {
+		return nil, debuggerSemanticError(location, "Semantic error while parsing breakpoint expression \"%s\"", expression)
+	}
+	level := tool.GetLevelBound(op.GetBody(), tlc.EmptyContext)
+	if level > tlc.TLCLevelAction {
+		return nil, debuggerSemanticError(location, "Debug expressions must be action-level or below; actual level: %s", tlc.SemanticLevelToString(level))
+	}
+	b.processor.ProcessConstantsDynamicExtendee(module)
+	b.installModuleNativeOverridesFor(module)
+	for _, name := range letNames {
+		tlc.SemanticSubstituteFor([]tlc.SemanticNode{module}, lets[name], module.GetOpDefByName(name))
+	}
+	return op, nil
+}
+
+func debuggerSemanticError(location tlc.SourceLocation, format string, args ...any) error {
+	return fmt.Errorf("%s\n\n%s", location.String(), fmt.Sprintf(format, args...))
+}
+
+func debuggerLevelDiagnostic(code string) bool {
+	switch code {
+	case "E4245", "E4310", "E4311", "E4312", "E4313", "E4314", "E4315", "E4352", "E4353", "E4354", "E4356":
+		return true
+	}
+	return false
+}
+
+func debuggerOperatorSignature(name string, arity int) string {
+	if arity <= 0 {
+		return name
+	}
+	parts := make([]string, arity)
+	for i := range parts {
+		parts[i] = "_"
+	}
+	return name + "(" + strings.Join(parts, ",") + ")"
+}
+
+func (b *tlcBridge) actionFromExpr(name string, expr Expr, opDef *tlc.OpDefNode, init bool) *tlc.Action {
+	pred := b.convertExpr(expr)
+	if pred == nil {
+		return nil
+	}
+	action := tlc.NewActionFromOpDef(pred, tlc.EmptyContext, opDef, init, false)
+	action.Name = name
+	action.CM = tlc.NewCostModel(pred)
+	return action
+}
+
+func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDefNode {
+	if def == nil {
+		return nil
+	}
+	b.prepareInstanceDefinitions()
+	if binding := b.instanceDefinitions[name]; binding != nil && b.defs[name] == def {
+		return b.convertInstanceDefinition(name, def, binding)
+	}
+	return b.convertSourceDefinitionAs(name, def)
+}
+
+// A source OpDefNode and its instantiated export can have the same name but
+// retain distinct identities in Java SANY. Source conversion must not route
+// back through the instancer's export table.
+func (b *tlcBridge) sourceDefinitionSymbol(_ string, def *Definition) *tlc.SymbolNode {
+	if def.TheoremLike {
+		if module := b.spec.Modules[b.definitionModules[def]]; module != nil && module.semanticNode != nil {
+			if source, ok := module.semanticNode.context.getSymbol(def.Name).(*sanySemThmOrAssumpDefNode); ok {
+				symbol := b.canonicalGraph(source).(*tlc.ThmOrAssumpDefNode).Symbol
+				b.sourceSymbols[def] = symbol
+				return symbol
+			}
+		}
+	}
+	if symbol := b.sourceSymbols[def]; symbol != nil {
+		return symbol
+	}
+	// SANY creates a symbol for each source declaration. A qualified lookup
+	// alias can also name an INSTANCE export in another module, whose symbol
+	// must not be renamed or rebound when this source declaration is compiled.
+	symbol := tlc.NewSymbolNode(def.Name)
+	if _, moduleDeclaration := b.definitionModules[def]; !moduleDeclaration && b.convertBound(def.Name) {
+		// LET declares its operator symbols before generating their bodies,
+		// including recursive references and references from later definitions.
+		symbol = b.symbol(def.Name)
+	}
+	// The qualified key belongs to the bridge's lookup table. SANY's source
+	// OpDef is itself the operator symbol and retains its declared name.
+	symbol.Name = tlc.UniqueStringOf(def.Name)
+	symbol.Arity = len(def.Params)
+	symbol.DeclarationName = tlc.UniqueStringOf(def.Name)
+	b.withSyntaxNode(def.Syntax, symbol)
+	b.withPositionLocation(def.SourcePosition(), symbol)
+	b.sourceSymbols[def] = symbol
+	return symbol
+}
+
+func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc.OpDefNode {
+	// SANY aliases share the original OpDefNode and body, rather than
+	// reconstructing a definition for each imported name.
+	if source := b.sourceDefinitions[def]; source != nil {
+		return source
+	}
+	if def.semanticNode != nil {
+		if source := b.canonicalDefinitions[def.semanticNode]; source != nil {
+			b.sourceDefinitions[def] = source
+			return source
+		}
+	}
+	sym := b.sourceDefinitionSymbol(name, def)
+	params := make([]*tlc.SymbolNode, len(def.Params))
+	priorParams := make([]*tlc.SymbolNode, len(def.Params))
+	for i, param := range def.Params {
+		priorParams[i] = b.symbols[param]
+		if def.semanticNode != nil && i < len(def.semanticNode.formalNodes) {
+			params[i] = b.canonicalFormalParameter(def.semanticNode.formalNodes[i])
+		} else {
+			params[i] = b.formalParameter(param, def.ParamArities[param], def.ParamPositions[param], def.Syntax)
+		}
+		b.symbols[param] = params[i]
+	}
+	prevModule := b.convertingModule
+	if module := b.definitionModules[def]; module != "" {
+		b.convertingModule = module
+	} else if module := moduleNameForSourcePosition(def.SourcePosition()); module != "" && (prevModule == "" || b.spec.Modules[prevModule] == nil || filepath.Base(b.spec.Modules[prevModule].SourcePath) != filepath.Base(def.SourcePosition().File)) {
+		b.convertingModule = module
+	}
+	restore := b.pushConvertBoundNames(def.Params...)
+	defer func() {
+		restore()
+		for i, name := range def.Params {
+			if priorParams[i] == nil {
+				delete(b.symbols, name)
+			} else {
+				b.symbols[name] = priorParams[i]
+			}
+		}
+		b.convertingModule = prevModule
+	}()
+	var base *tlc.SemanticNodeBase
+	if def.semanticNode != nil {
+		base = def.semanticNode.SemanticNodeBase
+	}
+	opDef := tlc.NewOpDefNodeForSymbolWithBase(sym, params, nil, base)
+	if def.semanticNode != nil {
+		transferCanonicalOpDefLevelMetadata(opDef, def.semanticNode)
+		transferCanonicalOpDefRenderMetadata(opDef, def.semanticNode)
+	}
+	// SANY already owns the complete node. Publish its runtime view before
+	// adapting the body so recursive references and aliases share this shell.
+	b.sourceDefinitions[def] = opDef
+	if def.semanticNode != nil {
+		if b.canonicalDefinitions == nil {
+			b.canonicalDefinitions = map[*sanySemOpDefNode]*tlc.OpDefNode{}
+		}
+		b.canonicalDefinitions[def.semanticNode] = opDef
+	}
+	// SpecProcessor reads the level computed by SANY on the actual definition,
+	// independently of coverage and runtime overrides.
+	var checkedDefinition sanyCanonicalLevelNode = def.semanticNode
+	if def.semanticNode == nil {
+		// The bridge also has AST Definition views of named theorems and
+		// assumptions; their actual node is a ThmOrAssumpDefNode in Context.
+		module := b.spec.Modules[b.convertingModule]
+		checkedDefinition = module.semanticNode.context.getSymbol(def.Name).(sanyCanonicalLevelNode)
+	}
+	opDef.SetLevel(int(checkedDefinition.getLevel()))
+	// Qualification belongs to the lookup alias. EXTENDS preserves the
+	// instancee's original OpDef name for signatures and action labels.
+	opDef.Name = tlc.UniqueStringOf(def.Name)
+	if mod := b.spec.Modules[b.convertingModule]; mod != nil {
+		opDef.SetInRecursive(recursiveDeclarationSections(mod.Recursives)[def.Name] != 0)
+	}
+	if def.semanticNode == nil {
+		b.withSyntaxNode(def.Syntax, opDef)
+		b.withPositionLocation(def.SourcePosition(), opDef)
+	}
+	if declaration := b.sourceLocationForPosition(def.DeclarationPosition()); !declaration.IsNull() {
+		opDef.SetDeclarationLocation(declaration)
+	}
+	if function, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
+		opDef.Body = b.functionDefinitionNode(def, function)
+	} else {
+		opDef.Body = b.convertExpr(def.Expr)
+	}
+	if def.semanticNode != nil {
+		opDef.StepNode = b.canonicalGraph(def.semanticNode.stepNode)
+	}
+	if opDef.Body == nil {
+		return nil
+	}
+	return opDef
+}
+
+// Generator.generateInstance reuses the original OpDef for an unnamed,
+// non-LOCAL instance when either the instancee or the definition's original
+// module is parameter-free. Config overrides rely on this exact identity.
+func (b *tlcBridge) reusesInstanceSource(inst Instance, def *Definition) bool {
+	if inst.Name != "" || inst.Local {
+		return false
+	}
+	parameterFree := func(module *Module) bool {
+		if module == nil {
+			return false
+		}
+		for _, entry := range tlcBridgeContextEntries(b.spec, module, map[*Module]bool{}) {
+			if entry.kind == ConstantDecl || entry.kind == VariableDecl {
+				return false
+			}
+		}
+		return true
+	}
+	origin := b.definitionModules[def]
+	if origin == "" {
+		origin = moduleNameForSourcePosition(def.SourcePosition())
+	}
+	return parameterFree(b.spec.Modules[inst.Module]) || parameterFree(b.spec.Modules[origin])
+}
+
+func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, binding *tlcBridgeInstance) *tlc.OpDefNode {
+	// Generator has already chosen the export's source reuse, substitutions
+	// and formal parameters. Share that node instead of rebuilding a clone.
+	if binding.owner.semanticNode != nil {
+		member := strings.TrimPrefix(name, binding.owner.Name+"!")
+		// An unnamed INSTANCE exports the declared name; module-qualified
+		// convenience aliases are not names in its source Context.
+		if binding.inst.exportsUnqualified() {
+			member = def.Name
+		}
+		if source, ok := binding.owner.semanticNode.context.getSymbol(member).(*sanySemOpDefNode); ok {
+			return b.canonicalGraph(source).(*tlc.OpDefNode)
+		}
+	}
+	if clone := binding.defs[def]; clone != nil {
+		return clone
+	}
+	inst := binding.inst
+	source := b.convertSourceDefinitionAs(inst.Module+"!"+def.Name, def)
+	if source == nil {
+		return nil
+	}
+	if b.reusesInstanceSource(inst, def) {
+		if binding.defs == nil {
+			binding.defs = map[*Definition]*tlc.OpDefNode{}
+		}
+		binding.defs[def] = source
+		return source
+	}
+	// SANY instances reuse their source definition, whose native override may
+	// already be installed. Register an otherwise hidden source without replacing
+	// that override with the TLA+ placeholder body.
+	if b.tool.Lookup(source.Symbol, nil, nil, false) == nil {
+		b.define(source.Symbol, source)
+	}
+	b.prepareInstanceBinding(binding)
+	params := append(append([]*tlc.SymbolNode(nil), binding.params...), source.GetParams()...)
+	body := source.GetBody()
+	if len(binding.substs) > 0 {
+		body = b.withPositionLocation(inst.SourcePosition(), tlc.NewSubstInNode(body, binding.substs...))
+	}
+	symbol := binding.symbols[def]
+	if symbol == nil {
+		symbol = b.symbol(name)
+	}
+	clone := tlc.NewOpDefNodeForSymbol(symbol, params, body)
+	clone.SourceDefinition = source.GetSource()
+	clone.SetLabels(source.GetLabelsHT())
+	clone.Local = inst.Local
+	if inst.Name != "" && len(binding.substs) > 0 {
+		clone.CompoundID = append([]*tlc.UniqueString{tlc.UniqueStringOf(inst.Name)}, source.GetCompoundID()...)
+	}
+	b.withPositionLocation(inst.SourcePosition(), clone)
+	if !positionIsZero(inst.LHSPos) {
+		clone.SetDeclarationLocation(b.sourceLocationForPosition(inst.LHSPos))
+	}
+	if binding.defs == nil {
+		binding.defs = map[*Definition]*tlc.OpDefNode{}
+	}
+	binding.defs[def] = clone
+	return clone
+}
+
+func (b *tlcBridge) prepareInstanceBinding(binding *tlcBridgeInstance) {
+	inst := binding.inst
+	if binding.params == nil {
+		binding.params = make([]*tlc.SymbolNode, len(inst.Params))
+		for i, param := range inst.Params {
+			if inst.definitionNode != nil && i < len(inst.definitionNode.formalNodes) {
+				binding.params[i] = b.canonicalFormalParameter(inst.definitionNode.formalNodes[i])
+			} else {
+				binding.params[i] = b.formalParameter(param, inst.ParamArities[param], inst.ParamPositions[param], nil)
+			}
+		}
+	}
+	if binding.substs == nil {
+		previous := b.convertingModule
+		b.convertingModule = binding.owner.Name
+		priorParams := make([]*tlc.SymbolNode, len(inst.Params))
+		for i, name := range inst.Params {
+			priorParams[i] = b.symbols[name]
+			b.symbols[name] = binding.params[i]
+		}
+		restore := b.pushConvertBoundNames(inst.Params...)
+		var substs []tlc.Subst
+		explicit := inst.Substitutions
+		for _, target := range b.instanceTargets(b.spec.Modules[inst.Module], map[string]bool{}) {
+			expr := explicit[target.name]
+			if expr == nil {
+				expr = &IdentExpr{Name: target.name, Pos: inst.SourcePosition()}
+			}
+			var replacement tlc.SemanticNode
+			if target.arity > 0 {
+				if ident, ok := expr.(*IdentExpr); ok && sanyExprSelection(expr) == nil {
+					replacement = b.withExprLocation(expr, tlc.NewOpArgNode(b.exprSymbol(ident.Name)))
+				}
+			}
+			if replacement == nil {
+				replacement = b.convertExpr(expr)
+			}
+			substs = append(substs, tlc.NewSubst(target.sym, replacement))
+		}
+		restore()
+		for i, name := range inst.Params {
+			if priorParams[i] == nil {
+				delete(b.symbols, name)
+			} else {
+				b.symbols[name] = priorParams[i]
+			}
+		}
+		b.convertingModule = previous
+		// Assign identities once, then reuse the Subst values in every clone.
+		binding.substs = tlc.NewSubstInNode(nil, substs...).Substs
+	}
+}
+
+func (b *tlcBridge) instanceTargets(mod *Module, visiting map[string]bool) []tlcBridgeInstanceTarget {
+	if mod == nil || visiting[mod.Name] {
+		return nil
+	}
+	visiting[mod.Name] = true
+	defer delete(visiting, mod.Name)
+	var out []tlcBridgeInstanceTarget
+	for _, ext := range mod.Extends {
+		out = append(out, b.instanceTargets(b.spec.Modules[ext], visiting)...)
+	}
+	for _, decl := range mod.Declarations {
+		if decl.Kind != ConstantDecl && decl.Kind != VariableDecl {
+			continue
+		}
+		for _, name := range decl.Names {
+			source, generated := tlcBridgeOwnedDeclaration(mod, name)
+			if generated && source == nil {
+				continue
+			}
+			sym := b.declarationSymbol(mod, name)
+			if decl.Kind == VariableDecl {
+				sym.MarkVariableDecl()
+			}
+			arity := decl.Arities[name]
+			if source != nil {
+				arity = source.semArity()
+			}
+			target := tlcBridgeInstanceTarget{name: name, arity: arity, sym: sym}
+			index := slices.IndexFunc(out, func(existing tlcBridgeInstanceTarget) bool { return existing.name == name })
+			if index >= 0 {
+				out[index] = target
+			} else {
+				out = append(out, target)
+			}
+		}
+	}
+	return out
+}
+
+func (b *tlcBridge) declarationSymbol(mod *Module, name string) *tlc.SymbolNode {
+	attach := func(symbol *tlc.SymbolNode) *tlc.SymbolNode {
+		if source, _ := tlcBridgeOwnedDeclaration(mod, name); source != nil {
+			symbol.SemanticBase = source.SemanticNodeBase
+			symbol.Declaration = true
+			symbol.OriginallyDefinedInModule = b.canonicalModuleOwner(source.module)
+			symbol.Location, symbol.TreeNode = source.Location, source.TreeNode
+		}
+		return symbol
+	}
+	if node := b.moduleNodes[mod]; node != nil {
+		if declaration, ok := node.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(name)}).(*tlc.SymbolNode); ok {
+			// A dependency compiled as a temporary root keeps its original
+			// declaration identity when later instantiated by debugger expressions.
+			return attach(declaration)
+		}
+	}
+	// EXTENDS shares declaration identity with the root. An INSTANCE retains
+	// the instancee's declaration and substitutes a binding for that symbol.
+	var extends func(*Module, map[string]bool) bool
+	extends = func(current *Module, visiting map[string]bool) bool {
+		if current == nil || visiting[current.Name] {
+			return false
+		}
+		if current == mod {
+			return true
+		}
+		visiting[current.Name] = true
+		for _, ext := range current.Extends {
+			if extends(b.spec.Modules[ext], visiting) {
+				return true
+			}
+		}
+		return false
+	}
+	if extends(b.spec.Root, map[string]bool{}) {
+		symbol := b.symbol(name)
+		symbol.DeclarationName = tlc.UniqueStringOf(name)
+		return attach(symbol)
+	}
+	symbol := b.symbol(mod.Name + "!" + name)
+	symbol.DeclarationName = tlc.UniqueStringOf(name)
+	return attach(symbol)
+}
+
+func (b *tlcBridge) pushConvertBoundNames(names ...string) func() {
+	if b.convertBoundNames == nil {
+		b.convertBoundNames = map[string]int{}
+	}
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		b.convertBoundNames[name]++
+	}
+	return func() {
+		for _, name := range names {
+			if name == "" {
+				continue
+			}
+			next := b.convertBoundNames[name] - 1
+			if next <= 0 {
+				delete(b.convertBoundNames, name)
+			} else {
+				b.convertBoundNames[name] = next
+			}
+		}
+	}
+}
+
+func (b *tlcBridge) convertBound(name string) bool {
+	if b == nil || name == "" {
+		return false
+	}
+	return b.convertBoundNames[name] > 0
+}
+
+func (b *tlcBridge) resolveExprName(name string) string {
+	name = tlcSymbolName(name)
+	if b == nil || name == "" || b.convertBound(name) {
+		return name
+	}
+	module := b.convertingModule
+	if module == "" || module == b.rootModuleName {
+		return name
+	}
+	if b.instanceDefinitions[module+"!"+name] != nil {
+		return module + "!" + name
+	}
+	if strings.Contains(name, "!") {
+		return name
+	}
+	if b.moduleDefinitionNames[module][name] {
+		return module + "!" + name
+	}
+	if mod := b.spec.Modules[module]; mod != nil {
+		for _, target := range b.instanceTargets(mod, map[string]bool{}) {
+			if target.name == name {
+				return target.sym.Name.String()
+			}
+		}
+	}
+	return name
+}
+
+func (b *tlcBridge) exprSymbol(name string) *tlc.SymbolNode {
+	if !b.convertBound(name) {
+		if module := b.spec.Modules[b.convertingModule]; module != nil {
+			if node := b.moduleNodes[module]; node != nil {
+				switch symbol := node.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(name)}).(type) {
+				case *tlc.OpDefNode:
+					return symbol.Symbol
+				case *tlc.ThmOrAssumpDefNode:
+					return symbol.Symbol
+				case *tlc.SymbolNode:
+					return symbol
+				}
+			}
+			if symbol := b.conversionContextSymbol(module, name); symbol != nil {
+				return symbol
+			}
+			for i := range module.Definitions {
+				def := &module.Definitions[i]
+				if def.Name == name {
+					return b.sourceDefinitionSymbol(name, def)
+				}
+			}
+		}
+	}
+	return b.symbol(b.resolveExprName(name))
+}
+
+func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
+	if expr == nil {
+		return nil
+	}
+	if source := sanyGeneratedExpressionNode(expr); source != nil {
+		// Preserve the generated children as well as the expression identity:
+		// synthetic pairs and other wrappers have their own source nodes.
+		return b.canonicalGraph(source)
+	}
+	if selected := sanyExprSelection(expr); selected != nil {
+		return b.retainCanonicalExpression(expr, b.selectorNode(expr, selected))
+	}
+	var node tlc.SemanticNode
+	switch e := expr.(type) {
+	case *IdentExpr:
+		if e.Name == "@" {
+			node = tlc.NewAtNode()
+		} else {
+			node = tlc.NewOpApplNode(b.exprSymbol(e.Name))
+		}
+	case *LiteralExpr:
+		node = b.convertLiteral(e)
+	case *UnaryExpr:
+		node = b.unaryNode(e)
+	case *BinaryExpr:
+		node = b.binaryNode(e)
+	case *CallExpr:
+		node = b.callNode(e)
+	case *IfExpr:
+		node = b.builtinNode(tlc.OpITE, b.convertExpr(e.Cond), b.convertExpr(e.Then), b.convertExpr(e.Else))
+	case *LetExpr:
+		node = b.letNode(e)
+	case *QuantifierExpr:
+		node = b.quantifierNode(e)
+	case *CaseExpr:
+		node = b.caseNode(e)
+	case *ChooseExpr:
+		node = b.chooseNode(e)
+	case *TupleExpr:
+		args := make([]tlc.SemanticNode, 0, len(e.Elems))
+		for _, elem := range e.Elems {
+			args = append(args, b.convertExpr(elem))
+		}
+		node = b.builtinNode(tlc.OpTup, args...)
+	case *SetExpr:
+		args := make([]tlc.SemanticNode, 0, len(e.Elems))
+		for _, elem := range e.Elems {
+			args = append(args, b.convertExpr(elem))
+		}
+		node = b.builtinNode(tlc.OpSE, args...)
+	case *RecordExpr:
+		args := make([]tlc.SemanticNode, 0, len(e.Fields))
+		for i, field := range e.Fields {
+			fieldPos := field.Source
+			if positionIsZero(fieldPos) {
+				fieldPos = field.Pos
+			}
+			name := tlcBridgeCanonicalStringOperand(e, i, 0)
+			if name == nil {
+				name = tlc.NewStringNode(field.Name)
+				b.withPositionLocation(fieldPos, name)
+			}
+			pair := b.builtinNode(tlc.OpPair, name, b.convertExpr(field.Value))
+			args = append(args, b.withPositionLocation(fieldPos, pair))
+		}
+		node = b.builtinNode(tlc.OpRC, args...)
+	case *RecordComponentExpr:
+		field := tlcBridgeCanonicalStringOperand(e, 1)
+		if field == nil {
+			field = tlc.NewStringNode(e.Field)
+			b.withPositionLocation(e.FieldPos, field)
+		}
+		node = b.builtinNode(tlc.OpRS, b.convertExpr(e.Record), field)
+	case *RecordSetExpr:
+		args := make([]tlc.SemanticNode, 0, len(e.Fields))
+		for i, field := range e.Fields {
+			fieldPos := field.Source
+			if positionIsZero(fieldPos) {
+				fieldPos = field.Pos
+			}
+			name := tlcBridgeCanonicalStringOperand(e, i, 0)
+			if name == nil {
+				name = tlc.NewStringNode(field.Name)
+				b.withPositionLocation(fieldPos, name)
+			}
+			pair := b.builtinNode(tlc.OpPair, name, b.convertExpr(field.Set))
+			args = append(args, b.withPositionLocation(fieldPos, pair))
+		}
+		node = b.builtinNode(tlc.OpSOR, args...)
+	case *FunctionExpr:
+		if e.IsLambda {
+			node = b.lambdaNode(e)
+		} else {
+			node = b.functionNode(e)
+		}
+	case *FunctionAppExpr:
+		arg := b.convertFunctionArgs(e.Args)
+		node = b.builtinNode(tlc.OpFA, b.convertExpr(e.Function), arg)
+	case *ExceptExpr:
+		node = b.exceptNode(e)
+	case *LabelExpr:
+		label := tlc.NewLabelNode(b.convertExpr(e.Body))
+		label.Name = tlc.UniqueStringOf(e.Name)
+		label.Arity = len(e.Params)
+		node = label
+	case *ActionExpr:
+		op := tlc.OpSA
+		if e.Kind == "angle" {
+			op = tlc.OpAA
+		}
+		node = b.builtinNode(op, b.convertExpr(e.Action), b.convertExpr(e.Subscript))
+	case *FairnessExpr:
+		op := tlc.OpWF
+		if e.Kind == "SF" {
+			op = tlc.OpSF
+		}
+		node = b.builtinNode(op, b.convertExpr(e.Subscript), b.convertExpr(e.Action))
+	case *FunctionSetExpr:
+		node = b.builtinNode(tlc.OpSOF, b.convertExpr(e.Domain), b.convertExpr(e.Range))
+	case *SetComprehensionExpr:
+		node = b.setComprehensionNode(e)
+	default:
+		b.diags = append(b.diags, errorAt(expr.Position(), "E7009", "unsupported expression %T in TLC bridge", expr))
+		node = tlc.NewValueNode(tlc.ValUndef)
+	}
+	return b.retainCanonicalExpression(expr, node)
+}
+
+func (b *tlcBridge) withExprLocation(expr Expr, node tlc.SemanticNode) tlc.SemanticNode {
+	if expr == nil {
+		return node
+	}
+	if source, ok := expr.(interface{ GetSyntaxNode() *SanySyntaxNode }); ok {
+		b.withSyntaxNode(source.GetSyntaxNode(), node)
+	}
+	return b.withPositionLocation(expr.Position(), node)
+}
+
+func (b *tlcBridge) withSyntaxNode(syntax *SanySyntaxNode, node tlc.SemanticNode) tlc.SemanticNode {
+	if syntax != nil {
+		if setter, ok := node.(interface{ SetTreeNode(any) }); ok {
+			setter.SetTreeNode(syntax)
+		}
+	}
+	return node
+}
+
+func (b *tlcBridge) withPositionLocation(pos Position, node tlc.SemanticNode) tlc.SemanticNode {
+	if node == nil || positionIsZero(pos) {
+		return node
+	}
+	location := b.sourceLocationForPosition(pos)
+	if location.IsNull() {
+		return node
+	}
+	if setter, ok := node.(interface{ SetSourceLocation(tlc.SourceLocation) }); ok {
+		setter.SetSourceLocation(location)
+	}
+	return node
+}
+
+func (b *tlcBridge) sourceLocationForPosition(pos Position) tlc.SourceLocation {
+	if positionIsZero(pos) {
+		return tlc.NullSourceLocation
+	}
+	source := pos.File
+	if source != "" {
+		// Parser positions retain physical filenames. Java semantic Location
+		// uses the parse module's name in TLC diagnostics and call stacks.
+		source = strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
+	}
+	if source == "" {
+		source = b.convertingModule
+	}
+	if source == "" {
+		source = b.rootModuleName
+	}
+	endLine, endColumn := pos.EndLine, pos.EndColumn
+	if endLine == 0 {
+		endLine = pos.Line
+	}
+	if endColumn == 0 {
+		endColumn = pos.Column
+	}
+	return tlc.NewSourceLocation(source, pos.Line, pos.Column, endLine, endColumn)
+}
+
+func positionIsZero(pos Position) bool {
+	return pos.Line == 0 && pos.Column == 0 && pos.File == "" && pos.EndLine == 0 && pos.EndColumn == 0
+}
+
+// SANY already constructed these scalar operands. Reuse them so selectors and
+// constant processing observe the same node and indexed tool slots.
+func tlcBridgeCanonicalStringOperand(expr Expr, indices ...int) *tlc.StringNode {
+	node := sanyGeneratedExpressionNode(expr)
+	for _, index := range indices {
+		application, ok := node.(*sanySemOpApplNode)
+		if !ok || index < 0 || index >= len(application.operands) {
+			return nil
+		}
+		node = application.operands[index]
+	}
+	literal, _ := node.(*tlc.StringNode)
+	return literal
+}
+
+func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
+	switch e.Kind {
+	case "bool":
+		// TRUE and FALSE are predefined SANY operator applications. Keep the
+		// application node so evaluation and coverage retain its source location.
+		return tlc.NewOpApplNode(b.exprSymbol(strings.ToUpper(e.Value)))
+	case "number":
+		if e.numeralNode != nil {
+			return e.numeralNode
+		}
+		if e.decimalNode != nil {
+			return e.decimalNode
+		}
+		if strings.Contains(e.Value, ".") {
+			return tlc.NewDecimalNode(nil, e.Value)
+		}
+		node, err := tlc.NewNumeralNodeFromString(e.Value)
+		if err != nil {
+			b.diags = append(b.diags, errorAt(e.Pos, "E7011", "%s", err))
+			return tlc.NewValueNode(tlc.ValUndef)
+		}
+		return node
+	case "string":
+		if e.stringNode != nil {
+			return e.stringNode
+		}
+		// Semantic translation has decoded the source escapes and stripped
+		// the syntax image's quotes. Quoted contents are data, not a second literal.
+		return tlc.NewStringNode(e.Value)
+	case "model":
+		return tlc.NewValueNode(tlc.MakeModelValue(e.Value))
+	default:
+		b.diags = append(b.diags, errorAt(e.Pos, "E7012", "unsupported literal kind %q in TLC bridge", e.Kind))
+		return tlc.NewValueNode(tlc.ValUndef)
+	}
+}
+
+func (b *tlcBridge) unaryNode(e *UnaryExpr) tlc.SemanticNode {
+	op := e.Op
+	switch op {
+	case "/\\":
+		return b.builtinNode(tlc.OpCL, b.convertExpr(e.Expr))
+	case "\\/":
+		return b.builtinNode(tlc.OpDL, b.convertExpr(e.Expr))
+	case "~", "\\neg":
+		op = "\\lnot"
+	}
+	return tlc.NewOpApplNode(b.exprSymbol(op), b.convertExpr(e.Expr))
+}
+
+func (b *tlcBridge) binaryNode(e *BinaryExpr) tlc.SemanticNode {
+	if e.Op == "\\X" || e.Op == "\\times" {
+		// Java Generator.N_Times emits one $CartesianProd application. The
+		// central AST's synthetic n-ary links share one source range;
+		// parenthesized operands retain their own ranges and remain nested.
+		var args []tlc.SemanticNode
+		var collect func(Expr)
+		collect = func(expr Expr) {
+			if nested, ok := expr.(*BinaryExpr); ok && nested.SanyNary && nested.Pos == e.Pos && (nested.Op == "\\X" || nested.Op == "\\times") {
+				collect(nested.Left)
+				collect(nested.Right)
+				return
+			}
+			args = append(args, b.convertExpr(expr))
+		}
+		collect(e.Left)
+		collect(e.Right)
+		return b.builtinNode(tlc.OpCP, args...)
+	}
+	if e.JunctionList {
+		op := tlc.OpCL
+		if e.Op == "\\/" {
+			op = tlc.OpDL
+		}
+		var args []tlc.SemanticNode
+		var collect func(Expr)
+		collect = func(expr Expr) {
+			if nested, ok := expr.(*BinaryExpr); ok && sanySameJunctionFrame(e, nested) {
+				collect(nested.Left)
+				collect(nested.Right)
+				return
+			}
+			args = append(args, b.convertExpr(expr))
+		}
+		collect(e.Left)
+		collect(e.Right)
+		return b.builtinNode(op, args...)
+	}
+	op := tlcBinaryOperator(e.Op)
+	return tlc.NewOpApplNode(b.exprSymbol(op), b.convertExpr(e.Left), b.convertExpr(e.Right))
+}
+
+func (b *tlcBridge) callNode(e *CallExpr) tlc.SemanticNode {
+	callee, ok := e.Callee.(*IdentExpr)
+	if !ok {
+		args := make([]tlc.SemanticNode, 1, len(e.Args)+1)
+		args[0] = b.convertExpr(e.Callee)
+		for _, arg := range e.Args {
+			args = append(args, b.convertExpr(arg))
+		}
+		if len(args) == 2 {
+			return b.builtinNode(tlc.OpFA, args[0], args[1])
+		}
+		return b.builtinNode(tlc.OpFA, args[0], b.builtinNode(tlc.OpTup, args[1:]...))
+	}
+	args := make([]tlc.SemanticNode, 0, len(e.Args))
+	for _, arg := range e.Args {
+		if ident, ok := arg.(*IdentExpr); ok {
+			if symbol := b.exprSymbol(ident.Name); symbol.GetArity() > 0 {
+				args = append(args, b.retainCanonicalExpression(arg, tlc.NewOpArgNode(symbol)))
+				continue
+			}
+		}
+		args = append(args, b.convertExpr(arg))
+	}
+	return tlc.NewOpApplNode(b.exprSymbol(callee.Name), args...)
+}
+
+func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
+	canonical, _ := sanyGeneratedExpressionNode(e).(*sanySemLetInNode)
+	if canonical != nil {
+		if node := b.canonicalLets[canonical]; node != nil {
+			return node
+		}
+	}
+	var base *tlc.SemanticNodeBase
+	if canonical != nil {
+		base = canonical.SemanticNodeBase
+	}
+	node := tlc.NewLetInNodeWithBase(base, nil)
+	if canonical != nil {
+		if b.canonicalLets == nil {
+			b.canonicalLets = map[*sanySemLetInNode]*tlc.LetInNode{}
+		}
+		// Publish the adapter before visiting children. References to this
+		// actual source LET retain its identity during recursive conversion.
+		b.canonicalLets[canonical] = node
+	}
+	lets := make([]*tlc.OpDefNode, 0, len(e.Definitions))
+	letNames := make([]string, 0, len(e.Definitions))
+	for _, def := range e.Definitions {
+		if def.Name != "" {
+			letNames = append(letNames, def.Name)
+		}
+	}
+	for _, inst := range e.Instances {
+		if mod := b.spec.Modules[inst.Module]; mod != nil {
+			for _, def := range mod.Definitions {
+				if !def.Local {
+					letNames = append(letNames, inst.qualifier()+"!"+def.Name)
+				}
+			}
+		}
+	}
+	priorSymbols := make([]*tlc.SymbolNode, len(letNames))
+	for i, name := range letNames {
+		priorSymbols[i] = b.symbols[name]
+		b.symbols[name] = tlc.NewSymbolNode(name)
+	}
+	for i := range e.Definitions {
+		if symbol := b.sourceSymbols[&e.Definitions[i]]; symbol != nil {
+			b.symbols[e.Definitions[i].Name] = symbol
+		}
+	}
+	defer func() {
+		for i, name := range letNames {
+			if priorSymbols[i] == nil {
+				delete(b.symbols, name)
+			} else {
+				b.symbols[name] = priorSymbols[i]
+			}
+		}
+	}()
+	restore := b.pushConvertBoundNames(letNames...)
+	defer restore()
+	for i := range e.Definitions {
+		definition := &e.Definitions[i]
+		opDef := b.convertDefinitionAs(definition.Name, definition)
+		if opDef != nil {
+			opDef.SetInRecursive(recursiveDeclarationSections(e.Recursives)[definition.Name] != 0)
+			// A Java OpApplNode references its LET OpDefNode directly. Keep
+			// that definition available to graph walking and default lookup;
+			// evaluation's contextual lazy binding still takes precedence.
+			opDef.Symbol.Data = opDef
+		}
+		lets = append(lets, opDef)
+	}
+	for _, inst := range e.Instances {
+		for _, opDef := range b.instanceOpDefinitions(inst) {
+			// Java getActions unwraps LET without extending its context. The
+			// exported OpDef is therefore also available directly at its symbol.
+			opDef.Symbol.Data = opDef
+			lets = append(lets, opDef)
+		}
+	}
+	node.Lets = lets
+	node.OpDefs = make([]tlc.SemanticNode, len(lets))
+	for i, definition := range lets {
+		node.OpDefs[i] = definition
+	}
+	node.Body = b.convertExpr(e.Body)
+	for _, inst := range e.Instances {
+		node.Bindings = append(node.Bindings, b.standardInstanceBindings(inst)...)
+	}
+	if canonical != nil {
+		b.retainCanonicalLetChildren(node, canonical)
+		node.Context = b.canonicalContext(canonical.context)
+	}
+	return node
+}
+
+func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
+	op := tlc.OpUF
+	if e.Set != nil {
+		if e.Kind == "\\E" {
+			op = tlc.OpBE
+		} else {
+			op = tlc.OpBF
+		}
+	} else {
+		switch e.Kind {
+		case "\\E":
+			op = tlc.OpUE
+		case "\\AA":
+			op = tlc.OpTF
+		case "\\EE":
+			op = tlc.OpTE
+		}
+	}
+	// The central AST represents a source variable list as nested wrappers.
+	// SANY generates one OpApplNode for the entire quantifier, not one per name.
+	quantifiers := []*QuantifierExpr{e}
+	body := e.Body
+	for e.Syntax != nil {
+		next, ok := body.(*QuantifierExpr)
+		if !ok || next.Syntax != e.Syntax || next.Kind != e.Kind {
+			break
+		}
+		quantifiers = append(quantifiers, next)
+		body = next.Body
+	}
+	node := b.builtinNode(op)
+	parameters := make([]*tlc.SymbolNode, len(quantifiers))
+	for i, quantifier := range quantifiers {
+		if quantifier.formalNode != nil {
+			parameters[i] = b.canonicalFormalParameter(quantifier.formalNode)
+		} else {
+			parameters[i] = b.formalParameter(quantifier.Var, quantifier.OperatorArity, quantifier.VarPos, e.Syntax)
+		}
+	}
+	// Generator.processQuantBoundArgs converts every domain before adding any
+	// quantified variable to the new context.
+	for i := 0; i < len(quantifiers); {
+		first := quantifiers[i]
+		symbols := []*tlc.SymbolNode{parameters[i]}
+		i++
+		for i < len(quantifiers) && quantifiers[i].Set == first.Set && quantifiers[i].TupleBound == first.TupleBound {
+			symbols = append(symbols, parameters[i])
+			i++
+		}
+		if first.Set != nil {
+			node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, symbols)
+			node.BdedQuantBounds = append(node.BdedQuantBounds, b.convertExpr(first.Set))
+			node.BdedQuantATuple = append(node.BdedQuantATuple, first.TupleBound)
+		} else {
+			node.UnbdedQuantSymbols = append(node.UnbdedQuantSymbols, symbols...)
+		}
+	}
+	restore := b.pushFormalParameters(parameters)
+	node.Args = []tlc.SemanticNode{b.convertExpr(body)}
+	restore()
+	return node
+}
+
+func (b *tlcBridge) caseNode(e *CaseExpr) tlc.SemanticNode {
+	args := make([]tlc.SemanticNode, 0, len(e.Arms)+1)
+	for _, arm := range e.Arms {
+		pair := b.builtinNode(tlc.OpPair, b.convertExpr(arm.Test), b.convertExpr(arm.Value))
+		args = append(args, b.withPositionLocation(arm.Pos, pair))
+	}
+	if e.Other != nil {
+		pair := b.builtinNode(tlc.OpPair, nil, b.convertExpr(e.Other))
+		args = append(args, b.withPositionLocation(e.OtherPos, pair))
+	}
+	return b.builtinNode(tlc.OpCase, args...)
+}
+
+func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
+	op := tlc.OpUC
+	if e.Set != nil {
+		op = tlc.OpBC
+	}
+	var bound tlc.SemanticNode
+	if e.Set != nil {
+		bound = b.convertExpr(e.Set)
+	}
+	parameters := b.boundParameters(e.boundVars(), e.Syntax, e.formalNodes)
+	restore := b.pushFormalParameters(parameters)
+	body := b.convertExpr(e.Body)
+	restore()
+	node := b.builtinNode(op, body)
+	if e.Set != nil {
+		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{parameters}
+		node.BdedQuantBounds = []tlc.SemanticNode{bound}
+		node.BdedQuantATuple = []bool{e.TupleVars != nil}
+	} else {
+		node.UnbdedQuantSymbols = parameters
+	}
+	return node
+}
+
+func (b *tlcBridge) lambdaNode(e *FunctionExpr) tlc.SemanticNode {
+	params := b.boundParameters(e.Bounds, e.Syntax, e.formalNodes)
+	restore := b.pushFormalParameters(params)
+	body := b.convertExpr(e.Body)
+	restore()
+	// Each LAMBDA has its own definition identity; its interned name remains
+	// LAMBDA, as in SANY's generateLambda. It is an operator argument.
+	symbol := tlc.NewSymbolNode("LAMBDA")
+	def := tlc.NewOpDefNodeForSymbol(symbol, params, body)
+	b.withPositionLocation(e.Pos, def)
+	symbol.Data = def
+	return tlc.NewOpArgNode(symbol)
+}
+
+func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc.SemanticNode {
+	op := tlc.OpNRFS
+	var self *tlc.SymbolNode
+	if exprReferencesName(e, def.Name, nil) {
+		op = tlc.OpRFS
+		if e.functionSymbol != nil {
+			self = b.canonicalFormalParameter(e.functionSymbol)
+		} else {
+			self = b.formalParameter(def.Name, 0, def.SourcePosition(), def.Syntax)
+		}
+		previous := b.symbols[def.Name]
+		b.symbols[def.Name] = self
+		restore := b.pushConvertBoundNames(def.Name)
+		defer func() {
+			restore()
+			if previous == nil {
+				delete(b.symbols, def.Name)
+			} else {
+				b.symbols[def.Name] = previous
+			}
+		}()
+	}
+	node := b.functionNode(e).(*tlc.OpApplNode)
+	node.Operator = b.builtinDefinition(op.String()).Symbol
+	if self != nil {
+		node.UnbdedQuantSymbols = []*tlc.SymbolNode{self}
+	}
+	// SANY function specifications cover the whole definition, unlike |->
+	// constructor expressions whose location is the bracketed expression.
+	return b.retainCanonicalExpression(e, b.withPositionLocation(def.SourcePosition(), b.withSyntaxNode(def.Syntax, node)))
+}
+
+func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {
+	boundExprs := b.boundDomainNodes(e.Bounds)
+	parameters := b.boundParameters(e.Bounds, e.Syntax, e.formalNodes)
+	restore := b.pushFormalParameters(parameters)
+	defer restore()
+	body := b.convertExpr(e.Body)
+	node := b.builtinNode(tlc.OpFC, body)
+	b.appendBoundGroups(node, b.boundGroups(e.Bounds, boundExprs))
+	return node
+}
+
+func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
+	args := []tlc.SemanticNode{b.convertExpr(e.Base)}
+	for i, spec := range e.Specs {
+		pathElems := make([]tlc.SemanticNode, 0)
+		for j, component := range spec.Components {
+			if component.Field != "" {
+				field := tlcBridgeCanonicalStringOperand(e, i+1, 0, j)
+				if field == nil {
+					field = tlc.NewStringNode(component.Field)
+					b.withPositionLocation(component.FieldPos, field)
+				}
+				pathElems = append(pathElems, field)
+			}
+			if len(component.Indices) > 0 {
+				// One bracket component is one function argument; multiple
+				// indices form a tuple, as in Generator's EXCEPT selector.
+				pathElems = append(pathElems, b.convertFunctionArgs(component.Indices))
+			}
+		}
+		path := b.withPositionLocation(spec.Pos, b.builtinNode(tlc.OpTup, pathElems...))
+		pair := b.builtinNode(tlc.OpPair, path, b.convertExpr(spec.Value))
+		args = append(args, b.withPositionLocation(spec.Pos, pair))
+	}
+	return b.builtinNode(tlc.OpExc, args...)
+}
+
+func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNode {
+	boundExprs := b.boundDomainNodes(e.Bounds)
+	parameters := b.boundParameters(e.Bounds, e.Syntax, e.formalNodes)
+	restore := b.pushFormalParameters(parameters)
+	defer restore()
+	groups := b.boundGroups(e.Bounds, boundExprs)
+	if e.Predicate != nil {
+		predicate := b.convertExpr(e.Predicate)
+		filtered := b.builtinNode(tlc.OpSSO, predicate)
+		filterSymbols, filterTuple := b.appendFilteredComprehensionBounds(filtered, groups, e.Pos)
+		if setComprehensionElementIsBound(e) {
+			return filtered
+		}
+		body := b.convertExpr(e.Element)
+		node := b.builtinNode(tlc.OpSOA, body)
+		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, filterSymbols)
+		node.BdedQuantBounds = append(node.BdedQuantBounds, filtered)
+		node.BdedQuantATuple = append(node.BdedQuantATuple, filterTuple)
+		return node
+	}
+	body := b.convertExpr(e.Element)
+	node := b.builtinNode(tlc.OpSOA, body)
+	b.appendBoundGroups(node, groups)
+	return node
+}
+
+type tlcBoundGroup struct {
+	symbols []*tlc.SymbolNode
+	bound   tlc.SemanticNode
+	tuple   bool
+}
+
+// A source N_QuantBound projects one shared Set expression to every name.
+// Generate each such domain once, before adding any formal to the context.
+func (b *tlcBridge) boundDomainNodes(bounds []BoundVar) []tlc.SemanticNode {
+	domains := make([]tlc.SemanticNode, len(bounds))
+	for i, bound := range bounds {
+		if i > 0 && bound.Set == bounds[i-1].Set && bound.TupleBound == bounds[i-1].TupleBound {
+			domains[i] = domains[i-1]
+		} else {
+			domains[i] = b.convertExpr(bound.Set)
+		}
+	}
+	return domains
+}
+
+func (b *tlcBridge) boundGroups(bounds []BoundVar, boundExprs []tlc.SemanticNode) []tlcBoundGroup {
+	groups := make([]tlcBoundGroup, 0, len(bounds))
+	for i := 0; i < len(bounds); {
+		first := bounds[i]
+		group := tlcBoundGroup{tuple: first.TupleBound}
+		if i < len(boundExprs) {
+			group.bound = boundExprs[i]
+		}
+		group.symbols = append(group.symbols, b.symbol(first.Name))
+		i++
+		for i < len(bounds) && bounds[i].Set == first.Set && bounds[i].TupleBound == first.TupleBound {
+			group.symbols = append(group.symbols, b.symbol(bounds[i].Name))
+			i++
+		}
+		groups = append(groups, group)
+	}
+	return groups
+}
+
+func (b *tlcBridge) appendBoundGroups(node *tlc.OpApplNode, groups []tlcBoundGroup) {
+	for _, group := range groups {
+		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, group.symbols)
+		node.BdedQuantBounds = append(node.BdedQuantBounds, group.bound)
+		node.BdedQuantATuple = append(node.BdedQuantATuple, group.tuple)
+	}
+}
+
+func (b *tlcBridge) appendFilteredComprehensionBounds(node *tlc.OpApplNode, groups []tlcBoundGroup, pos Position) ([]*tlc.SymbolNode, bool) {
+	if len(groups) == 1 {
+		b.appendBoundGroups(node, groups)
+		return groups[0].symbols, groups[0].tuple
+	}
+	allSymbols := make([]*tlc.SymbolNode, 0)
+	productArgs := make([]tlc.SemanticNode, 0, len(groups))
+	for _, group := range groups {
+		if group.tuple {
+			b.diags = append(b.diags, errorAt(pos, "E7013", "filtered set comprehension with multiple tuple-bound domains is not yet supported by the TLC bridge"))
+		}
+		allSymbols = append(allSymbols, group.symbols...)
+		productArgs = append(productArgs, group.bound)
+	}
+	product := b.withPositionLocation(pos, b.builtinNode(tlc.OpCP, productArgs...))
+	node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, allSymbols)
+	node.BdedQuantBounds = append(node.BdedQuantBounds, product)
+	node.BdedQuantATuple = append(node.BdedQuantATuple, true)
+	return allSymbols, true
+}
+
+func (b *tlcBridge) convertFunctionArgs(args []Expr) tlc.SemanticNode {
+	if len(args) == 1 {
+		return b.convertExpr(args[0])
+	}
+	elems := make([]tlc.SemanticNode, 0, len(args))
+	for _, arg := range args {
+		elems = append(elems, b.convertExpr(arg))
+	}
+	return b.builtinNode(tlc.OpTup, elems...)
+}
+
+func (b *tlcBridge) symbol(name string) *tlc.SymbolNode {
+	name = tlcSymbolName(name)
+	if sym := b.symbols[name]; sym != nil {
+		return sym
+	}
+	sym := tlc.NewSymbolNode(name)
+	b.symbols[name] = sym
+	return sym
+}
+
+func tlcBinaryOperator(op string) string {
+	switch op {
+	case "/\\":
+		return "\\land"
+	case "\\/":
+		return "\\lor"
+	case "<=>":
+		return "\\equiv"
+	default:
+		return tlcSymbolName(op)
+	}
+}
+
+func tlcSymbolName(name string) string {
+	switch name {
+	case "~", "\\neg":
+		return "\\lnot"
+	case "/\\":
+		return "\\land"
+	case "\\/":
+		return "\\lor"
+	case "<=>":
+		return "\\equiv"
+	case "=<":
+		return "\\leq"
+	case ">=":
+		return "\\geq"
+	default:
+		return name
+	}
+}
+
+func setComprehensionElementIsBound(e *SetComprehensionExpr) bool {
+	if e == nil {
+		return false
+	}
+	if len(e.Bounds) == 1 {
+		ident, ok := e.Element.(*IdentExpr)
+		return ok && ident.Name == e.Bounds[0].Name
+	}
+	tuple, ok := e.Element.(*TupleExpr)
+	if !ok || len(tuple.Elems) != len(e.Bounds) {
+		return false
+	}
+	for i, elem := range tuple.Elems {
+		ident, ok := elem.(*IdentExpr)
+		if !ok || ident.Name != e.Bounds[i].Name {
+			return false
+		}
+	}
+	return true
+}

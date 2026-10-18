@@ -1,0 +1,5 @@
+The specifications TCommit, TwoPhase, and PaxosCommit are from the
+paper "Consensus on Transaction Commit" by Jim Gray and Leslie
+Lamport, available at:
+
+   http://research.microsoft.com/en-us/um/people/lamport/pubs/pubs.html#paxos-commit

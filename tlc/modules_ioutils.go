@@ -1,0 +1,488 @@
+package tlc
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"os/exec"
+	"sort"
+	"strings"
+)
+
+var ioUtilsExecNames = []*UniqueString{
+	UniqueStringOf("exitValue"),
+	UniqueStringOf("stdout"),
+	UniqueStringOf("stderr"),
+}
+
+var ioUtilsEnvSnapshot = ioUtilsBuildEnv()
+
+func IOUtilsIOSerialize(value Value, absolutePath *StringValue, compress *BoolValue) (result Value, err error) {
+	if absolutePath == nil {
+		return nil, NewNullPointerException(`Cannot read field "val" because "<parameter2>" is null`)
+	}
+	if absolutePath.ownedVal() == nil {
+		return nil, NewNullPointerException(`Cannot invoke "util.UniqueString.toString()" because "<parameter2>.val" is null`)
+	}
+	filePath := absolutePath.ownedVal().String()
+	if compress == nil {
+		return nil, NewNullPointerException(`Cannot read field "val" because "<parameter3>" is null`)
+	}
+	out, err := NewValueOutputStreamFile(filePath, compress.Val)
+	if err != nil {
+		return nil, err
+	}
+	defer ioUtilsCloseFinally(out.Close, &result, &err)
+	if isNil(value) {
+		return nil, NewNullPointerException(`Cannot invoke "tlc2.value.IValue.write(tlc2.value.IValueOutputStream)" because "<parameter1>" is null`)
+	}
+	if err = out.WriteExternal(value); err != nil {
+		return nil, err
+	}
+	return BoolTrue, nil
+}
+
+func IOUtilsIODeserialize(absolutePath *StringValue, compress *BoolValue) (result Value, err error) {
+	if absolutePath == nil {
+		return nil, NewNullPointerException(`Cannot read field "val" because "<parameter1>" is null`)
+	}
+	if absolutePath.ownedVal() == nil {
+		return nil, NewNullPointerException(`Cannot invoke "util.UniqueString.toString()" because "<parameter1>.val" is null`)
+	}
+	filePath := absolutePath.ownedVal().String()
+	if compress == nil {
+		return nil, NewNullPointerException(`Cannot read field "val" because "<parameter2>" is null`)
+	}
+	in, err := NewValueInputStreamFile(filePath, compress.Val)
+	if err != nil {
+		return nil, err
+	}
+	defer ioUtilsCloseFinally(in.Close, &result, &err)
+	return in.ReadExternal()
+}
+
+func ioUtilsCloseFinally(close func() error, result *Value, err *error) {
+	failure := recover()
+	if closeErr := close(); closeErr != nil {
+		*result = nil
+		*err = closeErr
+		return
+	}
+	if failure != nil {
+		panic(failure)
+	}
+}
+
+func IOUtilsSerialize(payload Value, dest Value, options Value) (Value, error) {
+	opts := asRecordValue(options)
+	if opts == nil {
+		return ioUtilsResult(1, "", "Serialize error invalid parameters: options is not a record"), nil
+	}
+	format := ioUtilsRecordString(opts, "format")
+	switch format {
+	case "TXT":
+		return ioUtilsSerializeTXT(payload, dest, opts), nil
+	case "NDJSON":
+		path, ok := asStringValue(dest)
+		if !ok {
+			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "ndJsonSerialize", "sequence", ValuesPPR(dest))
+		}
+		return JsonTextSerialize(path, payload, options)
+	default:
+		return ValUndef, nil
+	}
+}
+
+func IOUtilsDeserialize(src Value, options Value) (Value, error) {
+	opts, err := ioUtilsTXTRecord(options)
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
+	}
+	format, err := ioUtilsTXTFormat(opts)
+	if err != nil {
+		return nil, err
+	}
+	if format != "TXT" {
+		return ValUndef, nil
+	}
+	path, err := ioUtilsTXTString(src)
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
+	}
+	charset, err := ioUtilsTXTStringField(opts, "charset")
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
+	}
+	if err := ioUtilsTXTStringNullError(path); err != nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
+	}
+	filePath, err := ioUtilsTXTPath(path.RawString())
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
+	}
+	if err := ioUtilsTXTStringNullError(charset); err != nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
+	}
+	name, err := javaCharsetName(charset.RawString())
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
+	}
+	data, err := ioUtilsTXTReadFile(filePath)
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
+	}
+	text, err := ioUtilsDecodeString(data, name)
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
+	}
+	return ioUtilsResult(0, text, ""), nil
+}
+
+func IOUtilsIOEnv() Value {
+	return ioUtilsEnvSnapshot
+}
+
+func ioUtilsBuildEnv() Value {
+	env := os.Environ()
+	sort.Strings(env)
+	names := make([]*UniqueString, 0, len(env))
+	values := make([]Value, 0, len(env))
+	for _, entry := range env {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
+		}
+		names = append(names, UniqueStringOf(key))
+		values = append(values, NewStringValue(value))
+	}
+	return NewRecordValue(names, values, false).Normalize()
+}
+
+func IOUtilsAtoi(value Value) (Value, error) {
+	if isNil(value) {
+		// Java reaches v.toString() while building the argument-error parameters.
+		return nil, NewNullPointerException()
+	}
+	var str *StringValue
+	switch value := value.(type) {
+	case *StringValue:
+		str = value
+	case *DebuggerValue:
+		str = value.StringValue
+	default:
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "atoi", "string", ValuesPPR(value))
+	}
+	i, ok := javaParseDecimalInt(str.RawString())
+	if !ok {
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "atoi", "string", ValuesPPR(value))
+	}
+	return NewIntValue(i), nil
+}
+
+func IOUtilsIOExec(command Value) (Value, error) {
+	argv, err := ioUtilsTupleStrings("IOExec", command)
+	if err != nil {
+		return nil, err
+	}
+	return ioUtilsRunProcess(nil, argv)
+}
+
+func IOUtilsIOEnvExec(env Value, command Value) (Value, error) {
+	environment, err := ioUtilsRequireEnvRecord("IOEnvExec", env)
+	if err != nil {
+		return nil, err
+	}
+	argv, err := ioUtilsTupleStrings("IOEnvExec", command)
+	if err != nil {
+		return nil, err
+	}
+	return ioUtilsRunProcess(ioUtilsEnvRecord(environment), argv)
+}
+
+func IOUtilsIOExecTemplate(commandTemplate Value, parameters Value) (Value, error) {
+	argv, err := ioUtilsTemplateStrings("IOExecTemplate", commandTemplate, parameters)
+	if err != nil {
+		return nil, err
+	}
+	return ioUtilsRunProcess(nil, argv)
+}
+
+func IOUtilsIOEnvExecTemplate(env Value, commandTemplate Value, parameters Value) (Value, error) {
+	environment, err := ioUtilsRequireEnvRecord("IOEnvExecTemplate", env)
+	if err != nil {
+		return nil, err
+	}
+	argv, err := ioUtilsTemplateStrings("IOEnvExecTemplate", commandTemplate, parameters)
+	if err != nil {
+		return nil, err
+	}
+	return ioUtilsRunProcess(ioUtilsEnvRecord(environment), argv)
+}
+
+func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
+	text, err := ioUtilsTXTString(payload)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err)
+	}
+	path, err := ioUtilsTXTString(dest)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err)
+	}
+	options, charset, err := ioUtilsTXTOptions(opts)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err)
+	}
+	if err := ioUtilsTXTStringNullError(path); err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	filePath, err := ioUtilsTXTPath(path.RawString())
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	if err := ioUtilsTXTStringNullError(text); err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	if err := ioUtilsTXTStringNullError(charset); err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	name, err := javaCharsetName(charset.RawString())
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	enums, err := ioUtilsTXTEnums(options)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	data, err := javaCharsetEncode(text.RawString(), name, true)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	fileOptions, err := ioUtilsFileOptionsFromEnums(enums)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	if err := ioUtilsTXTWriteFile(filePath, data, fileOptions); err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	return ioUtilsResult(0, "Finish writing to the file with success!", "")
+}
+
+type ioUtilsFileOptions struct {
+	flag          int
+	deleteOnClose bool
+}
+
+func ioUtilsOpenFileOptions(opts *RecordValue) (ioUtilsFileOptions, error) {
+	value, err := opts.Apply(NewStringValue("openOptions"))
+	if err != nil {
+		return ioUtilsFileOptions{}, err
+	}
+	tuple, err := ioUtilsTXTTuple(value)
+	if err != nil {
+		return ioUtilsFileOptions{}, err
+	}
+	if tuple == nil {
+		return ioUtilsFileOptions{}, NewNullPointerException()
+	}
+	strings := make([]*StringValue, len(tuple.GetElems()))
+	for i, value := range tuple.GetElems() {
+		strings[i], err = ioUtilsTXTString(value)
+		if err != nil {
+			return ioUtilsFileOptions{}, err
+		}
+	}
+	enums, err := ioUtilsTXTEnums(strings)
+	if err != nil {
+		return ioUtilsFileOptions{}, err
+	}
+	return ioUtilsFileOptionsFromEnums(enums)
+}
+
+func ioUtilsFileOptionsFromEnums(enums []string) (ioUtilsFileOptions, error) {
+	options := ioUtilsFileOptions{flag: os.O_WRONLY}
+	if len(enums) == 0 {
+		options.flag |= os.O_CREATE | os.O_TRUNC
+		return options, nil
+	}
+	appendMode, truncate := false, false
+	for _, name := range enums {
+		switch name {
+		case "READ":
+			return ioUtilsFileOptions{}, NewIllegalArgumentException("READ not allowed")
+		case "CREATE":
+			options.flag |= os.O_CREATE
+		case "CREATE_NEW":
+			options.flag |= os.O_CREATE | os.O_EXCL
+		case "TRUNCATE_EXISTING":
+			options.flag |= os.O_TRUNC
+			truncate = true
+		case "APPEND":
+			options.flag |= os.O_APPEND
+			appendMode = true
+		case "DELETE_ON_CLOSE":
+			options.deleteOnClose = true
+		case "SYNC":
+			options.flag |= os.O_SYNC
+		case "DSYNC":
+			options.flag |= fileDataSyncFlag()
+		}
+	}
+	if appendMode && truncate {
+		return ioUtilsFileOptions{}, NewIllegalArgumentException("APPEND + TRUNCATE_EXISTING not allowed")
+	}
+	return options, nil
+}
+
+func ioUtilsResult(exitValue int32, stdout string, stderr string) Value {
+	return NewRecordValue(ioUtilsExecNames, []Value{
+		NewIntValue(exitValue),
+		NewStringValue(stdout),
+		NewStringValue(stderr),
+	}, false)
+}
+
+func ioUtilsRecordString(record *RecordValue, key string) string {
+	value, err := record.Select(NewStringValue(key))
+	if err != nil {
+		return ""
+	}
+	if str, ok := asStringValue(value); ok {
+		return str.RawString()
+	}
+	return ""
+}
+
+func ioUtilsRecordRequiredString(record *RecordValue, key string) (string, error) {
+	value, err := record.Apply(NewStringValue(key))
+	if err != nil {
+		return "", err
+	}
+	str, ok := asStringValue(value)
+	if !ok {
+		return "", fmt.Errorf("%s is not a string", key)
+	}
+	return str.RawString(), nil
+}
+
+func ioUtilsRequireTuple(name string, value Value) (*TupleValue, error) {
+	// IOUtils checks instanceof TupleValue rather than converting a function
+	// to a tuple. Both template tuple checks precede element conversion.
+	tuple, ok := value.(*TupleValue)
+	if !ok {
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, name, "sequence", ValuesPPR(value))
+	}
+	return tuple, nil
+}
+
+func ioUtilsTupleStrings(name string, value Value) ([]string, error) {
+	tuple, err := ioUtilsRequireTuple(name, value)
+	if err != nil {
+		return nil, err
+	}
+	return ioUtilsConvertStrings(tuple)
+}
+
+func ioUtilsConvertStrings(tuple *TupleValue) ([]string, error) {
+	out := make([]string, len(tuple.GetElems()))
+	for i, elem := range tuple.GetElems() {
+		var str *StringValue
+		switch value := elem.(type) {
+		case *StringValue:
+			str = value
+		case *DebuggerValue:
+			str = value.StringValue
+		default:
+			return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "IOExec", "sequence", ValuesPPR(elem))
+		}
+		out[i] = str.RawString()
+	}
+	return out, nil
+}
+
+func ioUtilsTemplateStrings(name string, commandTemplate Value, parameters Value) ([]string, error) {
+	commandTuple, err := ioUtilsRequireTuple(name, commandTemplate)
+	if err != nil {
+		return nil, err
+	}
+	parameterTuple, err := ioUtilsRequireTuple(name, parameters)
+	if err != nil {
+		return nil, err
+	}
+	argv, err := ioUtilsConvertStrings(commandTuple)
+	if err != nil {
+		return nil, err
+	}
+	params, err := ioUtilsConvertStrings(parameterTuple)
+	if err != nil {
+		return nil, err
+	}
+	for i := range argv {
+		argv[i], err = JavaFormatStrings(argv[i], params...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return argv, nil
+}
+
+func ioUtilsRequireEnvRecord(name string, value Value) (*RecordValue, error) {
+	record := asRecordValue(value)
+	if record == nil {
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, name, "record", ValuesPPR(value))
+	}
+	return record, nil
+}
+
+func ioUtilsEnvRecord(record *RecordValue) map[string]string {
+	env := make(map[string]string, len(record.ownedNames()))
+	for i, name := range record.ownedNames() {
+		env[name.String()] = ioUtilsValueString(record.ownedValues()[i])
+	}
+	return env
+}
+
+func ioUtilsValueString(value Value) string {
+	return ValueToUnquotedString(value)
+}
+
+func ioUtilsRunProcess(env map[string]string, argv []string) (Value, error) {
+	if len(argv) == 0 {
+		return nil, NewArrayIndexOutOfBoundsException(0, 0)
+	}
+	cmd := exec.Command(argv[0], argv[1:]...)
+	if env != nil {
+		cmd.Env = os.Environ()
+		keys := make([]string, 0, len(env))
+		for key := range env {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			cmd.Env = append(cmd.Env, key+"="+env[key])
+		}
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	exit := int32(0)
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exit = int32(exitErr.ExitCode())
+		} else {
+			return nil, err
+		}
+	}
+	return ioUtilsResult(exit, stdout.String(), stderr.String()), nil
+}
+
+// JSON's stream writer replaces unencodable input; Files.writeString in the
+// TXT handler instead calls javaCharsetEncode with no replacement.
+func ioUtilsEncodeString(text string, charset string) ([]byte, error) {
+	return javaCharsetEncode(text, charset, false)
+}
+
+func ioUtilsDecodeString(data []byte, charset string) (string, error) {
+	return javaCharsetDecode(data, charset, false)
+}

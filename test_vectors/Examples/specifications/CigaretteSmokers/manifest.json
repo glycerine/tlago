@@ -1,0 +1,46 @@
+{
+  "sources": [
+    "https://github.com/mryndzionek/tlaplus_specs#cigarettesmokerstla"
+  ],
+  "authors": [
+    "Mariusz Ryndzionek"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/CigaretteSmokers/APCigaretteSmokers.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/CigaretteSmokers/APCigaretteSmokers.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/CigaretteSmokers/CigaretteSmokers.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/CigaretteSmokers/CigaretteSmokers.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 6,
+          "totalStates": 15,
+          "stateDepth": 2
+        }
+      ]
+    },
+    {
+      "path": "specifications/CigaretteSmokers/CigaretteSmokers_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

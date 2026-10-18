@@ -1,0 +1,125 @@
+{
+  "sources": [],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/MisraReachability/APParReach.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/MisraReachability/APParReach.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/MisraReachability/APReachable.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/MisraReachability/MCParReach.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/MisraReachability/MCParReach.cfg",
+          "runtime": "00:00:30",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 393,
+          "totalStates": 747,
+          "stateDepth": 18
+        }
+      ]
+    },
+    {
+      "path": "specifications/MisraReachability/MCReachabilityTest.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/MisraReachability/MCReachabilityTestAllGraphs.cfg",
+          "runtime": "00:00:20",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 0,
+          "totalStates": 0,
+          "stateDepth": 0
+        },
+        {
+          "path": "specifications/MisraReachability/MCReachabilityTestRandomGraphs.cfg",
+          "runtime": "00:00:10",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 0,
+          "totalStates": 0,
+          "stateDepth": 0
+        }
+      ]
+    },
+    {
+      "path": "specifications/MisraReachability/MCReachable.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/MisraReachability/MCReachable.cfg",
+          "runtime": "00:01:30",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/MisraReachability/ParReach.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/MisraReachability/ParReachProofs.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/MisraReachability/Reachability.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/MisraReachability/ReachabilityProofs.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/MisraReachability/ReachabilityTest.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/MisraReachability/Reachable.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/MisraReachability/ReachableProofs.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

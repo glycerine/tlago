@@ -1,0 +1,12 @@
+{
+    "name": "TLA+ CommunityModules",
+  
+    // Install optional extension. If this fails, it just degrades the convenience factor.
+    "extensions": [
+      "alygin.vscode-tlaplus-nightly",
+      "mhutchie.git-graph",
+      "vscjava.vscode-java-pack"
+    ],
+  
+    "postCreateCommand": "bash -i .devcontainer/install.sh",
+  }

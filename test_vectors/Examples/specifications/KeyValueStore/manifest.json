@@ -1,0 +1,81 @@
+{
+  "sources": [],
+  "authors": [
+    "Andrew Helwer",
+    "Murat Demirbas"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/KeyValueStore/APKeyValueStore.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/KeyValueStore/ClientCentric.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/KeyValueStore/KVsnap.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/KeyValueStore/KeyValueStore.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/KeyValueStore/KeyValueStore_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/KeyValueStore/MCKVS.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/KeyValueStore/MCKVSSafetyLarge.cfg",
+          "runtime": "07:16:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/KeyValueStore/MCKVSSafetyMedium.cfg",
+          "runtime": "00:04:30",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/KeyValueStore/MCKVSSafetySmall.cfg",
+          "runtime": "00:00:40",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/KeyValueStore/MCKVsnap.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/KeyValueStore/MCKVsnap.cfg",
+          "runtime": "00:00:50",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/KeyValueStore/Util.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

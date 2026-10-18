@@ -1,0 +1,113 @@
+{
+  "sources": [
+    "http://research.microsoft.com/en-us/um/people/lamport/pubs/pubs.html#paxos-commit",
+    "https://www.microsoft.com/en-us/research/uploads/prod/2004/01/consensus-on-transaction-commit.pdf",
+    "https://github.com/muratdem/PlusCal-examples/tree/master/2PCTM"
+  ],
+  "authors": [
+    "Jim Gray",
+    "Leslie Lamport",
+    "Murat Demirbas"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/transaction_commit/2PCwithBTM.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/transaction_commit/2PCwithBTM.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 1245,
+          "totalStates": 5841,
+          "stateDepth": 15
+        }
+      ]
+    },
+    {
+      "path": "specifications/transaction_commit/APTCommit.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/transaction_commit/APTCommit.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/transaction_commit/PaxosCommit.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/transaction_commit/PaxosCommit.cfg",
+          "runtime": "00:01:00",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 1321761,
+          "totalStates": 16959159,
+          "stateDepth": 28
+        }
+      ]
+    },
+    {
+      "path": "specifications/transaction_commit/PaxosCommit_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 5
+      }
+    },
+    {
+      "path": "specifications/transaction_commit/TCommit.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/transaction_commit/TCommit.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 34,
+          "totalStates": 94,
+          "stateDepth": 7
+        }
+      ]
+    },
+    {
+      "path": "specifications/transaction_commit/TCommit_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/transaction_commit/TwoPhase.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/transaction_commit/TwoPhase.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 288,
+          "totalStates": 1146,
+          "stateDepth": 11
+        }
+      ]
+    },
+    {
+      "path": "specifications/transaction_commit/TwoPhase_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

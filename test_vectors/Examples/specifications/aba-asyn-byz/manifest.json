@@ -1,0 +1,23 @@
+{
+  "sources": [],
+  "authors": [
+    "Igor Konnov",
+    "Josef Widder",
+    "Thanh Hai Tran"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/aba-asyn-byz/aba_asyn_byz.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/aba-asyn-byz/aba_asyn_byz.cfg",
+          "runtime": "00:10:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    }
+  ]
+}

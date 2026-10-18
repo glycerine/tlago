@@ -1,0 +1,357 @@
+/*******************************************************************************
+ * Copyright (c) 2017 Microsoft Research. All rights reserved.
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+ * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Contributors:
+ *   Markus Alexander Kuppe - initial API and implementation
+ ******************************************************************************/
+// Ports of EmptySubsetEqTest.testSpec and SubsetEqTest.testSpec after the subset/interval value feature.
+// Run the original model through the production Go SANY bridge and TLC runner.
+package tlago
+
+import (
+	"context"
+	"math"
+	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/glycerine/tlago/tlc"
+)
+
+func runJavaTLCModelTest(t *testing.T, name string, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithCoverage(t, name, true, extraArgs...)
+}
+
+func runJavaTLCModelTestWithCoverage(t *testing.T, name string, coverage bool, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithSettings(t, name, coverage, true, extraArgs...)
+}
+
+func runJavaTLCModelTestWithSettings(t *testing.T, name string, coverage, dump bool, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithWorkers(t, name, coverage, dump, 1, extraArgs...)
+}
+
+func runJavaTLCModelTestWithWorkers(t *testing.T, name string, coverage, dump bool, workers int, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithDebugger(t, name, coverage, dump, true, workers, extraArgs...)
+}
+
+func runJavaTLCModelTestWithDebugger(t *testing.T, name string, coverage, dump, debugger bool, workers int, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithRoot(t, name, name, coverage, dump, debugger, workers, extraArgs...)
+}
+
+func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithRootAndSetup(t, name, root, coverage, dump, debugger, workers, nil, extraArgs...)
+}
+
+func runJavaTLCModelTestWithRootAndSetup(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, setup func(*tlc.TLC), extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithDeadlockAndSetup(t, name, root, coverage, dump, debugger, workers, false, setup, extraArgs...)
+}
+
+// ModelCheckerTestCase.checkDeadLock overrides whether -deadlock is omitted.
+func runJavaTLCModelTestWithDeadlock(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, checkDeadlock bool, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithDeadlockAndSetup(t, name, root, coverage, dump, debugger, workers, checkDeadlock, nil, extraArgs...)
+}
+
+func runJavaTLCModelTestWithDeadlockAndSetup(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, checkDeadlock bool, setup func(*tlc.TLC), extraArgs ...string) *tlc.Result {
+	t.Helper()
+	setJavaModelLivenessThreshold(t, math.MaxFloat64)
+	return runJavaTLCModelTestWithRunnerSetup(t, name, root, func(meta, traceDirectory string) []string {
+		args := []string{"-metadir", meta, "-teSpecOutDir", traceDirectory, "-fp", "0", "-seed", "1", "-workers", strconv.Itoa(workers), "-checkpoint", "0"}
+		if !checkDeadlock {
+			args = append(args, "-deadlock")
+		}
+		// Java's noGenerateSpec override omits -generateSpecTE entirely. Supplying
+		// both flags retains forced generation and adds an unwanted binary dump.
+		noGenerate := false
+		for _, arg := range extraArgs {
+			noGenerate = noGenerate || arg == "-noGenerateSpecTE"
+		}
+		if !noGenerate {
+			args = append(args, "-generateSpecTE")
+		}
+		if workers == 1 && debugger {
+			args = append(args, "-debugger", "nosuspend,port=4712,nohalt")
+		}
+		tlc.Globals.CoverageInterval = -1
+		if coverage {
+			args = append(args, "-coverage", "1")
+		}
+		if dump {
+			// Source uses the test class name beneath metadir, even when
+			// the specification argument is an absolute corpus filename.
+			args = append(args, "-dump", "dot", filepath.Join(meta, filepath.Base(root)+".dot"))
+		}
+		args = append(args, extraArgs...)
+		return args
+	}, setup)
+}
+
+// ModelCheckerTestCase disables partial liveness checks by default. The
+// CommonTestCase-based DumpLoadTraceTest uses the exact-argument helper directly
+// and retains the runtime default instead.
+func setJavaModelLivenessThreshold(t *testing.T, threshold float64) {
+	t.Helper()
+	previous := tlc.Globals.LivenessThreshold
+	tlc.Globals.LivenessThreshold = threshold
+	t.Cleanup(func() { tlc.Globals.LivenessThreshold = previous })
+}
+
+func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string, resolvers ...tlc.FilenameToStream) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithRunnerSetup(t, name, root, arguments, nil, resolvers...)
+}
+
+func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string, setup func(*tlc.TLC), resolvers ...tlc.FilenameToStream) *tlc.Result {
+	t.Helper()
+	// customBuild.xml test-dist forks each class with these VM settings.
+	// Apply them before parsing arguments, preserving the parsed configuration
+	// and any explicit test flags rather than replacing it with a small MSB set.
+	t.Setenv(tlc.FPSetImplProperty, "tlc2.tool.fp.OffHeapDiskFPSet")
+	t.Setenv("TLAGO_MAX_DIRECT_MEMORY", "512k")
+	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
+	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
+	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
+	oldContinuation := tlc.Globals.Continuation
+	oldWarn := tlc.Globals.Warn
+	oldLNCheck := tlc.Globals.LNCheck
+	oldUseView := tlc.UseView()
+	oldUseGZIP := tlc.UseGZIP()
+	oldSetBound := tlc.Globals.SetBound
+	oldPoly := tlc.FP64IrredPoly()
+	oldUserDir := tlc.GetFilenameUserDirectory()
+	tlc.Globals.Lock()
+	oldSuppressed, oldElevated := tlc.Globals.SuppressedMessages, tlc.Globals.MessagesAsErrors
+	oldSANYSuppressed, oldSANYElevated := tlc.Globals.SANYSuppressedMessages, tlc.Globals.SANYMessagesAsErrors
+	tlc.Globals.SuppressedMessages, tlc.Globals.MessagesAsErrors = tlc.NewInsMap[int, bool](), tlc.NewInsMap[int, bool]()
+	tlc.Globals.SANYSuppressedMessages, tlc.Globals.SANYMessagesAsErrors = tlc.NewInsMap[int, bool](), tlc.NewInsMap[int, bool]()
+	tlc.Globals.Unlock()
+	// The upstream runner isolates TLC statics with a per-test classloader.
+	// Fresh tokens preserve source record normalization independent of test order.
+	tlc.UniqueStringInitialize()
+	tlc.InitializeSpecStatics()
+	tlc.InitializeSpecProcessorStatics()
+	tlc.InitializeToolStatics()
+	tlc.InitializeIntValueStatics()
+	tlc.InitializeLazyValueStatics()
+	tlc.InitializeMPStatics()
+	tlc.InitializeStringHelperStatics()
+	tlc.InitializeSimulatorStatics()
+	tlc.InitializeRLSimulationWorkerStatics()
+	tlc.InitializeFcnRcdValueStatics()
+	tlc.InitializeValuesStatics()
+	tlc.InitializeStatePrinterStatics()
+	tlc.InitializePrintTLCStateStatics()
+	tlc.InitializeActionItemListStatics()
+	tlc.InitializeToolIOStatics()
+	tlc.InitializeAbstractCheckerStatics()
+	tlc.InitializeModelCheckerStatics()
+	tlc.InitializeWorkerStatics()
+	tlc.InitializeSimulationWorkerStatics()
+	tlc.InitializeFPIntSetStatics()
+	tlc.InitializeHeapBasedDiskFPSetStatics()
+	// Ant forks each concrete model test class into a fresh JVM. The source
+	// off-heap singleton only increases its registered worker count within
+	// that runtime, so a prior class must not retain its barrier here.
+	tlc.InitializeOffHeapDiskFPSetStatics()
+	tlc.SetMainChecker(nil)
+	tlc.SetSimulator(nil)
+	tlc.Globals.Continuation = false
+	// The original Ant runner forks a fresh JVM per concrete test class.
+	// -nowarning affects getNextStates' all-assigned evaluation path as well
+	// as messages, so preserve its isolation before parsing this test's flags.
+	tlc.Globals.Warn = true
+	// The source runner's fresh classloader restores the default strategy.
+	// ParseTLCOptions writes -lncheck into the shared runtime globals.
+	tlc.Globals.LNCheck = "default"
+	tlc.SetUseView(false)
+	// TLCGlobals.useGZIP starts false in the source runner's fresh JVM.
+	tlc.SetUseGZIP(false)
+	tlc.Globals.SetBound = 1000000
+	t.Cleanup(func() {
+		tlc.Globals.Lock()
+		tlc.Globals.SuppressedMessages, tlc.Globals.MessagesAsErrors = oldSuppressed, oldElevated
+		tlc.Globals.SANYSuppressedMessages, tlc.Globals.SANYMessagesAsErrors = oldSANYSuppressed, oldSANYElevated
+		tlc.Globals.Unlock()
+		tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir = oldCoverage, oldCheckpoint, oldMeta
+		tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator = oldWorkers, oldMain, oldSimulator
+		tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime = oldTool, oldDFID, oldStart
+		tlc.Globals.Continuation = oldContinuation
+		tlc.Globals.Warn = oldWarn
+		tlc.Globals.LNCheck = oldLNCheck
+		tlc.SetUseView(oldUseView)
+		tlc.SetUseGZIP(oldUseGZIP)
+		tlc.Globals.SetBound = oldSetBound
+		tlc.FP64InitPoly(oldPoly)
+		tlc.SetFilenameUserDirectory(oldUserDir)
+		tlc.SetTLCStateTool(nil)
+	})
+	directory, err := filepath.Abs(filepath.Join("tlc", "test_vectors", "models", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tlc.SetFilenameUserDirectory(&directory)
+	meta := t.TempDir()
+	traceDirectory := t.TempDir()
+	tlc.Globals.CoverageInterval = -1
+	args := arguments(meta, traceDirectory)
+	args = append(args, root)
+	opts, err := tlc.ParseTLCOptions(args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// ModelCheckerTestCase installs its recorder before tool construction, so
+	// retain configuration diagnostics as well as messages from TLC.process.
+	recorder := &tlc.MemoryRecorder{}
+	tlc.AddMessageRecorder(recorder)
+	defer tlc.RemoveMessageRecorder(recorder)
+	opts.LoadTool = func() (*tlc.Tool, error) {
+		var resolver tlc.FilenameToStream
+		if len(resolvers) > 0 {
+			resolver = resolvers[0]
+		}
+		tool, diags, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, resolver, opts.RuntimeParams)
+		requireNoErrors(t, diags)
+		return tool, err
+	}
+	runner := tlc.NewTLC(opts)
+	if len(resolvers) > 0 {
+		runner.SetResolver(resolvers[0])
+	}
+	if setup != nil {
+		setup(runner)
+	}
+	result, _ := runner.Process(context.Background())
+	if result == nil {
+		t.Fatal("TLC result is nil")
+	}
+	result.Messages = append([]tlc.Message(nil), recorder.Messages...)
+	return result
+}
+
+func javaTLCRecords(result *tlc.Result, code int) []tlc.Message {
+	var matches []tlc.Message
+	for _, m := range result.Messages {
+		if m.Code == code {
+			matches = append(matches, m)
+		}
+	}
+	return matches
+}
+
+func TestJavaEmptySubsetEq(t *testing.T) {
+	result := runJavaTLCModelTest(t, "EmptySubsetEq")
+	if result.ExitStatus != tlc.ExitStatusFailureSpecEval {
+		t.Fatalf("exit status=%d, want %d", result.ExitStatus, tlc.ExitStatusFailureSpecEval)
+	}
+	records := func(code int) []tlc.Message { return javaTLCRecords(result, code) }
+	if len(records(tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	matched := false
+	for _, m := range records(tlc.ECTLCStats) {
+		if reflect.DeepEqual(m.Params, []string{"1", "1", "0"}) {
+			matched = true
+		}
+	}
+	if !matched {
+		t.Fatalf("TLC_STATS=%v, want 1/1/0", records(tlc.ECTLCStats))
+	}
+	if len(records(tlc.ECTLCTESpecGenerationComplete)) != 0 {
+		t.Fatal("A TE spec was generated, but it should not be")
+	}
+	want := "TLC threw an unexpected exception.\nThis was probably caused by an error in the spec or model.\nSee the User Output or TLC Console for clues to what happened.\nThe exception was a java.lang.RuntimeException\n: Attempted to check if the value:\n{}\nis in the integer interval 1..4"
+	matched = false
+	for _, m := range records(tlc.ECGeneral) {
+		if reflect.DeepEqual(m.Params, []string{want}) {
+			matched = true
+		}
+	}
+	if !matched {
+		t.Fatalf("GENERAL=%v, want %q", records(tlc.ECGeneral), want)
+	}
+	states := records(tlc.ECTLCStatePrint2)
+	if len(states) != 1 {
+		t.Fatalf("trace has %d states, want 1", len(states))
+	}
+	if states[0].StateInfo == nil || strings.TrimSpace(states[0].StateInfo.String()) != "b = TRUE" || states[0].StateNumber != 1 {
+		t.Fatalf("trace state=%+v, want state 1: b = TRUE", states[0])
+	}
+	info, ok := states[0].StateInfo.Info.(string)
+	if !ok || info == "<Initial predicate>" || strings.HasPrefix(info, "<Action") {
+		t.Fatalf("extended trace action=%v", states[0].StateInfo.Info)
+	}
+	uncovered := map[string]bool{}
+	for _, m := range records(tlc.ECTLCCoverageValue) {
+		if len(m.Params) >= 2 && m.Params[1] == "0" {
+			uncovered[strings.TrimSpace(strings.ReplaceAll(m.Params[0], "|", ""))] = true
+		}
+	}
+	wantUncovered := map[string]bool{"line 8, col 9 to line 8, col 48 of module EmptySubsetEq": true}
+	if !reflect.DeepEqual(uncovered, wantUncovered) {
+		t.Fatalf("uncovered=%v, want %v; coverage=%+v cost=%+v", uncovered, wantUncovered, records(tlc.ECTLCCoverageValue), records(tlc.ECTLCCoverageValueCost))
+	}
+}
+
+// Port of SubsetEqTest.testSpec: the power-set reduction must complete the
+// original large-interval model without enumerating either power set.
+func TestJavaSubsetEq(t *testing.T) {
+	result := runJavaTLCModelTest(t, "SubsetEq")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d code=%d, want success; messages=%+v", result.ExitStatus, result.ErrorCode, result.Messages)
+	}
+	records := func(code int) []tlc.Message { return javaTLCRecords(result, code) }
+	if len(records(tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	if got := records(tlc.ECGeneral); len(got) != 0 {
+		t.Fatalf("unexpected GENERAL: %v", got)
+	}
+	if len(records(tlc.ECTLCTESpecGenerationComplete)) != 0 {
+		t.Fatal("A TE spec was generated, but it should not be")
+	}
+	matched := false
+	for _, m := range records(tlc.ECTLCStats) {
+		if reflect.DeepEqual(m.Params, []string{"2", "1", "0"}) {
+			matched = true
+		}
+	}
+	if !matched {
+		t.Fatalf("TLC_STATS=%v, want 2/1/0", records(tlc.ECTLCStats))
+	}
+	if got := records(tlc.ECTLCStatePrint2); len(got) != 0 {
+		t.Fatalf("unexpected error trace: %v", got)
+	}
+	for _, m := range records(tlc.ECTLCCoverageValue) {
+		if len(m.Params) >= 2 && strings.TrimSpace(m.Params[1]) == "0" {
+			t.Fatalf("unexpected uncovered line: %v", m.Params)
+		}
+	}
+}

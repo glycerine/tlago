@@ -1,0 +1,1062 @@
+package tlc
+
+import (
+	"fmt"
+	"iter"
+	"reflect"
+	"sort"
+	"strings"
+)
+
+type ObjLongTable[K comparable] struct {
+	count  int
+	length int
+	thresh int
+	keys   []K
+	elems  []int64
+	used   []bool
+}
+
+func NewObjLongTable[K comparable](size int) *ObjLongTable[K] {
+	size = int(int32(size))
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
+	}
+	return &ObjLongTable[K]{
+		length: size,
+		thresh: size / 2,
+		keys:   make([]K, size),
+		elems:  make([]int64, size),
+		used:   make([]bool, size),
+	}
+}
+
+func (t *ObjLongTable[K]) Size() int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	return t.count
+}
+
+func (t *ObjLongTable[K]) Put(key K, elem int64) int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = elem
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc] = elem
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *ObjLongTable[K]) Add(key K, elem int64) int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = elem
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc] += elem
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *ObjLongTable[K]) Get(key K) int64 {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			return 0
+		}
+		if t.keys[loc] == key {
+			return t.elems[loc]
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *ObjLongTable[K]) MergeInto(other *ObjLongTable[K]) *ObjLongTable[K] {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < other.length; i++ {
+		if other.used[i] {
+			t.Add(other.keys[i], other.elems[i])
+		}
+	}
+	return t
+}
+
+func (t *ObjLongTable[K]) ToArray() []K {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	out := make([]K, 0, t.count)
+	for i := 0; i < t.length; i++ {
+		if t.used[i] {
+			out = append(out, t.keys[i])
+		}
+	}
+	return out
+}
+
+func (t *ObjLongTable[K]) Keys() *ObjLongTableEnumerator[K] {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	return NewObjLongTableEnumerator(t)
+}
+
+func (t *ObjLongTable[K]) grow() {
+	oldKeys := t.keys
+	oldElems := t.elems
+	oldUsed := t.used
+	t.count = 0
+	t.length = int(int32(2*int32(t.length) + 1))
+	t.thresh = t.length / 2
+	if t.length < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(t.length)))
+	}
+	t.keys = make([]K, t.length)
+	t.elems = make([]int64, t.length)
+	t.used = make([]bool, t.length)
+	for i := 0; i < len(oldKeys); i++ {
+		if oldUsed[i] {
+			t.Put(oldKeys[i], oldElems[i])
+		}
+	}
+}
+
+func (t *ObjLongTable[K]) location(key K) int {
+	if t.length == 0 {
+		panic(NewArithmeticException("/ by zero"))
+	}
+	hash := objLongKeyHashCode(key)
+	return int(uint32(hash)&0x7fffffff) % t.length
+}
+
+type ObjLongTableEnumerator[K comparable] struct {
+	table *ObjLongTable[K]
+	index int
+}
+
+func NewObjLongTableEnumerator[K comparable](table *ObjLongTable[K]) *ObjLongTableEnumerator[K] {
+	if table == nil {
+		panic(NewNullPointerException())
+	}
+	return &ObjLongTableEnumerator[K]{table: table}
+}
+
+func (e *ObjLongTableEnumerator[K]) NextElement() (K, bool) {
+	var zero K
+	if e == nil || e.table == nil {
+		panic(NewNullPointerException())
+	}
+	for e.index < e.table.length {
+		if e.table.used[e.index] {
+			value := e.table.keys[e.index]
+			e.index++
+			return value, true
+		}
+		e.index++
+	}
+	return zero, false
+}
+
+func objLongKeyHashCode[K comparable](key K) int32 {
+	if h, ok := any(key).(interface{ HashCode() int32 }); ok {
+		return h.HashCode()
+	}
+	if h, ok := any(key).(interface{ JavaHashCode() int32 }); ok {
+		return h.JavaHashCode()
+	}
+	switch value := any(key).(type) {
+	case string:
+		return javaStringHashCode(value)
+	case *UniqueString:
+		return javaStringHashCode(value.String())
+	case int:
+		return int32(value)
+	case int8:
+		return int32(value)
+	case int16:
+		return int32(value)
+	case int32:
+		return value
+	case int64:
+		return int32(value)
+	case uint:
+		return int32(value)
+	case uint8:
+		return int32(value)
+	case uint16:
+		return int32(value)
+	case uint32:
+		return int32(value)
+	case uint64:
+		return int32(value)
+	case uintptr:
+		return int32(value)
+	case bool:
+		if value {
+			return 1231
+		}
+		return 1237
+	}
+	rv := reflect.ValueOf(key)
+	switch rv.Kind() {
+	case reflect.Ptr, reflect.Chan, reflect.UnsafePointer:
+		return int32(rv.Pointer())
+	}
+	return javaStringHashCode(fmt.Sprintf("%#v", key))
+}
+
+type SemanticNodeLongTable struct {
+	count  int
+	length int
+	thresh int
+	keys   []semanticNodeKey
+	elems  []SemanticNodeLongEntry
+	used   []bool
+}
+
+type SemanticNodeLongEntry struct {
+	Node  SemanticNode
+	Value int64
+}
+
+func NewSemanticNodeLongTable(size int) *SemanticNodeLongTable {
+	size = int(int32(size))
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
+	}
+	return &SemanticNodeLongTable{
+		length: size,
+		thresh: size / 2,
+		keys:   make([]semanticNodeKey, size),
+		elems:  make([]SemanticNodeLongEntry, size),
+		used:   make([]bool, size),
+	}
+}
+
+func (t *SemanticNodeLongTable) Size() int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	return t.count
+}
+
+func (t *SemanticNodeLongTable) Put(node SemanticNode, elem int64) int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	key := newSemanticNodeKey(node)
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = SemanticNodeLongEntry{Node: node, Value: elem}
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc] = SemanticNodeLongEntry{Node: node, Value: elem}
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *SemanticNodeLongTable) Add(node SemanticNode, elem int64) int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	key := newSemanticNodeKey(node)
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = SemanticNodeLongEntry{Node: node, Value: elem}
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc].Value += elem
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *SemanticNodeLongTable) Get(node SemanticNode) int64 {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if t.length == 0 {
+		return 0
+	}
+	key := newSemanticNodeKey(node)
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			return 0
+		}
+		if t.keys[loc] == key {
+			return t.elems[loc].Value
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *SemanticNodeLongTable) MergeInto(other *SemanticNodeLongTable) *SemanticNodeLongTable {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < other.length; i++ {
+		if other.used[i] {
+			entry := other.elems[i]
+			t.Add(entry.Node, entry.Value)
+		}
+	}
+	return t
+}
+
+func (t *SemanticNodeLongTable) ToArray() []SemanticNode {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	out := make([]SemanticNode, 0, t.count)
+	for i := 0; i < t.length; i++ {
+		if t.used[i] {
+			out = append(out, t.elems[i].Node)
+		}
+	}
+	return out
+}
+
+func (t *SemanticNodeLongTable) Keys() *SemanticNodeLongTableEnumerator {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	return &SemanticNodeLongTableEnumerator{table: t}
+}
+
+func (t *SemanticNodeLongTable) grow() {
+	oldKeys := t.keys
+	oldElems := t.elems
+	oldUsed := t.used
+	t.count = 0
+	t.length = 2*t.length + 1
+	t.thresh = t.length / 2
+	t.keys = make([]semanticNodeKey, t.length)
+	t.elems = make([]SemanticNodeLongEntry, t.length)
+	t.used = make([]bool, t.length)
+	for i := 0; i < len(oldKeys); i++ {
+		if oldUsed[i] {
+			t.Put(oldElems[i].Node, oldElems[i].Value)
+		}
+	}
+}
+
+func (t *SemanticNodeLongTable) location(key semanticNodeKey) int {
+	hash := semanticNodeKeyHashCode(key)
+	return int(uint32(hash)&0x7fffffff) % t.length
+}
+
+func semanticNodeKeyHashCode(key semanticNodeKey) int32 {
+	result := int32(1)
+	result = 31*result + javaStringHashCode(key.typ)
+	if key.ptr != 0 {
+		result = 31*result + int32(uintptr(key.ptr))
+	} else {
+		result = 31*result + javaStringHashCode(key.image)
+	}
+	return result
+}
+
+type SemanticNodeLongTableEnumerator struct {
+	table *SemanticNodeLongTable
+	index int
+}
+
+func (e *SemanticNodeLongTableEnumerator) NextElement() SemanticNode {
+	if e == nil || e.table == nil {
+		panic(NewNullPointerException())
+	}
+	for e.index < e.table.length {
+		if e.table.used[e.index] {
+			value := e.table.elems[e.index].Node
+			e.index++
+			return value
+		}
+		e.index++
+	}
+	return nil
+}
+
+type LongObjTable[V any] struct {
+	count  int
+	length int
+	thresh int
+	keys   []int64
+	elems  []V
+	used   []bool
+}
+
+func NewLongObjTable[V any](size int) *LongObjTable[V] {
+	size = int(int32(size))
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
+	}
+	return &LongObjTable[V]{
+		length: size,
+		thresh: size / 2,
+		keys:   make([]int64, size),
+		elems:  make([]V, size),
+		used:   make([]bool, size),
+	}
+}
+
+func (t *LongObjTable[V]) Size() int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	return t.count
+}
+
+func (t *LongObjTable[V]) Put(key int64, elem V) int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := t.location(key)
+	for {
+		if !t.used[loc] || !longObjTableElemPresent(t.elems[loc]) {
+			t.keys[loc] = key
+			t.elems[loc] = elem
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc] = elem
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *LongObjTable[V]) Get(key int64) (V, bool) {
+	var zero V
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	loc := t.location(key)
+	for {
+		if !t.used[loc] || !longObjTableElemPresent(t.elems[loc]) {
+			return zero, false
+		}
+		if t.keys[loc] == key {
+			return t.elems[loc], true
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *LongObjTable[V]) grow() {
+	oldKeys := t.keys
+	oldElems := t.elems
+	oldUsed := t.used
+	t.count = 0
+	t.length = int(int32(2*int32(t.length) + 1))
+	t.thresh = t.length / 2
+	if t.length < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(t.length)))
+	}
+	t.keys = make([]int64, t.length)
+	t.elems = make([]V, t.length)
+	t.used = make([]bool, t.length)
+	for i := 0; i < len(oldKeys); i++ {
+		if oldUsed[i] && longObjTableElemPresent(oldElems[i]) {
+			t.Put(oldKeys[i], oldElems[i])
+		}
+	}
+}
+
+func (t *LongObjTable[V]) location(key int64) int {
+	if t.length == 0 {
+		panic(NewArithmeticException("/ by zero"))
+	}
+	return int(uint32(key)&0x7fffffff) % t.length
+}
+
+func longObjTableElemPresent[V any](elem V) bool {
+	value := reflect.ValueOf(elem)
+	if !value.IsValid() {
+		return false
+	}
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return !value.IsNil()
+	default:
+		return true
+	}
+}
+
+type Vect[E any] struct {
+	data []E
+	// Java's elementCount is independent of backing storage, including invalid
+	// counts assigned by removeAll. Keep its signed 32-bit arithmetic.
+	count int32
+}
+
+func NewVect[E any]() *Vect[E] { return NewVectWithCapacity[E](10) }
+
+func NewVectWithCapacity[E any](capacity int) *Vect[E] {
+	capacity = int(int32(capacity))
+	if capacity < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(capacity)))
+	}
+	return &Vect[E]{data: make([]E, capacity)}
+}
+
+func NewVectFrom[E any](values []E) *Vect[E] {
+	out := make([]E, len(values))
+	copy(out, values)
+	return &Vect[E]{data: out, count: int32(len(values))}
+}
+
+func (v *Vect[E]) AddElement(elem E) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if v.count == int32(len(v.data)) {
+		v.EnsureCapacity(int(v.count + 1))
+	}
+	// elementData[elementCount++] increments before the array bounds check.
+	index := int(v.count)
+	v.count++
+	v.SetElementAt(elem, index)
+}
+
+func (v *Vect[E]) Concat(other *Vect[E]) *Vect[E] {
+	out := NewVect[E]()
+	for i := 0; i < v.Size(); i++ {
+		out.AddElement(v.ElementAt(i))
+	}
+	for i := 0; i < other.Size(); i++ {
+		out.AddElement(other.ElementAt(i))
+	}
+	return out
+}
+
+func (v *Vect[E]) Capacity() int {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return len(v.data)
+}
+
+func (v *Vect[E]) Contains(elem E) bool { return v.IndexOf(elem) != -1 }
+
+func (v *Vect[E]) CopyInto(array []E) {
+	if v == nil || array == nil {
+		panic(NewNullPointerException())
+	}
+	n := v.Size()
+	if n < 0 || n > len(v.data) || n > len(array) {
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
+	}
+	copy(array[:n], v.data[:n])
+}
+
+func (v *Vect[E]) ElementAt(index int) E {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	index = int(int32(index))
+	if index < 0 || index >= len(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(v.data)))
+	}
+	return v.data[index]
+}
+
+func (v *Vect[E]) Elements() *VectEnumerator[E] {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return &VectEnumerator[E]{vect: v}
+}
+
+func (v *Vect[E]) EnsureCapacity(minCapacity int) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	minCapacity = int(int32(minCapacity))
+	if len(v.data) >= minCapacity {
+		return
+	}
+	next := int32(len(v.data)) * 2
+	if int(next) < minCapacity {
+		next = int32(minCapacity)
+	}
+	old := v.data
+	v.data = make([]E, int(next))
+	// The source publishes the replacement before System.arraycopy validates
+	// elementCount; a failed copy therefore leaves the new array installed.
+	n := v.Size()
+	if n < 0 || n > len(old) || n > len(v.data) {
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
+	}
+	copy(v.data[:n], old[:n])
+}
+
+func (v *Vect[E]) FirstElement() E    { return v.ElementAt(0) }
+func (v *Vect[E]) IndexOf(elem E) int { return v.IndexOfFrom(elem, 0) }
+
+func (v *Vect[E]) IndexOfFrom(elem E, index int) int {
+	index = int(int32(index))
+	for pos := index; pos < v.Size(); pos++ {
+		current := v.ElementAt(pos)
+		if !longObjTableElemPresent(elem) {
+			panic(NewNullPointerException())
+		}
+		if reflect.DeepEqual(elem, current) {
+			return pos
+		}
+	}
+	return -1
+}
+
+func (v *Vect[E]) InsertElementAt(elem E, index int) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	index = int(int32(index))
+	if v.count == int32(len(v.data)) {
+		v.EnsureCapacity(int(v.count + 1))
+	}
+	if index < 0 || index > v.Size() {
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
+	}
+	if index < v.Size() {
+		n := v.Size() - index
+		if index >= len(v.data) || n > len(v.data)-index-1 {
+			panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
+		}
+		copy(v.data[index+1:index+1+n], v.data[index:index+n])
+	}
+	v.SetElementAt(elem, index)
+	v.count++
+}
+
+func (v *Vect[E]) IsEmpty() bool { return v.Size() == 0 }
+func (v *Vect[E]) LastElement() E {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.ElementAt(int(v.count - 1))
+}
+
+func (v *Vect[E]) RemoveLastElement() {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if v.count == 0 {
+		panic(NewNoSuchElementException())
+	}
+	v.count--
+	var zero E
+	v.SetElementAt(zero, int(v.count))
+}
+
+func (v *Vect[E]) SetElementAt(elem E, index int) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	index = int(int32(index))
+	if index < 0 || index >= len(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(v.data)))
+	}
+	v.data[index] = elem
+}
+
+func (v *Vect[E]) RemoveElementAt(index int) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	for i := int32(index) + 1; i < v.count; i++ {
+		v.SetElementAt(v.ElementAt(int(i)), int(i-1))
+	}
+	v.count--
+	var zero E
+	v.SetElementAt(zero, int(v.count))
+}
+
+func (v *Vect[E]) RemoveAll(cnt int) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	v.count = int32(cnt)
+}
+
+func (v *Vect[E]) Pop() E {
+	elem := v.LastElement()
+	v.RemoveLastElement()
+	return elem
+}
+func (v *Vect[E]) Push(elem E) { v.AddElement(elem) }
+
+func (v *Vect[E]) Size() int {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return int(v.count)
+}
+
+// ToSlice is a native snapshot helper, not Java Vect.stream. It rejects counts
+// that cannot address the backing array before allocating the snapshot.
+func (v *Vect[E]) ToSlice() []E {
+	n := v.Size()
+	if n < 0 || n > len(v.data) {
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
+	}
+	out := make([]E, n)
+	copy(out, v.data[:n])
+	return out
+}
+
+func (v *Vect[E]) Stream() iter.Seq[E] {
+	n := v.Size()
+	if n < 0 || n > len(v.data) {
+		panic(NewArrayIndexOutOfBoundsExceptionNoMessage())
+	}
+	data := v.data[:n:n]
+	return func(yield func(E) bool) {
+		for _, elem := range data {
+			if !yield(elem) {
+				return
+			}
+		}
+	}
+}
+
+func (v *Vect[E]) Equal(other *Vect[E]) bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if other == nil || v.count != other.count {
+		return false
+	}
+	for i := 0; i < v.Size(); i++ {
+		elem := v.ElementAt(i)
+		otherElem := other.ElementAt(i)
+		if !longObjTableElemPresent(elem) {
+			panic(NewNullPointerException())
+		}
+		if !reflect.DeepEqual(elem, otherElem) {
+			return false
+		}
+	}
+	return true
+}
+
+func (v *Vect[E]) String() string {
+	parts := []string{}
+	appendElement := func(index int) {
+		elem := v.ElementAt(index)
+		if !longObjTableElemPresent(elem) {
+			panic(NewNullPointerException())
+		}
+		parts = append(parts, fmt.Sprint(elem))
+	}
+	if v.Size() != 0 {
+		appendElement(0)
+	}
+	for i := 1; i < v.Size(); i++ {
+		appendElement(i)
+	}
+	return "{" + strings.Join(parts, ",") + "}"
+}
+
+type VectEnumerator[E any] struct {
+	vect  *Vect[E]
+	index int32
+}
+
+func (e *VectEnumerator[E]) HasMoreElements() bool {
+	if e == nil || e.vect == nil {
+		panic(NewNullPointerException())
+	}
+	return e.index < e.vect.count
+}
+
+func (e *VectEnumerator[E]) NextElement() E {
+	if e == nil || e.vect == nil {
+		panic(NewNullPointerException())
+	}
+	index := int(e.index)
+	e.index++
+	return e.vect.ElementAt(index)
+}
+
+type SetOfLong struct {
+	count   int
+	length  int
+	thresh  int
+	table   []int64
+	hasZero bool
+}
+
+func NewSetOfLong(size int) *SetOfLong {
+	size = int(int32(size))
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
+	}
+	return &SetOfLong{
+		length: size,
+		thresh: size / 2,
+		table:  make([]int64, size),
+	}
+}
+
+// NewSetOfLongWithLoadFactor represents SetOfLong(int, float). The Java
+// constructor deliberately ignores its load-factor argument.
+func NewSetOfLongWithLoadFactor(size int, _ float32) *SetOfLong {
+	return NewSetOfLong(size)
+}
+
+func (s *SetOfLong) requireSetOfLong() {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+func (s *SetOfLong) Put(key int64) bool {
+	s.requireSetOfLong()
+	if s.count >= s.thresh {
+		s.grow()
+	}
+	if key == 0 {
+		if s.hasZero {
+			return true
+		}
+		s.hasZero = true
+		s.count++
+		return false
+	}
+	loc := s.location(key)
+	for {
+		elem := s.table[loc]
+		if elem == key {
+			return true
+		}
+		if elem == 0 {
+			s.table[loc] = key
+			s.count++
+			return false
+		}
+		loc = (loc + 1) % s.length
+	}
+}
+
+func (s *SetOfLong) Contains(key int64) bool {
+	s.requireSetOfLong()
+	if key == 0 {
+		return s.hasZero
+	}
+	loc := s.location(key)
+	for {
+		elem := s.table[loc]
+		if elem == key {
+			return true
+		}
+		if elem == 0 {
+			return false
+		}
+		loc = (loc + 1) % s.length
+	}
+}
+
+func (s *SetOfLong) Size() int {
+	s.requireSetOfLong()
+	return s.count
+}
+
+func (s *SetOfLong) Sizeof() int64 {
+	s.requireSetOfLong()
+	return 20 + int64(8*s.length)
+}
+
+func (s *SetOfLong) CheckFPs() int64 {
+	s.requireSetOfLong()
+	cnt := 0
+	for i := 0; i < s.length; i++ {
+		x := s.table[i]
+		if x != 0 {
+			s.table[cnt] = x
+			cnt++
+		}
+	}
+	sort.Slice(s.table[:cnt], func(i, j int) bool { return s.table[i] < s.table[j] })
+	dis := int64(^uint64(0) >> 1)
+	var x int64
+	i := 0
+	if !s.hasZero && cnt > 0 {
+		x = s.table[0]
+		i = 1
+	}
+	for ; i < cnt; i++ {
+		d := s.table[i] - x
+		if d < dis {
+			dis = d
+		}
+		x = s.table[i]
+	}
+	return dis
+}
+
+func (s *SetOfLong) ToSlice() []int64 {
+	s.requireSetOfLong()
+	values := make([]int64, 0, s.count)
+	if s.hasZero {
+		values = append(values, 0)
+	}
+	for _, x := range s.table {
+		if x != 0 {
+			values = append(values, x)
+		}
+	}
+	return values
+}
+
+func (s *SetOfLong) BeginChkpt(out *ValueOutputStream) error {
+	s.requireSetOfLong()
+	if err := out.WriteInt(int32(s.count)); err != nil {
+		return err
+	}
+	if err := out.WriteInt(int32(s.length)); err != nil {
+		return err
+	}
+	if err := out.WriteInt(int32(s.thresh)); err != nil {
+		return err
+	}
+	if err := out.WriteBool(s.hasZero); err != nil {
+		return err
+	}
+	for _, key := range s.table {
+		if key == 0 {
+			continue
+		}
+		if err := out.WriteLong(key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *SetOfLong) Recover(in *ValueInputStream) error {
+	s.requireSetOfLong()
+	count, err := in.ReadInt()
+	if err != nil {
+		return err
+	}
+	s.count = int(count)
+	length, err := in.ReadInt()
+	if err != nil {
+		return err
+	}
+	s.length = int(length)
+	thresh, err := in.ReadInt()
+	if err != nil {
+		return err
+	}
+	s.thresh = int(thresh)
+	hasZero, err := in.ReadBool()
+	if err != nil {
+		return err
+	}
+	s.hasZero = hasZero
+	if s.length < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(s.length)))
+	}
+	s.table = make([]int64, s.length)
+	num := s.count
+	if s.hasZero {
+		num--
+	}
+	for i := 0; i < num; i++ {
+		key, err := in.ReadLong()
+		if err != nil {
+			return err
+		}
+		s.Put(key)
+	}
+	return nil
+}
+
+func (s *SetOfLong) grow() {
+	old := s.table
+	s.count = 0
+	s.length = int(int32(2*int32(s.length) + 1))
+	s.thresh = s.length / 2
+	if s.length < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(s.length)))
+	}
+	s.table = make([]int64, s.length)
+	for _, key := range old {
+		if key != 0 {
+			s.Put(key)
+		}
+	}
+}
+
+func (s *SetOfLong) location(key int64) int {
+	if s.length == 0 {
+		panic(NewArithmeticException("/ by zero"))
+	}
+	return int(uint32(key)&0x7fffffff) % s.length
+}

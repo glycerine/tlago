@@ -1,0 +1,1256 @@
+package tlc
+
+import (
+	"encoding/binary"
+	"fmt"
+	"io"
+	"os"
+	"reflect"
+)
+
+// IDataOutputStream is the two-method carrier exposed by Java's
+// IValueOutputStream.getOutputStream.
+type IDataOutputStream interface {
+	WriteInt(int32) error
+	WriteString(string) error
+}
+
+// IDataInputStream is the two-method carrier exposed by Java's
+// IValueInputStream.getInputStream.
+type IDataInputStream interface {
+	ReadInt() (int32, error)
+	ReadString(int) (string, error)
+}
+
+type ValueOutputStream struct {
+	out            io.Writer
+	closer         io.Closer
+	handles        map[any]int
+	disableHandles bool
+}
+
+func NewValueOutputStream(out io.Writer) *ValueOutputStream {
+	return NewValueOutputStreamWithCompression(out, false)
+}
+
+func NewValueOutputStreamWithoutHandles(out io.Writer) *ValueOutputStream {
+	// Source byte-queue adapters write directly to their byte array and have
+	// no handle table; they do not construct a sequential ValueOutputStream.
+	stream := &ValueOutputStream{out: out, disableHandles: true}
+	if closer, ok := out.(io.Closer); ok {
+		stream.closer = closer
+	}
+	return stream
+}
+
+type valueStreamWriteCloser struct {
+	io.Writer
+	io.Closer
+}
+
+func (s valueStreamWriteCloser) Flush() error {
+	if flusher, ok := s.Writer.(interface{ Flush() error }); ok {
+		return flusher.Flush()
+	}
+	return nil
+}
+
+func NewValueOutputStreamWithCompression(out io.Writer, compress bool) *ValueOutputStream {
+	stream, err := newValueOutputStreamWithCompression(out, compress)
+	if err != nil {
+		panic(err)
+	}
+	return stream
+}
+
+func newValueOutputStreamWithCompression(out io.Writer, compress bool) (*ValueOutputStream, error) {
+	writer := out
+	if compress {
+		gzipWriter := newZlibGzipWriter(out)
+		if gzipWriter.err != nil {
+			return nil, bufferedRandomAccessFileIOError(gzipWriter.err)
+		}
+		writer = valueStreamWriteCloser{gzipWriter, gzipWriter}
+	}
+	buffer := NewBufferedDataOutputStream(writer)
+	return &ValueOutputStream{out: buffer, closer: buffer, handles: make(map[any]int)}, nil
+}
+
+func NewValueOutputStreamWithGlobalCompression(out io.Writer) *ValueOutputStream {
+	return NewValueOutputStreamWithCompression(out, UseGZIP())
+}
+
+// NewValueOutputStreamFile ports the File/String constructor family. Omitting
+// compression uses TLCGlobals.useGZIP; supplying it selects the explicit
+// boolean overload.
+func NewValueOutputStreamFile(name string, compression ...bool) (*ValueOutputStream, error) {
+	if len(compression) > 1 {
+		panic(NewIllegalArgumentException("NewValueOutputStreamFile accepts at most one compression flag"))
+	}
+	compress := UseGZIP()
+	if len(compression) > 0 {
+		compress = compression[0]
+	}
+	file, err := openFileOutputStream(name)
+	if err != nil {
+		return nil, err
+	}
+	return newValueOutputStreamWithCompression(file, compress)
+}
+
+func (s *ValueOutputStream) WriteString(value string) error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteString(value)
+	}
+	_, err := s.WriteRaw(javaLegacyStringBytes(value))
+	return err
+}
+
+func (s *ValueOutputStream) WriteShort(value int16) error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteShort(value)
+	}
+	return binary.Write(s.out, binary.BigEndian, value)
+}
+
+func (s *ValueOutputStream) WriteInt(value int32) error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteInt(value)
+	}
+	return binary.Write(s.out, binary.BigEndian, value)
+}
+
+func (s *ValueOutputStream) WriteLong(value int64) error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteLong(value)
+	}
+	return binary.Write(s.out, binary.BigEndian, value)
+}
+
+func (s *ValueOutputStream) WriteByte(value byte) error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteByte(int8(value))
+	}
+	_, err := s.out.Write([]byte{value})
+	return err
+}
+
+func (s *ValueOutputStream) WriteBool(value bool) error {
+	if value {
+		return s.WriteByte(1)
+	}
+	return s.WriteByte(0)
+}
+
+// Precondition: value is non-negative, as in Java's compact natural encoders.
+func (s *ValueOutputStream) WriteShortNat(value int16) error {
+	if value > 0x7f {
+		return s.WriteShort(-value)
+	}
+	return s.WriteByte(byte(value))
+}
+
+func (s *ValueOutputStream) WriteNat(value int32) error {
+	if value > 0x7fff {
+		return s.WriteInt(-value)
+	}
+	return s.WriteShort(int16(value))
+}
+
+func (s *ValueOutputStream) WriteLongNat(value int64) error {
+	if value <= 0x7fffffff {
+		return s.WriteInt(int32(value))
+	}
+	return s.WriteLong(-value)
+}
+
+func (s *ValueOutputStream) WriteRaw(bytes []byte) (int, error) {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	return s.out.Write(bytes)
+}
+
+func (s *ValueOutputStream) GetOutputStream() IDataOutputStream {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.disableHandles {
+		// DiskByteArrayQueue.ByteValueOutputStream returns itself.
+		return s
+	}
+	return s.out.(*BufferedDataOutputStream)
+}
+
+func (s *ValueOutputStream) Close() error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.closer != nil {
+		return s.closer.Close()
+	}
+	return nil
+}
+
+func (s *ValueOutputStream) Put(value any) int {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.disableHandles {
+		return -1
+	}
+	if value != nil {
+		rv := reflect.ValueOf(value)
+		if rv.Kind() != reflect.Pointer {
+			// Go objects passed to Java's reference-identity API are pointers.
+			return -1
+		}
+		if rv.IsNil() {
+			value = nil
+		}
+	}
+	if idx, ok := s.handles[value]; ok {
+		return idx
+	}
+	// Keep the object itself alive for the entire stream, like Java's Object[].
+	// A uintptr key alone would let GC reclaim it and reuse its address.
+	s.handles[value] = len(s.handles)
+	return -1
+}
+
+func (s *ValueOutputStream) Write(value Value) error {
+	return s.writeValue(value)
+}
+
+// ValueWrite represents IValue.write(IValueOutputStream). The stream owns the
+// concrete serialization dispatch in Go, while this adapter preserves Java's
+// public value-receiver boundary.
+func ValueWrite(value Value, out *ValueOutputStream) error {
+	if isNil(value) {
+		panic(NewNullPointerException())
+	}
+	return out.Write(value)
+}
+
+// External reads discard the saved intern-table metadata; Java has one write
+// format for both local checkpoints and values sent to another process.
+func (s *ValueOutputStream) WriteExternal(value Value) error {
+	return s.Write(value)
+}
+
+// StringValue.write inherits the concrete object's stream handle identity.
+func (s *ValueOutputStream) writeStringValue(value Value, str *StringValue) error {
+	if idx := s.Put(value); idx >= 0 {
+		return s.writeDummy(idx)
+	}
+	if err := s.WriteByte(byte(StringValueKind)); err != nil {
+		return err
+	}
+	return s.WriteUniqueString(str.ownedVal())
+}
+
+func (s *ValueOutputStream) writeValue(value Value) error {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	if rv := reflect.ValueOf(value); rv.Kind() == reflect.Pointer && rv.IsNil() {
+		panic(NewNullPointerException())
+	}
+	switch v := value.(type) {
+	case *BoolValue:
+		if err := s.WriteByte(byte(BoolValueKind)); err != nil {
+			return err
+		}
+		return s.WriteBool(v.Val)
+	case *IntValue:
+		if err := s.WriteByte(byte(IntValueKind)); err != nil {
+			return err
+		}
+		return s.WriteInt(v.ownedVal())
+	case *StringValue:
+		return s.writeStringValue(v.receiver(), v)
+	case *DebuggerValue:
+		return s.writeStringValue(v, v.StringValue)
+	case *ModelValue:
+		if err := s.WriteByte(byte(ModelValueKind)); err != nil {
+			return err
+		}
+		return s.WriteShort(int16(v.Index))
+	case *TupleValue:
+		if idx := s.Put(v); idx >= 0 {
+			return s.writeDummy(idx)
+		}
+		if err := s.WriteByte(byte(TupleValueKind)); err != nil {
+			return err
+		}
+		if v.ownedElems() == nil {
+			panic(NewNullPointerException())
+		}
+		count := len(v.ownedElems())
+		if err := s.WriteNat(int32(count)); err != nil {
+			return err
+		}
+		for i := 0; i < count; i++ {
+			if err := s.writeValue(valueStreamArrayAt(v.ownedElems(), i)); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *SetEnumValue:
+		if idx := s.Put(v); idx >= 0 {
+			return s.writeDummy(idx)
+		}
+		if err := s.WriteByte(byte(SetEnumValueKind)); err != nil {
+			return err
+		}
+		if v.Elems == nil {
+			panic(NewNullPointerException())
+		}
+		count := v.Elems.Len()
+		length := int32(count)
+		if !v.IsNorm {
+			length = -length
+		}
+		if err := s.WriteInt(length); err != nil {
+			return err
+		}
+		for i := 0; i < count; i++ {
+			if err := s.writeValue(v.Elems.At(i)); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *IntervalValue:
+		if err := s.WriteByte(byte(IntervalValueKind)); err != nil {
+			return err
+		}
+		if err := s.WriteInt(v.Low); err != nil {
+			return err
+		}
+		return s.WriteInt(v.High)
+	case *FcnRcdValue:
+		if idx := s.Put(v); idx >= 0 {
+			return s.writeDummy(idx)
+		}
+		if err := s.WriteByte(byte(FcnRcdValueKind)); err != nil {
+			return err
+		}
+		if v.ownedValues() == nil {
+			panic(NewNullPointerException())
+		}
+		count := len(v.ownedValues())
+		if err := s.WriteNat(int32(count)); err != nil {
+			return err
+		}
+		if v.ownedIntv() != nil {
+			if err := s.WriteByte(0); err != nil {
+				return err
+			}
+			if err := s.WriteInt(v.ownedIntv().Low); err != nil {
+				return err
+			}
+			if err := s.WriteInt(v.ownedIntv().High); err != nil {
+				return err
+			}
+			for i := 0; i < count; i++ {
+				if err := s.writeValue(valueStreamArrayAt(v.ownedValues(), i)); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		info := byte(2)
+		if v.IsNorm {
+			info = 1
+		}
+		if err := s.WriteByte(info); err != nil {
+			return err
+		}
+		for i := 0; i < count; i++ {
+			if err := s.writeValue(valueStreamArrayAt(v.ownedDomain(), i)); err != nil {
+				return err
+			}
+			if err := s.writeValue(valueStreamArrayAt(v.ownedValues(), i)); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *FcnLambdaValue:
+		return s.writeValue(v.FcnRcd)
+	case *RecordValue:
+		return s.writeRecordValue(v, v)
+	case *CounterExample:
+		return s.writeRecordValue(v, v.RecordValue)
+	case *SetOfTuplesValue:
+		return s.writeValue(v.TupleSet)
+	case *SetOfRcdsValue:
+		return s.writeValue(v.RcdSet)
+	case *SetOfFcnsValue:
+		return s.writeValue(v.FcnSet)
+	case *SubsetValue:
+		return s.writeValue(v.PSet)
+	case *KSubsetValue:
+		return s.writeValue(v.PSet)
+	case *SetCupValue:
+		return s.writeValue(v.CupSet)
+	case *SetCapValue:
+		return s.writeValue(v.CapSet)
+	case *SetDiffValue:
+		return s.writeValue(v.DiffSet)
+	case *UnionValue:
+		return s.writeValue(v.RealSet)
+	case *SetPredValue:
+		return s.writeValue(v.InVal)
+	default:
+		return NewWrongInvocationException("ValueOutputStream: Can not pickle the value\n" + ValuesPPR(value))
+	}
+}
+
+// Inherited record writes register the concrete receiver, including CounterExample.
+func (s *ValueOutputStream) writeRecordValue(value Value, record *RecordValue) error {
+	if idx := s.Put(value); idx >= 0 {
+		return s.writeDummy(idx)
+	}
+	if err := s.WriteByte(byte(RecordValueKind)); err != nil {
+		return err
+	}
+	if record == nil || record.ownedNames() == nil {
+		panic(NewNullPointerException())
+	}
+	count := len(record.ownedNames())
+	length := int32(count)
+	if !record.IsNorm {
+		length = -length
+	}
+	if err := s.WriteInt(length); err != nil {
+		return err
+	}
+	for i := 0; i < count; i++ {
+		name := valueStreamArrayAt(record.ownedNames(), i)
+		if idx := s.Put(name); idx >= 0 {
+			if err := s.writeDummy(idx); err != nil {
+				return err
+			}
+		} else {
+			if err := s.WriteByte(byte(StringValueKind)); err != nil {
+				return err
+			}
+			if err := s.WriteUniqueString(valueStreamArrayAt(record.ownedNames(), i)); err != nil {
+				return err
+			}
+		}
+		if err := s.writeValue(record.recordValueAt(i)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func valueStreamArrayAt[T any](values []T, index int) T {
+	if values == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(values) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(values)))
+	}
+	return values[index]
+}
+
+func (s *ValueOutputStream) writeDummy(index int) error {
+	if err := s.WriteByte(byte(DummyValueKind)); err != nil {
+		return err
+	}
+	return s.WriteNat(int32(index))
+}
+
+func (s *ValueOutputStream) WriteUniqueString(value *UniqueString) error {
+	return writeJavaUniqueString(s, value)
+}
+
+func (s *ValueOutputStream) WriteExternalUniqueString(value *UniqueString) error {
+	return s.WriteUniqueString(value)
+}
+
+type ValueInputStream struct {
+	in             io.Reader
+	closer         io.Closer
+	handles        []any
+	handleIndex    int
+	disableHandles bool
+}
+
+func NewValueInputStream(in io.Reader) *ValueInputStream {
+	stream, err := newBufferedValueInputStream(in, false, false)
+	if err != nil {
+		panic(err)
+	}
+	return stream
+}
+
+// NewValueInputStreamWithoutHandles mirrors the queue byte stream's no-op
+// assign and getIndex=-1 behavior; reference records are unsupported.
+func NewValueInputStreamWithoutHandles(in io.Reader) *ValueInputStream {
+	stream := &ValueInputStream{in: in, disableHandles: true}
+	if closer, ok := in.(io.Closer); ok {
+		stream.closer = closer
+	}
+	return stream
+}
+
+// NewByteValueInputStream retains the byte queue's array-index failures rather
+// than turning a truncated in-memory state into a checked EOFException.
+func NewByteValueInputStream(raw []byte) *ValueInputStream {
+	return NewValueInputStreamWithoutHandles(&byteValueInputReader{bytes: raw})
+}
+
+type byteValueInputReader struct {
+	bytes []byte
+	index int
+}
+
+func (r *byteValueInputReader) Read(dst []byte) (int, error) {
+	for i := range dst {
+		if r.bytes == nil {
+			panic(NewNullPointerException())
+		}
+		index := r.index
+		r.index++
+		if index >= len(r.bytes) {
+			panic(NewArrayIndexOutOfBoundsException(index, len(r.bytes)))
+		}
+		dst[i] = r.bytes[index]
+	}
+	return len(dst), nil
+}
+
+func newBufferedValueInputStream(in io.Reader, compressed, fileOverload bool) (*ValueInputStream, error) {
+	reader := in
+	if compressed {
+		gzipReader, err := newValueGzipReader(in)
+		if err != nil {
+			return nil, err
+		}
+		reader = gzipReader
+	}
+	// Java's File overload first calls FileUtil.newBdFIS and then invokes
+	// the InputStream overload, which constructs its own eager buffer.
+	if _, file := in.(*os.File); file && fileOverload {
+		buffer, err := NewBufferedDataInputStream(reader)
+		if err != nil {
+			return nil, err
+		}
+		reader = buffer
+	}
+	buffer, err := NewBufferedDataInputStream(reader)
+	if err != nil {
+		return nil, err
+	}
+	return &ValueInputStream{in: buffer, closer: buffer, handles: make([]any, 16)}, nil
+}
+
+func NewValueInputStreamWithCompression(in io.Reader, compressed bool) (*ValueInputStream, error) {
+	return newBufferedValueInputStream(in, compressed, true)
+}
+
+func NewValueInputStreamWithGlobalCompression(in io.Reader) (*ValueInputStream, error) {
+	return NewValueInputStreamWithCompression(in, UseGZIP())
+}
+
+// NewValueInputStreamFile ports the File/String constructor family. The source
+// File overload passes FileUtil's buffered stream into the InputStream overload,
+// which adds a second eager BufferedDataInputStream.
+func NewValueInputStreamFile(name string, compression ...bool) (*ValueInputStream, error) {
+	if len(compression) > 1 {
+		panic(NewIllegalArgumentException("NewValueInputStreamFile accepts at most one compression flag"))
+	}
+	compressed := UseGZIP()
+	if len(compression) > 0 {
+		compressed = compression[0]
+	}
+	file, err := openFileInputStream(name)
+	if err != nil {
+		return nil, err
+	}
+	stream, err := NewValueInputStreamWithCompression(file, compressed)
+	if err != nil {
+		return nil, err
+	}
+	return stream, nil
+}
+
+func (s *ValueInputStream) ReadString(length int) (string, error) {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	length = int(int32(length))
+	if length < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(length)))
+	}
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadString(length)
+	}
+	bytes := make([]byte, length)
+	if err := s.ReadFully(bytes); err != nil {
+		return "", err
+	}
+	return javaLegacyStringFromBytes(bytes), nil
+}
+
+func (s *ValueInputStream) GetInputStream() IDataInputStream {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.disableHandles {
+		// DiskByteArrayQueue.ByteValueInputStream returns itself.
+		return s
+	}
+	return s.in.(*BufferedDataInputStream)
+}
+
+func (s *ValueInputStream) ReadShort() (int16, error) {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadShort()
+	}
+	var value int16
+	err := binary.Read(s.in, binary.BigEndian, &value)
+	return value, valueStreamReadError(err)
+}
+
+func (s *ValueInputStream) ReadInt() (int32, error) {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadInt()
+	}
+	var value int32
+	err := binary.Read(s.in, binary.BigEndian, &value)
+	return value, valueStreamReadError(err)
+}
+
+func (s *ValueInputStream) ReadLong() (int64, error) {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadLong()
+	}
+	var value int64
+	err := binary.Read(s.in, binary.BigEndian, &value)
+	return value, valueStreamReadError(err)
+}
+
+func (s *ValueInputStream) ReadByte() (byte, error) {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		value, err := buffer.ReadByte()
+		return byte(value), err
+	}
+	var buf [1]byte
+	_, err := io.ReadFull(s.in, buf[:])
+	return buf[0], valueStreamReadError(err)
+}
+
+func valueStreamReadError(err error) error {
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		return NewEOFException()
+	}
+	return err
+}
+
+func (s *ValueInputStream) ReadFully(dst []byte) error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadFully(dst)
+	}
+	_, err := io.ReadFull(s.in, dst)
+	return valueStreamReadError(err)
+}
+
+func (s *ValueInputStream) ReadBool() (bool, error) {
+	value, err := s.ReadByte()
+	return value != 0, err
+}
+
+func (s *ValueInputStream) ReadShortNat() (int16, error) {
+	first, err := s.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	signedFirst := int8(first)
+	if signedFirst >= 0 {
+		return int16(signedFirst), nil
+	}
+	second, err := s.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	encoded := (int16(signedFirst) << 8) | int16(second)
+	return -encoded, nil
+}
+
+func (s *ValueInputStream) ReadNat() (int32, error) {
+	first, err := s.ReadShort()
+	if err != nil {
+		return 0, err
+	}
+	if first >= 0 {
+		return int32(first), nil
+	}
+	second, err := s.ReadShort()
+	if err != nil {
+		return 0, err
+	}
+	encoded := (int32(first) << 16) | int32(uint16(second))
+	return -encoded, nil
+}
+
+func (s *ValueInputStream) ReadLongNat() (int64, error) {
+	first, err := s.ReadInt()
+	if err != nil {
+		return 0, err
+	}
+	if first >= 0 {
+		return int64(first), nil
+	}
+	second, err := s.ReadInt()
+	if err != nil {
+		return 0, err
+	}
+	encoded := (int64(first) << 32) | int64(uint32(second))
+	return -encoded, nil
+}
+
+func (s *ValueInputStream) Close() error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.closer != nil {
+		return s.closer.Close()
+	}
+	return nil
+}
+
+func (s *ValueInputStream) Read() (Value, error) {
+	return s.readValue(false)
+}
+
+func (s *ValueInputStream) ReadExternal() (Value, error) {
+	return s.readValue(true)
+}
+
+// ReadWithTable preserves the deprecated Java read(Map<String, UniqueString>)
+// compatibility overload. The source deliberately ignores the supplied table
+// and interns external strings through the process-global table instead.
+//
+// Deprecated: use ReadExternal.
+func (s *ValueInputStream) ReadWithTable(_ *InsMap[string, *UniqueString]) (Value, error) {
+	return s.ReadExternal()
+}
+
+func (s *ValueInputStream) readValue(external bool) (Value, error) {
+	kind, err := s.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	return s.readKind(ValueKind(kind), external)
+}
+
+func (s *ValueInputStream) readKind(kind ValueKind, external bool) (Value, error) {
+	switch kind {
+	case BoolValueKind:
+		value, err := s.ReadBool()
+		if err != nil {
+			return nil, err
+		}
+		return BoolValueOf(value), nil
+	case IntValueKind:
+		value, err := s.ReadInt()
+		if err != nil {
+			return nil, err
+		}
+		return NewIntValue(value), nil
+	case StringValueKind:
+		if external {
+			return StringValueCreateFromExternal(s)
+		}
+		return StringValueCreateFrom(s)
+	case ModelValueKind:
+		index, err := s.ReadShort()
+		if err != nil {
+			return nil, err
+		}
+		value := modelValueFromStream(int(index))
+		if value == nil {
+			return nil, nil
+		}
+		return value, nil
+	case TupleValueKind:
+		if external {
+			return TupleValueCreateFromExternal(s)
+		}
+		return TupleValueCreateFrom(s)
+	case SetEnumValueKind:
+		if external {
+			return SetEnumValueCreateFromExternal(s)
+		}
+		return SetEnumValueCreateFrom(s)
+	case IntervalValueKind:
+		low, err := s.ReadInt()
+		if err != nil {
+			return nil, err
+		}
+		high, err := s.ReadInt()
+		if err != nil {
+			return nil, err
+		}
+		return NewIntervalValue(low, high), nil
+	case FcnRcdValueKind:
+		if external {
+			return FcnRcdValueCreateFromExternal(s)
+		}
+		return FcnRcdValueCreateFrom(s)
+	case RecordValueKind:
+		if external {
+			return RecordValueCreateFromExternal(s)
+		}
+		return RecordValueCreateFrom(s)
+	case DummyValueKind:
+		if s.disableHandles {
+			return nil, NewWrongInvocationException(fmt.Sprintf("ValueInputStream: Can not unpickle a value of kind %d", int8(kind)))
+		}
+		idx, err := s.ReadNat()
+		if err != nil {
+			return nil, err
+		}
+		value := s.valueAt(int(idx))
+		if value == nil {
+			return nil, nil
+		}
+		typed, ok := value.(Value)
+		if !ok {
+			panic(valueStreamClassCast(value, "tlc2.value.IValue"))
+		}
+		return typed, nil
+	default:
+		return nil, NewWrongInvocationException(fmt.Sprintf("ValueInputStream: Can not unpickle a value of kind %d", int8(kind)))
+	}
+}
+
+// StringValueCreateFrom represents StringValue.createFrom.
+func StringValueCreateFrom(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readStringValue(false)
+}
+
+// StringValueCreateFromExternal represents StringValue.createFromExternal.
+func StringValueCreateFromExternal(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readStringValue(true)
+}
+
+// TupleValueCreateFrom represents TupleValue.createFrom.
+func TupleValueCreateFrom(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readTupleValue(false)
+}
+
+// TupleValueCreateFromExternal represents TupleValue.createFromExternal.
+func TupleValueCreateFromExternal(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readTupleValue(true)
+}
+
+// SetEnumValueCreateFrom represents SetEnumValue.createFrom.
+func SetEnumValueCreateFrom(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readSetEnumValue(false)
+}
+
+// SetEnumValueCreateFromExternal represents SetEnumValue.createFromExternal.
+func SetEnumValueCreateFromExternal(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readSetEnumValue(true)
+}
+
+// FcnRcdValueCreateFrom represents FcnRcdValue.createFrom.
+func FcnRcdValueCreateFrom(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readFcnRcdValue(false)
+}
+
+// FcnRcdValueCreateFromExternal represents FcnRcdValue.createFromExternal.
+func FcnRcdValueCreateFromExternal(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readFcnRcdValue(true)
+}
+
+// RecordValueCreateFrom represents RecordValue.createFrom.
+func RecordValueCreateFrom(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readRecordValue(false)
+}
+
+// RecordValueCreateFromExternal represents RecordValue.createFromExternal.
+func RecordValueCreateFromExternal(in *ValueInputStream) (Value, error) {
+	if in == nil {
+		panic(NewNullPointerException())
+	}
+	return in.readRecordValue(true)
+}
+
+func (s *ValueInputStream) readTupleValue(external bool) (Value, error) {
+	index := s.GetIndex()
+	length, err := s.ReadNat()
+	if err != nil {
+		return nil, err
+	}
+	elems := make([]Value, valueStreamArrayLength(length))
+	for i := range elems {
+		value, err := s.readValue(external)
+		if err != nil {
+			return nil, err
+		}
+		elems[i] = value
+	}
+	value := NewTupleValue(elems)
+	s.Assign(value, index)
+	return value, nil
+}
+
+func (s *ValueInputStream) readSetEnumValue(external bool) (Value, error) {
+	index := s.GetIndex()
+	length, err := s.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	isNorm := true
+	if length < 0 {
+		length = -length
+		isNorm = false
+	}
+	elems := make([]Value, valueStreamArrayLength(length))
+	for i := range elems {
+		value, err := s.readValue(external)
+		if err != nil {
+			return nil, err
+		}
+		elems[i] = value
+	}
+	value := NewSetEnumValue(elems, isNorm)
+	s.Assign(value, index)
+	return value, nil
+}
+
+func (s *ValueInputStream) readFcnRcdValue(external bool) (Value, error) {
+	index := s.GetIndex()
+	length, err := s.ReadNat()
+	if err != nil {
+		return nil, err
+	}
+	info, err := s.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	values := make([]Value, valueStreamArrayLength(length))
+	var value Value
+	if info == 0 {
+		low, err := s.ReadInt()
+		if err != nil {
+			return nil, err
+		}
+		high, err := s.ReadInt()
+		if err != nil {
+			return nil, err
+		}
+		for i := range values {
+			values[i], err = s.readValue(external)
+			if err != nil {
+				return nil, err
+			}
+		}
+		value = NewFcnRcdIntervalValue(NewIntervalValue(low, high), values)
+	} else {
+		domain := make([]Value, valueStreamArrayLength(length))
+		for i := range domain {
+			domain[i], err = s.readValue(external)
+			if err != nil {
+				return nil, err
+			}
+			values[i], err = s.readValue(external)
+			if err != nil {
+				return nil, err
+			}
+		}
+		value = NewFcnRcdValue(domain, values, info == 1)
+	}
+	s.Assign(value, index)
+	return value, nil
+}
+
+func (s *ValueInputStream) readStringValue(external bool) (Value, error) {
+	var str *UniqueString
+	var err error
+	if external {
+		str, err = s.readExternalUniqueString()
+	} else {
+		str, err = readJavaUniqueString(s)
+	}
+	if err != nil {
+		return nil, err
+	}
+	value := NewStringValueFromUnique(str)
+	s.Assign(value, s.GetIndex())
+	return value, nil
+}
+
+func (s *ValueInputStream) readRecordValue(external bool) (Value, error) {
+	index := s.GetIndex()
+	length, err := s.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	isNorm := !external
+	if length < 0 {
+		length = -length
+		isNorm = false
+	}
+	names := make([]*UniqueString, valueStreamArrayLength(length))
+	values := make([]Value, valueStreamArrayLength(length))
+	for i := range names {
+		kind, err := s.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		if ValueKind(kind) == DummyValueKind {
+			idx, err := s.ReadNat()
+			if err != nil {
+				return nil, err
+			}
+			names[i] = s.GetValue(int(idx))
+		} else {
+			stringIndex := s.GetIndex()
+			var name *UniqueString
+			if external {
+				name, err = s.readExternalUniqueString()
+			} else {
+				name, err = readJavaUniqueString(s)
+			}
+			if err != nil {
+				return nil, err
+			}
+			s.Assign(name, stringIndex)
+			names[i] = name
+		}
+		value, err := s.readValue(external)
+		if err != nil {
+			return nil, err
+		}
+		values[i] = value
+	}
+	value := NewRecordValue(names, values, isNorm)
+	s.Assign(value, index)
+	return value, nil
+}
+
+func (s *ValueInputStream) readExternalUniqueString() (*UniqueString, error) {
+	return readExternalJavaUniqueString(s)
+}
+
+func (s *ValueInputStream) GetIndex() int {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.disableHandles {
+		return -1
+	}
+	index := s.handleIndex
+	if index >= len(s.handles) {
+		values := make([]any, index*2)
+		copy(values, s.handles[:index])
+		s.handles = values
+	}
+	s.handleIndex++
+	return index
+}
+
+func (s *ValueInputStream) Assign(value any, index int) {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.disableHandles {
+		return
+	}
+	index = int(int32(index))
+	if index < 0 || index >= len(s.handles) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(s.handles)))
+	}
+	if value != nil {
+		if rv := reflect.ValueOf(value); rv.Kind() == reflect.Pointer && rv.IsNil() {
+			value = nil
+		}
+	}
+	s.handles[index] = value
+}
+
+// GetValue is the UniqueString cast exposed by Java's IValueInputStream.
+func (s *ValueInputStream) GetValue(index int) *UniqueString {
+	value := s.valueAt(index)
+	if value == nil {
+		return nil
+	}
+	str, ok := value.(*UniqueString)
+	if !ok {
+		panic(valueStreamClassCast(value, "util.UniqueString"))
+	}
+	return str
+}
+
+func (s *ValueInputStream) valueAt(index int) any {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.disableHandles {
+		panic(NewWrongInvocationException("Not supported"))
+	}
+	index = int(int32(index))
+	if index < 0 || index >= len(s.handles) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(s.handles)))
+	}
+	return s.handles[index]
+}
+
+func valueStreamArrayLength(length int32) int {
+	if length < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(length)))
+	}
+	return int(length)
+}
+
+func valueStreamClassCast(value any, target string) *ClassCastException {
+	class := javaValueClassName(value)
+	return NewClassCastException("class " + class + " cannot be cast to class " + target +
+		" (" + class + " and " + target + " are in unnamed module of loader 'app')")
+}
+
+func javaValueClassName(value any) string {
+	var class string
+	switch value.(type) {
+	case *TLCStateMut:
+		state := value.(*TLCStateMut)
+		class = "tlc2.tool.TLCStateMut"
+		if state != nil {
+			switch {
+			case state.printRecord != nil:
+				class = "tlc2.value.impl.RecordValue$PrintTLCState"
+			case state.functional:
+				class = "tlc2.tool.TLCStateFun"
+			case state.extended:
+				class = "tlc2.tool.TLCStateMutExt"
+			}
+		}
+	case *OpDefNode:
+		class = "tla2sany.semantic.OpDefNode"
+	case *OpApplNode:
+		class = "tla2sany.semantic.OpApplNode"
+	case *SymbolNode:
+		symbol := value.(*SymbolNode)
+		switch symbol.Kind {
+		case SymbolFormalParam:
+			class = "tla2sany.semantic.FormalParamNode"
+		case SymbolVariableDecl, SymbolConstantDecl:
+			class = "tla2sany.semantic.OpDeclNode"
+		case SymbolUserDefinedOp:
+			class = "tla2sany.semantic.OpDefNode"
+		default:
+			class = fmt.Sprintf("%T", value)
+		}
+	case *UniqueString:
+		class = "util.UniqueString"
+	case *DebuggerValue:
+		class = "tlc2.debug.TLCStateStackFrame$DebuggerValue"
+	case *BEGraphNode:
+		class = "tlc2.tool.liveness.BEGraphNode"
+	case *BTGraphNode:
+		class = "tlc2.tool.liveness.BTGraphNode"
+	case []*BTGraphNode:
+		class = "[Ltlc2.tool.liveness.BTGraphNode;"
+	case *LiveExprNode:
+		node := value.(*LiveExprNode)
+		if node == nil {
+			class = "tlc2.tool.liveness.LiveExprNode"
+			break
+		}
+		switch node.ownedKind() {
+		case LiveExprBool:
+			class = "tlc2.tool.liveness.LNBool"
+		case LiveExprNeg:
+			class = "tlc2.tool.liveness.LNNeg"
+		case LiveExprConj:
+			class = "tlc2.tool.liveness.LNConj"
+		case LiveExprDisj:
+			class = "tlc2.tool.liveness.LNDisj"
+		case LiveExprAll:
+			class = "tlc2.tool.liveness.LNAll"
+		case LiveExprEven:
+			class = "tlc2.tool.liveness.LNEven"
+		case LiveExprNext:
+			class = "tlc2.tool.liveness.LNNext"
+		case LiveExprAction:
+			class = "tlc2.tool.liveness.LNAction"
+		default:
+			class = "tlc2.tool.liveness.LiveExprNode"
+		}
+	case *BoolValue, *IntValue, *StringValue, *ModelValue, *TupleValue, *RecordValue,
+		*SetEnumValue, *IntervalValue, *FcnRcdValue, *FcnLambdaValue, *CounterExample,
+		*SetOfTuplesValue, *SetOfRcdsValue, *SetOfFcnsValue, *SubsetValue, *KSubsetValue,
+		*SetCupValue, *SetCapValue, *SetDiffValue, *UnionValue, *SetPredValue, *LazyValue,
+		*LazySupplierValue, *OpLambdaValue, *OpRcdValue, *MethodValue, *EvaluatingValue,
+		*PriorityEvaluatingValue, *CallableValue, *UndefValue, *UserValue:
+		class = "tlc2.value.impl." + reflect.TypeOf(value).Elem().Name()
+	default:
+		// Objects not represented by this port retain their Go type name.
+		class = fmt.Sprintf("%T", value)
+	}
+	return class
+}

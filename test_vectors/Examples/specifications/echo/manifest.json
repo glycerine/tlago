@@ -1,0 +1,36 @@
+{
+  "sources": [],
+  "authors": [
+    "Stephan Merz"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/echo/Echo.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/echo/MCEcho.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/echo/MCEcho.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 75,
+          "totalStates": 116,
+          "stateDepth": 16
+        }
+      ]
+    },
+    {
+      "path": "specifications/echo/Relation.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

@@ -1,0 +1,268 @@
+package tlago
+
+import (
+	"fmt"
+	"runtime"
+	"strings"
+
+	"github.com/glycerine/tlago/tlc"
+)
+
+type sanyParseFrame struct {
+	name  string
+	token *SanyToken
+}
+
+type SanyParseException struct {
+	diagnostic             Diagnostic
+	specialConstructor     bool
+	message                string
+	messageNull            bool
+	CurrentToken           *SanyToken
+	ExpectedTokenSequences [][]SanyTokenKind
+	TokenImages            []string
+}
+
+type sanyParseException = SanyParseException
+
+func NewSanyParseException() *SanyParseException {
+	return &SanyParseException{messageNull: true}
+}
+
+func NewSanyParseExceptionMessage(message string) *SanyParseException {
+	return &SanyParseException{message: message}
+}
+
+func NewSanyGeneratedParseException(currentToken *SanyToken, expectedTokenSequences [][]SanyTokenKind, tokenImages []string) *SanyParseException {
+	return &SanyParseException{
+		specialConstructor:     true,
+		CurrentToken:           currentToken,
+		ExpectedTokenSequences: expectedTokenSequences,
+		TokenImages:            tokenImages,
+	}
+}
+
+func (e *SanyParseException) require() {
+	if e == nil {
+		panic(tlc.NewNullPointerException())
+	}
+}
+
+// beginProduction/endProduction port the message state in Java's bpa/epa.
+// A thrown exception snapshots that state before the Go stack unwinds.
+func (p *SanyParser) beginProduction(name string) {
+	p.log(SanyLogTrace, "Beginning %s", name)
+	p.messageStack = append(p.messageStack, sanyParseFrame{name, p.peek()})
+	p.expecting = ""
+}
+
+func (p *SanyParser) endProduction() {
+	// Java does not execute epa when the production throws.
+	if failure := recover(); failure != nil {
+		panic(failure)
+	}
+	name := p.messageStack[len(p.messageStack)-1].name
+	p.messageStack = p.messageStack[:len(p.messageStack)-1]
+	p.log(SanyLogTrace, "Ending %s", name)
+	p.expecting = ""
+}
+
+// recordDirectChoice retains JavaCC jj_la1's generation at a failed switch.
+func (p *SanyParser) recordDirectChoice(site int) {
+	p.peekChoice()
+	p.directChoiceGeneration[site] = p.at
+	p.directChoiceRecorded[site] = true
+}
+
+// Direct expected tokens precede rescan entries in ascending source token order.
+func (p *SanyParser) directExpectedSequences() [][]SanyTokenKind {
+	var tokens [295]bool
+	if p.expectedKindRecorded && p.expectedKind >= 0 {
+		tokens[p.expectedKind] = true
+		p.expectedKind = -1
+		p.expectedKindRecorded = false
+	}
+	for site, masks := range sanyDirectChoiceMasks {
+		if !p.directChoiceRecorded[site] || p.directChoiceGeneration[site] != p.at {
+			continue
+		}
+		for kind := range tokens {
+			if masks[kind/32]&(uint32(1)<<uint(kind%32)) != 0 {
+				tokens[kind] = true
+			}
+		}
+	}
+	var result [][]SanyTokenKind
+	for kind, present := range tokens {
+		if present {
+			result = append(result, []SanyTokenKind{SanyTokenKind(kind)})
+		}
+	}
+	return result
+}
+
+// generateParseException ports JavaCC's generated constructor path without
+// consuming tokens or formatting the exception. The failed kind is cleared by
+// directExpectedSequences before saved lookahead calls contribute their entries.
+func (p *SanyParser) generateParseException() *sanyParseException {
+	return NewSanyGeneratedParseException(p.currentToken(), p.rescanLookaheads(p.directExpectedSequences()), SanyTokenImages)
+}
+
+func (p *SanyParser) throwParseException(kind SanyTokenKind, nativeMessage string) {
+	// jj_consume_token obtains the next token before recording the failed kind.
+	token := p.peek()
+	p.expectedKind, p.expectedKindRecorded = kind, kind >= 0
+	failure := p.generateParseException()
+	maxSize := 0
+	for _, sequence := range failure.ExpectedTokenSequences {
+		if len(sequence) > maxSize {
+			maxSize = len(sequence)
+		}
+	}
+	if maxSize > 0 {
+		p.tokenAt(maxSize - 1)
+	}
+	failure.diagnostic = p.reportedParseException(failure.shortMessage(), token.BeginPosition(), "E1300", nativeMessage).diagnostic
+	panic(failure)
+}
+
+// shortMessage ports ParseExceptionExtended.getShortMessage. Only the prior
+// token is escaped; following token images are printed literally.
+func (e *SanyParseException) ShortMessage() string {
+	e.require()
+	if !e.specialConstructor {
+		return e.GetMessage()
+	}
+	maxSize := 0
+	for _, sequence := range e.ExpectedTokenSequences {
+		if len(sequence) > maxSize {
+			maxSize = len(sequence)
+		}
+	}
+	var message strings.Builder
+	message.WriteString("Encountered \"")
+	token := e.CurrentToken.Next
+	for i := 0; i < maxSize; i++ {
+		if i != 0 {
+			message.WriteByte(' ')
+		}
+		if token.Kind == SanyTokenEOF {
+			message.WriteString(e.TokenImages[int(token.Kind)])
+			break
+		}
+		message.WriteString(token.Image)
+		token = token.Next
+	}
+	next := e.CurrentToken.Next
+	fmt.Fprintf(&message, "\" at line %d, column %d and token \"%s\" ", next.BeginLine, next.BeginColumn, sanyLexicalEscapes(e.CurrentToken.Image))
+	return message.String()
+}
+
+func (e *SanyParseException) shortMessage() string { return e.ShortMessage() }
+
+func SanyParseExceptionShortMessage(e *SanyParseException) string {
+	return e.ShortMessage()
+}
+
+// Error ports ParseException.getMessage, including the generated constructor's
+// complete alternatives and escapes. Ordinary message constructors return the
+// supplied message directly.
+func (e *SanyParseException) GetMessage() string {
+	e.require()
+	if !e.specialConstructor {
+		if e.messageNull {
+			return "null"
+		}
+		return e.message
+	}
+	eol := "\n"
+	if runtime.GOOS == "windows" {
+		eol = "\r\n"
+	}
+	var expected strings.Builder
+	maxSize := 0
+	for _, sequence := range e.ExpectedTokenSequences {
+		if len(sequence) > maxSize {
+			maxSize = len(sequence)
+		}
+		for _, kind := range sequence {
+			expected.WriteString(e.TokenImages[int(kind)])
+			expected.WriteByte(' ')
+		}
+		if sequence[len(sequence)-1] != SanyTokenEOF {
+			expected.WriteString("...")
+		}
+		expected.WriteString(eol)
+		expected.WriteString("    ")
+	}
+	var message strings.Builder
+	message.WriteString("Encountered \"")
+	token := e.CurrentToken.Next
+	for i := 0; i < maxSize; i++ {
+		if i != 0 {
+			message.WriteByte(' ')
+		}
+		if token.Kind == SanyTokenEOF {
+			message.WriteString(e.TokenImages[int(token.Kind)])
+			break
+		}
+		message.WriteString(sanyLexicalEscapes(token.Image))
+		token = token.Next
+	}
+	next := e.CurrentToken.Next
+	fmt.Fprintf(&message, "\" at line %d, column %d.%s", next.BeginLine, next.BeginColumn, eol)
+	if len(e.ExpectedTokenSequences) == 1 {
+		message.WriteString("Was expecting:")
+	} else {
+		message.WriteString("Was expecting one of:")
+	}
+	message.WriteString(eol)
+	message.WriteString("    ")
+	message.WriteString(expected.String())
+	return message.String()
+}
+
+func (e *SanyParseException) Error() string { return e.GetMessage() }
+
+// A source ParseException created with a message uses getShortMessage's ordinary
+// constructor branch, without generated expected tokens or an Encountered line.
+func (p *SanyParser) throwReportedParseException(shortMessage string, position Position, code, nativeMessage string) {
+	panic(p.reportedParseException(shortMessage, position, code, nativeMessage))
+}
+
+func (p *SanyParser) reportedParseException(shortMessage string, position Position, code, nativeMessage string) *sanyParseException {
+	var message strings.Builder
+	message.WriteString("***Parse Error***\n")
+	if p.expecting != "" {
+		message.WriteString("Was expecting \"" + p.expecting + "\"\n")
+	}
+	message.WriteString(shortMessage)
+	message.WriteString("\n\nResidual stack trace follows:\n")
+	last := len(p.messageStack) - 5
+	if last < 0 {
+		last = 0
+	}
+	for i := len(p.messageStack) - 1; i >= last; i-- {
+		frame := p.messageStack[i]
+		fmt.Fprintf(&message, "%s starting at line %d, column %d.\n", frame.name, frame.token.BeginLine, frame.token.BeginColumn)
+	}
+	diagnostic := errorAt(position, code, "%s", nativeMessage)
+	diagnostic.SANYParseMessage = message.String()
+	exception := NewSanyParseExceptionMessage(shortMessage)
+	exception.diagnostic = diagnostic
+	return exception
+}
+
+func (p *SanyParser) throwOperatorStackFailure(failure error, position Position) {
+	if source, ok := failure.(*sanyOperatorStackFailure); ok {
+		p.throwReportedParseException(source.sourceMessage, position, "E1301", source.nativeMessage)
+	}
+	panic(failure)
+}
+
+func (p *SanyParser) consumeParseToken(kind SanyTokenKind, nativeMessage string) *SanySyntaxNode {
+	if !p.check(kind) {
+		p.throwParseException(kind, nativeMessage)
+	}
+	return NewSanyTokenNode(p.advance())
+}

@@ -1,0 +1,1447 @@
+package tlc
+
+import (
+	"fmt"
+	"strings"
+)
+
+type SetCupValue struct {
+	BaseValue
+	Set1   Value
+	Set2   Value
+	CupSet *SetEnumValue
+
+	setsCaptured bool
+	set1Owner    Value
+	set2Owner    Value
+}
+
+func (v *SetCupValue) IsSubsetEq(other Value) (*BoolValue, error) {
+	return defaultEnumerableSubsetEq(v, v, other)
+}
+
+func NewSetCupValue(set1, set2 Value, cms ...CostModel) *SetCupValue {
+	return &SetCupValue{BaseValue: newBaseValue(cms...), Set1: set1, Set2: set2, setsCaptured: true, set1Owner: set1, set2Owner: set2}
+}
+
+func (v *SetCupValue) ownedSet1() Value {
+	if v.setsCaptured {
+		return v.set1Owner
+	}
+	return v.Set1
+}
+
+func (v *SetCupValue) ownedSet2() Value {
+	if v.setsCaptured {
+		return v.set2Owner
+	}
+	return v.Set2
+}
+
+func (v *SetCupValue) captureSets(set1, set2 Value) {
+	v.Set1, v.Set2 = set1, set2
+	v.setsCaptured = true
+	v.set1Owner, v.set2Owner = set1, set2
+}
+
+func (v *SetCupValue) Kind() ValueKind {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return SetCupValueKind
+}
+
+func (v *SetCupValue) KindString() string { return ValueKindString(v) }
+func (v *SetCupValue) GetCostModel() CostModel {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.BaseValue.GetCostModel()
+}
+
+func (v *SetCupValue) Compare(other Value) (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Compare(other)
+}
+
+func (v *SetCupValue) Equal(other Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return false, err
+	}
+	return set.Equal(other)
+}
+
+func (v *SetCupValue) Member(elem Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if v.ownedSet1() == nil {
+		panic(NewNullPointerException())
+	}
+	ok, err := v.ownedSet1().Member(elem)
+	if err != nil || ok {
+		return ok, err
+	}
+	if v.ownedSet2() == nil {
+		panic(NewNullPointerException())
+	}
+	return v.ownedSet2().Member(elem)
+}
+
+func (v *SetCupValue) IsFinite() (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if isNil(v.ownedSet1()) {
+		panic(NewNullPointerException())
+	}
+	f1, err := v.ownedSet1().IsFinite()
+	if err != nil || !f1 {
+		return f1, err
+	}
+	if isNil(v.ownedSet2()) {
+		panic(NewNullPointerException())
+	}
+	return v.ownedSet2().IsFinite()
+}
+
+func (v *SetCupValue) Size() (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Size()
+}
+
+func (v *SetCupValue) IsNormalized() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.CupSet != nil && v.CupSet != DummyEnum && v.CupSet.IsNormalized()
+}
+
+func (v *SetCupValue) Normalize() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.CupSet != nil && v.CupSet != DummyEnum {
+		v.CupSet.Normalize()
+	}
+	return v
+}
+
+func (v *SetCupValue) DeepNormalize() {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	v.ownedSet1().DeepNormalize()
+	v.ownedSet2().DeepNormalize()
+	if v.CupSet == nil {
+		v.CupSet = DummyEnum
+	} else if v.CupSet != DummyEnum {
+		v.CupSet.DeepNormalize()
+	}
+}
+
+func (v *SetCupValue) IsDefined() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.ownedSet1().IsDefined() && v.ownedSet2().IsDefined()
+}
+
+func (v *SetCupValue) DeepCopy() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v
+}
+
+func (v *SetCupValue) FingerPrint(fp uint64) uint64 {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.FingerPrint(fp)
+}
+
+func (v *SetCupValue) Permute(perm *MVPerm) Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.Permute(perm)
+}
+
+func (v *SetCupValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return takeExceptOnSet(v, ex)
+}
+
+func (v *SetCupValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return takeExceptsOnSet(v, exs)
+}
+
+func (v *SetCupValue) ToSetEnum() (*SetEnumValue, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if v.CupSet != nil && v.CupSet != DummyEnum {
+		return v.CupSet, nil
+	}
+	enum := v.Elements()
+	return setEnumFromEnumeration(enum, false, v.CM)
+}
+
+func (v *SetCupValue) convertAndCache() (*SetEnumValue, error) {
+	if v.CupSet == DummyEnum {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.CupSet = set
+	} else if v.CupSet == nil {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		v.CupSet = set
+	}
+	return v.CupSet, nil
+}
+
+func (v *SetCupValue) Elements() (enumeration ValueEnumeration) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	defer raiseInitialEnumerationFailure(&enumeration)
+	if v.CupSet != nil && v.CupSet != DummyEnum {
+		return v.CupSet.Elements()
+	}
+	enum1, ok1 := asEnumerable(v.ownedSet1())
+	enum2, ok2 := asEnumerable(v.ownedSet2())
+	if !ok1 || !ok2 {
+		// The source formats operands in order while constructing its error.
+		if isNil(v.ownedSet1()) {
+			panic(NewNullPointerException())
+		}
+		left := ValuesPPR(v.ownedSet1())
+		if isNil(v.ownedSet2()) {
+			panic(NewNullPointerException())
+		}
+		right := ValuesPPR(v.ownedSet2())
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\cup T when S:\n" + left + "\nand T:\n" + right + "\nare not both enumerable"))
+	}
+	return &setCupEnumeration{enum1: enum1.Elements(), enum2: enum2.Elements(), cm: v.CM}
+}
+
+func (v *SetCupValue) String() string {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return ValueToString(v, "", true)
+}
+
+func (v *SetCupValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if Globals.Expand {
+		if expanded, ok := tryExpandedSetString(sb, offset, swallow, v.ToSetEnum); ok {
+			return expanded
+		}
+	}
+	sb = appendValueString(v.ownedSet1(), sb, offset, swallow)
+	sb.WriteString(" \\cup ")
+	return appendValueString(v.ownedSet2(), sb, offset, swallow)
+}
+
+type setCupEnumeration struct {
+	cm    CostModel
+	enum1 ValueEnumeration
+	enum2 ValueEnumeration
+}
+
+func (e *setCupEnumeration) Reset() {
+	requireValueEnumerationReceiver(e)
+	resetEnumeration(e.enum1)
+	resetEnumeration(e.enum2)
+}
+
+func (e *setCupEnumeration) NextElement() Value {
+	requireValueEnumerationReceiver(e)
+	e.cm.incValueSecondary()
+	elem := nextEnumerationElement(e.enum1)
+	if elem != nil {
+		return elem
+	}
+	return nextEnumerationElement(e.enum2)
+}
+
+func (e *setCupEnumeration) Err() error {
+	if err := e.enum1.Err(); err != nil {
+		return err
+	}
+	return e.enum2.Err()
+}
+
+type SetCapValue struct {
+	BaseValue
+	Set1   Value
+	Set2   Value
+	CapSet *SetEnumValue
+
+	setsCaptured bool
+	set1Owner    Value
+	set2Owner    Value
+}
+
+func (v *SetCapValue) IsSubsetEq(other Value) (*BoolValue, error) {
+	return defaultEnumerableSubsetEq(v, v, other)
+}
+
+func NewSetCapValue(set1, set2 Value) *SetCapValue {
+	return &SetCapValue{Set1: set1, Set2: set2, setsCaptured: true, set1Owner: set1, set2Owner: set2}
+}
+
+func (v *SetCapValue) ownedSet1() Value {
+	if v.setsCaptured {
+		return v.set1Owner
+	}
+	return v.Set1
+}
+
+func (v *SetCapValue) ownedSet2() Value {
+	if v.setsCaptured {
+		return v.set2Owner
+	}
+	return v.Set2
+}
+
+func (v *SetCapValue) captureSets(set1, set2 Value) {
+	v.Set1, v.Set2 = set1, set2
+	v.setsCaptured = true
+	v.set1Owner, v.set2Owner = set1, set2
+}
+
+func (v *SetCapValue) Kind() ValueKind {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return SetCapValueKind
+}
+
+func (v *SetCapValue) KindString() string { return ValueKindString(v) }
+func (v *SetCapValue) GetCostModel() CostModel {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.BaseValue.GetCostModel()
+}
+
+func (v *SetCapValue) Compare(other Value) (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Compare(other)
+}
+
+func (v *SetCapValue) Equal(other Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return false, err
+	}
+	return set.Equal(other)
+}
+
+func (v *SetCapValue) Member(elem Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	ok, err := v.ownedSet1().Member(elem)
+	if err != nil || !ok {
+		return ok, err
+	}
+	return v.ownedSet2().Member(elem)
+}
+
+func (v *SetCapValue) IsFinite() (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if isNil(v.ownedSet1()) {
+		panic(NewNullPointerException())
+	}
+	f1, err := v.ownedSet1().IsFinite()
+	if err != nil || f1 {
+		return f1, err
+	}
+	if isNil(v.ownedSet2()) {
+		panic(NewNullPointerException())
+	}
+	f2, err := v.ownedSet2().IsFinite()
+	if err != nil {
+		return false, err
+	}
+	if !f2 {
+		return false, v.runtimeFailure("Attempted to check if the set " + ValuesPPR(v) + "is finite.")
+	}
+	return true, nil
+}
+
+func (v *SetCapValue) Size() (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Size()
+}
+
+func (v *SetCapValue) IsNormalized() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.CapSet == nil || v.CapSet == DummyEnum {
+		return v.ownedSet1().IsNormalized() && v.ownedSet2().IsNormalized()
+	}
+	return v.CapSet.IsNormalized()
+}
+
+func (v *SetCapValue) Normalize() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.CapSet == nil || v.CapSet == DummyEnum {
+		v.ownedSet1().Normalize()
+		v.ownedSet2().Normalize()
+	} else {
+		v.CapSet.Normalize()
+	}
+	return v
+}
+
+func (v *SetCapValue) DeepNormalize() {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	v.ownedSet1().DeepNormalize()
+	v.ownedSet2().DeepNormalize()
+	if v.CapSet == nil {
+		v.CapSet = DummyEnum
+	} else if v.CapSet != DummyEnum {
+		v.CapSet.DeepNormalize()
+	}
+}
+
+func (v *SetCapValue) IsDefined() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.ownedSet1().IsDefined() && v.ownedSet2().IsDefined()
+}
+
+func (v *SetCapValue) DeepCopy() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v
+}
+
+func (v *SetCapValue) FingerPrint(fp uint64) uint64 {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.FingerPrint(fp)
+}
+
+func (v *SetCapValue) Permute(perm *MVPerm) Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.Permute(perm)
+}
+
+func (v *SetCapValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return takeExceptOnSet(v, ex)
+}
+
+func (v *SetCapValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return takeExceptsOnSet(v, exs)
+}
+
+func (v *SetCapValue) ToSetEnum() (*SetEnumValue, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if v.CapSet != nil && v.CapSet != DummyEnum {
+		return v.CapSet, nil
+	}
+	enum := v.Elements()
+	return setEnumFromEnumerationWithNormalization(enum, v.IsNormalized, v.CM)
+}
+
+func (v *SetCapValue) convertAndCache() (*SetEnumValue, error) {
+	if v.CapSet == DummyEnum {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.CapSet = set
+	} else if v.CapSet == nil {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		v.CapSet = set
+	}
+	return v.CapSet, nil
+}
+
+func (v *SetCapValue) Elements() (enumeration ValueEnumeration) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	defer raiseInitialEnumerationFailure(&enumeration)
+	if v.CapSet != nil && v.CapSet != DummyEnum {
+		return v.CapSet.Elements()
+	}
+	if enum1, ok := asEnumerable(v.ownedSet1()); ok {
+		return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.ownedSet2(), includeWhenMember: true, cm: v.CM}
+	}
+	if enum2, ok := asEnumerable(v.ownedSet2()); ok {
+		return &setFilterEnumeration{enum: enum2.Elements(), predicate: v.ownedSet1(), includeWhenMember: true, cm: v.CM}
+	}
+	return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\cap T when neither S:\n" + enumerableDiagnosticValue(v.ownedSet1()) + "\nnor T:\n" + enumerableDiagnosticValue(v.ownedSet2()) + "\nis enumerable"))
+}
+
+func (v *SetCapValue) String() string {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return ValueToString(v, "", true)
+}
+
+func (v *SetCapValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if Globals.Expand {
+		if expanded, ok := tryExpandedSetString(sb, offset, swallow, v.ToSetEnum); ok {
+			return expanded
+		}
+	}
+	sb = appendValueString(v.ownedSet1(), sb, offset, swallow)
+	sb.WriteString(" \\cap ")
+	return appendValueString(v.ownedSet2(), sb, offset, swallow)
+}
+
+type SetDiffValue struct {
+	BaseValue
+	Set1    Value
+	Set2    Value
+	DiffSet *SetEnumValue
+
+	setsCaptured bool
+	set1Owner    Value
+	set2Owner    Value
+}
+
+func (v *SetDiffValue) IsSubsetEq(other Value) (*BoolValue, error) {
+	return defaultEnumerableSubsetEq(v, v, other)
+}
+
+func NewSetDiffValue(set1, set2 Value) *SetDiffValue {
+	return &SetDiffValue{Set1: set1, Set2: set2, setsCaptured: true, set1Owner: set1, set2Owner: set2}
+}
+
+func (v *SetDiffValue) ownedSet1() Value {
+	if v.setsCaptured {
+		return v.set1Owner
+	}
+	return v.Set1
+}
+
+func (v *SetDiffValue) ownedSet2() Value {
+	if v.setsCaptured {
+		return v.set2Owner
+	}
+	return v.Set2
+}
+
+func (v *SetDiffValue) captureSets(set1, set2 Value) {
+	v.Set1, v.Set2 = set1, set2
+	v.setsCaptured = true
+	v.set1Owner, v.set2Owner = set1, set2
+}
+
+func (v *SetDiffValue) Kind() ValueKind {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return SetDiffValueKind
+}
+
+func (v *SetDiffValue) KindString() string { return ValueKindString(v) }
+func (v *SetDiffValue) GetCostModel() CostModel {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.BaseValue.GetCostModel()
+}
+
+func (v *SetDiffValue) Compare(other Value) (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Compare(other)
+}
+
+func (v *SetDiffValue) Equal(other Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return false, err
+	}
+	return set.Equal(other)
+}
+
+func (v *SetDiffValue) Member(elem Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	ok, err := v.ownedSet1().Member(elem)
+	if err != nil || !ok {
+		return ok, err
+	}
+	inSecond, err := v.ownedSet2().Member(elem)
+	if err != nil {
+		return false, err
+	}
+	return !inSecond, nil
+}
+
+func (v *SetDiffValue) IsFinite() (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if isNil(v.ownedSet1()) {
+		panic(NewNullPointerException())
+	}
+	f1, err := v.ownedSet1().IsFinite()
+	if err != nil {
+		return false, err
+	}
+	if f1 {
+		return true, nil
+	}
+	if isNil(v.ownedSet2()) {
+		panic(NewNullPointerException())
+	}
+	f2, err := v.ownedSet2().IsFinite()
+	if err != nil {
+		return false, err
+	}
+	if !f2 {
+		return false, v.runtimeFailure("Attempted to check if the set " + ValuesPPR(v) + "is finite.")
+	}
+	return false, nil
+}
+
+func (v *SetDiffValue) Size() (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Size()
+}
+
+func (v *SetDiffValue) IsNormalized() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.DiffSet == nil || v.DiffSet == DummyEnum {
+		return v.ownedSet1().IsNormalized()
+	}
+	return v.DiffSet.IsNormalized()
+}
+
+func (v *SetDiffValue) Normalize() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.DiffSet == nil || v.DiffSet == DummyEnum {
+		v.ownedSet1().Normalize()
+		v.ownedSet2().Normalize()
+	} else {
+		v.DiffSet.Normalize()
+	}
+	return v
+}
+
+func (v *SetDiffValue) DeepNormalize() {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	v.ownedSet1().DeepNormalize()
+	v.ownedSet2().DeepNormalize()
+	if v.DiffSet == nil {
+		v.DiffSet = DummyEnum
+	} else if v.DiffSet != DummyEnum {
+		v.DiffSet.DeepNormalize()
+	}
+}
+
+func (v *SetDiffValue) IsDefined() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.ownedSet1().IsDefined() && v.ownedSet2().IsDefined()
+}
+
+func (v *SetDiffValue) DeepCopy() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v
+}
+
+func (v *SetDiffValue) FingerPrint(fp uint64) uint64 {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.FingerPrint(fp)
+}
+
+func (v *SetDiffValue) Permute(perm *MVPerm) Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.Permute(perm)
+}
+
+func (v *SetDiffValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return takeExceptOnSet(v, ex)
+}
+
+func (v *SetDiffValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return takeExceptsOnSet(v, exs)
+}
+
+func (v *SetDiffValue) ToSetEnum() (*SetEnumValue, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if v.DiffSet != nil && v.DiffSet != DummyEnum {
+		return v.DiffSet, nil
+	}
+	enum := v.Elements()
+	return setEnumFromEnumerationWithNormalization(enum, v.ownedSet1().IsNormalized, v.CM)
+}
+
+func (v *SetDiffValue) convertAndCache() (*SetEnumValue, error) {
+	if v.DiffSet == DummyEnum {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.DiffSet = set
+	} else if v.DiffSet == nil {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		v.DiffSet = set
+	}
+	return v.DiffSet, nil
+}
+
+func (v *SetDiffValue) Elements() (enumeration ValueEnumeration) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	defer raiseInitialEnumerationFailure(&enumeration)
+	if v.DiffSet != nil && v.DiffSet != DummyEnum {
+		return v.DiffSet.Elements()
+	}
+	enum1, ok := asEnumerable(v.ownedSet1())
+	if !ok {
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate S \\ T when S:\n" + enumerableDiagnosticValue(v.ownedSet1()) + "\nis not enumerable."))
+	}
+	return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.ownedSet2(), includeWhenMember: false, cm: v.CM}
+}
+
+func (v *SetDiffValue) String() string {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return ValueToString(v, "", true)
+}
+
+func (v *SetDiffValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if Globals.Expand {
+		if expanded, ok := tryExpandedSetString(sb, offset, swallow, v.ToSetEnum); ok {
+			return expanded
+		}
+	}
+	sb = appendValueString(v.ownedSet1(), sb, offset, swallow)
+	sb.WriteString(" \\ ")
+	return appendValueString(v.ownedSet2(), sb, offset, swallow)
+}
+
+type UnionValue struct {
+	BaseValue
+	Set     Value
+	RealSet *SetEnumValue
+
+	setCaptured bool
+	setOwner    Value
+}
+
+func (v *UnionValue) IsSubsetEq(other Value) (*BoolValue, error) {
+	return defaultEnumerableSubsetEq(v, v, other)
+}
+
+func NewUnionValue(set Value, cms ...CostModel) *UnionValue {
+	return &UnionValue{BaseValue: newBaseValue(cms...), Set: set, setCaptured: true, setOwner: set}
+}
+
+func (v *UnionValue) ownedSet() Value {
+	if v.setCaptured {
+		return v.setOwner
+	}
+	return v.Set
+}
+
+func (v *UnionValue) captureSet(set Value) {
+	v.Set = set
+	v.setCaptured = true
+	v.setOwner = set
+}
+
+func Union(set Value) (Value, error) {
+	setEnum, ok := set.(*SetEnumValue)
+	if ok {
+		canCombine := true
+		for i := 0; i < setEnum.Elems.Len(); i++ {
+			if _, ok := setEnum.Elems.At(i).(*SetEnumValue); !ok {
+				canCombine = false
+				break
+			}
+		}
+		if canCombine {
+			resElems := NewValueVec(0)
+			result := NewSetEnumValueVec(resElems, false, set.GetCostModel())
+			for i := 0; i < setEnum.Elems.Len(); i++ {
+				inner := setEnum.Elems.At(i).(*SetEnumValue)
+				for j := 0; j < inner.Elems.Len(); j++ {
+					elem := inner.Elems.At(j)
+					member, err := result.Member(elem)
+					if err != nil {
+						return nil, err
+					}
+					if !member {
+						resElems.Add(elem)
+					}
+				}
+			}
+			return result, nil
+		}
+	}
+	return NewUnionValue(set, set.GetCostModel()), nil
+}
+
+func (v *UnionValue) Kind() ValueKind {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return UnionValueKind
+}
+
+func (v *UnionValue) KindString() string { return ValueKindString(v) }
+func (v *UnionValue) GetCostModel() CostModel {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.BaseValue.GetCostModel()
+}
+
+func (v *UnionValue) Compare(other Value) (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Compare(other)
+}
+
+func (v *UnionValue) Equal(other Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return false, err
+	}
+	return set.Equal(other)
+}
+
+func (v *UnionValue) Member(elem Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	enum, ok := asEnumerable(v.ownedSet())
+	if !ok {
+		if elem == nil {
+			panic(NewNullPointerException())
+		}
+		return false, v.runtimeFailure("Attempted to check if:\n " + ValuesPPR(elem) + "\nis an element of the non-enumerable set:\n " + ValuesPPR(v))
+	}
+	e := enum.Elements()
+	for {
+		val := e.NextElement()
+		if val == nil {
+			return false, e.Err()
+		}
+		ok, err := val.Member(elem)
+		if err != nil || ok {
+			return ok, err
+		}
+	}
+}
+
+func (v *UnionValue) IsFinite() (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	enum, ok := asEnumerable(v.ownedSet())
+	if !ok {
+		return false, v.runtimeFailure("Attempted to check if the nonenumerable set:\n" + ValuesPPR(v) + "\nis a finite set.")
+	}
+	e := enum.Elements()
+	for {
+		val := e.NextElement()
+		if val == nil {
+			return true, e.Err()
+		}
+		finite, err := val.IsFinite()
+		if err != nil || !finite {
+			return finite, err
+		}
+	}
+}
+
+func (v *UnionValue) Size() (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Size()
+}
+
+func (v *UnionValue) IsNormalized() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.RealSet != nil && v.RealSet != DummyEnum && v.RealSet.IsNormalized()
+}
+
+func (v *UnionValue) Normalize() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.RealSet != nil && v.RealSet != DummyEnum {
+		v.RealSet.Normalize()
+	}
+	return v
+}
+
+func (v *UnionValue) DeepNormalize() {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	v.ownedSet().DeepNormalize()
+	if v.RealSet == nil {
+		v.RealSet = DummyEnum
+	} else if v.RealSet != DummyEnum {
+		v.RealSet.DeepNormalize()
+	}
+}
+
+func (v *UnionValue) IsDefined() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.ownedSet().IsDefined()
+}
+
+func (v *UnionValue) DeepCopy() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v
+}
+
+func (v *UnionValue) FingerPrint(fp uint64) uint64 {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.FingerPrint(fp)
+}
+
+func (v *UnionValue) Permute(perm *MVPerm) Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.Permute(perm)
+}
+
+func (v *UnionValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if ex == nil || ex.Path == nil {
+		panic(NewNullPointerException())
+	}
+	if ex.Index < len(ex.Path) {
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set:\n" + ValuesPPR(v))
+	}
+	return ex.Value, nil
+}
+
+func (v *UnionValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
+	if len(exs) != 0 {
+		return nil, v.runtimeFailure("Attempted to apply EXCEPT to the set:\n " + ValuesPPR(v) + ".")
+	}
+	return v, nil
+}
+
+func (v *UnionValue) ToSetEnum() (*SetEnumValue, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if v.RealSet != nil && v.RealSet != DummyEnum {
+		return v.RealSet, nil
+	}
+	enum := v.Elements()
+	return setEnumFromEnumeration(enum, false, v.CM)
+}
+
+func (v *UnionValue) convertAndCache() (*SetEnumValue, error) {
+	if v.RealSet == DummyEnum {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.RealSet = set
+	} else if v.RealSet == nil {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		v.RealSet = set
+	}
+	return v.RealSet, nil
+}
+
+func (v *UnionValue) Elements() (enumeration ValueEnumeration) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	defer raiseInitialEnumerationFailure(&enumeration)
+	if v.RealSet != nil && v.RealSet != DummyEnum {
+		return v.RealSet.Elements()
+	}
+	enum, ok := asEnumerable(v.ownedSet())
+	if !ok {
+		iterator := &unionEnumeration{owner: v}
+		return newErrorEnumeration(v.runtimeFailure("Attempted to enumerate the nonenumerable set:\n" + iterator.diagnosticIdentity()))
+	}
+	return newUnionEnumeration(enum.Elements(), v)
+}
+
+func (v *UnionValue) String() string {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return ValueToString(v, "", true)
+}
+
+func (v *UnionValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if Globals.Expand {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			panic(err)
+		}
+		return appendValueString(set, sb, offset, swallow)
+	}
+	sb.WriteString("UNION(")
+	sb = appendValueString(v.ownedSet(), sb, offset, swallow)
+	sb.WriteString(")")
+	return sb
+}
+
+type setFilterEnumeration struct {
+	cm                CostModel
+	enum              ValueEnumeration
+	predicate         Value
+	includeWhenMember bool
+}
+
+func (e *setFilterEnumeration) Reset() {
+	requireValueEnumerationReceiver(e)
+	resetEnumeration(e.enum)
+}
+
+func (e *setFilterEnumeration) NextElement() Value {
+	requireValueEnumerationReceiver(e)
+	for {
+		elem := nextEnumerationElement(e.enum)
+		if elem == nil {
+			return nil
+		}
+		e.cm.incValueSecondary()
+		if e.predicate == nil {
+			panic(NewNullPointerException())
+		}
+		member, err := e.predicate.Member(elem)
+		if err != nil {
+			panic(err)
+		}
+		if member == e.includeWhenMember {
+			return elem
+		}
+	}
+}
+
+func (e *setFilterEnumeration) Err() error { return e.enum.Err() }
+
+type unionEnumeration struct {
+	enum        ValueEnumeration
+	elemSet     Value
+	elemSetEnum ValueEnumeration
+	owner       *UnionValue
+}
+
+// diagnosticIdentity has no value-formatting side effects, like Java's default
+// Enumerator.toString. Use Go's type and pointer rather than a JVM identity.
+func (e *unionEnumeration) diagnosticIdentity() string { return fmt.Sprintf("%T(%p)", e, e) }
+
+func newUnionEnumeration(enum ValueEnumeration, owner *UnionValue) *unionEnumeration {
+	out := &unionEnumeration{enum: enum, owner: owner}
+	out.advanceElementSet(true)
+	return out
+}
+
+func (e *unionEnumeration) Reset() {
+	requireValueEnumerationReceiver(e)
+	resetEnumeration(e.enum)
+	e.elemSet = nextEnumerationElement(e.enum)
+	// Source reset casts and dereferences without a guard or empty special case.
+	if e.elemSet == nil {
+		panic(NewNullPointerException())
+	}
+	enum, ok := asEnumerable(e.elemSet)
+	if !ok {
+		panic(valueStreamClassCast(e.elemSet, "tlc2.value.impl.Enumerable"))
+	}
+	e.elemSetEnum = enum.Elements()
+	if err := e.elemSetEnum.Err(); err != nil {
+		panic(err)
+	}
+}
+
+func (e *unionEnumeration) NextElement() Value {
+	requireValueEnumerationReceiver(e)
+	if e.elemSet == nil {
+		return nil
+	}
+	val := nextEnumerationElement(e.elemSetEnum)
+	if val == nil {
+		e.advanceElementSet(false)
+		if e.elemSet == nil {
+			return nil
+		}
+		val = e.NextElement()
+	}
+	e.owner.CM.incValueSecondary()
+	return val
+}
+
+func (e *unionEnumeration) Err() error { return e.enum.Err() }
+
+func (e *unionEnumeration) advanceElementSet(initial bool) {
+	e.elemSet = nextEnumerationElement(e.enum)
+	if e.elemSet == nil {
+		return
+	}
+	enum, ok := asEnumerable(e.elemSet)
+	if !ok {
+		if initial {
+			panic(e.owner.runtimeFailure("Attempted to enumerate UNION(s), but some element of s is nonenumerable."))
+		}
+		// The source uses iterator identity, avoiding formatting the outer set.
+		panic(e.owner.runtimeFailure("Attempted to enumerate the nonenumerable set:\n" + ValuesPPR(e.elemSet) + "\nwhen enumerating:\n" + e.diagnosticIdentity()))
+	}
+	e.elemSetEnum = enum.Elements()
+	if err := e.elemSetEnum.Err(); err != nil {
+		panic(err)
+	}
+}
+
+type errorEnumeration struct {
+	err error
+}
+
+func newErrorEnumeration(err error) *errorEnumeration {
+	return &errorEnumeration{err: err}
+}
+
+func (e *errorEnumeration) Reset() { requireValueEnumerationReceiver(e) }
+
+func (e *errorEnumeration) NextElement() Value {
+	requireValueEnumerationReceiver(e)
+	return nil
+}
+
+func (e *errorEnumeration) Err() error { return e.err }
+
+func asEnumerable(value Value) (Enumerable, bool) {
+	if isNil(value) {
+		return nil, false
+	}
+	enum, ok := value.(Enumerable)
+	return enum, ok
+}
+
+func setEnumFromEnumeration(enum ValueEnumeration, isNorm bool, cms ...CostModel) (*SetEnumValue, error) {
+	return setEnumFromEnumerationWithNormalization(enum, func() bool { return isNorm }, cms...)
+}
+
+func setEnumFromEnumerationWithNormalization(enum ValueEnumeration, isNorm func() bool, cms ...CostModel) (*SetEnumValue, error) {
+	if len(cms) > 1 {
+		panic(NewIllegalArgumentException("setEnumFromEnumeration accepts at most one cost model"))
+	}
+	vals := NewValueVec(0)
+	for {
+		elem := enum.NextElement()
+		if err := enum.Err(); err != nil {
+			return nil, err
+		}
+		if elem == nil {
+			if len(cms) > 0 {
+				cms[0].incValueSecondary(int64(vals.Len()))
+			}
+			return NewSetEnumValueVec(vals, isNorm(), cms...), nil
+		}
+		vals.Add(elem)
+	}
+}
+
+// setExceptFailure preserves Assert.fail(reason, getSource()) for set values.
+func setExceptFailure(v Value) error {
+	message := "Attempted to apply EXCEPT to the set " + ValuesPPR(v) + "."
+	if source := valueSource(v); source != nil {
+		return NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+	}
+	return NewTLCRuntimeExceptionMessage(message)
+}
+
+func takeExceptOnSet(v Value, ex *ValueExcept) (Value, error) {
+	if ex == nil || ex.Path == nil {
+		panic(NewNullPointerException())
+	}
+	if ex.Index < len(ex.Path) {
+		return nil, setExceptFailure(v)
+	}
+	return ex.Value, nil
+}
+
+func takeExceptsOnSet(v Value, exs []*ValueExcept) (Value, error) {
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
+	if len(exs) != 0 {
+		return nil, setExceptFailure(v)
+	}
+	return v, nil
+}
+
+func joinValueStrings(values []Value, sep string) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		if value == nil {
+			parts[i] = "null"
+		} else {
+			parts[i] = value.String()
+		}
+	}
+	return strings.Join(parts, sep)
+}
+
+// Java calls the operand's toString while building enumerator diagnostics.
+func enumerableDiagnosticValue(value Value) string {
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	return ValuesPPR(value)
+}

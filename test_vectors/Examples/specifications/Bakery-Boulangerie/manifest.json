@@ -1,0 +1,57 @@
+{
+  "sources": [],
+  "authors": [
+    "Leslie Lamport",
+    "Stephan Merz"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/Bakery-Boulangerie/Bakery.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 2
+      }
+    },
+    {
+      "path": "specifications/Bakery-Boulangerie/Boulanger.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 3
+      }
+    },
+    {
+      "path": "specifications/Bakery-Boulangerie/MCBakery.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Bakery-Boulangerie/MCBakery.cfg",
+          "runtime": "00:00:10",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 655200,
+          "totalStates": 3403584,
+          "stateDepth": 1
+        }
+      ]
+    },
+    {
+      "path": "specifications/Bakery-Boulangerie/MCBoulanger.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Bakery-Boulangerie/MCBoulanger.cfg",
+          "runtime": "00:01:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    }
+  ]
+}

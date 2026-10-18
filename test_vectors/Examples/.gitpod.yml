@@ -1,0 +1,24 @@
+image:
+  file: .gitpod.Dockerfile
+tasks:
+  - init: >
+      echo commands executed here precompile the development environment and your
+      echo application which enables hopping between pull-requests in different
+      echo browser tabs without waiting for compilation aka xkcd comic. 
+      echo https://www.gitpod.io/docs/prebuilds/
+    command: git config --global alias.slog 'log --pretty=oneline --abbrev-commit' && git config --global alias.co checkout
+
+
+github:
+  prebuilds:
+    master: true
+    branches: true
+    pullRequests: true
+    pullRequestsFromForks: true
+    addCheck: true
+    addBadge: true
+    addLabel: true
+    
+vscode:
+  extensions:
+    - tomoki1207.pdf

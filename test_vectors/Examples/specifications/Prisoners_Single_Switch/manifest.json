@@ -1,0 +1,58 @@
+{
+  "sources": [],
+  "authors": [
+    "Florian Schanda"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/Prisoners_Single_Switch/APPrisoner.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/Prisoners_Single_Switch/Prisoner.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Prisoners_Single_Switch/Prisoner.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 16,
+          "totalStates": 49,
+          "stateDepth": 5
+        },
+        {
+          "path": "specifications/Prisoners_Single_Switch/PrisonerLightUnknown.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 62,
+          "totalStates": 188,
+          "stateDepth": 11
+        },
+        {
+          "path": "specifications/Prisoners_Single_Switch/PrisonerSolo.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 2,
+          "totalStates": 3,
+          "stateDepth": 2
+        },
+        {
+          "path": "specifications/Prisoners_Single_Switch/PrisonerSoloLightUnknown.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4,
+          "totalStates": 6,
+          "stateDepth": 2
+        }
+      ]
+    }
+  ]
+}

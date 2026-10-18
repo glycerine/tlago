@@ -1,0 +1,34 @@
+{
+  "sources": [],
+  "authors": [
+    "Younes Akhouayri"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/SingleLaneBridge/APSingleLaneBridge.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SingleLaneBridge/MC.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SingleLaneBridge/MC.cfg",
+          "runtime": "00:00:10",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 3605,
+          "totalStates": 20181,
+          "stateDepth": 29
+        }
+      ]
+    },
+    {
+      "path": "specifications/SingleLaneBridge/SingleLaneBridge.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

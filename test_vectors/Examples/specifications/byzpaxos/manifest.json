@@ -1,0 +1,87 @@
+{
+  "sources": [
+    "http://lamport.azurewebsites.net/pubs/pubs.html#web-byzpaxos",
+    "http://lamport.azurewebsites.net/pubs/web-byzpaxos.pdf",
+    "http://lamport.azurewebsites.net/tla/byzpaxos.html"
+  ],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/byzpaxos/BPConProof.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/byzpaxos/BPConProof.cfg",
+          "runtime": "unknown",
+          "mode": "exhaustive search",
+          "result": "unknown"
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 45
+      }
+    },
+    {
+      "path": "specifications/byzpaxos/Consensus.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/byzpaxos/Consensus.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4,
+          "totalStates": 4,
+          "stateDepth": 2
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/byzpaxos/PConProof.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/byzpaxos/PConProof.cfg",
+          "runtime": "00:06:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/byzpaxos/VoteProof.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/byzpaxos/VoteProof.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 6962,
+          "totalStates": 318877,
+          "stateDepth": 15
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 3
+      }
+    }
+  ]
+}

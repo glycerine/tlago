@@ -1,0 +1,565 @@
+package tlc
+
+import (
+	"fmt"
+	"math"
+	"math/big"
+	"strings"
+)
+
+type KSubsetValue struct {
+	BaseValue
+	K    int
+	Set  Value
+	PSet *SetEnumValue
+
+	kCaptured bool
+	kOwner    int
+}
+
+func (v *KSubsetValue) IsSubsetEq(other Value) (resultBool *BoolValue, err error) {
+	defer catchValueFailure(v, &err)
+	return defaultEnumerableSubsetEq(v, v, other)
+}
+
+func NewKSubsetValue(k int, set Value, cms ...CostModel) *KSubsetValue {
+	k = int(int32(k))
+	return &KSubsetValue{BaseValue: newBaseValue(cms...), K: k, Set: set, kCaptured: true, kOwner: k}
+}
+
+func (v *KSubsetValue) ownedK() int {
+	if v.kCaptured {
+		return v.kOwner
+	}
+	return v.K
+}
+
+func (v *KSubsetValue) captureK(k int) {
+	v.K, v.kOwner, v.kCaptured = k, k, true
+}
+
+func (v *KSubsetValue) Kind() ValueKind {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return SubsetValueKind
+}
+func (v *KSubsetValue) KindString() string { return ValueKindString(v) }
+func (v *KSubsetValue) GetCostModel() CostModel {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.BaseValue.GetCostModel()
+}
+
+func (v *KSubsetValue) Compare(other Value) (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if o, ok := other.(*KSubsetValue); ok {
+		vEmpty, err := v.hasNoElements()
+		if err != nil {
+			return 0, err
+		}
+		oEmpty, err := o.hasNoElements()
+		if err != nil {
+			return 0, err
+		}
+		if vEmpty || oEmpty {
+			if vEmpty == oEmpty {
+				return 0, nil
+			}
+			if vEmpty {
+				return -1, nil
+			}
+			return 1, nil
+		}
+		if v.ownedK() == o.ownedK() {
+			if v.ownedK() == 0 {
+				return 0, nil
+			}
+			return v.Set.Compare(o.Set)
+		}
+		vFinite, err := v.Set.IsFinite()
+		if err != nil {
+			return 0, err
+		}
+		if vFinite {
+			oFinite, err := o.Set.IsFinite()
+			if err != nil {
+				return 0, err
+			}
+			if oFinite {
+				vCount, err := v.count()
+				if err != nil {
+					return 0, err
+				}
+				oCount, err := o.count()
+				if err != nil {
+					return 0, err
+				}
+				if cmp := vCount.Cmp(oCount); cmp != 0 {
+					return cmp, nil
+				}
+			}
+		}
+		setEqual, err := v.Set.Equal(o.Set)
+		if err != nil {
+			return 0, err
+		}
+		if setEqual {
+			if v.ownedK() < o.ownedK() {
+				return -1, nil
+			}
+			return 1, nil
+		}
+	} else if o, ok := other.(*SubsetValue); ok {
+		empty, err := v.hasNoElements()
+		if err != nil {
+			return 0, err
+		}
+		if empty {
+			return -1, nil
+		}
+		cmp, err := v.compareSubsetCardinality(o)
+		if err != nil {
+			return 0, err
+		}
+		if cmp != nil && *cmp != 0 {
+			return *cmp, nil
+		}
+		if v.ownedK() == 0 {
+			otherEmpty, err := IsEmptyValue(o.Set)
+			if err != nil {
+				return 0, err
+			}
+			if otherEmpty {
+				return 0, nil
+			}
+		}
+	}
+	set, err := v.convertAndCache()
+	if err != nil {
+		return 0, err
+	}
+	return set.Compare(other)
+}
+
+func (v *KSubsetValue) Equal(other Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if o, ok := other.(*KSubsetValue); ok {
+		vEmpty, err := v.hasNoElements()
+		if err != nil {
+			return false, err
+		}
+		oEmpty, err := o.hasNoElements()
+		if err != nil {
+			return false, err
+		}
+		if vEmpty || oEmpty {
+			return vEmpty && oEmpty, nil
+		}
+		if v.ownedK() == 0 && o.ownedK() == 0 {
+			return true, nil
+		}
+		if v.ownedK() != o.ownedK() {
+			return false, nil
+		}
+		return v.Set.Equal(o.Set)
+	}
+	if _, ok := other.(*SubsetValue); ok {
+		empty, err := v.hasNoElements()
+		if err != nil {
+			return false, err
+		}
+		if empty {
+			return false, nil
+		}
+		subset := other.(*SubsetValue)
+		cmp, err := v.compareSubsetCardinality(subset)
+		if err != nil {
+			return false, err
+		}
+		if cmp != nil && *cmp != 0 {
+			return false, nil
+		}
+		if v.ownedK() == 0 {
+			otherEmpty, err := IsEmptyValue(subset.Set)
+			if err != nil {
+				return false, err
+			}
+			if otherEmpty {
+				return true, nil
+			}
+		}
+	}
+	set, err := v.convertAndCache()
+	if err != nil {
+		return false, err
+	}
+	return set.Equal(other)
+}
+
+func (v *KSubsetValue) compareSubsetCardinality(other *SubsetValue) (*int, error) {
+	vFinite, err := v.Set.IsFinite()
+	if err != nil {
+		return nil, err
+	}
+	if !vFinite {
+		return nil, nil
+	}
+	otherFinite, err := other.Set.IsFinite()
+	if err != nil {
+		return nil, err
+	}
+	if !otherFinite {
+		return nil, nil
+	}
+	count, err := v.count()
+	if err != nil {
+		return nil, err
+	}
+	otherSize, err := other.Set.Size()
+	if err != nil {
+		return nil, err
+	}
+	otherCount := new(big.Int).Lsh(big.NewInt(1), uint(otherSize))
+	cmp := count.Cmp(otherCount)
+	return &cmp, nil
+}
+
+func (v *KSubsetValue) Member(elem Value) (bool, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	empty, err := v.hasNoElements()
+	if err != nil || empty {
+		return false, err
+	}
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	elemSize, err := elem.Size()
+	if err != nil {
+		return false, err
+	}
+	if elemSize != v.ownedK() {
+		return false, nil
+	}
+	return subsetValueMember(v, v.Set, elem)
+}
+
+func (v *KSubsetValue) IsFinite() (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if v.ownedK() <= 0 {
+		return true, nil
+	}
+	return v.Set.IsFinite()
+}
+
+func (v *KSubsetValue) Size() (int, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	count, err := v.count()
+	if err != nil {
+		return 0, err
+	}
+	if !count.IsInt64() || count.Int64() > math.MaxInt32 {
+		baseSize, err := v.Set.Size()
+		if err != nil {
+			return 0, err
+		}
+		return 0, NewIllegalArgumentException(fmt.Sprintf("k=%d and n=%d", v.ownedK(), baseSize))
+	}
+	return int(count.Int64()), nil
+}
+
+func (v *KSubsetValue) IsNormalized() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.PSet != nil && v.PSet != DummyEnum && v.PSet.IsNormalized()
+}
+
+func (v *KSubsetValue) Normalize() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.PSet != nil && v.PSet != DummyEnum {
+		v.PSet.Normalize()
+	} else {
+		v.Set.Normalize()
+	}
+	return v
+}
+
+func (v *KSubsetValue) DeepNormalize() {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	v.Set.DeepNormalize()
+	if v.PSet == nil {
+		v.PSet = DummyEnum
+	} else if v.PSet != DummyEnum {
+		v.PSet.DeepNormalize()
+	}
+}
+
+func (v *KSubsetValue) IsDefined() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.Set.IsDefined()
+}
+
+func (v *KSubsetValue) DeepCopy() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v
+}
+
+func (v *KSubsetValue) FingerPrint(fp uint64) uint64 {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.FingerPrint(fp)
+}
+
+func (v *KSubsetValue) Permute(perm *MVPerm) Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	set, err := v.convertAndCache()
+	if err != nil {
+		panic(err)
+	}
+	return set.Permute(perm)
+}
+
+func (v *KSubsetValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return takeExceptOnSet(v, ex)
+}
+
+func (v *KSubsetValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return takeExceptsOnSet(v, exs)
+}
+
+func (v *KSubsetValue) ToSetEnum() (*SetEnumValue, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if v.PSet != nil && v.PSet != DummyEnum {
+		return v.PSet, nil
+	}
+	size, err := v.Size()
+	if err != nil {
+		return nil, err
+	}
+	values := NewValueVec(size)
+	enum := v.Elements()
+	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
+		values.Add(elem)
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	v.CM.incValueSecondary(int64(values.Len()))
+	return NewSetEnumValueVec(values, true, v.CM), nil
+}
+
+func (v *KSubsetValue) convertAndCache() (*SetEnumValue, error) {
+	if v.PSet == DummyEnum {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.PSet = set
+	} else if v.PSet == nil {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		v.PSet = set
+	}
+	return v.PSet, nil
+}
+
+func (v *KSubsetValue) Elements() ValueEnumeration {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	empty, err := v.hasNoElements()
+	if err != nil {
+		return newErrorEnumeration(err)
+	}
+	if empty {
+		return EmptySet.Elements()
+	}
+	return v.KElements(v.ownedK())
+}
+
+func (v *KSubsetValue) String() string {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return ValueToString(v, "", true)
+}
+
+func (v *KSubsetValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if Globals.Expand && tryValueSizeBelow(v, 64, swallow) {
+		size, err := v.Size()
+		if err != nil {
+			panic(err)
+		}
+		if size == 0 {
+			sb.WriteString("{}")
+			return sb
+		}
+		set, err := v.ToSetEnum()
+		if err != nil {
+			panic(err)
+		}
+		return appendValueString(set, sb, offset, swallow)
+	}
+	sb.WriteString("{s \\in SUBSET (")
+	appendValueString(v.Set, sb, offset, swallow)
+	sb.WriteString(") : Cardinality(s) = ")
+	sb.WriteString(fmt.Sprint(int32(v.ownedK())))
+	sb.WriteString("}")
+	return sb
+}
+
+func (v *KSubsetValue) count() (*big.Int, error) {
+	if v.ownedK() < 0 {
+		return big.NewInt(0), nil
+	}
+	if v.ownedK() == 0 {
+		return big.NewInt(1), nil
+	}
+	n, err := v.Set.Size()
+	if err != nil {
+		return nil, err
+	}
+	if v.ownedK() > n {
+		return big.NewInt(0), nil
+	}
+	k := v.ownedK()
+	if n-k < k {
+		k = n - k
+	}
+	return BigChoose(n, k), nil
+}
+
+func (v *KSubsetValue) hasNoElements() (bool, error) {
+	if v.ownedK() < 0 {
+		return true, nil
+	}
+	finite, err := v.Set.IsFinite()
+	if err != nil {
+		return false, err
+	}
+	if finite {
+		size, err := v.Set.Size()
+		if err != nil {
+			return false, err
+		}
+		return size < v.ownedK(), nil
+	}
+	return false, nil
+}
+
+type kSubsetEnumeration struct {
+	cm      CostModel
+	elems   *ValueVec
+	k       int
+	indices []int
+	done    bool
+	err     error
+}
+
+func newKSubsetEnumeration(elems *ValueVec, k int, cms ...CostModel) *kSubsetEnumeration {
+	if len(cms) > 1 {
+		panic(NewIllegalArgumentException("newKSubsetEnumeration accepts at most one cost model"))
+	}
+	out := &kSubsetEnumeration{elems: elems, k: k}
+	if len(cms) > 0 {
+		out.cm = cms[0]
+	}
+	out.Reset()
+	return out
+}
+
+func (e *kSubsetEnumeration) Reset() {
+	requireValueEnumerationReceiver(e)
+	if e.k < 0 || e.k > e.elems.Len() {
+		e.indices = nil
+		e.done = true
+		return
+	}
+	e.indices = make([]int, e.k)
+	for i := range e.indices {
+		e.indices[i] = i
+	}
+	e.done = false
+}
+
+func (e *kSubsetEnumeration) NextElement() Value {
+	requireValueEnumerationReceiver(e)
+	if e.done || e.err != nil {
+		return nil
+	}
+	vals := NewValueVec(e.k)
+	for _, idx := range e.indices {
+		vals.Add(e.elems.At(idx))
+	}
+	e.advance()
+	return NewSetEnumValueVec(vals, true, e.cm)
+}
+
+func (e *kSubsetEnumeration) Err() error { return e.err }
+
+func (e *kSubsetEnumeration) advance() {
+	n := e.elems.Len()
+	for i := e.k - 1; i >= 0; i-- {
+		if e.indices[i] < n-e.k+i {
+			e.indices[i]++
+			for j := i + 1; j < e.k; j++ {
+				e.indices[j] = e.indices[j-1] + 1
+			}
+			return
+		}
+	}
+	e.done = true
+}

@@ -1,0 +1,2379 @@
+package tlc
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"sync/atomic"
+	"time"
+)
+
+const (
+	tlaModuleTLC             = "TLC"
+	tlaModuleToolbox         = "Toolbox"
+	tlaModuleNaturals        = "Naturals"
+	tlaModuleSequences       = "Sequences"
+	tlaModuleTLCExt          = "TLCExt"
+	tlaModuleIOUtils         = "IOUtils"
+	tlaModuleJson            = "Json"
+	tlaKeywordActionConst    = "ACTION_CONSTRAINT"
+	tlaKeywordAssume         = "ASSUME"
+	tlaKeywordConstant       = "CONSTANT"
+	tlaKeywordConstants      = "CONSTANTS"
+	tlaKeywordExtends        = "EXTENDS"
+	tlaKeywordInit           = "INIT"
+	tlaKeywordInvariant      = "INVARIANT"
+	tlaKeywordModule         = "MODULE"
+	tlaKeywordNext           = "NEXT"
+	tlaKeywordProperty       = "PROPERTY"
+	tlaKeywordSpec           = "SPECIFICATION"
+	tlaKeywordSymmetry       = "SYMMETRY"
+	tlaKeywordUnion          = "\\union"
+	tlaKeywordVariable       = "VARIABLE"
+	tlaKeywordView           = "VIEW"
+	tlaKeywordTrue           = "TRUE"
+	tlaKeywordFalse          = "FALSE"
+	tlaSchemeSpec            = "spec"
+	tlaSchemeInit            = "init"
+	tlaSchemeNext            = "next"
+	tlaSchemeConstant        = "const"
+	tlaSchemeSymmetry        = "symm"
+	tlaSchemeDefOverride     = "def_ov"
+	tlaSchemeConstraint      = "constr"
+	tlaSchemeActionConst     = "action_constr"
+	tlaSchemeInvariant       = "inv"
+	tlaSchemeProperty        = "prop"
+	tlaSchemeView            = "view"
+	tlaSchemePostCondition   = "postcondition"
+	tlaSchemeAlias           = "alias"
+	tlaSchemeConstantExpr    = "const_expr"
+	tlaSchemeTraceExprVar    = "__trace_var"
+	tlaSchemeTraceExprDef    = "trace_def"
+	tlaTraceExprModuleName   = "TTrace"
+	tlaTraceExploreModule    = "TEExpression"
+	tlaTraceExpressionVar    = "TraceExp"
+	tlaTraceExploreInit      = "traceExploreInit"
+	tlaTraceExploreNext      = "traceExploreNext"
+	tlaTraceExploreActions   = "traceExploreActionConstraint"
+	tlaSpecTEExpression      = "expression"
+	tlaSpecTETTraceExpr      = "_expression"
+	tlaSpecTETraceDef        = "trace"
+	tlaSpecTETrace           = "_trace"
+	tlaSpecTETraceModuleName = "TETrace"
+	tlaSpecTEConstantsName   = "TEConstants"
+	tlaSpecTEInit            = "_init"
+	tlaSpecTENext            = "_next"
+	tlaSpecTELassoStart      = "_TTraceLassoStart"
+	tlaSpecTELassoEnd        = "_TTraceLassoEnd"
+	tlaSpecTEView            = "_view"
+	tlaSpecTEInitID          = "_SpecTEInit"
+	tlaSpecTENextID          = "_SpecTENext"
+	tlaTEInitID              = "_TEInit"
+	tlaTENextID              = "_TENext"
+	tlaTEInitAttr            = "teBehaviorInit"
+	tlaTENextAttr            = "teBehaviorNext"
+	tlaTraceExprPrefix       = "_traceExpression_"
+	tlaTraceExprComment      = "\\* TRACE EXPRESSION: "
+	tlaGenerationPrefix      = "\\* Generated on "
+	tlaIndent                = "    "
+	tlaSpace                 = " "
+	tlaSep                   = "----"
+	tlaEqSp                  = " = "
+	tlaAssignArrow           = " <- "
+	tlaRecordArrowSp         = " |-> "
+	tlaDefines               = " == "
+	tlaDefinesCR             = " ==\n"
+	tlaComment               = "\\* "
+	tlaCommentNS             = "\\*"
+	tlaAttribute             = "@"
+	tlaColon                 = ":"
+	tlaBeginTupleSp          = "<<"
+	tlaEndTupleSp            = ">>"
+	tlaPrime                 = "'"
+	tlaOr                    = "\\/"
+	tlaNot                   = "~"
+	tlaEventuallyAlways      = "<>[]"
+	tlaInfOften              = "[]<>"
+	tlaTraceNA               = "\"--\""
+	tlaLParen                = "("
+	tlaRParen                = ")"
+	tlaLSquare               = "["
+	tlaRSquare               = "]"
+	tlaIndentedConj          = tlaIndent + tlaAnd + tlaSpace
+	tlaIndentedDisj          = tlaIndent + tlaOr + tlaSpace
+	tlaConstantEvalMarker    = "\"$!@$!@$!@$!@$!\""
+)
+
+var specWriterCounter atomic.Int64
+
+var SpecWriterIDMatcher = regexp.MustCompile("(" +
+	tlaSchemeSpec + "|" +
+	tlaSchemeInit + "|" +
+	tlaSchemeNext + "|" +
+	tlaSchemeConstant + "|" +
+	tlaSchemeSymmetry + "|" +
+	tlaSchemeDefOverride + "|" +
+	tlaSchemeConstraint + "|" +
+	tlaSchemeActionConst + "|" +
+	tlaSchemeInvariant + "|" +
+	tlaSchemeProperty + ")_[0-9]{17,}")
+
+func init() {
+	specWriterCounter.Store(1)
+}
+
+type SpecWriter struct {
+	tlaBuffer strings.Builder
+	cfgBuffer *strings.Builder
+}
+
+func NewSpecWriter(generateConfigurationContent bool) *SpecWriter {
+	w := &SpecWriter{}
+	if generateConfigurationContent {
+		w.cfgBuffer = &strings.Builder{}
+	}
+	return w
+}
+
+func SpecWriterModuleClosingTag(rightMarginWidth int, addModificationHistory bool) string {
+	var b strings.Builder
+	b.WriteString(StringHelperCopyString(javaString("="), int32(rightMarginWidth)))
+	b.WriteString(stringHelperPlatformNewline())
+	if addModificationHistory {
+		b.WriteString("\\* Modification History")
+		b.WriteString(stringHelperPlatformNewline())
+		b.WriteString("\\* Created ")
+		b.WriteString(specWriterJavaDateString(time.Now()))
+		b.WriteString(" by ")
+		b.WriteString(tlcGetSystemProperty("user.name", os.Getenv("USER")))
+		b.WriteString(stringHelperPlatformNewline())
+	}
+	return b.String()
+}
+
+func SpecWriterGeneratedTimestampLine() string {
+	return tlaGenerationPrefix + specWriterJavaDateString(time.Now())
+}
+
+func specWriterJavaDateString(t time.Time) string {
+	return fmt.Sprintf("%s %s %2d %s %s %d",
+		t.Weekday().String()[:3],
+		t.Month().String()[:3],
+		t.Day(),
+		t.Format("15:04:05"),
+		t.Format("MST"),
+		t.Year())
+}
+
+func SpecWriterValidIdentifier(scheme string) string {
+	return fmt.Sprintf("%s_%d%d", scheme, time.Now().UnixMilli(), 1000*specWriterCounter.Add(1))
+}
+
+func SpecWriterValidIdentifierNoTimestamp(scheme string) string {
+	return "_" + scheme
+}
+
+func SpecWriterModuleNameChecked(moduleFilename string, checkExistence bool) string {
+	if checkExistence {
+		if _, err := os.Stat(moduleFilename); err != nil {
+			return ""
+		}
+	}
+	base := filepath.Base(moduleFilename)
+	ext := filepath.Ext(base)
+	if ext == "" {
+		return base
+	}
+	return strings.TrimSuffix(base, ext)
+}
+
+func SpecWriterExtendingModuleContent(moduleFilename string, extendedModuleNames ...string) string {
+	var b strings.Builder
+	b.WriteString(tlaSep)
+	b.WriteString(" ")
+	b.WriteString(tlaKeywordModule)
+	b.WriteString(" ")
+	b.WriteString(SpecWriterModuleNameChecked(moduleFilename, false))
+	b.WriteString(" ")
+	b.WriteString(tlaSep)
+	b.WriteString(tlaCR)
+	if len(extendedModuleNames) != 0 {
+		b.WriteString(tlaKeywordExtends)
+		b.WriteString(" ")
+		b.WriteString(strings.Join(extendedModuleNames, ", "))
+		b.WriteString(tlaCR)
+		b.WriteString(tlaCR)
+	}
+	return b.String()
+}
+
+func SpecWriterCreateFalseInit(varName string) [][]string {
+	identifier := SpecWriterValidIdentifier(tlaSchemeInit)
+	return [][]string{{identifier, identifier + tlaDefinesCR + "FALSE/\\" + varName + tlaEqSp + "0"}}
+}
+
+func SpecWriterCreateFalseNext(varName string) [][]string {
+	identifier := SpecWriterValidIdentifier(tlaSchemeNext)
+	return [][]string{{identifier, identifier + tlaDefinesCR + "FALSE/\\" + varName + tlaPrime + tlaEqSp + varName}}
+}
+
+func SpecWriterCreateListContent(formulas []*Formula, labelingScheme string) [][]string {
+	if formulas == nil {
+		panic(NewNullPointerException())
+	}
+	out := make([][]string, 0, len(formulas))
+	for i, formula := range formulas {
+		label := SpecWriterValidIdentifier(labelingScheme)
+		if formula == nil {
+			panic(NewNullPointerException())
+		}
+		text := formula.GetFormula()
+		out = append(out, []string{label, label + tlaDefinesCR + text, fmt.Sprint(i)})
+	}
+	return out
+}
+
+func SpecWriterCreateFormulaListContent(serialized []string, labelingScheme string) [][]string {
+	return SpecWriterCreateListContent(DeserializeFormulaList(serialized), labelingScheme)
+}
+
+func SpecWriterCreateSourceContent(value string, identifierOrScheme string, isScheme ...bool) [][]string {
+	if len(isScheme) > 1 {
+		panic(NewIllegalArgumentException("SpecWriterCreateSourceContent accepts at most one scheme flag"))
+	}
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	useScheme := true
+	if len(isScheme) > 0 {
+		useScheme = isScheme[0]
+	}
+	identifier := identifierOrScheme
+	if useScheme {
+		identifier = SpecWriterValidIdentifier(identifierOrScheme)
+	}
+	return [][]string{{identifier, identifier + tlaDefinesCR + value}}
+}
+
+// AppendContentToBuffers ports AbstractSpecWriter's nullable test-support
+// boundary. Root-package tests need exported access to run the SANY front end.
+func (w *SpecWriter) AppendContentToBuffers(tla, cfg *string) {
+	w.require()
+	if tla != nil {
+		w.tlaBuffer.WriteString(*tla)
+	}
+	if cfg != nil {
+		if w.cfgBuffer == nil {
+			panic(NewNullPointerException())
+		}
+		w.cfgBuffer.WriteString(*cfg)
+	}
+}
+
+func (w *SpecWriter) TLAString() string {
+	w.require()
+	return w.tlaBuffer.String()
+}
+
+func (w *SpecWriter) CFGString() string {
+	w.require()
+	if w.cfgBuffer == nil {
+		return ""
+	}
+	return w.cfgBuffer.String()
+}
+
+func (w *SpecWriter) WriteStreams(tlaOut io.Writer, cfgOut io.Writer) error {
+	w.require()
+	return w.writeContents(func(input io.Reader, forTLAFile bool) error {
+		output := cfgOut
+		if forTLAFile {
+			output = tlaOut
+		}
+		if output == nil {
+			return nil
+		}
+		_, err := io.Copy(output, input)
+		return err
+	})
+}
+
+func (w *SpecWriter) writeContents(write func(io.Reader, bool) error) error {
+	w.tlaBuffer.WriteString(w.GetTLAModuleClosingTag())
+	tlaBytes, err := javaCharsetEncode(w.tlaBuffer.String(), javaDefaultCharset(), false)
+	if err != nil {
+		return err
+	}
+	if err := write(bytes.NewReader(tlaBytes), true); err != nil {
+		return err
+	}
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(SpecWriterGeneratedTimestampLine())
+		cfgBytes, err := javaCharsetEncode(w.cfgBuffer.String(), javaDefaultCharset(), false)
+		if err != nil {
+			return err
+		}
+		if err := write(bytes.NewReader(cfgBytes), false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *SpecWriter) WriteFiles(tlaFile string, cfgFile string) error {
+	w.require()
+	return w.writeContents(func(input io.Reader, forTLAFile bool) error {
+		path := cfgFile
+		if forTLAFile {
+			path = tlaFile
+		}
+		if path == "" {
+			return nil
+		}
+		return filesCopyInputStream(input, path)
+	})
+}
+
+func (w *SpecWriter) GetTLAModuleClosingTag() string {
+	w.require()
+	return SpecWriterModuleClosingTag(77, false)
+}
+
+func (w *SpecWriter) AddPrimer(moduleFilename string, extendedModuleName string) {
+	w.require()
+	w.tlaBuffer.WriteString(SpecWriterExtendingModuleContent(moduleFilename, extendedModuleName, tlaModuleTLC))
+}
+
+func (w *SpecWriter) AddSpecDefinition(specDefinition []string, attributeName string) {
+	w.require()
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(tlaKeywordSpec)
+		w.cfgBuffer.WriteString(tlaSpace)
+		w.cfgBuffer.WriteString(specWriterDefinitionAt(specDefinition, 0))
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString(tlaKeywordSpec)
+	w.tlaBuffer.WriteString(tlaSpace)
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(attributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(specWriterDefinitionAt(specDefinition, 1))
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+}
+
+func (w *SpecWriter) AddInitNextDefinitions(initDefinition []string, nextDefinition []string, initAttributeName string, nextAttributeName string) {
+	w.require()
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(tlaComment)
+		w.cfgBuffer.WriteString(tlaKeywordInit)
+		w.cfgBuffer.WriteString(" definition")
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(tlaKeywordInit)
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(specWriterDefinitionAt(initDefinition, 0))
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString(tlaKeywordInit)
+	w.tlaBuffer.WriteString(" definition ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(initAttributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(specWriterDefinitionAt(initDefinition, 1))
+	w.tlaBuffer.WriteString(tlaCR)
+
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(tlaComment)
+		w.cfgBuffer.WriteString(tlaKeywordNext)
+		w.cfgBuffer.WriteString(" definition")
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(tlaKeywordNext)
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(specWriterDefinitionAt(nextDefinition, 0))
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString(tlaKeywordNext)
+	w.tlaBuffer.WriteString(" definition ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(nextAttributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(specWriterDefinitionAt(nextDefinition, 1))
+	w.tlaBuffer.WriteString(tlaCR)
+}
+
+func specWriterDefinitionAt(definition []string, index int) string {
+	if definition == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(definition) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(definition)))
+	}
+	return definition[index]
+}
+
+func (w *SpecWriter) AddConstantsRaw(rawConstants []string) {
+	w.require()
+	if rawConstants == nil {
+		panic(NewNullPointerException())
+	}
+	if len(rawConstants) == 0 {
+		return
+	}
+	if w.cfgBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	w.cfgBuffer.WriteString(tlaKeywordConstants)
+	w.cfgBuffer.WriteString(tlaCR)
+	for _, constant := range rawConstants {
+		w.cfgBuffer.WriteString(constant)
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+}
+
+func (w *SpecWriter) AddConstants(constants []*Assignment, modelValues *TypedSet, attributeConstants string, attributeMVs string) {
+	w.require()
+	w.AddMVTypedSet(modelValues, "MV CONSTANT declarations ", attributeMVs)
+	var symmetrySets []string
+	if constants == nil {
+		panic(NewNullPointerException())
+	}
+	for _, constant := range constants {
+		if constant.IsModelValue() && constant.IsSetOfModelValues() {
+			w.AddMVTypedSet(constant.GetSetOfModelValues(), "MV CONSTANT declarations", attributeConstants)
+		}
+	}
+	for _, constant := range constants {
+		if !constant.IsModelValue() {
+			continue
+		}
+		if constant.IsSetOfModelValues() {
+			if w.cfgBuffer != nil {
+				w.cfgBuffer.WriteString(tlaComment)
+				w.cfgBuffer.WriteString("MV CONSTANT definitions")
+				w.cfgBuffer.WriteString(tlaCR)
+			}
+			w.tlaBuffer.WriteString(tlaComment)
+			w.tlaBuffer.WriteString("MV CONSTANT definitions ")
+			w.tlaBuffer.WriteString(constant.GetLeft())
+			w.tlaBuffer.WriteString(tlaCR)
+			id := w.AddArrowAssignment(constant, tlaSchemeConstant)
+			if constant.IsSymmetricalSet() {
+				symmetrySets = append(symmetrySets, id)
+			}
+			w.tlaBuffer.WriteString(tlaSep)
+			w.tlaBuffer.WriteString(tlaCR)
+			w.tlaBuffer.WriteString(tlaCR)
+		} else if w.cfgBuffer != nil {
+			w.cfgBuffer.WriteString(tlaComment)
+			w.cfgBuffer.WriteString(tlaKeywordConstant)
+			w.cfgBuffer.WriteString(" declarations")
+			w.cfgBuffer.WriteString(tlaCR)
+			w.cfgBuffer.WriteString(tlaKeywordConstant)
+			w.cfgBuffer.WriteString(tlaSpace)
+			w.cfgBuffer.WriteString(constant.GetLabel())
+			w.cfgBuffer.WriteString(tlaEqSp)
+			w.cfgBuffer.WriteString(constant.GetRight())
+			w.cfgBuffer.WriteString(tlaCR)
+		}
+	}
+	if len(symmetrySets) != 0 {
+		label := SpecWriterValidIdentifier(tlaSchemeSymmetry)
+		w.tlaBuffer.WriteString(tlaComment)
+		w.tlaBuffer.WriteString(tlaKeywordSymmetry)
+		w.tlaBuffer.WriteString(" definition")
+		w.tlaBuffer.WriteString(tlaCR)
+		if w.cfgBuffer != nil {
+			w.cfgBuffer.WriteString(tlaComment)
+			w.cfgBuffer.WriteString(tlaKeywordSymmetry)
+			w.cfgBuffer.WriteString(" definition")
+			w.cfgBuffer.WriteString(tlaCR)
+		}
+		w.tlaBuffer.WriteString(label)
+		w.tlaBuffer.WriteString(tlaDefines)
+		w.tlaBuffer.WriteString(tlaCR)
+		for i, set := range symmetrySets {
+			w.tlaBuffer.WriteString("Permutations(")
+			w.tlaBuffer.WriteString(set)
+			w.tlaBuffer.WriteString(")")
+			if i != len(symmetrySets)-1 {
+				w.tlaBuffer.WriteString(" ")
+				w.tlaBuffer.WriteString(tlaKeywordUnion)
+				w.tlaBuffer.WriteString(" ")
+			}
+		}
+		w.tlaBuffer.WriteString(specWriterClosingSep())
+		if w.cfgBuffer != nil {
+			w.cfgBuffer.WriteString(tlaKeywordSymmetry)
+			w.cfgBuffer.WriteString(tlaSpace)
+			w.cfgBuffer.WriteString(label)
+			w.cfgBuffer.WriteString(tlaCR)
+		}
+	}
+}
+
+func (w *SpecWriter) AddConstantsBis(constants []*Assignment, attributeConstants string) {
+	w.require()
+	if constants == nil {
+		panic(NewNullPointerException())
+	}
+	for i, constant := range constants {
+		if constant.IsModelValue() {
+			continue
+		}
+		if w.cfgBuffer != nil {
+			w.cfgBuffer.WriteString(tlaComment)
+			w.cfgBuffer.WriteString(tlaKeywordConstant)
+			w.cfgBuffer.WriteString(" definitions")
+			w.cfgBuffer.WriteString(tlaCR)
+		}
+		w.tlaBuffer.WriteString(tlaComment)
+		w.tlaBuffer.WriteString(tlaKeywordConstant)
+		w.tlaBuffer.WriteString(" definitions ")
+		w.tlaBuffer.WriteString(tlaAttribute)
+		w.tlaBuffer.WriteString(attributeConstants)
+		w.tlaBuffer.WriteString(tlaColon)
+		w.tlaBuffer.WriteString(fmt.Sprint(i))
+		w.tlaBuffer.WriteString(constant.GetLeft())
+		w.tlaBuffer.WriteString(tlaCR)
+		w.AddArrowAssignment(constant, tlaSchemeConstant)
+		w.tlaBuffer.WriteString(tlaSep)
+		w.tlaBuffer.WriteString(tlaCR)
+		w.tlaBuffer.WriteString(tlaCR)
+	}
+}
+
+func (w *SpecWriter) AddConstantExpressionEvaluation(expression string, attributeName string) {
+	w.require()
+	if strings.TrimSpace(expression) == "" {
+		return
+	}
+	id := SpecWriterValidIdentifier(tlaSchemeConstantExpr)
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("Constant expression definition ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(attributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(id)
+	w.tlaBuffer.WriteString(tlaDefines)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(expression)
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("Constant expression ASSUME statement ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(attributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString("ASSUME PrintT(")
+	w.tlaBuffer.WriteString(tlaBeginTupleSp)
+	w.tlaBuffer.WriteString(tlaConstantEvalMarker)
+	w.tlaBuffer.WriteString(tlaComma)
+	w.tlaBuffer.WriteString(id)
+	w.tlaBuffer.WriteString(tlaEndTupleSp)
+	w.tlaBuffer.WriteString(")")
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+}
+
+func (w *SpecWriter) AddNewDefinitions(definitions string, attributeName string) {
+	w.require()
+	if strings.TrimSpace(definitions) == "" {
+		return
+	}
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("New definitions ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(attributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(definitions)
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+}
+
+func (w *SpecWriter) AddFormulaList(elements [][]string, keyword string, attributeName string) {
+	w.require()
+	if elements == nil {
+		panic(NewNullPointerException())
+	}
+	if len(elements) == 0 {
+		return
+	}
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(tlaComment)
+		w.cfgBuffer.WriteString(keyword)
+		w.cfgBuffer.WriteString(" definition")
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(keyword)
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+	for i, element := range elements {
+		if w.cfgBuffer != nil {
+			w.cfgBuffer.WriteString(specWriterDefinitionAt(element, 0))
+			w.cfgBuffer.WriteString(tlaCR)
+		}
+		definition := specWriterDefinitionAt(element, 1)
+		if definition != "" {
+			index := fmt.Sprint(i)
+			if len(element) > 2 {
+				index = element[2]
+			}
+			w.tlaBuffer.WriteString(tlaComment)
+			w.tlaBuffer.WriteString(keyword)
+			w.tlaBuffer.WriteString(" definition ")
+			w.tlaBuffer.WriteString(tlaAttribute)
+			w.tlaBuffer.WriteString(attributeName)
+			w.tlaBuffer.WriteString(tlaColon)
+			w.tlaBuffer.WriteString(index)
+			w.tlaBuffer.WriteString(tlaCR)
+			w.tlaBuffer.WriteString(definition)
+			w.tlaBuffer.WriteString(specWriterClosingSep())
+		}
+	}
+}
+
+func (w *SpecWriter) AddFormulaElement(element string, keyword string, attributeName string) {
+	w.require()
+	w.AddFormulaList([][]string{{element, ""}}, keyword, attributeName)
+}
+
+func (w *SpecWriter) AddView(viewString string, attributeName string) {
+	w.require()
+	if strings.TrimSpace(viewString) == "" {
+		return
+	}
+	id := SpecWriterValidIdentifier(tlaSchemeView)
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(tlaComment)
+		w.cfgBuffer.WriteString("VIEW definition")
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(tlaKeywordView)
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(id)
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("VIEW definition ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(attributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(id)
+	w.tlaBuffer.WriteString(tlaDefines)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(viewString)
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+}
+
+func (w *SpecWriter) AddPostCondition(postConditionString string, attributeName string) {
+	w.require()
+	if strings.TrimSpace(postConditionString) == "" {
+		return
+	}
+	id := SpecWriterValidIdentifier(tlaSchemePostCondition)
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(tlaComment)
+		w.cfgBuffer.WriteString("POSTCONDITION definition")
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString("POSTCONDITION")
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(id)
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("POSTCONDITION definition ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(attributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(id)
+	w.tlaBuffer.WriteString(tlaDefines)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(postConditionString)
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+}
+
+func (w *SpecWriter) AddAlias(aliasString string, attributeName string) {
+	w.require()
+	if strings.TrimSpace(aliasString) == "" {
+		return
+	}
+	id := SpecWriterValidIdentifier(tlaSchemeAlias)
+	w.AddAliasToCfg(id)
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("ALIAS definition ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(attributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(id)
+	w.tlaBuffer.WriteString(tlaDefines)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(aliasString)
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+}
+
+func (w *SpecWriter) AddAliasToCfg(aliasName string) {
+	w.require()
+	if w.cfgBuffer == nil {
+		return
+	}
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString("ALIAS")
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaIndent)
+	w.cfgBuffer.WriteString(aliasName)
+	w.cfgBuffer.WriteString(tlaCR)
+}
+
+func (w *SpecWriter) AddArrowAssignment(constant *Assignment, schema string) string {
+	w.require()
+	identifier := SpecWriterValidIdentifier(schema)
+	return SpecWriterAddArrowAssignmentIDToBuffers(&w.tlaBuffer, w.cfgBuffer, constant, identifier, identifier)
+}
+
+func SpecWriterAddArrowAssignmentToBuffers(tlaBuffer *strings.Builder, cfgBuffer *strings.Builder, constant *Assignment, schema string) string {
+	identifier := SpecWriterValidIdentifier(schema)
+	return SpecWriterAddArrowAssignmentIDToBuffers(tlaBuffer, cfgBuffer, constant, identifier, identifier)
+}
+
+func SpecWriterAddArrowAssignmentIDToBuffers(tlaBuffer *strings.Builder, cfgBuffer *strings.Builder, constant *Assignment, id string, configID string) string {
+	parametrizedLabel := constant.GetParametrizedLabel(id)
+	if tlaBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	tlaBuffer.WriteString(parametrizedLabel)
+	tlaBuffer.WriteString(tlaDefines)
+	tlaBuffer.WriteString(tlaCR)
+	tlaBuffer.WriteString(constant.GetRight())
+	tlaBuffer.WriteString(tlaCR)
+	if cfgBuffer != nil {
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(tlaKeywordConstant)
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(tlaIndent)
+		cfgBuffer.WriteString(constant.GetLabel())
+		cfgBuffer.WriteString(tlaAssignArrow)
+		cfgBuffer.WriteString(configID)
+		cfgBuffer.WriteString(tlaCR)
+	}
+	return id
+}
+
+func (w *SpecWriter) AddMVTypedSet(mvSet *TypedSet, comment string, attributeName string) {
+	w.require()
+	if mvSet == nil {
+		panic(NewNullPointerException())
+	}
+	if mvSet.GetValueCount() == 0 {
+		return
+	}
+	if comment != "" {
+		w.tlaBuffer.WriteString(tlaComment)
+		w.tlaBuffer.WriteString(comment)
+		w.tlaBuffer.WriteString(tlaAttribute)
+		w.tlaBuffer.WriteString(attributeName)
+		w.tlaBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(tlaKeywordConstants)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(mvSet.ToStringWithoutBraces())
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+	if w.cfgBuffer != nil {
+		if comment != "" {
+			w.cfgBuffer.WriteString(tlaComment)
+			w.cfgBuffer.WriteString(comment)
+			w.cfgBuffer.WriteString(tlaCR)
+		}
+		w.cfgBuffer.WriteString(tlaKeywordConstants)
+		w.cfgBuffer.WriteString(tlaCR)
+		for i := 0; i < mvSet.GetValueCount(); i++ {
+			mv := mvSet.GetValue(i)
+			w.cfgBuffer.WriteString(mv)
+			w.cfgBuffer.WriteString(tlaEqSp)
+			w.cfgBuffer.WriteString(mv)
+			w.cfgBuffer.WriteString(tlaCR)
+		}
+	}
+}
+
+func (w *SpecWriter) require() {
+	if w == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+type TraceExpressionInformation struct {
+	Expression   *string
+	Identifier   *string
+	VariableName *string
+	Level        int
+}
+
+func NewTraceExpressionInformation(expression *string, identifier *string, variableName *string) *TraceExpressionInformation {
+	return &TraceExpressionInformation{Expression: expression, Identifier: identifier, VariableName: variableName}
+}
+
+func (i *TraceExpressionInformation) SetExpression(expression *string) {
+	i.require()
+	i.Expression = expression
+}
+
+func (i *TraceExpressionInformation) SetIdentifier(identifier *string) {
+	i.require()
+	i.Identifier = identifier
+}
+
+func (i *TraceExpressionInformation) SetVariableName(variableName *string) {
+	i.require()
+	i.VariableName = variableName
+}
+
+func (i *TraceExpressionInformation) SetLevel(level int) {
+	i.require()
+	i.Level = int(int32(level))
+}
+
+func (i *TraceExpressionInformation) GetExpression() *string {
+	i.require()
+	return i.Expression
+}
+
+func (i *TraceExpressionInformation) GetIdentifier() *string {
+	i.require()
+	return i.Identifier
+}
+
+func (i *TraceExpressionInformation) GetVariableName() *string {
+	i.require()
+	return i.VariableName
+}
+
+func (i *TraceExpressionInformation) GetLevel() int {
+	i.require()
+	return i.Level
+}
+
+func (i *TraceExpressionInformation) require() {
+	if i == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+func CreateTraceExpressionInformationHolders(expressions []*Formula, attributeName string) []*TraceExpressionInformation {
+	_ = attributeName
+	if expressions == nil {
+		panic(NewNullPointerException())
+	}
+	holders := make([]*TraceExpressionInformation, len(expressions))
+	for i, formula := range expressions {
+		if formula == nil {
+			panic(NewNullPointerException())
+		}
+		formulaText := formula.GetFormulaNullable()
+		if formulaText == nil || *formulaText == "" {
+			continue
+		}
+		identifier := SpecWriterValidIdentifier(tlaSchemeTraceExprDef)
+		if formula.IsNamed() {
+			holders[i] = NewTraceExpressionInformation(javaString(formula.GetRightHandSide()), javaString(identifier), javaString(formula.GetLeftHandSide()))
+		} else {
+			varName := SpecWriterValidIdentifier(tlaSchemeTraceExprVar)
+			holders[i] = NewTraceExpressionInformation(javaString(formula.GetFormula()), javaString(identifier), javaString(varName))
+		}
+	}
+	return holders
+}
+
+func NewTraceExpressionInformationHolders(expressions []*Formula, attributeName string) []*TraceExpressionInformation {
+	return CreateTraceExpressionInformationHolders(expressions, attributeName)
+}
+
+type SpecTraceExpressionWriter struct {
+	*SpecWriter
+}
+
+func NewSpecTraceExpressionWriter() *SpecTraceExpressionWriter {
+	return &SpecTraceExpressionWriter{SpecWriter: NewSpecWriter(true)}
+}
+
+func SpecTraceExpressionAddInitNextToBuffers(tlaBuffer *strings.Builder, cfgBuffer *strings.Builder, trace []*MCState, expressionData []*TraceExpressionInformation) []string {
+	initID := SpecWriterValidIdentifier(tlaSchemeInit)
+	nextID := SpecWriterValidIdentifier(tlaSchemeNext)
+	actionConstraintID := SpecWriterValidIdentifier(tlaSchemeActionConst)
+	SpecTraceExpressionAddInitNextIDToBuffers(tlaBuffer, cfgBuffer, trace, expressionData, initID, nextID, actionConstraintID)
+	return []string{initID, nextID, actionConstraintID}
+}
+
+func SpecTraceExpressionAddInitNextIDToBuffers(tlaBuffer *strings.Builder, cfgBuffer *strings.Builder, trace []*MCState, expressionData []*TraceExpressionInformation, initID string, nextID string, actionConstraintID string) {
+	SpecTraceExpressionAddInitNextFullToBuffers(tlaBuffer, cfgBuffer, trace, expressionData, initID, nextID, actionConstraintID, tlaSchemeNext, false)
+}
+
+func SpecTraceExpressionAddInitNextFullToBuffers(tlaBuffer *strings.Builder, cfgBuffer *strings.Builder, trace []*MCState, expressionData []*TraceExpressionInformation, initID string, nextID string, actionConstraintID string, nextSubActionBasename string, leaveStubsForTraceExpression bool) {
+	parts := SpecTraceExpressionBuildInitNextBuffers(cfgBuffer, trace, expressionData, initID, nextID, actionConstraintID, nextSubActionBasename, leaveStubsForTraceExpression)
+	if tlaBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	tlaBuffer.WriteString(parts[0].String())
+	tlaBuffer.WriteString(parts[1].String())
+}
+
+func SpecTraceExpressionBuildInitNextBuffers(cfgBuffer *strings.Builder, trace []*MCState, expressionData []*TraceExpressionInformation, initID string, nextID string, actionConstraintID string, nextSubActionBasename string, leaveStubsForTraceExpression bool) [2]strings.Builder {
+	var subActionsAndConstraint strings.Builder
+	var initAndNext strings.Builder
+	if trace == nil {
+		panic(NewNullPointerException())
+	}
+	if len(trace) == 0 {
+		return [2]strings.Builder{subActionsAndConstraint, initAndNext}
+	}
+	currentState := trace[0]
+	if cfgBuffer != nil {
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(tlaKeywordInit)
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(initID)
+		cfgBuffer.WriteString(tlaCR)
+	}
+	if leaveStubsForTraceExpression {
+		initAndNext.WriteString(tlaComment)
+		initAndNext.WriteString(tlaKeywordVariable)
+		initAndNext.WriteString(" ")
+		initAndNext.WriteString(tlaTraceExpressionVar)
+		initAndNext.WriteString(tlaCR)
+		initAndNext.WriteString(tlaCR)
+	}
+	initAndNext.WriteString(tlaComment)
+	initAndNext.WriteString("TRACE INIT definition ")
+	initAndNext.WriteString(tlaTraceExploreInit)
+	initAndNext.WriteString(tlaCR)
+	initAndNext.WriteString(initID)
+	initAndNext.WriteString(tlaDefinesCR)
+	initialVariables := currentState.GetVariables()
+	if initialVariables == nil {
+		panic(NewNullPointerException())
+	}
+	for _, variable := range initialVariables {
+		initAndNext.WriteString(tlaIndentedConj)
+		initAndNext.WriteString(variable.GetName())
+		initAndNext.WriteString(tlaEqSp)
+		initAndNext.WriteString(tlaLParen)
+		initAndNext.WriteString(tlaCR)
+		initAndNext.WriteString(variable.GetValueAsStringReIndentedAs(tlaTraceTripleIndent()))
+		initAndNext.WriteString(tlaCR)
+		initAndNext.WriteString(tlaIndent)
+		initAndNext.WriteString(tlaIndent)
+		initAndNext.WriteString(tlaRParen)
+		initAndNext.WriteString(tlaCR)
+	}
+	for _, info := range expressionData {
+		initAndNext.WriteString(tlaIndentedConj)
+		initAndNext.WriteString(javaNullableString(info.GetVariableName()))
+		initAndNext.WriteString(tlaEqSp)
+		initAndNext.WriteString(tlaLParen)
+		initAndNext.WriteString(tlaCR)
+		initAndNext.WriteString(tlaTraceTripleIndent())
+		if info.GetLevel() == 2 {
+			initAndNext.WriteString(tlaTraceNA)
+		} else {
+			initAndNext.WriteString(javaNullableString(info.GetIdentifier()))
+		}
+		initAndNext.WriteString(tlaCR)
+		initAndNext.WriteString(tlaIndent)
+		initAndNext.WriteString(tlaIndent)
+		initAndNext.WriteString(tlaRParen)
+		initAndNext.WriteString(tlaCR)
+	}
+	if leaveStubsForTraceExpression {
+		initAndNext.WriteString(tlaComment)
+		initAndNext.WriteString(tlaIndentedConj)
+		initAndNext.WriteString(tlaTraceExpressionVar)
+		initAndNext.WriteString(tlaEqSp)
+		initAndNext.WriteString(tlaKeywordTrue)
+		initAndNext.WriteString(tlaCR)
+	}
+	initAndNext.WriteString(specWriterClosingSep())
+	initAndNext.WriteString(tlaCR)
+
+	if cfgBuffer != nil {
+		cfgBuffer.WriteString(tlaComment)
+		cfgBuffer.WriteString(tlaKeywordNext)
+		cfgBuffer.WriteString(" definition")
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(tlaKeywordNext)
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(nextID)
+		cfgBuffer.WriteString(tlaCR)
+	}
+	nextState := currentState
+	isSingleState := true
+	if len(trace) > 1 {
+		nextState = trace[1]
+		isSingleState = false
+	}
+	var nextDisjunctBuffer strings.Builder
+	nextDisjunctBuffer.WriteString(nextID)
+	nextDisjunctBuffer.WriteString(tlaDefinesCR)
+	firstIndent := tlaIndent
+	if leaveStubsForTraceExpression {
+		nextDisjunctBuffer.WriteString(tlaAnd)
+		nextDisjunctBuffer.WriteString(" ")
+		firstIndent = " "
+	}
+	var actionConstraintBuffer strings.Builder
+	actionConstraintBuffer.WriteString(actionConstraintID)
+	actionConstraintBuffer.WriteString(tlaDefinesCR)
+	actionConstraintBuffer.WriteString(tlaBeginTupleSp)
+	actionConstraintBuffer.WriteString(tlaCR)
+	if cfgBuffer != nil {
+		cfgBuffer.WriteString(tlaComment)
+		cfgBuffer.WriteString("Action Constraint definition")
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(tlaComment)
+		cfgBuffer.WriteString(tlaKeywordActionConst)
+		cfgBuffer.WriteString(tlaCR)
+		cfgBuffer.WriteString(tlaComment)
+		cfgBuffer.WriteString(actionConstraintID)
+		cfgBuffer.WriteString(tlaCR)
+	}
+	subActionIndex := 0
+	traceIndex := 1
+	for nextState != nil {
+		nextDisjunct := fmt.Sprintf("%s_sa_%d", nextSubActionBasename, subActionIndex)
+		if subActionIndex == 0 {
+			nextDisjunctBuffer.WriteString(firstIndent)
+		} else {
+			nextDisjunctBuffer.WriteString(tlaIndent)
+		}
+		nextDisjunctBuffer.WriteString(tlaOr)
+		nextDisjunctBuffer.WriteString(" ")
+		nextDisjunctBuffer.WriteString(nextDisjunct)
+		nextDisjunctBuffer.WriteString(tlaCR)
+		actionConstraintBuffer.WriteString(nextDisjunct)
+		subActionsAndConstraint.WriteString(tlaComment)
+		subActionsAndConstraint.WriteString("TRACE Sub-Action definition ")
+		subActionsAndConstraint.WriteString(fmt.Sprint(subActionIndex))
+		subActionsAndConstraint.WriteString(tlaCR)
+		subActionsAndConstraint.WriteString(nextDisjunct)
+		subActionsAndConstraint.WriteString(tlaDefinesCR)
+		subActionIndex++
+		if nextState.IsBackToState() {
+			nextState = specTraceExpressionStateAt(trace, nextState.GetStateNumber()-1)
+		} else if nextState.IsStuttering() {
+			nextState = currentState
+		}
+		subActionsAndConstraint.WriteString(tlaIndent)
+		subActionsAndConstraint.WriteString(tlaLParen)
+		subActionsAndConstraint.WriteString(tlaCR)
+		currentStateVariables := currentState.GetVariables()
+		if currentStateVariables == nil {
+			panic(NewNullPointerException())
+		}
+		nextStateVariables := nextState.GetVariables()
+		for _, variable := range currentStateVariables {
+			subActionsAndConstraint.WriteString(tlaIndent)
+			subActionsAndConstraint.WriteString(tlaIndentedConj)
+			subActionsAndConstraint.WriteString(variable.GetName())
+			subActionsAndConstraint.WriteString(tlaEqSp)
+			subActionsAndConstraint.WriteString(tlaLParen)
+			subActionsAndConstraint.WriteString(tlaCR)
+			subActionsAndConstraint.WriteString(variable.GetValueAsStringReIndentedAs(tlaTraceTripleIndent() + tlaIndent))
+			subActionsAndConstraint.WriteString(tlaCR)
+			subActionsAndConstraint.WriteString(tlaTraceTripleIndent())
+			subActionsAndConstraint.WriteString(tlaRParen)
+			subActionsAndConstraint.WriteString(tlaCR)
+		}
+		if isSingleState {
+			subActionsAndConstraint.WriteString(tlaIndent)
+			subActionsAndConstraint.WriteString(tlaIndentedConj)
+			subActionsAndConstraint.WriteString(tlaKeywordFalse)
+			subActionsAndConstraint.WriteString(tlaCR)
+		}
+		for i := range currentStateVariables {
+			variable := specTraceExpressionVariableAt(nextStateVariables, i)
+			subActionsAndConstraint.WriteString(tlaIndent)
+			subActionsAndConstraint.WriteString(tlaIndentedConj)
+			subActionsAndConstraint.WriteString(variable.GetName())
+			subActionsAndConstraint.WriteString(tlaPrime)
+			subActionsAndConstraint.WriteString(tlaEqSp)
+			subActionsAndConstraint.WriteString(tlaLParen)
+			subActionsAndConstraint.WriteString(tlaCR)
+			subActionsAndConstraint.WriteString(variable.GetValueAsStringReIndentedAs(tlaTraceTripleIndent() + tlaIndent))
+			subActionsAndConstraint.WriteString(tlaCR)
+			subActionsAndConstraint.WriteString(tlaTraceTripleIndent())
+			subActionsAndConstraint.WriteString(tlaRParen)
+			subActionsAndConstraint.WriteString(tlaCR)
+		}
+		for _, info := range expressionData {
+			subActionsAndConstraint.WriteString(tlaIndent)
+			subActionsAndConstraint.WriteString(tlaIndentedConj)
+			subActionsAndConstraint.WriteString(javaNullableString(info.GetVariableName()))
+			subActionsAndConstraint.WriteString(tlaPrime)
+			subActionsAndConstraint.WriteString(tlaEqSp)
+			subActionsAndConstraint.WriteString(tlaLParen)
+			subActionsAndConstraint.WriteString(tlaCR)
+			subActionsAndConstraint.WriteString(tlaTraceTripleIndent())
+			subActionsAndConstraint.WriteString(javaNullableString(info.GetIdentifier()))
+			subActionsAndConstraint.WriteString(tlaCR)
+			subActionsAndConstraint.WriteString(tlaTraceTripleIndent())
+			subActionsAndConstraint.WriteString(tlaRParen)
+			if info.GetLevel() < 2 {
+				subActionsAndConstraint.WriteString(tlaPrime)
+			}
+			subActionsAndConstraint.WriteString(tlaCR)
+		}
+		subActionsAndConstraint.WriteString(tlaIndent)
+		subActionsAndConstraint.WriteString(tlaRParen)
+		subActionsAndConstraint.WriteString(tlaCR)
+		subActionsAndConstraint.WriteString(tlaCR)
+		if traceIndex < len(trace)-1 {
+			actionConstraintBuffer.WriteString(tlaComma)
+		}
+		actionConstraintBuffer.WriteString(tlaCR)
+		currentState = nextState
+		if traceIndex < len(trace)-1 {
+			traceIndex++
+			nextState = trace[traceIndex]
+		} else {
+			nextState = nil
+		}
+	}
+	initAndNext.WriteString(tlaComment)
+	initAndNext.WriteString("TRACE NEXT definition ")
+	initAndNext.WriteString(tlaTraceExploreNext)
+	initAndNext.WriteString(tlaCR)
+	initAndNext.WriteString(nextDisjunctBuffer.String())
+	if leaveStubsForTraceExpression {
+		initAndNext.WriteString(tlaComment)
+		initAndNext.WriteString(tlaAnd)
+		initAndNext.WriteString(" ")
+		initAndNext.WriteString(tlaTraceExpressionVar)
+		initAndNext.WriteString(tlaPrime)
+		initAndNext.WriteString(tlaEqSp)
+		initAndNext.WriteString(tlaTraceExpressionVar)
+		initAndNext.WriteString(tlaCR)
+	}
+	initAndNext.WriteString(tlaCR)
+	initAndNext.WriteString(tlaCR)
+	subActionsAndConstraint.WriteString(tlaComment)
+	subActionsAndConstraint.WriteString("TRACE Action Constraint definition ")
+	subActionsAndConstraint.WriteString(tlaTraceExploreActions)
+	subActionsAndConstraint.WriteString(tlaCR)
+	subActionsAndConstraint.WriteString(actionConstraintBuffer.String())
+	subActionsAndConstraint.WriteString(tlaEndTupleSp)
+	subActionsAndConstraint.WriteString("[TLCGet(\"level\")]")
+	subActionsAndConstraint.WriteString(specWriterClosingSep())
+	subActionsAndConstraint.WriteString(tlaCR)
+	return [2]strings.Builder{subActionsAndConstraint, initAndNext}
+}
+
+func SpecTraceExpressionAddTraceFunctionToBuffers(tlaBuffer *strings.Builder, cfgBuffer *strings.Builder, input []*MCState, id string, configID string) string {
+	if input == nil {
+		panic(NewNullPointerException())
+	}
+	trace := make([]*MCState, 0, len(input))
+	for _, state := range input {
+		if state == nil {
+			panic(NewNullPointerException())
+		}
+		if !state.IsBackToState() && !state.IsStuttering() {
+			trace = append(trace, state)
+		}
+	}
+	if len(trace) == 0 {
+		return SpecWriterAddArrowAssignmentIDToBuffers(tlaBuffer, cfgBuffer, NewAssignment(tlaTraceExploreTrace(), nil, tlaBeginTupleSp+tlaEndTupleSp), id, configID)
+	}
+	var traceFunctionDef strings.Builder
+	traceFunctionDef.WriteString(tlaIndent)
+	traceFunctionDef.WriteString(tlaBeginTupleSp)
+	traceFunctionDef.WriteString(tlaCR)
+	for i, state := range trace {
+		traceFunctionDef.WriteString(tlaIndent)
+		traceFunctionDef.WriteString(tlaLParen)
+		traceFunctionDef.WriteString(state.AsSimpleRecord())
+		traceFunctionDef.WriteString(tlaRParen)
+		if i < len(trace)-1 {
+			traceFunctionDef.WriteString(tlaComma)
+			traceFunctionDef.WriteString(tlaCR)
+		}
+	}
+	traceFunctionDef.WriteString(tlaCR)
+	traceFunctionDef.WriteString(tlaIndent)
+	traceFunctionDef.WriteString(tlaEndTupleSp)
+	traceFunctionDef.WriteString(specWriterClosingSep())
+	traceFunctionDef.WriteString(tlaCR)
+	return SpecWriterAddArrowAssignmentIDToBuffers(tlaBuffer, cfgBuffer, NewAssignment(tlaTraceExploreTrace(), nil, traceFunctionDef.String()), id, configID)
+}
+
+func (w *SpecTraceExpressionWriter) AddPrimer(moduleFilename string, extendedModuleName string, extraExtendedModules ...[]string) {
+	w.require()
+	if len(extraExtendedModules) > 1 {
+		panic(NewIllegalArgumentException("AddPrimer accepts at most one extra-module collection"))
+	}
+	if len(extraExtendedModules) == 1 && extraExtendedModules[0] == nil {
+		panic(NewNullPointerException())
+	}
+	seen := NewInsMap[string, struct{}]()
+	if extendedModuleName != "" {
+		seen.Set(extendedModuleName, struct{}{})
+	}
+	if len(extraExtendedModules) > 0 {
+		for _, module := range extraExtendedModules[0] {
+			seen.Set(module, struct{}{})
+		}
+	}
+	modules := make([]string, 0, seen.Len())
+	for module := range seen.All() {
+		modules = append(modules, module)
+	}
+	w.tlaBuffer.WriteString(SpecWriterExtendingModuleContent(moduleFilename, modules...))
+}
+
+func (w *SpecTraceExpressionWriter) CreateAndAddVariablesAndDefinitions(expressions []*Formula, attributeName string) []*TraceExpressionInformation {
+	w.require()
+	data := CreateTraceExpressionInformationHolders(expressions, attributeName)
+	w.AddVariablesAndDefinitions(data, attributeName, true)
+	return data
+}
+
+func (w *SpecTraceExpressionWriter) AddTraceExpressionStub(moduleName string, teName string, variables []string) {
+	w.require()
+	w.tlaBuffer.WriteString(teName)
+	w.tlaBuffer.WriteString(tlaDefines)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(tlaLSquare)
+	w.tlaBuffer.WriteString(tlaCR)
+	var local strings.Builder
+	local.WriteString(tlaComment)
+	local.WriteString(fmt.Sprintf("To hide variables of the `%s` spec from the error trace,", moduleName))
+	local.WriteString(tlaCR)
+	local.WriteString(tlaComment)
+	local.WriteString("remove the variables below.  The trace will be written in the order")
+	local.WriteString(tlaCR)
+	local.WriteString(tlaComment)
+	local.WriteString("of the fields of this record.")
+	local.WriteString(tlaCR)
+	if variables == nil {
+		panic(NewNullPointerException())
+	}
+	fields := make([]string, 0, len(variables))
+	for _, variable := range variables {
+		fields = append(fields, variable+tlaRecordArrowSp+variable)
+	}
+	local.WriteString(strings.Join(fields, tlaCR+tlaComma))
+	local.WriteString(tlaCR)
+	local.WriteString(tlaCR)
+	local.WriteString(tlaComment)
+	local.WriteString("Put additional constant-, state-, and action-level expressions here:")
+	local.WriteString(tlaCR)
+	local.WriteString(tlaComment)
+	local.WriteString(",_stateNumber |-> _TEPosition")
+	local.WriteString(tlaCR)
+	if len(variables) > 0 {
+		someVar := variables[0]
+		local.WriteString(tlaComment)
+		local.WriteString(fmt.Sprintf(",_%sUnchanged |-> %s = %s'", someVar, someVar, someVar))
+		local.WriteString(tlaCR)
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(fmt.Sprintf("Format the `%s` variable as Json value.", someVar))
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(fmt.Sprintf(",_%sJson |->", someVar))
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(tlaIndent)
+		local.WriteString("LET J == INSTANCE Json")
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(tlaIndent)
+		local.WriteString(fmt.Sprintf("IN J!ToJson(%s)", someVar))
+		local.WriteString(tlaCR)
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString("Lastly, you may build expressions over arbitrary sets of states by")
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString("leveraging the _TETrace operator.  For example, this is how to")
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString("count the number of times a spec variable changed up to the current")
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString("state in the trace.")
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(fmt.Sprintf(",_%sModCount |->", someVar))
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(tlaIndent)
+		local.WriteString("LET F[s \\in DOMAIN _TETrace] ==")
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(tlaIndent)
+		local.WriteString(tlaIndent)
+		local.WriteString("IF s = 1 THEN 0")
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(tlaIndent)
+		local.WriteString(tlaIndent)
+		local.WriteString(fmt.Sprintf("ELSE IF _TETrace[s].%s # _TETrace[s-1].%s", someVar, someVar))
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(tlaIndent)
+		local.WriteString(tlaIndent)
+		local.WriteString(tlaIndent)
+		local.WriteString("THEN 1 + F[s-1] ELSE F[s-1]")
+		local.WriteString(tlaCR)
+		local.WriteString(tlaComment)
+		local.WriteString(tlaIndent)
+		local.WriteString("IN F[_TEPosition - 1]")
+		local.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(SpecTraceExpressionIndentString(local.String(), 2))
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(tlaRSquare)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaCR)
+}
+
+func (w *SpecTraceExpressionWriter) AddViewConfig(view string) {
+	w.require()
+	if w.cfgBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaKeywordView)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaIndent)
+	w.cfgBuffer.WriteString(view)
+	w.cfgBuffer.WriteString(tlaCR)
+}
+
+func (w *SpecTraceExpressionWriter) AddTraceView(vars string) {
+	w.require()
+	w.AddViewConfig(tlaSpecTEView)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaSpecTEView)
+	w.tlaBuffer.WriteString(tlaDefinesCR)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(tlaBeginTupleSp)
+	w.tlaBuffer.WriteString(vars)
+	w.tlaBuffer.WriteString(", IF TLCGet(\"level\") = ")
+	w.tlaBuffer.WriteString(tlaSpecTELassoEnd)
+	w.tlaBuffer.WriteString(" + 1 THEN ")
+	w.tlaBuffer.WriteString(tlaSpecTELassoStart)
+	w.tlaBuffer.WriteString(" ELSE TLCGet(\"level\")")
+	w.tlaBuffer.WriteString(tlaEndTupleSp)
+	w.tlaBuffer.WriteString(tlaCR)
+}
+
+func (w *SpecTraceExpressionWriter) AddFooter() {
+	w.require()
+	w.tlaBuffer.WriteString(w.GetTLAModuleClosingTag())
+}
+
+func (w *SpecTraceExpressionWriter) AddVariablesAndDefinitions(data []*TraceExpressionInformation, attributeName string, addDefinitions bool) {
+	w.require()
+	if data == nil {
+		panic(NewNullPointerException())
+	}
+	if len(data) == 0 {
+		return
+	}
+	var variableDecls strings.Builder
+	var definitions strings.Builder
+	for i, info := range data {
+		variableDecls.WriteString(javaNullableString(info.GetVariableName()))
+		if i != len(data)-1 {
+			variableDecls.WriteString(tlaComma)
+		}
+		if addDefinitions {
+			definitions.WriteString(tlaComment)
+			definitions.WriteString("TRACE EXPLORER identifier definition ")
+			definitions.WriteString(tlaAttribute)
+			definitions.WriteString(attributeName)
+			definitions.WriteString(tlaColon)
+			definitions.WriteString(fmt.Sprint(i))
+			definitions.WriteString(tlaCR)
+			definitions.WriteString(javaNullableString(info.GetIdentifier()))
+			definitions.WriteString(tlaDefinesCR)
+			definitions.WriteString(javaNullableString(info.GetExpression()))
+			definitions.WriteString(specWriterClosingSep())
+			definitions.WriteString(tlaCR)
+		}
+	}
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("TRACE EXPLORER variable declaration ")
+	w.tlaBuffer.WriteString(tlaAttribute)
+	w.tlaBuffer.WriteString(attributeName)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString("VARIABLES ")
+	w.tlaBuffer.WriteString(variableDecls.String())
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+	w.tlaBuffer.WriteString(tlaCR)
+	if addDefinitions {
+		w.tlaBuffer.WriteString(definitions.String())
+	}
+}
+
+func (w *SpecTraceExpressionWriter) AddProperties(trace []*MCState, specName ...string) {
+	w.require()
+	if len(specName) > 1 {
+		panic(NewIllegalArgumentException("AddProperties accepts at most one specification name"))
+	}
+	if trace == nil {
+		panic(NewNullPointerException())
+	}
+	finalState := specTraceExpressionStateAt(trace, len(trace)-1)
+	isBackToState := finalState.IsBackToState()
+	isStuttering := finalState.IsStuttering()
+	if isStuttering {
+		w.addStutteringProperty(specTraceExpressionStateAt(trace, len(trace)-2))
+	} else if isBackToState {
+		lassoFinalState := specTraceExpressionStateAt(trace, len(trace)-2)
+		targetIndex := finalState.GetStateNumber() - 1
+		w.addBackToStateProperty(lassoFinalState, specTraceExpressionStateAt(trace, targetIndex))
+	} else {
+		w.addInvariant(finalState)
+	}
+	w.tlaBuffer.WriteString(specWriterClosingSep())
+	w.tlaBuffer.WriteString(tlaCR)
+	if w.cfgBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(ConfigKeywordCheckDeadlock)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaIndent)
+	w.cfgBuffer.WriteString(tlaComment)
+	w.cfgBuffer.WriteString(ConfigKeywordCheckDeadlock)
+	w.cfgBuffer.WriteString(" off because of PROPERTY or INVARIANT above.")
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaIndent)
+	w.cfgBuffer.WriteString(tlaKeywordFalse)
+}
+
+func (w *SpecTraceExpressionWriter) addInvariant(finalState *MCState) {
+	w.require()
+	id := SpecWriterValidIdentifierNoTimestamp(tlaSchemeInvariant)
+	if w.cfgBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaKeywordInvariant)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaIndent)
+	w.cfgBuffer.WriteString(id)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(id)
+	w.tlaBuffer.WriteString(tlaDefinesCR)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(tlaNot)
+	w.tlaBuffer.WriteString(tlaLParen)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(specTraceExpressionStateConjunction(finalState, "TLCGet(\"level\") = Len(_TETrace)"))
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(tlaRParen)
+}
+
+func (w *SpecTraceExpressionWriter) addStutteringProperty(finalState *MCState) {
+	w.require()
+	id := SpecWriterValidIdentifierNoTimestamp(tlaSchemeProperty)
+	if w.cfgBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaKeywordProperty)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaIndent)
+	w.cfgBuffer.WriteString(id)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(id)
+	w.tlaBuffer.WriteString(tlaDefinesCR)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(tlaNot)
+	w.tlaBuffer.WriteString(tlaEventuallyAlways)
+	w.tlaBuffer.WriteString(tlaLParen)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(specTraceExpressionStateConjunction(finalState, ""))
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(tlaRParen)
+}
+
+func (w *SpecTraceExpressionWriter) addBackToStateProperty(finalState *MCState, backToState *MCState) {
+	w.require()
+	id := SpecWriterValidIdentifierNoTimestamp(tlaSchemeProperty)
+	if w.cfgBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaKeywordProperty)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaIndent)
+	w.cfgBuffer.WriteString(id)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(id)
+	w.tlaBuffer.WriteString(tlaDefinesCR)
+	var local strings.Builder
+	local.WriteString(tlaNot)
+	local.WriteString(tlaLParen)
+	local.WriteString(tlaLParen)
+	local.WriteString(tlaInfOften)
+	local.WriteString(tlaLParen)
+	local.WriteString(tlaCR)
+	local.WriteString(specTraceExpressionStateConjunction(finalState, ""))
+	local.WriteString(tlaCR)
+	local.WriteString(tlaRParen)
+	local.WriteString(tlaRParen)
+	local.WriteString(tlaAnd)
+	local.WriteString(tlaLParen)
+	local.WriteString(tlaInfOften)
+	local.WriteString(tlaLParen)
+	local.WriteString(tlaCR)
+	local.WriteString(specTraceExpressionStateConjunction(backToState, ""))
+	local.WriteString(tlaCR)
+	local.WriteString(tlaRParen)
+	local.WriteString(tlaRParen)
+	local.WriteString(tlaRParen)
+	w.tlaBuffer.WriteString(SpecTraceExpressionIndentString(local.String(), 1))
+}
+
+func (w *SpecTraceExpressionWriter) AddInfoComments(data []*TraceExpressionInformation) {
+	w.require()
+	if data == nil {
+		panic(NewNullPointerException())
+	}
+	for _, info := range data {
+		w.tlaBuffer.WriteString(tlaComment)
+		w.tlaBuffer.WriteString(tlaColon)
+		w.tlaBuffer.WriteString(fmt.Sprint(info.GetLevel()))
+		w.tlaBuffer.WriteString(tlaColon)
+		w.tlaBuffer.WriteString(javaNullableString(info.GetVariableName()))
+		w.tlaBuffer.WriteString(tlaColon)
+		w.tlaBuffer.WriteString(javaNullableString(info.GetExpression()))
+		w.tlaBuffer.WriteString(tlaConstantEvalMarker)
+		w.tlaBuffer.WriteString(tlaCR)
+	}
+}
+
+func (w *SpecTraceExpressionWriter) AddInitNext(trace []*MCState, args ...any) []string {
+	w.require()
+	if len(args) != 0 && len(args) != 4 && len(args) != 5 {
+		panic(NewIllegalArgumentException("AddInitNext accepts no arguments, expression data and three or four identifiers, or four identifiers"))
+	}
+	if len(args) == 0 {
+		return SpecTraceExpressionAddInitNextToBuffers(&w.tlaBuffer, w.cfgBuffer, trace, nil)
+	}
+	var data []*TraceExpressionInformation
+	argIndex := 0
+	switch typed := args[0].(type) {
+	case []*TraceExpressionInformation:
+		data = typed
+		argIndex = 1
+	case nil:
+		argIndex = 1
+	case string:
+		if len(args) != 4 {
+			panic(NewIllegalArgumentException("AddInitNext accepts four identifiers when expression data is omitted"))
+		}
+	default:
+		panic(NewIllegalArgumentException("AddInitNext requires expression data or an initial-state identifier"))
+	}
+	remaining := len(args) - argIndex
+	if remaining != 3 && remaining != 4 {
+		panic(NewIllegalArgumentException("AddInitNext requires three or four identifiers"))
+	}
+	ids := make([]string, remaining)
+	for i := range ids {
+		id, ok := args[argIndex+i].(string)
+		if !ok {
+			panic(NewIllegalArgumentException("AddInitNext identifiers must be strings"))
+		}
+		ids[i] = id
+	}
+	if len(ids) == 4 {
+		SpecTraceExpressionAddInitNextFullToBuffers(&w.tlaBuffer, w.cfgBuffer, trace, data, ids[0], ids[1], ids[2], ids[3], true)
+	} else {
+		SpecTraceExpressionAddInitNextIDToBuffers(&w.tlaBuffer, w.cfgBuffer, trace, data, ids[0], ids[1], ids[2])
+	}
+	return nil
+}
+
+func (w *SpecTraceExpressionWriter) AddInitNextTraceFunction(trace []*MCState, teSpecModuleName string, vars []string, modelConfig *ModelConfig) {
+	w.require()
+	_ = modelConfig
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(tlaKeywordInit)
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(tlaIndent)
+		w.cfgBuffer.WriteString(tlaSpecTEInit)
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(tlaSpecTEInit)
+	w.tlaBuffer.WriteString(tlaDefinesCR)
+	if vars == nil {
+		panic(NewNullPointerException())
+	}
+	for _, variable := range vars {
+		w.tlaBuffer.WriteString(tlaIndentedConj)
+		w.tlaBuffer.WriteString(variable)
+		w.tlaBuffer.WriteString(tlaEqSp)
+		w.tlaBuffer.WriteString("_TETrace[1].")
+		w.tlaBuffer.WriteString(variable)
+		w.tlaBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(tlaSep)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaCR)
+	if trace == nil {
+		panic(NewNullPointerException())
+	}
+	finalState := specTraceExpressionStateAt(trace, len(trace)-1)
+	nextID := tlaSpecTENext
+	if w.cfgBuffer != nil {
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(tlaKeywordNext)
+		w.cfgBuffer.WriteString(tlaCR)
+		w.cfgBuffer.WriteString(tlaIndent)
+		w.cfgBuffer.WriteString(nextID)
+		w.cfgBuffer.WriteString(tlaCR)
+	}
+	w.tlaBuffer.WriteString(nextID)
+	w.tlaBuffer.WriteString(tlaDefinesCR)
+	if len(trace) == 1 {
+		w.tlaBuffer.WriteString(tlaIndent)
+		w.tlaBuffer.WriteString(tlaIndentedConj)
+		w.tlaBuffer.WriteString(tlaKeywordFalse)
+		w.tlaBuffer.WriteString(tlaCR)
+	} else {
+		w.tlaBuffer.WriteString(tlaIndentedConj)
+		w.tlaBuffer.WriteString("\\E i,j \\in DOMAIN _TETrace:")
+		w.tlaBuffer.WriteString(tlaCR)
+		w.tlaBuffer.WriteString(tlaIndent)
+		w.tlaBuffer.WriteString(tlaIndentedConj)
+		w.tlaBuffer.WriteString(tlaOr)
+		w.tlaBuffer.WriteString(tlaSpace)
+		w.tlaBuffer.WriteString(tlaAnd)
+		w.tlaBuffer.WriteString(" j = i + 1")
+		w.tlaBuffer.WriteString(tlaCR)
+		w.tlaBuffer.WriteString(tlaIndent)
+		w.tlaBuffer.WriteString(tlaIndent)
+		w.tlaBuffer.WriteString(tlaSpace)
+		w.tlaBuffer.WriteString(tlaSpace)
+		w.tlaBuffer.WriteString(tlaIndentedConj)
+		w.tlaBuffer.WriteString("i = TLCGet(\"level\")")
+		w.tlaBuffer.WriteString(tlaCR)
+		if finalState.IsBackToState() {
+			w.tlaBuffer.WriteString(tlaIndent)
+			w.tlaBuffer.WriteString(tlaIndent)
+			w.tlaBuffer.WriteString("   ")
+			w.tlaBuffer.WriteString(tlaOr)
+			w.tlaBuffer.WriteString(tlaSpace)
+			w.tlaBuffer.WriteString(tlaAnd)
+			w.tlaBuffer.WriteString(" i = ")
+			w.tlaBuffer.WriteString(tlaSpecTELassoEnd)
+			w.tlaBuffer.WriteString(tlaCR)
+			w.tlaBuffer.WriteString(tlaIndent)
+			w.tlaBuffer.WriteString(tlaIndent)
+			w.tlaBuffer.WriteString("  ")
+			w.tlaBuffer.WriteString(tlaIndentedConj)
+			w.tlaBuffer.WriteString("j = ")
+			w.tlaBuffer.WriteString(tlaSpecTELassoStart)
+			w.tlaBuffer.WriteString(tlaCR)
+		}
+		for _, variable := range vars {
+			w.tlaBuffer.WriteString(tlaIndent)
+			w.tlaBuffer.WriteString(tlaIndentedConj)
+			w.tlaBuffer.WriteString(variable)
+			w.tlaBuffer.WriteString(" ")
+			w.tlaBuffer.WriteString(tlaEqSp)
+			w.tlaBuffer.WriteString("_TETrace[i].")
+			w.tlaBuffer.WriteString(variable)
+			w.tlaBuffer.WriteString(tlaCR)
+			w.tlaBuffer.WriteString(tlaIndent)
+			w.tlaBuffer.WriteString(tlaIndentedConj)
+			w.tlaBuffer.WriteString(variable)
+			w.tlaBuffer.WriteString(tlaPrime)
+			w.tlaBuffer.WriteString(tlaEqSp)
+			w.tlaBuffer.WriteString("_TETrace[j].")
+			w.tlaBuffer.WriteString(variable)
+			w.tlaBuffer.WriteString(tlaCR)
+		}
+	}
+	jsonComment := tlaIndent + tlaComment
+	if _, ok := tlcLookupSystemProperty("TLC_TRACE_EXPLORER_JSON_UNCOMMENTED"); ok {
+		jsonComment = ""
+	}
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("Uncomment the ASSUME below to write the states of the error trace")
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("to the given file in Json format. Note that you can pass any tuple")
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaComment)
+	w.tlaBuffer.WriteString("to `JsonSerialize`. For example, a sub-sequence of _TETrace.")
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(jsonComment)
+	w.tlaBuffer.WriteString(tlaKeywordAssume)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(jsonComment)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString("LET J == INSTANCE Json")
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(jsonComment)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(tlaIndent)
+	w.tlaBuffer.WriteString(fmt.Sprintf("IN J!JsonSerialize(\"%s.json\", _TETrace)", teSpecModuleName))
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaCR)
+}
+
+func (w *SpecTraceExpressionWriter) AddTraceFunction(input []*MCState, ids ...string) string {
+	w.require()
+	if len(ids) != 0 && len(ids) != 2 {
+		panic(NewIllegalArgumentException("AddTraceFunction accepts no identifiers or an identifier and configuration identifier"))
+	}
+	id := ""
+	configID := ""
+	if len(ids) == 2 {
+		id = ids[0]
+		configID = ids[1]
+	} else {
+		id = SpecWriterValidIdentifier(tlaSchemeDefOverride)
+		configID = id
+	}
+	return SpecTraceExpressionAddTraceFunctionToBuffers(&w.tlaBuffer, w.cfgBuffer, input, id, configID)
+}
+
+func (w *SpecTraceExpressionWriter) AddTraceFunctionInstance(moduleName string) {
+	w.require()
+	w.tlaBuffer.WriteString(fmt.Sprintf("%s ==%s%sLET %s == INSTANCE %s%s%sIN %s!%s",
+		tlaSpecTETrace, tlaCR, tlaIndent, moduleName, moduleName, tlaCR, tlaIndent, moduleName, tlaSpecTETraceDef))
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaSep)
+	w.tlaBuffer.WriteString(tlaCR)
+}
+
+func (w *SpecTraceExpressionWriter) AddTraceExpressionInstance(moduleName string) {
+	w.require()
+	w.tlaBuffer.WriteString(fmt.Sprintf("%s ==%s%sLET %s == INSTANCE %s%s%sIN %s!%s",
+		tlaSpecTETTraceExpr, tlaCR, tlaIndent, moduleName, moduleName, tlaCR, tlaIndent, moduleName, tlaSpecTEExpression))
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaSep)
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaCR)
+}
+
+func (w *SpecTraceExpressionWriter) Append(text string) *strings.Builder {
+	w.require()
+	w.tlaBuffer.WriteString(text)
+	return &w.tlaBuffer
+}
+
+func (w *SpecTraceExpressionWriter) String() string {
+	w.require()
+	return w.tlaBuffer.String()
+}
+
+func (w *SpecTraceExpressionWriter) GetComment() string {
+	w.require()
+	return tlaCommentNS + strings.ReplaceAll(w.tlaBuffer.String(), tlaCR, tlaCR+tlaCommentNS)
+}
+
+func SpecTraceExpressionIndentString(text string, n int) string {
+	n = int(int32(n))
+	if n < 0 {
+		panic(NewNegativeArraySizeException())
+	}
+	indent := strings.Repeat(tlaIndent, n)
+	lines := strings.Split(text, tlaCR)
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return indent + strings.Join(lines, tlaCR+indent)
+}
+
+func (w *SpecTraceExpressionWriter) WrapConfig(moduleFilename string) {
+	w.require()
+	if w.cfgBuffer == nil {
+		panic(NewNullPointerException())
+	}
+	original := w.cfgBuffer.String()
+	w.cfgBuffer.Reset()
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(tlaSep)
+	w.cfgBuffer.WriteString(" CONFIG ")
+	w.cfgBuffer.WriteString(moduleFilename)
+	w.cfgBuffer.WriteString(" ")
+	w.cfgBuffer.WriteString(tlaSep)
+	w.cfgBuffer.WriteString(tlaCR)
+	w.cfgBuffer.WriteString(original)
+	w.cfgBuffer.WriteString(w.GetTLAModuleClosingTag())
+}
+
+func (w *SpecTraceExpressionWriter) require() {
+	if w == nil || w.SpecWriter == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+type TraceExpressionExplorerSpecWriter struct {
+	*SpecWriter
+	VariableExpressionMap *InsMap[string, string]
+
+	variableExpressionMapCaptured bool
+	variableExpressionMapOwner    *InsMap[string, string]
+}
+
+func NewTraceExpressionExplorerSpecWriter(expressions []string) *TraceExpressionExplorerSpecWriter {
+	variableExpressionMap := NewInsMap[string, string]()
+	w := &TraceExpressionExplorerSpecWriter{
+		SpecWriter:                    NewSpecWriter(true),
+		VariableExpressionMap:         variableExpressionMap,
+		variableExpressionMapCaptured: true,
+		variableExpressionMapOwner:    variableExpressionMap,
+	}
+	if expressions == nil {
+		panic(NewNullPointerException())
+	}
+	for i, expression := range expressions {
+		key := fmt.Sprintf("%s%d", tlaTraceExprPrefix, i+1)
+		w.ownedVariableExpressionMap().Set(key, expression)
+		w.tlaBuffer.WriteString(tlaTraceExprComment)
+		w.tlaBuffer.WriteString(key)
+		w.tlaBuffer.WriteString(tlaEqSp)
+		w.tlaBuffer.WriteString(expression)
+		w.tlaBuffer.WriteString(tlaCR)
+	}
+	w.AddPrimer(tlaTraceExploreModule, tlaTraceExprModuleName)
+	w.declareExpressionVariables()
+	w.createInitNextWithExpressions()
+	w.tlaBuffer.WriteString(SpecWriterGeneratedTimestampLine())
+	w.tlaBuffer.WriteString(tlaCR)
+	return w
+}
+
+func TraceExpressionVariableExpressionMapFromTLA(content string) map[string]string {
+	out := make(map[string]string)
+	foundDeclaration := false
+	for len(content) > 0 {
+		line := content
+		if index := strings.IndexAny(content, "\r\n"); index >= 0 {
+			line = content[:index]
+			next := index + 1
+			if content[index] == '\r' && next < len(content) && content[next] == '\n' {
+				next++
+			}
+			content = content[next:]
+		} else {
+			content = ""
+		}
+		if !strings.HasPrefix(line, tlaTraceExprComment) {
+			break
+		}
+		foundDeclaration = true
+		decl := strings.TrimPrefix(line, tlaTraceExprComment)
+		index := strings.Index(decl, tlaEqSp)
+		if index < 0 {
+			continue
+		}
+		out[decl[:index]] = decl[index+len(tlaEqSp):]
+	}
+	if !foundDeclaration {
+		return nil
+	}
+	return out
+}
+
+// GetVariableExpressionMapFromTLAFile is
+// TraceExpressionExplorerSpecWriter.getVariableExpressionMapFromTLAFile.
+func GetVariableExpressionMapFromTLAFile(path string) (result map[string]string, err error) {
+	path = filenameNormalizeFile(path)
+	if _, statErr := os.Stat(path); statErr != nil {
+		// java.io.File.exists returns false rather than exposing filesystem
+		// lookup failures.
+		return nil, nil
+	}
+	file, err := openFileInputStream(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		failure := recover()
+		closeErr := bufferedRandomAccessFileIOError(file.Close())
+		if failure != nil {
+			if primary, ok := failure.(error); ok {
+				javaSuppressCloseError(primary, closeErr)
+			}
+			panic(failure)
+		}
+		if err == nil {
+			if closeErr != nil {
+				result = nil
+				err = closeErr
+			}
+		} else {
+			javaSuppressCloseError(err, closeErr)
+		}
+	}()
+	reader, err := newJavaReplacingLineReader(file, javaDefaultCharset())
+	if err != nil {
+		return nil, bufferedRandomAccessFileIOError(err)
+	}
+	declarations := make([]string, 0)
+	for {
+		line, readErr := reader.ReadLine()
+		if readErr != nil {
+			return nil, bufferedRandomAccessFileIOError(readErr)
+		}
+		if line == nil || !strings.HasPrefix(*line, tlaTraceExprComment) {
+			break
+		}
+		declarations = append(declarations, strings.TrimPrefix(*line, tlaTraceExprComment))
+	}
+	if len(declarations) == 0 {
+		return nil, nil
+	}
+	result = make(map[string]string)
+	for _, declaration := range declarations {
+		index := strings.Index(declaration, tlaEqSp)
+		if index >= 0 {
+			result[declaration[:index]] = declaration[index+len(tlaEqSp):]
+		}
+	}
+	return result, nil
+}
+
+func (w *TraceExpressionExplorerSpecWriter) ConfigBufferString() string {
+	w.require()
+	if w.cfgBuffer == nil {
+		return ""
+	}
+	return w.cfgBuffer.String()
+}
+
+func (w *TraceExpressionExplorerSpecWriter) declareExpressionVariables() {
+	w.require()
+	w.tlaBuffer.WriteString("VARIABLES ")
+	first := true
+	for _, entry := range w.sortedVariableExpressionEntries() {
+		if !first {
+			w.tlaBuffer.WriteString(", ")
+		}
+		first = false
+		w.tlaBuffer.WriteString(entry.variable)
+	}
+	w.tlaBuffer.WriteString(tlaCR)
+	w.tlaBuffer.WriteString(tlaCR)
+}
+
+func (w *TraceExpressionExplorerSpecWriter) createInitNextWithExpressions() {
+	w.require()
+	var initConj strings.Builder
+	initConj.WriteString(tlaIndentedConj)
+	initConj.WriteString(tlaSpecTEInitID)
+	initConj.WriteString(tlaCR)
+	w.addExpressionsToBuffer(&initConj, false)
+	initContent := SpecWriterCreateSourceContent(initConj.String(), tlaTEInitID, false)
+	w.AddFormulaList(initContent, tlaKeywordInit, tlaTEInitAttr)
+
+	var nextConj strings.Builder
+	nextConj.WriteString(tlaIndentedConj)
+	nextConj.WriteString(tlaSpecTENextID)
+	nextConj.WriteString(tlaCR)
+	w.addExpressionsToBuffer(&nextConj, true)
+	nextContent := SpecWriterCreateSourceContent(nextConj.String(), tlaTENextID, false)
+	w.AddFormulaList(nextContent, tlaKeywordNext, tlaTENextAttr)
+}
+
+func (w *TraceExpressionExplorerSpecWriter) addExpressionsToBuffer(buffer *strings.Builder, primed bool) {
+	w.require()
+	for _, entry := range w.sortedVariableExpressionEntries() {
+		if buffer == nil {
+			panic(NewNullPointerException())
+		}
+		buffer.WriteString(tlaIndentedConj)
+		buffer.WriteString(entry.variable)
+		if primed {
+			buffer.WriteString(tlaPrime)
+		}
+		buffer.WriteString(tlaEqSp)
+		buffer.WriteString(tlaLParen)
+		buffer.WriteString(entry.expression)
+		buffer.WriteString(tlaRParen)
+		buffer.WriteString(tlaCR)
+	}
+}
+
+type traceExpressionEntry struct {
+	variable   string
+	expression string
+}
+
+func (w *TraceExpressionExplorerSpecWriter) sortedVariableExpressionEntries() []traceExpressionEntry {
+	w.require()
+	variableExpressionMap := w.ownedVariableExpressionMap()
+	entries := make([]traceExpressionEntry, 0, variableExpressionMap.Len())
+	for variable, expression := range variableExpressionMap.All() {
+		entries = append(entries, traceExpressionEntry{variable: variable, expression: expression})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].variable < entries[j].variable
+	})
+	return entries
+}
+
+func (w *TraceExpressionExplorerSpecWriter) ownedVariableExpressionMap() *InsMap[string, string] {
+	if w.variableExpressionMapCaptured {
+		return w.variableExpressionMapOwner
+	}
+	return w.VariableExpressionMap
+}
+
+func (w *TraceExpressionExplorerSpecWriter) require() {
+	if w == nil || w.SpecWriter == nil || w.ownedVariableExpressionMap() == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+type TraceExplorationSpec struct {
+	OutputPath        string
+	OriginalModule    string
+	TESpecModuleName  string
+	PostConditionBins []PostCondition
+
+	configurationCaptured bool
+	outputPathOwner       string
+	originalModuleOwner   string
+	teSpecModuleNameOwner string
+}
+
+type PostCondition struct {
+	Module string
+	Op     string
+	Key    string
+	Value  string
+}
+
+func NewTraceExplorationSpec(outputPath string, timestamp time.Time, originalModuleName string) *TraceExplorationSpec {
+	return NewTraceExplorationSpecNamed(outputPath, DeriveTESpecModuleName(originalModuleName, timestamp), originalModuleName)
+}
+
+func NewTraceExplorationSpecNamed(outputPath string, teModuleName string, originalModuleName string) *TraceExplorationSpec {
+	spec := &TraceExplorationSpec{
+		OutputPath: outputPath, TESpecModuleName: teModuleName, OriginalModule: originalModuleName,
+		configurationCaptured: true, outputPathOwner: outputPath,
+		originalModuleOwner: originalModuleName, teSpecModuleNameOwner: teModuleName,
+	}
+	spec.PostConditionBins = append(spec.PostConditionBins, PostCondition{
+		Module: "_TLCTrace",
+		Op:     "_TLCTraceSilent",
+		Key:    "_TLCTraceFile",
+		Value:  filepath.Join(outputPath, teModuleName+".bin"),
+	})
+	return spec
+}
+
+func (s *TraceExplorationSpec) Generate(tool *Tool, errTrace *MCError) (writtenPath string, err error) {
+	s.require()
+	if errTrace == nil || len(errTrace.GetStates()) <= 1 {
+		return "", nil
+	}
+	if checker := MainChecker(); checker != nil && checker.abstractChecker().IsRecovery() {
+		return "", nil
+	}
+	outputPath, _, teSpecModuleName := s.configuration(tool)
+	// Source File.mkdirs returns a boolean that generate ignores; file creation
+	// below supplies the checked-I/O diagnostic if the directory is unavailable.
+	_ = os.MkdirAll(outputPath, 0o755)
+	path := filepath.Join(outputPath, teSpecModuleName+".tla")
+	file, err := openFileOutputStream(path)
+	if err != nil {
+		PrintMessage(ECTLCTESpecGenerationError, err.Error())
+		return "", err
+	}
+	// The source try-with-resources close belongs to the same IOException catch.
+	// A write failure stays primary; a close-only failure is reported even after
+	// the completion message, which Java emits before leaving the try body.
+	defer func() {
+		failure := recover()
+		closeErr := bufferedRandomAccessFileIOError(file.Close())
+		if failure != nil {
+			if primary, ok := failure.(error); ok {
+				javaSuppressCloseError(primary, closeErr)
+			}
+			panic(failure)
+		}
+		if err == nil {
+			if closeErr != nil {
+				PrintMessage(ECTLCTESpecGenerationError, closeErr.Error())
+				writtenPath, err = "", closeErr
+			}
+		} else {
+			javaSuppressCloseError(err, closeErr)
+		}
+	}()
+	if err := s.WriteSpecTE(tool, errTrace, file); err != nil {
+		PrintMessage(ECTLCTESpecGenerationError, err.Error())
+		return "", err
+	}
+	PrintMessage(ECTLCTESpecGenerationComplete, path)
+	return path, nil
+}
+
+func (s *TraceExplorationSpec) WriteSpecTE(tool *Tool, errTrace *MCError, out io.Writer) error {
+	s.require()
+	if errTrace == nil || out == nil || len(errTrace.GetStates()) == 0 {
+		return nil
+	}
+	_, originalModule, teSpecModuleName := s.configuration(tool)
+	modelConfig := newModelConfig("", false)
+	if tool != nil && tool.GetModelConfig() != nil {
+		modelConfig = tool.GetModelConfig()
+	}
+	variables := traceExplorationVariables()
+	writer := NewSpecTraceExpressionWriter()
+
+	constants := modelConfig.GetConstantsAsList()
+	indentedConstants := make([]string, 0)
+	for _, entry := range constants {
+		if len(entry) == 0 {
+			continue
+		}
+		line := entry[0]
+		if len(entry) > 1 {
+			line = entry[0] + tlaEqSp + entry[1]
+		}
+		indentedConstants = append(indentedConstants, SpecTraceExpressionIndentString(line, 1))
+	}
+	SetModelValues()
+	for _, mv := range ModelValues() {
+		if mv == nil {
+			continue
+		}
+		name := mv.String()
+		indentedConstants = append(indentedConstants, SpecTraceExpressionIndentString(name+tlaEqSp+name, 1))
+	}
+	if errTrace.IsLasso() {
+		states := errTrace.GetStates()
+		last := states[len(states)-1]
+		indentedConstants = append(indentedConstants, tlaSpecTELassoStart+tlaEqSp+fmt.Sprint(last.GetStateNumber()))
+		indentedConstants = append(indentedConstants, tlaSpecTELassoEnd+tlaEqSp+fmt.Sprint(len(states)-1))
+	}
+	writer.AddConstantsRaw(indentedConstants)
+
+	var processedDefns *Defns
+	if tool != nil && tool.GetSpecProcessor() != nil {
+		processedDefns = tool.GetSpecProcessor().GetDefns()
+	}
+	var modConstants []string
+	for _, mv := range ModelValues() {
+		if mv == nil {
+			continue
+		}
+		name := mv.String()
+		if processedDefns == nil || processedDefns.Get(name) == nil {
+			modConstants = append(modConstants, name)
+		}
+	}
+	if errTrace.IsLasso() {
+		modConstants = append(modConstants, tlaSpecTELassoStart, tlaSpecTELassoEnd)
+	}
+	teConstantSpecName := fmt.Sprintf("%s_%s", originalModule, tlaSpecTEConstantsName)
+	teConstantModules := []string{tlaModuleTLC}
+	modelValuesAsConstants := ""
+	if len(modConstants) != 0 {
+		teConstantModules = append(teConstantModules, teConstantSpecName)
+		modelValuesAsConstants = "CONSTANTS " + strings.Join(modConstants, ", ") + tlaCR
+	}
+
+	specTEExtendedModules := traceExploreSortedUnique(tlaModuleToolbox, tlaModuleTLCExt, tlaModuleNaturals, tlaModuleSequences)
+	specTEExtendedModules = traceExploreSortedUnique(append(specTEExtendedModules, teConstantModules...)...)
+	writer.AddPrimer(teSpecModuleName, originalModule, specTEExtendedModules)
+	writer.AddTraceExpressionInstance(fmt.Sprintf("%s_%s", originalModule, tlaTraceExploreModule))
+	teTraceName := fmt.Sprintf("%s_%s", originalModule, tlaSpecTETraceModuleName)
+	writer.AddTraceFunctionInstance(teTraceName)
+	writer.AddProperties(errTrace.GetStates(), originalModule)
+	writer.AddInitNextTraceFunction(errTrace.GetStates(), teSpecModuleName, variables, modelConfig)
+	if errTrace.IsLassoWithDuplicates() {
+		writer.AddTraceView(strings.Join(variables, ", "))
+	}
+	writer.AddFooter()
+
+	writer.Append(tlaCR)
+	te := NewSpecTraceExpressionWriter()
+	teModuleName := fmt.Sprintf("%s_%s", originalModule, tlaTraceExploreModule)
+	te.Append(tlaCR)
+	writer.Append(fmt.Sprintf(" Note that you can extract this module `%s`", teModuleName)).WriteString(tlaCR)
+	writer.Append("  to a dedicated file to reuse `expression` (the module in the ").WriteString(tlaCR)
+	writer.Append(fmt.Sprintf("  dedicated `%s.tla` file takes precedence ", teModuleName)).WriteString(tlaCR)
+	writer.Append(fmt.Sprintf("  over the module `%s` below).", teModuleName))
+	te.AddPrimer(teModuleName, originalModule, specTEExtendedModules)
+	te.AddTraceExpressionStub(originalModule, tlaSpecTEExpression, variables)
+	te.AddFooter()
+	writer.Append(tlaCR + te.String() + tlaCR + tlaCR)
+
+	writer.Append(tlaCR)
+	writer.Append("Parsing and semantic processing can take forever if the trace below is long.").WriteString(tlaCR)
+	writer.Append(" In this case, it is advised to uncomment the module below to deserialize the").WriteString(tlaCR)
+	writer.Append(" trace from a generated binary file.").WriteString(tlaCR)
+	overrideModules := traceExploreSortedUnique(tlaModuleIOUtils)
+	overrideModules = traceExploreSortedUnique(append(overrideModules, teConstantModules...)...)
+	overrideWriter := NewSpecTraceExpressionWriter()
+	overrideWriter.Append(tlaCR)
+	overrideWriter.AddPrimer(teTraceName, originalModule, overrideModules)
+	overrideWriter.Append(tlaSpecTETraceDef).WriteString(tlaDefines)
+	overrideWriter.Append(fmt.Sprintf("IODeserialize(\"%s%s\", TRUE)\n\n", teSpecModuleName, ".bin"))
+	overrideWriter.AddFooter()
+	writer.Append(tlaCR + overrideWriter.GetComment() + tlaCR + tlaCR)
+
+	writer.AddPrimer(teTraceName, originalModule, traceExploreSortedUnique(teConstantModules...))
+	writer.AddTraceFunction(errTrace.GetStates(), tlaSpecTETraceDef, tlaSpecTETrace)
+	writer.AddAliasToCfg(tlaSpecTETTraceExpr)
+	if modelValuesAsConstants != "" {
+		writer.AddFooter()
+		writer.Append(tlaCR)
+		writer.AddPrimer(teConstantSpecName, originalModule)
+		writer.Append(modelValuesAsConstants).WriteString(tlaCR)
+	}
+	writer.WrapConfig(teSpecModuleName)
+	return writer.WriteStreams(out, out)
+}
+
+func (s *TraceExplorationSpec) configuration(tool *Tool) (string, string, string) {
+	if s.configurationCaptured {
+		return s.outputPathOwner, s.originalModuleOwner, s.teSpecModuleNameOwner
+	}
+	if s.OutputPath == "" {
+		s.OutputPath = "."
+	}
+	if s.OriginalModule == "" && tool != nil {
+		s.OriginalModule = tool.GetRootName()
+	}
+	if s.OriginalModule == "" {
+		s.OriginalModule = "Spec"
+	}
+	if s.TESpecModuleName == "" {
+		s.TESpecModuleName = DeriveTESpecModuleName(s.OriginalModule, time.Now())
+	}
+	return s.OutputPath, s.OriginalModule, s.TESpecModuleName
+}
+
+func (s *TraceExplorationSpec) require() {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+func TraceExplorationModuleID(timestamp time.Time) string {
+	return fmt.Sprint(timestamp.Unix())
+}
+
+func DeriveTESpecModuleName(originalModuleName string, timestamp time.Time) string {
+	return fmt.Sprintf("%s_%s_%s", originalModuleName, tlaTraceExprModuleName, TraceExplorationModuleID(timestamp))
+}
+
+func IsTESpecFile(tlaFilePath string) bool {
+	if tlaFilePath == "" {
+		return false
+	}
+	base := filepath.Base(tlaFilePath)
+	ok, _ := regexp.MatchString("^.*_"+tlaTraceExprModuleName+".*(.tla)?$", base)
+	return ok
+}
+
+func traceExplorationVariables() []string {
+	vars := StateVariables()
+	out := make([]string, 0, len(vars))
+	for _, variable := range vars {
+		if variable.Name != nil {
+			out = append(out, variable.Name.String())
+		}
+	}
+	return out
+}
+
+func traceExploreSortedUnique(names ...string) []string {
+	seen := make(map[string]struct{}, len(names))
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func specTraceExpressionStateConjunction(state *MCState, prefixConjunct string) string {
+	if state.IsBackToState() || state.IsStuttering() {
+		return ""
+	}
+	var formula strings.Builder
+	if prefixConjunct != "" {
+		formula.WriteString(prefixConjunct)
+		formula.WriteString(tlaCR)
+		formula.WriteString(tlaAnd)
+		formula.WriteString(tlaCR)
+	}
+	variables := state.GetVariables()
+	for i, variable := range variables {
+		formula.WriteString(variable.GetName())
+		formula.WriteString(tlaEqSp)
+		formula.WriteString(tlaLParen)
+		formula.WriteString(variable.GetValueAsString())
+		formula.WriteString(tlaRParen)
+		if i != len(variables)-1 {
+			formula.WriteString(tlaCR)
+			formula.WriteString(tlaAnd)
+			formula.WriteString(tlaCR)
+		}
+	}
+	return SpecTraceExpressionIndentString(formula.String(), 2)
+}
+
+func specTraceExpressionStateAt(trace []*MCState, index int) *MCState {
+	if index < 0 || index >= len(trace) {
+		panic(NewIndexOutOfBoundsException(index, len(trace)))
+	}
+	return trace[index]
+}
+
+func specTraceExpressionVariableAt(variables []*MCVariable, index int) *MCVariable {
+	if variables == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(variables) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(variables)))
+	}
+	return variables[index]
+}
+
+func specWriterClosingSep() string {
+	return tlaCR + tlaSep + tlaCR
+}
+
+func tlaTraceTripleIndent() string {
+	return tlaIndent + tlaIndent + tlaIndent
+}
+
+func tlaTraceExploreTrace() string {
+	return "_TETrace"
+}

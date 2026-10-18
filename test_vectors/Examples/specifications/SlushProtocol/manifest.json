@@ -1,0 +1,41 @@
+{
+  "sources": [
+    "https://github.com/ahelwer/avalanche-analysis",
+    "https://ahelwer.ca/post/2020-09-11-probabilistic-distsys/"
+  ],
+  "authors": [
+    "Andrew Helwer"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/SlushProtocol/Slush.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/SlushProtocol/SlushLarge.cfg",
+          "runtime": "00:50:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/SlushProtocol/SlushMedium.cfg",
+          "runtime": "00:01:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/SlushProtocol/SlushSmall.cfg",
+          "runtime": "00:00:15",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 274678,
+          "totalStates": 1621541,
+          "stateDepth": 43
+        }
+      ]
+    }
+  ]
+}

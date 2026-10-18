@@ -1,0 +1,75 @@
+{
+  "sources": [],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/Paxos/Consensus.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/Paxos/MCConsensus.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Paxos/MCConsensus.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4,
+          "totalStates": 7,
+          "stateDepth": 1
+        }
+      ]
+    },
+    {
+      "path": "specifications/Paxos/MCPaxos.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Paxos/MCPaxos.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 25,
+          "totalStates": 82,
+          "stateDepth": 9
+        }
+      ]
+    },
+    {
+      "path": "specifications/Paxos/MCVoting.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Paxos/MCVoting.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 77,
+          "totalStates": 451,
+          "stateDepth": 11
+        }
+      ]
+    },
+    {
+      "path": "specifications/Paxos/Paxos.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/Paxos/Voting.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+Misra Reachability Algorithm
+
+This example is built around a simple sequential algorithm by Jayadev
+Misra for computing the set of nodes in a directed graph thaa are
+reachable from a given node.  It includes a multiprocess algorithm
+that implements Misra's algorithm and TLAPS checked proofs that the
+two algorithms satisfy their safety property.  Proofs are in separate
+modules so the algorithms can be read independently from the proofs.
+Here is what each module contains, in the order one might want to read
+them.
+
+Reachable
+   Misra's algorithm written in PlusCal, its correctness properties, and
+   an informal proof of its correctness.
+
+Reachability
+   The TLA+ definitions of a directed graph and reachability.
+   It is imported by module Reachable.
+
+ParReach
+   The parallel implementation of Misra's algorithm written in PlusCal
+   and the TLA+ formulation of the assertion that it implements
+   Misra's algorithm under a suitable refinement mapping.
+
+ReachableProofs
+   The TLAPS checked proofs that the algorithm of module Reachable
+   satisfies its desired safety property.  The proof assumes some
+   properties of reachability in a directed graph.
+
+ReachabilityTest
+   Defines operators that TLC can use to check the correctness of the
+   properties of directed graphs assumed by the proofs in module
+   ReachableProofs.
+
+ParReachProofs
+   A TLAPS checked proof that the parallel algorithm of module ParReach
+   implements the safety part of Misra's algorithm, under the refinement
+   mapping defined in that module.
+
+ReachabilityProofs
+   TLAPS checked proofs of the reachability properties used in the proofs
+   of module ReachableProofs.
+

@@ -1,0 +1,94 @@
+{
+  "sources": [],
+  "authors": [
+    "Martin Harrison"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/glowingRaccoon/APclean.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/glowingRaccoon/APclean.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/glowingRaccoon/APstages.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/glowingRaccoon/APstages.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/glowingRaccoon/clean.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/glowingRaccoon/clean.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 63,
+          "totalStates": 99,
+          "stateDepth": 10
+        }
+      ]
+    },
+    {
+      "path": "specifications/glowingRaccoon/clean_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/glowingRaccoon/product.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/glowingRaccoon/product.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 305,
+          "totalStates": 376,
+          "stateDepth": 23
+        }
+      ]
+    },
+    {
+      "path": "specifications/glowingRaccoon/stages.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/glowingRaccoon/stages.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 83,
+          "totalStates": 93,
+          "stateDepth": 23
+        }
+      ]
+    },
+    {
+      "path": "specifications/glowingRaccoon/stages_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

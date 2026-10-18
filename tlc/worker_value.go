@@ -1,0 +1,314 @@
+package tlc
+
+import (
+	"bytes"
+	"runtime"
+	"strconv"
+	"sync"
+)
+
+type currentWorkerContext struct {
+	id        int
+	registers currentRegisterAccess
+	// Simulator statistics dispatch on the worker itself, not its numeric ID.
+	simulation *SimulationWorker
+}
+
+var currentWorkerScope = struct {
+	sync.Mutex
+	stack map[uint64][]currentWorkerContext
+}{stack: make(map[uint64][]currentWorkerContext)}
+
+var currentStateScope = struct {
+	sync.Mutex
+	stack map[uint64][]*TLCStateMut
+}{stack: make(map[uint64][]*TLCStateMut)}
+
+type WorkerValue struct {
+	values []Value
+}
+
+func NewWorkerValue(values []Value) *WorkerValue {
+	return &WorkerValue{values: values}
+}
+
+func DemuxWorkerValue(evaluate func() (Value, error)) (any, error) {
+	if evaluate == nil {
+		panic(NewNullPointerException())
+	}
+	value, err := evaluate()
+	if err != nil {
+		return nil, err
+	}
+	if isNil(value) {
+		panic(NewNullPointerException())
+	}
+	value.DeepNormalize()
+	if !ValueMutates(value) || NumWorkers() <= 1 {
+		return value, nil
+	}
+	values := make([]Value, NumWorkers())
+	values[0] = value
+	seed := RandomEnumerableSeed()
+	for i := 1; i < len(values); i++ {
+		SetRandomEnumerableSeed(seed)
+		v, err := evaluate()
+		if err != nil {
+			return nil, err
+		}
+		if isNil(v) {
+			panic(NewNullPointerException())
+		}
+		v.DeepNormalize()
+		values[i] = v
+	}
+	return NewWorkerValue(values), nil
+}
+
+func ValueMutates(value Value) bool {
+	if isNil(value) {
+		panic(NewNullPointerException())
+	}
+	if mutating, ok := value.(interface{ Mutates() bool }); ok {
+		return mutating.Mutates()
+	}
+	return true
+}
+
+func MuxWorkerValue(value any, workerID int) Value {
+	if isNil(value) {
+		return nil
+	}
+	switch v := value.(type) {
+	case *WorkerValue:
+		return v.ValueForWorker(workerID)
+	case Value:
+		return v
+	default:
+		return nil
+	}
+}
+
+func PushCurrentWorkerID(workerID int) func() {
+	return pushCurrentWorkerContext(currentWorkerContext{id: workerID})
+}
+
+func pushCurrentSimulationWorker(worker *SimulationWorker) func() {
+	return pushCurrentWorkerContext(currentWorkerContext{id: worker.ownedID(), simulation: worker})
+}
+
+func pushCurrentWorkerContext(context currentWorkerContext) func() {
+	gid := currentGoroutineID()
+	currentWorkerScope.Lock()
+	currentWorkerScope.stack[gid] = append(currentWorkerScope.stack[gid], context)
+	currentWorkerScope.Unlock()
+	return func() {
+		currentWorkerScope.Lock()
+		stack := currentWorkerScope.stack[gid]
+		if len(stack) <= 1 {
+			delete(currentWorkerScope.stack, gid)
+		} else {
+			currentWorkerScope.stack[gid] = stack[:len(stack)-1]
+		}
+		currentWorkerScope.Unlock()
+	}
+}
+
+func CurrentWorkerID() (int, bool) {
+	gid := currentGoroutineID()
+	currentWorkerScope.Lock()
+	defer currentWorkerScope.Unlock()
+	stack := currentWorkerScope.stack[gid]
+	if len(stack) == 0 {
+		return 0, false
+	}
+	return stack[len(stack)-1].id, true
+}
+
+func currentSimulationWorker() *SimulationWorker {
+	gid := currentGoroutineID()
+	currentWorkerScope.Lock()
+	defer currentWorkerScope.Unlock()
+	stack := currentWorkerScope.stack[gid]
+	if len(stack) == 0 {
+		return nil
+	}
+	return stack[len(stack)-1].simulation
+}
+
+func CurrentThreadIDOr(otherID int) int {
+	if id, ok := CurrentWorkerID(); ok {
+		return id
+	}
+	return otherID
+}
+
+func PushCurrentState(state *TLCStateMut) func() {
+	gid := currentGoroutineID()
+	currentStateScope.Lock()
+	currentStateScope.stack[gid] = append(currentStateScope.stack[gid], state)
+	currentStateScope.Unlock()
+	return func() {
+		currentStateScope.Lock()
+		stack := currentStateScope.stack[gid]
+		if len(stack) <= 1 {
+			delete(currentStateScope.stack, gid)
+		} else {
+			currentStateScope.stack[gid] = stack[:len(stack)-1]
+		}
+		currentStateScope.Unlock()
+	}
+}
+
+func SetCurrentState(state *TLCStateMut) *TLCStateMut {
+	gid := currentGoroutineID()
+	currentStateScope.Lock()
+	defer currentStateScope.Unlock()
+	stack := currentStateScope.stack[gid]
+	if len(stack) == 0 {
+		currentStateScope.stack[gid] = []*TLCStateMut{state}
+		return nil
+	}
+	old := stack[len(stack)-1]
+	stack[len(stack)-1] = state
+	currentStateScope.stack[gid] = stack
+	return old
+}
+
+func CurrentState() (*TLCStateMut, bool) {
+	gid := currentGoroutineID()
+	currentStateScope.Lock()
+	defer currentStateScope.Unlock()
+	stack := currentStateScope.stack[gid]
+	if len(stack) == 0 {
+		return nil, false
+	}
+	return stack[len(stack)-1], true
+}
+
+func ResetCurrentState() *TLCStateMut {
+	gid := currentGoroutineID()
+	currentStateScope.Lock()
+	defer currentStateScope.Unlock()
+	stack := currentStateScope.stack[gid]
+	if len(stack) == 0 {
+		return nil
+	}
+	state := stack[len(stack)-1]
+	delete(currentStateScope.stack, gid)
+	return state
+}
+
+func currentGoroutineID() uint64 {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	line := buf[:n]
+	prefix := []byte("goroutine ")
+	if !bytes.HasPrefix(line, prefix) {
+		return 0
+	}
+	start := len(prefix)
+	end := start
+	for end < len(line) && line[end] >= '0' && line[end] <= '9' {
+		end++
+	}
+	id, err := strconv.ParseUint(string(line[start:end]), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
+}
+
+func (v *WorkerValue) ValueForWorker(workerID int) Value {
+	if v == nil {
+		return nil
+	}
+	workerID = int(int32(workerID))
+	if workerID < 0 || workerID >= len(v.values) {
+		panic(NewArrayIndexOutOfBoundsException(workerID, len(v.values)))
+	}
+	value := v.values[workerID]
+	if isNil(value) {
+		return nil
+	}
+	return value
+}
+
+func workerValueTuple(value any) Value {
+	size := NumWorkers()
+	if size < 1 {
+		size = 1
+	}
+	switch v := value.(type) {
+	case nil:
+		return tupleOfUndefined(size)
+	case Value:
+		values := make([]Value, size)
+		for i := range values {
+			values[i] = v
+		}
+		return NewTupleValue(values)
+	case *WorkerValue:
+		values := make([]Value, size)
+		for i := range values {
+			if i < len(v.values) && v.values[i] != nil {
+				values[i] = v.values[i]
+			} else {
+				values[i] = ValUndef
+			}
+		}
+		return NewTupleValue(values)
+	default:
+		return tupleOfUndefined(size)
+	}
+}
+
+func tupleOfUndefined(size int) Value {
+	values := make([]Value, size)
+	for i := range values {
+		values[i] = ValUndef
+	}
+	return NewTupleValue(values)
+}
+
+func workerIDFromState(state *TLCStateMut) int {
+	if state == nil || state.WorkerID == TLCStateInitWorkerID || state.WorkerID < 0 {
+		return 0
+	}
+	return int(state.WorkerID)
+}
+
+// currentRegisterAccess represents registers owned by the actual running worker.
+type currentRegisterAccess interface {
+	GetLocalValue(int) Value
+	SetLocalValue(int, Value)
+	GetNamedRegister(*UniqueString) Value
+	SetNamedRegister(*UniqueString, Value)
+}
+
+func pushCurrentCheckerWorker(id int, w currentRegisterAccess) func() {
+	return pushCurrentWorkerContext(currentWorkerContext{id: id, registers: w})
+}
+func currentRegisterWorker() currentRegisterAccess {
+	gid := currentGoroutineID()
+	currentWorkerScope.Lock()
+	defer currentWorkerScope.Unlock()
+	stack := currentWorkerScope.stack[gid]
+	if len(stack) == 0 {
+		return nil
+	}
+	context := stack[len(stack)-1]
+	if context.simulation != nil {
+		return context.simulation
+	}
+	return context.registers
+}
+
+// Direct synchronous helpers retain their numeric scope; a started worker keeps
+// the identity of its actual running thread through nested calls.
+func pushUnownedWorkerID(id int) func() {
+	if currentRegisterWorker() != nil {
+		return func() {}
+	}
+	return PushCurrentWorkerID(id)
+}

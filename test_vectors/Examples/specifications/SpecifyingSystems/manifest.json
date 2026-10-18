@@ -1,0 +1,793 @@
+{
+  "sources": [
+    "http://lamport.azurewebsites.net/tla/book.html"
+  ],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/BNFGrammars.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/DifferentialEquations.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/Graphs.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/InnerSequential.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/InnerSerial.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/MCInnerSequential.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/AdvancedExamples/MCInnerSequential.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 3528,
+          "totalStates": 24368,
+          "stateDepth": 9
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/MCInnerSerial.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/AdvancedExamples/MCInnerSerial.cfg",
+          "runtime": "00:01:30",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/RegisterInterface.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AdvancedExamples/SerialMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AsynchronousInterface/APAsynchInterface.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/AsynchronousInterface/APAsynchInterface.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AsynchronousInterface/APChannel.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/AsynchronousInterface/APChannel.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AsynchronousInterface/AsynchInterface.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/AsynchronousInterface/AsynchInterface.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 12,
+          "totalStates": 30,
+          "stateDepth": 2
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AsynchronousInterface/AsynchInterface_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AsynchronousInterface/Channel.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/AsynchronousInterface/Channel.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 12,
+          "totalStates": 30,
+          "stateDepth": 2
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AsynchronousInterface/Channel_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/AsynchronousInterface/PrintValues.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/AsynchronousInterface/PrintValues.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 0,
+          "totalStates": 0,
+          "stateDepth": 0
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/CachingMemory/InternalMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/CachingMemory/InternalMemory_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/CachingMemory/MCInternalMemory.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/CachingMemory/MCInternalMemory.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4408,
+          "totalStates": 21400,
+          "stateDepth": 10
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/CachingMemory/MCWriteThroughCache.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/CachingMemory/MCWriteThroughCache.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 5196,
+          "totalStates": 28170,
+          "stateDepth": 18
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/CachingMemory/Memory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/CachingMemory/MemoryInterface.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/CachingMemory/WriteThroughCache.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/CachingMemory/WriteThroughCacheInstanced.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/APChannel.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/Composing/APChannel.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/APHourClock.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/Composing/APHourClock.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/BinaryHourClock.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/Channel.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/ChannelRefinement.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/Channel_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/CompositeFIFO.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/HourClock.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/HourClock_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/InternalMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/InternalMemory_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/JointActionMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Composing/MemoryInterface.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/APChannel.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/FIFO/APChannel.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/APInnerFIFO.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/FIFO/APInnerFIFO.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/APInnerFIFOInstanced.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/FIFO/APInnerFIFOInstanced.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/APMCInnerFIFO.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/FIFO/APMCInnerFIFO.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/Channel.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/Channel_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/FIFO.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/InnerFIFO.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/InnerFIFOInstanced.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/InnerFIFO_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/FIFO/MCInnerFIFO.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/FIFO/MCInnerFIFO.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 3864,
+          "totalStates": 9660,
+          "stateDepth": 11
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/HourClock/APHourClock.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/HourClock/APHourClock.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/HourClock/APHourClock2.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/HourClock/APHourClock2.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/HourClock/HourClock.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/HourClock/HourClock.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 12,
+          "totalStates": 24,
+          "stateDepth": 1
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/HourClock/HourClock2.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/HourClock/HourClock2.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 12,
+          "totalStates": 24,
+          "stateDepth": 1
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/HourClock/HourClock_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/APHourClock.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/Liveness/APHourClock.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/APLiveHourClock.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/Liveness/APLiveHourClock.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/HourClock.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/HourClock_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/InternalMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/InternalMemory_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/LiveHourClock.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/Liveness/LiveHourClock.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 12,
+          "totalStates": 24,
+          "stateDepth": 1
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/LiveInternalMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/LiveWriteThroughCache.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/MCInternalMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/MCLiveInternalMemory.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/Liveness/MCLiveInternalMemory.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4408,
+          "totalStates": 21400,
+          "stateDepth": 10
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/MCLiveWriteThroughCache.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/Liveness/MCLiveWriteThroughCache.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 5196,
+          "totalStates": 28170,
+          "stateDepth": 18
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/Memory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/MemoryInterface.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Liveness/WriteThroughCacheInstanced.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/HourClock.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/HourClock_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/InternalMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/InternalMemory_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/MCRealTime.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/MCRealTimeHourClock.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/RealTime/MCRealTimeHourClock.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "liveness failure"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/Memory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/MemoryInterface.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/RTMemory.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/RTWriteThroughCache.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/RealTimeHourClock.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/RealTime_SS.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/RealTime/WriteThroughCache.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/SimpleMath/SimpleMath.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/SimpleMath/SimpleMath.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 0,
+          "totalStates": 0,
+          "stateDepth": 0
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Standard/Bags.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Standard/FiniteSets.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Standard/Integers.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Standard/Naturals.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Standard/Peano.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Standard/ProtoReals.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Standard/Reals.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Standard/Sequences.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Syntax/BNFGrammars.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/Syntax/TLAPlusGrammar.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/TLC/ABCorrectness.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/TLC/ABCorrectness.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 20,
+          "totalStates": 36,
+          "stateDepth": 3
+        }
+      ]
+    },
+    {
+      "path": "specifications/SpecifyingSystems/TLC/AlternatingBit.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/TLC/AlternatingBit_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/SpecifyingSystems/TLC/BNFGrammars.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/TLC/ConfigFileGrammar.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SpecifyingSystems/TLC/MCAlternatingBit.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SpecifyingSystems/TLC/MCAlternatingBit.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 240,
+          "totalStates": 1392,
+          "stateDepth": 10
+        }
+      ]
+    }
+  ]
+}

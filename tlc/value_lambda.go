@@ -1,0 +1,1508 @@
+package tlc
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+type FcnParams struct {
+	Formals    [][]*SymbolNode
+	TupleFlags []bool
+	Domains    []Value
+	ArgLen     int
+}
+
+func NewFcnParams(formals [][]*SymbolNode, isTuples []bool, domains []Value) *FcnParams {
+	params := &FcnParams{
+		Formals:    formals,
+		TupleFlags: isTuples,
+		Domains:    domains,
+	}
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	for i := range params.Formals {
+		if params.TupleFlags == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(params.TupleFlags) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(params.TupleFlags)))
+		}
+		if params.TupleFlags[i] {
+			params.ArgLen = int(int32(params.ArgLen) + 1)
+		} else {
+			if params.Formals[i] == nil {
+				panic(NewNullPointerException())
+			}
+			params.ArgLen = int(int32(params.ArgLen) + int32(len(params.Formals[i])))
+		}
+	}
+	return params
+}
+
+func NewSingleFcnParam(formal *SymbolNode, domain Value) *FcnParams {
+	return NewFcnParams([][]*SymbolNode{{formal}}, []bool{false}, []Value{domain})
+}
+
+func NewTupleFcnParam(formals []*SymbolNode, domain Value) *FcnParams {
+	return NewFcnParams([][]*SymbolNode{formals}, []bool{true}, []Value{domain})
+}
+
+func (p *FcnParams) Length() int {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	return p.ArgLen
+}
+
+func (p *FcnParams) GetFormals() [][]*SymbolNode {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	return p.Formals
+}
+
+func (p *FcnParams) GetDomains() []Value {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	return p.Domains
+}
+
+func (p *FcnParams) IsTuples() []bool {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	return p.TupleFlags
+}
+
+func (p *FcnParams) Size() (int, error) {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	size := int64(1)
+	for i := 0; ; i++ {
+		if p.Domains == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(p.Domains) {
+			break
+		}
+		domain := p.Domains[i]
+		if domain == nil {
+			panic(NewNullPointerException())
+		}
+		domainSize, err := domain.Size()
+		if err != nil {
+			return 0, err
+		}
+		if p.TupleFlags == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(p.TupleFlags) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(p.TupleFlags)))
+		}
+		repeat := 1
+		if !p.TupleFlags[i] {
+			if p.Formals == nil {
+				panic(NewNullPointerException())
+			}
+			if i >= len(p.Formals) {
+				panic(NewArrayIndexOutOfBoundsException(i, len(p.Formals)))
+			}
+			if p.Formals[i] == nil {
+				panic(NewNullPointerException())
+			}
+			repeat = max(1, len(p.Formals[i]))
+		}
+		for j := 0; j < repeat; j++ {
+			size *= int64(domainSize)
+			if size < -2147483648 || size > 2147483647 {
+				return 0, NewTLCRuntimeException(ECTLCModuleOverflow, "the number of elements in:\n"+p.String())
+			}
+		}
+	}
+	return int(size), nil
+}
+
+func (p *FcnParams) Elements() ValueEnumeration {
+	if p == nil {
+		panic(NewNullPointerException())
+	}
+	if p.ArgLen == 1 {
+		if p.Domains == nil {
+			panic(NewNullPointerException())
+		}
+		if len(p.Domains) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, len(p.Domains)))
+		}
+		enum, ok := asEnumerable(p.Domains[0])
+		if !ok {
+			return newErrorEnumeration(NewTLCRuntimeExceptionMessage("The domains of formal parameters must be enumerable."))
+		}
+		return enum.Elements()
+	}
+	return newFcnParamsEnumeration(p)
+}
+
+func (p *FcnParams) String() string {
+	if p == nil || p.Domains == nil {
+		panic(NewNullPointerException())
+	}
+	if len(p.Domains) == 0 {
+		return ""
+	}
+	parts := make([]string, len(p.Domains))
+	for i, domain := range p.Domains {
+		if p.Formals == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(p.Formals) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(p.Formals)))
+		}
+		ids := p.Formals[i]
+		if p.TupleFlags == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(p.TupleFlags) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(p.TupleFlags)))
+		}
+		if ids == nil {
+			panic(NewNullPointerException())
+		}
+		var lhs string
+		if p.TupleFlags[i] {
+			names := make([]string, len(ids))
+			for j, id := range ids {
+				if id == nil {
+					panic(NewNullPointerException())
+				}
+				names[j] = id.String()
+			}
+			lhs = "<<" + strings.Join(names, ", ") + ">>"
+		} else {
+			if len(ids) == 0 {
+				panic(NewArrayIndexOutOfBoundsException(0, len(ids)))
+			}
+			if ids[0] == nil {
+				panic(NewNullPointerException())
+			}
+			lhs = ids[0].String()
+		}
+		if domain == nil {
+			panic(NewNullPointerException())
+		}
+		parts[i] = lhs + " \\in " + domain.String()
+	}
+	return strings.Join(parts, ", ")
+}
+
+// Function binding captures the parameter arrays before evaluating membership.
+// Keep the source null/index checks at each read rather than validating all
+// arrays up front: an earlier argument or membership failure must still win.
+func fcnParameterDomain(domains []Value, i int) Value {
+	if domains == nil {
+		panic(NewNullPointerException())
+	}
+	if i < 0 || i >= len(domains) {
+		panic(NewArrayIndexOutOfBoundsException(i, len(domains)))
+	}
+	return domains[i]
+}
+
+func fcnParameterDomainMember(domains []Value, i int, arg Value) (bool, error) {
+	return fcnDomainMember(fcnParameterDomain(domains, i), arg)
+}
+
+func fcnDomainMember(domain, arg Value) (bool, error) {
+	if domain == nil {
+		panic(NewNullPointerException())
+	}
+	return domain.Member(arg)
+}
+
+func fcnParameterIsTuple(flags []bool, i int) bool {
+	if flags == nil {
+		panic(NewNullPointerException())
+	}
+	if i < 0 || i >= len(flags) {
+		panic(NewArrayIndexOutOfBoundsException(i, len(flags)))
+	}
+	return flags[i]
+}
+
+func fcnParameterFormals(formals [][]*SymbolNode, i int) []*SymbolNode {
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	if i < 0 || i >= len(formals) {
+		panic(NewArrayIndexOutOfBoundsException(i, len(formals)))
+	}
+	return formals[i]
+}
+
+func fcnFormalCount(ids []*SymbolNode) int {
+	if ids == nil {
+		panic(NewNullPointerException())
+	}
+	return len(ids)
+}
+
+type fcnParamsEnumeration struct {
+	params       *FcnParams
+	enums        []ValueEnumeration
+	currentElems []Value
+	done         bool
+	err          error
+}
+
+func newFcnParamsEnumeration(params *FcnParams) *fcnParamsEnumeration {
+	out := &fcnParamsEnumeration{
+		params:       params,
+		enums:        make([]ValueEnumeration, params.ArgLen),
+		currentElems: make([]Value, params.ArgLen),
+	}
+	idx := 0
+	if params.Domains == nil {
+		panic(NewNullPointerException())
+	}
+	for i, domain := range params.Domains {
+		enumDomain, ok := asEnumerable(domain)
+		if !ok {
+			out.err = NewTLCRuntimeExceptionMessage("The domains of the parameters must be enumerable.")
+			out.done = true
+			return out
+		}
+		if fcnParameterIsTuple(params.TupleFlags, i) {
+			if idx >= len(out.enums) {
+				panic(NewArrayIndexOutOfBoundsException(idx, len(out.enums)))
+			}
+			out.enums[idx] = enumDomain.Elements()
+			// Java FcnParams.Enumerator initializes tuple groups from enums[i],
+			// not enums[idx].  When earlier groups expanded to multiple formals,
+			// this consumes the earlier domain's enumerator for the initial tuple
+			// slot.  Preserve the quirk for byte-for-byte TLC behavior.
+			if i >= len(out.enums) {
+				panic(NewArrayIndexOutOfBoundsException(i, len(out.enums)))
+			}
+			if out.enums[i] == nil {
+				panic(NewNullPointerException())
+			}
+			out.currentElems[idx] = out.enums[i].NextElement()
+			if err := out.enums[i].Err(); err != nil {
+				out.err = err
+				out.done = true
+				return out
+			}
+			if out.currentElems[idx] == nil {
+				out.done = true
+				return out
+			}
+			idx++
+			continue
+		}
+		count := fcnFormalCount(fcnParameterFormals(params.Formals, i))
+		for j := 0; j < count; j++ {
+			if idx >= len(out.enums) {
+				panic(NewArrayIndexOutOfBoundsException(idx, len(out.enums)))
+			}
+			out.enums[idx] = enumDomain.Elements()
+			out.currentElems[idx] = out.enums[idx].NextElement()
+			if err := out.enums[idx].Err(); err != nil {
+				out.err = err
+				out.done = true
+				return out
+			}
+			if out.currentElems[idx] == nil {
+				out.done = true
+				return out
+			}
+			idx++
+		}
+	}
+	return out
+}
+
+func (e *fcnParamsEnumeration) Reset() {
+	requireValueEnumerationReceiver(e)
+	if e.done || e.err != nil {
+		return
+	}
+	for i := range e.enums {
+		if e.enums[i] == nil {
+			panic(NewNullPointerException())
+		}
+		e.enums[i].Reset()
+		e.currentElems[i] = e.enums[i].NextElement()
+		if err := e.enums[i].Err(); err != nil {
+			e.err = err
+			e.done = true
+			return
+		}
+		if e.currentElems[i] == nil {
+			e.done = true
+			return
+		}
+	}
+	e.done = false
+}
+
+func (e *fcnParamsEnumeration) NextElement() Value {
+	requireValueEnumerationReceiver(e)
+	if e.done || e.err != nil {
+		return nil
+	}
+	elems := make([]Value, len(e.currentElems))
+	copy(elems, e.currentElems)
+	for i := range e.currentElems {
+		if e.enums[i] == nil {
+			panic(NewNullPointerException())
+		}
+		e.currentElems[i] = e.enums[i].NextElement()
+		if err := e.enums[i].Err(); err != nil {
+			e.err = err
+			e.done = true
+			return nil
+		}
+		if e.currentElems[i] != nil {
+			break
+		}
+		if i == len(e.currentElems)-1 {
+			e.done = true
+			break
+		}
+		e.enums[i].Reset()
+		e.currentElems[i] = e.enums[i].NextElement()
+		if err := e.enums[i].Err(); err != nil {
+			e.err = err
+			e.done = true
+			return nil
+		}
+	}
+	return NewTupleValue(elems)
+}
+
+func (e *fcnParamsEnumeration) Err() error { return e.err }
+
+type FcnLambdaValue struct {
+	BaseValue
+	Params  *FcnParams
+	Body    SemanticNode
+	Excepts []*ValueExcept
+	Tool    *Tool
+	Con     *Context
+	State   *TLCStateMut
+	PState  *TLCStateMut
+	Control int
+	FcnRcd  *FcnRcdValue
+
+	closureCaptured bool
+	paramsOwner     *FcnParams
+	bodyOwner       SemanticNode
+	toolOwner       *Tool
+	stateOwner      *TLCStateMut
+	pstateOwner     *TLCStateMut
+}
+
+func NewFcnLambdaValue(params *FcnParams, body SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *FcnLambdaValue {
+	if len(cms) > 1 {
+		panic(NewIllegalArgumentException("NewFcnLambdaValue accepts at most one cost model"))
+	}
+	if state == nil {
+		panic(NewNullPointerException())
+	}
+	cm := DoNotRecordCostModel
+	if len(cms) > 0 {
+		cm = cms[0]
+	}
+	out := &FcnLambdaValue{
+		BaseValue: newBaseValue(cm),
+		Params:    params,
+		Body:      body,
+		Tool:      tool,
+		Con:       con,
+		State:     copyTLCStateForLambda(state),
+		PState:    copyTLCStateForLambda(pstate),
+		Control:   int(int32(control)),
+	}
+	out.captureClosure()
+	return out
+}
+
+func NewFcnLambdaValueFrom(other *FcnLambdaValue, tool *Tool) *FcnLambdaValue {
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	out := &FcnLambdaValue{
+		Params:  other.ownedParams(),
+		Body:    other.ownedBody(),
+		Excepts: other.Excepts,
+		Tool:    tool,
+		Con:     other.Con,
+		State:   other.ownedState(),
+		PState:  other.ownedPState(),
+		Control: int(int32(other.Control)),
+		FcnRcd:  other.FcnRcd,
+	}
+	out.captureClosure()
+	return out
+}
+
+func NewFcnLambdaValueCopy(other *FcnLambdaValue) *FcnLambdaValue {
+	if other == nil {
+		panic(NewNullPointerException())
+	}
+	return NewFcnLambdaValueFrom(other, other.ownedTool())
+}
+
+func (v *FcnLambdaValue) captureClosure() {
+	v.paramsOwner, v.bodyOwner, v.toolOwner = v.Params, v.Body, v.Tool
+	v.stateOwner, v.pstateOwner = v.State, v.PState
+	v.closureCaptured = true
+}
+
+func (v *FcnLambdaValue) ownedParams() *FcnParams {
+	if v.closureCaptured {
+		return v.paramsOwner
+	}
+	return v.Params
+}
+
+func (v *FcnLambdaValue) ownedBody() SemanticNode {
+	if v.closureCaptured {
+		return v.bodyOwner
+	}
+	return v.Body
+}
+
+func (v *FcnLambdaValue) ownedTool() *Tool {
+	if v.closureCaptured {
+		return v.toolOwner
+	}
+	return v.Tool
+}
+
+func (v *FcnLambdaValue) ownedState() *TLCStateMut {
+	if v.closureCaptured {
+		return v.stateOwner
+	}
+	return v.State
+}
+
+func (v *FcnLambdaValue) ownedPState() *TLCStateMut {
+	if v.closureCaptured {
+		return v.pstateOwner
+	}
+	return v.PState
+}
+
+func copyTLCStateForLambda(state *TLCStateMut) *TLCStateMut {
+	if state == nil {
+		return nil
+	}
+	return state.Copy()
+}
+
+func (v *FcnLambdaValue) Kind() ValueKind {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return FcnLambdaValueKind
+}
+func (v *FcnLambdaValue) KindString() string { return ValueKindString(v) }
+func (v *FcnLambdaValue) GetCostModel() CostModel {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.BaseValue.GetCostModel()
+}
+
+func (v *FcnLambdaValue) MakeRecursive(fname *SymbolNode) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.Con == nil {
+		panic(NewNullPointerException())
+	}
+	v.Con = v.Con.Cons(fname, v)
+	v.Control = EvalSetKeepLazy(v.Control)
+}
+
+func (v *FcnLambdaValue) Compare(other Value) (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	fcn, err := v.materializeFcnRcd()
+	if err != nil {
+		return 0, err
+	}
+	return fcn.Compare(other)
+}
+
+func (v *FcnLambdaValue) Equal(other Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	fcn, err := v.materializeFcnRcd()
+	if err != nil {
+		return false, err
+	}
+	return fcn.Equal(other)
+}
+
+func (v *FcnLambdaValue) Member(elem Value) (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if elem == nil {
+		panic(NewNullPointerException())
+	}
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of the function %s", ValuesPPR(elem), ValuesPPR(v)))
+}
+
+func (v *FcnLambdaValue) IsFinite() (resultBool bool, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	return false, v.runtimeFailure(fmt.Sprintf("Attempted to check if the function:\n%s\nis a finite set.", ValuesPPR(v)))
+}
+
+func (v *FcnLambdaValue) Apply(arg Value) (Value, error) {
+	return v.ApplyWithControl(arg, EvalClear)
+}
+
+func (v *FcnLambdaValue) ApplyWithControl(arg Value, control int) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	control = int(int32(control))
+	defer catchValueFailure(v, &err)
+	if v.FcnRcd != nil {
+		return v.FcnRcd.Apply(arg)
+	}
+	res, matches, matchedTerminal, err := v.matchExcepts(arg)
+	if err != nil {
+		return nil, err
+	}
+	if !matchedTerminal {
+		ctx, returnsNull, err := v.bindArgumentForApply(arg)
+		if err != nil || returnsNull {
+			return nil, err
+		}
+		res, err = v.evalBody(ctx, control)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return takeMatchedExcepts(res, matches)
+}
+
+func (v *FcnLambdaValue) ApplyArgs(args []Value, control int) (Value, error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if args == nil {
+		panic(NewNullPointerException())
+	}
+	if len(args) == 1 {
+		return v.ApplyWithControl(args[0], control)
+	}
+	return v.ApplyWithControl(NewTupleValue(args), control)
+}
+
+// Arguments are evaluated before a null Context receiver fails, as in cons().
+func fcnContextCons(ctx *Context, id *SymbolNode, value Value) *Context {
+	if ctx == nil {
+		panic(NewNullPointerException())
+	}
+	return ctx.Cons(id, value)
+}
+
+func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error) {
+	if v.ownedParams() == nil {
+		panic(NewNullPointerException())
+	}
+	ctx := v.Con
+	formals := v.ownedParams().Formals
+	domains := v.ownedParams().Domains
+	isTuples := v.ownedParams().TupleFlags
+	if v.ownedParams().Length() == 1 {
+		in, err := fcnParameterDomainMember(domains, 0, arg)
+		if err != nil {
+			return nil, false, err
+		}
+		if !in {
+			return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%s\nwhich is not in its domain.\n", ValuesPPR(v), ValuesPPR(arg)))
+		}
+		if fcnParameterIsTuple(isTuples, 0) {
+			ids := fcnParameterFormals(formals, 0)
+			argTuple := fcnArgumentTuple(arg)
+			if argTuple == nil {
+				return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg)))
+			}
+			if fcnArgumentTupleSize(argTuple) != fcnFormalCount(ids) {
+				return nil, true, nil
+			}
+			values := argTuple.GetElems()
+			for i, id := range ids {
+				ctx = fcnContextCons(ctx, id, fcnTupleElement(values, i))
+			}
+			return ctx, false, nil
+		}
+		ids := fcnParameterFormals(formals, 0)
+		if fcnFormalCount(ids) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, 0))
+		}
+		ctx = fcnContextCons(ctx, ids[0], arg)
+		return ctx, false, nil
+	}
+	argTuple := fcnArgumentTuple(arg)
+	if argTuple == nil {
+		return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg)))
+	}
+	elems := argTuple.GetElems()
+	argn := 0
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	for i, ids := range formals {
+		domain := fcnParameterDomain(domains, i)
+		if fcnParameterIsTuple(isTuples, i) {
+			in, err := fcnDomainMember(domain, fcnTupleElement(elems, argn))
+			if err != nil {
+				return nil, false, err
+			}
+			if !in {
+				return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain.\n", ValuesPPR(v), argn+1, ValuesPPR(fcnTupleElement(elems, argn))))
+			}
+			element := fcnTupleElement(elems, argn)
+			argn++
+			tv := fcnArgumentTuple(element)
+			if tv == nil || fcnArgumentTupleSize(tv) != fcnFormalCount(ids) {
+				return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(fcnTupleElement(elems, argn-1))))
+			}
+			values := tv.GetElems()
+			for j, id := range ids {
+				ctx = fcnContextCons(ctx, id, fcnTupleElement(values, j))
+			}
+			continue
+		}
+		_ = fcnFormalCount(ids)
+		for _, id := range ids {
+			in, err := fcnDomainMember(domain, fcnTupleElement(elems, argn))
+			if err != nil {
+				return nil, false, err
+			}
+			if !in {
+				domainValue, derr := v.GetDomain()
+				if derr != nil {
+					return nil, false, derr
+				}
+				return nil, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in the function's domain %s.\n", ValuesPPR(v), argn+1, ValuesPPR(fcnTupleElement(elems, argn)), domainValue))
+			}
+			ctx = fcnContextCons(ctx, id, fcnTupleElement(elems, argn))
+			argn++
+		}
+	}
+	return ctx, false, nil
+}
+
+func (v *FcnLambdaValue) Select(arg Value) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if v.FcnRcd != nil {
+		return v.FcnRcd.Select(arg)
+	}
+	res, matches, matchedTerminal, err := v.matchExcepts(arg)
+	if err != nil {
+		return nil, err
+	}
+	if !matchedTerminal {
+		ctx, ok, err := v.bindArgument(arg)
+		if err != nil || !ok {
+			return nil, err
+		}
+		res, err = v.evalBody(ctx, v.Control)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return takeMatchedExcepts(res, matches)
+}
+
+func (v *FcnLambdaValue) evalBody(ctx *Context, control int) (Value, error) {
+	if v.ownedTool() == nil {
+		panic(NewNullPointerException())
+	}
+	return v.ownedTool().Eval(v.ownedBody(), ctx, v.ownedState(), v.ownedPState(), control, v.CM)
+}
+
+func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
+	if v.ownedParams() == nil {
+		panic(NewNullPointerException())
+	}
+	ctx := v.Con
+	formals := v.ownedParams().Formals
+	domains := v.ownedParams().Domains
+	isTuples := v.ownedParams().TupleFlags
+	if v.ownedParams().Length() == 1 {
+		in, err := fcnParameterDomainMember(domains, 0, arg)
+		if err != nil || !in {
+			return ctx, false, err
+		}
+		if fcnParameterIsTuple(isTuples, 0) {
+			ids := fcnParameterFormals(formals, 0)
+			argTuple := fcnArgumentTuple(arg)
+			if argTuple == nil {
+				return ctx, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg)))
+			}
+			if fcnArgumentTupleSize(argTuple) != fcnFormalCount(ids) {
+				return ctx, false, nil
+			}
+			values := argTuple.GetElems()
+			for i, id := range ids {
+				ctx = fcnContextCons(ctx, id, fcnTupleElement(values, i))
+			}
+			return ctx, true, nil
+		}
+		ids := fcnParameterFormals(formals, 0)
+		if fcnFormalCount(ids) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, 0))
+		}
+		return fcnContextCons(ctx, ids[0], arg), true, nil
+	}
+	argTuple := fcnArgumentTuple(arg)
+	if argTuple == nil {
+		return ctx, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg)))
+	}
+	elems := argTuple.GetElems()
+	argn := 0
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	for i, ids := range formals {
+		domain := fcnParameterDomain(domains, i)
+		if fcnParameterIsTuple(isTuples, i) {
+			in, err := fcnDomainMember(domain, fcnTupleElement(elems, argn))
+			if err != nil || !in {
+				return ctx, false, err
+			}
+			element := fcnTupleElement(elems, argn)
+			argn++
+			tv := fcnArgumentTuple(element)
+			if tv == nil {
+				return ctx, false, v.runtimeFailure(fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(fcnTupleElement(elems, argn-1))))
+			}
+			if fcnArgumentTupleSize(tv) != fcnFormalCount(ids) {
+				return ctx, false, nil
+			}
+			values := tv.GetElems()
+			for j, id := range ids {
+				ctx = fcnContextCons(ctx, id, fcnTupleElement(values, j))
+			}
+			continue
+		}
+		_ = fcnFormalCount(ids)
+		for _, id := range ids {
+			in, err := fcnDomainMember(domain, fcnTupleElement(elems, argn))
+			if err != nil || !in {
+				return ctx, false, err
+			}
+			ctx = fcnContextCons(ctx, id, fcnTupleElement(elems, argn))
+			argn++
+		}
+	}
+	return ctx, true, nil
+}
+
+// Materialization casts enumerated arguments directly; it does not perform
+// the tuple conversion or membership checks used by Apply and Select.
+func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value, formals [][]*SymbolNode, isTuples []bool, single bool) (*Context, error) {
+	ctx := v.Con
+	if single {
+		if fcnParameterIsTuple(isTuples, 0) {
+			ids := fcnParameterFormals(formals, 0)
+			tuple := fcnEnumeratedTuple(arg)
+			count := fcnFormalCount(ids)
+			for i := 0; i < count; i++ {
+				ctx = fcnContextCons(ctx, ids[i], fcnTupleElement(tuple.GetElems(), i))
+			}
+			return ctx, nil
+		}
+		ids := fcnParameterFormals(formals, 0)
+		if fcnFormalCount(ids) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, 0))
+		}
+		return fcnContextCons(ctx, ids[0], arg), nil
+	}
+	argTuple := fcnEnumeratedTuple(arg)
+	argn := 0
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	for i, ids := range formals {
+		if fcnParameterIsTuple(isTuples, i) {
+			tv := fcnEnumeratedTuple(fcnTupleElement(argTuple.GetElems(), argn))
+			argn++
+			count := fcnFormalCount(ids)
+			for j := 0; j < count; j++ {
+				ctx = fcnContextCons(ctx, ids[j], fcnTupleElement(tv.GetElems(), j))
+			}
+			continue
+		}
+		count := fcnFormalCount(ids)
+		for j := 0; j < count; j++ {
+			ctx = fcnContextCons(ctx, ids[j], fcnTupleElement(argTuple.GetElems(), argn))
+			argn++
+		}
+	}
+	return ctx, nil
+}
+
+func fcnArgumentTuple(arg Value) *TupleValue {
+	if arg == nil {
+		panic(NewNullPointerException())
+	}
+	return asTupleValue(arg)
+}
+
+func fcnArgumentTupleSize(tuple *TupleValue) int {
+	size, err := tuple.Size()
+	if err != nil {
+		panic(err)
+	}
+	return size
+}
+
+func fcnEnumeratedTuple(arg Value) *TupleValue {
+	if arg == nil {
+		panic(NewNullPointerException())
+	}
+	tuple, ok := arg.(*TupleValue)
+	if !ok {
+		panic(valueStreamClassCast(arg, "tlc2.value.impl.TupleValue"))
+	}
+	if tuple == nil {
+		panic(NewNullPointerException())
+	}
+	return tuple
+}
+
+func fcnTupleElement(elems []Value, i int) Value {
+	if elems == nil {
+		panic(NewNullPointerException())
+	}
+	if i < 0 || i >= len(elems) {
+		panic(NewArrayIndexOutOfBoundsException(i, len(elems)))
+	}
+	return elems[i]
+}
+
+func (v *FcnLambdaValue) matchExcepts(arg Value) (Value, []*ValueExcept, bool, error) {
+	var res Value
+	matchedTerminal := false
+	var matches []*ValueExcept
+	for i := len(v.Excepts) - 1; i >= 0; i-- {
+		ex := v.Excepts[i]
+		cur := ex.Current()
+		if cur == nil {
+			panic(NewNullPointerException())
+		}
+		eq, err := cur.Equal(arg)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		if !eq {
+			continue
+		}
+		if ex.IsLast() {
+			res = ex.Value
+			matchedTerminal = res != nil
+			break
+		}
+		matches = append(matches, ex.Advanced())
+	}
+	for i, j := 0, len(matches)-1; i < j; i, j = i+1, j-1 {
+		matches[i], matches[j] = matches[j], matches[i]
+	}
+	return res, matches, matchedTerminal, nil
+}
+
+func takeMatchedExcepts(value Value, matches []*ValueExcept) (Value, error) {
+	if len(matches) == 0 {
+		return value, nil
+	}
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	return value.TakeExcepts(matches)
+}
+
+func (v *FcnLambdaValue) TakeExcept(ex *ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if ex == nil || ex.Path == nil {
+		panic(NewNullPointerException())
+	}
+	if ex.Index >= len(ex.Path) {
+		return ex.Value, nil
+	}
+	if v.FcnRcd != nil {
+		return v.FcnRcd.TakeExcept(ex)
+	}
+	fcn := NewFcnLambdaValueCopy(v)
+	fcn.Excepts = append(copyValueExcepts(v.Excepts), ex)
+	return fcn, nil
+}
+
+func (v *FcnLambdaValue) TakeExcepts(exs []*ValueExcept) (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if v.FcnRcd != nil {
+		return v.FcnRcd.TakeExcepts(exs)
+	}
+	fcn := NewFcnLambdaValueCopy(v)
+	if exs == nil {
+		panic(NewNullPointerException())
+	}
+	if len(exs) == 0 {
+		return fcn, nil
+	}
+	lastComplete := -1
+	for i := len(exs) - 1; i >= 0; i-- {
+		if exs[i] == nil || exs[i].Path == nil {
+			panic(NewNullPointerException())
+		}
+		if exs[i].Index >= len(exs[i].Path) {
+			lastComplete = i
+			break
+		}
+	}
+	if lastComplete >= 0 {
+		fcn.Excepts = copyValueExcepts(exs[lastComplete+1:])
+		return fcn, nil
+	}
+	fcn.Excepts = append(copyValueExcepts(v.Excepts), copyValueExcepts(exs)...)
+	return fcn, nil
+}
+
+func (v *FcnLambdaValue) GetDomain() (resultValue Value, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if v.FcnRcd != nil {
+		return v.FcnRcd.DomainValue(), nil
+	}
+	if v.ownedParams() == nil {
+		panic(NewNullPointerException())
+	}
+	length := v.ownedParams().Length()
+	if length == 1 {
+		return fcnParameterDomain(v.ownedParams().Domains, 0), nil
+	}
+	if length < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(length)))
+	}
+	sets := make([]Value, length)
+	if v.ownedParams().Domains == nil {
+		panic(NewNullPointerException())
+	}
+	dlen := len(v.ownedParams().Domains)
+	isTuples := v.ownedParams().TupleFlags
+	idx := 0
+	for i := 0; i < dlen; i++ {
+		formal := fcnParameterFormals(v.ownedParams().Formals, i)
+		domain := fcnParameterDomain(v.ownedParams().Domains, i)
+		count := 1
+		if !fcnParameterIsTuple(isTuples, i) {
+			count = fcnFormalCount(formal)
+		}
+		for j := 0; j < count; j++ {
+			if idx >= len(sets) {
+				panic(NewArrayIndexOutOfBoundsException(idx, len(sets)))
+			}
+			sets[idx] = domain
+			idx++
+		}
+	}
+	return NewSetOfTuplesValue(sets), nil
+}
+
+func (v *FcnLambdaValue) Size() (resultInt int, err error) {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, &err)
+	if v.FcnRcd != nil {
+		return v.FcnRcd.Size()
+	}
+	return v.ownedParams().Size()
+}
+
+func (v *FcnLambdaValue) IsDefined() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return true
+}
+
+func (v *FcnLambdaValue) DeepCopy() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	fcn := NewFcnLambdaValueCopy(v)
+	if v.FcnRcd != nil {
+		if copied, ok := v.FcnRcd.DeepCopy().(*FcnRcdValue); ok {
+			fcn.FcnRcd = copied
+		}
+	}
+	return fcn
+}
+
+func (v *FcnLambdaValue) IsNormalized() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	return v.FcnRcd != nil && v.FcnRcd.IsNormalized()
+}
+
+func (v *FcnLambdaValue) Normalize() Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.FcnRcd != nil {
+		v.FcnRcd.Normalize()
+	}
+	return v
+}
+
+func (v *FcnLambdaValue) DeepNormalize() {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if v.FcnRcd != nil {
+		v.FcnRcd.DeepNormalize()
+		return
+	}
+	for i := range v.Excepts {
+		if v.Excepts[i] == nil || v.Excepts[i].Value == nil {
+			panic(NewNullPointerException())
+		}
+		v.Excepts[i].Value.DeepNormalize()
+		for j := 0; ; j++ {
+			if v.Excepts[i].Path == nil {
+				panic(NewNullPointerException())
+			}
+			if j >= len(v.Excepts[i].Path) {
+				break
+			}
+			if v.Excepts[i].Path[j] == nil {
+				panic(NewNullPointerException())
+			}
+			v.Excepts[i].Path[j].DeepNormalize()
+		}
+	}
+	if v.ownedParams() == nil || v.ownedParams().Domains == nil {
+		panic(NewNullPointerException())
+	}
+	domains := v.ownedParams().Domains
+	for _, domain := range domains {
+		if domain == nil {
+			panic(NewNullPointerException())
+		}
+		domain.DeepNormalize()
+	}
+}
+
+func (v *FcnLambdaValue) ToTuple() *TupleValue {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	if v.ownedParams() == nil {
+		panic(NewNullPointerException())
+	}
+	if v.ownedParams().Length() != 1 {
+		return nil
+	}
+	domain := fcnParameterDomain(v.ownedParams().Domains, 0)
+	if intv, ok := domain.(*IntervalValue); ok {
+		size, err := intv.Size()
+		if err != nil {
+			panic(err)
+		}
+		if intv.Low != 1 && size != 0 {
+			return nil
+		}
+		elems := make([]Value, size)
+		for i := 0; i < size; i++ {
+			elem, err := v.Select(NewIntValue(int32(i + 1)))
+			if err != nil {
+				panic(err)
+			}
+			elems[i] = elem
+		}
+		v.CM.incValueSecondary(int64(len(elems)))
+		return NewTupleValue(elems, v.CM)
+	}
+	if domain == nil {
+		panic(NewNullPointerException())
+	}
+	set, err := tryToSetEnumValue(domain)
+	if err != nil {
+		panic(err)
+	}
+	if set == nil {
+		panic(v.runtimeFailure("To convert a function of form [x \\in S |-> f(x)] to a tuple, the set S must be enumerable."))
+	}
+	if _, err := set.normalizeSet(); err != nil {
+		panic(err)
+	}
+	size, err := set.Size()
+	if err != nil {
+		panic(err)
+	}
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(size)))
+	}
+	elems := make([]Value, size)
+	for i := 0; i < size; i++ {
+		arg := set.Elems.At(i)
+		iv, ok := arg.(*IntValue)
+		if !ok || iv.ownedVal() != int32(i+1) {
+			return nil
+		}
+		elem, err := v.Select(arg)
+		if err != nil {
+			panic(err)
+		}
+		elems[i] = elem
+	}
+	// Java's explicit-domain branch increments even when coverage is disabled.
+	v.CM.IncSecondary(int64(len(elems)))
+	return NewTupleValue(elems, v.CM)
+}
+
+func (v *FcnLambdaValue) ToRcd() *RecordValue {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	fcn, err := v.materializeFcnRcd()
+	if err != nil {
+		panic(err)
+	}
+	if fcn == nil || fcn.ownedDomain() == nil {
+		return nil
+	}
+	if err := fcn.normalizeFcn(); err != nil {
+		panic(err)
+	}
+	names := make([]*UniqueString, len(fcn.ownedDomain()))
+	for i, elem := range fcn.ownedDomain() {
+		str, ok := asStringValue(elem)
+		if !ok {
+			return nil
+		}
+		names[i] = str.ownedVal()
+	}
+	v.CM.incValueSecondary(int64(len(names)))
+	return NewRecordValue(names, fcn.ownedValues(), fcn.IsNorm, v.CM)
+}
+
+// ToRecord retains the original Go compatibility name.
+func (v *FcnLambdaValue) ToRecord() *RecordValue {
+	return v.ToRcd()
+}
+
+func (v *FcnLambdaValue) ToFcnRcd() *FcnRcdValue {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	fcn, err := v.materializeFcnRcd()
+	if err != nil {
+		panic(err)
+	}
+	return fcn
+}
+
+func (v *FcnLambdaValue) materializeFcnRcd() (resultFcn *FcnRcdValue, err error) {
+	defer catchValueFailure(v, &err)
+	if v.FcnRcd != nil {
+		return v.FcnRcd, nil
+	}
+	size, err := v.ownedParams().Size()
+	if err != nil {
+		return nil, err
+	}
+	formals := v.ownedParams().Formals
+	isTuples := v.ownedParams().TupleFlags
+	domain := make([]Value, size)
+	values := make([]Value, size)
+	idx := 0
+	enum := v.ownedParams().Elements()
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	single := v.ownedParams().Length() == 1
+	for arg := enum.NextElement(); arg != nil; arg = enum.NextElement() {
+		if err := enum.Err(); err != nil {
+			return nil, err
+		}
+		if idx >= len(domain) {
+			panic(NewArrayIndexOutOfBoundsException(idx, len(domain)))
+		}
+		domain[idx] = arg
+		ctx, err := v.bindEnumeratedArgument(arg, formals, isTuples, single)
+		if err != nil {
+			return nil, err
+		}
+		values[idx], err = v.evalBody(ctx, v.Control)
+		if err != nil {
+			return nil, err
+		}
+		idx++
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	if single {
+		if intv, ok := fcnParameterDomain(v.ownedParams().Domains, 0).(*IntervalValue); ok {
+			v.FcnRcd = NewFcnRcdIntervalValue(intv, values, v.CM)
+		} else {
+			v.FcnRcd = NewFcnRcdValue(domain, values, false, v.CM)
+		}
+	} else {
+		v.FcnRcd = NewFcnRcdValue(domain, values, false, v.CM)
+	}
+	v.CM.incValueSecondary(int64(size))
+	if v.Excepts != nil {
+		taken, err := v.FcnRcd.TakeExcepts(cloneValueExcepts(v.Excepts))
+		if err != nil {
+			return nil, err
+		}
+		if taken == nil {
+			v.FcnRcd = nil
+			return nil, nil
+		}
+		fcn, ok := taken.(*FcnRcdValue)
+		if !ok {
+			panic(valueStreamClassCast(taken, "tlc2.value.impl.FcnRcdValue"))
+		}
+		v.FcnRcd = fcn
+	}
+	return v.FcnRcd, nil
+}
+
+func (v *FcnLambdaValue) FingerPrint(fp uint64) uint64 {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	fcn, err := v.materializeFcnRcd()
+	if err != nil {
+		panic(err)
+	}
+	return fcn.FingerPrint(fp)
+}
+
+func (v *FcnLambdaValue) Permute(perm *MVPerm) Value {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	fcn, err := v.materializeFcnRcd()
+	if err != nil {
+		panic(err)
+	}
+	return fcn.Permute(perm)
+}
+
+func (v *FcnLambdaValue) String() string {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return ValueToString(v, "", true)
+}
+
+func (v *FcnLambdaValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(v, nil)
+	if Globals.Expand || v.ownedParams() == nil {
+		var expanded *strings.Builder
+		if tryValueString(true, func() {
+			fcn, err := v.materializeFcnRcd()
+			if err != nil {
+				panic(err)
+			}
+			if fcn == nil {
+				panic(NewNullPointerException())
+			}
+			// Java always requests checked printing here, even for unchecked callers.
+			expanded = appendValueString(fcn, sb, offset, true)
+		}) {
+			return expanded
+		}
+	}
+	sb.WriteString("[" + v.ownedParams().String())
+	bodyText := "null"
+	if v.ownedBody() != nil {
+		bodyText = toContextString(v.ownedBody())
+	}
+	sb.WriteString(" |-> <expression " + bodyText + ">]")
+	return sb
+}
+
+func (v *FcnLambdaValue) GetBody() SemanticNode {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.ownedBody()
+}
+
+func (v *FcnLambdaValue) GetRcd() *FcnRcdValue {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.FcnRcd
+}
+
+func (v *FcnLambdaValue) GetParams() *FcnParams {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.ownedParams()
+}
+
+func (v *FcnLambdaValue) GetCon() *Context {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.Con
+}
+
+func (v *FcnLambdaValue) HasRcd() bool {
+	if v == nil {
+		panic(NewNullPointerException())
+	}
+	return v.FcnRcd != nil
+}
+
+func (ex *ValueExcept) Current() Value {
+	if ex == nil || ex.Path == nil {
+		panic(NewNullPointerException())
+	}
+	if ex.Index < 0 || ex.Index >= len(ex.Path) {
+		panic(NewArrayIndexOutOfBoundsException(ex.Index, len(ex.Path)))
+	}
+	return ex.Path[ex.Index]
+}
+
+func (ex *ValueExcept) IsLast() bool {
+	if ex == nil || ex.Path == nil {
+		panic(NewNullPointerException())
+	}
+	return ex.Index == len(ex.Path)-1
+}
+
+func (ex *ValueExcept) CheckArg(fcn *FcnLambdaValue) (*ValueExcept, error) {
+	argument := ex.Current()
+	if fcn == nil || fcn.GetParams() == nil {
+		panic(NewNullPointerException())
+	}
+	params := fcn.GetParams()
+	if params.Length() == 1 {
+		domain := fcnParameterDomain(params.GetDomains(), 0)
+		member, err := domain.Member(argument)
+		if err != nil || !member {
+			return nil, err
+		}
+		return ex, nil
+	}
+	tuple := fcnEnumeratedTuple(argument)
+	argumentIndex := 0
+	formalsByGroup := params.GetFormals()
+	domains := params.GetDomains()
+	for i := range formalsByGroup {
+		formals := fcnParameterFormals(formalsByGroup, i)
+		domain := fcnParameterDomain(domains, i)
+		for range formals {
+			member, err := domain.Member(fcnTupleElement(tuple.GetElems(), argumentIndex))
+			if err != nil || !member {
+				return nil, err
+			}
+			argumentIndex++
+		}
+	}
+	return ex, nil
+}
+
+func (ex *ValueExcept) Advanced() *ValueExcept {
+	return NewValueExceptCopy(ex, ex.Index+1)
+}
+
+// cloneValueExcept copies the cursor, sharing the retained path and replacement.
+func cloneValueExcept(ex *ValueExcept) *ValueExcept {
+	return NewValueExceptCopy(ex)
+}
+
+func (ex *ValueExcept) String() string {
+	if ex == nil || ex.Path == nil {
+		panic(NewNullPointerException())
+	}
+	var out strings.Builder
+	for _, value := range ex.Path {
+		out.WriteString(".(")
+		out.WriteString(strconv.Itoa(ex.Index))
+		out.WriteString(")")
+		if isNil(value) {
+			out.WriteString("null")
+		} else {
+			out.WriteString(value.String())
+		}
+	}
+	out.WriteString(" = ")
+	if isNil(ex.Value) {
+		out.WriteString("null")
+	} else {
+		out.WriteString(ex.Value.String())
+	}
+	return out.String()
+}
+
+// copyValueExcepts copies the array while retaining its update objects.
+func copyValueExcepts(exs []*ValueExcept) []*ValueExcept {
+	if exs == nil {
+		return nil
+	}
+	out := make([]*ValueExcept, len(exs))
+	for i, ex := range exs {
+		out[i] = ex
+	}
+	return out
+}
+
+func cloneValueExcepts(exs []*ValueExcept) []*ValueExcept {
+	out := make([]*ValueExcept, len(exs))
+	for i, ex := range exs {
+		out[i] = cloneValueExcept(ex)
+	}
+	return out
+}

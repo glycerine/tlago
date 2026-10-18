@@ -1,0 +1,189 @@
+<project name="CommunityModules" default="test" basedir=".">
+
+	<property name="src" location="modules/"/>
+	<property name="src-test" location="tests/java"/>
+	<property name="build" location="build"/>
+	<property name="dist" location="dist"/>
+	<property name="lib" location="lib"/>
+	<property name="tests" location="tests"/>
+	<property name="tlc" location="tlc"/>
+
+	<tstamp>
+		<format property="timestamp"
+          pattern="yyyyMMdHHmm"
+          locale="en,UK"/>
+	</tstamp>
+
+	<target name="init" description="Create the build and dist directory structure">
+		<mkdir dir="${build}/modules"/>
+		<mkdir dir="${build}/tests"/>
+		<mkdir dir="${dist}"/>
+		<mkdir dir="${tlc}"/>
+	</target>
+
+	<target name="download" depends="init" description="downloads tla2tools.jar" unless="skip.download">
+		<!--<get src="https://github.com/tlaplus/tlaplus/releases/download/v1.7.0/tla2tools.jar" dest="${tlc}"/>-->
+<!--		<get src="https://nightly.tlapl.us/dist/tla2tools.jar" dest="${tlc}"/> -->
+		<get src="https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar" dest="${tlc}"/>
+	</target>
+
+	<target name="compile" depends="download" description="compile the java module overwrites">
+		<javac srcdir="${src}" destdir="${build}/modules" classpath="${tlc}/tla2tools.jar:${lib}/gson-2.8.6.jar:${lib}/jgrapht-core-1.5.1.jar:${lib}/jungrapht-layout-1.4-SNAPSHOT.jar:${lib}/slf4j-api-1.7.30.jar:${lib}/slf4j-nop-1.7.30.jar:${lib}/commons-lang3-3.12.0.jar:${lib}/commons-math3-3.6.1.jar"
+           source="1.8"
+           target="1.8"
+           deprecation="true"
+           includeantruntime="false"/>
+	</target>
+
+	<target name="dist" depends="compile" description="Combine the module overwrites and the TLA+ definitions into a distribution">
+		<tstamp/>
+		<jar jarfile="${dist}/CommunityModules-${timestamp}.jar">
+			<fileset dir="${build}/modules/"
+             includes="**/*.class"/>
+			<fileset dir="${src}/"
+             includes="*.tla,*.java"/>
+			<fileset dir="."
+             includes="LICENSE,README.md"/>
+		</jar>
+		<copy file="${dist}/CommunityModules-${timestamp}.jar" tofile="${dist}/CommunityModules.jar"/>
+
+		<!-- Extract gson xml into class directory to be packaged into CommunityModules-deps.jar. -->
+		<unzip src="lib/gson-2.8.6.jar" dest="${build}/deps">
+			<patternset>
+		        <include name="**/*.class"/>
+			</patternset>
+		</unzip>
+		<unzip src="lib/jgrapht-core-1.5.1.jar" dest="${build}/deps">
+			<patternset>
+				<!-- https://github.com/jgrapht/jgrapht/issues/1112 -->
+		        <exclude name="**/*rensenIndexLinkPrediction.class"/>
+		        <include name="**/*.class"/>
+			</patternset>
+		</unzip>
+		<unzip src="lib/jungrapht-layout-1.4-SNAPSHOT.jar" dest="${build}/deps">
+			<patternset>
+		        <include name="**/*.class"/>
+			</patternset>
+		</unzip>
+		<unzip src="lib/slf4j-api-1.7.30.jar" dest="${build}/deps">
+			<patternset>
+		        <include name="**/*.class"/>
+			</patternset>
+		</unzip>
+		<unzip src="lib/slf4j-nop-1.7.30.jar" dest="${build}/deps">
+			<patternset>
+		        <include name="**/*.class"/>
+			</patternset>
+		</unzip>
+		<unzip src="lib/commons-lang3-3.12.0.jar" dest="${build}/deps">
+			<patternset>
+		        <include name="**/*.class"/>
+			</patternset>
+		</unzip>
+		<unzip src="lib/commons-math3-3.6.1.jar" dest="${build}/deps">
+			<patternset>
+		        <include name="**/*.class"/>
+			</patternset>
+		</unzip>
+		<jar jarfile="${dist}/CommunityModules-deps-${timestamp}.jar">
+			<fileset dir="${build}/modules/"
+             includes="**/*.class"/>
+			<fileset dir="${build}/deps"
+             includes="**/*.class"/>
+			<fileset dir="${lib}"
+             includes="**/NOTICE*"/>
+			<fileset dir="${lib}"
+             includes="**/LICENSE*"/>
+			<fileset dir="${src}/"
+             includes="*.tla,*.java"/>
+			<fileset dir="."
+             includes="LICENSE,README.md"/>
+		</jar>
+		<copy file="${dist}/CommunityModules-deps-${timestamp}.jar" tofile="${dist}/CommunityModules-deps.jar"/>
+	</target>
+
+	<target name="test" depends="dist" description="Run the modules in tests/ on the TLA+ modules in dist/">
+		<!-- On Unix, run AllTestsUnix which includes IOExec/shell tests; on Windows, run AllTests only. -->
+		<condition property="allTests" value="${basedir}/tests/AllTestsUnix">
+			<not><os family="windows"/></not>
+		</condition>
+		<property name="allTests" value="${basedir}/tests/AllTests"/>
+
+		<!-- If an assert fails, TLC will return a non-zero exit value which is makes the ant target fail. -->
+		<java classname="tlc2.TLC" fork="true" failonerror="true">
+			<!-- Tell Java to use a garbage collector which makes TLC happy. -->
+			<jvmarg value="-XX:+UseParallelGC"/>
+			
+			<env key="SOME_TEST_ENV_VAR" value="TLCFTW"/>
+			<env key="SOME-TEST-ENV-VAR" value="TLCFTW"/>
+			<env key="SOME_TEST_ENV_VAR_N23" value="23"/>
+			
+			<!-- Report execution statistics as azure-pipelien -->
+			<sysproperty key="tlc2.TLC.ide" value="azure-pipeline"/>
+			<sysproperty key="util.ExecutionStatisticsCollector.id" value="01ed03e40ba44f278a934849dd2b1038"/>
+			
+			<arg value="-fp"/>
+			<arg value="1"/>
+			<arg value="-metadir"/>
+			<arg value="${basedir}/build/states"/>
+			<arg value="-cleanup"/>
+			<arg value="-config"/>
+			<arg value="${basedir}/tests/AllTests.cfg"/>
+			<arg value="${allTests}"/>
+
+			<classpath>
+				<pathelement location="${tlc}/tla2tools.jar" />
+				<pathelement location="${lib}/gson-2.8.6.jar" />
+				<pathelement location="${lib}/jgrapht-core-1.5.1.jar" />
+				<pathelement location="${lib}/jungrapht-layout-1.4-SNAPSHOT.jar" />
+				<pathelement location="${lib}/slf4j-api-1.7.30.jar" />
+				<pathelement location="${lib}/slf4j-nop-1.7.30.jar" />
+				<pathelement location="${lib}/commons-lang3-3.12.0.jar" />
+				<pathelement location="${lib}/commons-math3-3.6.1.jar" />
+				<!-- The jar that has just been built by the dist target. -->
+				<pathelement location="${dist}/CommunityModules-${timestamp}.jar" />
+			</classpath>
+		</java>
+		
+		<!-- Test if trace expressions involving the ShiViz module work correctly. -->
+		<!-- This test expects TLC to report a liveness violation, which is why    -->
+		<!-- failonerror is off.  Instead, ant records TLC's return value in       -->
+		<!-- shiviz.return.value, which is checked in the conditional below.        -->
+		<java classname="tlc2.TLC" fork="true" failonerror="false" resultproperty="shiviz.return.value">
+			<!-- Tell Java to use a garbage collector which makes TLC happy. -->
+			<jvmarg value="-XX:+UseParallelGC"/>
+
+			<!-- Report execution statistics as azure-pipeline -->
+			<sysproperty key="tlc2.TLC.ide" value="azure-pipeline"/>
+			<sysproperty key="util.ExecutionStatisticsCollector.id" value="01ed03e40ba44f278a934849dd2b1038"/>
+			<sysproperty key="TLA-Library" value="${src}"/>
+			
+			<arg value="-metadir"/>
+			<arg value="${basedir}/build/states"/>
+			<arg value="-cleanup"/>
+			<arg value="-deadlock"/>
+			<arg value="-noGenerateSpecTE"/>
+			<arg value="${basedir}/tests/GH037/ShiVizTests"/>
+
+			<classpath>
+				<pathelement location="${tlc}/tla2tools.jar" />
+				<!-- The jar that has just been built by the dist target. -->
+				<pathelement location="${dist}/CommunityModules-${timestamp}-deps.jar" />
+			</classpath>
+		</java>
+	    <fail message="ERROR: ShiViz test failed">
+	        <condition>
+	            <not>
+	            	<!-- Assert that TLC's error code is 13, which is the code corresponding to a liveness violation. -->
+	                <equals arg1="${shiviz.return.value}" arg2="13"/>
+	            </not>
+	        </condition>
+	    </fail>
+	</target>
+
+	<target name="clean" description="Delete the ${build}, ${tlc} and ${dist} directory trees">
+		<delete dir="${build}"/>
+		<delete dir="${dist}"/>
+		<delete dir="${tlc}"/>
+	</target>
+</project>

@@ -1,0 +1,43 @@
+{
+  "sources": [],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/MissionariesAndCannibals/APMissionariesAndCannibals.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/MissionariesAndCannibals/APMissionariesAndCannibals.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/MissionariesAndCannibals/MissionariesAndCannibals.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/MissionariesAndCannibals/MissionariesAndCannibals.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "safety failure"
+        }
+      ]
+    },
+    {
+      "path": "specifications/MissionariesAndCannibals/MissionariesAndCannibals_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

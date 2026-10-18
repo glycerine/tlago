@@ -1,0 +1,67 @@
+{
+  "sources": [
+    "https://research.nicola-santoro.com/DADA.html"
+  ],
+  "authors": [
+    "Ludovic Yvoz",
+    "Stephan Merz"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/YoYo/MCYoYoNoPruning.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/YoYo/MCYoYoNoPruning.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 60,
+          "totalStates": 110,
+          "stateDepth": 19
+        }
+      ]
+    },
+    {
+      "path": "specifications/YoYo/MCYoYoPruning.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/YoYo/MCYoYoPruning.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 102,
+          "totalStates": 157,
+          "stateDepth": 31
+        }
+      ]
+    },
+    {
+      "path": "specifications/YoYo/YoYoAllGraphs.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/YoYo/YoYoAllGraphs.cfg",
+          "runtime": "00:00:02",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 26731,
+          "totalStates": 48535,
+          "stateDepth": 39
+        }
+      ]
+    },
+    {
+      "path": "specifications/YoYo/YoYoNoPruning.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/YoYo/YoYoPruning.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "sources": [
+    "https://groups.google.com/g/tlaplus/c/5Xd8kv288jE/m/IrliJIatBwAJ"
+  ],
+  "authors": [
+    "Andrew Helwer"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/MultiCarElevator/Elevator.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/MultiCarElevator/ElevatorLivenessLarge.cfg",
+          "runtime": "00:11:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/MultiCarElevator/ElevatorLivenessMedium.cfg",
+          "runtime": "00:00:10",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4122,
+          "totalStates": 14296,
+          "stateDepth": 36
+        },
+        {
+          "path": "specifications/MultiCarElevator/ElevatorSafetyLarge.cfg",
+          "runtime": "00:10:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/MultiCarElevator/ElevatorSafetyMedium.cfg",
+          "runtime": "00:03:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/MultiCarElevator/ElevatorSafetySmall.cfg",
+          "runtime": "00:00:15",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4122,
+          "totalStates": 14296,
+          "stateDepth": 37
+        }
+      ]
+    },
+    {
+      "path": "specifications/MultiCarElevator/Elevator_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

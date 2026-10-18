@@ -1,0 +1,491 @@
+package tlc
+
+func EmptyBag() Value {
+	return emptyFcnValue()
+}
+
+func IsABag(value Value) (*BoolValue, error) {
+	if isNil(value) {
+		panic(NewNullPointerException())
+	}
+	fcn := asFcnRcdValue(value)
+	if fcn == nil {
+		return BoolFalse, nil
+	}
+	values := fcn.ownedValues()
+	if values == nil {
+		panic(NewNullPointerException())
+	}
+	for _, value := range values {
+		count, ok := value.(*IntValue)
+		if !ok || count == nil || count.ownedVal() <= 0 {
+			return BoolFalse, nil
+		}
+	}
+	return BoolTrue, nil
+}
+
+func BagCardinality(value Value) (*IntValue, error) {
+	if isNil(value) {
+		panic(NewNullPointerException())
+	}
+	fcn := asFcnRcdValue(value)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagCardinality", "a function with a finite domain", ValuesPPR(value))
+	}
+	total := int32(0)
+	values := fcn.ownedValues()
+	if values == nil {
+		panic(NewNullPointerException())
+	}
+	for _, elem := range values {
+		count, ok := elem.(*IntValue)
+		if !ok || count == nil || count.ownedVal() <= 0 {
+			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagCardinality", "a bag", ValuesPPR(value))
+		}
+		total += count.ownedVal()
+	}
+	return NewIntValue(total), nil
+}
+
+func BagIn(elem Value, bag Value) (*BoolValue, error) {
+	if isNil(bag) {
+		panic(NewNullPointerException())
+	}
+	fcn := asFcnRcdValue(bag)
+	if fcn == nil {
+		panic(NewNullPointerException())
+	}
+	values := fcn.ownedValues()
+	domain := fcn.GetDomainAsValues()
+	if domain == nil {
+		panic(NewNullPointerException())
+	}
+	for i, dval := range domain {
+		if isNil(elem) {
+			panic(NewNullPointerException())
+		}
+		eq, err := elem.Equal(dval)
+		if err != nil {
+			return nil, err
+		}
+		if eq {
+			count, ok := fcnParameterDomain(values, i).(*IntValue)
+			if !ok || count == nil {
+				return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "BagIn", "bag", ValuesPPR(bag))
+			}
+			return BoolValueOf(count.ownedVal() > 0), nil
+		}
+	}
+	return BoolFalse, nil
+}
+
+func CopiesIn(elem Value, bag Value) (*IntValue, error) {
+	if isNil(bag) {
+		panic(NewNullPointerException())
+	}
+	fcn := asFcnRcdValue(bag)
+	if fcn == nil {
+		panic(NewNullPointerException())
+	}
+	values := fcn.ownedValues()
+	domain := fcn.GetDomainAsValues()
+	if domain == nil {
+		panic(NewNullPointerException())
+	}
+	for i, dval := range domain {
+		if isNil(elem) {
+			panic(NewNullPointerException())
+		}
+		eq, err := elem.Equal(dval)
+		if err != nil {
+			return nil, err
+		}
+		if eq {
+			count, ok := fcnParameterDomain(values, i).(*IntValue)
+			if !ok || count == nil {
+				return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "CopiesIn", "bag", ValuesPPR(bag))
+			}
+			return count, nil
+		}
+	}
+	return IntZero, nil
+}
+
+func BagCup(b1 Value, b2 Value) (Value, error) {
+	if isNil(b1) {
+		panic(NewNullPointerException())
+	}
+	fcn1 := asFcnRcdValue(b1)
+	if isNil(b2) {
+		panic(NewNullPointerException())
+	}
+	fcn2 := asFcnRcdValue(b2)
+	// Both conversions precede validation. A failed conversion stays null until
+	// IsABag dereferences it; the first bag's count error can precede that read.
+	if fcn1 == nil {
+		panic(NewNullPointerException())
+	}
+	valid, err := IsABag(fcn1)
+	if err != nil {
+		return nil, err
+	}
+	if !valid.Val {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "(+)", "bag", ValuesPPR(b1))
+	}
+	if fcn2 == nil {
+		panic(NewNullPointerException())
+	}
+	valid, err = IsABag(fcn2)
+	if err != nil {
+		return nil, err
+	}
+	if !valid.Val {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "(+)", "bag", ValuesPPR(b2))
+	}
+
+	domain1 := fcn1.GetDomainAsValues()
+	values1 := fcn1.ownedValues()
+	domain2 := fcn2.GetDomainAsValues()
+	values2 := fcn2.ownedValues()
+	if domain1 == nil {
+		panic(NewNullPointerException())
+	}
+	domain := NewValueVec(len(domain1))
+	values := NewValueVec(len(domain1))
+	for i := 0; i < len(domain1); i++ {
+		domain.Add(domain1[i])
+		values.Add(fcnParameterDomain(values1, i))
+	}
+	if domain2 == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(domain2); i++ {
+		found := false
+		for j := 0; j < len(domain1); j++ {
+			// Equality may normalize arrays retained by either operand. Read the
+			// captured domain and original multiplicities again after those effects.
+			right, left := domain2[i], domain1[j]
+			if isNil(right) {
+				panic(NewNullPointerException())
+			}
+			eq, err := right.Equal(left)
+			if err != nil {
+				return nil, err
+			}
+			if eq {
+				leftCount := bagMultiplicity(values1, j)
+				rightCount := bagMultiplicity(values2, i)
+				values.Set(j, NewIntValue(leftCount+rightCount))
+				found = true
+				break
+			}
+		}
+		if !found {
+			domain.Add(domain2[i])
+			values.Add(fcnParameterDomain(values2, i))
+		}
+	}
+	return NewFcnRcdValue(domain.ToArray(), values.ToArray(), false), nil
+}
+
+func BagDiff(b1 Value, b2 Value) (Value, error) {
+	if isNil(b1) {
+		panic(NewNullPointerException())
+	}
+	fcn1 := asFcnRcdValue(b1)
+	if isNil(b2) {
+		panic(NewNullPointerException())
+	}
+	fcn2 := asFcnRcdValue(b2)
+	if fcn1 == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "(-)", "bag", ValuesPPR(b1))
+	}
+	if fcn2 == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "(-)", "bag", ValuesPPR(b2))
+	}
+	domain1 := fcn1.GetDomainAsValues()
+	values1 := fcn1.ownedValues()
+	domain2 := fcn2.GetDomainAsValues()
+	values2 := fcn2.ownedValues()
+	if domain1 == nil {
+		panic(NewNullPointerException())
+	}
+	domain := NewValueVec(len(domain1))
+	values := NewValueVec(len(domain1))
+	for i := 0; i < len(domain1); i++ {
+		// Capture the count before equality can normalize retained arrays.
+		v1 := bagMultiplicity(values1, i)
+		// An empty first domain bypasses this read; the count cast precedes it.
+		if domain2 == nil {
+			panic(NewNullPointerException())
+		}
+		for j := 0; j < len(domain2); j++ {
+			left, right := domain1[i], domain2[j]
+			if isNil(left) {
+				panic(NewNullPointerException())
+			}
+			eq, err := left.Equal(right)
+			if err != nil {
+				return nil, err
+			}
+			if eq {
+				v1 -= bagMultiplicity(values2, j)
+				break
+			}
+		}
+		if v1 > 0 {
+			domain.Add(domain1[i])
+			values.Add(NewIntValue(v1))
+		}
+	}
+	return NewFcnRcdValue(domain.ToArray(), values.ToArray(), fcn1.IsNormalized()), nil
+}
+
+func BagUnion(set Value) (Value, error) {
+	if isNil(set) {
+		panic(NewNullPointerException())
+	}
+	setEnum, err := tryToSetEnumValue(set)
+	if err != nil {
+		return nil, err
+	}
+	if setEnum == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagUnion", "a finite enumerable set", ValuesPPR(set))
+	}
+	setEnum.Normalize()
+	// Normalization can collapse equal bags. The source retains this vector
+	// and its size for the remaining conversions and aggregation.
+	elems := setEnum.Elems
+	size := elems.Len()
+	if size == 0 {
+		return emptyFcnValue(), nil
+	}
+	if size == 1 {
+		return elems.At(0), nil
+	}
+	domain := NewValueVec(0)
+	values := NewValueVec(0)
+	firstValue := elems.At(0)
+	if isNil(firstValue) {
+		panic(NewNullPointerException())
+	}
+	first := asFcnRcdValue(firstValue)
+	if first == nil {
+		return nil, newTLCErrorCode(ECTLCModuleBagUnion1, ValuesPPR(set))
+	}
+	currentDomain := first.GetDomainAsValues()
+	currentValues := first.ownedValues()
+	if currentDomain == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(currentDomain); i++ {
+		domain.Add(currentDomain[i])
+		values.Add(fcnParameterDomain(currentValues, i))
+	}
+	for i := 1; i < size; i++ {
+		item := elems.At(i)
+		if isNil(item) {
+			panic(NewNullPointerException())
+		}
+		fcn := asFcnRcdValue(item)
+		if fcn == nil {
+			return nil, newTLCErrorCode(ECTLCModuleBagUnion1, ValuesPPR(set))
+		}
+		currentDomain = fcn.GetDomainAsValues()
+		currentValues = fcn.ownedValues()
+		if currentDomain == nil {
+			panic(NewNullPointerException())
+		}
+		for j := 0; j < len(currentDomain); j++ {
+			found := false
+			for k := 0; k < domain.Len(); k++ {
+				key, prior := currentDomain[j], domain.At(k)
+				if isNil(key) {
+					panic(NewNullPointerException())
+				}
+				eq, err := key.Equal(prior)
+				if err != nil {
+					return nil, err
+				}
+				if eq {
+					leftValue := values.At(k)
+					if isNil(leftValue) {
+						panic(NewNullPointerException())
+					}
+					left, ok := leftValue.(*IntValue)
+					if !ok {
+						panic(valueStreamClassCast(leftValue, "tlc2.value.impl.IntValue"))
+					}
+					right := bagMultiplicity(currentValues, j)
+					values.Set(k, NewIntValue(left.ownedVal()+right))
+					found = true
+					break
+				}
+			}
+			if !found {
+				domain.Add(currentDomain[j])
+				values.Add(fcnParameterDomain(currentValues, j))
+			}
+		}
+	}
+	return NewFcnRcdValue(domain.ToArray(), values.ToArray(), false), nil
+}
+
+func SqSubseteq(b1 Value, b2 Value) (*BoolValue, error) {
+	if isNil(b1) {
+		panic(NewNullPointerException())
+	}
+	fcn1 := asFcnRcdValue(b1)
+	if isNil(b2) {
+		panic(NewNullPointerException())
+	}
+	fcn2 := asFcnRcdValue(b2)
+	if fcn1 == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "\\sqsubseteq", "a function with a finite domain", ValuesPPR(b1))
+	}
+	if fcn2 == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "\\sqsubseteq", "a function with a finite domain", ValuesPPR(b2))
+	}
+	domain1 := fcn1.GetDomainAsValues()
+	values1 := fcn1.ownedValues()
+	domain2 := fcn2.GetDomainAsValues()
+	values2 := fcn2.ownedValues()
+	if domain1 == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(domain1); i++ {
+		// The left count is captured before equality can normalize shared arrays.
+		v1 := bagMultiplicity(values1, i)
+		if domain2 == nil {
+			panic(NewNullPointerException())
+		}
+		for j := 0; j < len(domain2); j++ {
+			left, right := domain1[i], domain2[j]
+			if isNil(left) {
+				panic(NewNullPointerException())
+			}
+			eq, err := left.Equal(right)
+			if err != nil {
+				return nil, err
+			}
+			if eq {
+				v1 -= bagMultiplicity(values2, j)
+				break
+			}
+		}
+		if v1 > 0 {
+			return BoolFalse, nil
+		}
+	}
+	return BoolTrue, nil
+}
+
+func BagOfAll(op Value, bag Value) (Value, error) {
+	if isNil(op) {
+		panic(NewNullPointerException())
+	}
+	if !isOperatorValue(op) {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentErrorAn, "first", "BagOfAll", "operator", ValuesPPR(op))
+	}
+	if isNil(bag) {
+		panic(NewNullPointerException())
+	}
+	fcn := asFcnRcdValue(bag)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "BagOfAll", "function with a finite domain", ValuesPPR(bag))
+	}
+	domain := NewValueVec(0)
+	values := NewValueVec(0)
+	inputDomain := fcn.GetDomainAsValues()
+	inputValues := fcn.ownedValues()
+	// The source retains the input arrays and reuses one argument buffer.
+	args := make([]Value, 1)
+	if inputDomain == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(inputDomain); i++ {
+		args[0] = inputDomain[i]
+		mapped, err := EvalOperatorValue(op, args, EvalClear)
+		if err != nil {
+			return nil, err
+		}
+		found := false
+		for j := 0; j < domain.Len(); j++ {
+			prior := domain.At(j)
+			// A first null result may be stored; only a visited receiver fails.
+			if isNil(mapped) {
+				panic(NewNullPointerException())
+			}
+			eq, err := mapped.Equal(prior)
+			if err != nil {
+				return nil, err
+			}
+			if eq {
+				leftValue := values.At(j)
+				if isNil(leftValue) {
+					panic(NewNullPointerException())
+				}
+				left, ok := leftValue.(*IntValue)
+				if !ok {
+					panic(valueStreamClassCast(leftValue, "tlc2.value.impl.IntValue"))
+				}
+				leftCount := left.ownedVal()
+				rightCount := bagMultiplicity(inputValues, i)
+				values.Set(j, NewIntValue(leftCount+rightCount))
+				found = true
+				break
+			}
+		}
+		if !found {
+			domain.Add(mapped)
+			values.Add(fcnParameterDomain(inputValues, i))
+		}
+	}
+	return NewFcnRcdValue(domain.ToArray(), values.ToArray(), false), nil
+}
+
+func BagToSet(bag Value) (Value, error) {
+	if isNil(bag) {
+		panic(NewNullPointerException())
+	}
+	fcn := asFcnRcdValue(bag)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagToSet", "a function with a finite domain", ValuesPPR(bag))
+	}
+	return fcn.DomainValue(), nil
+}
+
+func SetToBag(set Value) (Value, error) {
+	if isNil(set) {
+		panic(NewNullPointerException())
+	}
+	setEnum, err := tryToSetEnumValue(set)
+	if err != nil {
+		return nil, err
+	}
+	if setEnum == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagToSet", "a function with a finite domain", ValuesPPR(set))
+	}
+	if !setEnum.IsNormalized() {
+		setEnum.Normalize()
+	}
+	elems := setEnum.Elems
+	size := elems.Len()
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
+	}
+	domain := make([]Value, size)
+	size = elems.Len()
+	if size < 0 {
+		panic(NewNegativeArraySizeException(fmtInt(size)))
+	}
+	values := make([]Value, size)
+	// Element reads preserve source bounds and bypass null backing arrays
+	// when the logical count is zero.
+	for i := 0; i < elems.Len(); i++ {
+		domain[i] = elems.At(i)
+		values[i] = IntOne
+	}
+	return NewFcnRcdValue(domain, values, setEnum.IsNormalized()), nil
+}

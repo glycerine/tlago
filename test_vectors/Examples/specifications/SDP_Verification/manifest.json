@@ -1,0 +1,49 @@
+{
+  "sources": [
+    "https://github.com/10227694/SDP_Verification"
+  ],
+  "authors": [
+    "Luming Dong",
+    "Zhi Niu"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/SDP_Verification/SDP_Attack_New_Solution_Spec/MC.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SDP_Verification/SDP_Attack_New_Solution_Spec/MC.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 2881,
+          "totalStates": 6826,
+          "stateDepth": 21
+        }
+      ]
+    },
+    {
+      "path": "specifications/SDP_Verification/SDP_Attack_New_Solution_Spec/SPA_Attack_New.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/SDP_Verification/SDP_Attack_Spec/MC.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/SDP_Verification/SDP_Attack_Spec/MC.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "safety failure"
+        }
+      ]
+    },
+    {
+      "path": "specifications/SDP_Verification/SDP_Attack_Spec/SPA_Attack.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

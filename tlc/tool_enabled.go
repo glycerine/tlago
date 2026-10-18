@@ -1,0 +1,538 @@
+package tlc
+
+import "fmt"
+
+func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	done := t.callStackEnter(pred)
+	defer func() { done(err) }()
+	if isNil(pred) {
+		panic(NewNullPointerException())
+	}
+	switch pred := pred.(type) {
+	case *OpApplNode:
+		return t.EnabledAppl(pred, acts, c, s0, s1, cm)
+	case *LetInNode:
+		return t.EnabledWithActionItems(pred.Body, acts, letDefinitionsContextWithCostModel(c, pred.Lets, cm, pred.Bindings...), s0, s1, cm)
+	case *SubstInNode:
+		c1 := c
+		for _, sub := range pred.Substs {
+			subCM := cm
+			if specCoverageEnabled() {
+				subCM = cm.GetSubst(sub)
+			}
+			c1 = c1.Cons(sub.GetOp(), t.GetVal(sub.GetExpr(), c, false, subCM))
+		}
+		return t.EnabledWithActionItems(pred.GetBody(), acts, c1, s0, s1, cm)
+	case *APSubstInNode:
+		c1 := c
+		for _, sub := range pred.Substs {
+			c1 = c1.Cons(sub.GetOp(), t.GetVal(sub.GetExpr(), c, false, cm))
+		}
+		return t.EnabledWithActionItems(pred.GetBody(), acts, c1, s0, s1, cm)
+	case *LabelNode:
+		return t.EnabledWithActionItems(pred.Body, acts, c, s0, s1, cm)
+	default:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to compute ENABLED on a non-boolean expression.\n"+SemanticString(pred), pred, c)
+	}
+}
+
+func (t *Tool) EnabledFromActionList(acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if acts.IsEmpty() {
+		return s1, nil
+	}
+	kind := acts.CarKind()
+	pred := acts.CarPred()
+	c := acts.CarContext()
+	acts1 := acts.Cdr()
+	switch {
+	case kind > ActionItemConjunct || kind == ActionItemPred:
+		return t.EnabledWithActionItems(pred, acts1, c, s0, s1, acts.ownedCostModel())
+	case kind == ActionItemUnchanged:
+		return t.EnabledUnchanged(pred, acts1, c, s0, s1, acts.ownedCostModel())
+	default:
+		v1, err := t.Eval(pred, c, s0, EmptyState, EvalEnabled, acts.ownedCostModel())
+		if err != nil {
+			return nil, err
+		}
+		v2, err := t.Eval(pred, c, s1, nil, EvalPrimed, acts.ownedCostModel())
+		if err != nil {
+			return nil, err
+		}
+		eq, err := v1.Equal(v2)
+		if err != nil || eq {
+			return nil, err
+		}
+		return t.EnabledFromActionList(acts1, s0, s1, cm)
+	}
+}
+
+func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	done := t.callStackEnter(pred)
+	defer func() { done(err) }()
+	return t.EnabledApplImpl(pred, acts, c, s0, s1, cm)
+}
+
+func (t *Tool) EnabledApplImpl(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if specCoverageEnabled() {
+		cm = cm.Get(pred)
+	}
+	args := pred.Args
+	opNode := pred.Operator
+	opcode := GetOpCode(opNode.Name)
+	if opcode == 0 {
+		val := t.Lookup(opNode, c, s0, false)
+		switch v := val.(type) {
+		case *OpDefNode:
+			opcode = GetOpCode(v.Name)
+			if opcode == 0 {
+				c1, err := t.GetOpContext(v, args, c, true, cm)
+				if err != nil {
+					return nil, err
+				}
+				return t.EnabledWithActionItems(v.GetBody(), acts, c1, s0, s1, cm)
+			}
+		case *ThmOrAssumpDefNode:
+			c1, err := t.GetThmOrAssumpContext(v, args, c, true)
+			if err != nil {
+				return nil, err
+			}
+			return t.EnabledWithActionItems(v.GetBody(), acts, c1, s0, s1, cm)
+		case *LazyValue:
+			return t.EnabledWithActionItems(v.ownedExpr(), acts, v.ownedContext(), s0, s1, v.CM)
+		case *LazySupplierValue:
+			lv := asLazyValue(v)
+			return t.EnabledWithActionItems(lv.ownedExpr(), acts, lv.ownedContext(), s0, s1, lv.CM)
+		case Value:
+			if isOperatorValue(v) {
+				bval, err := EvalOperatorValueWithTool(v, t, args, c, s0, s1, EvalEnabled, cm)
+				if err != nil {
+					return nil, err
+				}
+				return t.enabledContinueIfBool(pred, bval, c, acts, s0, s1, cm)
+			}
+			return t.enabledContinueIfBool(pred, v, c, acts, s0, s1, cm)
+		default:
+			if isNil(val) {
+				return nil, NewNullPointerException()
+			}
+			return nil, newTLCDetailedRuntimeExceptionCode(ECTLCExpectedExpressionInComputing, pred, c, "ENABLED", "boolean", fmt.Sprint(val), SemanticString(pred))
+		}
+	}
+
+	switch opcode {
+	case OpcodeAA:
+		acts1 := acts.Cons(args[1], c, cm, ActionItemChanged)
+		return t.EnabledWithActionItems(args[0], acts1, c, s0, s1, cm)
+	case OpcodeBE:
+		enum, err := t.Contexts(pred, c, s0, s1, EvalEnabled, cm)
+		if err != nil {
+			return nil, err
+		}
+		for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
+			if err := enum.Err(); err != nil {
+				return nil, err
+			}
+			s2, err := t.EnabledWithActionItems(args[0], acts, c1, s0, s1, cm)
+			if err != nil || s2 != nil {
+				return s2, err
+			}
+		}
+		return nil, enum.Err()
+	case OpcodeBF:
+		return t.enabledBoundedForall(pred, acts, c, s0, s1, cm)
+	case OpcodeCase:
+		return t.enabledCase(pred, acts, c, s0, s1, cm)
+	case OpcodeFA:
+		return t.enabledFcnApply(pred, acts, c, s0, s1, cm)
+	case OpcodeCL, OpcodeLand:
+		acts1 := acts
+		for i := len(args) - 1; i > 0; i-- {
+			acts1 = acts1.Cons(args[i], c, cm, i)
+		}
+		if len(args) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, 0))
+		}
+		return t.EnabledWithActionItems(args[0], acts1, c, s0, s1, cm)
+	case OpcodeDL, OpcodeLor:
+		if len(args) == 0 {
+			return nil, nil
+		}
+		for _, arg := range args {
+			s2, err := t.EnabledWithActionItems(arg, acts, c, s0, s1, cm)
+			if err != nil || s2 != nil {
+				return s2, err
+			}
+		}
+		return nil, nil
+	case OpcodeITE:
+		guard, err := t.Eval(args[0], c, s0, s1, EvalEnabled, cm)
+		if err != nil {
+			return nil, err
+		}
+		bguard, ok := guard.(*BoolValue)
+		if !ok {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, a non-boolean expression(%s) was used as the guard condition of an IF.\n%s", ValueKindString(guard), SemanticString(pred)), pred, c)
+		}
+		idx := 2
+		if bguard.Val {
+			idx = 1
+		}
+		return t.EnabledWithActionItems(args[idx], acts, c, s0, s1, cm)
+	case OpcodeSA:
+		s2, err := t.EnabledWithActionItems(args[0], acts, c, s0, s1, cm)
+		if err != nil || s2 != nil {
+			return s2, err
+		}
+		return t.EnabledUnchanged(args[1], acts, c, s0, s1, cm)
+	case OpcodeUnchanged:
+		return t.EnabledUnchanged(args[0], acts, c, s0, s1, cm)
+	case OpcodeEq:
+		return t.enabledEquality(pred, args[0], args[1], acts, c, s0, s1, cm)
+	case OpcodeSubseteq:
+		return t.enabledSubsetEq(pred, args[0], args[1], acts, c, s0, s1, cm)
+	case OpcodeIn:
+		return t.enabledMembership(pred, args[0], args[1], acts, c, s0, s1, cm)
+	case OpcodeImplies:
+		value, err := t.Eval(args[0], c, s0, s1, EvalEnabled, cm)
+		if err != nil {
+			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("While computing ENABLED of an expression of the form P => Q, P was %s.\n%s", valueKindString(value), SemanticString(pred)), pred, c)
+		}
+		if bval.Val {
+			return t.EnabledWithActionItems(args[1], acts, c, s0, s1, cm)
+		}
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	case OpcodeNop:
+		return t.EnabledWithActionItems(args[0], acts, c, s0, s1, cm)
+	case OpcodeCdot:
+		return t.enabledActionComposition(pred, args, acts, c, s0, s1, cm)
+	case OpcodeTE, OpcodeTF:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, TLC encountered temporal quantifier.\n%s", SemanticString(pred)), pred, c)
+	case OpcodeUC:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, TLC encountered unbounded CHOOSE. Make sure that the expression is of form CHOOSE x \\in S: P(x).\n%s", SemanticString(pred)), pred, c)
+	case OpcodeUE:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, TLC encountered unbounded quantifier. Make sure that the expression is of form \\E x \\in S: P(x).\n%s", SemanticString(pred)), pred, c)
+	case OpcodeUF:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, TLC encountered unbounded quantifier. Make sure that the expression is of form \\A x \\in S: P(x).\n%s", SemanticString(pred)), pred, c)
+	case OpcodeSF, OpcodeWF, OpcodeBox, OpcodeDiamond:
+		form := ""
+		switch opcode {
+		case OpcodeSF:
+			form = "SF"
+		case OpcodeWF:
+			form = "WF"
+		case OpcodeBox:
+			form = "[]"
+		case OpcodeDiamond:
+			form = "<>"
+		}
+		return nil, newTLCDetailedRuntimeExceptionCode(ECTLCEnabledWrongFormula, pred, c, form, SemanticString(pred))
+	case OpcodeLeadsto:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, TLC encountered a temporal formula (a ~> b).\n%s", SemanticString(pred)), pred, c)
+	case OpcodeArrow:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, TLC encountered a temporal formula (a -+-> formula).\n%s", SemanticString(pred)), pred, c)
+	default:
+		bval, err := t.Eval(pred, c, s0, s1, EvalEnabled, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.enabledContinueIfBool(pred, bval, c, acts, s0, s1, cm)
+	}
+}
+
+func (t *Tool) enabledContinueIfBool(pred SemanticNode, value Value, c *Context, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	bval, ok := value.(*BoolValue)
+	if !ok {
+		return nil, newTLCDetailedRuntimeExceptionCode(ECTLCExpectedExpressionInComputing, pred, c, "ENABLED", "boolean", value.String(), SemanticString(pred))
+	}
+	if bval.Val {
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	return nil, nil
+}
+
+func (t *Tool) enabledActionComposition(pred SemanticNode, args []SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	if !actionCompositionEnabled() {
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, actionCompositionUnsupportedMessage, pred, c)
+	}
+	if len(args) < 2 {
+		return nil, newTLCError(ECGeneral, "malformed action composition")
+	}
+	tState := s0.CopyWith(s1)
+	intermediate, _, err := t.actionCompositionIntermediateStates(UnknownAction, args[0], EmptyActionItemList, c, s0, tState, cm)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < intermediate.Size(); i++ {
+		s2, err := t.EnabledWithActionItems(args[1], acts, c, intermediate.At(i), s1, cm)
+		if err != nil || s2 != nil {
+			return s2, err
+		}
+	}
+	return nil, nil
+}
+
+func (t *Tool) enabledFcnApply(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	if len(pred.Args) < 2 {
+		return nil, newTLCError(ECGeneral, "malformed function application in ENABLED expression: %s", SemanticString(pred))
+	}
+	fval, err := t.Eval(pred.Args[0], c, s0, s1, EvalSetKeepLazy(EvalEnabled), cm)
+	if err != nil {
+		return nil, err
+	}
+	if fcn, ok := fval.(*FcnLambdaValue); ok && fcn.FcnRcd == nil {
+		c1, err := t.getFcnContext(fcn, pred, c, s0, s1, EvalEnabled, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.EnabledWithActionItems(fcn.ownedBody(), acts, c1, s0, s1, cm)
+	}
+	bval, err := t.applyPredicateFunction("ENABLED", pred, fval, c, s0, s1, EvalEnabled, cm)
+	if err != nil {
+		return nil, err
+	}
+	if !bval.Val {
+		return nil, nil
+	}
+	return t.EnabledFromActionList(acts, s0, s1, cm)
+}
+
+func (t *Tool) enabledBoundedForall(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	enum, err := t.Contexts(pred, c, s0, s1, EvalEnabled, cm)
+	if err != nil {
+		return nil, err
+	}
+	c1 := enum.NextElement()
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	if c1 == nil {
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	acts1 := acts
+	for c2 := enum.NextElement(); c2 != nil; c2 = enum.NextElement() {
+		if err := enum.Err(); err != nil {
+			return nil, err
+		}
+		acts1 = acts1.Cons(pred.Args[0], c2, cm, ActionItemPred)
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	return t.EnabledWithActionItems(pred.Args[0], acts1, c1, s0, s1, cm)
+}
+
+func (t *Tool) enabledCase(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	var other SemanticNode
+	for _, arg := range pred.Args {
+		pair, ok := arg.(*OpApplNode)
+		if !ok || len(pair.Args) < 2 {
+			return nil, newTLCError(ECGeneral, "malformed CASE in ENABLED")
+		}
+		if pair.Args[0] == nil {
+			other = pair.Args[1]
+			continue
+		}
+		value, err := t.Eval(pair.Args[0], c, s0, s1, EvalEnabled, cm)
+		if err != nil {
+			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, a non-boolean expression(%s) was used as a guard condition of a CASE.\n%s", ValueKindString(value), SemanticString(pair.Args[1])), pair.Args[1], c)
+		}
+		if bval.Val {
+			return t.EnabledWithActionItems(pair.Args[1], acts, c, s0, s1, cm)
+		}
+	}
+	if other == nil {
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In computing ENABLED, TLC encountered a CASE with no conditions true.\n%s", SemanticString(pred)), pred, c)
+	}
+	return t.EnabledWithActionItems(other, acts, c, s0, s1, cm)
+}
+
+func (t *Tool) enabledEquality(pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	varNode := t.GetPrimedVar(left, c, true)
+	if varNode == nil {
+		bval, err := t.evalBool(pred, c, s0, s1, EvalEnabled, cm)
+		if err != nil || !bval.Val {
+			return nil, err
+		}
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	lval := s1.lookupSymbol(varNode)
+	rval, err := t.Eval(right, c, s0, s1, EvalEnabled, cm)
+	if err != nil {
+		return nil, err
+	}
+	if lval == nil {
+		s1 = s1.BindSymbol(varNode, rval)
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	eq, err := lval.Equal(rval)
+	if err != nil || !eq {
+		return nil, err
+	}
+	return t.EnabledFromActionList(acts, s0, s1, cm)
+}
+
+func (t *Tool) enabledMembership(pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	varNode := t.GetPrimedVar(left, c, true)
+	if varNode == nil {
+		bval, err := t.evalBool(pred, c, s0, s1, EvalEnabled, cm)
+		if err != nil || !bval.Val {
+			return nil, err
+		}
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	lval := s1.lookupSymbol(varNode)
+	rval, err := t.Eval(right, c, s0, s1, EvalEnabled, cm)
+	if err != nil {
+		return nil, err
+	}
+	return t.enabledEnumerateAssignment(varNode, lval, rval, pred, c, acts, s0, s1, cm)
+}
+
+func (t *Tool) enabledSubsetEq(pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	varNode := t.GetPrimedVar(left, c, true)
+	if varNode == nil {
+		bval, err := t.evalBool(pred, c, s0, s1, EvalEnabled, cm)
+		if err != nil || !bval.Val {
+			return nil, err
+		}
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	lval := s1.lookupSymbol(varNode)
+	rset, err := t.Eval(right, c, s0, s1, EvalEnabled, cm)
+	if err != nil {
+		return nil, err
+	}
+	return t.enabledEnumerateAssignment(varNode, lval, t.SetSource(right, NewSubsetValue(rset, cm)), pred, c, acts, s0, s1, cm)
+}
+
+func (t *Tool) enabledEnumerateAssignment(variable *SymbolNode, lval Value, domain Value, pred SemanticNode, c *Context, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	if lval != nil {
+		member, err := domain.Member(lval)
+		if err != nil || !member {
+			return nil, err
+		}
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	enumerable, ok := asEnumerable(domain)
+	if !ok {
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, "The right side of \\IN is not enumerable.\n"+SemanticString(pred), pred, c)
+	}
+	enum := enumerable.Elements()
+	for val := enum.NextElement(); val != nil; val = enum.NextElement() {
+		if err := enum.Err(); err != nil {
+			return nil, err
+		}
+		s2State := s1.BindSymbol(variable, val)
+		s2, err := t.EnabledFromActionList(acts, s0, s2State, cm)
+		if err != nil || s2 != nil {
+			return s2, err
+		}
+	}
+	return nil, enum.Err()
+}
+
+func (t *Tool) EnabledUnchanged(expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	done := t.callStackEnter(expr)
+	defer func() { done(err) }()
+	return t.EnabledUnchangedImpl(expr, acts, c, s0, s1, cm)
+}
+
+func (t *Tool) EnabledUnchangedImpl(expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if specCoverageEnabled() {
+		cm = cm.Get(expr)
+	}
+	if varNode := t.GetVar(expr, c, true); varNode != nil {
+		varName := varNode.Name
+		v0, err := t.Eval(expr, c, s0, s1, EvalEnabled, cm)
+		if err != nil {
+			return nil, err
+		}
+		v1 := s1.lookupSymbol(varNode)
+		if v1 == nil {
+			s1 = s1.BindSymbol(varNode, v0)
+			return t.EnabledFromActionList(acts, s0, s1, cm)
+		}
+		eq, err := v1.Equal(v0)
+		if err != nil {
+			return nil, err
+		}
+		if !eq {
+			PrintWarning(ECTLCUnchangedVariableChanged, varName.String(), SemanticString(expr))
+			return nil, nil
+		}
+		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	if appl, ok := expr.(*OpApplNode); ok {
+		opName := appl.Operator.Name
+		opcode := GetOpCode(opName)
+		if opcode == OpcodeTup {
+			acts1 := acts
+			for i := 1; i < len(appl.Args); i++ {
+				acts1 = acts1.Cons(appl.Args[i], c, cm, ActionItemUnchanged)
+			}
+			if len(appl.Args) == 0 {
+				return t.EnabledFromActionList(acts, s0, s1, cm)
+			}
+			return t.EnabledUnchanged(appl.Args[0], acts1, c, s0, s1, cm)
+		}
+		if opcode == 0 && len(appl.Args) == 0 {
+			val := t.Lookup(appl.Operator, c, EmptyState, false)
+			switch v := val.(type) {
+			case *LazyValue:
+				return t.EnabledUnchanged(v.ownedExpr(), acts, v.ownedContext(), s0, s1, cm)
+			case *LazySupplierValue:
+				lv := asLazyValue(v)
+				return t.EnabledUnchanged(lv.ownedExpr(), acts, lv.ownedContext(), s0, s1, cm)
+			case *OpDefNode:
+				return t.EnabledUnchanged(v.GetBody(), acts, c, s0, s1, cm)
+			case nil:
+				return nil, enabledUnchangedUndefinedError(opName, expr, c)
+			default:
+				return t.EnabledFromActionList(acts, s0, s1, cm)
+			}
+		}
+	}
+	v0, err := t.Eval(expr, c, s0, EmptyState, EvalEnabled, cm)
+	if err != nil {
+		return nil, err
+	}
+	v1, err := t.Eval(expr, c, s1, EmptyState, EvalPrimed, cm)
+	if err != nil {
+		return nil, err
+	}
+	eq, err := v0.Equal(v1)
+	if err != nil || !eq {
+		return nil, err
+	}
+	return t.EnabledFromActionList(acts, s0, s1, cm)
+}
+
+func enabledUnchangedUndefinedError(opName *UniqueString, expr SemanticNode, c *Context) *TLCError {
+	return NewTLCDetailedRuntimeException(ECGeneral, "In computing ENABLED, TLC found the undefined identifier\n"+opName.String()+" in an UNCHANGED expression at\n"+SemanticString(expr), expr, c)
+}

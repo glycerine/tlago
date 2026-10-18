@@ -1,0 +1,3734 @@
+package tlago
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/glycerine/tlago/tlc"
+)
+
+type SanyParser struct {
+	output                 SanyOutput
+	tokens                 []*SanyToken
+	initialToken           *SanyToken
+	Token                  *SanyToken
+	tokenCarrier           *SanyToken
+	TokenSource            *SanyTokenManager
+	NextToken              *SanyToken
+	nextChoiceValid        bool
+	LookingAhead           bool
+	lookaheadToken         *SanyToken
+	tokenManagerMode       bool
+	inputStream            *SanyCharStream
+	at                     int
+	diags                  Diagnostics
+	moduleName             string
+	proofLevelStack        []int
+	junctionListContext    SanyJunctionListContext
+	DependencyList         *SanyVector[*tlc.UniqueString]
+	internalModules        []string
+	messageStack           []sanyParseFrame
+	expecting              string
+	fairnessHook           *SanySyntaxNode
+	lastOperator           *SanyOperatorInfo
+	lookaheadOperatorStack *SanyOperatorStack
+	lookaheadCalls         [74]sanyLookaheadCall
+	lookaheadGC            int
+	directChoiceGeneration [130]int
+	directChoiceRecorded   [130]bool
+	expectedKind           SanyTokenKind
+	expectedKindRecorded   bool
+	numberFlag             bool
+	decimalFlag            bool
+	ParseTree              *SanySyntaxNode
+}
+
+func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
+	node, _, diags := parseSanySyntaxWithDependencies(file, source)
+	return node, diags
+}
+
+func parseSanySyntaxWithDependencies(file, source string) (node *SanySyntaxNode, dependencies []string, diags Diagnostics) {
+	return parseSanySyntaxUsingOutput(file, source, nil)
+}
+
+func parseSanySyntaxUsingOutput(file, source string, out SanyOutput) (node *SanySyntaxNode, dependencies []string, diags Diagnostics) {
+	parser := NewSanyParserFromString(file, source)
+	parser.output = out
+	defer func() {
+		if failure := recover(); failure != nil {
+			switch failure := failure.(type) {
+			case *sanyTokenMgrError:
+				diagnostic := failure.diagnostic
+				begin, end := parser.TokenSource.lexicalBegin, parser.TokenSource.lastEnd
+				if strings.Contains(failure.message, "EOF") && begin.Line != end.Line {
+					diagnostic.SANYParseMessage = fmt.Sprintf("Lexical {error: EOF reached, possibly open comment starting around line %d", begin.Line)
+				}
+				diags = append(parser.diags, diagnostic)
+				dependencies = parser.Dependencies()
+			case *sanyParseException:
+				diags = append(parser.diags, failure.diagnostic)
+				dependencies = parser.Dependencies()
+			default:
+				panic(failure)
+			}
+		}
+		for _, diagnostic := range diags {
+			if diagnostic.SANYParseMessage != "" {
+				parser.log(SanyLogError, diagnostic.SANYParseMessage)
+			}
+		}
+	}()
+	node = parser.CompilationUnit()
+	node.SetLevel(0)
+	node.SetParent()
+	return node, parser.Dependencies(), parser.diags
+}
+
+func (p *SanyParser) log(level SanyLogLevel, format string, args ...string) {
+	if p.output != nil {
+		p.output.Log(level, format, args...)
+	}
+}
+
+func (p *SanyParser) Dependencies() []string {
+	p.ensureDependencyList()
+	dependencies := make([]string, p.DependencyList.Size())
+	for index := range dependencies {
+		dependencies[index] = p.DependencyList.ElementAt(index).String()
+	}
+	return dependencies
+}
+
+func (p *SanyParser) ensureDependencyList() {
+	if p.DependencyList == nil {
+		p.DependencyList = NewSanyVector[*tlc.UniqueString]()
+	}
+}
+
+func (p *SanyParser) addDependency(name string) {
+	for _, internal := range p.internalModules {
+		if internal == name {
+			return
+		}
+	}
+	p.ensureDependencyList()
+	p.DependencyList.AddElement(tlc.UniqueStringOf(name))
+}
+
+func ParseSanySyntaxModules(file, source string) (modules []*SanySyntaxNode, diags Diagnostics) {
+	tokens, lexDiags := SanyTokenize(file, source)
+	parser := NewSanyParser(tokens, nil)
+	defer func() {
+		if failure := recover(); failure != nil {
+			if parse, ok := failure.(*sanyParseException); ok {
+				diags = append(filterSanyDiagnosticsToModuleSpans(lexDiags, modules), parser.diags...)
+				diags = append(diags, parse.diagnostic)
+			} else {
+				panic(failure)
+			}
+		}
+	}()
+	if parser.match(SanyTokenBeginPragma) {
+		for !parser.check(SanyTokenEOF) && !parser.atModuleStart() {
+			parser.advance()
+		}
+	}
+	for !parser.check(SanyTokenEOF) {
+		for !parser.check(SanyTokenEOF) && !parser.atModuleStart() {
+			parser.advance()
+		}
+		if parser.check(SanyTokenEOF) {
+			break
+		}
+		parser.moduleName = ""
+		parser.belchDEF()
+		module := parser.Module()
+		module.SetLevel(0)
+		module.SetParent()
+		modules = append(modules, module)
+	}
+	diags = filterSanyDiagnosticsToModuleSpans(lexDiags, modules)
+	diags = append(diags, parser.diags...)
+	return modules, diags
+}
+
+func filterSanyDiagnosticsToModuleSpans(diags Diagnostics, modules []*SanySyntaxNode) Diagnostics {
+	if len(diags) == 0 || len(modules) == 0 {
+		return diags
+	}
+	out := make(Diagnostics, 0, len(diags))
+	for _, diag := range diags {
+		if diag.Pos.Line == 0 {
+			out = append(out, diag)
+			continue
+		}
+		for _, mod := range modules {
+			if mod != nil && positionInSanyRange(diag.Pos, mod.Range) {
+				out = append(out, diag)
+				break
+			}
+		}
+	}
+	return out
+}
+
+func positionInSanyRange(pos Position, rng SanyRange) bool {
+	if rng.Begin.Line == 0 || rng.End.Line == 0 {
+		return false
+	}
+	return !positionBefore(pos, rng.Begin) && !positionBefore(rng.End, pos)
+}
+
+func filterSanyDiagnosticsThroughRootEnd(diags Diagnostics, root *SanySyntaxNode) Diagnostics {
+	if len(diags) == 0 {
+		return diags
+	}
+	end := sanyRootEndModulePosition(root)
+	if end.Line == 0 {
+		return diags
+	}
+	out := make(Diagnostics, 0, len(diags))
+	for _, diag := range diags {
+		if diag.Pos.Line == 0 || !positionBefore(end, diag.Pos) {
+			out = append(out, diag)
+		}
+	}
+	return out
+}
+
+func sanyRootEndModulePosition(root *SanySyntaxNode) Position {
+	if root == nil || root.Kind.JavaName() != "N_Module" {
+		return Position{}
+	}
+	heirs := root.GetHeirs()
+	if len(heirs) == 0 {
+		return Position{}
+	}
+	last := heirs[len(heirs)-1]
+	if last == nil || last.Kind.JavaName() != "N_EndModule" {
+		return Position{}
+	}
+	return last.Range.End
+}
+
+func NewSanyParser(tokens []*SanyToken, diags Diagnostics) *SanyParser {
+	dummy := &SanyToken{}
+	return &SanyParser{tokens: tokens, diags: diags, initialToken: dummy, Token: dummy, tokenCarrier: dummy, DependencyList: NewSanyVector[*tlc.UniqueString]()}
+}
+
+func NewSanyParserFromTokenManager(tokenManager *SanyTokenManager) *SanyParser {
+	dummy := &SanyToken{}
+	return &SanyParser{TokenSource: tokenManager, tokenManagerMode: true, initialToken: dummy, Token: dummy, tokenCarrier: dummy, DependencyList: NewSanyVector[*tlc.UniqueString]()}
+}
+
+func NewSanyParserFromString(file, input string) *SanyParser {
+	stream := NewDefaultSanyCharStream(input)
+	tokenManager := NewSanyTokenManagerFromCharStream(stream)
+	tokenManager.file = file
+	parser := NewSanyParserFromTokenManager(tokenManager)
+	parser.inputStream = stream
+	return parser
+}
+
+func (p *SanyParser) require() {
+	if p == nil {
+		panic(tlc.NewNullPointerException())
+	}
+}
+
+func (p *SanyParser) ReInitTokenManager(tokenManager *SanyTokenManager) {
+	p.require()
+	p.TokenSource = tokenManager
+	p.tokenManagerMode = true
+	p.resetGeneratedParser()
+}
+
+func (p *SanyParser) ReInitString(file, input string) {
+	p.require()
+	if p.inputStream == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	p.inputStream.ReInit(input, 1, 1, 4096)
+	if p.TokenSource != nil {
+		p.TokenSource.file = file
+	}
+	p.TokenSource.ReInitCharStream(p.inputStream)
+	p.tokenManagerMode = true
+	p.resetGeneratedParser()
+}
+
+func (p *SanyParser) resetGeneratedParser() {
+	p.tokens = nil
+	p.Token = &SanyToken{}
+	p.initialToken = p.Token
+	p.tokenCarrier = p.Token
+	p.at = 0
+	p.lookaheadCalls = [74]sanyLookaheadCall{}
+	p.lookaheadGC = 0
+	p.directChoiceGeneration = [130]int{}
+	p.directChoiceRecorded = [130]bool{}
+	p.expectedKind = 0
+	p.expectedKindRecorded = false
+	p.nextChoiceValid = false
+}
+
+func (p *SanyParser) GetNextToken() *SanyToken {
+	p.require()
+	return p.advance()
+}
+
+func (p *SanyParser) GetToken(index int) *SanyToken {
+	p.require()
+	if p.LookingAhead {
+		token := p.lookaheadToken
+		for i := 0; i < index; i++ {
+			if token == nil {
+				panic(tlc.NewNullPointerException())
+			}
+			if token.Next == nil {
+				token.Next = p.tokenAfterLookahead(token)
+			}
+			token = token.Next
+		}
+		return token
+	}
+	if index <= 0 {
+		return p.currentToken()
+	}
+	return p.tokenAt(index - 1)
+}
+
+func (p *SanyParser) tokenAfterLookahead(current *SanyToken) *SanyToken {
+	var token *SanyToken
+	if p.TokenSource != nil {
+		token = p.TokenSource.NextToken()
+	} else if p.tokenManagerMode {
+		panic(tlc.NewNullPointerException())
+	} else {
+		token = &SanyToken{Kind: SanyTokenEOF}
+		if current.Kind == SanyTokenEOF {
+			token.BeginLine, token.BeginColumn = current.BeginLine, current.BeginColumn
+			token.EndLine, token.EndColumn = current.EndLine, current.EndColumn
+			token.SourceFile, token.LexState = current.SourceFile, current.LexState
+		}
+	}
+	if len(p.tokens) != 0 && p.tokens[len(p.tokens)-1] == current {
+		p.tokens = append(p.tokens, token)
+	}
+	return token
+}
+
+func (p *SanyParser) GenerateParseException() *SanyParseException {
+	p.require()
+	return p.generateParseException()
+}
+
+func (p *SanyParser) EnableTracing() { p.require() }
+
+func (p *SanyParser) DisableTracing() { p.require() }
+
+func (p *SanyParser) Diagnostics() Diagnostics {
+	return append(Diagnostics(nil), p.diags...)
+}
+
+func (p *SanyParser) RootNode() *SanySyntaxNode {
+	p.require()
+	return p.ParseTree
+}
+
+func (p *SanyParser) ModuleName() string {
+	p.require()
+	return p.moduleName
+}
+
+func (p *SanyParser) Parse() (ok bool) {
+	p.require()
+	defer func() {
+		if failure := recover(); failure != nil {
+			switch failure := failure.(type) {
+			case *sanyParseException:
+				p.diags = append(p.diags, failure.diagnostic)
+			case *sanyTokenMgrError:
+				p.diags = append(p.diags, failure.diagnostic)
+			default:
+				panic(failure)
+			}
+		}
+		for _, diagnostic := range p.diags {
+			if diagnostic.SANYParseMessage != "" {
+				p.log(SanyLogError, diagnostic.SANYParseMessage)
+			}
+		}
+		ok = !p.diags.HasErrors()
+	}()
+	p.ParseTree = p.CompilationUnit()
+	return !p.diags.HasErrors()
+}
+
+func SanyModuleName(root *SanySyntaxNode) string {
+	if root == nil || root.Kind.JavaName() != "N_Module" {
+		return ""
+	}
+	heirs := root.GetHeirs()
+	if len(heirs) == 0 {
+		return ""
+	}
+	begin := heirs[0].GetHeirs()
+	if len(begin) < 2 {
+		return ""
+	}
+	return begin[1].Image
+}
+
+func (p *SanyParser) CompilationUnit() *SanySyntaxNode {
+	p.belchDEF()
+	if p.check(SanyTokenBeginPragma) {
+		p.Prelude()
+	} else {
+		p.recordDirectChoice(4)
+	}
+	module := p.Module()
+	if p.TokenSource != nil {
+		p.TokenSource.SwitchTo(SanyLexDefault)
+	}
+	return module
+}
+
+func (p *SanyParser) Prelude() {
+	p.consumeParseToken(SanyTokenBeginPragma, "expected pragma prelude")
+	for p.check(SanyTokenNumber) || p.check(SanyTokenIdentifier) {
+		switch p.peekChoice().Kind {
+		case SanyTokenNumber:
+			p.consumeParseToken(SanyTokenNumber, "expected prelude number")
+		case SanyTokenIdentifier:
+			p.consumeParseToken(SanyTokenIdentifier, "expected prelude identifier")
+		default:
+			p.recordDirectChoice(6)
+			p.throwParseException(-1, "expected prelude token")
+		}
+	}
+	p.recordDirectChoice(5)
+}
+
+func (p *SanyParser) atModuleStart() bool {
+	return p.check(SanyTokenBm0) || p.check(SanyTokenBm1) || p.check(SanyTokenBm2)
+}
+
+func (p *SanyParser) Module() *SanySyntaxNode {
+	p.beginProduction("Module definition")
+	defer p.endProduction()
+	firstModule := p.moduleName == ""
+	stackLevel := len(p.internalModules)
+	p.expecting = "---- MODULE"
+	begin := p.BeginModule()
+	p.expecting = "EXTENDS clause or module body"
+	extends := p.Extends()
+	p.expecting = "Module body"
+	body := p.Body()
+	p.expecting = "==== or more Module body"
+	end := p.EndModule()
+	p.internalModules = p.internalModules[:stackLevel]
+	p.internalModules = append(p.internalModules, begin.GetHeirs()[1].Image)
+	module := NewSanyNode(SanySyntaxNodeKindByName["N_Module"], begin, extends, body, end)
+	setSanySyntaxFilename(module, p.moduleName)
+	if firstModule {
+		// Java constructs these two nodes before assigning TLAplusParser.mn.
+		for _, heir := range begin.GetHeirs()[:2] {
+			heir.FileName = ""
+			heir.fileNameUS = nil
+		}
+	}
+	return module
+}
+
+func setSanySyntaxFilename(root *SanySyntaxNode, module string) {
+	filename := tlc.UniqueStringOf(module)
+	seen := make(map[*SanySyntaxNode]bool)
+	var visit func(*SanySyntaxNode)
+	visit = func(node *SanySyntaxNode) {
+		if node == nil || seen[node] {
+			return
+		}
+		seen[node] = true
+		node.FileName = module
+		node.fileNameUS = filename
+		for _, heir := range node.GetHeirs() {
+			visit(heir)
+		}
+	}
+	visit(root)
+}
+
+func (p *SanyParser) BeginModule() *SanySyntaxNode {
+	p.beginProduction("Begin module")
+	defer p.endProduction()
+	p.expecting = "---- MODULE (beginning of module)"
+	if !p.atModuleStart() {
+		p.recordDirectChoice(7)
+		p.throwParseException(-1, "expected ---- MODULE")
+	}
+	begin := NewSanyTokenNode(p.advance())
+	p.expecting = "Identifier"
+	p.reclassifyFieldName()
+	name := p.Identifier()
+	if name != nil && p.moduleName == "" {
+		p.moduleName = name.Image
+	}
+	p.expecting = "----"
+	separator := p.consumeParseToken(SanyTokenSeparator, "expected ---- after module name")
+	return NewSanyNode(SanySyntaxNodeKindByName["N_BeginModule"], begin, name, separator)
+}
+
+func (p *SanyParser) EndModule() *SanySyntaxNode {
+	end := p.consumeParseToken(SanyTokenEndModule, p.parseErrorMessage("==== or more Module body", p.peek()))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_EndModule"], end)
+}
+
+func (p *SanyParser) Extends() *SanySyntaxNode {
+	p.beginProduction("Extends")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	if p.match(SanyTokenExtends) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier"
+		p.reclassifyFieldName()
+		name := p.Identifier()
+		p.addDependency(name.Image)
+		heirs = append(heirs, name)
+		p.expecting = "comma or module body"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "Identifier"
+			p.reclassifyFieldName()
+			name := p.Identifier()
+			p.addDependency(name.Image)
+			heirs = append(heirs, name)
+		}
+		p.recordDirectChoice(8)
+	} else {
+		p.recordDirectChoice(9)
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Extends"], heirs...)
+}
+
+func (p *SanyParser) Body() *SanySyntaxNode {
+	p.beginProduction("Module body")
+	defer p.endProduction()
+	p.expecting = "LOCAL, INSTANCE, PROOF, ASSUMPTION, THEOREM, RECURSIVE, declaration, or definition"
+	var heirs []*SanySyntaxNode
+	for p.scanLookahead(1, 1) {
+		switch p.peekChoice().Kind {
+		case SanyTokenSeparator:
+			heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		case SanyTokenVariable:
+			heirs = append(heirs, p.VariableDeclaration())
+		case SanyTokenConstant:
+			heirs = append(heirs, p.ParamDeclaration())
+		default:
+			p.recordDirectChoice(10)
+			if p.scanLookahead(2, 2) {
+				heirs = append(heirs, p.OperatorOrFunctionDefinition())
+			} else if p.check(SanyTokenRecursive) {
+				heirs = append(heirs, p.Recursive())
+			} else {
+				p.recordDirectChoice(11)
+				if p.scanLookahead(3, 2) {
+					heirs = append(heirs, p.Instance())
+				} else if p.scanLookahead(4, 2) {
+					heirs = append(heirs, p.Assumption())
+				} else if p.scanLookahead(5, 2) {
+					heirs = append(heirs, p.Theorem())
+				} else if p.atModuleStart() {
+					heirs = append(heirs, p.Module())
+					p.belchDEF()
+				} else {
+					p.recordDirectChoice(12)
+					if p.check(SanyTokenHide) || (p.check(SanyTokenUse) && p.tokenAt(1).Kind != SanyTokenOnly) {
+						heirs = append(heirs, p.UseOrHideOrBy())
+					} else {
+						p.throwParseException(-1, "expected module body unit")
+					}
+				}
+			}
+		}
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Body"], heirs...)
+}
+
+func (p *SanyParser) VariableDeclaration() *SanySyntaxNode {
+	p.beginProduction("variable declaration")
+	defer p.endProduction()
+	keyword := p.consumeParseToken(SanyTokenVariable, "expected VARIABLE declaration")
+	p.expecting = "Identifier"
+	var one []*SanySyntaxNode
+	one = append(one, p.Identifier())
+	p.expecting = "comma or module body"
+	for p.match(SanyTokenComma) {
+		one = append(one, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier"
+		one = append(one, p.Identifier())
+	}
+	p.recordDirectChoice(13)
+	return NewSanySplitNode(SanySyntaxNodeKindByName["N_VariableDeclaration"], []*SanySyntaxNode{keyword}, one)
+}
+
+func (p *SanyParser) ParamDeclaration() *SanySyntaxNode {
+	p.beginProduction("Parameter declaration")
+	defer p.endProduction()
+	p.expecting = "CONSTANT"
+	heirs := []*SanySyntaxNode{p.ParamSubDecl()}
+	p.expecting = "Identifier, operator or _"
+	heirs = append(heirs, p.ConstantDeclarationItems())
+	p.expecting = ","
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier, operator or _"
+		heirs = append(heirs, p.ConstantDeclarationItems())
+	}
+	p.recordDirectChoice(14)
+	return NewSanyNode(SanySyntaxNodeKindByName["N_ParamDeclaration"], heirs...)
+}
+
+func (p *SanyParser) ParamSubDecl() *SanySyntaxNode {
+	p.beginProduction("Parameter declaration item")
+	defer p.endProduction()
+	keyword := p.consumeParseToken(SanyTokenConstant, "expected CONSTANT declaration")
+	return NewSanyNode(SanySyntaxNodeKindByName["N_ConsDecl"], keyword)
+}
+
+func (p *SanyParser) ConstantDeclarationItems() *SanySyntaxNode {
+	p.beginProduction("Constant declaration items")
+	defer p.endProduction()
+	p.expecting = "Identifier, _ or prefix op"
+	if !p.check(SanyTokenIdentifier) {
+		return p.fixDeclaration(true)
+	}
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenIdentifier, "expected identifier")}
+	p.expecting = "(, comma, or Module Body"
+	if p.scanLookahead(6, 2) {
+		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		p.expecting = "_"
+		heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in constant declaration"))
+		p.expecting = "comma or )"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "_"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in constant declaration"))
+			p.expecting = "comma or )"
+		}
+		p.recordDirectChoice(16)
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in constant declaration"))
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentDecl"], heirs...)
+}
+
+// ConstantDeclarationItem retains the earlier Go spelling.
+func (p *SanyParser) ConstantDeclarationItem() *SanySyntaxNode {
+	return p.ConstantDeclarationItems()
+}
+
+func (p *SanyParser) Recursive() *SanySyntaxNode {
+	p.beginProduction("Recursive")
+	defer p.endProduction()
+	p.expecting = "RECURSIVE"
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenRecursive, "expected RECURSIVE")}
+	p.expecting = "Identifier, operator or _"
+	heirs = append(heirs, p.ConstantDeclarationItems())
+	p.expecting = ","
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier, operator or _"
+		heirs = append(heirs, p.ConstantDeclarationItems())
+		p.expecting = "`,' or `)'"
+	}
+	p.recordDirectChoice(15)
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Recursive"], heirs...)
+}
+
+func (p *SanyParser) Instance() *SanySyntaxNode {
+	p.beginProduction("Instance")
+	defer p.endProduction()
+	p.expecting = "LOCAL or instance"
+	var zero []*SanySyntaxNode
+	if p.match(SanyTokenLocal) {
+		zero = append(zero, NewSanyTokenNode(p.previous()))
+	} else {
+		p.recordDirectChoice(33)
+	}
+	inst := p.Instantiation()
+	p.expecting = "COMMA or Module Body"
+	return NewSanySplitNode(SanySyntaxNodeKindByName["N_Instance"], zero, []*SanySyntaxNode{inst})
+}
+
+func (p *SanyParser) Instantiation() *SanySyntaxNode {
+	p.beginProduction("NonLocalInstance")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenInstance, "expected INSTANCE")}
+	p.expecting = "Module identifier"
+	p.reclassifyFieldName()
+	name := p.consumeParseToken(SanyTokenIdentifier, "expected module identifier")
+	p.addDependency(name.Image)
+	heirs = append(heirs, name)
+	p.expecting = "WITH or another definition."
+	if p.match(SanyTokenWith) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = ""
+		heirs = append(heirs, p.Substitution())
+		p.expecting = ""
+		for p.startsFollowingSubstitution() {
+			heirs = append(heirs, NewSanyTokenNode(p.advance()))
+			p.expecting = ""
+			heirs = append(heirs, p.Substitution())
+			p.expecting = ""
+		}
+	} else {
+		p.recordDirectChoice(34)
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_NonLocalInstance"], heirs...)
+}
+
+// Source substitution repetition previews comma, target and '<-' without
+// consuming them, retaining the actual call for diagnostic rescanning.
+func (p *SanyParser) startsFollowingSubstitution() bool {
+	return p.scanLookahead(12, 3)
+}
+
+func (p *SanyParser) Substitution() *SanySyntaxNode {
+	p.beginProduction("Substitution")
+	defer p.endProduction()
+	var target *SanySyntaxNode
+	switch {
+	case p.check(SanyTokenIdentifier):
+		target = p.consumeParseToken(SanyTokenIdentifier, "expected substitution target")
+	case p.peek().Kind >= SanyTokenOp76 && p.peek().Kind <= SanyTokenOp116:
+		target = sanyOperatorTokenNode("N_NonExpPrefixOp", p.advance())
+	case p.peek().Kind >= SanyTokenOp1 && p.peek().Kind < SanyTokenIdentifier:
+		target = sanyOperatorTokenNode("N_InfixOp", p.infixOpToken())
+	case p.isGrammarPostfixOperator(p.peek()):
+		target = sanyOperatorTokenNode("N_PostfixOp", p.advance())
+	default:
+		p.recordDirectChoice(35)
+		p.throwParseException(-1, "expected substitution target")
+	}
+	p.expecting = "<-"
+	arrow := p.consumeParseToken(SanyTokenSubstitute, "expected <- in substitution")
+	p.expecting = "Expression or Op. Symbol"
+	value := p.ExpressionUntilCommaOrBodyBoundary()
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Substitution"], target, arrow, value)
+}
+
+func (p *SanyParser) Assumption() *SanySyntaxNode {
+	p.beginProduction("Assumption")
+	defer p.endProduction()
+	p.expecting = "ASSUM..."
+	if !p.check(SanyTokenAssume) && !p.check(SanyTokenAssumption) {
+		p.recordDirectChoice(36)
+		p.throwParseException(-1, "expected ASSUME or ASSUMPTION")
+	}
+	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
+	if p.scanLookahead(13, 2) {
+		if !p.match(SanyTokenDefbreak) {
+			p.recordDirectChoice(37)
+		}
+		heirs = append(heirs, p.Identifier())
+		p.expecting = "=="
+		heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in assumption"))
+	}
+	p.belchDEF()
+	p.expecting = "Expression"
+	heirs = append(heirs, p.ExpressionUntilBodyBoundary())
+	return NewSanySplitNode(SanySyntaxNodeKindByName["N_Assumption"], nil, heirs)
+}
+
+func (p *SanyParser) Theorem() *SanySyntaxNode {
+	p.beginProduction("Theorem")
+	defer p.endProduction()
+	p.expecting = "THEOREM, PROPOSITION"
+	if !p.check(SanyTokenTheorem) && !p.check(SanyTokenProposition) {
+		p.recordDirectChoice(52)
+		p.throwParseException(-1, "expected THEOREM or PROPOSITION")
+	}
+	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
+	p.expecting = "Identifier, Assume-Prove or Expression"
+	if p.scanLookahead(21, 2) {
+		heirs = append(heirs, p.Identifier())
+		p.expecting = "=="
+		heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in theorem"))
+	}
+	p.belchDEF()
+	if p.scanLookahead(22, 3) {
+		heirs = append(heirs, p.AssumeProve())
+	} else if p.scanLookahead(23, 1) {
+		heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
+			return beginsSanyProof(tok)
+		}))
+	} else {
+		p.throwParseException(-1, "expected theorem statement")
+	}
+	if beginsSanyProof(p.peek()) {
+		heirs = append(heirs, p.Proof())
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Theorem"], heirs...)
+}
+
+func (p *SanyParser) Proof() *SanySyntaxNode {
+	p.pushProofLevel()
+	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
+		p.popProofLevel()
+	}()
+	p.beginProduction("Proof")
+	defer p.endProduction()
+	if p.check(SanyTokenBy) || p.tokenAt(1).Kind == SanyTokenBy {
+		return p.UseOrHideOrBy()
+	}
+	var heirs []*SanySyntaxNode
+	if p.scanLookahead(25, 2) {
+		if p.match(SanyTokenProof) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(53)
+		}
+		if p.match(SanyTokenObvious) || p.match(SanyTokenOmitted) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(54)
+			p.throwParseException(-1, "expected OBVIOUS or OMITTED")
+		}
+		return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
+	}
+	if p.scanLookahead(26, 1) {
+		if p.scanLookahead(24, 2) {
+			heirs = append(heirs, p.consumeParseToken(SanyTokenProof, "expected PROOF"))
+		}
+		for p.tokenAt(1).Kind != SanyTokenQed {
+			heirs = append(heirs, p.Step())
+			p.expecting = "a proof step"
+		}
+		heirs = append(heirs, p.QEDStep())
+		node := NewSanyNode(SanySyntaxNodeKindByName["N_Proof"], heirs...)
+		node.ProofLevel = p.currentProofLevel()
+		return node
+	}
+	p.throwParseException(-1, "expected proof")
+	return nil
+}
+
+func (p *SanyParser) QEDStep() *SanySyntaxNode {
+	p.beginProduction("QED step")
+	defer p.endProduction()
+	p.expecting = "Step number"
+	heirs := []*SanySyntaxNode{p.proofStepNumber("QED step's number has bad level.")}
+	p.expecting = "QED"
+	qed := p.consumeParseToken(SanyTokenQed, "expected QED")
+	qedStep := NewSanyNode(SanySyntaxNodeKindByName["N_QEDStep"], qed)
+	heirs = append(heirs, qedStep)
+	if p.beginsProofAt(0) {
+		heirs = append(heirs, p.Proof())
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_ProofStep"], heirs...)
+}
+
+func (p *SanyParser) Step() *SanySyntaxNode {
+	p.beginProduction("Step")
+	defer p.endProduction()
+	p.expecting = "Step number"
+	heirs := []*SanySyntaxNode{p.proofStepNumber("step's number has bad level.")}
+	p.expecting = "proof step"
+	var body *SanySyntaxNode
+	mayHaveProof := false
+	switch {
+	case p.check(SanyTokenUse) || p.check(SanyTokenHide):
+		body = p.UseOrHideOrBy()
+	case p.check(SanyTokenInstance):
+		body = p.Instantiation()
+	case p.check(SanyTokenDefbreak) || p.check(SanyTokenDefine):
+		body = p.DefStep()
+	case p.check(SanyTokenHave):
+		body = p.HaveStep()
+	case p.check(SanyTokenTake):
+		body = p.TakeStep()
+	case p.check(SanyTokenWitness):
+		body = p.WitnessStep()
+	case p.check(SanyTokenPick):
+		body = p.PickStep()
+		mayHaveProof = true
+	case p.check(SanyTokenCase):
+		body = p.CaseStep()
+		mayHaveProof = true
+	default:
+		p.recordDirectChoice(67)
+		if p.scanLookahead(32, 1) {
+			body = p.AssertStep()
+			mayHaveProof = true
+		} else {
+			p.throwParseException(-1, "expected proof step")
+		}
+	}
+	heirs = append(heirs, body)
+	if p.beginsProofAt(0) {
+		if mayHaveProof {
+			heirs = append(heirs, p.Proof())
+		} else {
+			message := p.junctionLocation(body.Range) + ": proof of step that does not take a proof."
+			p.throwReportedParseException(message, body.Range.Begin, "E1300", message)
+		}
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_ProofStep"], heirs...)
+}
+
+func (p *SanyParser) UseOrHideOrBy() *SanySyntaxNode {
+	p.beginProduction("UseOrHideOrBy")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	kind := SanySyntaxNodeKindByName["N_UseOrHide"]
+	switch p.peekChoice().Kind {
+	case SanyTokenProof, SanyTokenBy:
+		if p.match(SanyTokenProof) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(55)
+		}
+		heirs = append(heirs, p.consumeParseToken(SanyTokenBy, "expected BY"))
+		kind = SanySyntaxNodeKindByName["N_TerminalProof"]
+		if p.match(SanyTokenOnly) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(56)
+		}
+	case SanyTokenUse:
+		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		if p.match(SanyTokenOnly) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(57)
+		}
+	case SanyTokenHide:
+		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+	default:
+		p.recordDirectChoice(58)
+		p.throwParseException(-1, "expected BY, USE or HIDE")
+	}
+	p.expecting = "an expression, `MODULE' or `DEF'"
+	if p.scanLookahead(29, 1) {
+		p.proofCommandItem(&heirs, 27, 59)
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "MODULE or expression"
+			p.proofCommandItem(&heirs, 28, 61)
+			if kind.JavaName() == "N_TerminalProof" {
+				p.expecting = "comma, DEF, or [.]"
+			} else {
+				p.expecting = "comma, DEF, or proof step"
+			}
+		}
+		p.recordDirectChoice(60)
+	}
+	if p.match(SanyTokenDF) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "MODULE or expression"
+		p.proofCommandItem(&heirs, 30, 62)
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "MODULE or expression"
+			p.proofCommandItem(&heirs, 31, 64)
+			if kind.JavaName() == "N_TerminalProof" {
+				p.expecting = "comma or [.]"
+			} else {
+				p.expecting = "comma or proof step"
+			}
+		}
+		p.recordDirectChoice(63)
+	} else {
+		p.recordDirectChoice(65)
+	}
+	if kind.JavaName() == "N_TerminalProof" {
+		p.expecting = "[.]"
+	}
+	return NewSanyNode(kind, heirs...)
+}
+
+func (p *SanyParser) proofCommandItem(heirs *[]*SanySyntaxNode, lookahead, site int) {
+	if p.match(SanyTokenModule) {
+		*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "identifier"
+		*heirs = append(*heirs, p.Identifier())
+	} else {
+		p.recordDirectChoice(site)
+		if p.scanLookahead(lookahead, 1) {
+			*heirs = append(*heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenDF
+			}))
+		} else {
+			p.throwParseException(-1, "expected MODULE or expression")
+		}
+	}
+}
+
+func (p *SanyParser) DefStep() *SanySyntaxNode {
+	p.beginProduction("DefStep")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	if p.match(SanyTokenDefine) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	} else {
+		p.recordDirectChoice(68)
+	}
+	heirs = append(heirs, p.ProofOperatorOrFunctionDefinition())
+	for p.scanLookahead(33, 2) {
+		heirs = append(heirs, p.ProofOperatorOrFunctionDefinition())
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_DefStep"], heirs...)
+}
+
+func (p *SanyParser) ProofOperatorOrFunctionDefinition() *SanySyntaxNode {
+	return p.definition(true, false)
+}
+
+func (p *SanyParser) ProofFunctionDefinition() *SanySyntaxNode {
+	return p.functionDefinition(p.ExpressionUntilProofBoundary)
+}
+
+func (p *SanyParser) ProofOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
+	heirs := []*SanySyntaxNode{lhs}
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in operator definition"))
+	p.belchDEF()
+	p.expecting = "Expression"
+	heirs = append(heirs, p.ExpressionUntilProofBoundary())
+	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
+}
+
+func (p *SanyParser) HaveStep() *SanySyntaxNode {
+	p.beginProduction("HaveStep")
+	defer p.endProduction()
+	have := p.consumeParseToken(SanyTokenHave, "expected HAVE")
+	p.expecting = "expression"
+	expr := p.ExpressionUntilProofBoundary()
+	return NewSanyNode(SanySyntaxNodeKindByName["N_HaveStep"], have, expr)
+}
+
+func (p *SanyParser) TakeStep() *SanySyntaxNode {
+	p.beginProduction("TakeStep")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenTake, "expected TAKE")}
+	p.expecting = "identifier"
+	if p.scanLookahead(34, 2147483647) {
+		heirs = append(heirs, p.QuantBound())
+		p.expecting = "comma or step"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "identifier or tuple of identifiers"
+			heirs = append(heirs, p.QuantBound())
+			p.expecting = "comma or proof step"
+		}
+		p.recordDirectChoice(69)
+	} else if p.check(SanyTokenIdentifier) {
+		heirs = append(heirs, p.Identifier())
+		p.expecting = "comma or proof step"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "identifier"
+			heirs = append(heirs, p.Identifier())
+			p.expecting = "comma or proof step"
+		}
+		p.recordDirectChoice(70)
+	} else {
+		p.recordDirectChoice(71)
+		p.throwParseException(-1, "expected TAKE identifier")
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_TakeStep"], heirs...)
+}
+
+func (p *SanyParser) WitnessStep() *SanySyntaxNode {
+	p.beginProduction("WitnessStep")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenWitness, "expected WITNESS")}
+	p.expecting = "expression"
+	heirs = append(heirs, p.ExpressionUntilCommaOrProofBoundary())
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "expression"
+		heirs = append(heirs, p.ExpressionUntilCommaOrProofBoundary())
+		p.expecting = "comma or colon"
+	}
+	p.recordDirectChoice(72)
+	return NewSanyNode(SanySyntaxNodeKindByName["N_WitnessStep"], heirs...)
+}
+
+func (p *SanyParser) PickStep() *SanySyntaxNode {
+	p.beginProduction("PickStep")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenPick, "expected PICK")}
+	p.expecting = "identifier"
+	if p.scanLookahead(35, 2147483647) {
+		heirs = append(heirs, p.Identifier())
+		p.expecting = "comma, or colon"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "identifier"
+			heirs = append(heirs, p.Identifier())
+			p.expecting = "comma or colon"
+		}
+		p.recordDirectChoice(73)
+	} else if p.check(SanyTokenLab) || p.check(SanyTokenIdentifier) {
+		heirs = append(heirs, p.QuantBound())
+		p.expecting = "comma or colon"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "identifier or tuple of identifiers"
+			heirs = append(heirs, p.QuantBound())
+			p.expecting = "comma or colon"
+		}
+		p.recordDirectChoice(74)
+	} else {
+		p.recordDirectChoice(75)
+		p.throwParseException(-1, "expected PICK identifier or tuple")
+	}
+	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in PICK step"))
+	p.expecting = "expression"
+	heirs = append(heirs, p.ExpressionUntilProofBoundary())
+	return NewSanyNode(SanySyntaxNodeKindByName["N_PickStep"], heirs...)
+}
+
+func (p *SanyParser) CaseStep() *SanySyntaxNode {
+	p.beginProduction("CaseStep")
+	defer p.endProduction()
+	caseTok := p.consumeParseToken(SanyTokenCase, "expected CASE")
+	p.expecting = "expression"
+	expr := p.ExpressionUntilProofBoundary()
+	return NewSanyNode(SanySyntaxNodeKindByName["N_CaseStep"], caseTok, expr)
+}
+
+func (p *SanyParser) AssertStep() *SanySyntaxNode {
+	p.beginProduction("AssertStep")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	if p.match(SanyTokenSuffices) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "expression or ASSUME/PROVE"
+	} else {
+		p.recordDirectChoice(76)
+	}
+	if p.scanLookahead(36, 1) {
+		heirs = append(heirs, p.ExpressionUntilProofBoundary())
+	} else if p.startsAssumeProveAt(0) {
+		heirs = append(heirs, p.AssumeProve())
+	} else {
+		p.throwParseException(-1, "expected assertion")
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_AssertStep"], heirs...)
+}
+
+func (p *SanyParser) AssumeProve() *SanySyntaxNode {
+	return p.assumeProveUntil(func(tok *SanyToken) bool {
+		return p.isProofBoundary(tok)
+	})
+}
+
+func (p *SanyParser) assumeProveItem() *SanySyntaxNode {
+	return p.assumeProveUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma ||
+			tok.Kind == SanyTokenProve ||
+			tok.Kind == SanyTokenBoxprove ||
+			p.isProofBoundary(tok)
+	})
+}
+
+func (p *SanyParser) assumeProveUntil(proveStop func(*SanyToken) bool) *SanySyntaxNode {
+	p.beginProduction("Assume-Prove")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	if p.check(SanyTokenIdentifier) {
+		label := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"],
+			NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), p.Identifier())
+		colon := p.consumeParseToken(SanyTokenColoncolon, "expected :: in Assume-Prove label")
+		return NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, p.assumeProveUntil(proveStop))
+	}
+	p.recordDirectChoice(38)
+	if p.match(SanyTokenAssume) || p.match(SanyTokenBoxassume) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	} else {
+		p.recordDirectChoice(39)
+		p.throwParseException(-1, "expected ASSUME")
+	}
+	p.expecting = "Expression, Declaration, or AssumeProve"
+	heirs = append(heirs, p.AssumeProveItem(14))
+	p.expecting = "PROVE or `,'"
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Expression, Declaration, or AssumeProve"
+		heirs = append(heirs, p.AssumeProveItem(15))
+		p.expecting = "PROVE or `,'"
+	}
+	p.recordDirectChoice(41)
+	if p.match(SanyTokenProve) || p.match(SanyTokenBoxprove) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	} else {
+		p.recordDirectChoice(43)
+		p.throwParseException(-1, "expected PROVE")
+	}
+	p.expecting = "Expression"
+	heirs = append(heirs, p.ExpressionUntil(proveStop))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_AssumeProve"], heirs...)
+}
+
+func (p *SanyParser) AssumeProveItem(lookahead ...int) *SanySyntaxNode {
+	production := 14
+	if len(lookahead) != 0 {
+		production = lookahead[0]
+	}
+	if p.startsAssumeProveAt(0) || (p.tokenAt(1).Kind == SanyTokenColoncolon && p.startsAssumeProveAt(2)) {
+		return p.assumeProveItem()
+	}
+	if p.startsNewSymbAt(0) {
+		return p.NewSymb()
+	}
+	if production == 14 {
+		p.recordDirectChoice(40)
+	} else {
+		p.recordDirectChoice(42)
+	}
+	if p.scanLookahead(production, 1) {
+		return p.ExpressionUntilAssumeProveBoundary()
+	}
+	p.throwParseException(-1, "expected expression, declaration or Assume-Prove")
+	return nil
+}
+
+func (p *SanyParser) NewSymb() *SanySyntaxNode {
+	p.beginProduction("NEW symbol declaration")
+	defer p.endProduction()
+	p.expecting = "NEW, CONSTANT, VARIABLE, STATE, ACTION, or TEMPORAL"
+	var heirs []*SanySyntaxNode
+	switch {
+	case p.scanLookahead(18, 2):
+		if p.scanLookahead(16, 2) {
+			heirs = append(heirs, p.consumeParseToken(SanyTokenNew, "expected NEW"), p.consumeParseToken(SanyTokenConstant, "expected CONSTANT"))
+		} else if p.check(SanyTokenNew) || p.check(SanyTokenConstant) {
+			heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		} else {
+			p.recordDirectChoice(44)
+			p.throwParseException(-1, "expected NEW or CONSTANT")
+		}
+		p.expecting = "Constant declaration"
+		if p.scanLookahead(17, 2) {
+			declaration := p.IdentDecl()
+			heirs = append(heirs, declaration)
+			if p.match(SanyTokenIN) {
+				if len(declaration.GetHeirs()) > 1 {
+					message := "declared symbol with arguments before \\in at " + p.junctionLocation(declaration.Range)
+					p.throwReportedParseException(message, declaration.Range.Begin, "E1300", message)
+				}
+				heirs = append(heirs, NewSanyTokenNode(p.previous()))
+				p.expecting = "Expression"
+				heirs = append(heirs, p.ExpressionUntilAssumeProveBoundary())
+			} else {
+				p.recordDirectChoice(45)
+			}
+		} else if p.check(SanyTokenUs) || p.startsDefinitionPrefix() {
+			heirs = append(heirs, p.SomeFixDecl())
+		} else {
+			p.recordDirectChoice(46)
+			p.throwParseException(-1, "expected constant declaration")
+		}
+	case p.scanLookahead(19, 2):
+		if p.match(SanyTokenNew) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(47)
+		}
+		heirs = append(heirs, p.consumeParseToken(SanyTokenVariable, "expected VARIABLE"))
+		p.expecting = "Identifier"
+		heirs = append(heirs, NewSanyNode(SanySyntaxNodeKindByName["N_IdentDecl"], p.Identifier()))
+	case p.scanLookahead(20, 2):
+		if p.match(SanyTokenNew) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		} else {
+			p.recordDirectChoice(48)
+		}
+		if !isSanyStateActionTemporal(p.peek().Kind) {
+			p.recordDirectChoice(49)
+			p.throwParseException(-1, "expected STATE, ACTION or TEMPORAL")
+		}
+		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		p.expecting = "Declaration"
+		heirs = append(heirs, p.IdentDeclOrSomeFixDecl(50))
+	default:
+		p.throwParseException(-1, "expected NEW symbol declaration")
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_NewSymb"], heirs...)
+}
+
+func (p *SanyParser) StepStartToken() *SanySyntaxNode {
+	if p.startsProofStepAt(0) {
+		return NewSanyTokenNode(p.advance())
+	}
+	p.recordDirectChoice(66)
+	p.throwParseException(-1, "expected proof step")
+	return nil
+}
+
+// Step and QEDStep validate the level and correct only the three numbered
+// token kinds. Keep the lexer's token image intact for parse diagnostics.
+func (p *SanyParser) proofStepNumber(badLevel string) *SanySyntaxNode {
+	node := p.StepStartToken()
+	tok := p.previous()
+	if !p.correctProofLevel(tok) {
+		message := p.junctionLocation(node.Range) + ": " + badLevel
+		p.throwReportedParseException(message, node.Range.Begin, "E1300", message)
+	}
+	switch tok.Kind {
+	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme, SanyTokenProofstepdotlexeme:
+		node.OriginalImage = node.Image
+		node.Image = p.correctedStepNum(tok)
+	}
+	return node
+}
+
+// Java also corrects implicit step references in expressions, using the
+// containing proof level when a terminal BY has not established its own level.
+func (p *SanyParser) correctedStepNum(tok *SanyToken) string {
+	level, _ := sanyProofStepLevel(tok)
+	suffix := strings.IndexByte(tok.Image, '>')
+	if tok.Image[1] == '*' || tok.Image[1] == '+' {
+		level = p.currentProofLevel()
+		if level < 0 && len(p.proofLevelStack) > 1 {
+			level = p.proofLevelStack[len(p.proofLevelStack)-2]
+		}
+		suffix = 2
+	}
+	return "<" + strconv.Itoa(level) + tok.Image[suffix:]
+}
+
+func (p *SanyParser) ExpressionUntilProofBoundary() *SanySyntaxNode {
+	return p.ExpressionUntil(func(tok *SanyToken) bool {
+		return p.isProofBoundary(tok)
+	})
+}
+
+func (p *SanyParser) ExpressionUntilCommaOrProofBoundary() *SanySyntaxNode {
+	return p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma || p.isProofBoundary(tok)
+	})
+}
+
+func (p *SanyParser) ExpressionUntilAssumeProveBoundary() *SanySyntaxNode {
+	return p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma ||
+			tok.Kind == SanyTokenProve ||
+			tok.Kind == SanyTokenBoxprove ||
+			p.isProofBoundary(tok)
+	})
+}
+
+func (p *SanyParser) isProofBoundary(tok *SanyToken) bool {
+	return tok.Kind == SanyTokenEOF ||
+		tok.Kind == SanyTokenEndModule ||
+		beginsExplicitSanyProof(tok) ||
+		p.startsProofStepAt(0) ||
+		tok.Kind == SanyTokenQed ||
+		p.startsBodyItemAt(0)
+}
+
+func (p *SanyParser) startsProofStepAt(offset int) bool {
+	return isSanyProofStepStartKind(p.tokenAt(offset).Kind)
+}
+
+func (p *SanyParser) startsAssumeProveAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
+	case SanyTokenAssume, SanyTokenBoxassume:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *SanyParser) startsNewSymbAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
+	case SanyTokenNew, SanyTokenConstant, SanyTokenVariable, SanyTokenState, SanyTokenAction, SanyTokenTemporal:
+		return true
+	default:
+		return false
+	}
+}
+
+func isSanyStateActionTemporal(kind SanyTokenKind) bool {
+	switch kind {
+	case SanyTokenState, SanyTokenAction, SanyTokenTemporal:
+		return true
+	default:
+		return false
+	}
+}
+
+func isSanyProofStepStartKind(kind SanyTokenKind) bool {
+	switch kind {
+	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme, SanyTokenProofstepdotlexeme, SanyTokenBarelevellexeme, SanyTokenUnnumberedsteplexeme:
+		return true
+	default:
+		return false
+	}
+}
+
+func beginsExplicitSanyProof(tok *SanyToken) bool {
+	if tok == nil {
+		return false
+	}
+	switch tok.Kind {
+	case SanyTokenProof, SanyTokenBy, SanyTokenObvious, SanyTokenOmitted:
+		return true
+	default:
+		return false
+	}
+}
+
+func beginsSanyProof(tok *SanyToken) bool {
+	if tok == nil {
+		return false
+	}
+	switch tok.Kind {
+	case SanyTokenProof, SanyTokenBy, SanyTokenObvious, SanyTokenOmitted, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme, SanyTokenProofstepdotlexeme, SanyTokenBarelevellexeme, SanyTokenUnnumberedsteplexeme:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *SanyParser) pushProofLevel() {
+	p.proofLevelStack = append(p.proofLevelStack, -1)
+	if len(p.proofLevelStack) > 100 {
+		p.throwReportedParseException("Proofs nested more than 100deep.", p.peek().BeginPosition(), "E1300", "Proofs nested more than 100deep.")
+	}
+}
+
+func (p *SanyParser) popProofLevel() {
+	if len(p.proofLevelStack) == 0 {
+		p.throwReportedParseException("Parser bug: an extra QED step found.", p.peek().BeginPosition(), "E1300", "Parser bug: an extra QED step found.")
+	}
+	p.proofLevelStack = p.proofLevelStack[:len(p.proofLevelStack)-1]
+}
+
+func (p *SanyParser) currentProofLevel() int {
+	if len(p.proofLevelStack) == 0 {
+		return -1
+	}
+	return p.proofLevelStack[len(p.proofLevelStack)-1]
+}
+
+func (p *SanyParser) beginsProofAt(offset int) bool {
+	tok := p.tokenAt(offset)
+	if tok == nil {
+		return false
+	}
+	switch tok.Kind {
+	case SanyTokenBy, SanyTokenProof, SanyTokenObvious, SanyTokenOmitted:
+		return true
+	}
+	if !isSanyProofStepStartKind(tok.Kind) {
+		return false
+	}
+	if len(tok.Image) >= 2 {
+		switch tok.Image[1] {
+		case '*':
+			return len(p.proofLevelStack) == 0
+		case '+':
+			return true
+		}
+	}
+	if len(p.proofLevelStack) == 0 {
+		return true
+	}
+	level, ok := sanyProofStepLevel(tok)
+	return ok && p.currentProofLevel() >= 0 && level > p.currentProofLevel()
+}
+
+func (p *SanyParser) correctProofLevel(tok *SanyToken) bool {
+	if len(p.proofLevelStack) == 0 {
+		return true
+	}
+	level, ok := sanyProofStepLevel(tok)
+	if !ok {
+		return true
+	}
+	idx := len(p.proofLevelStack) - 1
+	lastLevel := -1
+	if idx > 0 {
+		lastLevel = p.proofLevelStack[idx-1]
+	}
+	switch level {
+	case -1:
+		if p.proofLevelStack[idx] < 0 {
+			p.proofLevelStack[idx] = lastLevel + 1
+		}
+		return true
+	case -2:
+		if p.proofLevelStack[idx] < 0 {
+			p.proofLevelStack[idx] = lastLevel + 1
+			return true
+		}
+		return false
+	default:
+		if p.proofLevelStack[idx] < 0 {
+			p.proofLevelStack[idx] = level
+			return level > lastLevel
+		}
+		return p.proofLevelStack[idx] == level
+	}
+}
+
+func sanyProofStepLevel(tok *SanyToken) (int, bool) {
+	if tok == nil || !isSanyProofStepStartKind(tok.Kind) || len(tok.Image) < 3 || tok.Image[0] != '<' {
+		return 0, false
+	}
+	switch tok.Image[1] {
+	case '*':
+		return -1, true
+	case '+':
+		return -2, true
+	}
+	end := strings.IndexByte(tok.Image, '>')
+	if end <= 1 {
+		return 0, false
+	}
+	// Java Integer.parseInt rejects overflow rather than treating the step as
+	// an unrecognized token or accepting a native 64-bit proof level.
+	text := tok.Image[1:end]
+	level, err := strconv.ParseInt(text, 10, 32)
+	if err != nil {
+		panic(tlc.NewNumberFormatException(text))
+	}
+	return int(level), true
+}
+
+func (p *SanyParser) OperatorOrFunctionDefinition() *SanySyntaxNode {
+	return p.definition(false, false)
+}
+
+// definition retains one source Definition production even when LOCAL is
+// present. The native caller contexts select their existing expression stops.
+func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
+	p.beginProduction("Definition")
+	defer p.endProduction()
+	p.expecting = "LOCAL, Identifier or Operator Symbol"
+	var local *SanySyntaxNode
+	if p.match(SanyTokenLocal) {
+		local = NewSanyTokenNode(p.previous())
+	} else {
+		p.recordDirectChoice(19)
+	}
+	defer func() {
+		if node != nil && local != nil {
+			node.Zero = []*SanySyntaxNode{local}
+			node.refreshHeirsAndRange()
+		}
+	}()
+	p.consumeParseToken(SanyTokenDefbreak, "expected beginning of definition")
+	p.expecting = "LOCAL, Identifier or Operator Symbol"
+	operator := p.OperatorDefinition
+	function := p.FunctionDefinition
+	if proof {
+		operator = p.ProofOperatorDefinition
+		function = p.ProofFunctionDefinition
+	}
+	if let {
+		operator = p.LetOperatorDefinition
+		function = p.LetFunctionDefinition
+	}
+	switch {
+	case p.scanLookahead(8, 2147483647):
+		return function()
+	case p.scanLookahead(9, 2147483647):
+		return operator(p.PostfixLHS())
+	case p.scanLookahead(10, 2147483647):
+		return operator(p.InfixLHS())
+	case p.scanLookahead(11, 2147483647):
+		body := func() *SanySyntaxNode { return p.ExpressionUntilDefinitionBoundary(nil) }
+		if proof {
+			body = p.ExpressionUntilProofBoundary
+		}
+		if let {
+			body = func() *SanySyntaxNode {
+				return p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool { return tok.Kind == SanyTokenLetin })
+			}
+		}
+		return p.identifierDefinition(body)
+	default:
+		if !p.startsDefinitionPrefix() {
+			p.recordDirectChoice(22)
+			p.throwParseException(-1, "expected definition identifier or prefix operator")
+		}
+		return operator(p.PrefixLHS())
+	}
+}
+
+// Source Identifier-LHS branch chooses Expression or INSTANCE after consuming
+// DEF and running belchDEF, rather than previewing the instance body up front.
+func (p *SanyParser) identifierDefinition(body func() *SanySyntaxNode) *SanySyntaxNode {
+	heirs := []*SanySyntaxNode{p.IdentLHS()}
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in definition"))
+	p.belchDEF()
+	p.expecting = "Expression or Instance"
+	kind := "N_OperatorDefinition"
+	if p.scanLookahead(7, 1) {
+		heirs = append(heirs, body())
+	} else if p.check(SanyTokenInstance) {
+		kind = "N_ModuleDefinition"
+		heirs = append(heirs, p.Instantiation())
+	} else {
+		p.recordDirectChoice(21)
+		p.throwParseException(-1, "expected expression or instance in definition")
+	}
+	return NewSanySplitNode(SanySyntaxNodeKindByName[kind], nil, heirs)
+}
+
+func (p *SanyParser) ModuleDefinition() *SanySyntaxNode {
+	lhs := p.IdentLHS()
+	heirs := []*SanySyntaxNode{lhs}
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in module definition"))
+	p.belchDEF()
+	p.expecting = "Expression or Instance"
+	heirs = append(heirs, p.Instantiation())
+	return NewSanySplitNode(SanySyntaxNodeKindByName["N_ModuleDefinition"], nil, heirs)
+}
+
+func (p *SanyParser) FunctionDefinition() *SanySyntaxNode {
+	return p.functionDefinition(p.ExpressionUntilBodyBoundary)
+}
+
+func (p *SanyParser) OperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
+	heirs := []*SanySyntaxNode{lhs}
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in operator definition"))
+	p.belchDEF()
+	p.expecting = "Expression"
+	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(nil))
+	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
+}
+
+func (p *SanyParser) LetOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
+	heirs := []*SanySyntaxNode{lhs}
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in LET definition"))
+	p.belchDEF()
+	p.expecting = "Expression"
+	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenLetin
+	}))
+	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
+}
+
+func (p *SanyParser) IdentLHS() *SanySyntaxNode {
+	p.beginProduction("Identifier LHS")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	heirs = append(heirs, p.Identifier())
+	p.expecting = "( or =="
+	if p.match(SanyTokenLbr) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier Declaration, prefix op, _ or )"
+		heirs = append(heirs, p.IdentDeclOrSomeFixDecl(25))
+		p.expecting = "COMMA or )"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "Identifier Declaration, prefix op or _"
+			heirs = append(heirs, p.IdentDeclOrSomeFixDecl(27))
+			p.expecting = "COMMA or )"
+		}
+		p.recordDirectChoice(26)
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator definition parameters"))
+	} else {
+		p.recordDirectChoice(28)
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentLHS"], heirs...)
+}
+
+func (p *SanyParser) PrefixLHS() *SanySyntaxNode {
+	p.beginProduction("Prefix LHS")
+	defer p.endProduction()
+	op := NewSanyTokenNode(p.nonExpPrefixOpToken())
+	p.expecting = "Identifier"
+	id := p.Identifier()
+	return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixLHS"], op, id)
+}
+
+func (p *SanyParser) InfixLHS() *SanySyntaxNode {
+	p.beginProduction("Infix LHS")
+	defer p.endProduction()
+	left := p.Identifier()
+	op := NewSanyTokenNode(p.sourceOperatorToken(2, "expected infix operator"))
+	right := p.Identifier()
+	return NewSanyNode(SanySyntaxNodeKindByName["N_InfixLHS"], left, op, right)
+}
+
+func (p *SanyParser) PostfixLHS() *SanySyntaxNode {
+	p.beginProduction("Postfix LHS")
+	defer p.endProduction()
+	left := p.Identifier()
+	op := NewSanyTokenNode(p.postfixOpToken())
+	return NewSanyNode(SanySyntaxNodeKindByName["N_PostfixLHS"], left, op)
+}
+
+func (p *SanyParser) startsDefinitionPrefix() bool {
+	return p.startsDefinitionPrefixAt(0)
+}
+
+func (p *SanyParser) startsDefinitionPrefixAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
+	case SanyTokenOp76, SanyTokenOp26, SanyTokenOp29, SanyTokenOp58,
+		SanyTokenCasesep, SanyTokenOp61, SanyTokenOp112, SanyTokenOp113,
+		SanyTokenOp114, SanyTokenOp115, SanyTokenOp116:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *SanyParser) IdentDeclOrSomeFixDecl(site int) *SanySyntaxNode {
+	if p.check(SanyTokenIdentifier) {
+		return p.IdentDecl()
+	}
+	if p.check(SanyTokenUs) || p.startsDefinitionPrefix() {
+		return p.SomeFixDecl()
+	}
+	p.recordDirectChoice(site)
+	p.throwParseException(-1, "expected formal declaration")
+	return nil
+}
+
+func (p *SanyParser) IdentDecl() *SanySyntaxNode {
+	p.beginProduction("Identifier Declation")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.Identifier()}
+	p.expecting = "( or ..."
+	if p.match(SanyTokenLbr) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "_"
+		heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in operator parameter declaration"))
+		p.expecting = "COMMA or )"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "_"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in operator parameter declaration"))
+			p.expecting = "COMMA or )"
+		}
+		p.recordDirectChoice(29)
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator parameter declaration"))
+	} else {
+		p.recordDirectChoice(30)
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentDecl"], heirs...)
+}
+
+func (p *SanyParser) SomeFixDecl() *SanySyntaxNode {
+	p.beginProduction("Op. Symbol Declaration")
+	defer p.endProduction()
+	return p.fixDeclaration(false)
+}
+
+// ConstantDeclarationItems and SomeFixDecl share token choices and wrappers,
+// but each source production owns its distinct message frame.
+func (p *SanyParser) fixDeclaration(constant bool) *SanySyntaxNode {
+	if p.isNEPrefixOperator(p.peek()) {
+		op := sanyOperatorTokenNode("N_NonExpPrefixOp", p.advance())
+		p.expecting = "_"
+		us := p.consumeParseToken(SanyTokenUs, "expected _ after prefix operator declaration")
+		return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixDecl"], op, us)
+	}
+	if !p.check(SanyTokenUs) {
+		if constant {
+			p.recordDirectChoice(18)
+			p.throwParseException(-1, "expected operator declaration")
+		}
+		p.recordDirectChoice(32)
+		p.throwParseException(-1, "expected operator declaration")
+	}
+	left := NewSanyTokenNode(p.advance())
+	p.expecting = "infix or postfix operator"
+	if constant {
+		p.expecting = "prefix or postfix operator"
+	}
+	if p.isInfixOperator(p.peek()) {
+		op := sanyOperatorTokenNode("N_InfixOp", p.infixOpToken())
+		p.expecting = "_"
+		right := p.consumeParseToken(SanyTokenUs, "expected _ after infix operator declaration")
+		return NewSanyNode(SanySyntaxNodeKindByName["N_InfixDecl"], left, op, right)
+	}
+	if !p.isGrammarPostfixOperator(p.peek()) {
+		if constant {
+			p.recordDirectChoice(17)
+			p.throwParseException(-1, "expected infix or postfix operator declaration")
+		}
+		p.recordDirectChoice(31)
+		p.throwParseException(-1, "expected infix or postfix operator declaration")
+	}
+	op := sanyOperatorTokenNode("N_PostfixOp", p.advance())
+	return NewSanyNode(SanySyntaxNodeKindByName["N_PostfixDecl"], left, op)
+}
+
+func (p *SanyParser) QuantBound() *SanySyntaxNode {
+	return p.QuantBoundUntil(SanyTokenComma, SanyTokenRsb, SanyTokenEOF)
+}
+
+func (p *SanyParser) QuantBoundUntil(stopKinds ...SanyTokenKind) *SanySyntaxNode {
+	p.beginProduction("Quant Bound")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	switch p.peekChoice().Kind {
+	case SanyTokenLab:
+		heirs = append(heirs, p.IdentifierTuple())
+	case SanyTokenIdentifier:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected bound identifier"))
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected bound identifier"))
+			p.expecting = ", or \\in"
+		}
+		p.recordDirectChoice(87)
+	default:
+		p.recordDirectChoice(88)
+		p.throwParseException(-1, "expected bound identifier or tuple")
+	}
+	in := p.consumeParseToken(SanyTokenIN, "expected \\in in quantifier bound")
+	in.Kind = SanySyntaxNodeKindByName["T_IN"]
+	heirs = append(heirs, in)
+	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+		for _, stop := range stopKinds {
+			if tok.Kind == stop {
+				return true
+			}
+		}
+		return false
+	}))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_QuantBound"], heirs...)
+}
+
+func (p *SanyParser) startsQuantBoundIntro() bool {
+	return p.check(SanyTokenIdentifier) || p.check(SanyTokenLab)
+}
+
+func (p *SanyParser) QuantBoundIntro() *SanySyntaxNode {
+	if p.check(SanyTokenLab) {
+		return p.IdentifierTuple()
+	}
+	return p.Identifier()
+}
+
+func (p *SanyParser) IdentifierTuple() *SanySyntaxNode {
+	p.beginProduction("Identifier tuple")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLab, "expected << in identifier tuple")}
+	p.expecting = "Identifier or >>"
+	if p.check(SanyTokenIdentifier) {
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected identifier"))
+		p.expecting = "COMMA or >>"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "COMMA or >>"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected identifier"))
+			p.expecting = "COMMA or >>"
+		}
+		p.recordDirectChoice(23)
+	} else {
+		p.recordDirectChoice(24)
+	}
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRab, "expected >> in identifier tuple"))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentifierTuple"], heirs...)
+}
+
+func (p *SanyParser) ExpressionUntilBodyBoundary() *SanySyntaxNode {
+	return p.ExpressionUntilDefinitionBoundary(nil)
+}
+
+func (p *SanyParser) ExpressionUntilDefinitionBoundary(extraStop func(*SanyToken) bool) *SanySyntaxNode {
+	startLine := p.peek().BeginLine
+	return p.ExpressionUntil(func(tok *SanyToken) bool {
+		if tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
+			return true
+		}
+		if extraStop != nil && extraStop(tok) {
+			return true
+		}
+		return tok.BeginLine >= startLine && p.startsBodyItemAt(0)
+	})
+}
+
+func (p *SanyParser) ExpressionUntilCommaOrBodyBoundary() *SanySyntaxNode {
+	startLine := p.peek().BeginLine
+	return p.OpOrExpr(func(tok *SanyToken) bool {
+		// A named instance in LET ends its final substitution at the enclosing
+		// IN. Java's OpOrExpr leaves that token for LetIn to consume.
+		if tok.Kind == SanyTokenComma || tok.Kind == SanyTokenLetin || tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
+			return true
+		}
+		return tok.BeginLine >= startLine && p.startsBodyItemAt(0)
+	})
+}
+
+func (p *SanyParser) Expression() *SanySyntaxNode {
+	return p.ExpressionUntil(nil)
+}
+
+func sanyFirstStop(stops []func(*SanyToken) bool) func(*SanyToken) bool {
+	if len(stops) == 0 {
+		return nil
+	}
+	return stops[0]
+}
+
+func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode {
+	p.beginProduction("Expression")
+	active := true
+	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
+		if active {
+			p.endProduction()
+		}
+	}()
+	stack := NewSanyOperatorStack()
+	stack.moduleName = p.moduleName
+	stack.NewStack()
+	previousStack := p.lookaheadOperatorStack
+	p.lookaheadOperatorStack = stack
+	p.expressionOperand(stack, stop, 54, 55)
+	// Source Expression calls epa before finalReduce, so a reduction failure
+	// does not retain this production in the residual stack.
+	p.endProduction()
+	active = false
+	expr, err := stack.FinalReduce()
+	if err != nil {
+		p.throwOperatorStackFailure(err, p.peek().BeginPosition())
+	}
+	for _, parseError := range stack.parseErrors.Errors() {
+		diagnostic := errorAt(p.peek().BeginPosition(), "E1301", "could not reduce expression stack")
+		diagnostic.SANYParseMessage = parseError.ReportedError()
+		p.diags = append(p.diags, diagnostic)
+	}
+	if expr == nil {
+		p.throwReportedParseException(" Couldn't reduce expression stack.", p.peek().BeginPosition(), "E1301", "could not reduce expression stack")
+	}
+	stack.PopStack()
+	p.lookaheadOperatorStack = previousStack
+	return expr
+}
+
+// expressionOperand is the prefix sequence followed by OpenExpression or
+// ExtendableExpr in the source grammar. The latter pushes onto this same stack.
+// Initial expressions use calls 54/55; infix right operands use calls 62/63.
+func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*SanyToken) bool, prefixCall, openCall int) {
+	for p.scanLookahead(prefixCall, 2147483647) && p.aboveCurrentJunction() {
+		var tok *SanyToken
+		if sanyDirectChoiceAccepts(0, p.peek().Kind) {
+			tok = p.prefixOpToken()
+		} else if p.check(SanyTokenOp77) {
+			tok = p.infixOpToken()
+		} else {
+			site := 119
+			if prefixCall == 62 {
+				site = 121
+			}
+			p.recordDirectChoice(site)
+			p.throwParseException(-1, "expected expression prefix")
+		}
+		op, _ := LookupSanyOperator(tok.Image)
+		stack.Push(p.genericOperatorNode(tok, op), &op)
+		if err := stack.ReduceStack(); err != nil {
+			p.throwOperatorStackFailure(err, tok.BeginPosition())
+		}
+	}
+	if p.scanLookahead(openCall, 2147483647) && p.aboveCurrentJunction() {
+		stack.Push(p.OpenExpression(stop), nil)
+		return
+	}
+	if !p.aboveCurrentJunction() {
+		p.throwParseException(-1, "expected properly indented expression")
+	}
+	p.extendableExpr(stack, stop)
+}
+
+func (p *SanyParser) aboveCurrentJunction() bool {
+	return p.junctionListContext.IsAboveCurrent(p.peek().BeginColumn)
+}
+
+// ExtendableExpr ports the source operand, postfix-extension loop, and optional
+// infix or label continuation. It never consumes an unrelated following token.
+func (p *SanyParser) extendableExpr(stack *SanyOperatorStack, stop func(*SanyToken) bool) {
+	p.beginProduction("ExtendableExpr")
+	defer p.endProduction()
+	if p.scanLookahead(56, 2147483647) && stack.PreInEmptyTop() {
+		stack.Push(p.JunctionList(stop), nil)
+
+	} else {
+		switch p.peekChoice().Kind {
+		case SanyTokenWF, SanyTokenSF:
+			stack.Push(p.FairnessExpr(), nil)
+		case SanyTokenLbr, SanyTokenLbc, SanyTokenLab, SanyTokenLsb:
+			stack.Push(p.ParenthesesExpression(), nil)
+		default:
+			p.recordDirectChoice(120)
+			if !p.scanLookahead(57, 1) {
+				p.throwParseException(-1, "expected expression")
+			}
+			stack.Push(p.PrimitiveExp(), nil)
+		}
+	}
+	for p.scanLookahead(58, 1) {
+		switch {
+		case p.scanLookahead(59, 2147483647) && p.aboveCurrentJunction():
+			tok := p.postfixOpToken()
+			op, _ := LookupSanyOperator(tok.Image)
+			stack.Push(p.genericOperatorNode(tok, op), &op)
+		case p.scanLookahead(60, 2147483647) && p.aboveCurrentJunction():
+			middle := NewSanyTokenNode(p.advance())
+			p.reclassifyFieldName()
+			if !p.aboveCurrentJunction() {
+				p.throwParseException(-1, "expected properly indented record field")
+			}
+			right := p.consumeParseToken(SanyTokenIdentifier, "expected record field identifier")
+			if err := stack.ReduceRecord(middle, right); err != nil {
+				p.throwOperatorStackFailure(err, middle.Range.Begin)
+			}
+			continue
+		case p.scanLookahead(61, 2147483647) && p.aboveCurrentJunction():
+			p.expecting = "function argument"
+			node := p.SBracketCases()
+			if node.Kind.JavaName() == "N_FcnAppl" {
+				op, _ := LookupSanyOperator("[")
+				p.lastOperator = &op
+				stack.Push(node, &op)
+			} else {
+				stack.Push(node, nil)
+			}
+		default:
+			p.throwParseException(-1, "expected expression extension")
+		}
+		if err := stack.ReduceStack(); err != nil {
+			p.throwOperatorStackFailure(err, p.previous().EndPosition())
+		}
+	}
+	if p.scanLookahead(66, 1) {
+		if p.scanLookahead(64, 2147483647) && p.aboveCurrentJunction() {
+			tok := p.infixOpToken()
+			op, _ := LookupSanyOperator(tok.Image)
+			stack.Push(p.genericOperatorNode(tok, op), &op)
+			if err := stack.ReduceStack(); err != nil {
+				p.throwOperatorStackFailure(err, tok.BeginPosition())
+			}
+			p.expressionOperand(stack, stop, 62, 63)
+		} else if p.scanLookahead(65, 2147483647) && p.aboveCurrentJunction() {
+			colon := NewSanyTokenNode(p.advance())
+			label := stack.TopNode()
+			if !sanyIsLabel(label) {
+				message := "`::' at " + p.junctionLocation(colon.Range) + " does not follow a label."
+				p.throwReportedParseException(message, colon.Range.Begin, "E1300", message)
+			}
+			stack.PopCurrentTop()
+			expr := p.ExpressionUntil(stop)
+			if (expr.Kind.JavaName() == "N_InfixExpr" || expr.Kind.JavaName() == "N_PostfixExpr") && stack.TopOperator() != nil &&
+				(p.lastOperator == nil || !SanyOperatorPrec(*stack.TopOperator(), *p.lastOperator)) {
+				message := "Removing label at " + p.junctionLocation(label.Range) + " would change expression parsing."
+				p.throwReportedParseException(message, label.Range.Begin, "E1300", message)
+			}
+			stack.Push(NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, expr), nil)
+		} else {
+			p.throwParseException(-1, "expected infix operator or label continuation")
+		}
+	}
+}
+
+func (p *SanyParser) ExtendableExpr() {
+	stack := NewSanyOperatorStack()
+	stack.moduleName = p.moduleName
+	p.extendableExpr(stack, nil)
+}
+
+// PrimitiveExp covers the primitive (non-parenthesized) operand alternatives.
+func (p *SanyParser) PrimitiveExp() *SanySyntaxNode {
+	p.beginProduction("Primitive expression")
+	defer p.endProduction()
+	if p.scanLookahead(69, 2147483647) && p.aboveCurrentJunction() {
+		return p.String()
+	} else if p.scanLookahead(70, 2147483647) && p.aboveCurrentJunction() {
+		return p.Number()
+	}
+	switch p.peekChoice().Kind {
+	case SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		return p.primitiveSelectorExpr(p.NoOpExtensionBase())
+	default:
+		if p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) {
+			return p.primitiveSelectorExpr(p.BangOperatorSelector())
+		}
+		if p.isNEPrefixOperator(p.peek()) {
+			p.recordDirectChoice(123)
+			if p.scanLookahead(67, 2147483647) {
+				return p.primitiveSelectorExpr(p.BangOperatorSelector())
+			}
+			p.throwParseException(-1, "expected operator selector")
+		}
+		p.recordDirectChoice(125)
+		p.throwParseException(-1, "expected expression")
+		return nil
+	}
+}
+
+// OpOrExpr is used only for operator arguments and substitution values. The
+// optional stop predicate is the Go adapter for callers embedded in a larger
+// production; the generated public boundary supplies none.
+func (p *SanyParser) OpOrExpr(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	if p.scanLookahead(38, 2) && p.junctionListContext.IsAboveCurrent(p.peek().BeginColumn) {
+		return p.OperatorReference()
+	} else if p.scanLookahead(39, 2147483647) && p.junctionListContext.IsAboveCurrent(p.peek().BeginColumn) {
+		return p.Lambda(stop)
+	} else if p.scanLookahead(40, 1) {
+		return p.ExpressionUntil(stop)
+	}
+	p.throwParseException(-1, "expected operator or expression")
+	return nil
+}
+
+func (p *SanyParser) OpSuite() { p.OpOrExpr() }
+
+func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
+	firstBullet := p.peek()
+	p.junctionListContext.StartNewJunctionList(firstBullet.BeginColumn, firstBullet.Kind)
+	p.beginProduction("AND-OR Junction")
+	defer p.endProduction()
+	var listKind string
+	var itemKind SanyNodeKind
+	if p.scanLookahead(52, 2147483647) {
+		listKind, itemKind = "N_DisjList", SanyNodeNDisjitem
+	} else if p.scanLookahead(53, 2147483647) {
+		listKind, itemKind = "N_ConjList", SanyNodeNConjitem
+	} else {
+		p.throwParseException(-1, "expected junction bullet")
+	}
+	items := p.junctionItems(stop, itemKind)
+	// Java does not terminate the context when a production throws.
+	p.junctionListContext.TerminateCurrentJunctionList()
+	list := NewSanyNode(SanySyntaxNodeKindByName[listKind], items...)
+	list.JunctionList = true
+	return list
+}
+
+func (p *SanyParser) Junctions() *SanySyntaxNode { return p.JunctionList(nil) }
+
+func (p *SanyParser) DisjList() { p.junctionItems(nil, SanyNodeNDisjitem) }
+
+func (p *SanyParser) ConjList() { p.junctionItems(nil, SanyNodeNConjitem) }
+
+func (p *SanyParser) JuncItem(itemKind int) *SanySyntaxNode {
+	return p.junctionItem(nil, SanyNodeKind(itemKind))
+}
+
+func (p *SanyParser) junctionItems(stop func(*SanyToken) bool, itemKind SanyNodeKind) []*SanySyntaxNode {
+	items := []*SanySyntaxNode{p.junctionItem(stop, itemKind)}
+	for p.junctionListContext.IsNewBullet(p.peek().BeginColumn, p.peek().Kind) {
+		items = append(items, p.junctionItem(stop, itemKind))
+	}
+	return items
+}
+
+func (p *SanyParser) junctionItem(stop func(*SanyToken) bool, itemKind SanyNodeKind) *SanySyntaxNode {
+	p.beginProduction("Junction Item")
+	active := true
+	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
+		if active {
+			p.endProduction()
+		}
+	}()
+	if !p.check(SanyTokenAND) && !p.check(SanyTokenOR) {
+		p.recordDirectChoice(116)
+		p.throwParseException(-1, "expected junction bullet")
+	}
+	bullet := NewSanyTokenNode(p.advance())
+	expression := p.ExpressionUntil(stop)
+	// JuncItem calls epa before constructing the item and checking descendants.
+	p.endProduction()
+	active = false
+	item := NewSanyNode(itemKind, bullet, expression)
+	p.checkJunctionIndentation(expression, item)
+	return item
+}
+
+func (p *SanyParser) currentJunctionColumn() (int, bool) {
+	current, exists := p.junctionListContext.current()
+	return current.Column, exists
+}
+
+// checkIndentation visits descendants, but stops at nested junction lists.
+func (p *SanyParser) checkJunctionIndentation(node, item *SanySyntaxNode) {
+	for _, child := range node.GetHeirs() {
+		kind := child.Kind.JavaName()
+		if kind == "N_ConjList" || kind == "N_DisjList" {
+			continue
+		}
+		if !p.junctionListContext.IsAboveCurrent(child.Range.Begin.Column) {
+			message := "Item at " + p.junctionLocation(child.Range) +
+				" is not properly indented inside conjunction or " +
+				" disjunction list item at " + p.junctionLocation(item.Range)
+			p.throwReportedParseException(message, child.Range.Begin, "E1300", message)
+		}
+		p.checkJunctionIndentation(child, item)
+	}
+}
+
+func (p *SanyParser) junctionLocation(location SanyRange) string {
+	return "line " + strconv.Itoa(location.Begin.Line) + ", col " + strconv.Itoa(location.Begin.Column) +
+		" to line " + strconv.Itoa(location.End.Line) + ", col " + strconv.Itoa(location.End.Column) + " of module " + p.moduleName
+}
+
+func (p *SanyParser) isGrammarInfixOperator(token *SanyToken) bool {
+	return token.Kind >= SanyTokenOp1 && token.Kind <= SanyTokenOp119 && p.isInfixOperator(token)
+}
+
+func (p *SanyParser) isGrammarPostfixOperator(token *SanyToken) bool {
+	return token.Kind == SanyTokenOp57 || token.Kind == SanyTokenOp68 || token.Kind == SanyTokenOp69 || token.Kind == SanyTokenOp70
+}
+
+func (p *SanyParser) OperatorReference() *SanySyntaxNode {
+	if !p.startsDefinitionPrefix() && !p.isGrammarInfixOperator(p.peek()) && !p.isGrammarPostfixOperator(p.peek()) {
+		p.recordDirectChoice(80)
+		p.throwParseException(-1, "expected operator reference")
+	}
+	tok := p.advance()
+	op, ok := LookupSanyOperator(tok.Image)
+	if !ok {
+		return NewSanyTokenNode(tok)
+	}
+	if tok.Image == "\\X" || tok.Image == "\\times" {
+		p.add(tok.BeginPosition(), "E1300", tok.Image+" may not be used as an infix operator")
+	}
+	node := p.genericOperatorReferenceNode(tok, op)
+	if (op.IsInfix() || op.IsPostfix()) && p.check(SanyTokenLbr) {
+		node.AddHeir(p.OpArgs())
+	}
+	return node
+}
+
+// TLAplusParser.isLabel validates the already parsed node. An application
+// accepts only unqualified GeneralId arguments; Java does not check its callee.
+func sanyIsLabel(node *SanySyntaxNode) bool {
+	if node == nil {
+		return false
+	}
+	heirs := node.GetHeirs()
+	if node.Kind.JavaName() == "N_GeneralId" {
+		return len(heirs[0].GetHeirs()) == 0
+	}
+	if node.Kind.JavaName() != "N_OpApplication" {
+		return false
+	}
+	args := heirs[1].GetHeirs()
+	for i := 1; i < len(args); i += 2 {
+		if args[i].Kind.JavaName() != "N_GeneralId" || len(args[i].GetHeirs()[0].GetHeirs()) != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (p *SanyParser) OpenExpression(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	switch p.peekChoice().Kind {
+	case SanyTokenIf:
+		return p.IfThenElse(stop)
+	case SanyTokenForall, SanyTokenExists:
+		return p.SomeQuant(stop)
+	case SanyTokenTExists, SanyTokenTForall:
+		return p.SomeTQuant(stop)
+	case SanyTokenLet:
+		return p.LetIn(stop)
+	case SanyTokenCase:
+		return p.Case(stop)
+	case SanyTokenChoose:
+		return p.UnboundOrBoundChoose(stop)
+	default:
+		p.recordDirectChoice(78)
+		p.throwParseException(-1, "expected open expression")
+		return nil
+	}
+}
+
+func (p *SanyParser) OpenStart() {
+	if !sanyDirectChoiceAccepts(129, p.peek().Kind) {
+		p.recordDirectChoice(129)
+		p.throwParseException(-1, "expected open expression start")
+	}
+	p.advance()
+}
+
+func (p *SanyParser) FairnessExpr() *SanySyntaxNode {
+	p.fairnessHook = nil
+	p.beginProduction("Fairness Expression")
+	active := true
+	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
+		if active {
+			p.endProduction()
+		}
+	}()
+	heirs := make([]*SanySyntaxNode, 5)
+	if p.check(SanyTokenWF) || p.check(SanyTokenSF) {
+		heirs[0] = NewSanyTokenNode(p.advance())
+	} else {
+		p.recordDirectChoice(113)
+		p.throwParseException(-1, "expected WF_ or SF_")
+	}
+	expr := p.ReducedExpression()
+	if p.scanLookahead(51, 2) {
+		heirs[1], expr = expr, nil
+		heirs[2] = p.consumeParseToken(SanyTokenLbr, "expected ( in fairness expression")
+		heirs[3] = p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
+		})
+		heirs[4] = p.consumeParseToken(SanyTokenRbr, "expected ) in fairness expression")
+	}
+	// Java calls epa before linking arguments and reporting structure errors.
+	p.endProduction()
+	active = false
+	if expr != nil {
+		if p.fairnessHook == nil {
+			pos := heirs[0].Range.Begin
+			p.throwReportedParseException("Ill-structured fairness expression at line "+strconv.Itoa(pos.Line)+", column "+strconv.Itoa(pos.Column), pos, "E1300", "ill-structured fairness expression")
+		}
+		parameters := p.fairnessHook.GetHeirs()
+		if len(parameters) != 3 {
+			p.reportFairnessParseError(heirs[0], "")
+			return expr
+		}
+		heirs[1], heirs[2], heirs[3], heirs[4] = expr, parameters[0], parameters[1], parameters[2]
+	} else if heirs[1].Kind.JavaName() == "N_GeneralId" && p.fairnessHook != nil {
+		heirs[1] = NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], heirs[1], p.fairnessHook)
+	} else {
+		switch heirs[1].Kind.JavaName() {
+		case "N_Tuple", "N_ParenExpr", "N_SetEnumerate", "N_SubsetOf", "N_SetOfAll",
+			"N_SetOfFcns", "N_RcdConstructor", "N_SetOfRcds", "N_Except", "N_FcnConst", "N_ActionExpr":
+		default:
+			p.reportFairnessParseError(heirs[0], ": could not link arguments")
+			return heirs[1]
+		}
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_FairnessExpr"], heirs...)
+}
+
+func (p *SanyParser) reportFairnessParseError(token *SanySyntaxNode, suffix string) {
+	pos := token.Range.Begin
+	message := "Error in fairness expression at " + strconv.Itoa(pos.Line) + ": " + strconv.Itoa(pos.Column) + suffix + "\n"
+	diagnostic := errorAt(pos, "E1300", "%s", strings.TrimSpace(message))
+	diagnostic.SANYParseMessage = message
+	p.diags = append(p.diags, diagnostic)
+}
+
+func (p *SanyParser) FairnessSubscript() *SanySyntaxNode {
+	return p.ReducedExpression()
+}
+
+func (p *SanyParser) LetIn(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	// Preserve Java LetIn's original production name.
+	p.beginProduction("Case Other Arm")
+	defer p.endProduction()
+	let := p.consumeParseToken(SanyTokenLet, "expected LET")
+	defs := p.LetDefinitions()
+	in := p.consumeParseToken(SanyTokenLetin, "expected IN in LET expression")
+	body := p.ExpressionUntil(stop)
+	return NewSanyNode(SanySyntaxNodeKindByName["N_LetIn"], let, defs, in, body)
+}
+
+func (p *SanyParser) LetDefinitions() *SanySyntaxNode {
+	p.beginProduction("Let Definitions")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	for {
+		switch p.peekChoice().Kind {
+		case SanyTokenLocal, SanyTokenDefbreak:
+			heirs = append(heirs, p.LetOperatorOrFunctionDefinition())
+		case SanyTokenRecursive:
+			heirs = append(heirs, p.Recursive())
+		default:
+			p.recordDirectChoice(114)
+			p.throwParseException(-1, "expected LET definition")
+		}
+		kind := p.peekChoice().Kind
+		if kind != SanyTokenLocal && kind != SanyTokenDefbreak && kind != SanyTokenRecursive {
+			break
+		}
+	}
+	p.recordDirectChoice(115)
+	return NewSanyNode(SanySyntaxNodeKindByName["N_LetDefinitions"], heirs...)
+}
+
+func (p *SanyParser) LetOperatorOrFunctionDefinition() *SanySyntaxNode {
+	return p.definition(false, true)
+}
+
+func (p *SanyParser) LetFunctionDefinition() *SanySyntaxNode {
+	return p.functionDefinition(func() *SanySyntaxNode {
+		return p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool { return tok.Kind == SanyTokenLetin })
+	})
+}
+
+// All caller contexts share OperatorOrFunctionDefinition's function branch.
+func (p *SanyParser) functionDefinition(body func() *SanySyntaxNode) *SanySyntaxNode {
+	heirs := []*SanySyntaxNode{p.Identifier()}
+	p.expecting = "["
+	heirs = append(heirs, p.consumeParseToken(SanyTokenLsb, "expected [ in function definition"))
+	p.expecting = "Identifier"
+	heirs = append(heirs, p.QuantBound())
+	p.expecting = "COMMA or ]"
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier"
+		heirs = append(heirs, p.QuantBound())
+	}
+	p.recordDirectChoice(20)
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ] in function definition"))
+	p.expecting = "=="
+	heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in function definition"))
+	p.belchDEF()
+	p.expecting = "Expression"
+	heirs = append(heirs, body())
+	return NewSanySplitNode(SanySyntaxNodeKindByName["N_FunctionDefinition"], nil, heirs)
+}
+
+func (p *SanyParser) Case(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	p.beginProduction("CASE Expression")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenCase, "expected CASE"), p.CaseArm(stop)}
+	for p.caseSeparatorIsAboveCurrentJunction() && p.tokenAt(1).Kind != SanyTokenOther {
+		heirs = append(heirs, p.consumeParseToken(SanyTokenCasesep, "expected []"), p.CaseArm(stop))
+	}
+	if p.caseSeparatorIsAboveCurrentJunction() {
+		heirs = append(heirs, p.consumeParseToken(SanyTokenCasesep, "expected []"), p.OtherArm(stop))
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Case"], heirs...)
+}
+
+func (p *SanyParser) caseSeparatorIsAboveCurrentJunction() bool {
+	return p.check(SanyTokenCasesep) && p.junctionListContext.IsAboveCurrent(p.peek().BeginColumn)
+}
+
+func (p *SanyParser) CaseArm(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	p.beginProduction("Case Arm")
+	defer p.endProduction()
+	test := p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenEOF
+	})
+	arrow := p.consumeParseToken(SanyTokenArrow, "expected -> in CASE arm")
+	value := p.ExpressionUntil(func(tok *SanyToken) bool {
+		if tok.Kind == SanyTokenCasesep || tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
+			return true
+		}
+		return stop != nil && stop(tok)
+	})
+	return NewSanyNode(SanySyntaxNodeKindByName["N_CaseArm"], test, arrow, value)
+}
+
+func (p *SanyParser) OtherArm(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	p.beginProduction("Case Other Arm")
+	defer p.endProduction()
+	other := p.consumeParseToken(SanyTokenOther, "expected OTHER")
+	arrow := p.consumeParseToken(SanyTokenArrow, "expected -> in OTHER arm")
+	value := p.ExpressionUntil(func(tok *SanyToken) bool {
+		if tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
+			return true
+		}
+		return stop != nil && stop(tok)
+	})
+	return NewSanyNode(SanySyntaxNodeKindByName["N_OtherArm"], other, arrow, value)
+}
+
+func (p *SanyParser) UnboundOrBoundChoose(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	p.beginProduction("(Un)Bounded Choose")
+	defer p.endProduction()
+	choose := p.consumeParseToken(SanyTokenChoose, "expected CHOOSE")
+	var intro *SanySyntaxNode
+	switch p.peekChoice().Kind {
+	case SanyTokenIdentifier:
+		intro = p.consumeParseToken(SanyTokenIdentifier, "expected CHOOSE identifier")
+	case SanyTokenLab:
+		intro = p.IdentifierTuple()
+	default:
+		p.recordDirectChoice(117)
+		p.throwParseException(-1, "expected CHOOSE identifier or tuple")
+	}
+	maybe := p.MaybeBound()
+	colon := p.consumeParseToken(SanyTokenColon, "expected : in CHOOSE expression")
+	body := p.ExpressionUntil(stop)
+	return NewSanyNode(SanySyntaxNodeKindByName["N_UnboundOrBoundChoose"], choose, intro, maybe, colon, body)
+}
+
+func (p *SanyParser) MaybeBound() *SanySyntaxNode {
+	p.beginProduction("Domain binding")
+	defer p.endProduction()
+	if !p.match(SanyTokenIN) {
+		p.recordDirectChoice(51)
+		return NewSanyNode(SanySyntaxNodeKindByName["N_MaybeBound"])
+	}
+	in := NewSanyTokenNode(p.previous())
+	in.Kind = SanySyntaxNodeKindByName["T_IN"]
+	p.expecting = "Expression"
+	expr := p.ExpressionUntil(func(tok *SanyToken) bool { return tok.Kind == SanyTokenColon || tok.Kind == SanyTokenEOF })
+	return NewSanyNode(SanySyntaxNodeKindByName["N_MaybeBound"], in, expr)
+}
+
+func (p *SanyParser) Lambda(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	p.beginProduction("Lambda")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLambda, "expected LAMBDA")}
+	p.expecting = "Identifier"
+	heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected LAMBDA identifier"))
+	p.expecting = "`,' or `:'"
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier"
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected LAMBDA identifier"))
+		p.expecting = "`,' or `:'"
+	}
+	p.recordDirectChoice(118)
+	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in LAMBDA expression"))
+	p.expecting = "Expression"
+	heirs = append(heirs, p.ExpressionUntil(stop))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Lambda"], heirs...)
+}
+
+func (p *SanyParser) IfThenElse(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	p.beginProduction("IF THEN ELSE")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	heirs = append(heirs, p.consumeParseToken(SanyTokenIf, "expected IF"))
+	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenThen || tok.Kind == SanyTokenEOF
+	}))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenThen, "expected THEN"))
+	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenElse || tok.Kind == SanyTokenEOF
+	}))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenElse, "expected ELSE"))
+	heirs = append(heirs, p.ExpressionUntil(stop))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_IfThenElse"], heirs...)
+}
+
+// Java jj_2_41(MAX_VALUE) accepts Identifier (',' Identifier)* ':'.
+func (p *SanyParser) SomeQuant(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	p.beginProduction("Quantified form")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	if p.match(SanyTokenExists) || p.match(SanyTokenForall) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	} else {
+		p.recordDirectChoice(81)
+		p.throwParseException(-1, "expected quantified expression")
+	}
+	kind := SanySyntaxNodeKindByName["N_UnboundQuant"]
+	if p.scanLookahead(41, 2147483647) {
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected quantified identifier"))
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected quantified identifier"))
+		}
+		p.recordDirectChoice(82)
+	} else {
+		kind = SanySyntaxNodeKindByName["N_BoundQuant"]
+		if !p.startsQuantBoundIntro() {
+			p.recordDirectChoice(84)
+			p.throwParseException(-1, "expected quantified bound")
+		}
+		heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
+		}
+		p.recordDirectChoice(83)
+	}
+	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in quantified expression"))
+	heirs = append(heirs, p.ExpressionUntil(p.stopAfterOpenExpressionBody(stop)))
+	return NewSanyNode(kind, heirs...)
+}
+
+func (p *SanyParser) stopAfterOpenExpressionBody(stop func(*SanyToken) bool) func(*SanyToken) bool {
+	startLine := p.peek().BeginLine
+	return func(tok *SanyToken) bool {
+		if IsSanyJunctionBullet(tok.Kind) && tok.BeginLine == startLine {
+			return false
+		}
+		if stop == nil {
+			return false
+		}
+		return stop(tok)
+	}
+}
+
+func (p *SanyParser) SomeTQuant(stops ...func(*SanyToken) bool) *SanySyntaxNode {
+	stop := sanyFirstStop(stops)
+	p.beginProduction("Bound Quantified Expression")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	if p.match(SanyTokenTExists) || p.match(SanyTokenTForall) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	} else {
+		p.recordDirectChoice(85)
+		p.throwParseException(-1, "expected temporal quantified expression")
+	}
+	heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected temporal quantified identifier"))
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected temporal quantified identifier"))
+	}
+	p.recordDirectChoice(86)
+	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in temporal quantified expression"))
+	heirs = append(heirs, p.ExpressionUntil(stop))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_UnboundQuant"], heirs...)
+}
+
+func (p *SanyParser) ParenthesesExpression() *SanySyntaxNode {
+	switch p.peekChoice().Kind {
+	case SanyTokenLbr:
+		return p.ParenExpr()
+	case SanyTokenLbc:
+		return p.BraceCases()
+	case SanyTokenLab:
+		return p.TupleOrAction()
+	case SanyTokenLsb:
+		return p.SBracketCases()
+	case SanyTokenWF, SanyTokenSF:
+		return p.FairnessExpr()
+	default:
+		p.recordDirectChoice(77)
+		p.throwParseException(-1, "expected parenthesized expression")
+		return nil
+	}
+}
+
+// PrimitiveExpression retains the earlier Go spelling.
+func (p *SanyParser) PrimitiveExpression() *SanySyntaxNode {
+	return p.ParenthesesExpression()
+}
+
+func (p *SanyParser) String() *SanySyntaxNode {
+	p.beginProduction("String")
+	defer p.endProduction()
+	node := p.consumeParseToken(SanyTokenStringLiteral, "expected string literal")
+	node.Kind = SanySyntaxNodeKindByName["N_String"]
+	node.Image = sanyReduceString(node.Image)
+	return node
+}
+
+func (p *SanyParser) Number() *SanySyntaxNode {
+	first := p.consumeParseToken(SanyTokenNumberLiteral, "expected number literal")
+	if p.scanLookahead(37, 2) {
+		dot := p.consumeParseToken(SanyTokenDot, "expected decimal point")
+		second := p.consumeParseToken(SanyTokenNumberLiteral, "expected number literal after decimal point")
+		p.decimalFlag = true
+		return NewSanyNode(SanySyntaxNodeKindByName["N_Real"], first, dot, second)
+	}
+	p.numberFlag = true
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Number"], first)
+}
+
+func (p *SanyParser) ParenExpr() *SanySyntaxNode {
+	left := p.consumeParseToken(SanyTokenLbr, "expected (")
+	expr := p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
+	})
+	right := p.consumeParseToken(SanyTokenRbr, "expected )")
+	return NewSanyNode(SanySyntaxNodeKindByName["N_ParenExpr"], left, expr, right)
+}
+
+func (p *SanyParser) BraceCases() *SanySyntaxNode {
+	p.beginProduction("Some { } form")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLbc, "expected {")}
+	kind := "N_SetEnumerate"
+	var held *SanySyntaxNode
+	readExpression := func() *SanySyntaxNode {
+		return p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenColon || tok.Kind == SanyTokenRbc || tok.Kind == SanyTokenEOF
+		})
+	}
+	readElements := func(site int) {
+		for p.match(SanyTokenComma) {
+			if held != nil {
+				heirs = append(heirs, held)
+				held = nil
+			}
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), readExpression())
+		}
+		p.recordDirectChoice(site)
+	}
+	readBounds := func(site int) {
+		heirs = append(heirs, p.QuantBound())
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.QuantBound())
+		}
+		p.recordDirectChoice(site)
+	}
+	if p.scanLookahead(45, 1) {
+		if p.matchFcnConst() {
+			var intro *SanySyntaxNode
+			if p.check(SanyTokenLab) {
+				intro = p.IdentifierTuple()
+			} else if p.check(SanyTokenIdentifier) {
+				intro = p.Identifier()
+			} else {
+				p.recordDirectChoice(89)
+				p.throwParseException(-1, "expected set bound identifier")
+			}
+			p.expecting = "\\in"
+			in := p.consumeParseToken(SanyTokenIN, "expected \\in in set form")
+			in.Kind = SanySyntaxNodeKindByName["T_IN"]
+			domain := readExpression()
+			p.expecting = "':', ',' or '}'"
+			identifier := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), intro)
+			operator := NewSanyNode(SanySyntaxNodeKindByName["N_GenInfixOp"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), in)
+			held = NewSanyNode(SanySyntaxNodeKindByName["N_InfixExpr"], identifier, operator, domain)
+			if p.check(SanyTokenColon) || p.check(SanyTokenComma) {
+				switch p.peekChoice().Kind {
+				case SanyTokenColon:
+					p.advance()
+					held = nil
+					kind = "N_SubsetOf"
+					heirs = append(heirs, intro, in, domain, NewSanyTokenNode(p.previous()), readExpression())
+				case SanyTokenComma:
+					readElements(90)
+				default:
+					p.recordDirectChoice(91)
+					p.throwParseException(-1, "expected set continuation")
+				}
+			} else {
+				p.recordDirectChoice(92)
+			}
+		} else if p.scanLookahead(42, 2147483647) {
+			heirs = append(heirs, readExpression())
+			readElements(93)
+		} else if p.scanLookahead(43, 2147483647) {
+			kind = "N_SetOfAll"
+			heirs = append(heirs, readExpression(), p.consumeParseToken(SanyTokenColon, "expected : in set comprehension"))
+			readBounds(94)
+		} else if p.scanLookahead(44, 1) {
+			expression := readExpression()
+			heirs = append(heirs, expression)
+			if p.check(SanyTokenColon) || p.check(SanyTokenComma) {
+				switch p.peekChoice().Kind {
+				case SanyTokenColon:
+					p.advance()
+					colon := p.previous()
+					kind = "N_SetOfAll"
+					children := expression.GetHeirs()
+					if expression.Kind.JavaName() == "N_InfixExpr" && len(children) > 1 {
+						operator := children[1].GetHeirs()
+						if len(operator) > 1 && operator[1].Image == "\\in" {
+							message := "Form {a \\in b : c \\in d }, at line " + strconv.Itoa(colon.BeginLine) + ", is not allowed"
+							p.throwReportedParseException(message, colon.BeginPosition(), "E1300", message)
+						}
+					}
+					heirs = append(heirs, NewSanyTokenNode(colon))
+					readBounds(95)
+				case SanyTokenComma:
+					readElements(96)
+				default:
+					p.recordDirectChoice(97)
+					p.throwParseException(-1, "expected set continuation")
+				}
+			} else {
+				p.recordDirectChoice(98)
+			}
+		} else {
+			p.throwParseException(-1, "expected set expression")
+		}
+	}
+	close := p.consumeParseToken(SanyTokenRbc, "expected }")
+	if held != nil {
+		heirs = append(heirs, held)
+	}
+	heirs = append(heirs, close)
+	return NewSanyNode(SanySyntaxNodeKindByName[kind], heirs...)
+}
+
+func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
+	p.beginProduction("Some << -- >> or >>_ Form")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLab, "expected <<")}
+	if p.scanLookahead(49, 1) {
+		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRab || tok.Kind == SanyTokenArab || tok.Kind == SanyTokenEOF
+		}))
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRab || tok.Kind == SanyTokenArab || tok.Kind == SanyTokenEOF
+			}))
+		}
+		p.recordDirectChoice(109)
+	}
+	switch p.peekChoice().Kind {
+	case SanyTokenRab:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRab, "expected >>"))
+		return NewSanyNode(SanySyntaxNodeKindByName["N_Tuple"], heirs...)
+	case SanyTokenArab:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenArab, "expected >>_"))
+		heirs = append(heirs, p.ReducedExpression())
+		return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
+	default:
+		p.recordDirectChoice(110)
+		p.throwParseException(-1, "expected >> or >>_")
+		return nil
+	}
+}
+
+func (p *SanyParser) SBracketCases() *SanySyntaxNode {
+	p.beginProduction("Some [] Form")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLsb, "expected [")}
+	kind := "N_FcnAppl"
+	readRecordFields := func(site int) {
+		kind = "N_RcdConstructor"
+		heirs = append(heirs, p.FieldVal())
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldVal())
+		}
+		p.recordDirectChoice(site)
+	}
+	if p.matchFcnConst() {
+		kind = "N_FcnConst"
+		heirs = append(heirs, p.QuantBound())
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.QuantBound())
+		}
+		p.recordDirectChoice(99)
+		heirs = append(heirs, p.consumeParseToken(SanyTokenMapto, "expected |-> in function constructor"))
+		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+		}))
+	} else if p.scanLookahead(46, 2147483647) {
+		readRecordFields(100)
+	} else if p.peekNext().Kind == SanyTokenMapto && isSanyFieldNameToken(p.peek().Kind) {
+		p.reclassifyFieldName()
+		readRecordFields(101)
+	} else if p.scanLookahead(47, 2147483647) {
+		kind = "N_SetOfRcds"
+		heirs = append(heirs, p.FieldSet())
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldSet())
+		}
+		p.recordDirectChoice(102)
+	} else {
+		if !p.scanLookahead(48, 1) {
+			p.throwParseException(-1, "expected bracket expression")
+		}
+		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenArsb || tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenExcept || tok.Kind == SanyTokenEOF
+		}))
+		switch p.peekChoice().Kind {
+		case SanyTokenComma, SanyTokenRsb:
+			for p.match(SanyTokenComma) {
+				heirs = append(heirs, NewSanyTokenNode(p.previous()))
+				heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+					return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+				}))
+			}
+			p.recordDirectChoice(103)
+		case SanyTokenArrow:
+			kind = "N_SetOfFcns"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenArrow, "expected -> in function set"))
+			heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+				return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+			}))
+		case SanyTokenExcept:
+			kind = "N_Except"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenExcept, "expected EXCEPT"), p.ExceptSpec())
+			for p.match(SanyTokenComma) {
+				heirs = append(heirs, NewSanyTokenNode(p.previous()), p.ExceptSpec())
+			}
+			p.recordDirectChoice(104)
+		case SanyTokenArsb:
+			heirs = append(heirs, p.consumeParseToken(SanyTokenArsb, "expected ]_"), p.ReducedExpression())
+			return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
+		default:
+			p.recordDirectChoice(105)
+			p.throwParseException(-1, "expected bracket expression continuation")
+		}
+	}
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
+	return NewSanyNode(SanySyntaxNodeKindByName[kind], heirs...)
+}
+
+// matchFcnConst preserves Java's preview scan, including its acceptance of any
+// balanced <<...>> before IN; IdentifierTuple validates the contents later.
+func (p *SanyParser) matchFcnConst() bool {
+	return p.matchFcnConstAt(0)
+}
+
+func (p *SanyParser) matchFcnConstAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
+	case SanyTokenLab:
+		depth := 1
+		for depth != 0 {
+			offset++
+			switch p.tokenAt(offset).Kind {
+			case SanyTokenLab:
+				depth++
+			case SanyTokenRab:
+				depth--
+			case SanyTokenEOF:
+				return false
+			}
+		}
+		return p.tokenAt(offset+1).Kind == SanyTokenIN
+	case SanyTokenIdentifier:
+		offset++
+		for p.tokenAt(offset).Kind == SanyTokenComma {
+			offset++
+			if p.tokenAt(offset).Kind != SanyTokenIdentifier {
+				return false
+			}
+			offset++
+		}
+		return p.tokenAt(offset).Kind == SanyTokenIN
+	default:
+		return false
+	}
+}
+
+func (p *SanyParser) FieldVal() *SanySyntaxNode {
+	p.beginProduction("Field Value")
+	defer p.endProduction()
+	id := p.Identifier()
+	mapto := p.consumeParseToken(SanyTokenMapto, "expected |-> in record field")
+	expr := p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+	})
+	return NewSanyNode(SanySyntaxNodeKindByName["N_FieldVal"], id, mapto, expr)
+}
+
+func (p *SanyParser) FieldSet() *SanySyntaxNode {
+	p.beginProduction("Field Set")
+	defer p.endProduction()
+	id := p.Identifier()
+	colon := p.consumeParseToken(SanyTokenColon, "expected : in record field set")
+	expr := p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+	})
+	return NewSanyNode(SanySyntaxNodeKindByName["N_FieldSet"], id, colon, expr)
+}
+
+func (p *SanyParser) ExceptSpec() *SanySyntaxNode {
+	p.beginProduction("Except Spec")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenBang, "expected ! in EXCEPT spec")}
+	for {
+		heirs = append(heirs, p.ExceptComponent())
+		p.expecting = "= or ,"
+		if !p.check(SanyTokenDot) && !p.check(SanyTokenLsb) {
+			break
+		}
+	}
+	p.recordDirectChoice(106)
+	equals := p.consumeParseToken(SanyTokenEquals, "expected = in EXCEPT spec")
+	equals.Kind = SanySyntaxNodeKindByName["T_EQUAL"]
+	heirs = append(heirs, equals)
+	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+	}))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_ExceptSpec"], heirs...)
+}
+
+func (p *SanyParser) ExceptComponent() *SanySyntaxNode {
+	p.beginProduction("Except Component")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	switch p.peekChoice().Kind {
+	case SanyTokenDot:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenDot, "expected ."))
+		p.reclassifyFieldName()
+		identifier := p.Identifier()
+		if identifier.Image == "@" {
+			diagnostic := errorAt(identifier.Range.Begin, "E1300", "@ used in !.@")
+			diagnostic.SANYParseMessage = diagnostic.Message
+			p.diags = append(p.diags, diagnostic)
+		}
+		heirs = append(heirs, identifier)
+	case SanyTokenLsb:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenLsb, "expected ["))
+		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+		}))
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+			}))
+		}
+		p.recordDirectChoice(107)
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ] in EXCEPT component"))
+	default:
+		p.recordDirectChoice(108)
+		p.throwParseException(-1, "expected EXCEPT component")
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_ExceptComponent"], heirs...)
+}
+
+func (p *SanyParser) ReducedExpression() *SanySyntaxNode {
+	p.beginProduction("restricted form of expression")
+	defer p.endProduction()
+	switch {
+	case p.check(SanyTokenIdentifier):
+		return p.NoOpExtension()
+	case p.check(SanyTokenLbr):
+		return p.ParenExpr()
+	case p.check(SanyTokenLbc):
+		return p.BraceCases()
+	case p.check(SanyTokenLsb):
+		return p.SBracketCases()
+	case p.check(SanyTokenLab):
+		return p.TupleOrAction()
+	default:
+		p.recordDirectChoice(112)
+		p.throwParseException(-1, "expected restricted expression after action subscript")
+		return nil
+	}
+}
+
+func (p *SanyParser) startsNoOpExtension() bool {
+	if !p.startsNoOpExtensionBaseAt(0) {
+		return false
+	}
+	offset := 1
+	if p.check(SanyTokenIdentifier) && p.tokenAt(offset).Kind == SanyTokenLbr {
+		end := p.findMatchingBracketOffset(offset)
+		if end < 0 {
+			return false
+		}
+		offset = end + 1
+	}
+	return p.tokenAt(offset).Kind == SanyTokenBang
+}
+
+func (p *SanyParser) startsNoOpExtensionBaseAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
+	case SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *SanyParser) startsOpApplication() bool {
+	return p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenLbr
+}
+
+func (p *SanyParser) OpApplication() *SanySyntaxNode {
+	id := p.Identifier()
+	genID := NewSanyNode(
+		SanySyntaxNodeKindByName["N_GeneralId"],
+		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
+		id,
+	)
+	return NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], genID, p.OpArgs())
+}
+
+func (p *SanyParser) OpArgs() *SanySyntaxNode {
+	p.beginProduction("Optional Arguments")
+	defer p.endProduction()
+	var heirs []*SanySyntaxNode
+	heirs = append(heirs, p.consumeParseToken(SanyTokenLbr, "expected ( in operator arguments"))
+	heirs = append(heirs, p.OpOrExpr(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
+	}))
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		heirs = append(heirs, p.OpOrExpr(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
+		}))
+	}
+	p.recordDirectChoice(79)
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator arguments"))
+	return NewSanyNode(SanySyntaxNodeKindByName["N_OpArgs"], heirs...)
+}
+
+// Source optional OpArgs uses two-token lookahead: an opening parenthesis
+// followed by the first token of the mandatory OpOrExpr. A failed lookahead
+// leaves the parenthesis for the surrounding production.
+func (p *SanyParser) startsOpArgs(production int) bool {
+	return p.scanLookahead(production, 2)
+}
+
+// PrimitiveExp allows the full BangExt selector production; the restricted
+// NoOpExtension used by action subscripts is a separate source production.
+func (p *SanyParser) primitiveSelectorExpr(selector *SanySyntaxNode) *SanySyntaxNode {
+	var prefix []*SanySyntaxNode
+	args := p.OptionalSelectorOpArgs(selector)
+	for p.check(SanyTokenBang) {
+		bang, next, nextArgs := p.BangExtension()
+		if args != nil {
+			prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, args, bang))
+		} else {
+			prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, bang))
+		}
+		selector, args = next, nextArgs
+	}
+	p.recordDirectChoice(124)
+	genID := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"],
+		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"], prefix...), selector)
+	if args != nil {
+		return NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], genID, args)
+	}
+	return genID
+}
+
+func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
+	p.beginProduction("Bang Extension")
+	defer p.endProduction()
+	bang = p.consumeParseToken(SanyTokenBang, "expected ! in selector")
+	if p.scanLookahead(73, 1) {
+		if p.scanLookahead(71, 2147483647) && p.peek().Image != "@" {
+			selector = p.Identifier()
+		} else if p.isNEPrefixOperator(p.peek()) || p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) {
+			selector = p.BangOperatorSelector()
+		} else {
+			p.recordDirectChoice(126)
+			p.throwParseException(-1, "expected identifier or operator selector")
+		}
+		if p.startsOpArgs(72) {
+			args = p.OpArgs()
+		}
+	} else if p.check(SanyTokenLbr) {
+		selector = p.OpArgs()
+	} else {
+		p.recordDirectChoice(127)
+		if p.scanLookahead(74, 1) {
+			selector = p.StructOp()
+		} else {
+			p.throwParseException(-1, "expected argument or structural selector")
+		}
+	}
+	return bang, selector, args
+}
+
+func (p *SanyParser) BangExt() *SanySyntaxNode {
+	bang, selector, args := p.BangExtension()
+	heirs := []*SanySyntaxNode{bang, selector}
+	if args != nil {
+		heirs = append(heirs, args)
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], heirs...)
+}
+
+func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
+	var prefix []*SanySyntaxNode
+	selector := p.consumeParseToken(SanyTokenIdentifier, "expected identifier in restricted expression")
+	var args *SanySyntaxNode
+	if p.startsOpArgs(50) {
+		args = p.OpArgs()
+	}
+	for p.match(SanyTokenBang) {
+		bang := NewSanyTokenNode(p.previous())
+		if args != nil {
+			prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, args, bang))
+		} else {
+			prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, bang))
+		}
+		selector = p.consumeParseToken(SanyTokenIdentifier, "expected identifier in restricted expression")
+		args = nil
+		if p.startsOpArgs(50) {
+			args = p.OpArgs()
+		}
+	}
+	p.recordDirectChoice(111)
+	// The final argument list is detached for FairnessExpr. Earlier prefix
+	// argument lists remain attached to their IdPrefixElement nodes.
+	p.fairnessHook = args
+	return NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"],
+		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"], prefix...), selector)
+}
+
+func (p *SanyParser) NoOpExtensionBase() *SanySyntaxNode {
+	switch p.peekChoice().Kind {
+	case SanyTokenIdentifier:
+		return p.Identifier()
+	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		if !p.check(SanyTokenProofsteplexeme) && !p.check(SanyTokenProofimplicitsteplexeme) {
+			p.recordDirectChoice(122)
+			p.throwParseException(-1, "expected proof expression token")
+		}
+		tok := p.advance()
+		node := NewSanyTokenNode(tok)
+		if p.currentProofLevel() < 0 && len(p.proofLevelStack) <= 1 {
+			message := p.junctionLocation(node.Range) + ": Step number used outside proof."
+			p.throwReportedParseException(message, node.Range.Begin, "E1300", message)
+		}
+		if tok.Image[1] == '+' {
+			message := p.junctionLocation(node.Range) + ": <+> step number used in an expression."
+			p.throwReportedParseException(message, node.Range.Begin, "E1300", message)
+		}
+		if tok.Kind == SanyTokenProofimplicitsteplexeme {
+			node.OriginalImage = node.Image
+			node.Image = p.correctedStepNum(tok)
+		}
+		return node
+	default:
+		return p.Identifier()
+	}
+}
+
+func (p *SanyParser) OptionalSelectorOpArgs(selector *SanySyntaxNode, lookahead ...int) *SanySyntaxNode {
+	production := 68
+	if len(lookahead) != 0 {
+		production = lookahead[0]
+	}
+	if selector == nil || !p.selectorAllowsOpArgs(selector) || !p.startsOpArgs(production) {
+		return nil
+	}
+	return p.OpArgs()
+}
+
+func (p *SanyParser) selectorAllowsOpArgs(selector *SanySyntaxNode) bool {
+	switch selector.Kind.JavaName() {
+	case "IDENTIFIER", "N_InfixOp", "N_NonExpPrefixOp", "N_PostfixOp", "N_PrefixOp":
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *SanyParser) BangOperatorSelector() *SanySyntaxNode {
+	tok := p.peek()
+	op, ok := LookupSanyOperator(tok.Image)
+	if !ok {
+		p.add(tok.BeginPosition(), "E1300", "expected operator selector")
+		return NewSanyTokenNode(p.advance())
+	}
+	p.lastOperator = &op
+	kindName := "N_InfixOp"
+	if op.IsPrefix() {
+		kindName = "N_NonExpPrefixOp"
+	} else if op.IsPostfix() {
+		kindName = "N_PostfixOp"
+	}
+	if kindName == "N_InfixOp" {
+		return sanyOperatorTokenNode(kindName, p.infixOpToken())
+	}
+	if kindName == "N_PostfixOp" {
+		return sanyOperatorTokenNode(kindName, p.postfixOpToken())
+	}
+	return sanyOperatorTokenNode(kindName, p.nonExpPrefixOpToken())
+}
+
+func (p *SanyParser) StructOp() *SanySyntaxNode {
+	p.beginProduction("StructOp")
+	active := true
+	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
+		if active {
+			p.endProduction()
+		}
+	}()
+	p.expecting = "`<<' , `>>' , `:' , `@' , or number"
+	var child *SanySyntaxNode
+	switch p.peekChoice().Kind {
+	case SanyTokenLab, SanyTokenRab, SanyTokenColon:
+		child = NewSanyTokenNode(p.advance())
+	case SanyTokenNumberLiteral:
+		child = p.Number()
+	default:
+		p.recordDirectChoice(128)
+		if p.peek().Image == "@" {
+			child = p.consumeParseToken(SanyTokenIdentifier, "expected @")
+		} else {
+			p.throwParseException(-1, "expected structural operator")
+		}
+	}
+	p.endProduction()
+	active = false
+	if child.Kind.JavaName() == "N_Real" {
+		message := "Illegal structural term at " + p.junctionLocation(child.Range)
+		p.throwReportedParseException(message, child.Range.Begin, "E1300", message)
+	}
+	if child.Token != nil {
+		return sanyOperatorTokenNode("N_StructOp", child.Token)
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_StructOp"], child)
+}
+
+// TLAplusParser.reduceString decodes escapes while retaining the quote marks.
+// Generator's StringNode strips those marks later, when creating its value.
+func sanyReduceString(image string) string {
+	var out strings.Builder
+	padding := 0
+	for i := 0; i < len(image); i++ {
+		if image[i] != '\\' {
+			out.WriteByte(image[i])
+			continue
+		}
+		i++
+		switch image[i] {
+		case '\\', '"':
+			out.WriteByte(image[i])
+		case 'n':
+			out.WriteByte('\n')
+		case 'r':
+			out.WriteByte('\r')
+		case 'f':
+			out.WriteByte('\f')
+		case 't':
+			out.WriteByte('\t')
+		default:
+			// Source increments its output length even for an unknown escape.
+			padding++
+		}
+	}
+	for ; padding > 0; padding-- {
+		out.WriteByte(0)
+	}
+	return out.String()
+}
+
+func reduceTLAString(image string) string {
+	value := sanyReduceString(image)
+	if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+		return value[1 : len(value)-1]
+	}
+	return value
+}
+
+func (p *SanyParser) genericOperatorNode(tok *SanyToken, op SanyOperatorInfo) *SanySyntaxNode {
+	p.lastOperator = &op
+	kindName := "N_GenInfixOp"
+	leafKindName := "N_InfixOp"
+	if op.IsPrefix() {
+		kindName = "N_GenPrefixOp"
+		leafKindName = "N_PrefixOp"
+	} else if op.IsPostfix() {
+		kindName = "N_GenPostfixOp"
+		leafKindName = "N_PostfixOp"
+	}
+	return NewSanyNode(
+		SanySyntaxNodeKindByName[kindName],
+		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
+		sanyOperatorTokenNode(leafKindName, tok),
+	)
+}
+
+func (p *SanyParser) genericOperatorReferenceNode(tok *SanyToken, op SanyOperatorInfo) *SanySyntaxNode {
+	p.lastOperator = &op
+	if !op.IsPrefix() {
+		return p.genericOperatorNode(tok, op)
+	}
+	return NewSanyNode(
+		SanySyntaxNodeKindByName["N_GenNonExpPrefixOp"],
+		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
+		sanyOperatorTokenNode("N_NonExpPrefixOp", tok),
+	)
+}
+
+// isSanyFieldNameToken mirrors Java tla+.jj isFieldNameToken. The generated
+// token ranges retain Java's numbering and include its keyword synonyms.
+func isSanyFieldNameToken(kind SanyTokenKind) bool {
+	return (kind >= SanyTokenAction && kind <= SanyTokenExcept) ||
+		kind == SanyTokenExtends ||
+		(kind >= SanyTokenIf && kind <= SanyTokenSF) ||
+		kind == SanyTokenState ||
+		(kind >= SanyTokenThen && kind <= SanyTokenWith) ||
+		kind == SanyTokenUs ||
+		(kind >= SanyTokenOp112 && kind <= SanyTokenOp116)
+}
+
+func (p *SanyParser) reclassifyFieldName() {
+	if isSanyFieldNameToken(p.peek().Kind) {
+		p.peek().Kind = SanyTokenIdentifier
+	}
+}
+
+func (p *SanyParser) Identifier() *SanySyntaxNode {
+	return p.consumeParseToken(SanyTokenIdentifier, "expected identifier")
+}
+
+func (p *SanyParser) startsBodyItem() bool {
+	return p.startsBodyItemAt(0)
+}
+
+// Body's one-token lookahead admits the unit's first token, with the
+// source semantic exclusion for USE ONLY. Its later decisions use two tokens.
+func (p *SanyParser) startsBodyItemAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
+	case SanyTokenBm0, SanyTokenBm1, SanyTokenBm2, SanyTokenSeparator,
+		SanyTokenVariable, SanyTokenConstant, SanyTokenRecursive, SanyTokenAssume,
+		SanyTokenAssumption, SanyTokenTheorem, SanyTokenProposition,
+		SanyTokenLocal, SanyTokenInstance, SanyTokenHide, SanyTokenDefbreak:
+		return true
+	case SanyTokenUse:
+		return p.tokenAt(offset+1).Kind != SanyTokenOnly
+	default:
+		return false
+	}
+}
+
+func (p *SanyParser) startsOperatorOrFunctionDefinition() bool {
+	return p.startsOperatorOrFunctionDefinitionAt(0)
+}
+
+func (p *SanyParser) startsOperatorOrFunctionDefinitionAt(offset int) bool {
+	if p.tokenAt(offset).Kind == SanyTokenLocal {
+		// The two-token budget ends at DEFBREAK, before validating the head.
+		return p.tokenAt(offset+1).Kind == SanyTokenDefbreak
+	}
+	return p.tokenAt(offset).Kind == SanyTokenDefbreak &&
+		(p.tokenAt(offset+1).Kind == SanyTokenIdentifier || p.startsDefinitionPrefixAt(offset+1))
+}
+
+func (p *SanyParser) isInfixOperator(tok *SanyToken) bool {
+	if tok == nil {
+		return false
+	}
+	op, ok := LookupSanyOperator(tok.Image)
+	return ok && op.IsInfix()
+}
+
+func (p *SanyParser) isPostfixOperator(tok *SanyToken) bool {
+	if tok == nil {
+		return false
+	}
+	op, ok := LookupSanyOperator(tok.Image)
+	return ok && op.IsPostfix()
+}
+
+func (p *SanyParser) isNEPrefixOperator(tok *SanyToken) bool {
+	if tok == nil {
+		return false
+	}
+	op, ok := LookupSanyOperator(tok.Image)
+	return ok && op.IsPrefix()
+}
+
+func (p *SanyParser) parseErrorMessage(expected string, tok *SanyToken) string {
+	image := "<EOF>"
+	pos := Position{}
+	if tok != nil {
+		pos = tok.BeginPosition()
+		if tok.Image != "" {
+			image = tok.Image
+		} else if javaImage := tok.Kind.JavaImage(); javaImage != "" {
+			image = strings.Trim(javaImage, "\"")
+		}
+	}
+	return "Was expecting \"" + expected + "\"\nEncountered \"" + image + "\" at line " + strconv.Itoa(pos.Line) + ", column " + strconv.Itoa(pos.Column) + "."
+}
+
+func (p *SanyParser) findMatchingBracketOffset(start int) int {
+	close, ok := matchingSanyCloseBracket(p.tokenAt(start).Kind)
+	if !ok {
+		return -1
+	}
+	stack := []SanyTokenKind{close}
+	for offset := start + 1; ; offset++ {
+		tok := p.tokenAt(offset)
+		if tok.Kind == SanyTokenEOF {
+			return -1
+		}
+		if close, ok := matchingSanyCloseBracket(tok.Kind); ok {
+			stack = append(stack, close)
+			continue
+		}
+		if len(stack) > 0 && tok.Kind == stack[len(stack)-1] {
+			stack = stack[:len(stack)-1]
+			if len(stack) == 0 {
+				return offset
+			}
+		}
+	}
+}
+
+func matchingSanyCloseBracket(kind SanyTokenKind) (SanyTokenKind, bool) {
+	switch kind {
+	case SanyTokenLbr:
+		return SanyTokenRbr, true
+	case SanyTokenLsb:
+		return SanyTokenRsb, true
+	case SanyTokenLbc:
+		return SanyTokenRbc, true
+	case SanyTokenLab:
+		return SanyTokenRab, true
+	default:
+		return SanyTokenEOF, false
+	}
+}
+
+func (p *SanyParser) findBeforeStop(target SanyTokenKind, stops ...SanyTokenKind) int {
+	for offset := 0; ; offset++ {
+		tok := p.tokenAt(offset)
+		if tok.Kind == target {
+			return offset
+		}
+		for _, stop := range stops {
+			if tok.Kind == stop {
+				return -1
+			}
+		}
+		if tok.Kind == SanyTokenEOF {
+			return -1
+		}
+	}
+}
+
+func (p *SanyParser) findTopLevelBeforeStop(target SanyTokenKind, stops ...SanyTokenKind) int {
+	depth := 0
+	for offset := 0; ; offset++ {
+		tok := p.tokenAt(offset)
+		if depth == 0 {
+			if tok.Kind == target {
+				return offset
+			}
+			for _, stop := range stops {
+				if tok.Kind == stop {
+					return -1
+				}
+			}
+		}
+		switch tok.Kind {
+		case SanyTokenLbr, SanyTokenLsb, SanyTokenLbc, SanyTokenLab:
+			depth++
+		case SanyTokenRbr, SanyTokenRsb, SanyTokenRbc, SanyTokenRab:
+			if depth > 0 {
+				depth--
+			}
+		case SanyTokenEOF:
+			return -1
+		}
+	}
+}
+
+func (p *SanyParser) match(kind SanyTokenKind) bool {
+	if p.check(kind) {
+		p.advance()
+		return true
+	}
+	return false
+}
+
+func (p *SanyParser) check(kind SanyTokenKind) bool {
+	return p.peek().Kind == kind
+}
+
+// Successful JavaCC consumption advances generation and cleanup even for EOF.
+func (p *SanyParser) advance() *SanyToken {
+	token := p.peek()
+	p.at++
+	p.Token = token
+	p.tokenCarrier = token
+	p.nextChoiceValid = false
+	p.lookaheadGC++
+	if p.lookaheadGC > 100 {
+		p.lookaheadGC = 0
+		for i := range p.lookaheadCalls {
+			for call := &p.lookaheadCalls[i]; call != nil; call = call.next {
+				if call.generation < p.at {
+					call.first = nil
+				}
+			}
+		}
+	}
+	return token
+}
+
+// JavaCC's token starts as a stable dummy, then names the last consumed token.
+func (p *SanyParser) currentToken() *SanyToken {
+	p.syncTokenCarrier()
+	if len(p.tokens) != 0 && p.at == 0 {
+		p.Token.Next = p.tokens[0]
+	}
+	return p.Token
+}
+
+// syncTokenCarrier adopts direct writes to JavaCC's public token field. The
+// assigned token becomes the new current token and its Next chain becomes the
+// parser's lazy input prefix.
+func (p *SanyParser) syncTokenCarrier() {
+	if p.Token == p.tokenCarrier {
+		if p.Token == nil {
+			if p.tokenManagerMode {
+				panic(tlc.NewNullPointerException())
+			}
+			p.Token = &SanyToken{}
+			p.initialToken = p.Token
+			p.tokenCarrier = p.Token
+		}
+		return
+	}
+	if p.Token == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	p.tokens = nil
+	p.at = 0
+	p.tokenCarrier = p.Token
+	p.nextChoiceValid = false
+}
+
+func (p *SanyParser) previous() *SanyToken {
+	if p.at == 0 {
+		return nil
+	}
+	return p.tokens[p.at-1]
+}
+
+func (p *SanyParser) peek() *SanyToken { return p.tokenAt(0) }
+
+func (p *SanyParser) peekChoice() *SanyToken {
+	if p.nextChoiceValid {
+		return p.peek()
+	}
+	current := p.currentToken()
+	p.NextToken = current.Next
+	p.nextChoiceValid = true
+	if p.NextToken != nil {
+		return p.NextToken
+	}
+	return p.peek()
+}
+
+func (p *SanyParser) peekNext() *SanyToken {
+	return p.tokenAt(1)
+}
+
+func (p *SanyParser) tokenAt(offset int) *SanyToken {
+	p.syncTokenCarrier()
+	idx := p.at + offset
+	for idx >= len(p.tokens) {
+		var token *SanyToken
+		if len(p.tokens) == 0 && p.Token.Next != nil {
+			token = p.Token.Next
+		} else if p.TokenSource != nil {
+			token = p.TokenSource.NextToken()
+		} else if p.tokenManagerMode {
+			panic(tlc.NewNullPointerException())
+		} else {
+			// The pretokenized adapter supplies a fresh EOF for every subsequent
+			// request, as Java's token manager does, retaining EOF coordinates.
+			token = &SanyToken{Kind: SanyTokenEOF}
+			if len(p.tokens) != 0 {
+				last := p.tokens[len(p.tokens)-1]
+				if last.Kind == SanyTokenEOF {
+					token.BeginLine, token.BeginColumn = last.BeginLine, last.BeginColumn
+					token.EndLine, token.EndColumn = last.EndLine, last.EndColumn
+					token.SourceFile, token.LexState = last.SourceFile, last.LexState
+				}
+			}
+		}
+		if len(p.tokens) != 0 {
+			p.tokens[len(p.tokens)-1].Next = token
+		} else {
+			p.currentToken().Next = token
+		}
+		p.tokens = append(p.tokens, token)
+	}
+	return p.tokens[idx]
+}
+
+func (p *SanyParser) add(pos Position, code, msg string) {
+	p.diags = append(p.diags, errorAt(pos, code, "%s", msg))
+}
+
+func (p *SanyParser) sourceOperatorToken(site int, nativeMessage string) *SanyToken {
+	kind := p.peekChoice().Kind
+	if !sanyDirectChoiceAccepts(site, kind) {
+		p.recordDirectChoice(site)
+		p.throwParseException(-1, nativeMessage)
+	}
+	return p.advance()
+}
+
+func sanyDirectChoiceAccepts(site int, kind SanyTokenKind) bool {
+	return kind >= 0 && int(kind) < 295 && sanyDirectChoiceMasks[site][int(kind)/32]&(uint32(1)<<uint(int(kind)%32)) != 0
+}
+
+func (p *SanyParser) prefixOpToken() *SanyToken {
+	return p.sourceOperatorToken(0, "expected prefix operator")
+}
+
+func (p *SanyParser) PrefixOpToken() *SanyToken { return p.prefixOpToken() }
+
+func (p *SanyParser) nonExpPrefixOpToken() *SanyToken {
+	return p.sourceOperatorToken(1, "expected nonexpressive prefix operator")
+}
+
+func (p *SanyParser) NEPrefixOpToken() *SanyToken { return p.nonExpPrefixOpToken() }
+
+func (p *SanyParser) postfixOpToken() *SanyToken {
+	return p.sourceOperatorToken(3, "expected postfix operator")
+}
+
+func (p *SanyParser) PostfixOpToken() *SanyToken { return p.postfixOpToken() }
+
+// InfixOp alone, unlike the source prefix and postfix productions, owns a frame.
+func (p *SanyParser) infixOpToken() *SanyToken {
+	p.beginProduction("Infix Op")
+	defer p.endProduction()
+	token := p.sourceOperatorToken(2, "expected infix operator")
+	if op, ok := LookupSanyOperator(token.Image); ok {
+		p.lastOperator = &op
+	}
+	return token
+}
+
+func (p *SanyParser) InfixOpToken() *SanyToken { return p.infixOpToken() }
+
+func (p *SanyParser) PrefixOp() *SanySyntaxNode {
+	token := p.prefixOpToken()
+	p.rememberLastOperator(token)
+	return sanyOperatorTokenNode("N_PrefixOp", token)
+}
+
+func (p *SanyParser) NonExpPrefixOp() *SanySyntaxNode {
+	token := p.nonExpPrefixOpToken()
+	p.rememberLastOperator(token)
+	return sanyOperatorTokenNode("N_NonExpPrefixOp", token)
+}
+
+func (p *SanyParser) InfixOp() *SanySyntaxNode {
+	token := p.infixOpToken()
+	p.rememberLastOperator(token)
+	return sanyOperatorTokenNode("N_InfixOp", token)
+}
+
+func (p *SanyParser) PostfixOp() *SanySyntaxNode {
+	token := p.postfixOpToken()
+	p.rememberLastOperator(token)
+	return sanyOperatorTokenNode("N_PostfixOp", token)
+}
+
+func (p *SanyParser) rememberLastOperator(token *SanyToken) {
+	if operator, ok := LookupSanyOperator(token.Image); ok {
+		p.lastOperator = &operator
+	} else {
+		p.lastOperator = nil
+	}
+}
+
+// Source SyntaxTreeNode(module, kind, token) is a leaf with the token's image.
+func sanyOperatorTokenNode(kind string, token *SanyToken) *SanySyntaxNode {
+	node := NewSanyTokenNode(token)
+	node.Kind = SanySyntaxNodeKindByName[kind]
+	return node
+}

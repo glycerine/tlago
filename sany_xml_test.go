@@ -1,0 +1,5116 @@
+package tlago
+
+import (
+	"bytes"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+func TestSanyXMLBehaviors(t *testing.T) {
+	t.Run("serializes a checked module as Java-shaped SANY XML", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("Simple.tla", `---- MODULE Simple ----
+CONSTANT C
+VARIABLE x
+A == TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<?xml version="1.0" encoding="UTF-8" standalone="no"?>`,
+			"\n<modules>\n  <RootModule>Simple</RootModule>\n  <context>\n    <entry>\n",
+			`<RootModule>Simple</RootModule>`,
+			`<BuiltInKind>`,
+			`<uniquename>TRUE</uniquename>`,
+			`<OpDeclNode>`,
+			`<uniquename>C</uniquename>`,
+			`<kind>2</kind>`,
+			`<uniquename>x</uniquename>`,
+			`<kind>3</kind>`,
+			`<UserDefinedOpKind>`,
+			`<uniquename>A</uniquename>`,
+			`<ModuleNodeRef>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("SANY XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("CLI writes SANY XML", func(t *testing.T) {
+		dir := t.TempDir()
+		spec := filepath.Join(dir, "CliXML.tla")
+		writeFile(t, spec, `---- MODULE CliXML ----
+VARIABLE x
+Init == x = 0
+====`)
+
+		var stdout, stderr bytes.Buffer
+		if code := RunCLI([]string{"sany-xml", spec}, &stdout, &stderr); code != ExitOK {
+			t.Fatalf("sany-xml exit = %d, want %d; stderr=%s", code, ExitOK, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), `<RootModule>CliXML</RootModule>`) ||
+			!strings.Contains(stdout.String(), `<ModuleNode`) ||
+			!strings.Contains(stdout.String(), `<UserDefinedOpKind`) {
+			t.Fatalf("sany-xml stdout = %q, want SANY XML", stdout.String())
+		}
+	})
+
+	t.Run("emits external module refs in SANY semantic order", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "ExtBase.tla"), `---- MODULE ExtBase ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Extender.tla"), `---- MODULE Extender ----
+EXTENDS ExtBase
+ExtOp == BaseOp
+====`)
+		writeFile(t, filepath.Join(dir, "InstBase.tla"), `---- MODULE InstBase ----
+InstBaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Instancer.tla"), `---- MODULE Instancer ----
+EXTENDS InstBase
+InstOp == InstBaseOp
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+EXTENDS Extender
+INSTANCE Instancer
+Use == ExtOp /\ InstOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		moduleNamesByUID := map[string]string{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "ModuleNode" {
+				moduleNamesByUID[firstChildText(entry, "UID")] = firstChildText(payload, "uniquename")
+			}
+		}
+		var refs []string
+		for _, child := range root.Children {
+			if child.Name == "ModuleNodeRef" {
+				refs = append(refs, moduleNamesByUID[firstChildText(child, "UID")])
+			}
+		}
+		got := strings.Join(refs, ",")
+		want := "ExtBase,Extender,InstBase,Instancer,Root"
+		if got != want {
+			t.Fatalf("module refs = %s, want %s\n%s", got, want, xmlText)
+		}
+	})
+
+	t.Run("uses operator level for user-defined call nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UserCallLevelXML.tla", `---- MODULE UserCallLevelXML ----
+VARIABLE x
+Id(a) == a
+Use == Id(x)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 12)
+		if call == nil {
+			t.Fatalf("Id(x) call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Id(x) call level = %s, want 1\n%s", got, xmlText)
+		}
+		operand := opApplAtLocation(root, 4, 11, 11)
+		if operand == nil {
+			t.Fatalf("Id(x) operand node missing\n%s", xmlText)
+		}
+		if got := firstChildText(operand, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Id(x) operand level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("does not lift calls through unused formal parameters", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UnusedFormalCallLevelXML.tla", `---- MODULE UnusedFormalCallLevelXML ----
+VARIABLE x
+Ignore(a) == TRUE
+Use == Ignore(x)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 16)
+		if call == nil {
+			t.Fatalf("Ignore(x) call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(constantLevel)) {
+			t.Fatalf("Ignore(x) call level = %s, want 0\n%s", got, xmlText)
+		}
+		operand := opApplAtLocation(root, 4, 15, 15)
+		if operand == nil {
+			t.Fatalf("Ignore(x) operand node missing\n%s", xmlText)
+		}
+		if got := firstChildText(operand, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Ignore(x) operand level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("used formals lift current-module symbolic infix call nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("SymbolicInfixCallLevelXML.tla", `---- MODULE SymbolicInfixCallLevelXML ----
+VARIABLE x
+a \odot b == a
+Use == x \odot x
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 16)
+		if call == nil {
+			t.Fatalf("x \\odot x call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("x \\odot x call level = %s, want 1\n%s", got, xmlText)
+		}
+		operand := opApplAtLocation(root, 4, 8, 8)
+		if operand == nil {
+			t.Fatalf("x \\odot x operand node missing\n%s", xmlText)
+		}
+		if got := firstChildText(operand, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("x \\odot x operand level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("unused formals do not lift current-module symbolic infix call nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UnusedSymbolicInfixCallLevelXML.tla", `---- MODULE UnusedSymbolicInfixCallLevelXML ----
+VARIABLE x
+a \odot b == TRUE
+Use == x \odot x
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 16)
+		if call == nil {
+			t.Fatalf("x \\odot x call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(constantLevel)) {
+			t.Fatalf("x \\odot x call level = %s, want 0\n%s", got, xmlText)
+		}
+		operand := opApplAtLocation(root, 4, 8, 8)
+		if operand == nil {
+			t.Fatalf("x \\odot x operand node missing\n%s", xmlText)
+		}
+		if got := firstChildText(operand, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("x \\odot x operand level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("zero-weight helper definitions do not lift caller arguments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ZeroWeightHelperLevelXML.tla", `---- MODULE ZeroWeightHelperLevelXML ----
+VARIABLE x
+Times(a, b) == TRUE
+a \odot b == Times(a, b)
+Use == x \odot x
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 5, 8, 16)
+		if call == nil {
+			t.Fatalf("x \\odot x call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(constantLevel)) {
+			t.Fatalf("x \\odot x call level = %s, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("transitive helper weights lift caller arguments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TransitiveHelperLevelXML.tla", `---- MODULE TransitiveHelperLevelXML ----
+VARIABLE x
+Same(a, b) == a = b
+a \prec b == Same(a, b)
+Use == x \prec x
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 5, 8, 16)
+		if call == nil {
+			t.Fatalf("x \\prec x call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("x \\prec x call level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("operator formal calls lift higher-order actual arguments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("HigherOrderFormalLevelXML.tla", `---- MODULE HigherOrderFormalLevelXML ----
+VARIABLE x
+Choose(S, P(_)) == CHOOSE y \in S : P(y)
+Use == Choose({1}, LAMBDA y : x)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 32)
+		if call == nil {
+			t.Fatalf("Choose call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Choose call level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("value formals under prime become non-Leibniz parameters", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("PrimeValueFormalLeibnizXML.tla", `---- MODULE PrimeValueFormalLeibnizXML ----
+VARIABLE x
+Neutral(p) == x = p
+SendAck(p) == Neutral(p)'
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		sendAck := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "SendAck")
+		if sendAck == nil {
+			t.Fatalf("SendAck definition missing\n%s", xmlText)
+		}
+		params := directChildren(sendAck, "params")
+		if len(params) != 1 {
+			t.Fatalf("SendAck params count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 {
+			t.Fatalf("SendAck leibnizparam count = %d, want 1\n%s", len(leibnizParams), xmlText)
+		}
+		if got := len(directChildren(leibnizParams[0], "leibniz")); got != 0 {
+			t.Fatalf("SendAck(p) leibniz marker count = %d, want Java SANY non-Leibniz\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("labels suppress body non-Leibniz parameter coloring", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LabelPrimeLeibnizXML.tla", `---- MODULE LabelPrimeLeibnizXML ----
+VARIABLE x
+Neutral(p) == x = p
+SendAck(p) == UP:: Neutral(p)'
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		sendAck := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "SendAck")
+		if sendAck == nil {
+			t.Fatalf("SendAck definition missing\n%s", xmlText)
+		}
+		params := directChildren(sendAck, "params")
+		if len(params) != 1 {
+			t.Fatalf("SendAck params count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 {
+			t.Fatalf("SendAck leibnizparam count = %d, want 1\n%s", len(leibnizParams), xmlText)
+		}
+		if got := len(directChildren(leibnizParams[0], "leibniz")); got != 1 {
+			t.Fatalf("SendAck(p) leibniz marker count = %d, want Java SANY label behavior\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("LET local definitions keep their own expression levels", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetLocalDefinitionLevelXML.tla", `---- MODULE LetLocalDefinitionLevelXML ----
+VARIABLE x
+Use == LET r == x IN r
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := userDefinedOpAtLocation(root, 3, 12, 17)
+		if def == nil {
+			t.Fatalf("LET local definition r missing\n%s", xmlText)
+		}
+		if got := firstChildText(def, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("LET local r level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("terminal BY serializes expression facts", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TerminalByExpressionFactXML.tla", `---- MODULE TerminalByExpressionFactXML ----
+THEOREM TRUE
+  BY \A c \in {1} : c = c
+====`)
+		requireNoErrors(t, diags)
+		got := normalizeXMLForContains(string(xmlText))
+		for _, want := range []string{
+			`<by>`,
+			`<facts>`,
+			`<OpApplNode>`,
+			`<uniquename>$BoundedForall</uniquename>`,
+			`<uniquename>c</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("terminal BY expression fact missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("terminal BY parses prefix operator expression facts", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TerminalByPrefixFactXML.tla", `---- MODULE TerminalByPrefixFactXML ---- EXTENDS Naturals
+THEOREM TRUE
+  BY DOMAIN <<1>> = 1..1
+====`)
+		requireNoErrors(t, diags)
+		got := normalizeXMLForContains(string(xmlText))
+		for _, want := range []string{
+			`<by>`,
+			`<facts>`,
+			`<uniquename>DOMAIN</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("terminal BY prefix expression fact missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("generated bang subexpression calls emit lambdas", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("BangSubexpressionLambdaXML.tla", `---- MODULE BangSubexpressionLambdaXML ----
+CONSTANT S
+VARIABLE x
+a == /\ x = x
+     /\ IF TRUE
+           THEN /\ \E I \in S : x' = x
+                /\ x = x
+           ELSE TRUE
+     /\ x = x
+THEOREM TRUE
+<1>1. PICK I \in S : a!2!2!1!(I)
+  BY DEF a
+<1> QED OBVIOUS
+====`)
+		requireNoErrors(t, diags)
+		got := normalizeXMLForContains(string(xmlText))
+		if strings.Contains(got, `<uniquename>a!2!2!1</uniquename>`) {
+			t.Fatalf("bang subexpression call emitted fake builtin\n%s", got)
+		}
+		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
+			t.Fatalf("bang subexpression call did not emit lambda\n%s", got)
+		}
+	})
+
+	t.Run("numbered bang subexpression references emit SANY nop wrappers", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("BangSubexpressionReferenceXML.tla", `---- MODULE BangSubexpressionReferenceXML ----
+VARIABLE x
+Inv == /\ x = x
+       /\ x' = x
+Use == Inv!2
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		nopUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Nop")
+		if nopUID == "" {
+			t.Fatalf("$Nop builtin entry missing\n%s", xmlText)
+		}
+		app := opApplAtLocation(root, 5, 8, 12)
+		if app == nil {
+			t.Fatalf("Inv!2 application node missing\n%s", xmlText)
+		}
+		if !opApplNodeUsesOperatorUID(app, "BuiltInKindRef", nopUID) {
+			t.Fatalf("Inv!2 application did not use $Nop\n%s", xmlText)
+		}
+		if strings.Contains(string(xmlText), `<uniquename>Inv!2</uniquename>`) {
+			t.Fatalf("numbered bang subexpression emitted fake operator name\n%s", xmlText)
+		}
+	})
+
+	t.Run("bang colon references emit SANY nop wrappers around definition bodies", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("BangColonReferenceXML.tla", `---- MODULE BangColonReferenceXML ----
+VARIABLE x
+THEOREM T == x = x
+THEOREM T!:
+Use == T!:
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		nopUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Nop")
+		if nopUID == "" {
+			t.Fatalf("$Nop builtin entry missing\n%s", xmlText)
+		}
+		app := opApplAtLocation(root, 5, 8, 10)
+		if app == nil {
+			t.Fatalf("T!: application node missing\n%s", xmlText)
+		}
+		if !opApplNodeUsesOperatorUID(app, "BuiltInKindRef", nopUID) {
+			t.Fatalf("T!: application did not use $Nop\n%s", xmlText)
+		}
+		if got := firstChildText(app, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("T!: application level = %s, want 1\n%s", got, xmlText)
+		}
+		if strings.Contains(string(xmlText), `<uniquename>T!:</uniquename>`) {
+			t.Fatalf("bang-colon reference emitted fake operator name\n%s", xmlText)
+		}
+	})
+
+	t.Run("instantiated theorem body selectors keep the theorem source context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "TheoremSelectorBase.tla"), `---- MODULE TheoremSelectorBase ----
+CONSTANT X
+Hidden == X = X
+THEOREM Thm == Hidden
+====`)
+		rootPath := filepath.Join(dir, "TheoremSelectorRoot.tla")
+		writeFile(t, rootPath, `---- MODULE TheoremSelectorRoot ----
+CONSTANT Y
+P == INSTANCE TheoremSelectorBase WITH X <- Y
+Use == P!Thm!:
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if !strings.Contains(string(xmlText), `<uniquename>$Nop</uniquename>`) {
+			t.Fatalf("instantiated theorem body selector did not emit $Nop wrapper\n%s", xmlText)
+		}
+		use := xmlEntryPayloadByKindAndName(rootXML, "UserDefinedOpKind", "Use")
+		if use == nil {
+			t.Fatalf("instantiated theorem body selector missing Use definition\n%s", xmlText)
+		}
+		if len(xmlNodesByName(use, "SubstInNode")) != 1 {
+			t.Fatalf("instantiated theorem body selector missing SubstInNode\n%s", xmlText)
+		}
+		if len(xmlNodesByName(use, "APSubstInNode")) != 0 {
+			t.Fatalf("instantiated theorem body selector used APSubstInNode inside expression\n%s", xmlText)
+		}
+	})
+
+	t.Run("named instances clone assumption definitions with AP substitutions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "AssumeCloneBase.tla"), `---- MODULE AssumeCloneBase ----
+CONSTANT C
+ASSUME A == C = C
+====`)
+		rootPath := filepath.Join(dir, "AssumeCloneRoot.tla")
+		writeFile(t, rootPath, `---- MODULE AssumeCloneRoot ----
+CONSTANT C
+P == INSTANCE AssumeCloneBase WITH C <- C
+Use == P!A
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, want := range []string{
+			`<AssumeDef>`,
+			`<uniquename>P!A</uniquename>`,
+			`<APSubstInNode>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("named instance assumption clone missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("unqualified instance assumption references use unqualified clones", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "AssumeImportBase.tla"), `---- MODULE AssumeImportBase ----
+CONSTANT C
+ASSUME A == C = C
+====`)
+		rootPath := filepath.Join(dir, "AssumeImportRoot.tla")
+		writeFile(t, rootPath, `---- MODULE AssumeImportRoot ----
+CONSTANT C
+INSTANCE AssumeImportBase WITH C <- C
+Use == A
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		if strings.Contains(got, `<uniquename>AssumeImportBase!A</uniquename>`) {
+			t.Fatalf("unqualified instance assumption reference emitted qualified clone\n%s", got)
+		}
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if count := xmlPayloadCountByKindNameFile(rootXML, "AssumeDef", "A", "AssumeImportBase"); count != 1 {
+			t.Fatalf("source AssumeDef A count = %d, want 1\n%s", count, got)
+		}
+		if count := xmlPayloadCountByKindNameFile(rootXML, "AssumeDef", "A", "AssumeImportRoot"); count != 1 {
+			t.Fatalf("unqualified instance AssumeDef clone A count = %d, want 1\n%s", count, got)
+		}
+	})
+
+	t.Run("explicit operator substitutions prefer owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "SubstBase.tla"), `---- MODULE SubstBase ----
+CONSTANT Op(_)
+Use == Op(1)
+====`)
+		rootPath := filepath.Join(dir, "SubstRoot.tla")
+		writeFile(t, rootPath, `---- MODULE SubstRoot ----
+LocalOp(x) == x = x
+INSTANCE SubstBase WITH Op <- LocalOp
+Check == Use
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		localUID := xmlEntryUIDByKindAndName(rootXML, "UserDefinedOpKind", "LocalOp")
+		if localUID == "" {
+			t.Fatalf("missing LocalOp UID\n%s", xmlText)
+		}
+		for _, opArg := range xmlNodesByName(rootXML, "OpArgNode") {
+			for _, arg := range directChildren(opArg, "argument") {
+				for _, ref := range xmlNodesByName(arg, "UserDefinedOpKindRef") {
+					if firstChildText(ref, "UID") == localUID {
+						return
+					}
+				}
+			}
+		}
+		t.Fatalf("explicit operator substitution did not use LocalOp as OpArgNode argument\n%s", xmlText)
+	})
+
+	t.Run("unreferenced nested named instance assumption clones stay out of the XML context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "NestedAssumeBase.tla"), `---- MODULE NestedAssumeBase ----
+CONSTANT C
+ASSUME A == C = C
+====`)
+		writeFile(t, filepath.Join(dir, "NestedAssumeMid.tla"), `---- MODULE NestedAssumeMid ----
+CONSTANT C
+V == INSTANCE NestedAssumeBase WITH C <- C
+====`)
+		rootPath := filepath.Join(dir, "NestedAssumeRoot.tla")
+		writeFile(t, rootPath, `---- MODULE NestedAssumeRoot ----
+CONSTANT C
+P == INSTANCE NestedAssumeMid WITH C <- C
+Use == C = C
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, unwanted := range []string{
+			`<uniquename>V!A</uniquename>`,
+			`<uniquename>P!V!A</uniquename>`,
+		} {
+			if strings.Contains(got, unwanted) {
+				t.Fatalf("unreferenced nested instance assumption clone leaked into XML context as %q\n%s", unwanted, got)
+			}
+		}
+	})
+
+	t.Run("module-level USE commands remain UseOrHideNode module members", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ModuleUseXML.tla", `---- MODULE ModuleUseXML ----
+ASSUME A == TRUE
+USE A
+THEOREM T == A
+  BY A
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		mod := xmlEntryPayloadByKindAndName(root, "ModuleNode", "ModuleUseXML")
+		if mod == nil {
+			t.Fatalf("ModuleNode missing\n%s", xmlText)
+		}
+		useNodes := directChildren(mod, "UseOrHideNode")
+		if len(useNodes) != 1 {
+			t.Fatalf("module UseOrHideNode count = %d, want 1\n%s", len(useNodes), xmlText)
+		}
+		if got := len(xmlNodesByName(useNodes[0], "AssumeDefRef")); got != 1 {
+			t.Fatalf("module USE fact AssumeDefRef count = %d, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("instance assumption clone keys preserve nested qualifier names", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "SameNameAssumeBase.tla"), `---- MODULE SameNameAssumeBase ----
+CONSTANT C
+ASSUME A == C # C
+====`)
+		writeFile(t, filepath.Join(dir, "SameNameAssumeMid.tla"), `---- MODULE SameNameAssumeMid ----
+CONSTANT C
+V == INSTANCE SameNameAssumeBase WITH C <- C
+ASSUME A == C = C
+====`)
+		rootPath := filepath.Join(dir, "SameNameAssumeRoot.tla")
+		writeFile(t, rootPath, `---- MODULE SameNameAssumeRoot ----
+CONSTANT C
+P == INSTANCE SameNameAssumeMid WITH C <- C
+Use == P!A
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		pIdx := strings.Index(got, `<uniquename>P!A</uniquename>`)
+		if pIdx < 0 {
+			t.Fatalf("P!A assumption clone missing\n%s", got)
+		}
+		nextEntry := strings.Index(got[pIdx:], `</AssumeDef>`)
+		if nextEntry < 0 {
+			t.Fatalf("P!A assumption clone was not an AssumeDef\n%s", got[pIdx:])
+		}
+		pEntry := got[pIdx : pIdx+nextEntry]
+		if !strings.Contains(pEntry, `<filename>SameNameAssumeMid</filename>`) {
+			t.Fatalf("P!A did not clone the direct assumption from SameNameAssumeMid\n%s", pEntry)
+		}
+		if strings.Contains(pEntry, `<filename>SameNameAssumeBase</filename>`) {
+			t.Fatalf("P!A clone was overwritten by nested V!A metadata\n%s", pEntry)
+		}
+	})
+
+	t.Run("qualified bang subexpression references resolve the longest semantic prefix", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+VARIABLE x
+Init == /\ x = x
+        /\ x' = x
+====`)
+		rootPath := filepath.Join(dir, "QualifiedBangXML.tla")
+		writeFile(t, rootPath, `---- MODULE QualifiedBangXML ----
+VARIABLE x
+P == INSTANCE Base WITH x <- x
+Use == P!Init!2
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>$Nop</uniquename>`) {
+			t.Fatalf("qualified bang subexpression did not emit $Nop wrapper\n%s", got)
+		}
+		if strings.Contains(got, `<uniquename>P!Init!2</uniquename>`) {
+			t.Fatalf("qualified bang subexpression emitted fake operator name\n%s", got)
+		}
+	})
+
+	t.Run("bang subexpression references preserve selector arguments before numeric selectors", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("SelectorArgumentBangXML.tla", `---- MODULE SelectorArgumentBangXML ----
+CONSTANT S, x
+Inv == \A m \in S : /\ m = x
+                     /\ x = x
+Use == Inv!(x)!1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
+			t.Fatalf("argument-bearing bang subexpression did not emit lambda selector wrapper\n%s", got)
+		}
+		if strings.Contains(got, `<uniquename>Inv!(!1</uniquename>`) {
+			t.Fatalf("argument-bearing bang subexpression emitted malformed fake operator name\n%s", got)
+		}
+		if strings.Contains(got, `<uniquename>Inv!1</uniquename>`) {
+			t.Fatalf("argument-bearing bang subexpression emitted fake selected operator name\n%s", got)
+		}
+	})
+
+	t.Run("parameterized bang subexpression calls do not become synthetic builtins", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ParameterizedSelectorCallXML.tla", `---- MODULE ParameterizedSelectorCallXML ----
+CONSTANT S, a, b, c
+Op(x, y) == \A z \in S : x = y
+Use == Op(a, b)!(c)!1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Contains(got, `<BuiltInKind>`) && strings.Contains(got, `<uniquename>Op!1</uniquename>`) {
+			t.Fatalf("parameterized selector call was emitted as a fake builtin\n%s", got)
+		}
+		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
+			t.Fatalf("parameterized selector call did not synthesize a lambda operator\n%s", got)
+		}
+	})
+
+	t.Run("label bang subexpression references emit selected label nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LabelSelectorXML.tla", `---- MODULE LabelSelectorXML ----
+Choice == \/ P0:: TRUE
+          \/ Done:: FALSE
+Use == Choice!Done
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		use := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Use")
+		if use == nil {
+			t.Fatalf("Use definition missing\n%s", xmlText)
+		}
+		var found bool
+		for _, label := range xmlNodesByName(use, "LabelNode") {
+			if firstChildText(label, "uniquename") == "Done" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Choice!Done did not emit selected Done label node\n%s", xmlText)
+		}
+	})
+
+	t.Run("unused selector lambda formals omit unchecked levels", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UnusedSelectorLambdaFormalLevelXML.tla", `---- MODULE UnusedSelectorLambdaFormalLevelXML ----
+CONSTANT S, a, b, c
+Op(x, y) == \A z \in S : TRUE
+Use == Op(a, b)!(c)
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		formal := xmlEntryPayloadByKindAndName(root, "FormalParamNode", "z")
+		if formal == nil {
+			t.Fatalf("selector lambda formal z missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "" {
+			t.Fatalf("unused selector lambda formal z level = %q, want omitted\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("named instance subexpression references preserve substitution wrappers", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT x
+Init == /\ x = 0
+        /\ TRUE
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+CONSTANT y
+P == INSTANCE Base WITH x <- y
+THEOREM T == P!Init!1
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		tDef := xmlEntryPayloadByKindAndName(root, "TheoremDefNode", "T")
+		if tDef == nil {
+			t.Fatalf("SANY XML missing theorem definition T\n%s", xmlText)
+		}
+		nopUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Nop")
+		if nopUID == "" {
+			t.Fatalf("SANY XML missing $Nop builtin\n%s", xmlText)
+		}
+		var nop *canonicalXMLNode
+		var walk func(*canonicalXMLNode)
+		walk = func(node *canonicalXMLNode) {
+			if node == nil || nop != nil {
+				return
+			}
+			if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, "BuiltInKindRef", nopUID) {
+				nop = node
+				return
+			}
+			for _, child := range node.Children {
+				walk(child)
+			}
+		}
+		walk(tDef)
+		if nop == nil {
+			t.Fatalf("theorem definition T missing $Nop subexpression wrapper\n%s", xmlText)
+		}
+		var hasSubstOperand bool
+		for _, operands := range directChildren(nop, "operands") {
+			if len(directChildren(operands, "SubstInNode")) > 0 {
+				hasSubstOperand = true
+			}
+		}
+		if !hasSubstOperand {
+			t.Fatalf("P!Init!1 $Nop operand was not wrapped in SubstInNode\n%s", xmlText)
+		}
+	})
+
+	t.Run("named instance selected quantified calls wrap lambda bodies", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+VARIABLE x
+Op(p) == LET Local == {p} IN \A q \in Local : x = x
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+VARIABLE y
+CONSTANT a
+P == INSTANCE Base WITH x <- y
+Use == P!Op(a)!1
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		lambda := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "LAMBDA")
+		if lambda == nil {
+			t.Fatalf("SANY XML missing selected-call lambda\n%s", xmlText)
+		}
+		lambdaUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "LAMBDA")
+		if lambdaUID == "" {
+			t.Fatalf("SANY XML missing selected-call lambda UID\n%s", xmlText)
+		}
+		if got := firstChildText(lambda, "level"); got != "1" {
+			t.Fatalf("selected instance lambda level = %q, want 1\n%s", got, xmlText)
+		}
+		if got := xmlOriginalModuleName(root, lambda); got != "Root" {
+			t.Fatalf("selected instance lambda origin module = %q, want Root\n%s", got, xmlText)
+		}
+		bodies := directChildren(lambda, "body")
+		if len(bodies) == 0 || len(directChildren(bodies[0], "SubstInNode")) == 0 {
+			t.Fatalf("selected instance lambda body missing SubstInNode\n%s", xmlText)
+		}
+		if local := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Local"); local == nil {
+			t.Fatalf("selected instance lambda did not emit LET-local definition Local\n%s", xmlText)
+		}
+		use := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Use")
+		if use == nil {
+			t.Fatalf("SANY XML missing Use definition\n%s", xmlText)
+		}
+		var selectedCall *canonicalXMLNode
+		var walk func(*canonicalXMLNode)
+		walk = func(node *canonicalXMLNode) {
+			if node == nil || selectedCall != nil {
+				return
+			}
+			if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, "UserDefinedOpKindRef", lambdaUID) {
+				selectedCall = node
+				return
+			}
+			for _, child := range node.Children {
+				walk(child)
+			}
+		}
+		walk(use)
+		if selectedCall == nil {
+			t.Fatalf("Use body does not reference selected-call lambda UID %s\n%s", lambdaUID, xmlText)
+		}
+		if got := firstChildText(selectedCall, "level"); got != "1" {
+			t.Fatalf("selected instance lambda application level = %q, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("function application function operand carries function level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("FunctionAppFunctionLevelXML.tla", `---- MODULE FunctionAppFunctionLevelXML ----
+CONSTANT S
+VARIABLE v
+F[x \in S] == TRUE
+A == LET arg == v IN F[arg]
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		fUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "F")
+		if fUID == "" {
+			t.Fatalf("SANY XML missing F definition\n%s", xmlText)
+		}
+		app := firstOpApplNodeForOperatorUID(root, "UserDefinedOpKindRef", fUID)
+		if app == nil {
+			t.Fatalf("SANY XML missing F application\n%s", xmlText)
+		}
+		if got := firstChildText(app, "level"); got != "0" {
+			t.Fatalf("F application function operand level = %s, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("function definition level includes LET local definitions", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("FunctionDefLetLevelXML.tla", `---- MODULE FunctionDefLetLevelXML ----
+CONSTANT S
+VARIABLE v
+F[x \in S] == LET local == v IN local = x
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "F")
+		if def == nil {
+			t.Fatalf("SANY XML missing F definition\n%s", xmlText)
+		}
+		if got := firstChildText(def, "level"); got != "1" {
+			t.Fatalf("F definition level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("recursive function specs level-check their self formal", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("RecursiveFunctionSelfFormalLevelXML.tla", `---- MODULE RecursiveFunctionSelfFormalLevelXML ----
+CONSTANT S
+F[x \in S] == F[x]
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != "F" {
+				continue
+			}
+			if xmlNodeLocationMatches(payload, 3, 1, 18) {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("recursive function self formal F missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "0" {
+			t.Fatalf("recursive function self formal level = %q, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("LET expressions keep SANY non-Leibniz coloring local", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetLeibnizXML.tla", `---- MODULE LetLeibnizXML ----
+VARIABLE v
+G(y) == v' = y
+Plain(x) == ENABLED G(x)
+ViaLet(x) == LET D == TRUE IN ENABLED G(x)
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		plain := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Plain")
+		if plain == nil {
+			t.Fatalf("SANY XML missing Plain definition\n%s", xmlText)
+		}
+		plainParams := directChildren(directChildren(plain, "params")[0], "leibnizparam")
+		if len(plainParams) != 1 || len(directChildren(plainParams[0], "leibniz")) != 0 {
+			t.Fatalf("Plain param has Leibniz marker, want Java SANY non-Leibniz\n%s", xmlText)
+		}
+		viaLet := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "ViaLet")
+		if viaLet == nil {
+			t.Fatalf("SANY XML missing ViaLet definition\n%s", xmlText)
+		}
+		viaLetParams := directChildren(directChildren(viaLet, "params")[0], "leibnizparam")
+		if len(viaLetParams) != 1 || len(directChildren(viaLetParams[0], "leibniz")) != 1 {
+			t.Fatalf("ViaLet param missing Leibniz marker, want Java SANY LetInNode behavior\n%s", xmlText)
+		}
+	})
+
+	t.Run("user operator calls propagate non-Leibniz parameter coloring", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("CallLeibnizXML.tla", `---- MODULE CallLeibnizXML ----
+VARIABLE v
+G(y) == ENABLED (v' = y)
+H(x) == G(x)
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		h := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "H")
+		if h == nil {
+			t.Fatalf("SANY XML missing H definition\n%s", xmlText)
+		}
+		params := directChildren(h, "params")
+		if len(params) != 1 {
+			t.Fatalf("H params container count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 || len(directChildren(leibnizParams[0], "leibniz")) != 0 {
+			t.Fatalf("H param has Leibniz marker, want Java SANY non-Leibniz coloring through G\n%s", xmlText)
+		}
+	})
+
+	t.Run("prime colors value parameters inside its operand non-Leibniz", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("PrimeApplyXML.tla", `---- MODULE PrimeApplyXML ----
+VARIABLE f
+Op(n) == f[n]'
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		op := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Op")
+		if op == nil {
+			t.Fatalf("SANY XML missing Op definition\n%s", xmlText)
+		}
+		params := directChildren(op, "params")
+		if len(params) != 1 {
+			t.Fatalf("Op params container count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 || len(directChildren(leibnizParams[0], "leibniz")) != 0 {
+			t.Fatalf("Op param has Leibniz marker, want Java SANY non-Leibniz coloring through prime\n%s", xmlText)
+		}
+	})
+
+	t.Run("nested bullet lists remain nested SANY junction nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NestedJunctionXML.tla", `---- MODULE NestedJunctionXML ----
+VARIABLE x
+A == /\ /\ x = x
+        /\ x' = x
+     /\ x = x
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		conjUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$ConjList")
+		if conjUID == "" {
+			t.Fatalf("SANY XML missing $ConjList builtin\n%s", xmlText)
+		}
+		if !opApplContainsDirectOperandWithOperator(root, conjUID, conjUID) {
+			t.Fatalf("nested bullet list was flattened instead of preserving a nested $ConjList\n%s", xmlText)
+		}
+	})
+
+	t.Run("same-column bullet lists flatten into one SANY junction node", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("SameColumnJunctionXML.tla", `---- MODULE SameColumnJunctionXML ----
+VARIABLE x
+A == /\ x = x
+     /\ x' = x
+     /\ x = x
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		conjUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$ConjList")
+		if conjUID == "" {
+			t.Fatalf("SANY XML missing $ConjList builtin\n%s", xmlText)
+		}
+		if got := maxDirectOperandsForOperator(root, conjUID); got != 3 {
+			t.Fatalf("same-column junction list has %d direct operands, want 3\n%s", got, xmlText)
+		}
+		if opApplContainsDirectOperandWithOperator(root, conjUID, conjUID) {
+			t.Fatalf("same-column junction list kept a nested $ConjList wrapper\n%s", xmlText)
+		}
+	})
+
+	t.Run("explicit PROOF steps location starts at PROOF token", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ExplicitProofStepsLocationXML.tla", `---- MODULE ExplicitProofStepsLocationXML ----
+THEOREM TRUE
+PROOF
+  <1>1. TRUE BY TRUE
+  <1> QED BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		steps := firstXMLDescendant(root, "steps")
+		if steps == nil {
+			t.Fatalf("steps node missing\n%s", xmlText)
+		}
+		if !xmlNodeLocationMatches(steps, 3, 1, 17) {
+			t.Fatalf("steps location = %s, want line 3 column 1 through line 5 column 17\n%s", firstChildText(steps, "location"), xmlText)
+		}
+	})
+
+	t.Run("LET recursive operator is in scope for its own body", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetRecursiveScopeXML.tla", `---- MODULE LetRecursiveScopeXML ---- EXTENDS Naturals
+Op(a) ==
+  LET
+    RECURSIVE R(_)
+    R(i) == IF i = 0 THEN a ELSE R(i - 1)
+  IN R(1)
+====`)
+		requireNoErrors(t, diags)
+		got := normalizeXMLForContains(string(xmlText))
+		for _, want := range []string{
+			`<uniquename>R</uniquename>`,
+			`<recursive/>`,
+			`<recursiveSection>1</recursiveSection>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("LET recursive XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("bound names shadow outer declarations for levels", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "BoundHelper.tla"), `---- MODULE BoundHelper ----
+F(S) == {n : n \in S}
+====`)
+		rootPath := filepath.Join(dir, "BoundNameLevelShadowXML.tla")
+		writeFile(t, rootPath, `---- MODULE BoundNameLevelShadowXML ----
+EXTENDS BoundHelper
+CONSTANT C
+VARIABLE n
+Use == F(C)
+====`)
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := userDefinedOpAtLocation(root, 5, 1, 11)
+		if def == nil {
+			t.Fatalf("Use definition missing\n%s", xmlText)
+		}
+		if got := firstChildText(def, "level"); got != strconv.Itoa(int(constantLevel)) {
+			t.Fatalf("Use level = %s, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("symbolic infix formal parameter location covers the full declaration", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("InfixFormalSpanXML.tla", `---- MODULE InfixFormalSpanXML ----
+Use(_\prec_, S) == TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "FormalParamNode" && firstChildText(payload, "uniquename") == `\prec` {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("infix formal parameter missing\n%s", xmlText)
+		}
+		locations := directChildren(formal, "location")
+		if len(locations) != 1 {
+			t.Fatalf("FormalParamNode locations = %d, want 1\n%s", len(locations), xmlText)
+		}
+		columns := directChildren(locations[0], "column")
+		if len(columns) != 1 {
+			t.Fatalf("FormalParamNode column locations = %d, want 1\n%s", len(columns), xmlText)
+		}
+		if begin, end := firstChildText(columns[0], "begin"), firstChildText(columns[0], "end"); begin != "5" || end != "11" {
+			t.Fatalf("infix formal columns = %s..%s, want 5..11\n%s", begin, end, xmlText)
+		}
+	})
+
+	t.Run("operator constant declaration location covers the full arity declaration", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("OperatorConstantDeclSpanXML.tla", `---- MODULE OperatorConstantDeclSpanXML ----
+CONSTANT F(_,_)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var decl *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "OpDeclNode" && firstChildText(payload, "uniquename") == "F" {
+				decl = payload
+				break
+			}
+		}
+		if decl == nil {
+			t.Fatalf("operator constant declaration missing\n%s", xmlText)
+		}
+		locations := directChildren(decl, "location")
+		if len(locations) != 1 {
+			t.Fatalf("OpDeclNode locations = %d, want 1\n%s", len(locations), xmlText)
+		}
+		columns := directChildren(locations[0], "column")
+		if len(columns) != 1 {
+			t.Fatalf("OpDeclNode column locations = %d, want 1\n%s", len(columns), xmlText)
+		}
+		if begin, end := firstChildText(columns[0], "begin"), firstChildText(columns[0], "end"); begin != "10" || end != "15" {
+			t.Fatalf("operator constant declaration columns = %s..%s, want 10..15\n%s", begin, end, xmlText)
+		}
+	})
+
+	t.Run("higher-order NEW symbol location covers the full arity declaration", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NewOpDeclSpanXML.tla", `---- MODULE NewOpDeclSpanXML ----
+THEOREM T ==
+  ASSUME NEW Def(_,_)
+  PROVE TRUE
+PROOF OBVIOUS
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var decl *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "OpDeclNode" && firstChildText(payload, "uniquename") == "Def" {
+				decl = payload
+				break
+			}
+		}
+		if decl == nil {
+			t.Fatalf("NEW operator declaration missing\n%s", xmlText)
+		}
+		locations := directChildren(decl, "location")
+		if len(locations) != 1 {
+			t.Fatalf("OpDeclNode locations = %d, want 1\n%s", len(locations), xmlText)
+		}
+		columns := directChildren(locations[0], "column")
+		if len(columns) != 1 {
+			t.Fatalf("OpDeclNode column locations = %d, want 1\n%s", len(columns), xmlText)
+		}
+		if begin, end := firstChildText(columns[0], "begin"), firstChildText(columns[0], "end"); begin != "14" || end != "21" {
+			t.Fatalf("NEW operator declaration columns = %s..%s, want 14..21\n%s", begin, end, xmlText)
+		}
+	})
+
+	t.Run("resolves LOCAL INSTANCE symbols while exporting the module body", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Zero == 0
+====`)
+		root := filepath.Join(dir, "LocalInstanceXML.tla")
+		writeFile(t, root, `---- MODULE LocalInstanceXML ----
+\* Helper import
+LOCAL INSTANCE Helper
+Use == Zero
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, want := range []string{
+			`<InstanceNode>`,
+			`<module>Helper</module>`,
+			`<uniquename>Zero</uniquename>`,
+			`<pre-comments><![CDATA[\* Helper import]]></pre-comments>`,
+			`<local/>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("SANY XML did not include LOCAL INSTANCE detail %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("LOCAL INSTANCE clones are originally defined in the owner module", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "LocalInstanceOriginXML.tla")
+		writeFile(t, rootPath, `---- MODULE LocalInstanceOriginXML ----
+LOCAL Inst == INSTANCE Helper
+Use == Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		op := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Inst!Op")
+		if op == nil {
+			t.Fatalf("LOCAL INSTANCE clone missing\n%s", xmlText)
+		}
+		if got := xmlOriginalModuleName(root, op); got != "LocalInstanceOriginXML" {
+			t.Fatalf("LOCAL INSTANCE clone origin = %q, want LocalInstanceOriginXML\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("unqualified LOCAL INSTANCE clones retain target module origin", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedLocalInstanceOriginXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedLocalInstanceOriginXML ----
+LOCAL INSTANCE Helper
+Use == Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var clone *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "UserDefinedOpKind" &&
+				firstChildText(payload, "uniquename") == "Op" &&
+				xmlNodeFilename(payload) == "UnqualifiedLocalInstanceOriginXML" {
+				clone = payload
+				break
+			}
+		}
+		if clone == nil {
+			t.Fatalf("unqualified LOCAL INSTANCE clone missing\n%s", xmlText)
+		}
+		if got := xmlOriginalModuleName(root, clone); got != "Helper" {
+			t.Fatalf("unqualified LOCAL INSTANCE clone origin = %q, want Helper\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("clones extended definitions through LOCAL INSTANCE", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "LocalBase.tla"), `---- MODULE LocalBase ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "LocalTarget.tla"), `---- MODULE LocalTarget ----
+EXTENDS LocalBase
+TargetOp == BaseOp
+====`)
+		root := filepath.Join(dir, "LocalInstanceExtendsXML.tla")
+		writeFile(t, root, `---- MODULE LocalInstanceExtendsXML ----
+LOCAL INSTANCE LocalTarget
+Use == BaseOp /\ TargetOp
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		countRootUserDef := func(name string) int {
+			count := 0
+			for _, entry := range canonicalSanyXMLEntries(rootXML) {
+				child := canonicalSanyXMLEntryPayload(entry)
+				if child == nil || child.Name != "UserDefinedOpKind" {
+					continue
+				}
+				if firstChildText(child, "uniquename") == name && firstDescendantText(child, "filename") == "LocalInstanceExtendsXML" {
+					count++
+				}
+			}
+			return count
+		}
+		if got := countRootUserDef("BaseOp"); got != 1 {
+			t.Fatalf("LOCAL INSTANCE extended BaseOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countRootUserDef("TargetOp"); got != 1 {
+			t.Fatalf("LOCAL INSTANCE target TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("clones transitively extended definitions through LOCAL INSTANCE", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "GrandBase.tla"), `---- MODULE GrandBase ----
+GrandOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "MidBase.tla"), `---- MODULE MidBase ----
+EXTENDS GrandBase
+MidOp == GrandOp
+====`)
+		writeFile(t, filepath.Join(dir, "TopTarget.tla"), `---- MODULE TopTarget ----
+EXTENDS MidBase
+TopOp == MidOp
+====`)
+		root := filepath.Join(dir, "LocalInstanceTransitiveExtendsXML.tla")
+		writeFile(t, root, `---- MODULE LocalInstanceTransitiveExtendsXML ----
+LOCAL INSTANCE TopTarget
+Use == GrandOp /\ MidOp /\ TopOp
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		countRootUserDef := func(name string) int {
+			count := 0
+			for _, entry := range canonicalSanyXMLEntries(rootXML) {
+				child := canonicalSanyXMLEntryPayload(entry)
+				if child == nil || child.Name != "UserDefinedOpKind" {
+					continue
+				}
+				if firstChildText(child, "uniquename") == name && firstDescendantText(child, "filename") == "LocalInstanceTransitiveExtendsXML" {
+					count++
+				}
+			}
+			return count
+		}
+		for _, name := range []string{"GrandOp", "MidOp", "TopOp"} {
+			if got := countRootUserDef(name); got != 1 {
+				t.Fatalf("LOCAL INSTANCE transitive %s clones = %d, want 1\n%s", name, got, string(xmlText))
+			}
+		}
+	})
+
+	t.Run("deduplicates overlapping unqualified LOCAL INSTANCE clones", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "SharedBase.tla"), `---- MODULE SharedBase ----
+SharedOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "LocalA.tla"), `---- MODULE LocalA ----
+EXTENDS SharedBase
+AOp == SharedOp
+====`)
+		writeFile(t, filepath.Join(dir, "LocalB.tla"), `---- MODULE LocalB ----
+EXTENDS SharedBase
+BOp == SharedOp
+====`)
+		root := filepath.Join(dir, "LocalInstanceDedupXML.tla")
+		writeFile(t, root, `---- MODULE LocalInstanceDedupXML ----
+LOCAL INSTANCE LocalA
+LOCAL INSTANCE LocalB
+Use == SharedOp /\ AOp /\ BOp
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		count := 0
+		for _, entry := range canonicalSanyXMLEntries(rootXML) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "UserDefinedOpKind" {
+				continue
+			}
+			if firstChildText(child, "uniquename") == "SharedOp" && firstDescendantText(child, "filename") == "LocalInstanceDedupXML" {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Fatalf("LOCAL INSTANCE SharedOp clones = %d, want 1\n%s", count, string(xmlText))
+		}
+	})
+
+	t.Run("emits implicit substitutions alongside explicit WITH substitutions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+CONSTANTS A, B
+VARIABLE x
+====`)
+		root := filepath.Join(dir, "ExplicitImplicitInstanceXML.tla")
+		writeFile(t, root, `---- MODULE ExplicitImplicitInstanceXML ----
+EXTENDS Naturals
+CONSTANT A
+VARIABLE x
+Inst == INSTANCE Helper WITH B <- Nat
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		got := string(xmlText)
+		if count := strings.Count(got, "<Subst>"); count != 3 {
+			t.Fatalf("INSTANCE substitutions = %d, want explicit B plus implicit A and x\n%s", count, got)
+		}
+		for _, want := range []string{
+			`<uniquename>Inst</uniquename>`,
+			`<module>Helper</module>`,
+			`<uniquename>A</uniquename>`,
+			`<uniquename>B</uniquename>`,
+			`<uniquename>x</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("SANY XML did not include substitution detail %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("emits operator constant substitutions as OpArgNode", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "OperatorTarget.tla"), `---- MODULE OperatorTarget ----
+CONSTANT F(_)
+Use == F(TRUE)
+====`)
+		rootPath := filepath.Join(dir, "OperatorSubstXML.tla")
+		writeFile(t, rootPath, `---- MODULE OperatorSubstXML ----
+CONSTANT F(_)
+Inst == INSTANCE OperatorTarget
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, "<OpArgNode>") {
+			t.Fatalf("operator constant substitution missing OpArgNode\n%s", got)
+		}
+		if strings.Contains(got, "<Subst><OpDeclNodeRef") && !strings.Contains(got, "</OpArgNode></Subst>") {
+			t.Fatalf("operator constant substitution did not wrap replacement as OpArgNode\n%s", got)
+		}
+	})
+
+	t.Run("composes nested named instance clones and substitution levels", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Inner.tla"), `---- MODULE Inner ----
+VARIABLE innerState
+Spec == innerState = innerState
+====`)
+		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
+VARIABLE midState
+innerState == midState
+C == INSTANCE Inner
+====`)
+		rootPath := filepath.Join(dir, "NestedInstanceRoot.tla")
+		writeFile(t, rootPath, `---- MODULE NestedInstanceRoot ----
+VARIABLE rootState
+midState == rootState
+V == INSTANCE Middle
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if uid := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "V!C!Spec"); uid == "" {
+			t.Fatalf("nested named INSTANCE clone V!C!Spec missing\n%s", xmlText)
+		}
+		innerStateUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "innerState")
+		if innerStateUID == "" {
+			t.Fatalf("Middle innerState definition missing\n%s", xmlText)
+		}
+		var found bool
+		for _, subst := range xmlNodesByName(root, "Subst") {
+			children := subst.Children
+			if len(children) < 2 || children[1].Name != "OpApplNode" {
+				continue
+			}
+			replacement := children[1]
+			locations := directChildren(replacement, "location")
+			if len(locations) != 1 {
+				continue
+			}
+			lines := directChildren(locations[0], "line")
+			if xmlNodeFilename(replacement) != "Middle" || len(lines) != 1 || firstChildText(lines[0], "begin") != "4" {
+				continue
+			}
+			if !opApplNodeUsesOperatorUID(replacement, "UserDefinedOpKindRef", innerStateUID) {
+				continue
+			}
+			found = true
+			if got := firstChildText(replacement, "level"); got != strconv.Itoa(int(variableLevel)) {
+				t.Fatalf("nested implicit substitution replacement level = %s, want 1\n%s", got, xmlText)
+			}
+		}
+		if !found {
+			t.Fatalf("nested implicit substitution for innerState missing\n%s", xmlText)
+		}
+	})
+
+	t.Run("clones extended definitions through unqualified INSTANCE", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Base
+TargetOp == BaseOp
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceExtendsXML ----
+INSTANCE Target
+Use == TargetOp /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		countUserDef := func(filename, name string) int {
+			count := 0
+			for _, entry := range canonicalSanyXMLEntries(root) {
+				child := canonicalSanyXMLEntryPayload(entry)
+				if child == nil || child.Name != "UserDefinedOpKind" {
+					continue
+				}
+				if firstChildText(child, "uniquename") == name && firstDescendantText(child, "filename") == filename {
+					count++
+				}
+			}
+			return count
+		}
+		if got := countUserDef("UnqualifiedInstanceExtendsXML", "TargetOp"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countUserDef("UnqualifiedInstanceExtendsXML", "BaseOp"); got != 1 {
+			t.Fatalf("root BaseOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countUserDef("Base", "BaseOp"); got != 1 {
+			t.Fatalf("original BaseOp entries = %d, want 1\n%s", got, string(xmlText))
+		}
+
+		uidInfo := map[string]string{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "UserDefinedOpKind" {
+				continue
+			}
+			uidInfo[firstChildText(entry, "UID")] = firstDescendantText(child, "filename") + ":" + firstChildText(child, "uniquename")
+		}
+		rootRefs := map[string]bool{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "ModuleNode" || firstChildText(child, "uniquename") != "UnqualifiedInstanceExtendsXML" {
+				continue
+			}
+			for _, ref := range child.Children {
+				if ref.Name == "UserDefinedOpKindRef" {
+					rootRefs[uidInfo[firstChildText(ref, "UID")]] = true
+				}
+			}
+		}
+		if !rootRefs["UnqualifiedInstanceExtendsXML:BaseOp"] {
+			t.Fatalf("root module refs did not include cloned BaseOp\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("explicit unqualified INSTANCE keeps extended definitions original", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Base
+CONSTANT C
+TargetOp == C = C
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceExplicitExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceExplicitExtendsXML ----
+CONSTANT C
+INSTANCE Target WITH C <- C
+Use == TargetOp /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "TargetOp", "UnqualifiedInstanceExplicitExtendsXML"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "UnqualifiedInstanceExplicitExtendsXML"); got != 0 {
+			t.Fatalf("root BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "Base"); got != 1 {
+			t.Fatalf("original BaseOp entries = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("explicit inherited substitutions clone extended definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "InheritedSubstBase.tla"), `---- MODULE InheritedSubstBase ----
+CONSTANT X
+BaseOp == X
+====`)
+		writeFile(t, filepath.Join(dir, "InheritedSubstTarget.tla"), `---- MODULE InheritedSubstTarget ----
+EXTENDS InheritedSubstBase
+CONSTANT C
+TargetOp == C
+====`)
+		rootPath := filepath.Join(dir, "InheritedSubstRoot.tla")
+		writeFile(t, rootPath, `---- MODULE InheritedSubstRoot ----
+CONSTANT X, C
+INSTANCE InheritedSubstTarget WITH X <- X, C <- C
+Use == BaseOp /\ TargetOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "InheritedSubstRoot"); got != 1 {
+			t.Fatalf("root BaseOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "TargetOp", "InheritedSubstRoot"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("implicit unqualified INSTANCE keeps extended definitions original", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Base
+CONSTANT C
+TargetOp == C = C
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceImplicitExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceImplicitExtendsXML ----
+CONSTANT C
+INSTANCE Target
+Use == TargetOp /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "TargetOp", "UnqualifiedInstanceImplicitExtendsXML"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "UnqualifiedInstanceImplicitExtendsXML"); got != 0 {
+			t.Fatalf("root BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "Base"); got != 1 {
+			t.Fatalf("original BaseOp entries = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("unqualified INSTANCE does not re-export module-qualified aliases", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Inner.tla"), `---- MODULE Inner ----
+Op == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
+INSTANCE Inner
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceReexportXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceReexportXML ----
+INSTANCE Middle
+Use == Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if clone := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Inner!Op"); clone != nil {
+			t.Fatalf("root re-exported Inner!Op clone through unqualified INSTANCE\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("nested implicit INSTANCE keeps inherited exports original", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Inner.tla"), `---- MODULE Inner ----
+EXTENDS Base
+CONSTANT C
+Op == C = C
+====`)
+		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
+CONSTANT C
+INSTANCE Inner
+====`)
+		rootPath := filepath.Join(dir, "NestedImplicitInstanceExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE NestedImplicitInstanceExtendsXML ----
+CONSTANT C
+INSTANCE Middle
+Use == Op /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "Op", "NestedImplicitInstanceExtendsXML"); got != 1 {
+			t.Fatalf("root Op clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "NestedImplicitInstanceExtendsXML"); got != 0 {
+			t.Fatalf("root BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		if got := moduleRefCountByPayloadName(root, "NestedImplicitInstanceExtendsXML", "UserDefinedOpKind", "BaseOp"); got != 1 {
+			t.Fatalf("root module refs to original BaseOp = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("local definitions shadow imported instance declarations in expressions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "ShadowBase.tla"), `---- MODULE ShadowBase ----
+CONSTANT R
+BaseUse == R
+====`)
+		rootPath := filepath.Join(dir, "InstanceDeclShadowXML.tla")
+		writeFile(t, rootPath, `---- MODULE InstanceDeclShadowXML ----
+R == 1
+INSTANCE ShadowBase
+Use == R
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		rootRUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "R")
+		if rootRUID == "" {
+			t.Fatalf("missing root R definition\n%s", string(xmlText))
+		}
+		use := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Use")
+		if use == nil {
+			t.Fatalf("missing Use definition\n%s", string(xmlText))
+		}
+		if firstOpApplNodeForOperatorUID(use, "UserDefinedOpKindRef", rootRUID) == nil {
+			t.Fatalf("Use did not reference root R definition\n%s", string(xmlText))
+		}
+		for _, op := range xmlNodesByName(use, "OpApplNode") {
+			for _, operator := range directChildren(op, "operator") {
+				if len(directChildren(operator, "OpDeclNodeRef")) > 0 {
+					t.Fatalf("Use referenced imported R declaration instead of root definition\n%s", string(xmlText))
+				}
+			}
+		}
+	})
+
+	t.Run("unqualified INSTANCE does not clone library EXTENDS definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		libDir := filepath.Join(dir, "lib")
+		if err := os.MkdirAll(libDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", libDir, err)
+		}
+		writeFile(t, filepath.Join(libDir, "Lib.tla"), `---- MODULE Lib ----
+LibOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Lib
+TargetOp == LibOp
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceLibraryExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceLibraryExtendsXML ----
+INSTANCE Target
+Use == TargetOp /\ LibOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{LibraryPaths: []string{libDir}, PreferLibraryModules: true})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		countUserDef := func(filename, name string) int {
+			count := 0
+			for _, entry := range canonicalSanyXMLEntries(root) {
+				child := canonicalSanyXMLEntryPayload(entry)
+				if child == nil || child.Name != "UserDefinedOpKind" {
+					continue
+				}
+				if firstChildText(child, "uniquename") == name && firstDescendantText(child, "filename") == filename {
+					count++
+				}
+			}
+			return count
+		}
+		if got := countUserDef("UnqualifiedInstanceLibraryExtendsXML", "TargetOp"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countUserDef("UnqualifiedInstanceLibraryExtendsXML", "LibOp"); got != 0 {
+			t.Fatalf("root LibOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		if got := countUserDef("Lib", "LibOp"); got != 1 {
+			t.Fatalf("original LibOp entries = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("named INSTANCE keeps qualified library EXTENDS clones", func(t *testing.T) {
+		dir := t.TempDir()
+		libDir := filepath.Join(dir, "lib")
+		if err := os.MkdirAll(libDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", libDir, err)
+		}
+		writeFile(t, filepath.Join(libDir, "Lib.tla"), `---- MODULE Lib ----
+LibOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Lib
+TargetOp == LibOp
+====`)
+		rootPath := filepath.Join(dir, "NamedInstanceLibraryExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE NamedInstanceLibraryExtendsXML ----
+N == INSTANCE Target
+Use == N!TargetOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{LibraryPaths: []string{libDir}, PreferLibraryModules: true})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "N!TargetOp", "NamedInstanceLibraryExtendsXML"); got != 1 {
+			t.Fatalf("root N!TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "N!LibOp", "NamedInstanceLibraryExtendsXML"); got != 1 {
+			t.Fatalf("root N!LibOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("named INSTANCE does not re-export nested inherited definitions unqualified", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Inner.tla"), `---- MODULE Inner ----
+EXTENDS Base
+InnerOp == BaseOp
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+N == INSTANCE Inner
+Use == N!InnerOp
+====`)
+		rootPath := filepath.Join(dir, "NamedNestedInstanceExportXML.tla")
+		writeFile(t, rootPath, `---- MODULE NamedNestedInstanceExportXML ----
+V == INSTANCE Target
+Use == V!Use
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "V!N!BaseOp", "NamedNestedInstanceExportXML"); got != 1 {
+			t.Fatalf("root V!N!BaseOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "V!BaseOp", "NamedNestedInstanceExportXML"); got != 0 {
+			t.Fatalf("root V!BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("LOCAL unqualified INSTANCE clones library EXTENDS definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		libDir := filepath.Join(dir, "lib")
+		if err := os.MkdirAll(libDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", libDir, err)
+		}
+		writeFile(t, filepath.Join(libDir, "Lib.tla"), `---- MODULE Lib ----
+LibOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Lib
+TargetOp == LibOp
+====`)
+		rootPath := filepath.Join(dir, "LocalInstanceLibraryExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE LocalInstanceLibraryExtendsXML ----
+LOCAL INSTANCE Target
+Use == TargetOp /\ LibOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{LibraryPaths: []string{libDir}, PreferLibraryModules: true})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		var targetClones, libClones int
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "UserDefinedOpKind" || firstDescendantText(child, "filename") != "LocalInstanceLibraryExtendsXML" {
+				continue
+			}
+			switch firstChildText(child, "uniquename") {
+			case "TargetOp":
+				targetClones++
+			case "LibOp":
+				libClones++
+			}
+		}
+		if targetClones != 1 || libClones != 1 {
+			t.Fatalf("LOCAL INSTANCE clones TargetOp=%d LibOp=%d, want 1 each\n%s", targetClones, libClones, string(xmlText))
+		}
+	})
+
+	t.Run("LOCAL INSTANCE omits recursive inherited originals from module refs", func(t *testing.T) {
+		dir := t.TempDir()
+		libDir := filepath.Join(dir, "lib")
+		if err := os.MkdirAll(libDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", libDir, err)
+		}
+		writeFile(t, filepath.Join(libDir, "Grand.tla"), `---- MODULE Grand ----
+GrandOp == TRUE
+====`)
+		writeFile(t, filepath.Join(libDir, "Mid.tla"), `---- MODULE Mid ----
+EXTENDS Grand
+MidOp == GrandOp
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Mid
+TargetOp == MidOp
+====`)
+		rootPath := filepath.Join(dir, "LocalInstanceRecursiveLibraryExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE LocalInstanceRecursiveLibraryExtendsXML ----
+LOCAL INSTANCE Target
+Use == TargetOp /\ MidOp /\ GrandOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{LibraryPaths: []string{libDir}, PreferLibraryModules: true})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := moduleRefCountByPayloadLocation(root, "LocalInstanceRecursiveLibraryExtendsXML", "UserDefinedOpKind", "Grand", 2); got != 0 {
+			t.Fatalf("root module has %d refs to recursive inherited GrandOp, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("diamond EXTENDS preserves duplicate inherited assumption refs", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "A.tla"), `---- MODULE A ----
+ASSUME AAssump == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "B.tla"), `---- MODULE B ----
+EXTENDS A
+BOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "C.tla"), `---- MODULE C ----
+EXTENDS A
+COp == TRUE
+====`)
+		rootPath := filepath.Join(dir, "DiamondAssumeXML.tla")
+		writeFile(t, rootPath, `---- MODULE DiamondAssumeXML ----
+EXTENDS B, C
+Root == BOp /\ COp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := moduleRefCountByPayloadLocation(root, "DiamondAssumeXML", "AssumeNode", "A", 2); got != 2 {
+			t.Fatalf("root module has %d refs to inherited AAssump, want 2\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("direct EXTENDS definitions shadow transitive definitions in module refs", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "ShadowBase.tla"), `---- MODULE ShadowBase ----
+Op == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "ShadowIndirect.tla"), `---- MODULE ShadowIndirect ----
+EXTENDS ShadowBase
+Other == Op
+====`)
+		writeFile(t, filepath.Join(dir, "ShadowDirect.tla"), `---- MODULE ShadowDirect ----
+Op == FALSE
+====`)
+		rootPath := filepath.Join(dir, "ShadowExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE ShadowExtendsXML ----
+EXTENDS ShadowDirect, ShadowIndirect
+Use == Op /\ Other
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := moduleRefCountByPayloadName(root, "ShadowExtendsXML", "UserDefinedOpKind", "Op"); got != 1 {
+			t.Fatalf("root module has %d refs to imported Op, want 1 visible definition\n%s", got, xmlText)
+		}
+		if got := moduleRefCountByPayloadName(root, "ShadowExtendsXML", "UserDefinedOpKind", "Other"); got != 1 {
+			t.Fatalf("root module has %d refs to inherited Other, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("does not unqualified-clone recursive EXTENDS definitions through INSTANCE", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "GrandBase.tla"), `---- MODULE GrandBase ----
+GrandOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "MidBase.tla"), `---- MODULE MidBase ----
+EXTENDS GrandBase
+MidOp == GrandOp
+====`)
+		writeFile(t, filepath.Join(dir, "LeafTarget.tla"), `---- MODULE LeafTarget ----
+EXTENDS MidBase
+LeafOp == MidOp
+====`)
+		rootPath := filepath.Join(dir, "ShallowInstanceExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE ShallowInstanceExtendsXML ----
+INSTANCE LeafTarget
+Use == LeafOp /\ MidOp /\ GrandOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		countRootUserDef := func(name string) int {
+			count := 0
+			for _, entry := range canonicalSanyXMLEntries(root) {
+				child := canonicalSanyXMLEntryPayload(entry)
+				if child == nil || child.Name != "UserDefinedOpKind" {
+					continue
+				}
+				if firstChildText(child, "uniquename") == name && firstDescendantText(child, "filename") == "ShallowInstanceExtendsXML" {
+					count++
+				}
+			}
+			return count
+		}
+		if got := countRootUserDef("LeafOp"); got != 1 {
+			t.Fatalf("root LeafOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countRootUserDef("MidOp"); got != 1 {
+			t.Fatalf("root MidOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countRootUserDef("GrandOp"); got != 0 {
+			t.Fatalf("root GrandOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		uidInfo := map[string]string{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "UserDefinedOpKind" {
+				continue
+			}
+			uidInfo[firstChildText(entry, "UID")] = firstDescendantText(child, "filename") + ":" + firstChildText(child, "uniquename")
+		}
+		rootRefs := map[string]bool{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "ModuleNode" || firstChildText(child, "uniquename") != "ShallowInstanceExtendsXML" {
+				continue
+			}
+			for _, ref := range child.Children {
+				if ref.Name == "UserDefinedOpKindRef" {
+					rootRefs[uidInfo[firstChildText(ref, "UID")]] = true
+				}
+			}
+		}
+		if !rootRefs["GrandBase:GrandOp"] {
+			t.Fatalf("root module refs did not include original GrandOp\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("does not reference unqualified INSTANCE definitions hidden by owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "HiddenHelper.tla"), `---- MODULE HiddenHelper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "HiddenInstanceOverrideXML.tla")
+		writeFile(t, rootPath, `---- MODULE HiddenInstanceOverrideXML ----
+Op == FALSE
+INSTANCE HiddenHelper
+Use == Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		uidInfo := map[string]string{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "UserDefinedOpKind" {
+				continue
+			}
+			uidInfo[firstChildText(entry, "UID")] = firstDescendantText(child, "filename") + ":" + firstChildText(child, "uniquename")
+		}
+		rootRefs := map[string]bool{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "ModuleNode" || firstChildText(child, "uniquename") != "HiddenInstanceOverrideXML" {
+				continue
+			}
+			for _, ref := range child.Children {
+				if ref.Name == "UserDefinedOpKindRef" {
+					rootRefs[uidInfo[firstChildText(ref, "UID")]] = true
+				}
+			}
+		}
+		if rootRefs["HiddenHelper:Op"] {
+			t.Fatalf("root module refs included hidden helper Op\n%s", string(xmlText))
+		}
+		if !rootRefs["HiddenInstanceOverrideXML:Op"] {
+			t.Fatalf("root module refs omitted owner Op\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("serializes named INSTANCE nodes with their uniquename", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+CONSTANT C
+Op == C
+====`)
+		root := filepath.Join(dir, "NamedInstanceXML.tla")
+		writeFile(t, root, `---- MODULE NamedInstanceXML ----
+CONSTANT C
+Inst == INSTANCE Helper WITH C <- C
+Use == Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		start := strings.Index(got, `<InstanceNode>`)
+		if start < 0 {
+			t.Fatalf("SANY XML missing InstanceNode\n%s", got)
+		}
+		end := strings.Index(got[start:], `</InstanceNode>`)
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated InstanceNode\n%s", got[start:])
+		}
+		node := got[start : start+end]
+		if !strings.Contains(node, `<uniquename>Inst</uniquename>`) {
+			t.Fatalf("named INSTANCE node missing uniquename\n%s", node)
+		}
+	})
+
+	t.Run("serializes named INSTANCE clones for extended module definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+EXTENDS Base
+Op == BaseOp
+====`)
+		root := filepath.Join(dir, "NamedInstanceExtendsXML.tla")
+		writeFile(t, root, `---- MODULE NamedInstanceExtendsXML ----
+Inst == INSTANCE Helper
+Use == Inst!Op /\ Inst!BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>Inst!Op</uniquename>`,
+			`<uniquename>Inst!BaseOp</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("named INSTANCE clone XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("EXTENDS imports named INSTANCE clone refs into the module node", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Mid.tla"), `---- MODULE Mid ----
+Inst == INSTANCE Helper
+====`)
+		rootPath := filepath.Join(dir, "ExtendsInstanceCloneXML.tla")
+		writeFile(t, rootPath, `---- MODULE ExtendsInstanceCloneXML ----
+EXTENDS Mid
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		cloneUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "Inst!Op")
+		if cloneUID == "" {
+			t.Fatalf("Inst!Op clone missing\n%s", xmlText)
+		}
+		var moduleNode *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "ModuleNode" && firstChildText(payload, "uniquename") == "ExtendsInstanceCloneXML" {
+				moduleNode = payload
+				break
+			}
+		}
+		if moduleNode == nil {
+			t.Fatalf("root ModuleNode missing\n%s", xmlText)
+		}
+		found := false
+		for _, child := range moduleNode.Children {
+			if child.Name == "UserDefinedOpKindRef" && firstChildText(child, "UID") == cloneUID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("root ModuleNode did not import Inst!Op ref\n%s", xmlText)
+		}
+	})
+
+	t.Run("EXTENDS does not import LOCAL INSTANCE clone refs into the module node", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Mid.tla"), `---- MODULE Mid ----
+LOCAL Inst == INSTANCE Helper
+====`)
+		rootPath := filepath.Join(dir, "ExtendsLocalInstanceCloneXML.tla")
+		writeFile(t, rootPath, `---- MODULE ExtendsLocalInstanceCloneXML ----
+EXTENDS Mid
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		cloneUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "Inst!Op")
+		if cloneUID == "" {
+			t.Fatalf("local Inst!Op clone missing from owner module XML\n%s", xmlText)
+		}
+		var moduleNode *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "ModuleNode" && firstChildText(payload, "uniquename") == "ExtendsLocalInstanceCloneXML" {
+				moduleNode = payload
+				break
+			}
+		}
+		if moduleNode == nil {
+			t.Fatalf("root ModuleNode missing\n%s", xmlText)
+		}
+		for _, child := range moduleNode.Children {
+			if child.Name == "UserDefinedOpKindRef" && firstChildText(child, "UID") == cloneUID {
+				t.Fatalf("root ModuleNode imported local Inst!Op ref\n%s", xmlText)
+			}
+		}
+	})
+
+	t.Run("computes named INSTANCE clone levels before owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+VARIABLE v
+Init == v = 0
+====`)
+		rootPath := filepath.Join(dir, "NamedInstanceLevelXML.tla")
+		writeFile(t, rootPath, `---- MODULE NamedInstanceLevelXML ----
+VARIABLE x
+Inst == INSTANCE Helper WITH v <- x
+RootInit == Inst!Init
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		instInitUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "Inst!Init")
+		if instInitUID == "" {
+			t.Fatalf("Inst!Init clone missing\n%s", string(xmlText))
+		}
+		node := firstOpApplNodeForOperatorUID(root, "UserDefinedOpKindRef", instInitUID)
+		if node == nil {
+			t.Fatalf("RootInit reference to Inst!Init missing\n%s", string(xmlText))
+		}
+		if got := firstChildText(node, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Inst!Init reference level = %s, want %d\n%s", got, variableLevel, string(xmlText))
+		}
+	})
+
+	t.Run("named INSTANCE clone params inherit variable non-Leibniz flags", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+CONSTANT C
+VARIABLE v, w
+Touch == UNCHANGED <<v, w>>
+Op == Touch
+====`)
+		rootPath := filepath.Join(dir, "InstanceParamLeibnizXML.tla")
+		writeFile(t, rootPath, `---- MODULE InstanceParamLeibnizXML ----
+Inner(C, v, w) == INSTANCE Helper
+Use == Inner(1, TRUE, TRUE)!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		clone := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Inner!Op")
+		if clone == nil {
+			t.Fatalf("Inner!Op clone missing\n%s", xmlText)
+		}
+		params := directChildren(clone, "params")
+		if len(params) != 1 {
+			t.Fatalf("Inner!Op params container count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 3 {
+			t.Fatalf("Inner!Op leibniz param count = %d, want 3\n%s", len(leibnizParams), xmlText)
+		}
+		for i, want := range []bool{true, false, false} {
+			got := len(directChildren(leibnizParams[i], "leibniz")) != 0
+			if got != want {
+				t.Fatalf("Inner!Op param %d Leibniz = %v, want %v\n%s", i, got, want, xmlText)
+			}
+		}
+	})
+
+	t.Run("named INSTANCE clones preserve nested instance parameters", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+VARIABLE a, b, c
+Do(p) == UNCHANGED <<a, b, c>>
+====`)
+		writeFile(t, filepath.Join(dir, "Memory.tla"), `---- MODULE Memory ----
+Inner(a, b, c) == INSTANCE Helper
+Spec == \EE a, b, c : Inner(a, b, c)!Do(TRUE)
+====`)
+		rootPath := filepath.Join(dir, "NestedInstanceParamsXML.tla")
+		writeFile(t, rootPath, `---- MODULE NestedInstanceParamsXML ----
+LM == INSTANCE Memory
+Use == LM!Spec
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		clone := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "LM!Inner!Do")
+		if clone == nil {
+			t.Fatalf("LM!Inner!Do clone missing\n%s", xmlText)
+		}
+		if got := firstChildText(clone, "arity"); got != "4" {
+			t.Fatalf("LM!Inner!Do arity = %s, want 4\n%s", got, xmlText)
+		}
+		params := directChildren(clone, "params")
+		if len(params) != 1 {
+			t.Fatalf("LM!Inner!Do params container count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 4 {
+			t.Fatalf("LM!Inner!Do leibniz param count = %d, want 4\n%s", len(leibnizParams), xmlText)
+		}
+		for i, want := range []bool{false, false, false, true} {
+			got := len(directChildren(leibnizParams[i], "leibniz")) != 0
+			if got != want {
+				t.Fatalf("LM!Inner!Do param %d Leibniz = %v, want %v\n%s", i, got, want, xmlText)
+			}
+		}
+	})
+
+	t.Run("nested module XML resolves enclosing module context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+VARIABLE h
+Init == h = h
+====`)
+		rootPath := filepath.Join(dir, "NestedEnclosingXML.tla")
+		writeFile(t, rootPath, `---- MODULE NestedEnclosingXML ----
+EXTENDS Naturals
+VARIABLE x
+ParentDef == x = x
+H == INSTANCE Helper WITH h <- x
+---- MODULE Inner ----
+Use == H!Init /\ ParentDef /\ 1 \in Nat
+====
+I == INSTANCE Inner
+RootUse == I!Use
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		if !strings.Contains(string(xmlText), `<uniquename>I!Use</uniquename>`) {
+			t.Fatalf("nested instance clone missing\n%s", xmlText)
+		}
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if got := moduleRefCountByPayloadName(root, "NestedEnclosingXML", "ModuleNode", "Inner"); got != 1 {
+			t.Fatalf("parent module has %d refs to nested Inner module, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("anonymous INSTANCE does not reclone inherited owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+EXTENDS Base
+HelperOp == BaseOp
+====`)
+		rootPath := filepath.Join(dir, "AnonymousInstanceInheritedXML.tla")
+		writeFile(t, rootPath, `---- MODULE AnonymousInstanceInheritedXML ----
+EXTENDS Base
+INSTANCE Helper
+Use == HelperOp /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		if count := strings.Count(string(xmlText), `<uniquename>BaseOp</uniquename>`); count != 1 {
+			t.Fatalf("BaseOp entries = %d, want only the inherited definition\n%s", count, string(xmlText))
+		}
+	})
+
+	t.Run("serializes LET INSTANCE qualified definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "LetInstanceKindXML.tla")
+		writeFile(t, rootPath, `---- MODULE LetInstanceKindXML ----
+Use == LET Inst == INSTANCE Helper IN Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, want := range []string{
+			`<ModuleInstanceKind>`,
+			`<uniquename>Inst</uniquename>`,
+			`<uniquename>Inst!Op</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("LET INSTANCE XML missing %q\n%s", want, got)
+			}
+		}
+		if strings.Contains(got, `<BuiltInKind>`) && strings.Contains(got, `<uniquename>Inst!Op</uniquename><arity>-1</arity>`) {
+			t.Fatalf("LET INSTANCE qualified operator was emitted as builtin\n%s", got)
+		}
+	})
+
+	t.Run("LET INSTANCE clones are originally defined in the LET owner module", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "LetInstanceOriginXML.tla")
+		writeFile(t, rootPath, `---- MODULE LetInstanceOriginXML ----
+Use == LET Inst == INSTANCE Helper IN Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		op := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Inst!Op")
+		if op == nil {
+			t.Fatalf("LET INSTANCE clone missing\n%s", xmlText)
+		}
+		if got := xmlOriginalModuleName(root, op); got != "LetInstanceOriginXML" {
+			t.Fatalf("LET INSTANCE clone origin = %q, want LetInstanceOriginXML\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("LET INSTANCE substitutions can target inherited declarations", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+Op == C
+====`)
+		rootPath := filepath.Join(dir, "LetInstanceInheritedSubstXML.tla")
+		writeFile(t, rootPath, `---- MODULE LetInstanceInheritedSubstXML ----
+EXTENDS Base
+Use == LET Inst == INSTANCE Base IN Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>Inst!Op</uniquename>`) {
+			t.Fatalf("LET INSTANCE clone missing\n%s", got)
+		}
+		if !strings.Contains(got, `<SubstInNode>`) {
+			t.Fatalf("LET INSTANCE clone missing inherited substitution wrapper\n%s", got)
+		}
+	})
+
+	t.Run("instance-cloned definitions reuse original LET-local operators", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+A(S) ==
+  LET F[i \in S] == i
+  IN F[1]
+====`)
+		root := filepath.Join(dir, "LetInstanceXML.tla")
+		writeFile(t, root, `---- MODULE LetInstanceXML ----
+LOCAL INSTANCE Helper
+B == A({1})
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		if count := strings.Count(got, `<uniquename>F</uniquename>`); count != 1 {
+			t.Fatalf("LET-local operator F appears %d times, want Java SANY-style single original definition\n%s", count, got)
+		}
+	})
+
+	t.Run("extended modules contribute their instance nodes", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Zero == 0
+====`)
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+LOCAL INSTANCE Helper
+Use == Zero
+====`)
+		root := filepath.Join(dir, "ExtendsInstanceXML.tla")
+		writeFile(t, root, `---- MODULE ExtendsInstanceXML ----
+EXTENDS Base
+RootUse == Use
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		if count := strings.Count(string(xmlText), `<module>Helper</module>`); count != 2 {
+			t.Fatalf("Helper instance nodes = %d, want one on Base and one imported into ExtendsInstanceXML\n%s", count, xmlText)
+		}
+	})
+
+	t.Run("preserves duplicate imported instance nodes from distinct EXTENDS paths", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Leaf.tla"), `---- MODULE Leaf ----
+Zero == 0
+====`)
+		writeFile(t, filepath.Join(dir, "Shared.tla"), `---- MODULE Shared ----
+LOCAL INSTANCE Leaf
+====`)
+		writeFile(t, filepath.Join(dir, "Left.tla"), `---- MODULE Left ----
+EXTENDS Shared
+====`)
+		writeFile(t, filepath.Join(dir, "Right.tla"), `---- MODULE Right ----
+EXTENDS Shared
+====`)
+		root := filepath.Join(dir, "DuplicateImportedInstanceXML.tla")
+		writeFile(t, root, `---- MODULE DuplicateImportedInstanceXML ----
+EXTENDS Left, Right
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		start := strings.Index(got, `<uniquename>DuplicateImportedInstanceXML</uniquename>`)
+		if start < 0 {
+			t.Fatalf("root ModuleNode missing\n%s", got)
+		}
+		end := strings.Index(got[start:], `</ModuleNode>`)
+		if end < 0 {
+			t.Fatalf("root ModuleNode unterminated\n%s", got[start:])
+		}
+		rootNode := got[start : start+end]
+		if count := strings.Count(rootNode, `<module>Leaf</module>`); count != 2 {
+			t.Fatalf("imported Leaf instance nodes = %d, want duplicate paths preserved\n%s", count, rootNode)
+		}
+	})
+
+	t.Run("sorts extended module names like Java SANY XML", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "A.tla"), `---- MODULE A ----
+A == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "B.tla"), `---- MODULE B ----
+B == TRUE
+====`)
+		root := filepath.Join(dir, "ExtendsOrderXML.tla")
+		writeFile(t, root, `---- MODULE ExtendsOrderXML ----
+EXTENDS B, A
+Root == A /\ B
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		moduleStart := strings.Index(got, `<uniquename>ExtendsOrderXML</uniquename>`)
+		if moduleStart < 0 {
+			t.Fatalf("SANY XML missing ExtendsOrderXML module\n%s", got)
+		}
+		aIndex := strings.Index(got[moduleStart:], `<uniquename>A</uniquename>`)
+		bIndex := strings.Index(got[moduleStart:], `<uniquename>B</uniquename>`)
+		if aIndex < 0 || bIndex < 0 || aIndex > bIndex {
+			t.Fatalf("extends names were not sorted as A then B\n%s", got[moduleStart:])
+		}
+	})
+
+	t.Run("serializes implicit same-name instance substitutions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+VARIABLE x
+Use == x = C
+====`)
+		root := filepath.Join(dir, "InstanceSubstXML.tla")
+		writeFile(t, root, `---- MODULE InstanceSubstXML ----
+CONSTANT C
+VARIABLE x
+INSTANCE Base
+RootUse == Use
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		if count := strings.Count(got, `<Subst>`); count != 4 {
+			t.Fatalf("instance substitutions = %d, want C and x substitutions on the instance and cloned body\n%s", count, got)
+		}
+		if !strings.Contains(got, `<SubstInNode>`) {
+			t.Fatalf("instance-cloned definition body did not include SubstInNode\n%s", got)
+		}
+	})
+
+	t.Run("parameterized INSTANCE prepends parameters to clones and preserves theorem facts", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+Op(x) == C = x
+LEMMA Lemma == C = C
+====`)
+		root := filepath.Join(dir, "ParamInstanceXML.tla")
+		writeFile(t, root, `---- MODULE ParamInstanceXML ----
+CONSTANT CSet
+P(C) == INSTANCE Base
+UseOp == \A c \in CSet : P(c)!Op(c)
+UseLemma == \A c \in CSet : P(c)!Lemma
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		op := xmlEntryPayloadByKindAndName(rootXML, "UserDefinedOpKind", "P!Op")
+		if op == nil {
+			t.Fatalf("parameterized instance clone P!Op missing\n%s", xmlText)
+		}
+		if got := firstChildText(op, "arity"); got != "2" {
+			t.Fatalf("P!Op arity = %s, want 2\n%s", got, xmlText)
+		}
+		params := directChildren(op, "params")
+		if len(params) != 1 || len(directChildren(params[0], "leibnizparam")) != 2 {
+			t.Fatalf("P!Op params do not include instance param plus original param\n%s", xmlText)
+		}
+		theorem := xmlEntryPayloadByKindAndName(rootXML, "TheoremDefNode", "P!Lemma")
+		if theorem == nil {
+			t.Fatalf("parameterized instance theorem clone P!Lemma missing\n%s", xmlText)
+		}
+		if len(xmlNodesByName(theorem, "APSubstInNode")) != 1 {
+			t.Fatalf("P!Lemma clone missing APSubstInNode\n%s", xmlText)
+		}
+		if refs := moduleRefCountByPayloadName(rootXML, "ParamInstanceXML", "TheoremDefNode", "P!Lemma"); refs != 0 {
+			t.Fatalf("ParamInstanceXML module refs to P!Lemma theorem clone = %d, want 0\n%s", refs, xmlText)
+		}
+	})
+
+	t.Run("plain unqualified INSTANCE does not clone theorem facts", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+LEMMA Aux == C = C
+THEOREM Lemma == C = C
+====`)
+		root := filepath.Join(dir, "PlainInstanceTheoremXML.tla")
+		writeFile(t, root, `---- MODULE PlainInstanceTheoremXML ----
+CONSTANT C
+INSTANCE Base
+Use == TRUE
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if count := xmlPayloadCountByKindNameFile(rootXML, "TheoremDefNode", "Lemma", "PlainInstanceTheoremXML"); count != 0 {
+			t.Fatalf("plain INSTANCE cloned theorem facts into root module: %d\n%s", count, xmlText)
+		}
+		if count := xmlPayloadCountByKindNameFile(rootXML, "TheoremDefNode", "Lemma", "Base"); count != 1 {
+			t.Fatalf("plain INSTANCE original theorem facts = %d, want 1\n%s", count, xmlText)
+		}
+	})
+
+	t.Run("named INSTANCE clones theorem facts", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+LEMMA Aux == C = C
+THEOREM Lemma == C = C
+====`)
+		root := filepath.Join(dir, "NamedInstanceTheoremXML.tla")
+		writeFile(t, root, `---- MODULE NamedInstanceTheoremXML ----
+CONSTANT C
+P == INSTANCE Base
+Use == P!Lemma
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if clone := xmlEntryPayloadByKindAndName(rootXML, "TheoremDefNode", "P!Lemma"); clone == nil {
+			t.Fatalf("named INSTANCE theorem clone P!Lemma missing\n%s", xmlText)
+		}
+		if clone := xmlEntryPayloadByKindAndName(rootXML, "TheoremDefNode", "P!Aux"); clone != nil {
+			t.Fatalf("named INSTANCE cloned lemma alias P!Aux as theorem definition\n%s", xmlText)
+		}
+		if clone := xmlEntryPayloadByKindAndName(rootXML, "UserDefinedOpKind", "P!Aux"); clone != nil {
+			t.Fatalf("named INSTANCE cloned lemma alias P!Aux as user definition\n%s", xmlText)
+		}
+		if refs := moduleRefCountByPayloadName(rootXML, "NamedInstanceTheoremXML", "TheoremDefNode", "P!Lemma"); refs != 0 {
+			t.Fatalf("NamedInstanceTheoremXML module refs to P!Lemma theorem clone = %d, want 0\n%s", refs, xmlText)
+		}
+	})
+
+	t.Run("lemma assume prove definitions emit scoped theorem definitions", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LemmaAssumeProveXML.tla", `---- MODULE LemmaAssumeProveXML ----
+LEMMA Lem ==
+  ASSUME NEW S, NEW x \in S
+  PROVE x \in S
+====`)
+		requireNoErrors(t, diags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		lemma := xmlEntryPayloadByKindAndName(rootXML, "TheoremDefNode", "Lem")
+		if lemma == nil {
+			t.Fatalf("lemma assume/prove definition was not emitted as TheoremDefNode\n%s", xmlText)
+		}
+		if len(xmlNodesByName(lemma, "AssumeProveNode")) != 1 {
+			t.Fatalf("lemma assume/prove definition missing AssumeProveNode\n%s", xmlText)
+		}
+		if xmlEntryPayloadByKindAndName(rootXML, "UserDefinedOpKind", "Lem") != nil {
+			t.Fatalf("lemma assume/prove definition was emitted as UserDefinedOpKind\n%s", xmlText)
+		}
+	})
+
+	t.Run("INSTANCE clones reuse source formal params after late standard module allocation", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("StdInstanceFormalXML.tla", `---- MODULE StdInstanceFormalXML ----
+CC == INSTANCE Naturals
+Use == TRUE
+====`)
+		requireNoErrors(t, diags)
+		assertNoDanglingXMLRefs(t, xmlText)
+	})
+
+	t.Run("levels explicit INSTANCE substitution replacements", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT P
+Use == P
+====`)
+		root := filepath.Join(dir, "ExplicitSubstLevelXML.tla")
+		writeFile(t, root, `---- MODULE ExplicitSubstLevelXML ----
+VARIABLE x
+Repl == x
+Inst == INSTANCE Base WITH P <- Repl
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		replUID := xmlEntryUIDByKindAndName(rootXML, "UserDefinedOpKind", "Repl")
+		if replUID == "" {
+			t.Fatalf("Repl definition missing\n%s", xmlText)
+		}
+		var replacements int
+		for _, subst := range xmlNodesByName(rootXML, "Subst") {
+			for _, replacement := range directChildren(subst, "OpApplNode") {
+				if !opApplNodeUsesOperatorUID(replacement, "UserDefinedOpKindRef", replUID) {
+					continue
+				}
+				replacements++
+				if got := firstChildText(replacement, "level"); got != strconv.Itoa(int(variableLevel)) {
+					t.Fatalf("Repl substitution level = %s, want 1\n%s", got, xmlText)
+				}
+			}
+		}
+		if replacements == 0 {
+			t.Fatalf("Repl substitution replacement missing\n%s", xmlText)
+		}
+	})
+
+	t.Run("serializes multi-index function application through a tuple operand", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("MultiIndexFunctionAppXML.tla", `---- MODULE MultiIndexFunctionAppXML ----
+VARIABLE f
+A(i, j) == f[i, j]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>A</uniquename>`) {
+			t.Fatalf("SANY XML missing A definition\n%s", got)
+		}
+		for _, want := range []string{
+			`<uniquename>$FcnApply</uniquename>`,
+			`<uniquename>$Tuple</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("multi-index function application XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("serializes multi-index EXCEPT selectors through a tuple operand", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("MultiIndexExceptXML.tla", `---- MODULE MultiIndexExceptXML ----
+VARIABLE f
+A(i, j) == [f EXCEPT ![i, j] = 0]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>$Except</uniquename>`,
+			`<uniquename>$Tuple</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("multi-index EXCEPT XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("marks tuple destructuring bounds", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TupleBoundXML.tla", `---- MODULE TupleBoundXML ----
+Pairs == { <<1, 2>> }
+A == { x : <<x, y>> \in Pairs }
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<tuple/>`) {
+			t.Fatalf("tuple-bound XML missing tuple marker\n%s", got)
+		}
+	})
+
+	t.Run("marks tuple destructuring quantifier bounds", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TupleQuantifierBoundXML.tla", `---- MODULE TupleQuantifierBoundXML ----
+Pairs == { <<1, 2>> }
+A == \A <<x, y>> \in Pairs : x = y
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<tuple/>`) {
+			t.Fatalf("tuple-quantifier-bound XML missing tuple marker\n%s", got)
+		}
+	})
+
+	t.Run("bounded operators include bound set level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("BoundedLevelXML.tla", `---- MODULE BoundedLevelXML ----
+VARIABLE S
+A == \A x \in S : TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		a := strings.Index(got, `<uniquename>A</uniquename>`)
+		if a < 0 {
+			t.Fatalf("SANY XML missing A definition\n%s", got)
+		}
+		body := strings.Index(got[a:], `<body>`)
+		if body < 0 {
+			t.Fatalf("SANY XML missing A body\n%s", got[a:])
+		}
+		levelStart := strings.Index(got[a+body:], `<level>`)
+		if levelStart < 0 {
+			t.Fatalf("SANY XML missing bounded quantifier level\n%s", got[a+body:])
+		}
+		levelEnd := strings.Index(got[a+body+levelStart:], `</level>`)
+		level := got[a+body+levelStart : a+body+levelStart+levelEnd+len(`</level>`)]
+		if level != `<level>1</level>` {
+			t.Fatalf("bounded quantifier level = %s, want <level>1</level>\n%s", level, got[a+body:])
+		}
+	})
+
+	t.Run("function constructor formals emit levels only when checked", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("FunctionConstructorFormalLevelXML.tla", `---- MODULE FunctionConstructorFormalLevelXML ----
+CONSTANT S
+Unused == [x \in S |-> {}]
+Used == [x \in S |-> x]
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		unused := formalParamAtLocation(root, "x", 3, 12, 12)
+		if unused == nil {
+			t.Fatalf("unused function constructor formal missing\n%s", xmlText)
+		}
+		if got := firstChildText(unused, "level"); got != "" {
+			t.Fatalf("unused function constructor formal level = %q, want omitted\n%s", got, xmlText)
+		}
+		used := formalParamAtLocation(root, "x", 4, 10, 10)
+		if used == nil {
+			t.Fatalf("used function constructor formal missing\n%s", xmlText)
+		}
+		if got := firstChildText(used, "level"); got != "0" {
+			t.Fatalf("used function constructor formal level = %q, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("LET node level includes local definition levels", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetLevelXML.tla", `---- MODULE LetLevelXML ----
+VARIABLE v
+A == LET F == v IN F
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		let := strings.Index(got, `<LetInNode>`)
+		if let < 0 {
+			t.Fatalf("SANY XML missing LetInNode\n%s", got)
+		}
+		levelStart := strings.Index(got[let:], `<level>`)
+		if levelStart < 0 {
+			t.Fatalf("SANY XML missing LetInNode level\n%s", got[let:])
+		}
+		levelEnd := strings.Index(got[let+levelStart:], `</level>`)
+		level := got[let+levelStart : let+levelStart+levelEnd+len(`</level>`)]
+		if level != `<level>1</level>` {
+			t.Fatalf("LetInNode level = %s, want <level>1</level>\n%s", level, got[let:])
+		}
+	})
+
+	t.Run("serializes named assumptions as AssumeDef", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NamedAssumeXML.tla", `---- MODULE NamedAssumeXML ----
+CONSTANT C
+ASSUME CAssumption == C = C
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<AssumeDef>`,
+			`<uniquename>CAssumption</uniquename>`,
+			`<AssumeDefRef>`,
+			`<AssumeNode>`,
+			`<definition>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("named assumption XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("preserves unnamed theorem ASSUME PROVE bodies as AssumeProveNode", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UnnamedAssumeProveTheoremXML.tla", `---- MODULE UnnamedAssumeProveTheoremXML ----
+THEOREM ASSUME TRUE
+        PROVE TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var found bool
+		for _, theorem := range xmlNodesByName(root, "TheoremNode") {
+			for _, body := range directChildren(theorem, "body") {
+				if len(directChildren(body, "AssumeProveNode")) == 1 {
+					found = true
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("unnamed theorem body was not exported as AssumeProveNode\n%s", xmlText)
+		}
+	})
+
+	t.Run("serializes LAMBDA expressions as local operator definitions", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LambdaExprXML.tla", `---- MODULE LambdaExprXML ----
+VARIABLE x
+ChooseOne(S, P(_)) == CHOOSE y \in S : P(y)
+A == ChooseOne({1}, LAMBDA y : x = x)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>LAMBDA</uniquename>`,
+			`<OpArgNode>`,
+			`<uniquename>y</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("lambda expression XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("serializes LAMBDA pre-comments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LambdaPreCommentXML.tla", `---- MODULE LambdaPreCommentXML ----
+Apply(Op(_), x) == Op(x)
+A == Apply(
+  \* lambda explains the accumulator
+  LAMBDA x : x,
+  TRUE)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
+			t.Fatalf("lambda XML missing\n%s", got)
+		}
+		if !strings.Contains(got, `<pre-comments><![CDATA[\* lambda explains the accumulator]]></pre-comments>`) {
+			t.Fatalf("lambda XML missing pre-comment\n%s", got)
+		}
+	})
+
+	t.Run("serializes operator formals passed as operator arguments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("OperatorFormalArgXML.tla", `---- MODULE OperatorFormalArgXML ----
+Apply(Op(_,_), x, y) == Op(x, y)
+Forward(Op(_,_), x, y) == Apply(Op, x, y)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<OpArgNode>`) {
+			t.Fatalf("operator formal argument XML missing OpArgNode\n%s", got)
+		}
+		if !strings.Contains(got, `<argument>`) || !strings.Contains(got, `<FormalParamNodeRef>`) {
+			t.Fatalf("operator formal argument XML missing FormalParamNodeRef argument\n%s", got)
+		}
+	})
+
+	t.Run("canonicalizes parenthesized infix definition operators", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ParenthesizedInfixDefXML.tla", `---- MODULE ParenthesizedInfixDefXML ----
+A (+) B == A = B
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>\oplus</uniquename>`) {
+			t.Fatalf("parenthesized infix definition missing canonical \\oplus\n%s", got)
+		}
+		if strings.Contains(got, `<uniquename>(+)</uniquename>`) {
+			t.Fatalf("parenthesized infix definition kept non-canonical (+)\n%s", got)
+		}
+	})
+
+	t.Run("serializes ENABLED applications with variable level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("EnabledLevelXML.tla", `---- MODULE EnabledLevelXML ----
+VARIABLE x
+Done == x' = x
+Live == <>(ENABLED Done)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		enabledUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "ENABLED")
+		if enabledUID == "" {
+			t.Fatalf("ENABLED builtin missing\n%s", string(xmlText))
+		}
+		node := firstOpApplNodeForOperatorUID(root, "BuiltInKindRef", enabledUID)
+		if node == nil {
+			t.Fatalf("ENABLED application missing\n%s", string(xmlText))
+		}
+		if got := firstChildText(node, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("ENABLED level = %s, want %d\n%s", got, variableLevel, string(xmlText))
+		}
+	})
+
+	t.Run("serializes action composition as non-Leibniz action builtin", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ActionCompositionXML.tla", `---- MODULE ActionCompositionXML ----
+VARIABLE x
+A == (x' = x) \cdot (x' = x)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var cdot *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "BuiltInKind" && firstChildText(payload, "uniquename") == `\cdot` {
+				cdot = payload
+				break
+			}
+		}
+		if cdot == nil {
+			t.Fatalf(`\cdot builtin missing`+"\n%s", xmlText)
+		}
+		if got := firstChildText(cdot, "level"); got != strconv.Itoa(int(actionLevel)) {
+			t.Fatalf(`\cdot level = %s, want %d`+"\n%s", got, actionLevel, xmlText)
+		}
+		params := directChildren(cdot, "params")
+		if len(params) != 1 {
+			t.Fatalf(`\cdot params elements = %d, want 1`+"\n%s", len(params), xmlText)
+		}
+		for _, param := range directChildren(params[0], "leibnizparam") {
+			if got := directChildren(param, "leibniz"); len(got) != 0 {
+				t.Fatalf(`\cdot param has leibniz marker, want non-Leibniz`+"\n%s", xmlText)
+			}
+		}
+	})
+
+	t.Run("serializes inherited named assumptions as proof facts", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "BaseAssume.tla"), `---- MODULE BaseAssume ----
+ASSUME NamedFact == TRUE
+====`)
+		rootPath := filepath.Join(dir, "ProofUsesAssume.tla")
+		writeFile(t, rootPath, `---- MODULE ProofUsesAssume ----
+EXTENDS BaseAssume
+THEOREM T == TRUE
+  BY NamedFact
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		if !strings.Contains(string(xmlText), `<AssumeDefRef>`) {
+			t.Fatalf("proof fact did not reference inherited named assumption as AssumeDefRef\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("module context preserves duplicate imported theorem refs", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+THEOREM T == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Mid.tla"), `---- MODULE Mid ----
+EXTENDS Base
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+EXTENDS Mid, Base
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if got := moduleRefCountByPayloadLocation(root, "Root", "TheoremNode", "Base", 2); got != 2 {
+			t.Fatalf("Root module has %d refs to Base theorem line 2, want 2\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("implicit INSTANCE substitutions prefer owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+Use == C
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+C == TRUE
+INSTANCE Base
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		targetUID := xmlEntryUIDByKindAndName(root, "OpDeclNode", "C")
+		replacementUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "C")
+		if targetUID == "" || replacementUID == "" {
+			t.Fatalf("missing target or replacement symbol for implicit INSTANCE substitution\n%s", xmlText)
+		}
+		if !substUsesReplacementRef(root, targetUID, "UserDefinedOpKindRef", replacementUID) {
+			t.Fatalf("implicit INSTANCE substitution did not use owner definition C\n%s", xmlText)
+		}
+	})
+
+	t.Run("serializes proof DEFINE and PICK steps", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofDefinePickXML.tla", `---- MODULE ProofDefinePickXML ----
+THEOREM T == TRUE
+<1>. DEFINE Local == TRUE
+<1>1. Local
+  BY DEF Local
+<1>2. PICK x : x = x
+  OBVIOUS
+<1>3. x = x
+  BY <1>2
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<DefStepNode>`,
+			`<uniquename>Local</uniquename>`,
+			`<uniquename>$Pick</uniquename>`,
+			`<uniquename>x</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("proof DEFINE/PICK XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("PICK proof step theorem level includes bounded domains", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofPickBoundLevelXML.tla", `---- MODULE ProofPickBoundLevelXML ---- EXTENDS Naturals
+VARIABLE x
+THEOREM T == TRUE
+<1>1. PICK n \in 1..x : n = n
+  OBVIOUS
+<1> QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := xmlEntryPayloadByKindAndName(root, "TheoremDefNode", "<1>1")
+		if def == nil {
+			t.Fatalf("PICK proof-step theorem definition missing\n%s", xmlText)
+		}
+		if got := firstChildText(def, "level"); got != "1" {
+			t.Fatalf("PICK proof-step theorem definition level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("PICK proof bound formals omit levels until referenced", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofPickUnusedFormalLevelXML.tla", `---- MODULE ProofPickUnusedFormalLevelXML ----
+CONSTANT S
+THEOREM T == TRUE
+<1>1. PICK n \in S : TRUE
+  OBVIOUS
+<1> QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != "n" {
+				continue
+			}
+			if xmlNodeLocationMatches(payload, 4, 12, 12) {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("PICK formal n at line 4 column 12 missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "" {
+			t.Fatalf("unused PICK formal n level = %q, want omitted\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("PICK proof bound formals emit levels once referenced", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofPickUsedFormalLevelXML.tla", `---- MODULE ProofPickUsedFormalLevelXML ----
+CONSTANT S
+THEOREM T == TRUE
+<1>1. PICK n \in S : n = n
+  OBVIOUS
+<1> QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != "n" {
+				continue
+			}
+			if xmlNodeLocationMatches(payload, 4, 12, 12) {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("PICK formal n at line 4 column 12 missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "0" {
+			t.Fatalf("referenced PICK formal n level = %q, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("later proof steps level-check previous PICK bounds", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofPickLaterUseFormalLevelXML.tla", `---- MODULE ProofPickLaterUseFormalLevelXML ----
+CONSTANT S
+THEOREM T == TRUE
+<1> PICK a \in S : TRUE
+  OBVIOUS
+<1>1. a = a
+  OBVIOUS
+<1> QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != "a" {
+				continue
+			}
+			if xmlNodeLocationMatches(payload, 4, 10, 10) {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("PICK formal a at line 4 column 10 missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "0" {
+			t.Fatalf("later-used PICK formal a level = %q, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("serializes multiple proof DEFINE definitions in one step", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofMultiDefineXML.tla", `---- MODULE ProofMultiDefineXML ----
+THEOREM T == TRUE
+<1>. DEFINE First == TRUE
+            Second == First
+<1>1. Second
+  BY DEF Second, First
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		start := strings.Index(got, "<DefStepNode>")
+		if start < 0 {
+			t.Fatalf("SANY XML missing DefStepNode\n%s", got)
+		}
+		end := strings.Index(got[start:], "</DefStepNode>")
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated DefStepNode\n%s", got)
+		}
+		defStep := got[start : start+end]
+		if count := strings.Count(defStep, "<UserDefinedOpKindRef>"); count != 2 {
+			t.Fatalf("DefStepNode refs = %d, want 2\n%s", count, defStep)
+		}
+		for _, want := range []string{
+			`<uniquename>First</uniquename>`,
+			`<uniquename>Second</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("proof DEFINE XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("TAKE proof steps emit bound symbols for following steps", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofTakeXML.tla", `---- MODULE ProofTakeXML ----
+CONSTANT S
+THEOREM TRUE
+<1>1. TAKE i \in S
+<1>2. i = i
+  OBVIOUS
+<1>. QED
+  BY <1>2
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		takeUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Take")
+		if takeUID == "" {
+			t.Fatalf("$Take builtin missing\n%s", xmlText)
+		}
+		if firstOpApplNodeForOperatorUID(root, "BuiltInKindRef", takeUID) == nil {
+			t.Fatalf("TAKE proof step did not emit $Take application\n%s", xmlText)
+		}
+		step := xmlEntryPayloadByKindAndName(root, "TheoremDefNode", "<1>2")
+		if step == nil {
+			t.Fatalf("following proof step definition missing\n%s", xmlText)
+		}
+		var usesI bool
+		for _, ref := range xmlNodesByName(step, "FormalParamNodeRef") {
+			uid := firstChildText(ref, "UID")
+			for _, entry := range canonicalSanyXMLEntries(root) {
+				if firstChildText(entry, "UID") != uid {
+					continue
+				}
+				payload := canonicalSanyXMLEntryPayload(entry)
+				if payload != nil && payload.Name == "FormalParamNode" && firstChildText(payload, "uniquename") == "i" {
+					usesI = true
+				}
+			}
+		}
+		if !usesI {
+			t.Fatalf("following proof step did not resolve TAKE-bound i\n%s", xmlText)
+		}
+	})
+
+	t.Run("omits Leibniz marker for proof DEFINE params under temporal operators", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofTemporalLeibnizXML.tla", `---- MODULE ProofTemporalLeibnizXML ----
+VARIABLE v
+THEOREM T == TRUE
+<1>. DEFINE P(m) == v = m
+            L(m) == [](P(m) => <>TRUE)
+<1>1. TRUE
+  OBVIOUS
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var def *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "UserDefinedOpKind" && firstChildText(payload, "uniquename") == "L" {
+				def = payload
+				break
+			}
+		}
+		if def == nil {
+			t.Fatalf("proof DEFINE L missing\n%s", xmlText)
+		}
+		params := directChildren(def, "params")
+		if len(params) != 1 {
+			t.Fatalf("L params elements = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 {
+			t.Fatalf("L leibnizparam elements = %d, want 1\n%s", len(leibnizParams), xmlText)
+		}
+		if got := directChildren(leibnizParams[0], "leibniz"); len(got) != 0 {
+			t.Fatalf("L param has leibniz marker, want non-Leibniz\n%s", xmlText)
+		}
+	})
+
+	t.Run("serializes ordinary SUFFICES proof steps", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofSufficesXML.tla", `---- MODULE ProofSufficesXML ----
+THEOREM T == TRUE
+<1>1. SUFFICES TRUE
+  OBVIOUS
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>$Suffices</uniquename>`) {
+			t.Fatalf("ordinary SUFFICES XML missing $Suffices builtin\n%s", got)
+		}
+	})
+
+	t.Run("PROOF OMITTED location starts at PROOF token", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofOmittedLocationXML.tla", `---- MODULE ProofOmittedLocationXML ----
+THEOREM T == TRUE
+  PROOF OMITTED
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var omitted *canonicalXMLNode
+		var walk func(*canonicalXMLNode)
+		walk = func(node *canonicalXMLNode) {
+			if node == nil || omitted != nil {
+				return
+			}
+			if node.Name == "omitted" {
+				omitted = node
+				return
+			}
+			for _, child := range node.Children {
+				walk(child)
+			}
+		}
+		walk(root)
+		if omitted == nil {
+			t.Fatalf("SANY XML missing omitted proof node\n%s", xmlText)
+		}
+		locs := directChildren(omitted, "location")
+		if len(locs) != 1 || firstChildText(directChildren(locs[0], "column")[0], "begin") != "3" {
+			t.Fatalf("omitted proof location does not start at PROOF token\n%s", xmlText)
+		}
+	})
+
+	t.Run("serializes WITNESS proof steps as witness builtin applications", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofWitnessXML.tla", `---- MODULE ProofWitnessXML ----
+CONSTANT x, y
+THEOREM T == TRUE
+PROOF
+<1>1. WITNESS x, y
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		witnessUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Witness")
+		if witnessUID == "" {
+			t.Fatalf("SANY XML missing $Witness builtin\n%s", xmlText)
+		}
+		node := firstOpApplNodeForOperatorUID(root, "BuiltInKindRef", witnessUID)
+		if node == nil {
+			t.Fatalf("proof step body missing $Witness application\n%s", xmlText)
+		}
+		operands := directChildren(node, "operands")
+		if len(operands) != 1 || len(operands[0].Children) != 2 {
+			t.Fatalf("$Witness operand count = %d containers/%d operands, want 1/2\n%s", len(operands), len(operands[0].Children), xmlText)
+		}
+	})
+
+	t.Run("serializes HAVE proof steps as have builtin applications", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofHaveXML.tla", `---- MODULE ProofHaveXML ----
+THEOREM T == TRUE
+PROOF
+<1>1. HAVE TRUE
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		haveUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Have")
+		if haveUID == "" {
+			t.Fatalf("SANY XML missing $Have builtin\n%s", xmlText)
+		}
+		node := firstOpApplNodeForOperatorUID(root, "BuiltInKindRef", haveUID)
+		if node == nil {
+			t.Fatalf("proof step body missing $Have application\n%s", xmlText)
+		}
+		operands := directChildren(node, "operands")
+		if len(operands) != 1 || len(operands[0].Children) != 1 {
+			t.Fatalf("$Have operand count = %d containers/%d operands, want 1/1\n%s", len(operands), len(operands[0].Children), xmlText)
+		}
+	})
+
+	t.Run("serializes proof steps as theorem XML", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofXML.tla", `---- MODULE ProofXML ----
+THEOREM T == TRUE
+PROOF
+<1>1. TRUE
+  OBVIOUS
+<1>2. CASE TRUE
+  OBVIOUS
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<steps>`,
+			`<TheoremDefNode>`,
+			`<uniquename>&lt;1&gt;1</uniquename>`,
+			`<TheoremNodeRef>`,
+			`<obvious>`,
+			`<by>`,
+			`<uniquename>$Pfcase</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("proof SANY XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("definition references do not raise proof command level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofDefLevelXML.tla", `---- MODULE ProofDefLevelXML ----
+VARIABLE x
+UsesVariable == x = x
+THEOREM T == TRUE
+PROOF
+<1>. TRUE
+  BY DEF UsesVariable
+<1>. QED
+  OBVIOUS
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		start := strings.Index(got, "<by>")
+		if start < 0 {
+			t.Fatalf("SANY XML missing BY proof\n%s", got)
+		}
+		end := strings.Index(got[start:], "</by>")
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated BY proof\n%s", got)
+		}
+		by := got[start : start+end]
+		for _, want := range []string{
+			`<level>0</level>`,
+			`<facts/>`,
+			`<defs>`,
+			`<UserDefinedOpKindRef>`,
+		} {
+			if !strings.Contains(by, want) {
+				t.Fatalf("BY proof XML missing %q\n%s", want, by)
+			}
+		}
+	})
+
+	t.Run("USE proof commands preserve expression facts before DEF", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofUseFactXML.tla", `---- MODULE ProofUseFactXML ----
+CONSTANT C
+S == {C}
+D == TRUE
+THEOREM T == TRUE
+PROOF
+<1>. USE C \in S DEF D
+<1>. QED
+  OBVIOUS
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		start := strings.Index(got, "<UseOrHideNode>")
+		if start < 0 {
+			t.Fatalf("SANY XML missing USE proof command\n%s", got)
+		}
+		end := strings.Index(got[start:], "</UseOrHideNode>")
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated USE proof command\n%s", got)
+		}
+		use := got[start : start+end]
+		for _, want := range []string{
+			`<begin>1</begin>`,
+			`<facts>`,
+			`<OpApplNode>`,
+			`<BuiltInKindRef>`,
+			`<defs>`,
+			`<UserDefinedOpKindRef>`,
+		} {
+			if !strings.Contains(use, want) {
+				t.Fatalf("USE proof XML missing %q\n%s", want, use)
+			}
+		}
+		if !strings.Contains(got, `<proofLevel>1</proofLevel>`) {
+			t.Fatalf("structured proof XML missing proofLevel\n%s", got)
+		}
+	})
+
+	t.Run("proof step references use the current step definition level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofSelfRefXML.tla", `---- MODULE ProofSelfRefXML ----
+VARIABLE x
+THEOREM T == TRUE
+PROOF
+<1>1. CASE x' = x
+  BY <1>1
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		start := strings.Index(got, "<by>")
+		if start < 0 {
+			t.Fatalf("SANY XML missing BY proof\n%s", got)
+		}
+		end := strings.Index(got[start:], "</by>")
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated BY proof\n%s", got)
+		}
+		by := got[start : start+end]
+		if !strings.Contains(by, `<level>2</level>`) || !strings.Contains(by, `<TheoremDefRef>`) {
+			t.Fatalf("self-referential BY proof did not use current action-level theorem definition\n%s", by)
+		}
+		last := strings.LastIndex(got, "<by>")
+		if last == start {
+			t.Fatalf("SANY XML missing QED BY proof\n%s", got)
+		}
+		end = strings.Index(got[last:], "</by>")
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated QED BY proof\n%s", got)
+		}
+		by = got[last : last+end]
+		if !strings.Contains(by, `<level>2</level>`) || !strings.Contains(by, `<TheoremDefRef>`) {
+			t.Fatalf("sibling-referential QED proof did not use local action-level theorem definition\n%s", by)
+		}
+	})
+
+	t.Run("proof step references can be assertion expression operands", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofStepOperandXML.tla", `---- MODULE ProofStepOperandXML ----
+VARIABLE x
+THEOREM T == TRUE
+PROOF
+<1>1. x = x
+<1>2. (x = x) <=> <1>1
+  BY <1>1
+<1>. QED
+  BY <1>2
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := xmlEntryPayloadByKindAndName(root, "TheoremDefNode", "<1>2")
+		if def == nil {
+			t.Fatalf("proof step <1>2 definition missing\n%s", xmlText)
+		}
+		if refs := xmlNodesByName(def, "TheoremDefRef"); len(refs) == 0 {
+			t.Fatalf("proof step operand did not reference <1>1 theorem definition\n%s", xmlText)
+		}
+	})
+
+	t.Run("proof assertion at references the previous proof-step expression", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofAtStepXML.tla", `---- MODULE ProofAtStepXML ----
+VARIABLE x
+THEOREM T == TRUE
+PROOF
+<1>1. x = x
+<1>2. @ = x
+  BY <1>1
+<1>. QED
+  BY <1>2
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Contains(got, `<uniquename>@</uniquename>`) {
+			t.Fatalf("proof @ step exported @ as an operator\n%s", got)
+		}
+		if strings.Contains(got, `<AtNode>`) {
+			t.Fatalf("proof @ step exported EXCEPT AtNode\n%s", got)
+		}
+		if !strings.Contains(got, `<TheoremDefNode>`) {
+			t.Fatalf("proof @ step did not export theorem definition\n%s", got)
+		}
+	})
+
+	t.Run("BY proof commands preserve call-style facts", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofCallFactXML.tla", `---- MODULE ProofCallFactXML ----
+P(n) == TRUE
+THEOREM T == TRUE
+PROOF
+<1>. QED
+  BY P(30)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		start := strings.Index(got, "<by>")
+		if start < 0 {
+			t.Fatalf("SANY XML missing BY proof\n%s", got)
+		}
+		end := strings.Index(got[start:], "</by>")
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated BY proof\n%s", got)
+		}
+		by := got[start : start+end]
+		for _, want := range []string{
+			`<begin>6</begin>`,
+			`<end>10</end>`,
+			`<UserDefinedOpKindRef>`,
+			`<NumeralNode>`,
+			`<IntValue>30</IntValue>`,
+		} {
+			if !strings.Contains(by, want) {
+				t.Fatalf("call-style BY proof missing %q\n%s", want, by)
+			}
+		}
+	})
+
+	t.Run("inline body comments are not definition pre-comments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("InlineCommentXML.tla", `---- MODULE InlineCommentXML ----
+A == (* inline body comment *) TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Contains(got, `<pre-comments>`) || strings.Contains(got, `inline body comment`) {
+			t.Fatalf("inline body comment was exported as a definition pre-comment\n%s", got)
+		}
+	})
+
+	t.Run("trims trailing whitespace from pre-comments", func(t *testing.T) {
+		source := "---- MODULE PreCommentWhitespaceXML ----\n" +
+			"\\* comment with trailing space \n" +
+			"A == TRUE\n" +
+			"===="
+		xmlText, diags := SanyXMLSource("PreCommentWhitespaceXML.tla", source)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Contains(got, `\* comment with trailing space ]]>`) {
+			t.Fatalf("pre-comment retained trailing whitespace\n%s", got)
+		}
+		if !strings.Contains(got, `<![CDATA[\* comment with trailing space]]>`) {
+			t.Fatalf("pre-comment missing trimmed text\n%s", got)
+		}
+	})
+
+	t.Run("matches SANY nested block pre-comment tokenization", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NestedBlockPreCommentXML.tla", `---- MODULE NestedBlockPreCommentXML ----
+(******************* disabled spec ********
+  LET Helper ==
+        (*********************)
+        (* nested line       *)
+        (*********************)
+  IN Helper
+  ***************************************)
+A == TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			"        (*\n********************)\n\n",
+			"        (*\n nested line       *)\n\n",
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("nested block pre-comment missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("uses Java SANY source lines for CRLF definition locations", func(t *testing.T) {
+		source := "---- MODULE CRLFDefinitionLocationXML ----\r\nA == TRUE\r\n====\r\n"
+		xmlText, diags := SanyXMLSource("CRLFDefinitionLocationXML.tla", source)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if def := userDefinedOpAtLocation(root, 2, 1, 9); def == nil || firstChildText(def, "uniquename") != "A" {
+			t.Fatalf("definition A did not use CRLF-normalized location 2:1..9\n%s", xmlText)
+		}
+	})
+
+	t.Run("serializes single bullet branches as SANY junction lists", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("SingleBulletXML.tla", `---- MODULE SingleBulletXML ----
+VARIABLE x
+A == IF x = x THEN /\ x' = x ELSE \/ TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>$ConjList</uniquename>`,
+			`<uniquename>$DisjList</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("single bullet XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("serializes prefix minus as the SANY unary minus operator", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("PrefixMinusXML.tla", `---- MODULE PrefixMinusXML ----
+-. x == x
+A == -1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		def := strings.Index(got, `<uniquename>A</uniquename>`)
+		if def < 0 {
+			t.Fatalf("SANY XML missing definition A\n%s", got)
+		}
+		body := got[def:]
+		for _, want := range []string{
+			`<UserDefinedOpKindRef>`,
+			`<IntValue>1</IntValue>`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("prefix minus XML missing %q\n%s", want, body)
+			}
+		}
+		if !strings.Contains(got, `<uniquename>-.</uniquename>`) {
+			t.Fatalf("prefix minus XML missing unary minus definition\n%s", got)
+		}
+	})
+
+	t.Run("serializes Cartesian product as SANY CartesianProd", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("CartesianProductXML.tla", `---- MODULE CartesianProductXML ----
+A == {1} \X {2}
+B == {1} \times {2}
+C == {1} \X {2} \X {3}
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>$CartesianProd</uniquename>`) {
+			t.Fatalf("Cartesian product XML missing $CartesianProd\n%s", got)
+		}
+		if strings.Contains(got, `<uniquename>\times</uniquename>`) {
+			t.Fatalf("Cartesian product XML kept non-SANY \\times builtin\n%s", got)
+		}
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, got)
+		}
+		cartesianUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$CartesianProd")
+		if cartesianUID == "" {
+			t.Fatalf("Cartesian product builtin missing\n%s", got)
+		}
+		if max := maxDirectOperandsForOperator(root, cartesianUID); max != 3 {
+			t.Fatalf("max Cartesian product operands = %d, want 3\n%s", max, got)
+		}
+		if opApplContainsDirectOperandWithOperator(root, cartesianUID, cartesianUID) {
+			t.Fatalf("Cartesian product XML kept nested Cartesian product operands\n%s", got)
+		}
+	})
+
+	t.Run("preserves parenthesized Cartesian product grouping", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("GroupedCartesianProductXML.tla", `---- MODULE GroupedCartesianProductXML ----
+A == ({1} \X {2}) \X ({3} \X {4})
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		cartesianUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$CartesianProd")
+		if cartesianUID == "" {
+			t.Fatalf("Cartesian product builtin missing\n%s", xmlText)
+		}
+		if max := maxDirectOperandsForOperator(root, cartesianUID); max != 2 {
+			t.Fatalf("max grouped Cartesian product operands = %d, want 2\n%s", max, xmlText)
+		}
+		if !opApplContainsDirectOperandWithOperator(root, cartesianUID, cartesianUID) {
+			t.Fatalf("grouped Cartesian product XML did not preserve nested Cartesian product operands\n%s", xmlText)
+		}
+	})
+
+	t.Run("does not reuse reserved builtin UIDs for generated symbols", func(t *testing.T) {
+		var source strings.Builder
+		source.WriteString("---- MODULE ReservedBuiltinUIDXML ----\n")
+		source.WriteString("CONSTANTS ")
+		for i := 0; i < 160; i++ {
+			if i > 0 {
+				source.WriteString(", ")
+			}
+			source.WriteString("C")
+			source.WriteString(strconv.Itoa(i))
+		}
+		source.WriteString("\nA == {1} \\X {2}\n====")
+		xmlText, diags := SanyXMLSource("ReservedBuiltinUIDXML.tla", source.String())
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Count(got, "<entry>\n      <UID>231</UID>") != 1 {
+			t.Fatalf("reserved Cartesian product UID was reused by a generated entry\n%s", got)
+		}
+		if !strings.Contains(got, "<UID>231</UID>\n      <BuiltInKind>") {
+			t.Fatalf("reserved Cartesian product UID did not belong to the builtin entry\n%s", got)
+		}
+		for _, uid := range []string{"294", "297"} {
+			if strings.Contains(got, "<UID>"+uid+"</UID>\n      <OpDeclNode>") {
+				t.Fatalf("reserved proof builtin UID %s was reused by a generated declaration\n%s", uid, got)
+			}
+		}
+	})
+
+	t.Run("wraps self-referential function definitions as SANY recursive function specs", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("RecursiveFunctionSpecXML.tla", `---- MODULE RecursiveFunctionSpecXML ----
+Cardinality(S) ==
+  LET CS[T \in SUBSET S] == IF T = {} THEN 0 ELSE CS[T]
+  IN CS[S]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>$RecursiveFcnSpec</uniquename>`,
+			`<UID>253</UID>`,
+			`<uniquename>$IfThenElse</uniquename>`,
+			`<unbound>`,
+			`<uniquename>CS</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("recursive function spec XML missing %q\n%s", want, got)
+			}
+		}
+		if strings.Contains(got, `<uniquename>$FcnConstructor</uniquename>`) {
+			t.Fatalf("recursive function spec XML should use the function body directly, not a $FcnConstructor wrapper\n%s", got)
+		}
+	})
+
+	t.Run("distinguishes bounded function definitions from function expressions", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NonRecursiveFunctionSpecXML.tla", `---- MODULE NonRecursiveFunctionSpecXML ----
+CONSTANT S
+F[x \in S] == x
+A == [x \in S |-> x]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>$NonRecursiveFcnSpec</uniquename>`,
+			`<uniquename>$FcnConstructor</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("function XML missing %q\n%s", want, got)
+			}
+		}
+		f := strings.Index(got, `<uniquename>F</uniquename>`)
+		if f < 0 || !strings.Contains(got, `<uniquename>A</uniquename>`) {
+			t.Fatalf("function XML missing F or A\n%s", got)
+		}
+		fEnd := strings.Index(got[f:], `</UserDefinedOpKind>`)
+		if fEnd < 0 {
+			t.Fatalf("function XML missing end of F definition\n%s", got[f:])
+		}
+		fBody := got[f : f+fEnd]
+		if strings.Contains(fBody, `<uniquename>$FcnConstructor</uniquename>`) {
+			t.Fatalf("bounded function definition F should use $NonRecursiveFcnSpec, not $FcnConstructor\n%s", fBody)
+		}
+	})
+
+	t.Run("serializes recursive definitions with a SANY recursive section", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("RecursiveSectionXML.tla", `---- MODULE RecursiveSectionXML ---- EXTENDS Naturals
+RECURSIVE F(_)
+F(n) == IF n = 0 THEN TRUE ELSE LET y == F(n - 1) IN y
+RECURSIVE G(_)
+G(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>F</uniquename>`,
+			`<recursive/>`,
+			`<recursiveSection>1</recursiveSection>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("recursive definition XML missing %q\n%s", want, got)
+			}
+		}
+		g := strings.Index(got, `<uniquename>G</uniquename>`)
+		if g < 0 {
+			t.Fatalf("recursive definition XML missing definition G\n%s", got)
+		}
+		if !strings.Contains(got[g:], `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("second recursive definition did not use recursive section 2\n%s", got[g:])
+		}
+		y := strings.Index(got, `<uniquename>y</uniquename>`)
+		if y < 0 {
+			t.Fatalf("recursive definition XML missing local definition y\n%s", got)
+		}
+		yEntryEnd := strings.Index(got[y:], `</UserDefinedOpKind>`)
+		if yEntryEnd < 0 {
+			t.Fatalf("recursive local definition XML has unterminated entry\n%s", got[y:])
+		}
+		yEntry := got[y : y+yEntryEnd]
+		if strings.Contains(yEntry, `<recursive/>`) || !strings.Contains(yEntry, `<recursiveSection>1</recursiveSection>`) {
+			t.Fatalf("recursive local definition did not inherit only recursive section 1\n%s", yEntry)
+		}
+	})
+
+	t.Run("module recursive declarations control locality over LOCAL definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "RecBase.tla"), `---- MODULE RecBase ----
+EXTENDS Naturals
+RECURSIVE F(_)
+LOCAL F(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+Public == F(0)
+====`)
+		rootPath := filepath.Join(dir, "RecursiveLocalDefinitionExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE RecursiveLocalDefinitionExtendsXML ----
+EXTENDS RecBase
+Use == Public
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var fDef *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "UserDefinedOpKind" &&
+				firstChildText(payload, "uniquename") == "F" &&
+				xmlNodeFilename(payload) == "RecBase" {
+				fDef = payload
+				break
+			}
+		}
+		if fDef == nil {
+			t.Fatalf("recursive definition F missing\n%s", xmlText)
+		}
+		if len(directChildren(fDef, "local")) != 0 {
+			t.Fatalf("module-level recursive F should not export as local\n%s", xmlText)
+		}
+		if got := moduleRefCountByPayloadLocation(root, "RecursiveLocalDefinitionExtendsXML", "UserDefinedOpKind", "RecBase", 4); got != 1 {
+			t.Fatalf("root module has %d refs to inherited recursive F, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("consecutive RECURSIVE declarations share a SANY recursive section", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ConsecutiveRecursiveSectionXML.tla", `---- MODULE ConsecutiveRecursiveSectionXML ---- EXTENDS Naturals
+RECURSIVE F(_)
+RECURSIVE G(_)
+F(n) == IF n = 0 THEN TRUE ELSE G(n - 1)
+G(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+RECURSIVE H(_)
+H(n) == IF n = 0 THEN TRUE ELSE H(n - 1)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		f := strings.Index(got, `<uniquename>F</uniquename>`)
+		g := strings.Index(got, `<uniquename>G</uniquename>`)
+		h := strings.Index(got, `<uniquename>H</uniquename>`)
+		if f < 0 || g < 0 || h < 0 {
+			t.Fatalf("recursive definitions missing\n%s", got)
+		}
+		if !strings.Contains(got[f:], `<recursiveSection>1</recursiveSection>`) {
+			t.Fatalf("F did not use recursive section 1\n%s", got[f:])
+		}
+		if !strings.Contains(got[g:], `<recursiveSection>1</recursiveSection>`) {
+			t.Fatalf("G did not share recursive section 1\n%s", got[g:])
+		}
+		if !strings.Contains(got[h:], `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("H did not use recursive section 2\n%s", got[h:])
+		}
+	})
+
+	t.Run("LET RECURSIVE sections follow module recursive sections", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetRecursiveSectionOffsetXML.tla", `---- MODULE LetRecursiveSectionOffsetXML ---- EXTENDS Naturals
+RECURSIVE F(_)
+F(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+Use ==
+  LET RECURSIVE G(_)
+      G(n) == IF n = 0 THEN TRUE ELSE LET H == G(n - 1) IN H
+  IN G(1)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		g := strings.Index(got, `<uniquename>G</uniquename>`)
+		h := strings.Index(got, `<uniquename>H</uniquename>`)
+		if g < 0 || h < 0 {
+			t.Fatalf("LET recursive definitions missing\n%s", got)
+		}
+		if !strings.Contains(got[g:], `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("LET recursive G did not use recursive section 2\n%s", got[g:])
+		}
+		hEntryEnd := strings.Index(got[h:], `</UserDefinedOpKind>`)
+		if hEntryEnd < 0 {
+			t.Fatalf("LET local H has unterminated entry\n%s", got[h:])
+		}
+		hEntry := got[h : h+hEntryEnd]
+		if !strings.Contains(hEntry, `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("LET local H did not inherit recursive section 2\n%s", hEntry)
+		}
+	})
+
+	t.Run("LET RECURSIVE sections advance in module source order", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetRecursiveSourceOrderXML.tla", `---- MODULE LetRecursiveSourceOrderXML ---- EXTENDS Naturals
+First ==
+  LET RECURSIVE F(_)
+      F(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+  IN F(1)
+Second ==
+  LET RECURSIVE G(_)
+      G(n) == IF n = 0 THEN TRUE ELSE G(n - 1)
+  IN G(1)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		f := strings.Index(got, `<uniquename>F</uniquename>`)
+		g := strings.Index(got, `<uniquename>G</uniquename>`)
+		if f < 0 || g < 0 {
+			t.Fatalf("LET recursive definitions missing\n%s", got)
+		}
+		fEntryEnd := strings.Index(got[f:], `</UserDefinedOpKind>`)
+		gEntryEnd := strings.Index(got[g:], `</UserDefinedOpKind>`)
+		if fEntryEnd < 0 || gEntryEnd < 0 {
+			t.Fatalf("LET recursive definitions have unterminated entries\n%s", got)
+		}
+		fEntry := got[f : f+fEntryEnd]
+		gEntry := got[g : g+gEntryEnd]
+		if !strings.Contains(fEntry, `<recursiveSection>1</recursiveSection>`) {
+			t.Fatalf("first LET recursive definition did not use recursive section 1\n%s", fEntry)
+		}
+		if !strings.Contains(gEntry, `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("second LET recursive definition did not use recursive section 2\n%s", gEntry)
+		}
+	})
+
+	t.Run("serializes EXCEPT @ as Java-shaped AtNode XML", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ExceptAtXML.tla", `---- MODULE ExceptAtXML ---- EXTENDS Naturals
+VARIABLE x
+Next == x' = [x EXCEPT ![1] = @ + 1, ![2] = @[2]]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<AtNode>`,
+			`<UID>105</UID>`,
+			`<uniquename>$Seq</uniquename>`,
+			`<uniquename>$Except</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("EXCEPT @ SANY XML missing %q\n%s", want, got)
+			}
+		}
+		if strings.Contains(got, `<uniquename>@</uniquename>`) {
+			t.Fatalf("EXCEPT @[i] emitted fake @ builtin\n%s", got)
+		}
+	})
+
+	t.Run("EXCEPT @ level includes base and previous exception specs", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ExceptAtLevelXML.tla", `---- MODULE ExceptAtLevelXML ----
+VARIABLE f, g
+Use(i, j) == [f EXCEPT ![i] = g', ![j] = @]
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		at := firstXMLDescendant(root, "AtNode")
+		if at == nil {
+			t.Fatalf("SANY XML missing EXCEPT AtNode\n%s", xmlText)
+		}
+		if got := firstChildText(at, "level"); got != strconv.Itoa(int(actionLevel)) {
+			t.Fatalf("EXCEPT @ level = %s, want 2 from previous Java SANY exception spec\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("serializes aligned junction bullets as SANY list operators", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("JunctionXML.tla", `---- MODULE JunctionXML ----
+A == /\ TRUE
+     /\ \/ TRUE
+        \/ FALSE
+     /\ FALSE
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>$ConjList</uniquename>`,
+			`<uniquename>$DisjList</uniquename>`,
+			`<UID>83</UID>`,
+			`<UID>84</UID>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("junction SANY XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("serializes bang application of quantified definitions as local LAMBDA", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("QuantifiedBangXML.tla", `---- MODULE QuantifiedBangXML ----
+CONSTANT S
+Pred(i) == i = i
+Inv == \A i \in S: Pred(i)
+THEOREM T == TRUE
+PROOF
+<1>. SUFFICES ASSUME NEW q \in S PROVE Inv!(q)
+  OBVIOUS
+<1>. QED
+  OBVIOUS
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>LAMBDA</uniquename>`,
+			`<UserDefinedOpKindRef>`,
+			`<uniquename>i</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("quantified bang SANY XML missing %q\n%s", want, got)
+			}
+		}
+		start := strings.Index(got, "<AssumeProveNode>")
+		if start < 0 {
+			t.Fatalf("quantified bang SANY XML missing AssumeProveNode\n%s", got)
+		}
+		end := strings.Index(got[start:], "</AssumeProveNode>")
+		if end < 0 {
+			t.Fatalf("quantified bang SANY XML has unterminated AssumeProveNode\n%s", got)
+		}
+		if ap := got[start : start+end]; !strings.Contains(ap, `<suffices/>`) {
+			t.Fatalf("SUFFICES AssumeProveNode missing suffices marker\n%s", ap)
+		}
+	})
+}
+
+func xmlEntryUIDByKindAndName(root *canonicalXMLNode, kind, name string) string {
+	if payload := xmlEntryPayloadByKindAndName(root, kind, name); payload != nil {
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			if canonicalSanyXMLEntryPayload(entry) == payload {
+				return firstChildText(entry, "UID")
+			}
+		}
+	}
+	return ""
+}
+
+func xmlEntryPayloadByKindAndName(root *canonicalXMLNode, kind, name string) *canonicalXMLNode {
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if payload == nil || payload.Name != kind || firstChildText(payload, "uniquename") != name {
+			continue
+		}
+		return payload
+	}
+	return nil
+}
+
+func xmlOriginalModuleName(root *canonicalXMLNode, payload *canonicalXMLNode) string {
+	if root == nil || payload == nil {
+		return ""
+	}
+	payloadsByUID := map[string]*canonicalXMLNode{}
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		uid := firstChildText(entry, "UID")
+		entryPayload := canonicalSanyXMLEntryPayload(entry)
+		if uid != "" && entryPayload != nil {
+			payloadsByUID[uid] = entryPayload
+		}
+	}
+	for _, origin := range directChildren(payload, "originallyDefinedInModule") {
+		for _, ref := range directChildren(origin, "ModuleNodeRef") {
+			modulePayload := payloadsByUID[firstChildText(ref, "UID")]
+			if modulePayload != nil {
+				return firstChildText(modulePayload, "uniquename")
+			}
+		}
+	}
+	return ""
+}
+
+func xmlPayloadCountByKindNameFile(root *canonicalXMLNode, kind, name, filename string) int {
+	var count int
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if payload == nil || payload.Name != kind || firstChildText(payload, "uniquename") != name {
+			continue
+		}
+		if xmlNodeFilename(payload) == filename {
+			count++
+		}
+	}
+	return count
+}
+
+func substUsesReplacementRef(root *canonicalXMLNode, targetUID, refKind, replacementUID string) bool {
+	for _, subst := range xmlNodesByName(root, "Subst") {
+		if len(subst.Children) < 2 || firstChildText(subst.Children[0], "UID") != targetUID {
+			continue
+		}
+		for _, operator := range directChildren(subst.Children[1], "operator") {
+			for _, ref := range directChildren(operator, refKind) {
+				if firstChildText(ref, "UID") == replacementUID {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func xmlNodesByName(root *canonicalXMLNode, name string) []*canonicalXMLNode {
+	var out []*canonicalXMLNode
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil {
+			return
+		}
+		if node.Name == name {
+			out = append(out, node)
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return out
+}
+
+func firstOpApplNodeForOperatorUID(root *canonicalXMLNode, refKind, uid string) *canonicalXMLNode {
+	var found *canonicalXMLNode
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil || found != nil {
+			return
+		}
+		if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, refKind, uid) {
+			found = node
+			return
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func opApplContainsDirectOperandWithOperator(root *canonicalXMLNode, parentUID, operandUID string) bool {
+	var found bool
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil || found {
+			return
+		}
+		if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, "BuiltInKindRef", parentUID) {
+			for _, operands := range directChildren(node, "operands") {
+				for _, operand := range directChildren(operands, "OpApplNode") {
+					if opApplNodeUsesOperatorUID(operand, "BuiltInKindRef", operandUID) {
+						found = true
+						return
+					}
+				}
+			}
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func maxDirectOperandsForOperator(root *canonicalXMLNode, uid string) int {
+	maxOperands := 0
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil {
+			return
+		}
+		if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, "BuiltInKindRef", uid) {
+			for _, operands := range directChildren(node, "operands") {
+				if count := len(operands.Children); count > maxOperands {
+					maxOperands = count
+				}
+			}
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return maxOperands
+}
+
+func moduleRefCountByPayloadLocation(root *canonicalXMLNode, moduleName, payloadKind, filename string, line int) int {
+	uidPayloads := map[string]*canonicalXMLNode{}
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		uid := firstChildText(entry, "UID")
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if uid != "" && payload != nil {
+			uidPayloads[uid] = payload
+		}
+	}
+	var count int
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		mod := canonicalSanyXMLEntryPayload(entry)
+		if mod == nil || mod.Name != "ModuleNode" || firstChildText(mod, "uniquename") != moduleName {
+			continue
+		}
+		for _, child := range mod.Children {
+			if !strings.HasSuffix(child.Name, "Ref") {
+				continue
+			}
+			payload := uidPayloads[firstChildText(child, "UID")]
+			if payload != nil && payload.Name == payloadKind && xmlNodeFilename(payload) == filename && xmlNodeBeginLine(payload) == strconv.Itoa(line) {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func moduleRefCountByPayloadName(root *canonicalXMLNode, moduleName, payloadKind, payloadName string) int {
+	uidPayloads := map[string]*canonicalXMLNode{}
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		uid := firstChildText(entry, "UID")
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if uid != "" && payload != nil {
+			uidPayloads[uid] = payload
+		}
+	}
+	var count int
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		mod := canonicalSanyXMLEntryPayload(entry)
+		if mod == nil || mod.Name != "ModuleNode" || firstChildText(mod, "uniquename") != moduleName {
+			continue
+		}
+		for _, child := range mod.Children {
+			if !strings.HasSuffix(child.Name, "Ref") {
+				continue
+			}
+			payload := uidPayloads[firstChildText(child, "UID")]
+			if payload != nil && payload.Name == payloadKind && firstChildText(payload, "uniquename") == payloadName {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func assertNoDanglingXMLRefs(t *testing.T, xmlText []byte) {
+	t.Helper()
+	root, err := parseCanonicalXML(xmlText)
+	if err != nil {
+		t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+	}
+	entries := map[string]bool{}
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		if uid := firstChildText(entry, "UID"); uid != "" {
+			entries[uid] = true
+		}
+	}
+	var missing []string
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil {
+			return
+		}
+		if strings.HasSuffix(node.Name, "Ref") {
+			uid := firstChildText(node, "UID")
+			if uid != "" && !entries[uid] {
+				missing = append(missing, node.Name+":"+uid)
+			}
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	if len(missing) > 0 {
+		t.Fatalf("SANY XML has dangling refs %v\n%s", missing, xmlText)
+	}
+}
+
+func xmlNodeFilename(node *canonicalXMLNode) string {
+	for _, location := range directChildren(node, "location") {
+		return firstChildText(location, "filename")
+	}
+	return ""
+}
+
+func xmlNodeBeginLine(node *canonicalXMLNode) string {
+	for _, location := range directChildren(node, "location") {
+		for _, line := range directChildren(location, "line") {
+			return firstChildText(line, "begin")
+		}
+	}
+	return ""
+}
+
+func opApplAtLocation(root *canonicalXMLNode, line, begin, end int) *canonicalXMLNode {
+	var found *canonicalXMLNode
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil || found != nil {
+			return
+		}
+		if node.Name == "OpApplNode" && xmlNodeLocationMatches(node, line, begin, end) {
+			found = node
+			return
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func userDefinedOpAtLocation(root *canonicalXMLNode, line, begin, end int) *canonicalXMLNode {
+	var found *canonicalXMLNode
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil || found != nil {
+			return
+		}
+		if node.Name == "UserDefinedOpKind" && xmlNodeLocationMatches(node, line, begin, end) {
+			found = node
+			return
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func formalParamAtLocation(root *canonicalXMLNode, name string, line, begin, end int) *canonicalXMLNode {
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != name {
+			continue
+		}
+		if xmlNodeLocationMatches(payload, line, begin, end) {
+			return payload
+		}
+	}
+	return nil
+}
+
+func firstXMLDescendant(root *canonicalXMLNode, name string) *canonicalXMLNode {
+	if root == nil {
+		return nil
+	}
+	if root.Name == name {
+		return root
+	}
+	for _, child := range root.Children {
+		if found := firstXMLDescendant(child, name); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+func normalizeXMLForContains(text string) string {
+	replacer := strings.NewReplacer(
+		">\n", ">",
+		"\n<", "<",
+		">  <", "><",
+		">    <", "><",
+		">      <", "><",
+		">        <", "><",
+		">          <", "><",
+	)
+	prev := ""
+	for text != prev {
+		prev = text
+		text = replacer.Replace(text)
+	}
+	return text
+}
+
+func xmlNodeLocationMatches(node *canonicalXMLNode, line, begin, end int) bool {
+	locations := directChildren(node, "location")
+	if len(locations) == 0 {
+		return false
+	}
+	columns := directChildren(locations[0], "column")
+	lines := directChildren(locations[0], "line")
+	return len(columns) > 0 && len(lines) > 0 &&
+		firstChildText(lines[0], "begin") == strconv.Itoa(line) &&
+		firstChildText(columns[0], "begin") == strconv.Itoa(begin) &&
+		firstChildText(columns[0], "end") == strconv.Itoa(end)
+}
+
+func opApplNodeUsesOperatorUID(node *canonicalXMLNode, refKind, uid string) bool {
+	for _, child := range node.Children {
+		if child.Name != "operator" {
+			continue
+		}
+		for _, ref := range child.Children {
+			if ref.Name == refKind && firstChildText(ref, "UID") == uid {
+				return true
+			}
+		}
+	}
+	return false
+}

@@ -1,0 +1,35 @@
+{
+  "sources": [
+    "https://github.com/Azure/RingMaster",
+    "https://ahelwer.ca/post/2023-04-05-checkpoint-coordination/"
+  ],
+  "authors": [
+    "Andrew Helwer"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/CheckpointCoordination/CheckpointCoordination.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/CheckpointCoordination/MCCheckpointCoordination.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/CheckpointCoordination/MCCheckpointCoordination.cfg",
+          "runtime": "00:01:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/CheckpointCoordination/MCCheckpointCoordinationFailure.cfg",
+          "runtime": "00:00:10",
+          "mode": "exhaustive search",
+          "result": "safety failure"
+        }
+      ]
+    }
+  ]
+}

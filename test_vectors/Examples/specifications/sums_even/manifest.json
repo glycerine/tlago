@@ -1,0 +1,34 @@
+{
+  "sources": [],
+  "authors": [
+    "Martin Riener"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/sums_even/MC_sums_even.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/sums_even/MC_sums_even.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 0,
+          "totalStates": 0,
+          "stateDepth": 0
+        }
+      ]
+    },
+    {
+      "path": "specifications/sums_even/sums_even.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

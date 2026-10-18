@@ -1,0 +1,1986 @@
+package tlc
+
+import "fmt"
+
+// Java ToolGlobals.EXCEPT_AT is one shared Context key, compared by identity.
+var exceptAtSymbol = NewSymbolNode("@")
+
+type toolEvalArgs struct {
+	con     *Context
+	s0      *TLCStateMut
+	s1      *TLCStateMut
+	control int
+	cm      CostModel
+}
+
+func parseEvalArgs(args ...any) (*Context, *TLCStateMut, *TLCStateMut, int, CostModel) {
+	parsed := toolEvalArgs{con: EmptyContext, s0: EmptyState, s1: EmptyState, control: EvalClear}
+	if len(args) > 5 {
+		panic(NewIllegalArgumentException("Tool.Eval accepts at most a context, two states, control and cost model"))
+	}
+	if len(args) == 0 {
+		return parsed.con, parsed.s0, parsed.s1, parsed.control, parsed.cm
+	}
+	if args[0] == nil {
+		parsed.con = nil
+	} else if con, ok := args[0].(*Context); ok {
+		parsed.con = con
+	} else {
+		panic(NewIllegalArgumentException("Tool.Eval requires a context as its first optional argument"))
+	}
+	if len(args) == 1 {
+		return parsed.con, parsed.s0, parsed.s1, parsed.control, parsed.cm
+	}
+	if args[1] == nil {
+		parsed.s0 = nil
+	} else if state, ok := args[1].(*TLCStateMut); ok {
+		parsed.s0 = state
+	} else {
+		panic(NewIllegalArgumentException("Tool.Eval requires a state as its second optional argument"))
+	}
+	if len(args) == 2 {
+		return parsed.con, parsed.s0, parsed.s1, parsed.control, parsed.cm
+	}
+	if len(args) == 3 {
+		cm, ok := args[2].(CostModel)
+		if !ok {
+			panic(NewIllegalArgumentException("Tool.Eval requires a cost model in its three-argument form"))
+		}
+		parsed.cm = cm
+		return parsed.con, parsed.s0, parsed.s1, parsed.control, parsed.cm
+	}
+	if args[2] == nil {
+		parsed.s1 = nil
+	} else if state, ok := args[2].(*TLCStateMut); ok {
+		parsed.s1 = state
+	} else {
+		panic(NewIllegalArgumentException("Tool.Eval requires a successor state as its third optional argument"))
+	}
+	control, ok := args[3].(int)
+	if !ok {
+		panic(NewIllegalArgumentException("Tool.Eval requires integer control in its action form"))
+	}
+	parsed.control = int(int32(control))
+	if len(args) == 5 {
+		cm, ok := args[4].(CostModel)
+		if !ok {
+			panic(NewIllegalArgumentException("Tool.Eval requires a cost model as its final optional argument"))
+		}
+		parsed.cm = cm
+	}
+	return parsed.con, parsed.s0, parsed.s1, parsed.control, parsed.cm
+}
+
+func (t *Tool) Define(sym *SymbolNode, value any) {
+	if t == nil || sym == nil {
+		return
+	}
+	if t.Definitions == nil {
+		t.Definitions = make(map[*SymbolNode]any)
+	}
+	t.Definitions[sym] = value
+	if sym.Name != nil {
+		if t.DefnsByName == nil {
+			t.DefnsByName = make(map[*UniqueString]any)
+		}
+		t.DefnsByName[sym.Name] = value
+	}
+}
+
+func (t *Tool) DefineName(name string, value any) *SymbolNode {
+	sym := NewSymbolNode(name)
+	t.Define(sym, value)
+	return sym
+}
+
+func (t *Tool) Lookup(sym *SymbolNode, con *Context, state *TLCStateMut, primed bool) any {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	// Primed ENABLED lookup stops at Context.branch for variable declarations;
+	// constants and formal parameters still resolve through the outer context.
+	value := t.LookupWithCutoff(sym, con, primed && sym != nil && sym.IsVariableDecl(), state, primed)
+	// Spec.lookup reads the state for an unresolved non-operator symbol.
+	// A missing state fails at that read, rather than making it unbound.
+	if state == nil && !sym.IsUserDefinedOp() && (isNil(value) || value == sym) {
+		panic(NewNullPointerException())
+	}
+	// An unbound state retains the original semantic declaration.
+	if isNil(value) {
+		return sym
+	}
+	return value
+}
+
+// LookupSymbolValue implements SymbolNodeValueLookupProvider.lookup without
+// looking in a state. Unbound declarations retain their semantic identity.
+func (t *Tool) LookupSymbolValue(sym *SymbolNode, con *Context, cutoff bool) any {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if value := t.LookupWithCutoff(sym, con, cutoff && sym != nil && sym.IsVariableDecl(), nil, false); !isNil(value) {
+		return value
+	}
+	return sym
+}
+
+func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, state *TLCStateMut, primed bool) any {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if sym == nil {
+		panic(NewNullPointerException())
+	}
+	if con == nil {
+		panic(NewNullPointerException())
+	}
+	if val := con.LookupCutoff(sym, cutoff); !isNil(val) {
+		return val
+	}
+	if sym.SemanticBase != nil {
+		if value := SemanticToolObjectForTool(t, sym); !isNil(value) {
+			return muxToolObject(value)
+		}
+	}
+	if sym.Definition != nil {
+		// SymbolNodeValueLookupProvider looks through INSTANCE substitution
+		// wrappers for the original definition body's native/config override.
+		body := sym.Definition.GetBody()
+		for body != nil {
+			if _, ok := body.(interface{ GetToolObjectAt(int32) any }); ok {
+				if value := SemanticToolObjectForTool(t, body); !isNil(value) {
+					return muxToolObject(value)
+				}
+			}
+			subst, ok := body.(*SubstInNode)
+			if !ok {
+				break
+			}
+			body = subst.GetBody()
+		}
+	}
+	if !isNil(sym.Data) {
+		return muxToolObject(sym.Data)
+	}
+	if sym.Kind == SymbolBuiltIn {
+		if t != nil {
+			if value := t.Definitions[sym]; !isNil(value) {
+				return muxToolObject(value)
+			}
+		}
+		// SANY's builtin symbol is itself an OpDefNode. Retain that node
+		// when a builtin is supplied as an operator argument, so applying
+		// the formal parameter can recover its builtin opcode.
+		if sym.Definition != nil {
+			return sym.Definition
+		}
+		return sym
+	}
+	if sym.Kind == SymbolFormalParam {
+		if t != nil {
+			if value := t.Definitions[sym]; !isNil(value) {
+				return muxToolObject(value)
+			}
+		}
+		if state != nil {
+			if value := state.lookupSymbol(sym); !isNil(value) {
+				return value
+			}
+		}
+		// The source lookup returns the original formal node when its exact
+		// context binding is absent. Other declarations with its name differ.
+		return sym
+	}
+	if sym.Name != nil {
+		if t != nil {
+			if val := t.Definitions[sym]; !isNil(val) {
+				return muxToolObject(val)
+			}
+			if sym.IsUserDefinedOp() {
+				if sym.Definition != nil {
+					return sym.Definition
+				}
+				if val := t.DefnsByName[sym.Name]; !isNil(val) {
+					return muxToolObject(val)
+				}
+				return nil
+			}
+		}
+		if state != nil {
+			if val := state.lookupSymbol(sym); !isNil(val) {
+				return val
+			}
+		}
+		if t != nil {
+			if val := t.DefnsByName[sym.Name]; !isNil(val) {
+				return muxToolObject(val)
+			}
+		}
+		if primed && state != nil {
+			value := state.lookupSymbol(sym)
+			if isNil(value) {
+				return nil
+			}
+			return value
+		}
+	}
+	return nil
+}
+
+func muxToolObject(value any) any {
+	if isNil(value) {
+		return nil
+	}
+	switch v := value.(type) {
+	case *WorkerValue:
+		// WorkerValue.mux selects zero outside an IdThread, regardless of
+		// the worker metadata stored on the state being evaluated.
+		workerID, _ := CurrentWorkerID()
+		value := v.ValueForWorker(workerID)
+		if isNil(value) {
+			return nil
+		}
+		return value
+	default:
+		return v
+	}
+}
+
+func (t *Tool) EvalPure(opDef *OpDefNode, args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	control = int(int32(control))
+	c1, err := t.GetOpContext(opDef, args, c, true, cm)
+	if err != nil {
+		return nil, err
+	}
+	return t.Eval(opDef.GetBody(), c1, s0, s1, control, cm)
+}
+
+func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	control = int(int32(control))
+	switch expr := expr.(type) {
+	case nil:
+		panic(NewNullPointerException())
+	case Value:
+		return expr, nil
+	case *ValueNode:
+		return expr.Value, nil
+	case *LabelNode:
+		return t.Eval(expr.Body, c, s0, s1, control, cm)
+	case *OpApplNode:
+		if specCoverageEnabled() {
+			cm = cm.Get(expr)
+		}
+		return t.EvalAppl(expr, c, s0, s1, control, cm)
+	case *LetInNode:
+		return t.evalImplLetInKind(expr, c, s0, s1, control, cm)
+	case *SubstInNode:
+		return t.evalImplSubstInKind(expr, c, s0, s1, control, cm)
+	case *APSubstInNode:
+		return t.evalImplAPSubstInKind(expr, c, s0, s1, control, cm)
+	case *NumeralNode, *DecimalNode, *StringNode:
+		object := muxToolObject(SemanticToolObjectForTool(t, expr))
+		if isNil(object) {
+			return nil, nil
+		}
+		if result, ok := object.(Value); ok {
+			return result, nil
+		}
+		panic(valueStreamClassCast(object, "tlc2.value.impl.Value"))
+	case *AtNode:
+		object := c.Lookup(exceptAtSymbol)
+		if isNil(object) {
+			return nil, nil
+		}
+		if value, ok := object.(Value); ok {
+			return value, nil
+		}
+		return nil, valueStreamClassCast(object, "tlc2.value.impl.Value")
+	case *OpArgNode:
+		return t.evalImplOpArgKind(expr, c, s0, s1, control, cm)
+	case *PossibleTrackNode:
+		return t.evalPossibleTrackNode(expr, c, s0, s1, control, cm)
+	case *PossibleCheckNode:
+		return t.evalPossibleCheckNode(expr)
+	default:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to evaluate an expression that cannot be evaluated.\n"+semanticNodeJavaString(expr), expr, c)
+	}
+}
+
+func (t *Tool) evalImplLetInKind(expr *LetInNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	c1 := letDefinitionsContextWithCostModel(c, expr.Lets, cm, expr.Bindings...)
+	return t.Eval(expr.Body, c1, s0, s1, control, cm)
+}
+
+func (t *Tool) evalImplSubstInKind(expr *SubstInNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	c1 := c
+	for _, sub := range expr.Substs {
+		subCM := cm
+		if specCoverageEnabled() {
+			subCM = cm.GetSubst(sub)
+		}
+		val := t.GetVal(sub.GetExpr(), c, true, subCM)
+		c1 = c1.Cons(sub.GetOp(), val)
+	}
+	return t.Eval(expr.GetBody(), c1, s0, s1, control, cm)
+}
+
+func (t *Tool) evalImplAPSubstInKind(expr *APSubstInNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	c1 := c
+	for _, sub := range expr.Substs {
+		val := t.GetVal(sub.GetExpr(), c, true, cm)
+		c1 = c1.Cons(sub.GetOp(), val)
+	}
+	return t.Eval(expr.GetBody(), c1, s0, s1, control, cm)
+}
+
+func (t *Tool) evalImplOpArgKind(expr *OpArgNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	val := t.LookupSymbolValue(expr.Op, c, false)
+	switch v := val.(type) {
+	case *OpDefNode:
+		return t.SetSource(expr, NewOpLambdaValue(v, t, c, s0, s1, control, cm)), nil
+	case Value:
+		return v, nil
+	default:
+		if isNil(val) {
+			return nil, nil
+		}
+		return nil, valueStreamClassCast(val, "tlc2.value.impl.Value")
+	}
+}
+
+func (t *Tool) EvalAppl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (value Value, err error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	control = int(int32(control))
+	done := t.callStackEnter(expr)
+	defer func() {
+		if failure := recover(); failure != nil {
+			switch failure := failure.(type) {
+			case *TLCError, *EvalException, *FingerprintException:
+				value, err = nil, failure.(error)
+			default:
+				done(nil)
+				panic(failure)
+			}
+		}
+		if err == nil {
+			value = t.callStackToolValue(value)
+		}
+		done(err)
+	}()
+	return t.EvalApplImpl(expr, c, s0, s1, control, cm)
+}
+
+func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	control = int(int32(control))
+	if specCoverageEnabled() {
+		cm = cm.GetAndIncrement(expr)
+	}
+	args := expr.Args
+	opNode := expr.Operator
+	opcode := GetOpCode(opNode.Name)
+
+	if opcode == 0 {
+		val := t.Lookup(opNode, c, s0, EvalIsPrimed(control))
+		if lv := asLazyValue(val); lv != nil {
+			if s1 == nil {
+				evaluated, err := t.Eval(lv.ownedExpr(), lv.ownedContext(), s0, nil, control, lv.CM)
+				if err != nil {
+					return nil, err
+				}
+				val = evaluated
+			} else {
+				evaluated, err, ok := lazyValueGetValue(val, t, s0, s1, control)
+				if ok {
+					return evaluated, err
+				}
+			}
+		}
+		switch v := val.(type) {
+		case *OpDefNode:
+			opcode = GetOpCode(v.Name)
+			if opcode == 0 {
+				c1, err := t.GetOpContext(v, args, c, true, cm)
+				if err != nil {
+					return nil, err
+				}
+				return t.Eval(v.GetBody(), c1, s0, s1, control, cm)
+			}
+		case Value:
+			if isOperatorValue(v) {
+				return EvalOperatorValueWithTool(v, t, args, c, s0, s1, control, cm)
+			}
+			return v, nil
+		case *ThmOrAssumpDefNode:
+			c1, err := t.GetThmOrAssumpContext(v, args, c, true)
+			if err != nil {
+				return nil, err
+			}
+			return t.Eval(v.GetBody(), c1, s0, s1, control, cm)
+		default:
+			if !EvalIsEnabled(control) && EvalIsPrimed(control) && opNode.IsVariableDecl() {
+				return nil, newTLCDetailedRuntimeExceptionCode(ECTLCStateNotCompletelySpecifiedLive, expr, c, opNode.Name.String(), SemanticString(expr))
+			}
+			return nil, newTLCDetailedRuntimeExceptionCode(ECTLCConfigUndefinedOrNoOperator, expr, c, opNode.Name.String(), semanticNodeLocationString(expr))
+		}
+		if opcode == 0 {
+			return ValUndef, nil
+		}
+	}
+
+	switch opcode {
+	case OpcodeBC:
+		return t.evalBoundedChoose(expr, c, s0, s1, control, cm)
+	case OpcodeBE:
+		return t.evalBoundedExists(expr, c, s0, s1, control, cm)
+	case OpcodeBF:
+		return t.evalBoundedForall(expr, c, s0, s1, control, cm)
+	case OpcodeCase:
+		return t.evalCase(expr, c, s0, s1, control, cm)
+	case OpcodeCP:
+		values, err := t.evalArgs(args, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, NewSetOfTuplesValue(values, cm)), nil
+	case OpcodeCL:
+		for _, arg := range args {
+			value, err := t.Eval(arg, c, s0, s1, control, cm)
+			if err != nil {
+				return nil, err
+			}
+			bval, err := requireBoolValueAt(value, arg, c, "A non-boolean expression (%s) was used as a formula in a conjunction.\n%s", valueKindString(value), SemanticString(arg))
+			if err != nil {
+				return nil, err
+			}
+			if !bval.Val {
+				return BoolFalse, nil
+			}
+		}
+		return BoolTrue, nil
+	case OpcodeDL:
+		for _, arg := range args {
+			value, err := t.Eval(arg, c, s0, s1, control, cm)
+			if err != nil {
+				return nil, err
+			}
+			bval, err := requireBoolValueAt(value, arg, c, "A non-boolean expression (%s) was used as a formula in a disjunction.\n%s", valueKindString(value), SemanticString(arg))
+			if err != nil {
+				return nil, err
+			}
+			if bval.Val {
+				return BoolTrue, nil
+			}
+		}
+		return BoolFalse, nil
+	case OpcodeExc:
+		return t.evalExcept(expr, c, s0, s1, control, cm)
+	case OpcodeFA:
+		return t.evalFcnApply(expr, c, s0, s1, control, cm)
+	case OpcodeFC, OpcodeNRFS, OpcodeRFS:
+		return t.evalFcnConstructor(expr, opcode, c, s0, s1, control, cm)
+	case OpcodeITE:
+		guardValue, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		guard, err := requireBoolValueAt(guardValue, expr, c, "A non-boolean expression (%s) was used as the condition of an IF.\n%s", valueKindString(guardValue), SemanticString(expr))
+		if err != nil {
+			return nil, err
+		}
+		if guard.Val {
+			return t.Eval(args[1], c, s0, s1, control, cm)
+		}
+		return t.Eval(args[2], c, s0, s1, control, cm)
+	case OpcodeRC:
+		return t.evalRecordConstructor(expr, c, s0, s1, control, cm)
+	case OpcodeRS:
+		return t.evalRecordSelect(expr, c, s0, s1, control, cm)
+	case OpcodeSE:
+		values, err := t.evalArgs(args, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, NewSetEnumValue(values, false, cm)), nil
+	case OpcodeSOA:
+		return t.evalSetOfAll(expr, c, s0, s1, control, cm)
+	case OpcodeSOR:
+		return t.evalSetOfRecords(expr, c, s0, s1, control, cm)
+	case OpcodeSOF:
+		lhs, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		rhs, err := t.Eval(args[1], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, NewSetOfFcnsValue(lhs, rhs, cm)), nil
+	case OpcodeSSO:
+		return t.evalSubsetOf(expr, c, s0, s1, control, cm)
+	case OpcodeTup:
+		values, err := t.evalArgs(args, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, NewTupleValue(values, cm)), nil
+	case OpcodeUC:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("TLC attempted to evaluate an unbounded CHOOSE.\nMake sure that the expression is of form CHOOSE x \\in S: P(x).\n%s", SemanticString(expr)), expr, c)
+	case OpcodeUE:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("TLC attempted to evaluate an unbounded \\E.\nMake sure that the expression is of form \\E x \\in S: P(x).\n%s", SemanticString(expr)), expr, c)
+	case OpcodeUF:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("TLC attempted to evaluate an unbounded \\A.\nMake sure that the expression is of form \\A x \\in S: P(x).\n%s", SemanticString(expr)), expr, c)
+	case OpcodeLnot:
+		value, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		arg, err := requireBoolValueAt(value, args[0], c, "Attempted to apply the operator ~ to a non-boolean\n(%s)\n%s", valueKindString(value), SemanticString(expr))
+		if err != nil {
+			return nil, err
+		}
+		return BoolValueOf(!arg.Val), nil
+	case OpcodeSubset:
+		arg, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, NewSubsetValue(arg, cm)), nil
+	case OpcodeUnion:
+		arg, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		value, err := Union(arg)
+		if err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, value), nil
+	case OpcodeDomain:
+		arg, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		value, err := domainValue(expr, arg, c)
+		if err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, value), nil
+	case OpcodeEnabled:
+		sfun := NewFunctionalState()
+		enabled, err := t.EnabledWithActionItems(args[0], EmptyActionItemList, BranchContext(c), s0, sfun, cm)
+		if err != nil {
+			return nil, err
+		}
+		if enabled != nil {
+			return BoolTrue, nil
+		}
+		return BoolFalse, nil
+	case OpcodeEq:
+		return t.evalEq(args[0], args[1], c, s0, s1, control, cm, false)
+	case OpcodeLand:
+		return t.evalBinaryConjunction(args, c, s0, s1, control, cm, expr)
+	case OpcodeLor:
+		return t.evalBinaryDisjunction(args, c, s0, s1, control, cm, expr)
+	case OpcodeImplies:
+		value1, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		arg1, err := requireBoolValueAt(value1, expr, c, "Attempted to evaluate an expression of form P => Q when P was\n%s.\n%s", valueKindString(value1), SemanticString(expr))
+		if err != nil {
+			return nil, err
+		}
+		if !arg1.Val {
+			return BoolTrue, nil
+		}
+		value2, err := t.Eval(args[1], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return requireBoolValueAt(value2, expr, c, "Attempted to evaluate an expression of form P => Q when Q was\n%s.\n%s", valueKindString(value2), SemanticString(expr))
+	case OpcodeEquiv:
+		value1, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		value2, err := t.Eval(args[1], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		arg1, ok1 := value1.(*BoolValue)
+		arg2, ok2 := value2.(*BoolValue)
+		if !ok1 || !ok2 {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to evaluate an expression of form P <=> Q when P or Q was not a boolean.\n%s", SemanticString(expr)), expr, c)
+		}
+		return BoolValueOf(arg1.Val == arg2.Val), nil
+	case OpcodeNoteq:
+		return t.evalEq(args[0], args[1], c, s0, s1, control, cm, true)
+	case OpcodeSubseteq:
+		arg1, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		arg2, err := t.Eval(args[1], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return subsetEq(expr, arg1, arg2, c)
+	case OpcodeIn, OpcodeNotin:
+		arg1, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		arg2, err := t.Eval(args[1], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		member, err := arg2.Member(arg1)
+		if err != nil {
+			return nil, err
+		}
+		if opcode == OpcodeNotin {
+			member = !member
+		}
+		return BoolValueOf(member), nil
+	case OpcodeSetdiff, OpcodeCap, OpcodeCup:
+		value, err := t.evalSetOp(opcode, args[0], args[1], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, value), nil
+	case OpcodeNop:
+		return t.Eval(args[0], c, s0, s1, control, cm)
+	case OpcodePrime:
+		return t.Eval(args[0], c, s1, nil, EvalSetPrimedIfEnabled(control), cm)
+	case OpcodeUnchanged:
+		v0, err := t.Eval(args[0], c, s0, EmptyState, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		v1, err := t.Eval(args[0], c, s1, nil, EvalSetPrimedIfEnabled(control), cm)
+		if err != nil {
+			return nil, err
+		}
+		eq, err := v0.Equal(v1)
+		if err != nil {
+			return nil, err
+		}
+		return BoolValueOf(eq), nil
+	case OpcodeAA, OpcodeSA:
+		return t.evalActionSubscript(expr, opcode, args, c, s0, s1, control, cm)
+	case OpcodeCdot:
+		return t.evalActionComposition(expr, args, c, s0, s1, control, cm)
+	case OpcodeSF, OpcodeWF, OpcodeTE, OpcodeTF, OpcodeLeadsto, OpcodeArrow, OpcodeBox, OpcodeDiamond:
+		form := ""
+		switch opcode {
+		case OpcodeSF:
+			form = "SF"
+		case OpcodeWF:
+			form = "WF"
+		case OpcodeTE:
+			form = "\\EE"
+		case OpcodeTF:
+			form = "\\AA"
+		case OpcodeLeadsto:
+			form = "a ~> b"
+		case OpcodeArrow:
+			form = "a -+-> formula"
+		case OpcodeBox:
+			form = "[]A"
+		case OpcodeDiamond:
+			form = "<>A"
+		}
+		return nil, newTLCDetailedRuntimeExceptionCode(ECTLCEncounteredFormulaInPredicate, expr, c, form, SemanticString(expr))
+	default:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, "TLC BUG: could not evaluate this expression.\n"+SemanticString(expr), expr, c)
+	}
+}
+
+func (t *Tool) GetVal(expr SemanticNode, c *Context, cachable bool, costModels ...CostModel) any {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if len(costModels) > 1 {
+		panic(NewIllegalArgumentException("GetVal accepts at most one cost model"))
+	}
+	cm := DoNotRecordCostModel
+	if len(costModels) == 1 {
+		cm = costModels[0]
+	}
+	if expr == nil {
+		panic(NewNullPointerException())
+	}
+	if opArg, ok := expr.(*OpArgNode); ok {
+		if opArg == nil {
+			panic(NewNullPointerException())
+		}
+		return t.LookupSymbolValue(opArg.Op, c, false)
+	}
+	return NewLazyValue(expr, c, cachable, cm)
+}
+
+func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, cachable bool, costModels ...CostModel) (*Context, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if len(costModels) > 1 {
+		panic(NewIllegalArgumentException("GetOpContext accepts at most one cost model"))
+	}
+	cm := DoNotRecordCostModel
+	if len(costModels) == 1 {
+		cm = costModels[0]
+	}
+	if opDef == nil || args == nil {
+		panic(NewNullPointerException())
+	}
+	formals := opDef.GetParams()
+	c1 := c
+	for i, arg := range args {
+		value := t.GetVal(arg, c, cachable, cm)
+		if formals == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(formals) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(formals)))
+		}
+		c1 = c1.Cons(formals[i], value)
+	}
+	return c1, nil
+}
+
+func (t *Tool) GetThmOrAssumpContext(opDef *ThmOrAssumpDefNode, args []SemanticNode, c *Context, cachable bool) (*Context, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if opDef == nil || args == nil {
+		panic(NewNullPointerException())
+	}
+	formals := opDef.GetParams()
+	c1 := c
+	for i, arg := range args {
+		value := t.GetVal(arg, c, cachable, DoNotRecordCostModel)
+		if formals == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(formals) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(formals)))
+		}
+		c1 = c1.Cons(formals[i], value)
+	}
+	return c1, nil
+}
+
+func (t *Tool) GetLevelBound(expr SemanticNode, c *Context) int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if expr == nil {
+		panic(NewNullPointerException())
+	}
+	switch expr := expr.(type) {
+	case *OpApplNode:
+		return t.GetLevelBoundAppl(expr, c)
+	case *LetInNode:
+		level := TLCLevelConstant
+		c1 := c
+		for _, opDef := range expr.Lets {
+			if opDef == nil || opDef.Name == nil {
+				continue
+			}
+			if bodyLevel := t.GetLevelBound(opDef.GetBody(), c1); bodyLevel > level {
+				level = bodyLevel
+			}
+			sym := opDef.Symbol
+			if sym == nil {
+				sym = &SymbolNode{Name: opDef.Name}
+			}
+			c1 = c1.Cons(sym, IntOne)
+		}
+		for _, binding := range expr.Bindings {
+			if binding.Symbol == nil {
+				continue
+			}
+			c1 = c1.Cons(binding.Symbol, binding.Value)
+		}
+		if bodyLevel := t.GetLevelBound(expr.Body, c1); bodyLevel > level {
+			level = bodyLevel
+		}
+		return level
+	case *SubstInNode:
+		c1 := c
+		for _, sub := range expr.Substs {
+			c1 = c1.Cons(sub.GetOp(), t.GetVal(sub.GetExpr(), c, true, DoNotRecordCostModel))
+		}
+		return t.GetLevelBound(expr.GetBody(), c1)
+	case *APSubstInNode:
+		c1 := c
+		for _, sub := range expr.Substs {
+			c1 = c1.Cons(sub.GetOp(), t.GetVal(sub.GetExpr(), c, true, DoNotRecordCostModel))
+		}
+		return t.GetLevelBound(expr.GetBody(), c1)
+	case *LabelNode:
+		return t.GetLevelBound(expr.Body, c)
+	default:
+		return TLCLevelConstant
+	}
+}
+
+func letDefinitionsContext(c *Context, lets []*OpDefNode, bindings ...LetBinding) *Context {
+	return letDefinitionsContextWithCostModel(c, lets, DoNotRecordCostModel, bindings...)
+}
+
+func letDefinitionsContextWithCostModel(c *Context, lets []*OpDefNode, cm CostModel, bindings ...LetBinding) *Context {
+	c1 := c
+	for _, opDef := range lets {
+		if opDef == nil || opDef.Name == nil {
+			continue
+		}
+		sym := opDef.Symbol
+		if sym == nil {
+			sym = &SymbolNode{Name: opDef.Name}
+		}
+		if opDef.Arity() == 0 {
+			c1 = c1.Cons(sym, NewLazyValue(opDef.GetBody(), c1, true, cm))
+		}
+	}
+	for _, binding := range bindings {
+		if binding.Symbol == nil {
+			continue
+		}
+		c1 = c1.Cons(binding.Symbol, binding.Value)
+	}
+	return c1
+}
+
+func (t *Tool) GetLevelBoundAppl(expr *OpApplNode, c *Context) int {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if expr == nil || expr.Operator == nil || expr.Operator.Name == nil {
+		panic(NewNullPointerException())
+	}
+	opNode := expr.Operator
+	opName := opNode.Name
+	opcode := GetOpCode(opName)
+
+	if IsTemporalOpcode(opcode) {
+		return TLCLevelTemporal
+	}
+	if IsActionOpcode(opcode) {
+		return TLCLevelAction
+	}
+	if opcode == OpcodeEnabled {
+		return TLCLevelState
+	}
+
+	level := TLCLevelConstant
+	if expr.BdedQuantBounds == nil {
+		panic(NewNullPointerException())
+	}
+	for _, bound := range expr.BdedQuantBounds {
+		if boundLevel := t.GetLevelBound(bound, c); boundLevel > level {
+			level = boundLevel
+		}
+	}
+
+	if opcode == OpcodeRFS {
+		if expr.UnbdedQuantSymbols == nil {
+			panic(NewNullPointerException())
+		}
+		if len(expr.UnbdedQuantSymbols) == 0 {
+			panic(NewArrayIndexOutOfBoundsException(0, 0))
+		}
+		c = c.Cons(expr.UnbdedQuantSymbols[0], IntOne)
+	}
+
+	if expr.Args == nil {
+		panic(NewNullPointerException())
+	}
+	for _, arg := range expr.Args {
+		if arg == nil {
+			continue
+		}
+		if argLevel := t.GetLevelBound(arg, c); argLevel > level {
+			level = argLevel
+		}
+	}
+
+	if opcode != 0 {
+		return level
+	}
+	if opName.VarLoc() >= 0 {
+		return TLCLevelState
+	}
+	val := t.LookupWithCutoff(opNode, c, false, EmptyState, false)
+	switch v := val.(type) {
+	case *OpDefNode:
+		c1 := c.Cons(opNode, IntOne)
+		if bodyLevel := t.GetLevelBound(v.GetBody(), c1); bodyLevel > level {
+			level = bodyLevel
+		}
+	case *LazyValue:
+		if lazyLevel := t.GetLevelBound(v.ownedExpr(), v.ownedContext()); lazyLevel > level {
+			level = lazyLevel
+		}
+	case *LazySupplierValue:
+		lv := asLazyValue(v)
+		if lazyLevel := t.GetLevelBound(lv.ownedExpr(), lv.ownedContext()); lazyLevel > level {
+			level = lazyLevel
+		}
+	case *EvaluatingValue:
+		if minLevel := v.GetMinLevel(); minLevel > level {
+			level = minLevel
+		}
+	case *PriorityEvaluatingValue:
+		if minLevel := v.GetMinLevel(); minLevel > level {
+			level = minLevel
+		}
+	case *CallableValue:
+		if minLevel := v.GetMinLevel(); minLevel > level {
+			level = minLevel
+		}
+	case *MethodValue:
+		if minLevel := v.GetMinLevel(); minLevel > level {
+			level = minLevel
+		}
+	}
+	return level
+}
+
+func (t *Tool) Contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, costModels ...CostModel) (*ContextEnumerator, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if len(costModels) > 1 {
+		panic(NewIllegalArgumentException("Contexts accepts at most one cost model"))
+	}
+	cm := DoNotRecordCostModel
+	if len(costModels) == 1 {
+		cm = costModels[0]
+	}
+	return t.contexts(expr, c, s0, s1, control, cm, false)
+}
+
+func (t *Tool) ContextsRandomized(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*ContextEnumerator, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	return t.contexts(expr, c, s0, s1, control, cm, true)
+}
+
+func (t *Tool) contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, randomized bool) (*ContextEnumerator, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if expr == nil {
+		panic(NewNullPointerException())
+	}
+	formals := expr.BdedQuantSymbolLists
+	isTuples := expr.BdedQuantATuple
+	domains := expr.BdedQuantBounds
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	alen := 0
+	for i, formal := range formals {
+		if isTuples == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(isTuples) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(isTuples)))
+		}
+		if isTuples[i] {
+			alen++
+		} else {
+			if formal == nil {
+				panic(NewNullPointerException())
+			}
+			alen += len(formal)
+		}
+	}
+	vars := make([]any, alen)
+	enums := make([]ValueEnumeration, alen)
+	idx := 0
+	for i := range formals {
+		if domains == nil {
+			panic(NewNullPointerException())
+		}
+		if i >= len(domains) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(domains)))
+		}
+		bound := domains[i]
+		val, err := t.Eval(bound, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		enumerable, ok := asEnumerable(val)
+		if !ok {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, ValueGetNonEnumerableErrorMsg(val, bound), bound, c)
+		}
+		formal := formals[i]
+		if isTuples[i] {
+			vars[idx] = formal
+			enum, err := t.boundValueEnumeration(enumerable, randomized)
+			if err != nil {
+				return nil, err
+			}
+			enums[idx] = enum
+			idx++
+		} else {
+			if formal == nil {
+				panic(NewNullPointerException())
+			}
+			for _, symbol := range formal {
+				vars[idx] = symbol
+				enum, err := t.boundValueEnumeration(enumerable, randomized)
+				if err != nil {
+					return nil, err
+				}
+				enums[idx] = enum
+				idx++
+			}
+		}
+	}
+	enum := NewContextEnumerator(vars, enums, c)
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	return enum, nil
+}
+
+func (t *Tool) boundValueEnumeration(enumerable Enumerable, randomized bool) (ValueEnumeration, error) {
+	if randomized {
+		return randomizedValueEnumeration(enumerable)
+	}
+	return enumerable.Elements(), nil
+}
+
+func (t *Tool) evalArgs(args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) ([]Value, error) {
+	values := make([]Value, len(args))
+	for i, arg := range args {
+		value, err := t.Eval(arg, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		values[i] = value
+	}
+	return values, nil
+}
+
+func (t *Tool) evalBool(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*BoolValue, error) {
+	value, err := t.Eval(expr, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	if isNil(value) {
+		return nil, NewNullPointerException()
+	}
+	bval, ok := value.(*BoolValue)
+	if !ok {
+		return nil, valueStreamClassCast(value, "tlc2.value.impl.BoolValue")
+	}
+	return bval, nil
+}
+
+func requireBoolValueAt(value Value, expr SemanticNode, c *Context, format string, args ...any) (*BoolValue, error) {
+	if bval, ok := value.(*BoolValue); ok {
+		return bval, nil
+	}
+	return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf(format, args...), expr, c)
+}
+
+func valueKindString(value Value) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return ValueKindString(value)
+}
+
+func (t *Tool) evalBinaryConjunction(args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, expr SemanticNode) (Value, error) {
+	for i, arg := range args {
+		value, err := t.Eval(arg, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		side := "Q"
+		if i == 0 {
+			side = "P"
+		}
+		bval, err := requireBoolValueAt(value, expr, c, "Attempted to evaluate an expression of form P /\\ Q when %s was\n%s.\n%s", side, valueKindString(value), SemanticString(expr))
+		if err != nil {
+			return nil, err
+		}
+		if !bval.Val {
+			return BoolFalse, nil
+		}
+	}
+	return BoolTrue, nil
+}
+
+func (t *Tool) evalBinaryDisjunction(args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, expr SemanticNode) (Value, error) {
+	for i, arg := range args {
+		value, err := t.Eval(arg, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		side := "Q"
+		if i == 0 {
+			side = "P"
+		}
+		bval, err := requireBoolValueAt(value, expr, c, "Attempted to evaluate an expression of form P \\/ Q when %s was\n%s.\n%s", side, valueKindString(value), SemanticString(expr))
+		if err != nil {
+			return nil, err
+		}
+		if bval.Val {
+			return BoolTrue, nil
+		}
+	}
+	return BoolFalse, nil
+}
+
+func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if len(expr.Args) == 0 || len(expr.BdedQuantBounds) == 0 {
+		return nil, newTLCError(ECGeneral, "malformed bounded CHOOSE")
+	}
+	inVal, err := t.Eval(expr.BdedQuantBounds[0], c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	enumerable, ok := asEnumerable(inVal)
+	if !ok {
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to compute the value of an expression of\nform CHOOSE x \\in S: P, but S was not enumerable.\n%s", SemanticString(expr)), expr, c)
+	}
+	inVal = inVal.Normalize()
+	pred := expr.Args[0]
+	bvars := expr.BdedQuantSymbolLists[0]
+	isTuple := len(expr.BdedQuantATuple) > 0 && expr.BdedQuantATuple[0]
+	enum, err := normalizedChooseEnumeration(inVal, enumerable)
+	if err != nil {
+		return nil, err
+	}
+	for val := enum.NextElement(); val != nil; val = enum.NextElement() {
+		if err := enum.Err(); err != nil {
+			return nil, err
+		}
+		c1 := c
+		if isTuple {
+			tuple := asTupleValue(val)
+			if tuple == nil || len(tuple.GetElems()) != len(bvars) {
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to compute the value of an expression of form\nCHOOSE <<x1, ... , xN>> \\in S: P, but S was not a set\nof N-tuples.\n%s", SemanticString(expr)), expr, c)
+			}
+			for i, variable := range bvars {
+				c1 = c1.Cons(variable, tuple.GetElems()[i])
+			}
+		} else {
+			c1 = c1.Cons(bvars[0], val)
+		}
+		value, err := t.Eval(pred, c1, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCDetailedRuntimeExceptionCode(ECTLCExpectedValue, pred, c1, "boolean", SemanticString(expr))
+		}
+		if bval.Val {
+			return val, nil
+		}
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to compute the value of an expression of form\nCHOOSE x \\in S: P, but no element of S satisfied P.\n%s", SemanticString(expr)), expr, c)
+}
+
+func normalizedChooseEnumeration(value Value, _ Enumerable) (ValueEnumeration, error) {
+	enumerable, ok := asEnumerable(value)
+	if !ok {
+		panic(valueStreamClassCast(value, "tlc2.value.impl.Enumerable"))
+	}
+	return enumerable.ElementsOrdered(EnumerableOrderingNormalized), nil
+}
+
+func (t *Tool) evalBoundedExists(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	enum, err := t.Contexts(expr, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
+		if err := enum.Err(); err != nil {
+			return nil, err
+		}
+		value, err := t.Eval(expr.Args[0], c1, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCDetailedRuntimeExceptionCode(ECTLCExpectedValue, expr.Args[0], c1, "boolean", SemanticString(expr))
+		}
+		if bval.Val {
+			return BoolTrue, nil
+		}
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	return BoolFalse, nil
+}
+
+func (t *Tool) evalBoundedForall(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	enum, err := t.Contexts(expr, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
+		if err := enum.Err(); err != nil {
+			return nil, err
+		}
+		value, err := t.Eval(expr.Args[0], c1, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCDetailedRuntimeExceptionCode(ECTLCExpectedValue, expr.Args[0], c1, "boolean", SemanticString(expr))
+		}
+		if !bval.Val {
+			return BoolFalse, nil
+		}
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	return BoolTrue, nil
+}
+
+func (t *Tool) evalCase(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	var other SemanticNode
+	for _, arg := range expr.Args {
+		pair, ok := arg.(*OpApplNode)
+		if !ok || len(pair.Args) < 2 {
+			return nil, newTLCError(ECGeneral, "malformed CASE arm")
+		}
+		if pair.Args[0] == nil {
+			other = pair.Args[1]
+			if specCoverageEnabled() {
+				cm = cm.Get(pair)
+			}
+			continue
+		}
+		armCM := cm
+		if specCoverageEnabled() {
+			armCM = cm.Get(pair)
+		}
+		value, err := t.Eval(pair.Args[0], c, s0, s1, control, armCM)
+		if err != nil {
+			return nil, err
+		}
+		guard, err := requireBoolValueAt(value, pair.Args[0], c, "A non-boolean expression (%s) was used as a condition of a CASE. %s", valueKindString(value), SemanticString(pair.Args[0]))
+		if err != nil {
+			return nil, err
+		}
+		if guard.Val {
+			return t.Eval(pair.Args[1], c, s0, s1, control, armCM)
+		}
+	}
+	if other == nil {
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to evaluate a CASE with no conditions true.\n%s", SemanticString(expr)), expr, c)
+	}
+	return t.Eval(other, c, s0, s1, control, cm)
+}
+
+func (t *Tool) evalExcept(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if len(expr.Args) == 0 {
+		return nil, newTLCError(ECGeneral, "malformed EXCEPT")
+	}
+	result, err := t.Eval(expr.Args[0], c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	for _, arg := range expr.Args[1:] {
+		pair, ok := arg.(*OpApplNode)
+		if !ok || len(pair.Args) < 2 {
+			return nil, newTLCError(ECGeneral, "malformed EXCEPT pair")
+		}
+		pathNode, ok := pair.Args[0].(*OpApplNode)
+		if !ok {
+			return nil, newTLCError(ECGeneral, "malformed EXCEPT path")
+		}
+		pairCM := cm
+		pathCM := cm
+		if specCoverageEnabled() {
+			pairCM = cm.Get(pair)
+			pathCM = pairCM.Get(pathNode)
+		}
+		lhs, err := t.evalArgs(pathNode.Args, c, s0, s1, control, pathCM)
+		if err != nil {
+			return nil, err
+		}
+		atVal, err := SelectPath(result, lhs)
+		if err != nil {
+			return nil, err
+		}
+		if atVal == nil {
+			PrintWarning(ECTLCExceptAppliedToUnknownField, SemanticString(expr.Args[0]))
+			continue
+		}
+		rhs, err := t.Eval(pair.Args[1], c.Cons(exceptAtSymbol, atVal), s0, s1, control, pairCM)
+		if err != nil {
+			return nil, err
+		}
+		result, err = result.TakeExcept(NewValueExcept(lhs, rhs))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func (t *Tool) evalFcnApply(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	args := expr.Args
+	fval, err := t.Eval(args[0], c, s0, s1, EvalSetKeepLazy(control), cm)
+	if err != nil {
+		return nil, err
+	}
+	return t.applyEvaluatedFunction(expr, fval, c, s0, s1, control, cm, true)
+}
+
+func (t *Tool) applyEvaluatedFunction(expr *OpApplNode, fval Value, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, rejectTupleRecordMultiArg bool) (Value, error) {
+	args := expr.Args
+	switch f := fval.(type) {
+	case *FcnRcdValue:
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return f.Apply(argVal)
+	case *FcnLambdaValue:
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return f.ApplyWithControl(argVal, control)
+	case *TupleValue:
+		if rejectTupleRecordMultiArg && len(args) != 2 {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to evaluate an expression of form f[e1, ... , eN]\nwith f a tuple or record and N > 1.\n"+SemanticString(expr), expr, c)
+		}
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return f.Apply(argVal)
+	case *RecordValue:
+		if rejectTupleRecordMultiArg && len(args) != 2 {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to evaluate an expression of form f[e1, ... , eN]\nwith f a tuple or record and N > 1.\n"+SemanticString(expr), expr, c)
+		}
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return f.Apply(argVal)
+	case *CounterExample:
+		record := asRecordValue(f)
+		if record == nil {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("A non-function (%s) was applied as a function.\n%s", valueKindString(fval), SemanticString(expr)), expr, c)
+		}
+		if rejectTupleRecordMultiArg && len(args) != 2 {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to evaluate an expression of form f[e1, ... , eN]\nwith f a tuple or record and N > 1.\n"+SemanticString(expr), expr, c)
+		}
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return record.Apply(argVal)
+	default:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("A non-function (%s) was applied as a function.\n%s", valueKindString(fval), SemanticString(expr)), expr, c)
+	}
+}
+
+func (t *Tool) evalFunctionApplicationArgument(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if len(expr.Args) < 2 {
+		return nil, newTLCError(ECGeneral, "malformed function application: %s", SemanticString(expr))
+	}
+	return t.Eval(expr.Args[1], c, s0, s1, control, cm)
+}
+
+func (t *Tool) GetFcnContext(fcn *FcnLambdaValue, args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, costModels ...CostModel) (*Context, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if len(costModels) > 1 {
+		panic(NewIllegalArgumentException("GetFcnContext accepts at most one cost model"))
+	}
+	cm := DoNotRecordCostModel
+	if len(costModels) == 1 {
+		cm = costModels[0]
+	}
+	return t.getFcnContextImpl(fcn, &OpApplNode{Args: args}, c, s0, s1, control, cm)
+}
+
+// getFcnContext retains the earlier native application-node spelling.
+func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*Context, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	if expr == nil {
+		panic(NewNullPointerException())
+	}
+	return t.GetFcnContext(fcn, expr.Args, c, s0, s1, control, cm)
+}
+
+func (t *Tool) getFcnContextImpl(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*Context, error) {
+	if t == nil {
+		panic(NewNullPointerException())
+	}
+	fcon := fcn.GetCon()
+	params := fcn.GetParams()
+	plen := params.Length()
+	formals := params.GetFormals()
+	domains := params.GetDomains()
+	isTuples := params.IsTuples()
+	argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	if plen == 1 {
+		member, err := fcnParameterDomainMember(domains, 0, argVal)
+		if err != nil {
+			return nil, err
+		}
+		if !member {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe first argument is:\n%swhich is not in its domain.\n%s", ValuesPPR(fcn), ValuesPPR(argVal), SemanticString(expr.Args[0])), expr.Args[0], c)
+		}
+		if fcnParameterIsTuple(isTuples, 0) {
+			ids := fcnParameterFormals(formals, 0)
+			tuple := asTupleValue(argVal)
+			matches := tuple != nil
+			if matches {
+				size, err := argVal.Size()
+				if err != nil {
+					return nil, err
+				}
+				matches = size == fcnFormalCount(ids)
+			}
+			if !matches {
+				// Java intentionally prints this.toString(), including subclass overrides.
+				identity := fmt.Sprintf("%T@%p", t, t)
+				if t.CallStack != nil {
+					identity = t.CallStack.String()
+				}
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument is:\n%swhich does not match its formal parameter.\n%s", ValuesPPRString(identity), ValuesPPR(argVal), SemanticString(expr.Args[0])), expr.Args[0], c)
+			}
+			for i, id := range ids {
+				fcon = fcon.Cons(id, tuple.GetElems()[i])
+			}
+		} else {
+			ids := fcnParameterFormals(formals, 0)
+			if fcnFormalCount(ids) == 0 {
+				panic(NewArrayIndexOutOfBoundsException(0, 0))
+			}
+			fcon = fcon.Cons(ids[0], argVal)
+		}
+		return fcon, nil
+	}
+	tuple := asTupleValue(argVal)
+	if tuple == nil {
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to apply a function to an argument not in its domain.\n%s", SemanticString(expr.Args[0])), expr.Args[0], c)
+	}
+	argn := 0
+	elems := tuple.GetElems()
+	if formals == nil {
+		panic(NewNullPointerException())
+	}
+	for i, ids := range formals {
+		domain := fcnParameterDomain(domains, i)
+		if fcnParameterIsTuple(isTuples, i) {
+			if argn >= len(elems) {
+				panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
+			}
+			member, err := fcnDomainMember(domain, elems[argn])
+			if err != nil {
+				return nil, err
+			}
+			if !member {
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain.\n%s", ValuesPPR(fcn), argn+1, ValuesPPR(elems[argn]), SemanticString(expr.Args[0])), expr.Args[0], c)
+			}
+			inner := asTupleValue(elems[argn])
+			argn++
+			if inner == nil || len(inner.GetElems()) != fcnFormalCount(ids) {
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%swhich does not match its formal parameter.\n%s", ValuesPPR(fcn), argn, ValuesPPR(elems[argn-1]), SemanticString(expr.Args[0])), expr.Args[0], c)
+			}
+			for j, id := range ids {
+				fcon = fcon.Cons(id, inner.GetElems()[j])
+			}
+		} else {
+			_ = fcnFormalCount(ids)
+			for _, id := range ids {
+				if argn >= len(elems) {
+					panic(NewArrayIndexOutOfBoundsException(argn, len(elems)))
+				}
+				member, err := fcnDomainMember(domain, elems[argn])
+				if err != nil {
+					return nil, err
+				}
+				if !member {
+					return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("In applying the function\n%s,\nthe argument number %d is:\n%swhich is not in its domain.\n%s", ValuesPPR(fcn), argn+1, ValuesPPR(elems[argn]), SemanticString(expr.Args[0])), expr.Args[0], c)
+				}
+				fcon = fcon.Cons(id, elems[argn])
+				argn++
+			}
+		}
+	}
+	return fcon, nil
+}
+
+func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	dvals := make([]Value, len(expr.BdedQuantBounds))
+	isFcnRcd := true
+	for i, domain := range expr.BdedQuantBounds {
+		value, err := t.Eval(domain, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		dvals[i] = value
+		isFcnRcd = isFcnRcd && isReducibleValue(value)
+	}
+	params := NewFcnParams(expr.BdedQuantSymbolLists, expr.BdedQuantATuple, dvals)
+	fval := NewFcnLambdaValue(params, expr.Args[0], t, c, s0, s1, control, cm)
+	t.SetSource(expr, fval)
+	if opcode == OpcodeRFS && len(expr.UnbdedQuantSymbols) > 0 {
+		fval.MakeRecursive(expr.UnbdedQuantSymbols[0])
+		isFcnRcd = false
+	}
+	if isFcnRcd && !EvalIsKeepLazy(control) {
+		return fval.materializeFcnRcd()
+	}
+	return fval, nil
+}
+
+func isReducibleValue(value Value) bool {
+	_, ok := asReducible(value)
+	return ok
+}
+
+func (t *Tool) evalRecordConstructor(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	names := make([]*UniqueString, len(expr.Args))
+	values := make([]Value, len(expr.Args))
+	for i, arg := range expr.Args {
+		pair, ok := arg.(*OpApplNode)
+		if !ok || len(pair.Args) < 2 {
+			return nil, newTLCError(ECGeneral, "malformed record constructor")
+		}
+		name := t.cachedRecordFieldName(pair.Args[0])
+		pairCM := cm
+		if specCoverageEnabled() {
+			pairCM = cm.Get(pair)
+		}
+		value, err := t.Eval(pair.Args[1], c, s0, s1, control, pairCM)
+		if err != nil {
+			return nil, err
+		}
+		names[i] = name
+		values[i] = value
+	}
+	return t.SetSource(expr, NewRecordValue(names, values, false, cm)), nil
+}
+
+func (t *Tool) evalRecordSelect(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	rval, err := t.Eval(expr.Args[0], c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	object := muxToolObject(SemanticToolObjectForTool(t, expr.Args[1]))
+	var sval Value
+	if !isNil(object) {
+		var ok bool
+		sval, ok = object.(Value)
+		if !ok {
+			panic(valueStreamClassCast(object, "tlc2.value.impl.Value"))
+		}
+	}
+	// CounterExample extends RecordValue in Java. Do not use asRecordValue
+	// here: converting functions to records changes the source dispatch.
+	var record *RecordValue
+	switch value := rval.(type) {
+	case *RecordValue:
+		record = value
+	case *CounterExample:
+		record = value.RecordValue
+	}
+	if record != nil {
+		result, err := record.Select(sval)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to select nonexistent field "+sval.String()+" from the record\n"+ValuesPPR(rval)+"\n"+semanticNodeJavaString(expr), expr, c)
+		}
+		return result, nil
+	}
+	if fcn := asFcnRcdValue(rval); fcn != nil {
+		return fcn.Apply(sval)
+	}
+	if rval == nil {
+		panic(NewNullPointerException())
+	}
+	field := "null"
+	if sval != nil {
+		field = sval.String()
+	}
+	return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to select field "+field+" from a non-record value "+ValuesPPR(rval)+"\n"+semanticNodeJavaString(expr), expr, c)
+}
+
+func (t *Tool) evalSetOfAll(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	enum, err := t.Contexts(expr, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	values := NewValueVec(0)
+	for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
+		if err := enum.Err(); err != nil {
+			return nil, err
+		}
+		value, err := t.Eval(expr.Args[0], c1, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		values.Add(value)
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	return t.SetSource(expr, NewSetEnumValueVec(values, false, cm)), nil
+}
+
+func (t *Tool) evalSetOfRecords(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	names := make([]*UniqueString, len(expr.Args))
+	values := make([]Value, len(expr.Args))
+	for i, arg := range expr.Args {
+		pair, ok := arg.(*OpApplNode)
+		if !ok || len(pair.Args) < 2 {
+			return nil, newTLCError(ECGeneral, "malformed set-of-records field")
+		}
+		name := t.cachedRecordFieldName(pair.Args[0])
+		pairCM := cm
+		if specCoverageEnabled() {
+			pairCM = cm.Get(pair)
+		}
+		value, err := t.Eval(pair.Args[1], c, s0, s1, control, pairCM)
+		if err != nil {
+			return nil, err
+		}
+		names[i] = name
+		values[i] = value
+	}
+	value, err := NewSetOfRcdsValue(names, values, false, cm)
+	if err != nil {
+		return nil, err
+	}
+	return t.SetSource(expr, value), nil
+}
+
+func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	inVal, err := t.Eval(expr.BdedQuantBounds[0], c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	bvars := expr.BdedQuantSymbolLists[0]
+	isTuple := len(expr.BdedQuantATuple) > 0 && expr.BdedQuantATuple[0]
+	if isReducibleValue(inVal) {
+		enum, _ := asEnumerable(inVal)
+		values := NewValueVec(0)
+		e := enum.Elements()
+		for elem := e.NextElement(); elem != nil; elem = e.NextElement() {
+			c1, err := bindBoundedValue(c, bvars, isTuple, elem)
+			if err != nil {
+				return nil, err
+			}
+			value, err := t.Eval(expr.Args[0], c1, s0, s1, control, cm)
+			if err != nil {
+				return nil, err
+			}
+			bval, err := requireBoolValueAt(value, expr.Args[0], c1, "Attempted to evaluate an expression of form {x \\in S : P(x)} when P was %s.\n%s", valueKindString(value), SemanticString(expr.Args[0]))
+			if err != nil {
+				return nil, err
+			}
+			if bval.Val {
+				values.Add(elem)
+			}
+		}
+		if err := e.Err(); err != nil {
+			return nil, err
+		}
+		return t.SetSource(expr, NewSetEnumValueVec(values, inVal.IsNormalized(), cm)), nil
+	}
+	if isTuple {
+		return t.SetSource(expr, NewSetPredValue(bvars, inVal, expr.Args[0], t, c, s0, s1, control, cm)), nil
+	}
+	return t.SetSource(expr, NewSetPredValue(bvars[0], inVal, expr.Args[0], t, c, s0, s1, control, cm)), nil
+}
+
+func (t *Tool) evalEq(left SemanticNode, right SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, negate bool) (Value, error) {
+	arg1, err := t.Eval(left, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	arg2, err := t.Eval(right, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	eq, err := arg1.Equal(arg2)
+	if err != nil {
+		return nil, err
+	}
+	if negate {
+		eq = !eq
+	}
+	return BoolValueOf(eq), nil
+}
+
+func (t *Tool) evalSetOp(opcode int, left SemanticNode, right SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	arg1, err := t.Eval(left, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	arg2, err := t.Eval(right, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	switch opcode {
+	case OpcodeSetdiff:
+		switch left := arg1.(type) {
+		case *IntervalValue:
+			return left.Diff(arg2)
+		case *SetEnumValue:
+			return left.Diff(arg2)
+		}
+		return NewSetDiffValue(arg1, arg2), nil
+	case OpcodeCap:
+		switch left := arg1.(type) {
+		case *IntervalValue:
+			return left.Cap(arg2)
+		case *SetEnumValue:
+			return left.Cap(arg2)
+		}
+		switch right := arg2.(type) {
+		case *IntervalValue:
+			return right.Cap(arg1)
+		case *SetEnumValue:
+			return right.Cap(arg1)
+		}
+		return NewSetCapValue(arg1, arg2), nil
+	case OpcodeCup:
+		switch left := arg1.(type) {
+		case *IntervalValue:
+			return left.Cup(arg2)
+		case *SetEnumValue:
+			return left.Cup(arg2)
+		}
+		switch right := arg2.(type) {
+		case *IntervalValue:
+			return right.Cup(arg1)
+		case *SetEnumValue:
+			return right.Cup(arg1)
+		}
+		return NewSetCupValue(arg1, arg2, cm), nil
+	default:
+		return nil, newTLCError(ECGeneral, "unknown set operator opcode %d", opcode)
+	}
+}
+
+func (t *Tool) evalActionSubscript(expr SemanticNode, opcode int, args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	value, err := t.Eval(args[0], c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	form := "<A>_e"
+	if opcode == OpcodeSA {
+		form = "[A]_e"
+	}
+	res, err := requireBoolValueAt(value, expr, c, "Attempted to evaluate an expression of form %s, but A was not a boolean.\n%s", form, SemanticString(expr))
+	if err != nil {
+		return nil, err
+	}
+	if opcode == OpcodeAA && !res.Val {
+		return BoolFalse, nil
+	}
+	if opcode == OpcodeSA && res.Val {
+		return BoolTrue, nil
+	}
+	v0, err := t.Eval(args[1], c, s0, EmptyState, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	v1, err := t.Eval(args[1], c, s1, nil, EvalSetPrimedIfEnabled(control), cm)
+	if err != nil {
+		return nil, err
+	}
+	eq, err := v0.Equal(v1)
+	if err != nil {
+		return nil, err
+	}
+	if opcode == OpcodeAA {
+		return BoolValueOf(res.Val && !eq), nil
+	}
+	return BoolValueOf(res.Val || eq), nil
+}
+
+func (t *Tool) evalActionComposition(expr SemanticNode, args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if !actionCompositionEnabled() {
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, actionCompositionUnsupportedMessage, expr, c)
+	}
+	if len(args) < 2 {
+		return nil, newTLCError(ECGeneral, "malformed action composition")
+	}
+	intermediate, _, err := t.actionCompositionIntermediateStates(UnknownAction, args[0], EmptyActionItemList, c, s0, NewEmptyState(), cm)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < intermediate.Size(); i++ {
+		res, err := t.evalBool(args[1], c, intermediate.At(i), s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		if res.Val {
+			return BoolTrue, nil
+		}
+	}
+	return BoolFalse, nil
+}
+
+func isOperatorValue(value Value) bool {
+	switch value.(type) {
+	case *OpLambdaValue, *OpRcdValue, *MethodValue, *EvaluatingValue, *PriorityEvaluatingValue, *CallableValue:
+		return true
+	default:
+		return false
+	}
+}
+
+func bindBoundedValue(base *Context, vars []*SymbolNode, isTuple bool, value Value) (*Context, error) {
+	if base == nil {
+		base = EmptyContext
+	}
+	c1 := base
+	if isTuple {
+		tuple, ok := value.(*TupleValue)
+		if !ok || len(tuple.GetElems()) != len(vars) {
+			return nil, newTLCError(ECGeneral, "bounded tuple variable expected %d-tuple, got %s", len(vars), value)
+		}
+		for i, variable := range vars {
+			c1 = c1.Cons(variable, tuple.GetElems()[i])
+		}
+		return c1, nil
+	}
+	if len(vars) == 0 {
+		return nil, newTLCError(ECGeneral, "bounded quantifier has no variable")
+	}
+	return c1.Cons(vars[0], value), nil
+}
+
+// SelectPath represents Value.select(Value[]).
+func SelectPath(root Value, path []Value) (result Value, err error) {
+	defer catchValueFailure(root, &err)
+	if isNil(root) || path == nil {
+		panic(NewNullPointerException())
+	}
+	cur := root
+	for _, step := range path {
+		function, ok := cur.(FunctionValue)
+		if !ok {
+			message := "Attempted to apply EXCEPT construct to the value " + ValuesPPR(cur) + "."
+			if source := valueSource(root); source != nil {
+				return nil, NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+			}
+			return nil, NewTLCRuntimeExceptionMessage(message)
+		}
+		cur, err = function.Select(step)
+		if err != nil {
+			return nil, err
+		}
+		if cur == nil {
+			return nil, nil
+		}
+	}
+	return cur, nil
+}
+
+// Record and record-set construction cast the active slot directly to
+// StringValue; unlike record selection, these branches do not mux WorkerValue.
+func (t *Tool) cachedRecordFieldName(node SemanticNode) *UniqueString {
+	object := SemanticToolObjectForTool(t, node)
+	if isNil(object) {
+		panic(NewNullPointerException())
+	}
+	value, ok := asStringValue(object)
+	if !ok {
+		panic(valueStreamClassCast(object, "tlc2.value.impl.StringValue"))
+	}
+	if value == nil {
+		panic(NewNullPointerException())
+	}
+	return value.ownedVal()
+}
+
+func domainValue(expr SemanticNode, value Value, c *Context) (Value, error) {
+	switch v := value.(type) {
+	case *CounterExample:
+		record := asRecordValue(v)
+		if record == nil {
+			return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to apply the operator DOMAIN to a non-function\n(%s)\n%s", valueKindString(value), SemanticString(expr)), expr, c)
+		}
+		return record.DomainValue(), nil
+	case FunctionValue:
+		return v.GetDomain()
+	default:
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, fmt.Sprintf("Attempted to apply the operator DOMAIN to a non-function\n(%s)\n%s", valueKindString(value), SemanticString(expr)), expr, c)
+	}
+}
+
+func subsetEq(expr SemanticNode, left Value, right Value, c *Context) (*BoolValue, error) {
+	enum, ok := asEnumerable(left)
+	if !ok {
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to evaluate an expression of form S \\subseteq T, but S was not enumerable.\n"+SemanticString(expr), expr, c)
+	}
+	return enumerableSubsetEq(enum, left, right)
+}
+
+func enumerableSubsetEq(enum Enumerable, left Value, right Value) (resultBool *BoolValue, err error) {
+	return enum.IsSubsetEq(right)
+}
+
+func defaultEnumerableSubsetEq(enum Enumerable, left Value, right Value) (resultBool *BoolValue, err error) {
+	if isNil(enum) || isNil(left) {
+		panic(NewNullPointerException())
+	}
+	defer catchValueFailure(left, &err)
+	e := enum.Elements()
+	for elem := e.NextElement(); elem != nil; elem = e.NextElement() {
+		if err := e.Err(); err != nil {
+			return nil, err
+		}
+		member, err := right.Member(elem)
+		if err != nil {
+			return nil, err
+		}
+		if !member {
+			return BoolFalse, nil
+		}
+	}
+	if err := e.Err(); err != nil {
+		return nil, err
+	}
+	return BoolTrue, nil
+}

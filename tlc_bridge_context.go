@@ -1,0 +1,305 @@
+package tlago
+
+import (
+	"sort"
+	"unicode/utf16"
+
+	"github.com/glycerine/tlago/tlc"
+)
+
+// SANY Context keeps insertion links for EXTENDS and operator definitions, but
+// ModuleNode obtains declarations by reversing Hashtable.elements(). Keep both
+// orders: sorting declaration names changes state printing and variable slots.
+type tlcBridgeContextEntry struct {
+	declaration        *sanySemOpDeclNode
+	name               string
+	kind               DeclarationKind
+	module             *Module
+	position           Position
+	local              bool
+	moduleKey          bool
+	initial            bool
+	moduleInstance     bool
+	instance           *Instance
+	instanceOwner      *Module
+	instanceSourceName string
+}
+
+// EXTENDS imports the original source symbol before the importing body is
+// generated. Resolve it during conversion too, while the runtime ModuleNodes
+// and their contexts have not yet been installed. In particular, a native
+// operator argument must retain the source arity rather than become a
+// zero-argument expression referring to an unqualified placeholder.
+func (b *tlcBridge) conversionContextSymbol(module *Module, name string) *tlc.SymbolNode {
+	if b.conversionContexts == nil {
+		b.conversionContexts = map[*Module]map[string]tlcBridgeContextEntry{}
+	}
+	entries := b.conversionContexts[module]
+	if entries == nil {
+		entries = map[string]tlcBridgeContextEntry{}
+		for _, entry := range tlcBridgeContextEntries(b.spec, module, map[*Module]bool{}) {
+			if !entry.moduleKey {
+				entries[entry.name] = entry
+			}
+		}
+		b.conversionContexts[module] = entries
+	}
+	entry, exists := entries[name]
+	if !exists || entry.instance != nil {
+		return nil
+	}
+	if entry.module == nil {
+		if _, builtin := sanyBuiltinOperatorInfo(name); builtin {
+			return b.builtinDefinition(name).Symbol
+		}
+		return nil
+	}
+	if entry.kind == VariableDecl || entry.kind == ConstantDecl {
+		return b.declarationSymbol(entry.module, name)
+	}
+	for i := range entry.module.Definitions {
+		definition := &entry.module.Definitions[i]
+		if definition.Name == name {
+			return b.sourceDefinitionSymbol(entry.module.Name+"!"+name, definition)
+		}
+	}
+	return nil
+}
+
+// A generated source module's owned context identifies accepted declarations.
+// Native AST callers without source generation retain their existing metadata.
+func tlcBridgeOwnedDeclaration(module *Module, name string) (*sanySemOpDeclNode, bool) {
+	if module == nil || module.Syntax == nil || module.semanticNode == nil {
+		return nil, false
+	}
+	node := sanyModuleDeclarationNode(module, name)
+	if node == nil || node.module != module.semanticNode {
+		return nil, true
+	}
+	return node, true
+}
+
+func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool) []tlcBridgeContextEntry {
+	if mod == nil || visiting[mod] {
+		return nil
+	}
+	visiting[mod] = true
+	defer delete(visiting, mod)
+	var entries []tlcBridgeContextEntry
+	type key struct {
+		name   string
+		module bool
+	}
+	indices := map[key]int{}
+	put := func(entry tlcBridgeContextEntry, replace bool) {
+		k := key{entry.name, entry.moduleKey}
+		if i, found := indices[k]; found {
+			if replace {
+				entries[i] = entry
+			}
+			return
+		}
+		indices[k] = len(entries)
+		entries = append(entries, entry)
+	}
+	// External SymbolTable starts with Context.getGlobalContext().duplicate().
+	// Builtins occupy buckets even though declaration filtering omits them.
+	if moduleNameForSourcePosition(mod.Pos) == mod.Name {
+		for _, builtin := range sanyBuiltinOperators {
+			put(tlcBridgeContextEntry{name: builtin.name, initial: true}, false)
+		}
+	}
+	for _, ext := range sourceModuleExtends(mod) {
+		for _, entry := range tlcBridgeContextEntries(spec, spec.Modules[ext], visiting) {
+			if !entry.local {
+				entry.initial = false
+				put(entry, false)
+			}
+		}
+	}
+	type item struct {
+		position Position
+		entries  []tlcBridgeContextEntry
+		instance *Instance
+	}
+	var items []item
+	for _, declaration := range mod.Declarations {
+		var declared []tlcBridgeContextEntry
+		for _, name := range declaration.Names {
+			source, generated := tlcBridgeOwnedDeclaration(mod, name)
+			if generated && source == nil {
+				continue
+			}
+			position := declaration.NamePositions[name]
+			if position.Line == 0 {
+				position = declaration.Pos
+			}
+			if source != nil {
+				position = source.semPosition()
+			}
+			declared = append(declared, tlcBridgeContextEntry{declaration: source, name: name, kind: declaration.Kind, module: mod, position: position})
+		}
+		items = append(items, item{position: declaration.Pos, entries: declared})
+	}
+	for _, declaration := range mod.Recursives {
+		var declared []tlcBridgeContextEntry
+		for _, name := range declaration.Names {
+			declared = append(declared, tlcBridgeContextEntry{name: name, kind: OperatorDecl, module: mod})
+		}
+		items = append(items, item{position: declaration.Pos, entries: declared})
+	}
+	for _, definition := range mod.Definitions {
+		kind := OperatorDecl
+		if definition.TheoremLike {
+			kind = ""
+		}
+		items = append(items, item{position: definition.SourcePosition(), entries: []tlcBridgeContextEntry{{name: definition.Name, kind: kind, module: mod, local: definition.Local}}})
+	}
+	for _, assumption := range mod.Assumptions {
+		if assumption.Name != "" {
+			items = append(items, item{position: assumption.SourcePosition(), entries: []tlcBridgeContextEntry{{name: assumption.Name, module: mod}}})
+		}
+	}
+	for _, inner := range mod.Nested {
+		items = append(items, item{position: inner.Pos, entries: []tlcBridgeContextEntry{{name: inner.Name, module: inner, moduleKey: true}}})
+	}
+	for i := range mod.Instances {
+		instance := &mod.Instances[i]
+		items = append(items, item{position: instance.SourcePosition(), instance: instance})
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		if items[i].position.Line != items[j].position.Line {
+			return items[i].position.Line < items[j].position.Line
+		}
+		return items[i].position.Column < items[j].position.Column
+	})
+	for _, item := range items {
+		if instance := item.instance; instance != nil {
+			// Generator instances iterate Context.getByClass via Hashtable.elements,
+			// unlike EXTENDS, which merges the source Pair links in insertion order.
+			content := tlcBridgeContextContentOrder(tlcBridgeContextEntries(spec, spec.Modules[instance.Module], visiting))
+			// Generator imports operator definitions first, then theorem/assumption
+			// definitions. Global builtins and ModuleNodes belong to neither list.
+			var definitions []tlcBridgeContextEntry
+			for _, kind := range []DeclarationKind{OperatorDecl, ""} {
+				for _, entry := range content {
+					if entry.kind == kind && entry.module != nil && !entry.moduleKey {
+						definitions = append(definitions, entry)
+					}
+				}
+			}
+			for _, entry := range definitions {
+				if entry.local || entry.moduleInstance {
+					continue
+				}
+				entry.instanceSourceName = entry.name
+				entry.instance = instance
+				entry.instanceOwner = mod
+				if instance.Name != "" {
+					entry.name = instance.Name + "!" + entry.name
+				}
+				entry.local = instance.Local
+				put(entry, true)
+			}
+			if instance.Name != "" {
+				put(tlcBridgeContextEntry{name: instance.Name, kind: OperatorDecl, module: mod, local: instance.Local, moduleInstance: true}, true)
+			}
+		}
+		for _, entry := range item.entries {
+			put(entry, true)
+		}
+	}
+	return entries
+}
+
+func tlcBridgeDeclarationOrder(entries []tlcBridgeContextEntry, kind DeclarationKind) []tlcBridgeContextEntry {
+	var declarations []tlcBridgeContextEntry
+	for _, entry := range tlcBridgeContextContentOrder(entries) {
+		if entry.kind == kind {
+			declarations = append(declarations, entry)
+		}
+	}
+	for i, j := 0, len(declarations)-1; i < j; i, j = i+1, j-1 {
+		declarations[i], declarations[j] = declarations[j], declarations[i]
+	}
+	return declarations
+}
+
+func tlcBridgeContextContentOrder(entries []tlcBridgeContextEntry) []tlcBridgeContextEntry {
+	buckets := make([][]tlcBridgeContextEntry, 11)
+	count, threshold := 0, 8
+	put := func(table [][]tlcBridgeContextEntry, entry tlcBridgeContextEntry) {
+		var hash uint32
+		for _, unit := range utf16.Encode([]rune(entry.name)) {
+			hash = 31*hash + uint32(unit)
+		}
+		i := int(hash&0x7fffffff) % len(table)
+		table[i] = append([]tlcBridgeContextEntry{entry}, table[i]...)
+	}
+	insert := func(entry tlcBridgeContextEntry) {
+		if count >= threshold {
+			old := buckets
+			buckets = make([][]tlcBridgeContextEntry, 2*len(old)+1)
+			threshold = 3 * len(buckets) / 4
+			for i := len(old) - 1; i >= 0; i-- {
+				for _, previous := range old[i] {
+					put(buckets, previous)
+				}
+			}
+		}
+		put(buckets, entry)
+		count++
+	}
+	// Context.duplicate inserts the global lastPair list from newest to oldest
+	// while retaining the original pair links for subsequent EXTENDS merges.
+	for i := len(entries) - 1; i >= 0; i-- {
+		if entries[i].initial {
+			insert(entries[i])
+		}
+	}
+	for _, entry := range entries {
+		if !entry.initial {
+			insert(entry)
+		}
+	}
+	var content []tlcBridgeContextEntry
+	for i := len(buckets) - 1; i >= 0; i-- {
+		for _, entry := range buckets[i] {
+			content = append(content, entry)
+		}
+	}
+	return content
+}
+
+func (b *tlcBridge) variableDeclarations() []*tlc.SymbolNode {
+	entries := tlcBridgeDeclarationOrder(tlcBridgeContextEntries(b.spec, b.spec.Root, map[*Module]bool{}), VariableDecl)
+	nodes := make([]*tlc.SymbolNode, len(entries))
+	for i, entry := range entries {
+		nodes[i] = b.symbol(entry.name)
+		nodes[i].MarkVariableDecl()
+		position := entry.position
+		position.File = entry.module.Name
+		nodes[i].Location = b.sourceLocationForPosition(position)
+	}
+	return nodes
+}
+
+// ModuleNode.getOpDefs reverses Context.getOpDefs' newest-first insertion links.
+// Keep the original definitions, before config overrides replace Defns entries.
+func (b *tlcBridge) installRootDefinitions() {
+	b.processor.RootDefinitions = tlc.NewInsMap[string, *tlc.OpDefNode]()
+	for _, node := range b.processor.RootModule.GetOpDefs() {
+		name := node.Name.String()
+		b.processor.RootDefinitions.Set(name, node)
+		// Root OpDefs include transitive EXTENDS exports, even when the
+		// central AST's runtime export index omitted an intermediate module.
+		if alias := b.symbols[name]; alias != nil && alias.Definition == nil {
+			alias.Definition = node
+			alias.MarkUserDefinedOp()
+			alias.Arity = node.Arity()
+			b.tool.Define(alias, node)
+		}
+		b.symbols[name] = node.Symbol
+		b.defineAlias(name, node)
+	}
+}

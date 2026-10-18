@@ -1,0 +1,39 @@
+{
+  "sources": [
+    "https://github.com/nano-o/MultiPaxos/blob/master/DiskPaxos.tla"
+  ],
+  "authors": [
+    "Giuliano Losa",
+    "Leslie Lamport"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/diskpaxos/DiskSynod.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/diskpaxos/HDiskSynod.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/diskpaxos/MC_HDiskSynod.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/diskpaxos/MC_HDiskSynod.cfg",
+          "runtime": "unknown",
+          "mode": "exhaustive search",
+          "result": "unknown"
+        }
+      ]
+    },
+    {
+      "path": "specifications/diskpaxos/Synod.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

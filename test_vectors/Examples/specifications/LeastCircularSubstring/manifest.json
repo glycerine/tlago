@@ -1,0 +1,44 @@
+{
+  "sources": [
+    "https://ahelwer.ca/post/2023-03-30-pseudocode/"
+  ],
+  "authors": [
+    "Andrew Helwer"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/LeastCircularSubstring/LeastCircularSubstring.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/LeastCircularSubstring/MCLeastCircularSubstring.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/LeastCircularSubstring/MCLeastCircularSubstringMedium.cfg",
+          "runtime": "00:01:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/LeastCircularSubstring/MCLeastCircularSubstringSmall.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 8554,
+          "totalStates": 8681,
+          "stateDepth": 95
+        }
+      ]
+    },
+    {
+      "path": "specifications/LeastCircularSubstring/ZSequences.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

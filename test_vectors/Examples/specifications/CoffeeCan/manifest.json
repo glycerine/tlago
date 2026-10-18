@@ -1,0 +1,63 @@
+{
+  "sources": [
+    "https://stackoverflow.com/a/66304920/2852699"
+  ],
+  "authors": [
+    "Andrew Helwer"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/CoffeeCan/APCoffeeCan.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/CoffeeCan/APCoffeeCan.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/CoffeeCan/CoffeeCan.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/CoffeeCan/CoffeeCan1000Beans.cfg",
+          "runtime": "00:00:15",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 501500,
+          "totalStates": 2000002,
+          "stateDepth": 1
+        },
+        {
+          "path": "specifications/CoffeeCan/CoffeeCan100Beans.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 5150,
+          "totalStates": 20002,
+          "stateDepth": 1
+        },
+        {
+          "path": "specifications/CoffeeCan/CoffeeCan3000Beans.cfg",
+          "runtime": "00:02:30",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/CoffeeCan/CoffeeCan_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

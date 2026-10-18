@@ -1,0 +1,69 @@
+{
+  "sources": [
+    "http://lamport.azurewebsites.net/pubs/teaching-concurrency.pdf"
+  ],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/TeachingConcurrency/Simple.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/TeachingConcurrency/Simple.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 723,
+          "totalStates": 1842,
+          "stateDepth": 11
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/TeachingConcurrency/SimpleRegular.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/TeachingConcurrency/SimpleRegular.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 277726,
+          "totalStates": 1454776,
+          "stateDepth": 25
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/TeachingConcurrency/SimpleRegular_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/TeachingConcurrency/Simple_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

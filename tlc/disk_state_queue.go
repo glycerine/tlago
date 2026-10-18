@@ -1,0 +1,704 @@
+package tlc
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sync"
+	"sync/atomic"
+)
+
+const (
+	diskStateQueueDefaultBufferSize  = 8192
+	diskStateQueueBufferSizeProperty = "tlc2.tool.queue.DiskStateQueue.BufSize"
+	diskStateQueueCleanerThreshold   = 100
+)
+
+type DiskStateQueue struct {
+	mu            sync.Mutex
+	cond          *sync.Cond
+	len           int64
+	numWaiting    atomic.Int32
+	finish        atomic.Bool
+	stop          bool
+	suspend       stateQueueSuspendBarrier
+	diskdir       string
+	deqBuf        []*TLCStateMut
+	enqBuf        []*TLCStateMut
+	deqIndex      int
+	enqIndex      int
+	loPool        int
+	hiPool        int
+	reader        *StatePoolReader
+	writer        *StatePoolWriter
+	loFile        string
+	lastLoPool    int
+	newLastLoPool int
+	cleaner       *StatePoolCleaner
+}
+
+func NewDiskStateQueue(metaDir string) *DiskStateQueue {
+	return newDiskStateQueueWithStreams(metaDir, nil)
+}
+
+func newDiskStateQueueWithStreams(metaDir string, streams statePoolStreamFactory) *DiskStateQueue {
+	bufSize := diskStateQueueBufferSize()
+	if bufSize < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(bufSize)))
+	}
+	q := &DiskStateQueue{
+		diskdir:  metaDir,
+		deqBuf:   make([]*TLCStateMut, bufSize),
+		enqBuf:   make([]*TLCStateMut, bufSize),
+		deqIndex: bufSize,
+		loPool:   1,
+	}
+	q.cond = sync.NewCond(&q.mu)
+	q.suspend.ensure()
+	q.reader = newStatePoolReaderWithStreams(bufSize, q.poolName(0), streams)
+	q.reader.Start()
+	q.writer = newStatePoolWriterWithStreams(bufSize, q.reader, streams)
+	q.writer.Start()
+	q.cleaner = NewStatePoolCleaner(q)
+	q.cleaner.Start()
+	q.loFile = q.poolName(q.loPool)
+	return q
+}
+
+type diskQueueBufferSizeSnapshot struct {
+	once sync.Once
+	size int
+}
+
+var diskStateQueueSizeSnapshot diskQueueBufferSizeSnapshot
+var diskByteArrayQueueSizeSnapshot diskQueueBufferSizeSnapshot
+
+func diskStateQueueBufferSize() int { return diskStateQueueSizeSnapshot.get() }
+
+func (q *DiskStateQueue) requireDiskStateQueue() {
+	if q == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+// Both source classes use the same property key, but initialize independently.
+func (snapshot *diskQueueBufferSizeSnapshot) get() int {
+	snapshot.once.Do(func() {
+		snapshot.size = diskStateQueueDefaultBufferSize
+		if value, ok := tlcLookupSystemProperty(diskStateQueueBufferSizeProperty); ok {
+			if parsed, ok := javaDecodeIntProperty(value); ok {
+				snapshot.size = parsed
+			}
+		}
+	})
+	return snapshot.size
+}
+
+func (q *DiskStateQueue) Enqueue(state *TLCStateMut) {
+	q.requireDiskStateQueue()
+	q.enqueueInner(state)
+	stateQueueLengthAdd(&q.len, 1)
+}
+
+func (q *DiskStateQueue) Dequeue() *TLCStateMut {
+	q.requireDiskStateQueue()
+	if q.IsEmpty() {
+		return nil
+	}
+	state := q.dequeueInner()
+	stateQueueLengthAdd(&q.len, -1)
+	return state
+}
+
+func (q *DiskStateQueue) SEnqueue(state *TLCStateMut) {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.enqueueInner(state)
+	stateQueueLengthAdd(&q.len, 1)
+	if q.numWaiting.Load() > 0 && !q.stop {
+		q.cond.Broadcast()
+	}
+}
+
+func (q *DiskStateQueue) SEnqueueAll(states []*TLCStateMut) {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if states == nil {
+		panic(NewNullPointerException())
+	}
+	for _, state := range states {
+		q.enqueueInner(state)
+	}
+	stateQueueLengthAdd(&q.len, int64(len(states)))
+	if q.numWaiting.Load() > 0 && !q.stop {
+		q.cond.Broadcast()
+	}
+}
+
+func (q *DiskStateQueue) SEnqueueVec(states *StateVec) {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if states == nil {
+		panic(NewNullPointerException())
+	}
+	var count int64
+	for i := 0; i < states.Size(); i++ {
+		state := states.At(i)
+		if state != nil {
+			q.enqueueInner(state)
+			count++
+		}
+	}
+	stateQueueLengthAdd(&q.len, count)
+	if q.numWaiting.Load() > 0 && !q.stop {
+		q.cond.Broadcast()
+	}
+}
+
+func (q *DiskStateQueue) SPeek() *TLCStateMut {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if !q.isAvailLocked() {
+		return nil
+	}
+	return q.peekInner()
+}
+
+func (q *DiskStateQueue) SDequeue() *TLCStateMut {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if !q.isAvailLocked() {
+		return nil
+	}
+	state := q.dequeueInner()
+	if state == nil {
+		panic(NewAssertionError("Null state found on queue"))
+	}
+	stateQueueLengthAdd(&q.len, -1)
+	return state
+}
+
+func (q *DiskStateQueue) SDequeueMany(cnt int) []*TLCStateMut {
+	q.requireDiskStateQueue()
+	cnt = int(int32(cnt))
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if cnt <= 0 {
+		panic(NewAssertionError("Nonpositive number of states requested."))
+	}
+	if !q.isAvailLocked() {
+		return nil
+	}
+	if int64(cnt) > stateQueueLengthLoad(&q.len) {
+		cnt = int(stateQueueLengthLoad(&q.len))
+	}
+	out := make([]*TLCStateMut, 0, cnt)
+	for len(out) < cnt && stateQueueLengthLoad(&q.len) > 0 {
+		out = append(out, q.dequeueInner())
+		stateQueueLengthAdd(&q.len, -1)
+	}
+	return out
+}
+
+func (q *DiskStateQueue) FinishAll() {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	q.finish.Store(true)
+	q.cond.Broadcast()
+	q.suspend.signal()
+	q.mu.Unlock()
+	if q.writer != nil {
+		q.writer.SetFinished()
+	}
+	if q.reader != nil {
+		q.reader.SetFinished()
+	}
+	if q.cleaner != nil {
+		q.cleaner.SetFinished()
+	}
+}
+
+// Failed coordinator construction has no consumer to join these owned workers.
+// Keep normal finishAll asynchronous, but finish rollback before returning the
+// constructor failure to a caller that may immediately retry.
+func (q *DiskStateQueue) finishConstructionAndWait() {
+	q.FinishAll()
+	<-q.reader.done
+	<-q.writer.done
+	<-q.cleaner.done
+}
+
+func (q *DiskStateQueue) SuspendAll() bool {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	if q.finish.Load() {
+		q.mu.Unlock()
+		return false
+	}
+	q.stop = true
+	needWait := q.needsWaiting()
+	q.mu.Unlock()
+	for needWait {
+		q.suspend.ensure()
+		q.suspend.mu.Lock()
+		if q.finish.Load() {
+			q.suspend.mu.Unlock()
+			return false
+		}
+		if !q.needsWaiting() {
+			q.suspend.mu.Unlock()
+			return true
+		}
+		q.suspend.cond.Wait()
+		q.suspend.mu.Unlock()
+		q.mu.Lock()
+		if q.finish.Load() {
+			q.mu.Unlock()
+			return false
+		}
+		needWait = q.needsWaiting()
+		q.mu.Unlock()
+	}
+	return true
+}
+
+func (q *DiskStateQueue) ResumeAll() {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.stop = false
+	q.cond.Broadcast()
+}
+
+func (q *DiskStateQueue) WakeAllWaiters() {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.cond.Broadcast()
+}
+
+func (q *DiskStateQueue) ResumeAllStuck() {
+	q.requireDiskStateQueue()
+	q.mu.Lock()
+	stop := q.stop
+	q.mu.Unlock()
+	if stop {
+		q.suspend.broadcast()
+	}
+	q.mu.Lock()
+	if !q.stop && stateQueueLengthLoad(&q.len) >= 1 && q.numWaiting.Load() > 0 {
+		q.cond.Broadcast()
+	}
+	q.mu.Unlock()
+}
+
+func (q *DiskStateQueue) Size() int64 {
+	q.requireDiskStateQueue()
+	return stateQueueLengthLoad(&q.len)
+}
+
+func (q *DiskStateQueue) IsEmpty() bool {
+	q.requireDiskStateQueue()
+	return stateQueueLengthLoad(&q.len) < 1
+}
+
+func (q *DiskStateQueue) BeginChkpt() error {
+	q.requireDiskStateQueue()
+	if q.cleaner != nil {
+		q.cleaner.FinishAndWait()
+	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	// A checkpoint must not publish metadata for a pool still being written.
+	if q.writer != nil {
+		if err := q.writer.EnsureWritten(); err != nil {
+			return err
+		}
+	}
+	file, err := openPoolFile(q.queuePath("queue.tmp"), true)
+	if err != nil {
+		return err
+	}
+	out, err := newValueOutputStreamWithCompression(file, UseGZIP())
+	if err != nil {
+		return err
+	}
+	if err := out.WriteLongNat(stateQueueLengthLoad(&q.len)); err != nil {
+		return err
+	}
+	for _, value := range []int{q.loPool, q.hiPool, q.enqIndex, q.deqIndex} {
+		if err := out.WriteInt(int32(value)); err != nil {
+			return err
+		}
+	}
+	for i := 0; i < q.enqIndex; i++ {
+		if err := q.enqBuf[i].Write(out); err != nil {
+			return err
+		}
+	}
+	for i := q.deqIndex; i < len(q.deqBuf); i++ {
+		if err := q.deqBuf[i].Write(out); err != nil {
+			return err
+		}
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
+	q.newLastLoPool = q.loPool - 1
+	return nil
+}
+
+func (q *DiskStateQueue) CommitChkpt() error {
+	q.requireDiskStateQueue()
+	for i := q.lastLoPool; i < q.newLastLoPool; i++ {
+		oldPool := q.poolName(i)
+		if err := os.Remove(oldPool); err != nil {
+			return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldPool))
+		}
+	}
+	q.lastLoPool = q.newLastLoPool
+	oldName := q.queuePath("queue.chkpt")
+	newName := q.queuePath("queue.tmp")
+	if _, err := os.Stat(oldName); err == nil {
+		if err := os.Remove(oldName); err != nil {
+			return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldName))
+		}
+	}
+	if err := os.Rename(newName, oldName); err != nil {
+		return NewIOException(fmt.Sprintf("DiskStateQueue.commitChkpt: cannot delete %s", oldName))
+	}
+	return nil
+}
+
+func (q *DiskStateQueue) Recover() error {
+	q.requireDiskStateQueue()
+	file, err := openPoolFile(q.queuePath("queue.chkpt"), false)
+	if err != nil {
+		return err
+	}
+	in, err := NewValueInputStreamWithGlobalCompression(file)
+	if err != nil {
+		return err
+	}
+	length32, err := in.ReadInt()
+	if err != nil {
+		return err
+	}
+	stateQueueLengthStore(&q.len, int64(length32))
+	values := []*int{&q.loPool, &q.hiPool, &q.enqIndex, &q.deqIndex}
+	for _, ptr := range values {
+		value, err := in.ReadInt()
+		if err != nil {
+			return err
+		}
+		*ptr = int(value)
+	}
+	q.lastLoPool = q.loPool - 1
+	for i := 0; i < q.enqIndex; i++ {
+		q.enqBuf[i] = newStateFromEmptyFactory()
+		if err := q.enqBuf[i].Read(in); err != nil {
+			return err
+		}
+	}
+	for i := q.deqIndex; i < len(q.deqBuf); i++ {
+		q.deqBuf[i] = newStateFromEmptyFactory()
+		if err := q.deqBuf[i].Read(in); err != nil {
+			if errors.Is(err, io.EOF) {
+				return io.ErrUnexpectedEOF
+			}
+			return err
+		}
+	}
+	if err := in.Close(); err != nil {
+		return err
+	}
+	if q.reader != nil {
+		q.reader.Restart(q.poolName(q.lastLoPool), q.lastLoPool < q.hiPool)
+	}
+	q.loFile = q.poolName(q.loPool)
+	return nil
+}
+
+func (q *DiskStateQueue) Delete() error {
+	q.requireDiskStateQueue()
+	q.FinishAll()
+	return deleteQueueDirLikeJava(q.diskdir)
+}
+
+func (q *DiskStateQueue) enqueueInner(state *TLCStateMut) {
+	if q.enqIndex == len(q.enqBuf) {
+		if err := q.spillEnqueueBuffer(); err != nil {
+			panic(err)
+		}
+	}
+	index := q.enqIndex
+	q.enqIndex = int(int32(index) + 1)
+	if index < 0 || index >= len(q.enqBuf) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(q.enqBuf)))
+	}
+	q.enqBuf[index] = state
+}
+
+func (q *DiskStateQueue) dequeueInner() *TLCStateMut {
+	if q.deqIndex == len(q.deqBuf) {
+		if err := q.fillDequeueBuffer(); err != nil {
+			panic(err)
+		}
+	}
+	index := q.deqIndex
+	q.deqIndex = int(int32(index) + 1)
+	if index < 0 || index >= len(q.deqBuf) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(q.deqBuf)))
+	}
+	return q.deqBuf[index]
+}
+
+func (q *DiskStateQueue) peekInner() *TLCStateMut {
+	if q.deqIndex == len(q.deqBuf) {
+		if err := q.fillDequeueBuffer(); err != nil {
+			panic(err)
+		}
+	}
+	if q.deqIndex < 0 || q.deqIndex >= len(q.deqBuf) {
+		panic(NewArrayIndexOutOfBoundsException(q.deqIndex, len(q.deqBuf)))
+	}
+	return q.deqBuf[q.deqIndex]
+}
+
+func (q *DiskStateQueue) fillDequeueBuffer() (err error) {
+	defer catchDiskQueuePoolFailure(ECSystemErrorReadingStates, &err)
+	if q.loPool+1 <= q.hiPool {
+		if q.loPool+1 >= q.hiPool && q.writer != nil {
+			if err := q.writer.EnsureWritten(); err != nil {
+				return err
+			}
+		}
+		buf, err := q.reader.DoWork(q.deqBuf, q.loFile)
+		if err != nil {
+			return err
+		}
+		q.deqBuf = buf
+		q.deqIndex = 0
+		q.loPool++
+		q.loFile = q.poolName(q.loPool)
+		q.maybeCleanStatePools()
+		return nil
+	}
+	if q.writer != nil {
+		if err := q.writer.EnsureWritten(); err != nil {
+			return err
+		}
+	}
+	if q.reader != nil {
+		buf, err := q.reader.GetCache(q.deqBuf, q.loFile)
+		if err != nil {
+			return err
+		}
+		if buf != nil {
+			q.deqBuf = buf
+			q.deqIndex = 0
+			q.loPool++
+			q.loFile = q.poolName(q.loPool)
+			q.maybeCleanStatePools()
+			return nil
+		}
+	}
+	q.deqIndex = len(q.deqBuf) - q.enqIndex
+	copy(q.deqBuf[q.deqIndex:], q.enqBuf[:q.enqIndex])
+	q.enqIndex = 0
+	q.maybeCleanStatePools()
+	return nil
+}
+
+func (q *DiskStateQueue) spillEnqueueBuffer() (err error) {
+	defer catchDiskQueuePoolFailure(ECSystemErrorWritingStates, &err)
+	buf, err := q.writer.DoWork(q.enqBuf, q.poolName(q.hiPool))
+	if err != nil {
+		return err
+	}
+	q.enqBuf = buf
+	q.hiPool++
+	q.enqIndex = 0
+	return nil
+}
+
+// Source queue pool operations catch ordinary exceptions and raise a coded
+// runtime assertion with the detail message (or throwable text for nil detail).
+// Fatal categories escape; the source assertion does not attach a cause.
+func catchDiskQueuePoolFailure(code int, result *error) {
+	if failure := recover(); failure != nil {
+		*result = panicValueAsError(failure)
+		if isJavaError(*result) {
+			panic(failure)
+		}
+	}
+	if *result == nil {
+		return
+	}
+	if isJavaError(*result) {
+		panic(*result)
+	}
+	message := javaThrowableString(*result)
+	if detail := javaThrowableDetailMessage(*result); detail != nil {
+		message = *detail
+	}
+	*result = NewTLCRuntimeException(code, "queue", message)
+}
+
+func (q *DiskStateQueue) isAvailLocked() bool {
+	if q.finish.Load() {
+		return false
+	}
+	for stateQueueLengthLoad(&q.len) == 0 || q.stop {
+		waiting := q.numWaiting.Add(1)
+		if int(waiting) >= NumWorkers() {
+			if stateQueueLengthLoad(&q.len) == 0 {
+				q.numWaiting.Add(-1)
+				return false
+			}
+			q.suspend.signal()
+		}
+		q.cond.Wait()
+		q.numWaiting.Add(-1)
+		if q.finish.Load() {
+			return false
+		}
+	}
+	return true
+}
+
+func (q *DiskStateQueue) needsWaiting() bool {
+	return int(q.numWaiting.Load()) < NumWorkers()
+}
+
+func (q *DiskStateQueue) poolName(pool int) string {
+	return q.queuePath(fmt.Sprint(pool))
+}
+
+func (q *DiskStateQueue) queuePath(name string) string {
+	return q.diskdir + string(os.PathSeparator) + name
+}
+
+func (q *DiskStateQueue) maybeCleanStatePools() {
+	if q.cleaner == nil {
+		return
+	}
+	if q.loPool-q.lastLoPool > diskStateQueueCleanerThreshold {
+		q.cleaner.DeleteUpTo(q.loPool - 1)
+	}
+}
+
+type StatePoolCleaner struct {
+	mu         sync.Mutex
+	cond       *sync.Cond
+	queue      *DiskStateQueue
+	deleteUpTo int
+	finished   bool
+	started    atomic.Bool
+	done       chan struct{}
+}
+
+func NewStatePoolCleaner(queue *DiskStateQueue) *StatePoolCleaner {
+	c := &StatePoolCleaner{
+		queue: queue,
+		done:  make(chan struct{}),
+	}
+	c.cond = sync.NewCond(&c.mu)
+	return c
+}
+
+func (c *StatePoolCleaner) requireStatePoolCleaner() {
+	if c == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+func (c *StatePoolCleaner) Start() {
+	c.requireStatePoolCleaner()
+	if !c.started.CompareAndSwap(false, true) {
+		panic(NewIllegalThreadStateException())
+	}
+	go c.run()
+}
+
+func (c *StatePoolCleaner) DeleteUpTo(pool int) {
+	c.requireStatePoolCleaner()
+	pool = int(int32(pool))
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.finished {
+		return
+	}
+	if pool > c.deleteUpTo {
+		c.deleteUpTo = pool
+	}
+	c.cond.Signal()
+}
+
+func (c *StatePoolCleaner) SetFinished() {
+	c.requireStatePoolCleaner()
+	c.mu.Lock()
+	c.finished = true
+	c.cond.Broadcast()
+	c.mu.Unlock()
+}
+
+func (c *StatePoolCleaner) FinishAndWait() {
+	c.requireStatePoolCleaner()
+	c.SetFinished()
+	<-c.done
+}
+
+func (c *StatePoolCleaner) run() {
+	defer close(c.done)
+	defer func() {
+		if failure := recover(); failure != nil {
+			statePoolFailureExit(ECSystemErrorCleaningPool, "", failure)
+		}
+	}()
+	for {
+		c.mu.Lock()
+		for !c.finished && c.deleteUpTo <= 0 {
+			c.cond.Wait()
+		}
+		if c.finished {
+			c.mu.Unlock()
+			return
+		}
+		target := c.deleteUpTo
+		c.deleteUpTo = 0
+		c.mu.Unlock()
+
+		q := c.queue
+		if q == nil {
+			continue
+		}
+		q.mu.Lock()
+		start := q.lastLoPool
+		q.mu.Unlock()
+		if target <= start {
+			continue
+		}
+		for i := start; i < target; i++ {
+			name := q.poolName(i)
+			if err := os.Remove(name); err != nil {
+				canonical, err := statePoolCanonicalPath(name)
+				if err != nil {
+					panic(err)
+				}
+				PrintWarning(ECSystemErrorCleaningPool, canonical)
+			}
+		}
+		q.mu.Lock()
+		if q.lastLoPool < target {
+			q.lastLoPool = target
+		}
+		q.mu.Unlock()
+	}
+}

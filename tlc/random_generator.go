@@ -1,0 +1,359 @@
+package tlc
+
+import (
+	"math"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+const (
+	javaRandomMultiplier = int64(0x5DEECE66D)
+	javaRandomAddend     = int64(0xB)
+	javaRandomMask       = int64((1 << 48) - 1)
+)
+
+type JavaRandom struct {
+	mu               sync.Mutex
+	seed             int64
+	aril             int64
+	haveNextGaussian bool
+	nextGaussian     float64
+
+	// RandomEnumerableValues' private subclasses retain behavior and state on
+	// the Random instance, so a saved/restored RNG preserves both.
+	enumerableKind  randomEnumerableKind
+	enumerableState *TLCStateMut
+}
+
+var javaRandomPrimes = generateJavaRandomPrimes()
+var javaRandomSeedUniquifierValue int64 = 8682522807148012
+
+func NewJavaRandom(seed int64) *JavaRandom {
+	r := &JavaRandom{}
+	r.SetSeed(seed)
+	return r
+}
+
+func NewJavaRandomDefault() *JavaRandom {
+	return NewJavaRandom(javaRandomSeedUniquifier() ^ time.Now().UnixNano())
+}
+
+func javaRandomSeedUniquifier() int64 {
+	for {
+		current := atomic.LoadInt64(&javaRandomSeedUniquifierValue)
+		next := current * 1181783497276652981
+		if atomic.CompareAndSwapInt64(&javaRandomSeedUniquifierValue, current, next) {
+			return next
+		}
+	}
+}
+
+func (r *JavaRandom) SetSeed(seed int64) {
+	r.require()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.seed = (seed ^ javaRandomMultiplier) & javaRandomMask
+	randomArilStore(&r.aril, 0)
+	r.haveNextGaussian = false
+}
+
+func (r *JavaRandom) SetSeedWithAril(seed int64, cnt int64) {
+	r.require()
+	r.SetSeed(seed)
+	for cnt > 0 {
+		r.NextDouble()
+		cnt--
+	}
+}
+
+// GetAril is RandomGenerator.getAril.
+func (r *JavaRandom) GetAril() int64 {
+	r.require()
+	return randomArilLoad(&r.aril)
+}
+
+func (r *JavaRandom) Aril() int64 {
+	return r.GetAril()
+}
+
+func (r *JavaRandom) Next(bits int) int32 {
+	r.require()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.nextLocked(bits)
+}
+
+func (r *JavaRandom) nextLocked(bits int) int32 {
+	r.require()
+	bits = int(int32(bits))
+	r.seed = (r.seed*javaRandomMultiplier + javaRandomAddend) & javaRandomMask
+	shift := uint(int32(48)-int32(bits)) & 63
+	return int32(uint64(r.seed) >> shift)
+}
+
+func (r *JavaRandom) NextBytes(bytes []byte) {
+	r.require()
+	if bytes == nil {
+		panic(NewNullPointerException())
+	}
+	for i := 0; i < len(bytes); {
+		rnd := r.NextInt()
+		for n := min(len(bytes)-i, 4); n > 0; n-- {
+			bytes[i] = byte(rnd)
+			i++
+			rnd >>= 8
+		}
+	}
+}
+
+func (r *JavaRandom) NextInt() int32 {
+	r.require()
+	return r.Next(32)
+}
+
+func (r *JavaRandom) NextIntN(bound int32) int32 {
+	r.require()
+	if bound <= 0 {
+		panic(NewIllegalArgumentException("bound must be positive"))
+	}
+	if bound&-bound == bound {
+		return int32((int64(bound) * int64(r.Next(31))) >> 31)
+	}
+	for {
+		bits := r.Next(31)
+		val := bits % bound
+		if bits-val+(bound-1) >= 0 {
+			return val
+		}
+	}
+}
+
+func (r *JavaRandom) NextLong() int64 {
+	r.require()
+	hi := int64(r.Next(32))
+	lo := int64(r.Next(32))
+	return (hi << 32) + lo
+}
+
+func (r *JavaRandom) NextFloat() float32 {
+	r.require()
+	return float32(r.Next(24)) / float32(1<<24)
+}
+
+func (r *JavaRandom) NextDouble() float64 {
+	r.require()
+	randomArilAdd(&r.aril, 1)
+	hi := int64(r.Next(26))
+	lo := int64(r.Next(27))
+	return float64((hi<<27)+lo) / float64(1<<53)
+}
+
+func (r *JavaRandom) NextGaussian() float64 {
+	r.require()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.haveNextGaussian {
+		r.haveNextGaussian = false
+		return r.nextGaussian
+	}
+	var v1, v2, s float64
+	for {
+		randomArilAdd(&r.aril, 2)
+		hi1 := int64(r.nextLocked(26))
+		lo1 := int64(r.nextLocked(27))
+		u1 := float64((hi1<<27)+lo1) / float64(1<<53)
+		hi2 := int64(r.nextLocked(26))
+		lo2 := int64(r.nextLocked(27))
+		u2 := float64((hi2<<27)+lo2) / float64(1<<53)
+		v1 = 2*u1 - 1
+		v2 = 2*u2 - 1
+		s = v1*v1 + v2*v2
+		if s < 1 && s != 0 {
+			break
+		}
+	}
+	multiplier := math.Sqrt(-2 * math.Log(s) / s)
+	r.nextGaussian = v2 * multiplier
+	r.haveNextGaussian = true
+	return v1 * multiplier
+}
+
+func randomArilLoad(aril *int64) int64 {
+	return atomic.LoadInt64(aril)
+}
+
+func randomArilStore(aril *int64, value int64) {
+	atomic.StoreInt64(aril, value)
+}
+
+// Java's plain aril++ can lose updates. Keep its separate read and write while
+// using atomic snapshots to avoid a native Go data race.
+func randomArilAdd(aril *int64, delta int64) {
+	randomArilStore(aril, randomArilLoad(aril)+delta)
+}
+
+func (r *JavaRandom) NextPrime() int {
+	r.require()
+	index := len(javaRandomPrimes)
+	for index == len(javaRandomPrimes) {
+		index = int(math.Floor(r.NextDouble() * float64(index)))
+	}
+	return javaRandomPrimes[index]
+}
+
+func generateJavaRandomPrimes() []int {
+	// Java RandomGenerator.primes is exactly the ascending list of all primes in
+	// this interval. Generate it to avoid carrying a large static table in Go.
+	primes := make([]int, 0, 1341)
+	for n := 1277011; n <= 1295953; n++ {
+		if isJavaRandomPrime(n) {
+			primes = append(primes, n)
+		}
+	}
+	return primes
+}
+
+func isJavaRandomPrime(n int) bool {
+	if n < 2 {
+		return false
+	}
+	if n%2 == 0 {
+		return n == 2
+	}
+	for d := 3; d*d <= n; d += 2 {
+		if n%d == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *JavaRandom) Perm(n int) []int {
+	r.require()
+	perm := make([]int, n)
+	for i := range perm {
+		perm[i] = i
+	}
+	for i := n; i > 1; i-- {
+		j := int(r.NextIntN(int32(i)))
+		perm[i-1], perm[j] = perm[j], perm[i-1]
+	}
+	return perm
+}
+
+func (r *JavaRandom) require() {
+	if r == nil {
+		panic(NewNullPointerException())
+	}
+}
+
+var randomEnumerableValues = struct {
+	sync.Mutex
+	seed    int64
+	threads map[uint64]*randomEnumerableThreadState
+}{
+	threads: make(map[uint64]*randomEnumerableThreadState),
+}
+
+type randomEnumerableKind uint8
+
+const (
+	randomEnumerablePlain randomEnumerableKind = iota
+	randomEnumerableDefault
+	randomEnumerableState
+	randomEnumerableCastMessage = "class java.util.Random cannot be cast to class tlc2.value.RandomEnumerableValues$EnumerableValueRandom " +
+		"(java.util.Random is in module java.base of loader 'bootstrap'; " +
+		"tlc2.value.RandomEnumerableValues$EnumerableValueRandom is in unnamed module of loader 'app')"
+)
+
+type randomEnumerableThreadState struct {
+	rng      *JavaRandom
+	assigned bool
+}
+
+func RandomEnumerableSeed() int64 {
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	return randomEnumerableValues.seed
+}
+
+func SetRandomEnumerableSeed(seed int64) {
+	randomEnumerableValues.Lock()
+	randomEnumerableValues.seed = seed
+	randomEnumerableValues.Unlock()
+	// Java setSeed calls reset, which removes only the current thread's RNG.
+	ResetRandomEnumerableValues()
+}
+
+func ResetRandomEnumerableValues() *JavaRandom {
+	// Source reset obtains/initializes the prior RNG before ThreadLocal.remove.
+	old := RandomEnumerableGenerator()
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	state := randomEnumerableThreadStateForLocked(currentGoroutineID())
+	state.rng = nil
+	state.assigned = false
+	// IdThread's current predecessor lives in currentStateScope, independently
+	// of this RNG entry. Removing the RNG must not discard that state scope.
+	return old
+}
+
+func SetRandomEnumerableGenerator(rng *JavaRandom) *JavaRandom {
+	// Java set first calls get, including its instance initialization hook.
+	old := RandomEnumerableGenerator()
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	state := randomEnumerableThreadStateForLocked(currentGoroutineID())
+	state.rng = rng
+	state.assigned = true // ThreadLocal.set(null) differs from remove().
+	return old
+}
+
+func PushRandomEnumerableState(state *TLCStateMut) func() {
+	// Both random enumeration and checker error handling use IdThread's one
+	// current-state slot. Do not create a second predecessor scope for RNGs.
+	return PushCurrentState(state)
+}
+
+func RandomEnumerableGenerator() *JavaRandom {
+	// Java chooses the subclass in ThreadLocal.initialValue, never at later get.
+	_, modelChecking := MainChecker().(*ModelChecker)
+	currentState, _ := CurrentState()
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	threadState := randomEnumerableThreadStateForLocked(currentGoroutineID())
+	if !threadState.assigned {
+		threadState.rng = NewJavaRandom(randomEnumerableValues.seed)
+		threadState.rng.enumerableKind = randomEnumerableDefault
+		if modelChecking {
+			threadState.rng.enumerableKind = randomEnumerableState
+		}
+		threadState.assigned = true
+	}
+	rng := threadState.rng
+	if rng == nil {
+		panic(NewNullPointerException())
+	}
+	if rng.enumerableKind == randomEnumerablePlain {
+		panic(NewClassCastException(randomEnumerableCastMessage))
+	}
+	if rng.enumerableKind == randomEnumerableState && currentState != nil && rng.enumerableState != currentState {
+		seed := int64(currentState.FingerPrint()) ^ randomEnumerableValues.seed
+		rng.SetSeed(seed)
+		rng.enumerableState = currentState
+	}
+	return rng
+}
+
+func randomEnumerableThreadStateForLocked(gid uint64) *randomEnumerableThreadState {
+	if randomEnumerableValues.threads == nil {
+		randomEnumerableValues.threads = make(map[uint64]*randomEnumerableThreadState)
+	}
+	state := randomEnumerableValues.threads[gid]
+	if state == nil {
+		state = &randomEnumerableThreadState{}
+		randomEnumerableValues.threads[gid] = state
+	}
+	return state
+}
