@@ -27,8 +27,9 @@ func TestDistributedBufferedMemoryCheckpointFailure(t *testing.T) {
 			t.Run(backend+"/"+strconv.Itoa(fault), func(t *testing.T) {
 				directory := t.TempDir()
 				target := filepath.Join(directory, "job.fp.tmp")
+				canonicalTarget := filepath.Join(canonicalNativeTestDirectory(t, directory), "job.fp.tmp")
 				logfile := filepath.Join(directory, "syscalls.log")
-				args := []string{"-f", "-yy", "-s", "32", "-o", logfile, "-P", target, "-e", "trace=write,close", "-e", "signal=none"}
+				args := []string{"-f", "-yy", "-s", "32", "-o", logfile, "-P", canonicalTarget, "-e", "trace=write,close", "-e", "signal=none"}
 				if fault == 1 || fault == 2 {
 					args = append(args, "-e", "inject=write:error=EIO:when="+strconv.Itoa(fault))
 				} else if fault == 3 {
@@ -61,13 +62,13 @@ func TestDistributedBufferedMemoryCheckpointFailure(t *testing.T) {
 				if fault == 1 {
 					wantWrites = 1
 				}
-				if len(writes) != wantWrites || len(closes) != 1 || !strings.Contains(closes[0], "<"+target+">") {
+				if len(writes) != wantWrites || len(closes) != 1 || !strings.Contains(closes[0], "<"+canonicalTarget+">") {
 					t.Fatalf("failed buffer was replayed or descriptor not closed once\n%s", log)
 				}
 				for i, line := range writes {
 					width := []int{8192, 8}[i]
 					faulted := (fault == 1 || fault == 2) && i == fault-1
-					if !strings.Contains(line, "<"+target+">") || !strings.Contains(line, ", "+strconv.Itoa(width)+")") || strings.Contains(line, "(INJECTED)") != faulted {
+					if !strings.Contains(line, "<"+canonicalTarget+">") || !strings.Contains(line, ", "+strconv.Itoa(width)+")") || strings.Contains(line, "(INJECTED)") != faulted {
 						t.Fatalf("checkpoint buffering changed\n%s", log)
 					}
 					if faulted && !strings.Contains(line, "= -1 EIO") || !faulted && !strings.HasSuffix(line, "= "+strconv.Itoa(width)) {

@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 18, 2026. Active branch: `master`.
+Updated: October 19, 2026. Active branch: `master`.
 
 Alpha preparation: `make build`, `make test`, `make vet`, and `make dist` now
 provide the local build, guarded test, static-check, and native archive paths.
@@ -21,6 +21,14 @@ points are now skipped, with their original bodies and bounds retained.
 The reduced default suite passes in 47.296 seconds on CPUs 0-7; its slowest
 completed test took 8.39 seconds. A temporary watchdog enforced a 9.5-second
 leaf-test cutoff and a 118-second package cutoff during verification.
+
+Native test path observations now share `canonicalNativeTestDirectory`:
+resolve the existing directory before appending an uncreated checkpoint name,
+and use the absolute resolved path for `strace` filters, descriptor comparisons
+and canonical cleanup warnings. Application I/O retains its original paths.
+Startup and cleanup checks share `nativeTestDescriptorsUnder`, so symlinked
+temporary directories cannot hide live handles. This correction was reviewed
+by source analysis only at the user's request; remote verification is pending.
 
 CPU limit: all port builds, tests and comparisons must share CPUs `0-7` via
 `taskset -c 0-7`, for at most eight CPUs total. Surviving workloads were pinned

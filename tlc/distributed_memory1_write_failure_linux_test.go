@@ -27,8 +27,9 @@ func TestDistributedMemory1CheckpointWriteFailure(t *testing.T) {
 		t.Run(strconv.Itoa(fault), func(t *testing.T) {
 			directory := t.TempDir()
 			target := filepath.Join(directory, "job.fp.tmp")
+			canonicalTarget := filepath.Join(canonicalNativeTestDirectory(t, directory), "job.fp.tmp")
 			logfile := filepath.Join(directory, "syscalls.log")
-			args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", target, "-e", "trace=write,close", "-e", "signal=none"}
+			args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", canonicalTarget, "-e", "trace=write,close", "-e", "signal=none"}
 			if fault > 0 && fault <= 6 {
 				args = append(args, "-e", "inject=write:error=EIO:when="+strconv.Itoa(fault))
 			} else if fault == 7 {
@@ -61,13 +62,13 @@ func TestDistributedMemory1CheckpointWriteFailure(t *testing.T) {
 			if fault == 0 || fault == 7 {
 				wantWrites = 6
 			}
-			if len(writes) != wantWrites || len(closes) != 1 || !strings.Contains(closes[0], "<"+target+">") {
+			if len(writes) != wantWrites || len(closes) != 1 || !strings.Contains(closes[0], "<"+canonicalTarget+">") {
 				t.Fatalf("checkpoint write replayed or failed to close once\n%s", log)
 			}
 			widths := []int{4, 4, 4, 1, 8, 8}
 			for i, line := range writes {
 				faulted := fault > 0 && fault <= 6 && i == fault-1
-				if !strings.Contains(line, "<"+target+">") || !strings.Contains(line, ", "+strconv.Itoa(widths[i])+")") || strings.Contains(line, "(INJECTED)") != faulted {
+				if !strings.Contains(line, "<"+canonicalTarget+">") || !strings.Contains(line, ", "+strconv.Itoa(widths[i])+")") || strings.Contains(line, "(INJECTED)") != faulted {
 					t.Fatalf("write missed the expected field boundary\n%s", log)
 				}
 				if faulted && !strings.Contains(line, "= -1 EIO") || !faulted && !strings.HasSuffix(line, "= "+strconv.Itoa(widths[i])) {

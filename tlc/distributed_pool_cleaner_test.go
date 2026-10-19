@@ -26,14 +26,11 @@ func TestDistributedPoolCleanerReportsFailedDeletesAndContinues(t *testing.T) {
 				}
 				// TempDir may itself contain symlinks (for example, /tmp).
 				// Keep the raw queue path, but expect the resolved warning path.
-				canonicalTarget, err := filepath.EvalSymlinks(target)
-				if err != nil {
-					t.Fatal(err)
-				}
+				canonicalTarget := canonicalNativeTestDirectory(t, target)
 				directory := target
 				if linked {
 					link := filepath.Join(base, "link")
-					if err := os.Symlink(filepath.Join(target, "child"), link); err != nil {
+					if err := os.Symlink(filepath.Join(canonicalTarget, "child"), link); err != nil {
 						t.Fatal(err)
 					}
 					directory = link + string(os.PathSeparator) + ".."

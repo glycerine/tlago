@@ -68,7 +68,7 @@ func checkNativeFingerprintStartupCleanup(t *testing.T, phase string) {
 					t.Fatalf("hostname lookup preceded disk initialization: %v/%v", info, err)
 				}
 			}
-			if runtime.GOOS == "linux" && nativeFingerprintStartupDescriptors(t, metadir) == 0 {
+			if runtime.GOOS == "linux" && len(nativeTestDescriptorsUnder(t, metadir)) == 0 {
 				t.Fatal("hostname lookup did not observe actual initialized disk handles")
 			}
 			if phase == "hostname_return" {
@@ -133,7 +133,7 @@ func checkNativeFingerprintStartupCleanup(t *testing.T, phase string) {
 	}
 	if attempted {
 		defer registered.Close()
-		if runtime.GOOS == "linux" && nativeFingerprintStartupDescriptors(t, metadir) == 0 {
+		if runtime.GOOS == "linux" && len(nativeTestDescriptorsUnder(t, metadir)) == 0 {
 			t.Fatal("registration/reporting failure prematurely released published storage")
 		}
 		if registered.Put(17) || !registered.Contains(17) {
@@ -142,20 +142,4 @@ func checkNativeFingerprintStartupCleanup(t *testing.T, phase string) {
 		registered.Close()
 	}
 	requireNoDistributedConstructorDescriptors(t, metadir)
-}
-
-func nativeFingerprintStartupDescriptors(t *testing.T, directory string) int {
-	t.Helper()
-	entries, err := os.ReadDir("/proc/self/fd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	count := 0
-	for _, entry := range entries {
-		path, err := os.Readlink(filepath.Join("/proc/self/fd", entry.Name()))
-		if err == nil && strings.HasPrefix(path, directory+string(os.PathSeparator)) {
-			count++
-		}
-	}
-	return count
 }

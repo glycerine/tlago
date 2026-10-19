@@ -83707,3 +83707,40 @@ tests used the tests analyzer flag, which does not exclude test files; this was
 corrected by including the test files and resolving the two harmless call forms.
 The empty-selection guard intentionally returns failure for a nonmatching name.
 The changes do not alter slow skips, source-test credits or the paused port goal.
+
+
+## October 19, 2026: native test paths under symlinked temporary directories
+
+Investigated the reported remote checkpoint, recovery, invariant-close and
+fingerprint-startup failures by source analysis only, as requested. The empty
+checkpoint syscall trace and successful promotion despite an intended EIO are
+consistent with a symlink in the temporary directory path. strace's
+`pathtrace_select_set` retains the supplied path and adds its `realpath` only
+when that call succeeds; an uncreated `job.fp.tmp` cannot be resolved. Its
+descriptor filter compares the resolved `/proc/<pid>/fd` path literally, so
+that checkpoint's writes and close escape both tracing and injection. Existing
+recovery and scan files can be resolved by strace, but their assertions still
+compared the original directory spelling with the resolved `-yy` output.
+Source: https://github.com/strace/strace/blob/master/src/pathtrace.c.
+
+Added the shared test helper `canonicalNativeTestDirectory`, which resolves an
+existing directory and makes it absolute before a checkpoint filename is
+appended. All six path-filtered strace suites now use that spelling for both
+filters and output assertions, including the unreported MemFPSet1 write cases
+and the previously partially corrected recovery-close cases. Original paths
+still reach application code; fault positions, syscall counts, partial-content
+checks, cleanup assertions and checkpoint promotion rules are unchanged.
+
+Consolidated both `/proc/self/fd` enumerations in `nativeTestDescriptorsUnder`.
+This fixes false missing-handle startup failures and prevents false clean
+results in the shared constructor, selector, disk-close and network-storage
+ownership checks. Pool-cleaner warnings use the same canonical-directory helper;
+their explicit symlink target is absolute even with a relative temporary root.
+Audited other syscall/path comparisons: the trace-before-intern check observes
+raw unlink arguments, and traversal/literal-path tests intentionally preserve
+their original spelling, so those assertions remain unchanged.
+
+Validation is limited to source and diff review plus Go formatting. No tests,
+builds, Java comparisons or runtime probes were run, and no test scenarios were
+added. The remote environment still needs to verify this correction. Existing
+slow-test skips and source-test credits are unchanged.

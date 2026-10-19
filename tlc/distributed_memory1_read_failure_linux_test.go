@@ -27,11 +27,12 @@ func TestDistributedMemory1RecoveryReadFailure(t *testing.T) {
 		t.Run(strconv.Itoa(read), func(t *testing.T) {
 			directory := t.TempDir()
 			target := filepath.Join(directory, "job.fp.chkpt")
+			canonicalTarget := filepath.Join(canonicalNativeTestDirectory(t, directory), "job.fp.chkpt")
 			if err := os.WriteFile(target, memory1RecoveryBytes(2, 9, 4, false, 41, 97), 0600); err != nil {
 				t.Fatal(err)
 			}
 			logfile := filepath.Join(directory, "syscalls.log")
-			args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", target, "-e", "trace=read,close", "-e", "signal=none"}
+			args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", canonicalTarget, "-e", "trace=read,close", "-e", "signal=none"}
 			if read != 0 {
 				args = append(args, "-e", "inject=read:error=EIO:when="+strconv.Itoa(read))
 			}
@@ -62,13 +63,13 @@ func TestDistributedMemory1RecoveryReadFailure(t *testing.T) {
 			if read == 0 {
 				wantReads = 6
 			}
-			if len(reads) != wantReads || len(closes) != 1 || !strings.Contains(closes[0], "<"+target+">") || !strings.HasSuffix(closes[0], "= 0") {
+			if len(reads) != wantReads || len(closes) != 1 || !strings.Contains(closes[0], "<"+canonicalTarget+">") || !strings.HasSuffix(closes[0], "= 0") {
 				t.Fatalf("unexpected read/close ownership\n%s", log)
 			}
 			widths := []int{4, 4, 4, 1, 8, 8}
 			for i, line := range reads {
 				faulted := read != 0 && i == read-1
-				if !strings.Contains(line, "<"+target+">") || !strings.Contains(line, ", "+strconv.Itoa(widths[i])+")") || strings.Contains(line, "(INJECTED)") != faulted {
+				if !strings.Contains(line, "<"+canonicalTarget+">") || !strings.Contains(line, ", "+strconv.Itoa(widths[i])+")") || strings.Contains(line, "(INJECTED)") != faulted {
 					t.Fatalf("read did not stop at the expected field boundary\n%s", log)
 				}
 				if faulted && !strings.Contains(line, "= -1 EIO") || !faulted && !strings.HasSuffix(line, "= "+strconv.Itoa(widths[i])) {

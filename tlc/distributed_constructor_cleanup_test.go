@@ -125,15 +125,8 @@ func requireNoDistributedConstructorDescriptors(t *testing.T, directory string) 
 	if runtime.GOOS != "linux" {
 		return // Descriptor enumeration is supplementary to portable worker checks.
 	}
-	entries, err := os.ReadDir("/proc/self/fd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		path, err := os.Readlink(filepath.Join("/proc/self/fd", entry.Name()))
-		if err == nil && strings.HasPrefix(path, directory+string(os.PathSeparator)) {
-			t.Fatalf("constructor retained an open metadata descriptor: %s", path)
-		}
+	if paths := nativeTestDescriptorsUnder(t, directory); len(paths) != 0 {
+		t.Fatalf("constructor retained open metadata descriptors: %v", paths)
 	}
 }
 

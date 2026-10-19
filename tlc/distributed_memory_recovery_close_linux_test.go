@@ -32,6 +32,7 @@ func TestDistributedMemoryRecoveryCloseFailure(t *testing.T) {
 				t.Run(backend+"/"+phase+"/fault="+strconv.FormatBool(fault), func(t *testing.T) {
 					directory := t.TempDir()
 					target := filepath.Join(directory, "job.fp.chkpt")
+					canonicalTarget := filepath.Join(canonicalNativeTestDirectory(t, directory), "job.fp.chkpt")
 					var data [24]byte
 					for i, fp := range []uint64{41, 41, 43} {
 						binary.BigEndian.PutUint64(data[8*i:], fp)
@@ -51,14 +52,8 @@ func TestDistributedMemoryRecoveryCloseFailure(t *testing.T) {
 					if err := os.WriteFile(target, contents, 0600); err != nil {
 						t.Fatal(err)
 					}
-					// strace -yy reports the resolved descriptor path, including
-					// symlinks in the temporary directory's ancestors.
-					canonicalTarget, err := filepath.EvalSymlinks(target)
-					if err != nil {
-						t.Fatal(err)
-					}
 					logfile := filepath.Join(directory, "syscalls.log")
-					args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", target, "-e", "trace=close", "-e", "signal=none"}
+					args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", canonicalTarget, "-e", "trace=close", "-e", "signal=none"}
 					if fault {
 						args = append(args, "-e", "inject=close:error=EIO:when=1")
 					}

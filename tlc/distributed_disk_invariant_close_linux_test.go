@@ -29,6 +29,7 @@ func TestDistributedDiskInvariantCloseFailure(t *testing.T) {
 				t.Run(backend+"/"+phase+"/fault="+strconv.FormatBool(fault), func(t *testing.T) {
 					directory := t.TempDir()
 					target := filepath.Join(directory, "scan.fp")
+					canonicalTarget := filepath.Join(canonicalNativeTestDirectory(t, directory), "scan.fp")
 					var data [16]byte
 					binary.BigEndian.PutUint64(data[:8], 41)
 					binary.BigEndian.PutUint64(data[8:], 43)
@@ -42,7 +43,7 @@ func TestDistributedDiskInvariantCloseFailure(t *testing.T) {
 						t.Fatal(err)
 					}
 					logfile := filepath.Join(directory, "syscalls.log")
-					args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", target, "-e", "trace=close", "-e", "signal=none"}
+					args := []string{"-f", "-yy", "-s", "4096", "-o", logfile, "-P", canonicalTarget, "-e", "trace=close", "-e", "signal=none"}
 					if fault {
 						args = append(args, "-e", "inject=close:error=EIO:when=1")
 					}
@@ -66,7 +67,7 @@ func TestDistributedDiskInvariantCloseFailure(t *testing.T) {
 							closes = append(closes, line)
 						}
 					}
-					if len(closes) != 1 || !strings.Contains(closes[0], "<"+target+">") || strings.Contains(closes[0], "(INJECTED)") != fault {
+					if len(closes) != 1 || !strings.Contains(closes[0], "<"+canonicalTarget+">") || strings.Contains(closes[0], "(INJECTED)") != fault {
 						t.Fatalf("fault missed the exact scan-file close\n%s", log)
 					}
 					if fault && !strings.Contains(closes[0], "= -1 EIO") || !fault && !strings.HasSuffix(closes[0], "= 0") {
