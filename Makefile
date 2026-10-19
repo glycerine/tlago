@@ -8,6 +8,15 @@ build:
 test:
 	python3 scripts/test-fast.py
 
+fasttest:
+	go test -v && cd tlc && go test -v
+
+slowtest: # run all the tests, even the slow ones (that need -short)
+	go test -timeout=0 -short -v &> top.runlog
+	tail -5 top.runlog
+	cd tlc && go test -timeout=0 -short -v &> tlc.runlog
+	tail -5 tlc/tlc.runlog
+
 vet:
 	go vet -stdmethods=false ./...
 
