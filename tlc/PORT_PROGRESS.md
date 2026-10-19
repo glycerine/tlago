@@ -83744,3 +83744,46 @@ Validation is limited to source and diff review plus Go formatting. No tests,
 builds, Java comparisons or runtime probes were run, and no test scenarios were
 added. The remote environment still needs to verify this correction. Existing
 slow-test skips and source-test credits are unchanged.
+
+
+## October 19, 2026: validate early safety violations during trace replay
+
+Read the user's `/Users/jaten/tlago/log` without modifying it. The failing
+`TestJavaSafetyDumpLoadTraceJSONAutoWorkers` dumps an 11-state DieHard trace
+with 18 workers and replays an 8-state trace with one worker. Their first seven
+states match. From state 7 (small bucket 2, big bucket 5), pouring big to small
+produces small bucket 3, big bucket 4, water to pour 1: the same violating state
+that appears at dump state 11. The dump first takes an empty/pour/fill detour.
+The existing assertion incorrectly requires replay state 8 to be the dump's
+nonviolating empty-big state.
+
+This matches the previously documented unchanged-Java prefix failure. Both
+Java Worker.addElement and native processSuccessorForWorker check invariants
+on successors rejected by a state constraint; -loadTrace installs precisely
+such a constraint. Multiworker exploration can retain a nonminimal predecessor
+chain, so replay can encounter a violating successor before the dump's detour.
+Suppressing that invariant would change TLC behavior. Java source reference:
+https://github.com/tlaplus/tlaplus/blob/master/tlatools/org.lamport.tlatools/src/tlc2/tool/Worker.java.
+
+Corrected the shared dump/load harness for the user's reported intermittent
+failure. For differing dump/load worker settings and a safety result, only the
+last replay state may use the alternative check, and only when the actual replay
+tool rejects it under its model constraints. Every preceding state still uses
+the original exact or ALIAS-intersection comparison, with all ordinal and length
+checks retained. The terminal check uses raw pre-ALIAS states, evaluates the
+real transition relation, requires exactly one matching invariant name in both
+runs, and evaluates that invariant as true on the predecessor and false on the
+successor. A broken transition, unrelated violation, earlier state mismatch,
+constraint-accepted mismatch or liveness mismatch still fails. The same helper
+covers JSON, binary and existing alias variants; no new scenario was invented.
+
+This is an explicit correction to the upstream test's prefix assumption,
+superseding the earlier instruction in port notes to retain that known faulty
+assertion. Production code, flags, worker counts, fixtures and skip conditions
+remain unchanged. Updated the current handoff and inventory qualification to
+describe the adapted assertion rather than claim an unchanged source test.
+
+Validation is source analysis of the supplied trace, the replay modules and
+checker ordering, plus formatting and diff checks. No local tests, builds,
+runtime probes or Java workloads were run. The user log is retained. Remote
+execution remains pending, with no new test-port credit or passing run claimed.

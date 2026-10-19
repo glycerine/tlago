@@ -38,11 +38,12 @@ func runJavaDumpLoadTraceWithSpecs(t *testing.T, fixture, dumpSpec, loadSpec, fo
 		t.Fatal("dump did not record TLC_FINISHED")
 	}
 
-	load := runJavaTLCModelTestWithArguments(t, fixture, loadSpec, func(meta, _ string) []string {
+	var loadRunner *tlc.TLC
+	load := runJavaTLCModelTestWithRunnerSetup(t, fixture, loadSpec, func(meta, _ string) []string {
 		args := []string{"-metadir", meta, "-workers", loadWorkers, "-noGenerateSpecTE", "-fp", "4"}
 		args = append(args, loadExtraArgs...)
 		return append(args, "-loadTrace", format, traceFile)
-	})
+	}, func(runner *tlc.TLC) { loadRunner = runner })
 	if len(javaTLCRecords(load, tlc.ECTLCFinished)) == 0 {
 		t.Fatal("load did not record TLC_FINISHED")
 	}
@@ -82,6 +83,29 @@ func runJavaDumpLoadTraceWithSpecs(t *testing.T, fixture, dumpSpec, loadSpec, fo
 		if state.StateInfo == nil || loaded.StateInfo == nil {
 			t.Fatalf("state info missing at position %d", i)
 		}
+		// Parallel BFS can dump a detour past a state with a violating
+		// successor. Replay follows the prefix, but TLC checks invariants
+		// even on successors excluded by its trace constraint. Only that
+		// final successor may differ; verify its transition and invariant
+		// instead of assuming the entire safety trace must be a prefix.
+		if dumpWorkers != loadWorkers && status == tlc.ExitStatusViolationSafety && i > 0 && i == len(loadTrace)-1 {
+			if loadRunner == nil || loadRunner.Tool == nil {
+				t.Fatal("load tool missing for replay successor validation")
+			}
+			terminal := loaded.StateInfo.GetOriginalState()
+			if terminal == nil {
+				t.Fatal("replay terminal state missing")
+			}
+			inModel, err := loadRunner.Tool.IsInModel(terminal)
+			if err != nil {
+				t.Fatalf("replay terminal constraint: %v", err)
+			}
+			if !inModel {
+				assertJavaReplayInvariantSuccessor(t, loadRunner.Tool, loadTrace[i-1].StateInfo.GetOriginalState(), terminal,
+					javaTLCRecords(dump, violationCode), javaTLCRecords(load, violationCode))
+				continue
+			}
+		}
 		original := strings.TrimSpace(state.StateInfo.String())
 		replayed := strings.TrimSpace(loaded.StateInfo.String())
 		if dumpSpec != loadSpec {
@@ -90,6 +114,52 @@ func runJavaDumpLoadTraceWithSpecs(t *testing.T, fixture, dumpSpec, loadSpec, fo
 			t.Fatalf("state strings differ at position %d: dump=%q load=%q", i, original, replayed)
 		}
 	}
+}
+
+// A constrained-out terminal state is observable in Java's Worker.addElement
+// too. Validate the raw states, before ALIAS projection, so an unrelated state
+// or a different violated invariant cannot turn a broken round trip green.
+func assertJavaReplayInvariantSuccessor(t *testing.T, tool *tlc.Tool, predecessor, successor *tlc.TLCStateMut, dumpViolations, loadViolations []tlc.Message) {
+	t.Helper()
+	if predecessor == nil || successor == nil {
+		t.Fatal("replay violation is missing its predecessor or successor")
+	}
+	if len(dumpViolations) != 1 || len(loadViolations) != 1 || len(dumpViolations[0].Params) != 1 || len(loadViolations[0].Params) != 1 || dumpViolations[0].Params[0] != loadViolations[0].Params[0] {
+		t.Fatal("early replay must violate the same invariant as the dump")
+	}
+	restoreCurrent := tlc.PushCurrentState(predecessor)
+	defer restoreCurrent()
+	validSuccessor := false
+	for _, action := range tool.GetActions() {
+		valid, err := tool.IsValidTransition(action, predecessor, successor)
+		if err != nil {
+			t.Fatalf("validate replay terminal transition: %v", err)
+		}
+		if valid {
+			validSuccessor = true
+			break
+		}
+	}
+	if !validSuccessor {
+		t.Fatal("replay terminal state is not a successor of its matching prefix")
+	}
+	name := loadViolations[0].Params[0]
+	for i, invariantName := range tool.GetInvNames() {
+		if invariantName != name {
+			continue
+		}
+		invariant := tool.GetInvariants()[i]
+		before, err := tool.IsValidState(invariant, predecessor)
+		if err != nil || !before {
+			t.Fatalf("replay predecessor must satisfy invariant %q: valid=%v, error=%v", name, before, err)
+		}
+		after, err := tool.IsValidState(invariant, successor)
+		if err != nil || after {
+			t.Fatalf("replay terminal state must violate invariant %q: valid=%v, error=%v", name, after, err)
+		}
+		return
+	}
+	t.Fatalf("replay reported unknown invariant %q", name)
 }
 
 func TestJavaSafetyDumpLoadTraceJSON(t *testing.T) {

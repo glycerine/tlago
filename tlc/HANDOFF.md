@@ -3301,8 +3301,11 @@ Java's inherited overload without action-check labels. Three complete graph file
 from actual `BidirectionalTransitions1Bx` states, generated tableau nodes and
 computed action checks match Java byte for byte. This verifies rendering, not a
 new original test completion. The auto-worker trace-prefix failure is an
-intermittent unchanged-Java scheduling limitation, reproduced at the same index
-and values; preserve its original assertions and worker settings.
+intermittent unchanged-Java scheduling limitation. The October 19 harness
+correction retains exact prefix states and ordinals but validates a final
+constrained-out safety successor against the replay tool's transition relation
+and the same violated invariant. Worker settings and production invariant checks
+are preserved. This correction has source review only; no local tests were run.
 Plain and tableau liveness disk graphs now expose Java's debug `writeDotViz`
 entry points, including cache creation/destruction, concrete renderer dispatch
 and stderr stack traces for write failures. `LiveWorker` also renders filtered
