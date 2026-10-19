@@ -80,49 +80,10 @@ invalid arguments, and execution failures return nonzero statuses. Parsing and
 export commands have their own status mappings. Scripts should inspect both
 the exit status and diagnostics.
 
-## Development and alpha bundles
-
-```sh
-make test      # Guarded default TLC suite; under two minutes.
-make vet       # Static checks, including test files.
-make dist      # Native archive plus SHA-256 checksum in dist/.
-```
-
-The test runner enforces a 9.5-second safety cutoff for an active leaf test and
-118 seconds for the suite. Tests known to exceed ten seconds retain their bodies
-with `t.Skip("test is too slow")`. `make long` is disabled. Do not remove these
-skips or launch long/race workloads to prepare an alpha.
-
-Linux Make targets share CPUs `0-7` through `taskset`; Go work uses
-`GOMAXPROCS=8`. On systems without `taskset`, the targets omit CPU affinity.
-`RUN` can be set explicitly for another execution wrapper. `make test` needs
-local loopback sockets for the distributed tests; sandbox-denied socket failures
-are not passing checks. The JSON log is saved to `.cache/test-results.jsonl`.
-
-`make vet` includes test files. It disables `stdmethods` because the
-ported Java `ReadByte`, `WriteByte`, and `Seek` APIs deliberately have different
-signatures from Go's similarly named interfaces. Plain `go vet ./...` still
-reports those Java method signatures.
-
-To cross-build an archive, for example:
-
-```sh
-python3 scripts/package.py --goos darwin --goarch arm64
-```
-
-Cross-built archives require testing on their target platform before sharing.
-Packaging includes the executable, this guide, the alpha notes, the example,
-and third-party notices. It does not publish, tag, or upload anything.
-
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled attributions,
-[TLC_ARCH.md](https://github.com/glycerine/tlago/blob/master/tlc/TLC_ARCH.md)
-for implementation contracts, and
-[TODO_TEST_PORT.md](https://github.com/glycerine/tlago/blob/master/tlc/TODO_TEST_PORT.md)
-for the source-test inventory. Detailed development history is in
-[PORT_PROGRESS.md](https://github.com/glycerine/tlago/blob/master/tlc/PORT_PROGRESS.md).
 
 ## License
 
-Copyright © 2026 Jason E. Aten, Ph.D., and the upstream contributors identified
-in the sources. Distributed under the [MIT license](LICENSE), with additional
-notices for incorporated code and modules.
+Copyright © 2026 Jason E. Aten, Ph.D.
+
+[MIT license](LICENSE)
+
