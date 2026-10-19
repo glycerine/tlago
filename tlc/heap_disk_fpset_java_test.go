@@ -55,7 +55,7 @@ func javaHeapDiskFPSetConstructorMethods(t *testing.T, lower, upper int64, newSe
 func javaHeapDiskFPSetRecoveryMethods(t *testing.T, className string, newSet func(*FPSetConfiguration) *DiskFPSet) {
 	t.Helper()
 	t.Run("testFPSetRecovery", func(t *testing.T) {
-		t.Skip("test is too slow")
+		skipSlowTest(t)
 
 		const limit = 99999
 		metadir := t.TempDir()
@@ -94,7 +94,7 @@ func javaHeapDiskFPSetRecoveryMethods(t *testing.T, className string, newSet fun
 		}
 	})
 	t.Run("testFPSetRecovery2", func(t *testing.T) {
-		t.Skip("test is too slow")
+		skipSlowTest(t)
 
 		set := newSet(NewFPSetConfiguration())
 		set.Init(1, t.TempDir(), className+"testFPSetRecovery2")

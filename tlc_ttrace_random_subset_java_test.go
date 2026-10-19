@@ -49,7 +49,7 @@ func runJavaRandomSubsetSeedTTrace(t *testing.T, class string, seed int64, x, y 
 
 // Original RandomSubsetNextTest_TTraceTest.testSpec and inherited settings.
 func TestJavaRandomSubsetNextTTrace(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	generated := filepath.Join(t.TempDir(), "RandomSubsetNextTestTTrace.tla")
 	if !t.Run("original", func(t *testing.T) { runJavaRandomSubsetNext(t, "-teSpecOutDir", generated) }) {
@@ -77,7 +77,7 @@ func TestJavaRandomSubsetNextTTrace(t *testing.T) {
 
 // Original RandomSubsetNextT4Test_TTraceTest.testSpec and four-worker override.
 func TestJavaRandomSubsetNextT4TTrace(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	generated := filepath.Join(t.TempDir(), "RandomSubsetNextT4TestTTrace.tla")
 	if !t.Run("original", func(t *testing.T) { runJavaRandomSubsetNextT4(t, "-teSpecOutDir", generated) }) {

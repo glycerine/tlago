@@ -12,7 +12,7 @@ func TestJavaLongDiskStateQueue(t *testing.T) {
 		})
 	}
 	t.Run("testGrowBeyondIntMaxValue", func(t *testing.T) {
-		t.Skip("test is too slow")
+		skipSlowTest(t)
 
 		queue := javaLongDiskStateQueueSetup(t)
 		// DummyTLCState's default constructor sets uid=0, fp=0, Empty=this.

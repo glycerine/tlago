@@ -60,7 +60,7 @@ func TestJavaLivenessIncompatibleTypesLive(t *testing.T) {
 
 // Original TwoPhaseCommitTest.testSpec and inherited settings/exit.
 func TestJavaLivenessTwoPhaseCommit(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
 	r := runJavaTLCModelTestWithRoot(t, "TwoPhaseCommit", "MC", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "TwoPhaseCommitTest.json"))

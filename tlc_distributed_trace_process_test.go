@@ -18,7 +18,7 @@ import (
 // DistributedTLCTestCase is disabled upstream. These checks retain its model
 // assertions over native Go processes, without original-method completion credit.
 func TestNativeDistributedErrorTraceModels(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, model := range []string{"DieHard", "TSnapShot"} {
 		for _, remote := range []bool{false, true} {

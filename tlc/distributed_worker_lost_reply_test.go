@@ -138,7 +138,7 @@ func TestWorkerRPCLostComputedReplyRetainsAssignedWork(t *testing.T) {
 // No upstream method covers the native timer/accepted-call interaction. Use
 // the unchanged ten-second scheduler, not a direct TimerTask.Run invocation.
 func TestNativeCoordinatorTimerRequeuesPendingWorkerReply(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	captureFailoverToolIO(t, ToolIOTool)
 	oldWorkers := NumWorkers()

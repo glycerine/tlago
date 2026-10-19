@@ -45,7 +45,7 @@ func javaOffHeapIndexerEquivalenceRows() []javaOffHeapIndexerEquivalenceRow {
 // The source ThreadLocalRandom is unseeded; Go's runtime-seeded bounded generator
 // likewise supplies uniform fingerprints in the original [lowerBound, upperBound).
 func TestJavaOffHeapIndexerEquivalenceInfiniteInfMult(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for row, input := range javaOffHeapIndexerEquivalenceRows() {
 		t.Run(fmt.Sprintf("row%d/positions%d/fpBits%d/fpRangeBit%d", row, input.positions, input.fpBits, input.fpRangeBit), func(t *testing.T) {

@@ -9,7 +9,7 @@ import "testing"
 // method preserves all 2,147,483,648 iterations and every original assertion.
 // Run normally with -timeout=0, never with -race.
 func TestJavaOffHeapDiskFPSetLong_testMaxFPSetSizeRnd(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	javaLongFPSetRandomFull(t, "tlc2.tool.fp.OffHeapDiskFPSet", func(ignored *FPSetConfiguration) FPSet {
 		return NewOffHeapDiskFPSet(NewFPSetConfigurationWithRatioAndImplementation(1.0, "tlc2.tool.fp.OffHeapDiskFPSet"))

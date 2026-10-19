@@ -34,7 +34,7 @@ func TestJavaOffHeapDiskFPSet(t *testing.T) {
 		run(fmt.Sprintf("testOffset%dPage", pages), func(t *testing.T) { javaOffHeapOffset(t, pages*diskFPSetNumEntriesPerPage, 1474536306841) })
 	}
 	run("testWriteIndex", func(t *testing.T) {
-		t.Skip("test is too slow")
+		skipSlowTest(t)
 
 		cfg := newJavaDummyFPSetConfiguration()
 		cfg.setMemoryInFingerprintCnt(1)

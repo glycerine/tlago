@@ -334,7 +334,7 @@ func runJavaTLCGetLevel(t *testing.T, extraArgs ...string) *tlc.Result {
 }
 
 func TestJavaTLCSetSim(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	result := runJavaTLCModelTestWithSettings(t, "TLCSetSim", true, false, "-config", "TLCSet.cfg", "-simulate", "-depth", "4224")
 	requireJavaTLCSetSimulation(t, result)
@@ -342,7 +342,7 @@ func TestJavaTLCSetSim(t *testing.T) {
 
 // TLCSetMultiSimTest inherits TLCSetSimTest.testSpec and disables the debugger.
 func TestJavaTLCSetMultiSim(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	result := runJavaTLCModelTestWithDebugger(t, "TLCSetSim", true, false, false, 1, "-config", "TLCSet.cfg", "-simulate", "-depth", "4224")
 	requireJavaTLCSetSimulation(t, result)

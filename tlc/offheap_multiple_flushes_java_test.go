@@ -8,7 +8,7 @@ import "testing"
 // ratio-1.0 factory, single reader, Java RNG seed, four rounds, runtime-derived
 // insertion bound and exact invariant count. Run normally, never with -race.
 func TestJavaOffHeapDiskFPSetLong_testMultipleFlushes(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	set := NewOffHeapDiskFPSet(NewFPSetConfigurationWithRatioAndImplementation(1.0, "tlc2.tool.fp.OffHeapDiskFPSet"))
 	set.Init(1, t.TempDir(), "FPSetTestTest")

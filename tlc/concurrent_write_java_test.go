@@ -41,7 +41,7 @@ func TestJavaConcurrentWrite(t *testing.T) {
 	})
 
 	t.Run("test3", func(t *testing.T) {
-		t.Skip("test is too slow")
+		skipSlowTest(t)
 
 		path := javaBRAFTemp(t, "ConcurrentWriteTest_test3")
 		const limit int64 = 400000000

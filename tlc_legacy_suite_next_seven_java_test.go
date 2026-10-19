@@ -8,7 +8,7 @@ import (
 
 // Original Test27: whole inherited SuiteTestCase.testSpec and constructor.
 func TestJavaLegacySuiteTest27(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
 	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest27", "test27", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "Test27.json"))

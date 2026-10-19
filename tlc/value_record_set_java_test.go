@@ -151,7 +151,7 @@ func TestJavaSetOfRcrdValue(t *testing.T) {
 		javaFcnSetHashSize(t, values, size)
 	})
 	t.Run("testRandomSubsetVaryingParameters", func(t *testing.T) {
-		t.Skip("test is too slow")
+		skipSlowTest(t)
 
 		for n := 1; n < 7; n++ {
 			names := javaRecordSetNames(n)

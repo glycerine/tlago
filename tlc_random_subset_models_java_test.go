@@ -219,7 +219,7 @@ func TestJavaRandomSubsetSetOfFcns(t *testing.T) {
 
 // Original RandomSubsetNextTest.testSpec, exact source seed/counts/trace.
 func TestJavaRandomSubsetNext(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	runJavaRandomSubsetNext(t)
 }
@@ -250,7 +250,7 @@ func runJavaRandomSubsetNext(t *testing.T, extraArgs ...string) *tlc.Result {
 
 // Original RandomSubsetNextT4Test.testSpec and its four-worker override.
 func TestJavaRandomSubsetNextT4(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	runJavaRandomSubsetNextT4(t)
 }

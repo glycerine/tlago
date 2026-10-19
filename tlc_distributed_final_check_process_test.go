@@ -21,7 +21,7 @@ const nativeFinalFingerprintCheckFailure = "native final fingerprint check I/O f
 // This is a native transport fault case, not an adaptation of an original
 // passing model assertion: its one GENERAL diagnostic is required by Java.
 func TestNativeDistributedFinalFingerprintCheckReplyLoss(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	output := runNativeDistributedModelWithCheckFailure(t, "EWD840", true, false, "reply-loss")
 	stats := nativeDistributedMessages(output, tlc.ECTLCStats)
@@ -117,7 +117,7 @@ func waitForNativeFinalFingerprintCheckHeld(t *testing.T, ctx context.Context, s
 // model reporting. These native process checks retain the complete N=7 model;
 // they do not add original-method completion credit.
 func TestNativeDistributedFinalFingerprintCheckIO(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, failure := range []string{"returned", "panicked"} {
 		t.Run(failure, func(t *testing.T) {
@@ -251,25 +251,25 @@ func nativeDistributedFinalFingerprintCheckHost(args []string, failure string) (
 // The first host is lost after its real final check; the second completes the
 // same full model's partition check and remains available for final statistics.
 func TestNativeDistributedFinalFingerprintCheckReplyLossSurvivor(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	checkNativeDistributedFinalFingerprintSurvivor(t, "")
 }
 
 func TestNativeDistributedFinalFingerprintCheckDiskReplyLossSurvivor(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	checkNativeDistributedFinalFingerprintSurvivor(t, "LSB")
 }
 
 func TestNativeDistributedFinalFingerprintCheckMSBDiskReplyLossSurvivor(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	checkNativeDistributedFinalFingerprintSurvivor(t, "MSB")
 }
 
 func TestNativeDistributedFinalFingerprintCheckOffHeapDiskReplyLossSurvivor(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	checkNativeDistributedFinalFingerprintSurvivor(t, "OffHeap")
 }

@@ -10,7 +10,7 @@ import (
 // No original method covers uncaught coordinator timer failures. Run the real
 // timer loop with its original ten-second initial delay, without -race.
 func TestDistributedCoordinatorTimerFailureStopsOnlyTimer(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	output, err := os.CreateTemp(t.TempDir(), "timer-stderr-")
 	if err != nil {

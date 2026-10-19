@@ -10,7 +10,7 @@ import (
 )
 
 func TestApalacheIRConformanceAgainstApalache(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	apalache := apalacheCommandForTest(t)
 	if apalache == "" {
@@ -228,7 +228,7 @@ Use == LET I == INSTANCE Inner IN I!B
 }
 
 func TestApalacheIRSourceConformanceAgainstApalache(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	apalache := apalacheCommandForTest(t)
 	if apalache == "" {

@@ -26,7 +26,7 @@ import (
 // it does not claim translation of the disabled in-JVM/RMI harness. Each role
 // needs its own process because FP64 and the tool's interning are process-wide.
 func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, scenario := range []struct {
 		name                                       string

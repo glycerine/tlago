@@ -14,7 +14,7 @@ import (
 )
 
 func TestApalacheIRTargetCorpusAgainstApalache(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	if os.Getenv("TLAGO_APALACHE_CORPUS") == "" {
 		t.Skip("set TLAGO_APALACHE_CORPUS=1 to compare the target fixture trees against Apalache")

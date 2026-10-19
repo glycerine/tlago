@@ -9,7 +9,7 @@ import (
 
 // Original ExamplesACPNBTLCTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesACPNBTLC(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -35,7 +35,7 @@ func TestJavaExamplesACPNBTLC(t *testing.T) {
 
 // Original ExamplesAbaAsynByzTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesAbaAsynByz(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -105,7 +105,7 @@ func TestJavaExamplesBcastByz(t *testing.T) {
 
 // Original ExamplesBcastFolkloreTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesBcastFolklore(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -155,7 +155,7 @@ func TestJavaExamplesBlockingQueuePoisonApple(t *testing.T) {
 
 // Original ExamplesBufferedRandomAccessFileTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesBufferedRandomAccessFile(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -181,7 +181,7 @@ func TestJavaExamplesBufferedRandomAccessFile(t *testing.T) {
 
 // Original ExamplesCf1sFolkloreTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesCf1sFolklore(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -437,7 +437,7 @@ func TestJavaExamplesMCEWD687a(t *testing.T) {
 
 // Original ExamplesMCLiveInternalMemoryTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesMCLiveInternalMemory(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -463,7 +463,7 @@ func TestJavaExamplesMCLiveInternalMemory(t *testing.T) {
 
 // Original ExamplesMCLiveWriteThroughCacheTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesMCLiveWriteThroughCache(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -537,7 +537,7 @@ func TestJavaExamplesMCYoYoNoPruning(t *testing.T) {
 
 // Original ExamplesNbacgGuer01Test.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesNbacgGuer01(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -587,7 +587,7 @@ func TestJavaExamplesPrisoners(t *testing.T) {
 
 // Original ExamplesSDPAttackNewSolutionTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesSDPAttackNewSolution(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -613,7 +613,7 @@ func TestJavaExamplesSDPAttackNewSolution(t *testing.T) {
 
 // Original ExamplesSchedulingAllocatorTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesSchedulingAllocator(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -663,7 +663,7 @@ func TestJavaExamplesSimpleAllocator(t *testing.T) {
 
 // Original ExamplesSingleLaneBridgeTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesSingleLaneBridge(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -685,7 +685,7 @@ func TestJavaExamplesSingleLaneBridge(t *testing.T) {
 
 // Original ExamplesSpanTreeRandomTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesSpanTreeRandom(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
@@ -711,7 +711,7 @@ func TestJavaExamplesSpanTreeRandom(t *testing.T) {
 
 // Original ExamplesSpanTreeTest.testSpec, constructor and all five settings overrides.
 func TestJavaExamplesSpanTree(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	setJavaExampleClasspath(t)
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")

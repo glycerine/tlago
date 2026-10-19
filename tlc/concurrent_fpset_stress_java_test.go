@@ -308,14 +308,14 @@ func javaConcurrentFPClass(t *testing.T, implementation string) {
 	}
 }
 func TestJavaConcurrentLSBDiskFPSet(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 	javaConcurrentFPClass(t, "lsb")
 }
 func TestJavaConcurrentMSBDiskFPSet(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 	javaConcurrentFPClass(t, "msb")
 }
 func TestJavaConcurrentOffHeapDiskFPSet(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 	javaConcurrentFPClass(t, "offheap")
 }

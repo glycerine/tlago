@@ -87,7 +87,7 @@ func javaLongFPSetRandomFull(t *testing.T, implementation string, factory func(*
 }
 
 func TestJavaLongLSBDiskFPSet_testMaxFPSetSizeRnd(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	javaLongFPSetRandomFull(t, "tlc2.tool.fp.LSBDiskFPSet", func(config *FPSetConfiguration) FPSet {
 		set := NewLSBDiskFPSet(config)
@@ -97,7 +97,7 @@ func TestJavaLongLSBDiskFPSet_testMaxFPSetSizeRnd(t *testing.T) {
 }
 
 func TestJavaLongMSBDiskFPSet_testMaxFPSetSizeRnd(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	javaLongFPSetRandomFull(t, "tlc2.tool.fp.MSBDiskFPSet", func(config *FPSetConfiguration) FPSet {
 		return NewMSBDiskFPSet(config)

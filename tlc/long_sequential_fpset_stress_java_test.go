@@ -65,7 +65,7 @@ func javaLongFPSetSequentialFull(t *testing.T, factory func(*FPSetConfiguration)
 }
 
 func TestJavaLongLSBDiskFPSet_testMaxFPSetSize(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	javaLongFPSetSequentialFull(t, func(config *FPSetConfiguration) FPSet {
 		set := NewLSBDiskFPSet(config)
@@ -74,12 +74,12 @@ func TestJavaLongLSBDiskFPSet_testMaxFPSetSize(t *testing.T) {
 	})
 }
 func TestJavaLongMSBDiskFPSet_testMaxFPSetSize(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	javaLongFPSetSequentialFull(t, func(config *FPSetConfiguration) FPSet { return NewMSBDiskFPSet(config) })
 }
 func TestJavaOffHeapDiskFPSetLong_testMaxFPSetSize(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	javaLongFPSetSequentialFull(t, func(ignored *FPSetConfiguration) FPSet {
 		return NewOffHeapDiskFPSet(NewFPSetConfigurationWithRatioAndImplementation(1.0, "tlc2.tool.fp.OffHeapDiskFPSet"))

@@ -17,7 +17,7 @@ import (
 )
 
 func TestJavaCommunityModulesAnt(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	const phaseVariable = "TLAGO_COMMUNITY_ANT_TEST_PHASE"
 	if phase := os.Getenv(phaseVariable); phase != "" {

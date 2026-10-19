@@ -61,7 +61,7 @@ func TestJavaSimulationGithub602(t *testing.T) {
 // Whole original simulation.NQSpecTest.testSpec. Preserve the inherited debugger
 // option and all ModelCheckerTestCase settings; no new debugger test is added.
 func TestJavaSimulationNQSpec(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	r := runJavaTLCModelTestWithRoot(t, "SimulationNQSpec", "MC", true, true, true, 1,
 		"-dumpTrace", "json", filepath.Join(t.TempDir(), "NQSpecTest.json"),

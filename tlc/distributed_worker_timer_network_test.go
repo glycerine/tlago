@@ -9,7 +9,7 @@ import (
 // Keep its actual ten-second initial delay; do not replace the timer with a
 // manual run invocation or shorten the production activity timeout.
 func TestNativeWorkerTimerDetectsCachedCoordinatorLoss(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	captureFailoverToolIO(t, ToolIOTool)
 	recorder := &MemoryRecorder{}

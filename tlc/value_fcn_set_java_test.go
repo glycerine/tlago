@@ -360,7 +360,7 @@ func TestJavaSetOfFcnsValue(t *testing.T) {
 	})
 
 	t.Run("testRandomSubsetFromReallyLarge", func(t *testing.T) {
-		t.Skip("test is too slow")
+		skipSlowTest(t)
 
 		sets := []*SetOfFcnsValue{
 			NewSetOfFcnsValue(NewIntervalValue(1, 11), NewSetEnumValue(stringValues("a", "b", "c", "d", "e", "f", "g", "h", "i", "j"), true)),

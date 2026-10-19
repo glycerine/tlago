@@ -12,7 +12,7 @@ import (
 // Keep all bounds, handle lifetimes, write offsets and read assertions. These
 // explicit stress methods are reconciliation cases, not passing replacements.
 func TestJavaConcurrentWriteSourceFailures(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	check := func(t *testing.T, path string, limit int64) {
 		t.Helper()

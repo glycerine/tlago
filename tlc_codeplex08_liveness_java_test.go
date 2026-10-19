@@ -319,7 +319,7 @@ func TestJavaCodePlexBug08AgentRingTTrace(t *testing.T) {
 
 // Original CodePlexBug08EWD840FL1Test.testSpec, constructor and inherited settings.
 func TestJavaCodePlexBug08EWD840FL1(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 	runJavaCodePlexBug08EWD840FL1(t)
 }
 func runJavaCodePlexBug08EWD840FL1(t *testing.T, extraArgs ...string) *tlc.Result {
@@ -370,7 +370,7 @@ func runJavaCodePlexBug08EWD840FL1(t *testing.T, extraArgs ...string) *tlc.Resul
 
 // Original CodePlexBug08EWD840FL1Test_TTraceTest.testSpec, rechecking the actual generated artifact.
 func TestJavaCodePlexBug08EWD840FL1TTrace(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	generated := filepath.Join(t.TempDir(), "CodePlexBug08EWD840FL1TestTTrace.tla")
 	if !t.Run("original", func(t *testing.T) { runJavaCodePlexBug08EWD840FL1(t, "-teSpecOutDir", generated) }) {
@@ -406,7 +406,7 @@ func TestJavaCodePlexBug08EWD840FL1TTrace(t *testing.T) {
 
 // Original CodePlexBug08EWD840FL2Test.testSpec, constructor and inherited settings.
 func TestJavaCodePlexBug08EWD840FL2(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 	runJavaCodePlexBug08EWD840FL2(t)
 }
 func runJavaCodePlexBug08EWD840FL2(t *testing.T, extraArgs ...string) *tlc.Result {
@@ -449,7 +449,7 @@ func runJavaCodePlexBug08EWD840FL2(t *testing.T, extraArgs ...string) *tlc.Resul
 
 // Original CodePlexBug08EWD840FL2Test_TTraceTest.testSpec, rechecking the actual generated artifact.
 func TestJavaCodePlexBug08EWD840FL2TTrace(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	generated := filepath.Join(t.TempDir(), "CodePlexBug08EWD840FL2TestTTrace.tla")
 	if !t.Run("original", func(t *testing.T) { runJavaCodePlexBug08EWD840FL2(t, "-teSpecOutDir", generated) }) {

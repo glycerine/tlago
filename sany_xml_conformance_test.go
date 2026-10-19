@@ -16,7 +16,7 @@ import (
 )
 
 func TestSanyXMLConformanceAgainstJavaSANY(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	if os.Getenv("TLAGO_SANY_XML") == "" {
 		t.Skip("set TLAGO_SANY_XML=1 to compare SANY XML against Java SANY")
@@ -53,7 +53,7 @@ func TestSanyXMLConformanceAgainstJavaSANY(t *testing.T) {
 const verbose = true
 
 func TestSanyXMLTargetCorpusAgainstJavaSANY(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	if os.Getenv("TLAGO_SANY_XML_CORPUS") == "" {
 		t.Skip("set TLAGO_SANY_XML_CORPUS=1 to compare the target fixture trees against Java SANY XML")

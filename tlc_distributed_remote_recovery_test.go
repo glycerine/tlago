@@ -24,7 +24,7 @@ import (
 // It does not change Java's CLI recovery-before-registration limitation or earn
 // credit for its assumption-disabled distributed model harness.
 func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"mem", "lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -34,7 +34,7 @@ func TestNativeDistributedRemoteCheckpointRestart(t *testing.T) {
 }
 
 func TestNativeDistributedRemoteCheckpointRestartMultipleWorkers(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"mem", "lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestNativeDistributedRemoteCheckpointRestartMultipleWorkers(t *testing.T) {
 // The remote store commits real checkpoint files before closing its connection.
 // Recovery must use those files, even though the coordinator never got the reply.
 func TestNativeDistributedRemoteCheckpointCommitReplyLoss(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"mem", "lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestNativeDistributedRemoteCheckpointCommitReplyLoss(t *testing.T) {
 }
 
 func TestNativeDistributedRemoteCheckpointCommitReplyLossMultipleWorkers(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"mem", "lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestNativeDistributedRemoteCheckpointCommitReplyLossMultipleWorkers(t *test
 // Lose the acknowledgement after storage restores its committed checkpoint.
 // The following size query triggers source failover before workers reconnect.
 func TestNativeDistributedRemoteCheckpointRecoverReplyLoss(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"mem", "lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -106,14 +106,14 @@ const (
 // Unlike nested disk recovery, a direct memory-store I/O failure is reported
 // and ignored by the source manager before recovering the next registration.
 func TestNativeDistributedRemoteCheckpointMissingMemSnapshot(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	checkNativeDistributedRemoteCheckpointRestart(t, "mem", 1, nativeRemoteCheckpointMissingMemSnapshot)
 }
 
 // Pending snapshots must not become committed after begin reply loss.
 func TestNativeDistributedRemoteCheckpointBeginReplyLoss(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"mem", "lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -158,7 +158,7 @@ func TestNativeDistributedRemoteCheckpointMissingIntern(t *testing.T) {
 }
 
 func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -170,7 +170,7 @@ func TestNativeDistributedRemoteCheckpointMissingDiskSnapshot(t *testing.T) {
 // Source disk recovery catches a trailing partial primitive as EOF after
 // restoring all complete fingerprints; the unchanged model must still finish.
 func TestNativeDistributedRemoteCheckpointTrailingDiskSnapshot(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -182,7 +182,7 @@ func TestNativeDistributedRemoteCheckpointTrailingDiskSnapshot(t *testing.T) {
 // Missing direct-memory snapshots warn and continue, but malformed records
 // raise source assertions and stop before the next store or worker publication.
 func TestNativeDistributedRemoteCheckpointCorruptMemSnapshot(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, input := range []string{"truncated", "duplicate"} {
 		t.Run(input, func(t *testing.T) {
@@ -198,7 +198,7 @@ func TestNativeDistributedRemoteCheckpointCorruptMemSnapshot(t *testing.T) {
 // A later failure must retain the earlier host's successful reconstruction.
 // Source manager recovery is sequential and supplies no rollback transaction.
 func TestNativeDistributedRemoteCheckpointCorruptLaterMemSnapshot(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, input := range []string{"truncated", "duplicate"} {
 		t.Run(input, func(t *testing.T) {
@@ -212,7 +212,7 @@ func TestNativeDistributedRemoteCheckpointCorruptLaterMemSnapshot(t *testing.T) 
 }
 
 func TestNativeDistributedRemoteCheckpointEmptyDiskSnapshot(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"lsb", "msb"} {
 		t.Run(backend, func(t *testing.T) {
@@ -224,7 +224,7 @@ func TestNativeDistributedRemoteCheckpointEmptyDiskSnapshot(t *testing.T) {
 // Real checkpoint ordering corruption must retain the source disk assertion,
 // partial reconstruction and sibling joins, without publishing replacement work.
 func TestNativeDistributedRemoteCheckpointDiskSnapshotOrdering(t *testing.T) {
-	t.Skip("test is too slow")
+	skipSlowTest(t)
 
 	for _, backend := range []string{"lsb", "msb"} {
 		for _, input := range []string{"duplicate", "descending"} {
