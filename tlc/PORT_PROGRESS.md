@@ -83787,3 +83787,35 @@ Validation is source analysis of the supplied trace, the replay modules and
 checker ordering, plus formatting and diff checks. No local tests, builds,
 runtime probes or Java workloads were run. The user log is retained. Remote
 execution remains pending, with no new test-port credit or passing run claimed.
+
+### October 19, 2026: upstream off-heap flusher lifecycle correction
+
+Reviewed local upstream commits `4c83d5e63`, `8c9533d44`, and `210df3af8`
+against `JAVA_BUG_FOUND.md` and our fallback implementation. Upstream is more
+complete: it prevents temporary concurrent flushers from replacing the inherited
+sequential default, sizes final-check preparation and scanning to initialized
+disk readers, and shuts down preparation executors even without a merge.
+Our fallback prevented stale reuse on successful paths but retained stored
+executor state and used the unrelated global worker count for final checking.
+
+Ported operation-local selection; removed the stored concurrent flusher and
+completed-flush workaround. Inherited invariant/recovery flushing is always
+sequential. `CheckFPs` uses `numThreads` from initialization and shuts down its
+local preparation executor via defer, including panic paths. The separate scan
+still joins all tasks. Go invokes bounded goroutines and joins them per batch;
+there are no persistent idle executor threads, unlike Java. The existing
+in-memory-only closest-pair approximation remains unchanged.
+
+Ported all six upstream `OffHeapDiskFPSetFlusherReuseTest` methods. The Java
+field-type assertion is represented by removal of the field and a default-flush
+control; the thread-leak check observes Go goroutines, with a one-second bound
+instead of an unbounded join. Existing selector boundary checks remain. Focused
+regressions pass in 0.020 seconds; the 16 original insertion/eviction methods
+and two original merge controls pass in 0.034 seconds. Commands use
+`taskset -c 0-7`, an explicit short test selection and a 10-second timeout.
+No Java or long distributed workload was launched. Updated the bug report
+with the upstream resolution while retaining its historical report.
+
+The same focused flusher regressions pass under `-race` in 1.160 seconds.
+`git diff --check` passes. Validation is limited to these short checks; no
+full-package or long-workload result is claimed for this change.

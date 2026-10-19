@@ -10,6 +10,12 @@ and relative paths with spaces. The CLI now normalizes qualified relative model
 paths through its existing absolute-path resolver. No dedicated version command
 or bug-report versioning was added. See the progress log for validation receipts.
 
+Off-heap flusher lifecycle now follows upstream issue #1470 commits
+`4c83d5e63`, `8c9533d44`, and `210df3af8`: concurrent flushers belong to
+individual operations, inherited invariant/recovery flushing stays sequential,
+and final checks use initialized reader counts and close preparation executors.
+See `PORT_PROGRESS.md` for the review and validation.
+
 Current testing policy (user, October 18): tests longer than 10 seconds are
 forbidden. Preserve their bodies and use `t.Skip("test is too slow")`.
 The routine `tlc` suite must finish under two minutes. This overrides all older

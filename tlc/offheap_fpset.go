@@ -322,9 +322,12 @@ func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
 	if atomic.LoadInt64(&s.tblCnt) <= 0 {
 		return uint64(1<<63 - 1)
 	}
-	numThreads := NumWorkers()
+	numThreads := s.numThreads
 	if flusher := s.selectOffHeapConcurrentFlusher(numThreads); flusher != nil {
-		flusher.prepareTable()
+		func() {
+			defer func() { flusher.shutdown = true }()
+			flusher.prepareTable()
+		}()
 	} else {
 		s.prepareOffHeapTableLocked()
 	}
@@ -339,8 +342,7 @@ func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
 	for id := range distances {
 		distances[id] = 1<<63 - 1
 	}
-	// The source creates a separate executor for the closest-pair scan; it does
-	// not shut down the selected flusher's executor after preparing the table.
+	// The closest-pair scan owns a separate executor from table preparation.
 	scan := &offHeapConcurrentFlusher{numThreads: numThreads}
 	failures := scan.invokeAll(func(id int) {
 		isLast := id == numThreads-1
@@ -550,8 +552,8 @@ func (s *OffHeapDiskFPSet) evictNow() error {
 	if !s.checkOffHeapInput() {
 		panic(NewAssertionError("Table violates invariants prior to eviction: " + s.array.String()))
 	}
-	s.selectOffHeapConcurrentFlusher(s.numThreads)
-	if err := s.flushOffHeapTable(); err != nil {
+	flusher := s.selectOffHeapConcurrentFlusher(s.numThreads)
+	if err := s.flushOffHeapTableWithFlusher(flusher); err != nil {
 		if isJavaIOException(err) {
 			return newOffHeapRuntimeException(err)
 		}
@@ -561,36 +563,28 @@ func (s *OffHeapDiskFPSet) evictNow() error {
 	return nil
 }
 
-// DiskFPSet.Flusher.flushTable dispatches through the existing flusher. Recovery
-// and public invariant checks do not count a normal eviction.
+// Inherited invariant and recovery operations use the sequential default.
+// Eviction owns its temporary concurrent flusher without storing it on the set.
 func (s *OffHeapDiskFPSet) flushOffHeapTable() error {
+	return s.flushOffHeapTableWithFlusher(nil)
+}
+
+func (s *OffHeapDiskFPSet) flushOffHeapTableWithFlusher(flusher *offHeapConcurrentFlusher) error {
 	if atomic.LoadInt64(&s.tblCnt) == 0 {
 		return nil
 	}
-	if s.concurrentFlusher != nil && s.concurrentFlusher.shutdown && s.concurrentFlusher.flushCompleted {
-		// Authorized correction of Java's closed-flusher lifecycle bug also
-		// covers direct invariant/recovery flushing, which bypasses selection.
-		// Use the sequential path rather than submitting to a closed executor
-		// with partition counts captured before the previous merge. A failed
-		// flush retains its source failure state instead of enabling a retry.
-		// See ../JAVA_BUG_FOUND.md.
-		s.concurrentFlusher = nil
-	}
-	if s.concurrentFlusher != nil {
-		s.concurrentFlusher.prepareTable()
+	if flusher != nil {
+		flusher.prepareTable()
 	} else {
 		s.prepareOffHeapTableLocked()
 	}
 	itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), 0, s.indexer, true)
-	if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, s.concurrentFlusher); err != nil {
+	if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, flusher); err != nil {
 		return err
 	}
 	atomic.StoreInt64(&s.tblCnt, 0)
 	atomic.StoreInt64(&s.bucketsCap, 0)
 	atomic.StoreInt64(&s.tblLoad, 0)
-	if s.concurrentFlusher != nil {
-		s.concurrentFlusher.flushCompleted = true
-	}
 	return nil
 }
 

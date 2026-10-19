@@ -74,7 +74,6 @@ type offHeapConcurrentFlusher struct {
 	r, insertions, length int64
 	offsets               []offHeapFlusherResult
 	shutdown              bool
-	flushCompleted        bool
 }
 
 func (s *OffHeapDiskFPSet) selectOffHeapConcurrentFlusher(numThreads int) *offHeapConcurrentFlusher {
@@ -83,17 +82,10 @@ func (s *OffHeapDiskFPSet) selectOffHeapConcurrentFlusher(numThreads int) *offHe
 		if numThreads <= 0 {
 			panic(NewIllegalArgumentException())
 		}
-		s.concurrentFlusher = &offHeapConcurrentFlusher{set: s, numThreads: numThreads,
+		return &offHeapConcurrentFlusher{set: s, numThreads: numThreads,
 			r: int64(s.probeLimit), insertions: atomic.LoadInt64(&s.tblCnt), length: javaDoubleToLong(length)}
-	} else {
-		// Deliberate divergence from buggy Java OffHeapDiskFPSet.getFlusher:
-		// its fallback retains a previous parallel flusher whose merge may
-		// have shut down the executor. Final CheckFPs then rejects tasks.
-		// nil selects the existing sequential preparation/merge path and
-		// also discards stale partition geometry. See ../JAVA_BUG_FOUND.md.
-		s.concurrentFlusher = nil
 	}
-	return s.concurrentFlusher
+	return nil
 }
 
 // Callable failures become Future failures. prepareTable inspects every future;

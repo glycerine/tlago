@@ -230,7 +230,7 @@ func (s *OffHeapDiskFPSet) mergeOffHeapEntries(inRAF *BufferedRandomAccessFile, 
 func (s *OffHeapDiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 	s.requireOffHeapDiskFPSet()
 	requireInvariantExpectedCount(expectFPs)
-	// Dispatch through the current source flusher, retaining its executor state.
+	// Inherited checks use the sequential default, independent of eviction.
 	if err := s.flushOffHeapTable(); err != nil {
 		panic(err)
 	}
