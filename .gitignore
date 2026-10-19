@@ -12,3 +12,5 @@ _apalache-out/
 /bin/
 /dist/
 __pycache__/
+tlc/tlc.runlog
+top.runlog
