@@ -46,13 +46,13 @@ def main():
         shutil.copy2("tlc/JZLIB_LICENSE.txt", notices / "JZLIB_LICENSE.txt")
         shutil.copy2("test_vectors/CommunityModules/LICENSE", notices / "CommunityModules-LICENSE")
         # Preserve module-source notices alongside the binary's embedded modules.
-        for source, label in (("java-sany/StandardModules", "StandardModules"),
-                              ("CommunityModules/modules", "CommunityModules"),
-                              ("tlaps-stdlib", "TLAPS"), ("apalache-stdlib", "Apalache")):
+        for source, label in (("stdlib/tla2tools", "StandardModules"),
+                              ("stdlib/community", "CommunityModules"),
+                              ("stdlib/tlaps", "TLAPS"), ("stdlib/apalache", "Apalache")):
             dest = notices / "embedded-modules" / label
             dest.mkdir(parents=True)
             pattern = "Apalache.tla" if label == "Apalache" else "*.tla"
-            for module in (Path("test_vectors") / source).glob(pattern):
+            for module in Path(source).glob(pattern):
                 shutil.copy2(module, dest / module.name)
         for module, label in (("github.com/glycerine/rbtree", "rbtree"), ("golang.org/x/text", "x-text")):
             directory = Path(subprocess.check_output(go_command + ["list", "-m", "-f", "{{.Dir}}", module],

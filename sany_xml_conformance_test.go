@@ -257,7 +257,7 @@ func javaSanyClasspathForTest(t *testing.T) string {
 		t.Fatalf("missing frozen Java SANY dependency %s: %v", dependency, err)
 	}
 	classpath := []string{jar, dependency}
-	tlapsDependency := filepath.Join(sanyXMLTLAPSStdlibDir(), "CommunityModules.jar")
+	tlapsDependency := filepath.Join("test_vectors", "tlaps-stdlib", "CommunityModules.jar")
 	if _, err := os.Stat(tlapsDependency); err == nil {
 		classpath = append(classpath, tlapsDependency)
 	}
@@ -265,7 +265,7 @@ func javaSanyClasspathForTest(t *testing.T) string {
 }
 
 func sanyXMLJavaStandardModulesDir() string {
-	return filepath.Join("test_vectors", "java-sany", "StandardModules")
+	return filepath.Join("stdlib", "tla2tools")
 }
 
 func sanyXMLTlaplusStandardModulesDir() string {
@@ -273,7 +273,7 @@ func sanyXMLTlaplusStandardModulesDir() string {
 }
 
 func sanyXMLCommunityModulesDir() string {
-	return filepath.Join("test_vectors", "CommunityModules", "modules")
+	return filepath.Join("stdlib", "community")
 }
 
 func sanyXMLCommunityModulesTestsDir() string {
@@ -281,15 +281,19 @@ func sanyXMLCommunityModulesTestsDir() string {
 }
 
 func sanyXMLTLAPSStdlibDir() string {
-	return filepath.Join("test_vectors", "tlaps-stdlib")
+	return filepath.Join("stdlib", "tlaps")
 }
 
 func sanyXMLApalacheStdlibDir() string {
+	return filepath.Join("stdlib", "apalache")
+}
+
+func sanyXMLApalacheFixturesDir() string {
 	return filepath.Join("test_vectors", "apalache-stdlib")
 }
 
 func sanyXMLCorpusIncludeDirs(sourcePath string) []string {
-	dirs := []string{sanyXMLTlaplusStandardModulesDir(), sanyXMLCommunityModulesDir(), sanyXMLCommunityModulesTestsDir(), sanyXMLTLAPSStdlibDir(), sanyXMLApalacheStdlibDir()}
+	dirs := []string{sanyXMLTlaplusStandardModulesDir(), sanyXMLCommunityModulesDir(), sanyXMLCommunityModulesTestsDir(), sanyXMLTLAPSStdlibDir(), sanyXMLApalacheStdlibDir(), sanyXMLApalacheFixturesDir()}
 	dirs = append(dirs, tlaPlusBenchSpecLibraryPaths(sourcePath)...)
 	sourceDir := filepath.Dir(sourcePath)
 	parent := filepath.Dir(sourceDir)

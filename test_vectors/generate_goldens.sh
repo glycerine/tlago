@@ -217,11 +217,12 @@ java_include_args() {
 	parent_dir="$(dirname "$source_dir")"
 	parent_name="$(basename "$parent_dir")"
 
-	printf '%s\n' "-I" "$root/java-sany/StandardModules"
+	printf '%s\n' "-I" "$repo_root/stdlib/tla2tools"
 	printf '%s\n' "-I" "$root/tlaplus-standard-modules"
-	printf '%s\n' "-I" "$root/CommunityModules/modules"
+	printf '%s\n' "-I" "$repo_root/stdlib/community"
 	printf '%s\n' "-I" "$root/CommunityModules/tests"
-	printf '%s\n' "-I" "$root/tlaps-stdlib"
+	printf '%s\n' "-I" "$repo_root/stdlib/tlaps"
+	printf '%s\n' "-I" "$repo_root/stdlib/apalache"
 	printf '%s\n' "-I" "$root/apalache-stdlib"
 	if [[ "$spec" == "$root/tla-plus-bench/specs/"* ]]; then
 		while IFS= read -r dir; do
@@ -335,7 +336,7 @@ apalache_library_path() {
 	parent_dir="$(dirname "$source_dir")"
 	parent_name="$(basename "$parent_dir")"
 
-	local dirs=("$source_dir" "$root/java-sany/StandardModules" "$root/tlaplus-standard-modules" "$root/CommunityModules/modules" "$root/CommunityModules/tests" "$root/tlaps-stdlib" "$root/apalache-stdlib")
+	local dirs=("$source_dir" "$repo_root/stdlib/tla2tools" "$root/tlaplus-standard-modules" "$repo_root/stdlib/community" "$root/CommunityModules/tests" "$repo_root/stdlib/tlaps" "$repo_root/stdlib/apalache" "$root/apalache-stdlib")
 	if [[ "$spec" == "$root/tla-plus-bench/specs/"* ]]; then
 		local manifest_dirs=()
 		mapfile -t manifest_dirs < <(bench_manifest_dirs "$spec")

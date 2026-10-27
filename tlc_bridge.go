@@ -327,7 +327,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 		convertBoundNames:     map[string]int{},
 	}
 	bridge.tool.SetSpecIdentity(spec.Root.Name, spec.Root.SourcePath, spec.Root.Name, "")
-	bridge.tool.DistributedFiles = tlc.NewDistributedServerFiles(filepath.Dir(spec.Root.SourcePath), spec.LibraryPaths, embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
+	bridge.tool.DistributedFiles = tlc.NewDistributedServerFiles(filepath.Dir(spec.Root.SourcePath), spec.LibraryPaths, embeddedTLA2ToolsModules, "stdlib/tla2tools")
 	bridge.tool.ModuleFiles = append([]string(nil), spec.ModuleFiles...)
 	bridge.tool.ParseDebuggerExpressionFunc = bridge.parseDebuggerExpression
 	bridge.installVariables()

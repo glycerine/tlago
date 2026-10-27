@@ -318,7 +318,7 @@ func tlcApplicationClasspath(entries []tlc.FilenameClasspathEntry) ([]tlc.Filena
 	if entries == nil {
 		entries = tlc.DefaultFilenameClasspath()
 	}
-	standard, err := fs.Sub(embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
+	standard, err := fs.Sub(embeddedTLA2ToolsModules, "stdlib/tla2tools")
 	if err != nil {
 		return nil, err
 	}

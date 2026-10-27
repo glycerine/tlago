@@ -129,7 +129,7 @@ applications before Apalache rewrites or omits information.
 Target workflow:
 
 - Run Java SANY from the frozen fixture jar:
-  `java -cp test_vectors/java-sany/tla2tools.jar tla2sany.xml.XMLExporter -o -I test_vectors/java-sany/StandardModules Spec.tla`.
+  `java -cp test_vectors/java-sany/tla2tools.jar tla2sany.xml.XMLExporter -o -I stdlib/tla2tools Spec.tla`.
 - Use `-o` and capture stdout directly. Do not use sockets, network, local
   schema proxies, or patched Java/Scala code in the oracle path.
 - Keep the Java oracle self-contained by freezing `tla2tools.jar`, the SANY

@@ -41,6 +41,9 @@ func TestJavaCommunityModulesAnt(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := os.CopyFS(filepath.Join(dir, "modules"), os.DirFS("stdlib/community")); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(dir, "build", "tests"), 0755); err != nil {
 		t.Fatal(err)
 	}

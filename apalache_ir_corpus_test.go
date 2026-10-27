@@ -276,11 +276,12 @@ func prependPathListEnv(env []string, name, value string) []string {
 func apalacheCorpusDirectLibraryPaths(sourcePath string) []string {
 	paths := []string{
 		filepath.Dir(sourcePath),
-		filepath.Join("test_vectors", "java-sany", "StandardModules"),
+		filepath.Join("stdlib", "tla2tools"),
 		filepath.Join("test_vectors", "tlaplus-standard-modules"),
-		filepath.Join("test_vectors", "CommunityModules", "modules"),
+		filepath.Join("stdlib", "community"),
 		filepath.Join("test_vectors", "CommunityModules", "tests"),
-		filepath.Join("test_vectors", "tlaps-stdlib"),
+		filepath.Join("stdlib", "tlaps"),
+		filepath.Join("stdlib", "apalache"),
 		filepath.Join("test_vectors", "apalache-stdlib"),
 	}
 	paths = append(paths, tlaPlusBenchSpecLibraryPaths(sourcePath)...)

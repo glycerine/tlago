@@ -7,16 +7,16 @@ import (
 	"github.com/glycerine/tlago/tlc"
 )
 
-//go:embed test_vectors/java-sany/StandardModules/*.tla
-var embeddedJavaStandardModules embed.FS
+//go:embed stdlib/tla2tools/*.tla
+var embeddedTLA2ToolsModules embed.FS
 
-//go:embed test_vectors/CommunityModules/modules/*.tla
+//go:embed stdlib/community/*.tla
 var embeddedCommunityModules embed.FS
 
-//go:embed test_vectors/tlaps-stdlib/*.tla
+//go:embed stdlib/tlaps/*.tla
 var embeddedTLAPSModules embed.FS
 
-//go:embed test_vectors/apalache-stdlib/Apalache.tla
+//go:embed stdlib/apalache/Apalache.tla
 var embeddedApalacheModule embed.FS
 
 type LoadOptions struct {
@@ -35,10 +35,10 @@ var standardModules = loadStandardModules()
 
 func loadStandardModules() map[string]string {
 	out := make(map[string]string)
-	loadEmbeddedModules(out, embeddedApalacheModule, "test_vectors/apalache-stdlib")
-	loadEmbeddedModules(out, embeddedTLAPSModules, "test_vectors/tlaps-stdlib")
-	loadEmbeddedModules(out, embeddedCommunityModules, "test_vectors/CommunityModules/modules")
-	loadEmbeddedModules(out, embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
+	loadEmbeddedModules(out, embeddedApalacheModule, "stdlib/apalache")
+	loadEmbeddedModules(out, embeddedTLAPSModules, "stdlib/tlaps")
+	loadEmbeddedModules(out, embeddedCommunityModules, "stdlib/community")
+	loadEmbeddedModules(out, embeddedTLA2ToolsModules, "stdlib/tla2tools")
 	return out
 }
 

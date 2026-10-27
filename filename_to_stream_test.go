@@ -13,7 +13,7 @@ import (
 
 func javaFilenameResolver(t *testing.T, libraries []string) *tlc.SimpleFilenameToStream {
 	t.Helper()
-	standard, err := fs.Sub(embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
+	standard, err := fs.Sub(embeddedTLA2ToolsModules, "stdlib/tla2tools")
 	if err != nil {
 		t.Fatal(err)
 	}

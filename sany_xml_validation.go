@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-//go:embed test_vectors/java-sany/xml/sany.xsd
+//go:embed stdlib/sany/sany.xsd
 var sanyXMLSchema []byte
 
 // SanyXMLSchema returns the packaged upstream schema, independently of cwd.

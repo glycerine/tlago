@@ -45,7 +45,7 @@ C == choose(6, 2) + factorial[3]
 ====`)
 
 	spec, diags := LoadSanySpec(root, LoadOptions{LibraryPaths: []string{
-		filepath.Join("test_vectors", "CommunityModules", "modules"),
+		filepath.Join("stdlib", "community"),
 	}})
 	requireNoErrors(t, diags)
 	requireNoErrors(t, CheckSpec(spec))
@@ -73,7 +73,7 @@ C == B!shiftR(8, 1) + B!Not(5) + (6 & 3)
 ====`)
 
 	spec, diags := LoadSanySpec(root, LoadOptions{LibraryPaths: []string{
-		filepath.Join("test_vectors", "CommunityModules", "modules"),
+		filepath.Join("stdlib", "community"),
 	}})
 	requireNoErrors(t, diags)
 	requireNoErrors(t, CheckSpec(spec))
