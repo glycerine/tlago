@@ -726,7 +726,10 @@ func TestNativeDistributedEWD840ProcessRoles(t *testing.T) {
 			output := server.output.String()
 			if scenario.workerThreads > 1 {
 				checkNativeDistributedWorkerGroup(t, output, scenario.workerThreads)
-				for _, process := range roles {
+				// The checkpoint producer exits abruptly; its old workers can
+				// report EOF before the parent kills them. Require clean RPCs
+				// only from the run that must finish, as in the recovery checks.
+				for _, process := range roles[recoveredRoleStart:] {
 					roleOutput := process.output.String()
 					if len(nativeDistributedMessages(roleOutput, tlc.ECGeneral)) != 0 || strings.Contains(roleOutput, "unexpected EOF") {
 						t.Fatalf("shared-worker role %s emitted GENERAL or lost a reply", process.output.role)
