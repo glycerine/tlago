@@ -7,7 +7,11 @@ liveness checking, traces, checkpoint/recovery, and distributed roles are
 implemented. Full Java TLC parity is still being reconciled. See [ALPHA.md](ALPHA.md)
 for the current scope, known limitations, and feedback checklist.
 
-## Try the included model
+## aside: apalache-go now available! 
+
+Check out our port of Apalache, a symbolic model checker, to go: https://github.com/glycerine/apalache-go
+
+## back to tlago: try the included model
 
 Unpack the supplied archive for your operating system and architecture, then run
 these commands from the unpacked directory:
